@@ -53,36 +53,23 @@ RestCursorHandler::RestCursorHandler(
       _queryKilled(false),
       _isValidForFinalize(false) {}
 
+RestCursorHandler::~RestCursorHandler() {}
+
+
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
-
-  auto self = shared_from_this();
   
-  RestStatus ret;
-
   if (type == rest::RequestType::POST) {
-    auto continueCallback = [this, self]() {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Posted continuation on Scheduler";
-      continueHandlerExecution();
-    };
-    ret = createQueryCursor(continueCallback);
+    return createQueryCursor();
   } else if (type == rest::RequestType::PUT) {
-    auto continueCallback = [this, self]() {
-      if (continueModifyQueryCursor() == RestStatus::DONE) {
-        continueHandlerExecution();
-      }
-    };
-    ret = modifyQueryCursor(continueCallback);
+    return modifyQueryCursor();
   } else if (type == rest::RequestType::DELETE_REQ) {
-    ret = deleteQueryCursor();
-  } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
-  }
-
-  return ret;
+    return deleteQueryCursor();
+  } 
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return RestStatus::DONE;
 }
 
 RestStatus RestCursorHandler::continueExecute() {
@@ -90,22 +77,10 @@ RestStatus RestCursorHandler::continueExecute() {
   rest::RequestType const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    if (_query != nullptr) {
-      // We are in the non-streaming case
-      try {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are in the repeating case! We have actually slept!";
-        return processQuery();
-      } catch (...) {
-        unregisterQuery();
-        throw;
-      }
-    }
-    // Query should not be taken!
-    TRI_ASSERT(false);
-    return RestStatus::DONE;
+    return processQuery();
   }
 
-  // NOT YET IMPLEMENTED
+  // Other parts of the query cannot be paused
   TRI_ASSERT(false);
   return RestStatus::DONE;
 }
@@ -121,8 +96,7 @@ bool RestCursorHandler::cancel() {
 /// this method is also used by derived classes
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQueryOrCursor(
-    VPackSlice const& slice, std::function<void()> const& continueHandler) {
+void RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
@@ -162,7 +136,7 @@ void RestCursorHandler::registerQueryOrCursor(
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
-  if (stream) {
+  if (false && stream) {
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER, "cannot use 'count' option for a streaming query"));
     } else {
@@ -189,6 +163,11 @@ void RestCursorHandler::registerQueryOrCursor(
     arangodb::aql::PART_MAIN
   );
 
+  auto self = shared_from_this();
+  auto continueHandler = [this, self]() {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Posted continuation on Scheduler";
+    continueHandlerExecution();
+  };
   query->setContinueHandler(continueHandler);
   registerQuery(std::move(query));
 }
@@ -200,7 +179,6 @@ void RestCursorHandler::registerQueryOrCursor(
 //////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::processQuery() {
-  TRI_ASSERT(_query != nullptr);
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Illegal state in RestQueryHandler, query not found.");
   }
@@ -218,7 +196,11 @@ RestStatus RestCursorHandler::processQuery() {
   }
   // We cannot get into HASMORE here, or we would loose results.
   unregisterQuery();
+  handleQueryResult(queryResult);
+  return RestStatus::DONE;
+}
 
+void RestCursorHandler::handleQueryResult(aql::QueryResult& queryResult) {
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
@@ -304,7 +286,6 @@ RestStatus RestCursorHandler::processQuery() {
     TRI_DEFER(cursors->release(cursor));
     generateCursorResult(rest::ResponseCode::CREATED, cursor);
   }
-  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -432,7 +413,7 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   result.openObject();
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-  Result r = cursor->dump(result);
+  Result r = cursor->dumpSync(result);
   result.close();
 
   if (r.ok()) {
@@ -443,18 +424,11 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   }
 }
 
-RestStatus RestCursorHandler::continueCreateQueryCursor() {
-  // TODO !!
-  // THIS NEEDS TO POST something on the io service. 
-  // Do we need to try () catch () sth here or are errors handled?
-  return processQuery();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::createQueryCursor(std::function<void()> const& continueHandler) {
+RestStatus RestCursorHandler::createQueryCursor() {
   if (_request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, 600);
     return RestStatus::DONE;
@@ -481,30 +455,16 @@ RestStatus RestCursorHandler::createQueryCursor(std::function<void()> const& con
   _isValidForFinalize = true;
 
   TRI_ASSERT(_query == nullptr);
-  registerQueryOrCursor(body, continueHandler);
-  if (_query != nullptr) {
-    // We are in the non-streaming case
-    try {
-      return processQuery();
-    } catch (...) {
-      unregisterQuery();
-      throw;
-    }
-  }
-  return RestStatus::DONE;
+  registerQueryOrCursor(body);
+  // We are in the non-streaming case
+  return processQuery();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor_identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::continueModifyQueryCursor() {
-  // TODO Implement me
-  TRI_ASSERT(false);
-  return RestStatus::DONE;
-}
-
-RestStatus RestCursorHandler::modifyQueryCursor(std::function<void()> const& continueHandler) {
+RestStatus RestCursorHandler::modifyQueryCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {

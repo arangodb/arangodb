@@ -41,6 +41,9 @@
 #include "Scheduler/Task.h"
 #include "Statistics/RequestStatistics.h"
 
+#include "VocBase/ticks.h"
+#include "Cluster/ServerState.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -211,12 +214,18 @@ Scheduler::~Scheduler() {
 void Scheduler::post(std::function<void()> const callback) {
   incQueued();
 
+  auto tck = TRI_NewTickServer();
+  if (ServerState::instance()->isCoordinator()) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Post tck : " <<tck;
+  }
   try {
     // capture without self, ioContext will not live longer than scheduler
-    _ioContext.get()->post([this, callback]() {
+    _ioContext.get()->post([this, callback, tck]() {
       JobGuard guard(this);
       guard.work();
-
+      if (ServerState::instance()->isCoordinator()) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Exec tck : " <<tck;
+      }
       decQueued();
 
       callback();

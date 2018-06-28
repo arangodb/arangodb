@@ -40,6 +40,7 @@ class RestSimpleQueryHandler : public RestCursorHandler {
  public:
   RestStatus execute() override final;
   RestStatus continueExecute() override final;
+  char const* name() const override final { return "RestSimpleQueryHandler"; }
 
  private:
   RestStatus allDocuments();

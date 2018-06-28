@@ -42,6 +42,7 @@ class Slice;
 namespace aql {
 class Query;
 class QueryRegistry;
+class QueryResult;
 }
 
 class Cursor;
@@ -55,10 +56,12 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RestCursorHandler(GeneralRequest*, GeneralResponse*,
                     arangodb::aql::QueryRegistry*);
 
+  ~RestCursorHandler();
+
  public:
   virtual RestStatus execute() override;
   virtual RestStatus continueExecute() override;
-  char const* name() const override final { return "RestCursorHandler"; }
+  char const* name() const override { return "RestCursorHandler"; }
   RequestLane lane() const override { return RequestLane::CLIENT_AQL; }
 
 #ifdef USE_ENTERPRISE
@@ -74,14 +77,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// this method is also used by derived classes
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerQueryOrCursor(arangodb::velocypack::Slice const& body, std::function<void()> const& continueHandler);
+  void registerQueryOrCursor(arangodb::velocypack::Slice const& body);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Process the query registered in _query.
   /// The function is repeatable, so whenever we need to WAIT
   /// in AQL we can post a handler calling this function again.
   //////////////////////////////////////////////////////////////////////////////
-
 
   RestStatus processQuery();
 
@@ -90,6 +92,18 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void unregisterQuery();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief handle the result returned by the query. This function is guaranteed
+  ///        to not be interrupted and is guaranteed to get a complete queryResult.
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void handleQueryResult(aql::QueryResult& queryResult);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the query was canceled
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool wasCanceled();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -103,12 +117,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool cancelQuery();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the query was canceled
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool wasCanceled();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build options for the query as JSON
@@ -127,25 +135,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief create a cursor and return the first results
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus createQueryCursor(std::function<void()> const& continueHandler);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a cursor and return the first results, continuation
-  //////////////////////////////////////////////////////////////////////////////
-
-  RestStatus continueCreateQueryCursor();
+  RestStatus createQueryCursor();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the next results from an existing cursor
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus modifyQueryCursor(std::function<void()> const& continueHandler);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the next results from an existing cursor, continuation
-  //////////////////////////////////////////////////////////////////////////////
-
-  RestStatus continueModifyQueryCursor();
+  RestStatus modifyQueryCursor();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispose an existing cursor

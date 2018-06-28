@@ -23,7 +23,6 @@
 
 #include "RestSimpleQueryHandler.h"
 
-#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -74,19 +73,7 @@ RestStatus RestSimpleQueryHandler::continueExecute() {
   rest::RequestType const type = _request->requestType();
 
   if (type == rest::RequestType::PUT) {
-    if (_query != nullptr) {
-      // We are in the non-streaming case
-      try {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are in the repeating case! We have actually slept!";
-        return processQuery();
-      } catch (...) {
-        unregisterQuery();
-        throw;
-      }
-    }
-    // Query should not be taken!
-    TRI_ASSERT(false);
-    return RestStatus::DONE;
+    return processQuery();
   }
 
   // NOT YET IMPLEMENTED
@@ -181,23 +168,8 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-
-  auto self = shared_from_this();
-  auto continueHandler = [this, self]() {
-    continueHandlerExecution();
-  };
-  registerQueryOrCursor(data.slice(), continueHandler);
-  // We do not support streaming here!
-  // now run the actual query and handle the result
-  if (_query != nullptr) {
-    try {
-      return processQuery();
-    } catch (...) {
-      unregisterQuery();
-      throw;
-    }
-  }
-  return RestStatus::DONE;
+  registerQueryOrCursor(data.slice());
+  return processQuery();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -264,22 +236,10 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
 
   data.close();
 
-  auto self = shared_from_this();
-  auto continueHandler = [this, self]() {
-    continueHandlerExecution();
-  };
-  registerQueryOrCursor(data.slice(), continueHandler);
+  registerQueryOrCursor(data.slice());
   // We do not support streaming here!
   // now run the actual query and handle the result
-  if (_query != nullptr) {
-    try {
-      return processQuery();
-    } catch (...) {
-      unregisterQuery();
-      throw;
-    }
-  }
-  return RestStatus::DONE;
+  return processQuery();
 }
 
 static void buildExampleQuery(VPackBuilder& result,
@@ -370,19 +330,7 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  auto self = shared_from_this();
-  auto continueHandler = [this, self]() {
-    continueHandlerExecution();
-  };
-  registerQueryOrCursor(data.slice(), continueHandler);
-  // We do not support streaming here!
-  if (_query != nullptr) {
-    try {
-      return processQuery();
-    } catch (...) {
-      unregisterQuery();
-      throw;
-    }
-  }
+  registerQueryOrCursor(data.slice());
+  return processQuery();
   return RestStatus::DONE;
 }
