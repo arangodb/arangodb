@@ -56,9 +56,7 @@ function runSetup () {
         count: {}
       }
     },
-    locale: "de_DE.UTF-16",
-    threadsMaxIdle: 42,
-    threadsMaxTotal: 1
+    locale: "de_DE.UTF-16"
   };
   view.properties(meta, true); // partial update
 
@@ -106,8 +104,6 @@ function recoverySuite () {
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-8", properties.locale);
-      assertEqual(42, properties.threadsMaxIdle);
-      assertEqual(1, properties.threadsMaxTotal);
     }
 
   };

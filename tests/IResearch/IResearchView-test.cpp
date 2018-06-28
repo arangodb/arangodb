@@ -239,6 +239,7 @@ SECTION("test_defaults") {
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -247,6 +248,7 @@ SECTION("test_defaults") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK((8 == slice.length()));
@@ -257,9 +259,10 @@ SECTION("test_defaults") {
     CHECK(false == slice.get("isSystem").getBool());
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((5U == slice.length()));
+    CHECK((3U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
   }
 
   // view definition with LogicalView
@@ -269,6 +272,7 @@ SECTION("test_defaults") {
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -277,6 +281,7 @@ SECTION("test_defaults") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(4 == slice.length());
@@ -285,8 +290,9 @@ SECTION("test_defaults") {
     CHECK((false == slice.hasKey("deleted")));
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((6U == slice.length()));
+    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -2810,15 +2816,12 @@ SECTION("test_update_overwrite") {
     // initial update (overwrite)
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
+      arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-        \"locale\": \"en\", \
-        \"threadsMaxIdle\": 10, \
-        \"threadsMaxTotal\": 20 \
+        \"locale\": \"en\" \
       }");
 
       expectedMeta._locale = irs::locale_utils::locale("en", true);
-      expectedMeta._threadsMaxIdle = 10;
-      expectedMeta._threadsMaxTotal = 20;
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
       arangodb::velocypack::Builder builder;
@@ -2829,6 +2832,7 @@ SECTION("test_update_overwrite") {
 
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
       std::string error;
 
       CHECK(slice.isObject());
@@ -2838,8 +2842,9 @@ SECTION("test_update_overwrite") {
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
-      CHECK((6U == slice.length()));
+      CHECK((4U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -2848,6 +2853,7 @@ SECTION("test_update_overwrite") {
     // subsequent update (overwrite)
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
+      arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
         \"locale\": \"ru\" \
       }");
@@ -2863,6 +2869,7 @@ SECTION("test_update_overwrite") {
 
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
       std::string error;
 
       CHECK(slice.isObject());
@@ -2871,8 +2878,9 @@ SECTION("test_update_overwrite") {
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
-      CHECK((6U == slice.length()));
+      CHECK((4U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -2898,9 +2906,10 @@ SECTION("test_update_overwrite") {
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
       arangodb::iresearch::IResearchViewMeta expectedMeta;
+      arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
-      expectedMeta._collections.insert(logicalCollection0->id());
+      expectedMetaState._collections.insert(logicalCollection0->id());
       expectedLinkMeta["testCollection0"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -2912,6 +2921,7 @@ SECTION("test_update_overwrite") {
 
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
       std::string error;
 
       CHECK(slice.isObject());
@@ -2920,8 +2930,9 @@ SECTION("test_update_overwrite") {
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
-      CHECK((6U == slice.length()));
+      CHECK((4U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -2951,9 +2962,10 @@ SECTION("test_update_overwrite") {
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection1\": {} } }");
       arangodb::iresearch::IResearchViewMeta expectedMeta;
+      arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
-      expectedMeta._collections.insert(logicalCollection1->id());
+      expectedMetaState._collections.insert(logicalCollection1->id());
       expectedLinkMeta["testCollection1"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -2965,6 +2977,7 @@ SECTION("test_update_overwrite") {
 
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
       std::string error;
 
       CHECK(slice.isObject());
@@ -2973,8 +2986,9 @@ SECTION("test_update_overwrite") {
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
-      CHECK((6U == slice.length()));
+      CHECK((4U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -3086,15 +3100,12 @@ SECTION("test_update_partial") {
     REQUIRE(view->category() == arangodb::LogicalView::category());
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-      \"locale\": \"en\", \
-      \"threadsMaxIdle\": 10, \
-      \"threadsMaxTotal\": 20 \
+      \"locale\": \"en\" \
     }");
 
     expectedMeta._locale = irs::locale_utils::locale("en", true);
-    expectedMeta._threadsMaxIdle = 10;
-    expectedMeta._threadsMaxTotal = 20;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
     arangodb::velocypack::Builder builder;
@@ -3105,6 +3116,7 @@ SECTION("test_update_partial") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(slice.isObject());
@@ -3113,8 +3125,9 @@ SECTION("test_update_partial") {
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((6U == slice.length()));
+    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -3128,10 +3141,9 @@ SECTION("test_update_partial") {
     REQUIRE(view->category() == arangodb::LogicalView::category());
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     auto updateJson = arangodb::velocypack::Parser::fromJson(std::string() + "{ \
-      \"locale\": 123, \
-      \"threadsMaxIdle\": 10, \
-      \"threadsMaxTotal\": 20 \
+      \"locale\": 123 \
     }");
 
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
@@ -3144,6 +3156,7 @@ SECTION("test_update_partial") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(slice.isObject());
@@ -3152,8 +3165,9 @@ SECTION("test_update_partial") {
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((6U == slice.length()));
+    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -3210,13 +3224,14 @@ SECTION("test_update_partial") {
     REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
         \"testCollection\": {} \
       }}");
 
-    expectedMeta._collections.insert(logicalCollection->id());
+    expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3230,6 +3245,7 @@ SECTION("test_update_partial") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(slice.isObject());
@@ -3238,8 +3254,9 @@ SECTION("test_update_partial") {
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((6U == slice.length()));
+    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -3290,13 +3307,14 @@ SECTION("test_update_partial") {
     }
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
         \"testCollection\": {} \
       }}");
 
-    expectedMeta._collections.insert(logicalCollection->id());
+    expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3310,6 +3328,7 @@ SECTION("test_update_partial") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(slice.isObject());
@@ -3317,8 +3336,9 @@ SECTION("test_update_partial") {
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
-    CHECK((6U == slice.length()));
+    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -3350,6 +3370,7 @@ SECTION("test_update_partial") {
     REQUIRE(view->category() == arangodb::LogicalView::category());
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
         \"testCollection\": {} \
@@ -3365,6 +3386,7 @@ SECTION("test_update_partial") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(slice.isObject());
@@ -3372,8 +3394,9 @@ SECTION("test_update_partial") {
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
-    CHECK((6U == slice.length()));
+    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -3461,8 +3484,9 @@ SECTION("test_update_partial") {
     REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
 
-    expectedMeta._collections.insert(logicalCollection->id());
+    expectedMetaState._collections.insert(logicalCollection->id());
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -3480,6 +3504,7 @@ SECTION("test_update_partial") {
 
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
       std::string error;
 
       CHECK(slice.isObject());
@@ -3488,8 +3513,9 @@ SECTION("test_update_partial") {
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
-      CHECK((6U == slice.length()));
+      CHECK((4U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -3501,7 +3527,7 @@ SECTION("test_update_partial") {
           \"testCollection\": null \
       }}");
 
-      expectedMeta._collections.clear();
+      expectedMetaState._collections.clear();
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
       arangodb::velocypack::Builder builder;
@@ -3512,6 +3538,7 @@ SECTION("test_update_partial") {
 
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
       std::string error;
 
       CHECK(slice.isObject());
@@ -3520,8 +3547,9 @@ SECTION("test_update_partial") {
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
-      CHECK((6U == slice.length()));
+      CHECK((4U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -3535,6 +3563,7 @@ SECTION("test_update_partial") {
     REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
         \"testCollection\": null \
@@ -3550,6 +3579,7 @@ SECTION("test_update_partial") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(slice.isObject());
@@ -3558,8 +3588,9 @@ SECTION("test_update_partial") {
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((6U == slice.length()));
+    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -3575,6 +3606,7 @@ SECTION("test_update_partial") {
     REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
         \"testCollection\": null \
@@ -3590,6 +3622,7 @@ SECTION("test_update_partial") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(slice.isObject());
@@ -3598,8 +3631,9 @@ SECTION("test_update_partial") {
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((6U == slice.length()));
+    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));

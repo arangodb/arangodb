@@ -25,7 +25,8 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_DBSERVER_H 1
 
 #include "utils/async_utils.hpp"
-#include "utils/utf8_path.hpp"
+
+#include "Transaction/Status.h"
 #include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
@@ -120,7 +121,6 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
   arangodb::velocypack::Builder _meta; // the view definition
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
-  irs::utf8_path const _persistedPath;
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,

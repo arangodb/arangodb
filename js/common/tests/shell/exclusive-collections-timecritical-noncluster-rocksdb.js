@@ -73,7 +73,7 @@ function ExclusiveSuite () {
 
     testExclusiveExpectConflict : function () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      tasks.register({
+      let task = tasks.register({
         command: function() {
           var db = require("internal").db;
           db._executeTransaction({
@@ -108,7 +108,15 @@ function ExclusiveSuite () {
         error_in_runner2 = true;
       }
 
-      // sleep here?
+      while (true) {
+        try {
+          tasks.get(task);
+          require("internal").wait(0.25, false);
+        } catch (err) {
+          // "task not found" means the task is finished
+          break;
+        }
+      }
 
       // only one transaction should have succeeded
       assertEqual(1, c2.count());
@@ -124,7 +132,7 @@ function ExclusiveSuite () {
     testExclusiveExpectNoConflict : function () {
       assertEqual(0, c2.count());
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      tasks.register({
+      let task = tasks.register({
         command: function() {
           var db = require("internal").db;
           db._executeTransaction({
@@ -152,6 +160,16 @@ function ExclusiveSuite () {
         }
       });
 
+      while (true) {
+        try {
+          tasks.get(task);
+          require("internal").wait(0.25, false);
+        } catch (err) {
+          // "task not found" means the task is finished
+          break;
+        }
+      }
+      
       // both transaction should have succeeded
       assertEqual(2, c2.count());
     }

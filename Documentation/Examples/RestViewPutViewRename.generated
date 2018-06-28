@@ -38,8 +38,6 @@ x-content-type-options: nosniff
       } 
     }, 
     <span class="hljs-string">"locale"</span> : <span class="hljs-string">"C"</span>, 
-    <span class="hljs-string">"threadsMaxIdle"</span> : <span class="hljs-number">5</span>, 
-    <span class="hljs-string">"threadsMaxTotal"</span> : <span class="hljs-number">5</span>, 
     <span class="hljs-string">"links"</span> : { 
     } 
   } 
