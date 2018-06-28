@@ -279,9 +279,24 @@ function ahuacatlDistinct () {
       const query = 'FOR i IN 1..2 FOR k IN 1..1000 RETURN DISTINCT k';
       containsDistinct(query);
       const options = {optimizer: {rules: [ "-interchange-adjacent-enumerations" ]}};
-      internal.print(AQL_EXPLAIN(query));
-      const result = AQL_EXECUTE(query, {}, options).json;
 
+      // check plan
+      const plan = helper.getCompactPlan(AQL_EXPLAIN(query, {}, options));
+      assertEqual(
+        [
+          "SingletonNode",
+          "CalculationNode",
+          "CalculationNode",
+          "EnumerateListNode",
+          "EnumerateListNode",
+          "CollectNode",
+          "ReturnNode",
+        ],
+        plan.map(node => node.type)
+      );
+
+      // execute query
+      const result = AQL_EXECUTE(query, {}, options).json;
       assertEqual(1000, result.length);
     },
 
