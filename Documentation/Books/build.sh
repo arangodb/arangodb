@@ -480,8 +480,6 @@ function build-book()
     rm -f "./books/${NAME}/FOOTER.html"
     echo "${STD_COLOR} - deleting markdown files in output (gitbook 3.x bug)"
     find "./books/${NAME}/" -type f -name "*.md" -delete
-    echo "${STD_COLOR} - putting in deprecated items ${RESET}"
-    python ../Scripts/deprecated.py || exit 1
 
     book-check-markdown-leftovers "${NAME}"
 }

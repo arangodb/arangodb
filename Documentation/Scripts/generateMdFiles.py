@@ -2,7 +2,7 @@ import sys
 import re
 import os
 import json
-
+import io
 
 RESET  = '\033[0m'
 def make_std_color(No):
@@ -491,7 +491,7 @@ def walk_on_files(inDirPath, outDirPath):
     print STD_COLOR + "Processed %d files, skipped %d" % (count, skipped) + RESET
 
 def findStartCode(inFileFull, outFileFull):
-    inFD = open(inFileFull, "r")
+    inFD = io.open(inFileFull, "r", encoding="utf-8", newline=None)
     textFile = inFD.read()
     inFD.close()
     #print "-" * 80
@@ -519,7 +519,7 @@ def findStartCode(inFileFull, outFileFull):
         raise
     #print "9" * 80
     #print textFile
-    outFD = open(outFileFull, "w")
+    outFD = io.open(outFileFull, "w", encoding="utf-8", newline="")
     outFD.write(textFile)
     outFD.close()
 #JSF_put_api_replication_synchronize
@@ -605,7 +605,7 @@ def readNextLine(line):
 
 def loadDokuBlocks():
     state = STATE_SEARCH_START
-    f=open("allComments.txt", 'rU')
+    f = io.open("allComments.txt", "r", encoding="utf-8", newline=None)
     count = 0
     for line in f.readlines():
         if state == STATE_SEARCH_START:
@@ -684,7 +684,7 @@ def loadProgramOptionBlocks():
         output = []
 
         # Load program options dump and convert to Python object
-        with open(programOptionsDump, 'r') as fp:
+        with io.open(programOptionsDump, 'r', encoding='utf-8', newline=None) as fp:
             try:
                 optionsRaw = json.load(fp)
             except ValueError as err:
@@ -759,7 +759,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 5 and sys.argv[5].strip() != '':
         print STD_COLOR + "filtering Docublocks: " + sys.argv[5] + RESET
         blockFilter = re.compile(sys.argv[5])
-    f=open(swaggerJson, 'rU')
+    f = io.open(swaggerJson, 'r', encoding='utf-8', newline=None)
     swagger= json.load(f)
     f.close()
     loadDokuBlocks()
