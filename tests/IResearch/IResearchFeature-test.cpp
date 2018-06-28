@@ -70,15 +70,26 @@ SECTION("test_start") {
   auto* functions = new arangodb::aql::AqlFunctionFeature(&server);
   arangodb::iresearch::IResearchFeature iresearch(&server);
   auto cleanup = irs::make_finally([functions]()->void{ functions->unprepare(); });
-  std::map<irs::string_ref, irs::string_ref> expected = {
+
+  enum class FunctionType {
+    FILTER = 0,
+    SCORER
+  };
+
+  std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected = {
     // filter functions
-    { "EXISTS", ".|.,." },
-    { "PHRASE", ".,.,.|.+" },
-    { "STARTS_WITH", ".,.|." },
+    { "EXISTS", { ".|.", FunctionType::FILTER } },
+    { "PHRASE", { ".,.|.+", FunctionType::FILTER } },
+    { "STARTS_WITH", { ".,.|.", FunctionType::FILTER } },
+    { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },
+
+    // context functions
+    { "ANALYZER", { ".,.", FunctionType::FILTER } },
+    { "BOOST", { ".,.", FunctionType::FILTER } },
 
     // scorer functions
-    { "BM25", ".|+" },
-    { "TFIDF", ".|+" },
+    { "BM25", { ".|+", FunctionType::SCORER } },
+    { "TFIDF", { ".|+", FunctionType::SCORER } },
   };
 
   server.addFeature(functions);
@@ -94,7 +105,12 @@ SECTION("test_start") {
   for(auto& entry: expected) {
     auto* function = arangodb::iresearch::getFunction(*functions, entry.first);
     CHECK((nullptr != function));
-    CHECK((entry.second == function->arguments));
+    CHECK((entry.second.first == function->arguments));
+    REQUIRE(function->hasImplementation());
+    CHECK((
+      entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function)
+      || entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function)
+    ));
   };
 }
 
