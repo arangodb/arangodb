@@ -179,8 +179,10 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  registerQueryOrCursor(data.slice());
-  return processQuery();
+  if (registerQueryOrCursor(data.slice())) {
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
     
 void RestSimpleHandler::handleQueryResult(aql::QueryResult& queryResult) {
@@ -320,6 +322,8 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  registerQueryOrCursor(data.slice());
-  return processQuery();
+  if (registerQueryOrCursor(data.slice())) {
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }

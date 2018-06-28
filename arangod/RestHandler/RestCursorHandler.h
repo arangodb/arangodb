@@ -77,7 +77,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// this method is also used by derived classes
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerQueryOrCursor(arangodb::velocypack::Slice const& body);
+  bool registerQueryOrCursor(arangodb::velocypack::Slice const& body);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Process the query registered in _query.

@@ -228,8 +228,10 @@ RestStatus RocksDBRestExportHandler::createCursor() {
 
   VPackBuilder queryBody = buildQueryOptions(name, body);
   TRI_ASSERT(_query == nullptr);
-  registerQueryOrCursor(queryBody.slice());
-  return processQuery();
+  if (registerQueryOrCursor(queryBody.slice())) {
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
 
 RestStatus RocksDBRestExportHandler::continueExecute() {

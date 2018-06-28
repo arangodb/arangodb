@@ -94,19 +94,22 @@ bool RestCursorHandler::cancel() {
 /// @brief register the query either as streaming cursor or in _query
 /// the query is not executed here.
 /// this method is also used by derived classes
+///
+/// return If true, we need to continue processing,
+///        If false we are done (error or stream)
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
+bool RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    return;
+    return false;
   }
   VPackSlice const querySlice = slice.get("query");
   if (!querySlice.isString() || querySlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    return;
+    return false;
   }
 
   VPackSlice const bindVars = slice.get("bindVars");
@@ -114,7 +117,7 @@ void RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     if (!bindVars.isObject() && !bindVars.isNull()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
-      return;
+      return false;
     }
   }
 
@@ -147,7 +150,7 @@ void RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       TRI_DEFER(cursors->release(cursor));
       generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }
-    return;  // done
+    return false;  // done
   }
 
   VPackValueLength l;
@@ -170,6 +173,7 @@ void RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   };
   query->setContinueHandler(continueHandler);
   registerQuery(std::move(query));
+  return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -455,9 +459,11 @@ RestStatus RestCursorHandler::createQueryCursor() {
   _isValidForFinalize = true;
 
   TRI_ASSERT(_query == nullptr);
-  registerQueryOrCursor(body);
-  // We are in the non-streaming case
-  return processQuery();
+  if (registerQueryOrCursor(body)) {
+    // We are in the non-streaming case
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

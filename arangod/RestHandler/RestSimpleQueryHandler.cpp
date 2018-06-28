@@ -168,8 +168,10 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  registerQueryOrCursor(data.slice());
-  return processQuery();
+  if (registerQueryOrCursor(data.slice())) {
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -236,10 +238,12 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
 
   data.close();
 
-  registerQueryOrCursor(data.slice());
-  // We do not support streaming here!
-  // now run the actual query and handle the result
-  return processQuery();
+  if (registerQueryOrCursor(data.slice())) {
+    // We do not support streaming here!
+    // now run the actual query and handle the result
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
 
 static void buildExampleQuery(VPackBuilder& result,
@@ -330,7 +334,8 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  registerQueryOrCursor(data.slice());
-  return processQuery();
+  if (registerQueryOrCursor(data.slice())) {
+    return processQuery();
+  }
   return RestStatus::DONE;
 }
