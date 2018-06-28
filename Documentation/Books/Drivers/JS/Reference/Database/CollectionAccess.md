@@ -2,7 +2,7 @@
 # Accessing collections
 
 These functions implement the
-[HTTP API for accessing collections](https://docs.arangodb.com/latest/HTTP/Collection/Getting.html).
+[HTTP API for accessing collections](../../../..//HTTP/Collection/Getting.html).
 
 ## database.collection
 

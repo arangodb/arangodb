@@ -62,11 +62,16 @@ class DatabaseTailingSyncer final : public TailingSyncer {
     return &(vocbases().begin()->second.database());
   }
 
+  /// @brief whether or not we should skip a specific marker
+  bool skipMarker(arangodb::velocypack::Slice const& slice) override;
+
  private:
 
   /// @brief vocbase to use for this run
   TRI_vocbase_t* _vocbase;
-  
+
+  /// @brief translation between globallyUniqueId and collection name
+  std::unordered_map<std::string, std::string> _translations;
 };
 }
 

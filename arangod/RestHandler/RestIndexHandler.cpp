@@ -96,11 +96,7 @@ RestStatus RestIndexHandler::getIndexes() {
       return RestStatus::DONE;
     }
 
-    bool withFigures = false;
-    std::string t = _request->value("withStats", found);
-    if (found) {
-      withFigures = StringUtils::tolower(t) == "true";
-    }
+    bool withFigures = _request->parsedValue("withStats", false);
 
     VPackBuilder indexes;
     Result res = methods::Indexes::getAll(coll, withFigures, indexes);

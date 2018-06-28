@@ -4162,6 +4162,39 @@ AqlValue Functions::IsKey(arangodb::aql::Query*,
   return AqlValue(AqlValueHintBool(TraditionalKeyGenerator::validateKey(p, l)));
 }
 
+/// @brief function COUNT_DISTINCT
+AqlValue Functions::CountDistinct(arangodb::aql::Query* query,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "COUNT_DISTINCT";
+  ValidateParameters(parameters, AFN, 1, 1);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!value.isArray()) {
+    // not an array
+    ::registerWarning(query, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+
+  auto options = trx->transactionContextPtr()->getVPackOptions();
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
+             arangodb::basics::VelocyPackHelper::VPackEqual(options));
+
+  for (VPackSlice s : VPackArrayIterator(slice)) {
+    if (!s.isNone()) {
+      values.emplace(s.resolveExternal());
+    }
+  }
+
+  return AqlValue(AqlValueHintUInt(values.size()));
+}
+
 /// @brief function UNIQUE
 AqlValue Functions::Unique(arangodb::aql::Query* query,
                            transaction::Methods* trx,
