@@ -263,8 +263,24 @@ function ahuacatlDistinct () {
       assertEqual(2, result.length);
       assertEqual([ 1, 2, 3, 4 ], result[0].sort(function (l, r) { return l - r; }));
       assertEqual([ 1, 2, 3, 4 ], result[1].sort(function (l, r)  { return l - r; }));
-    }
-    
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distinct regression test:
+/// crash when a subsequent call to DistinctCollectBlock::getSome() added no new
+/// non-distinct results
+////////////////////////////////////////////////////////////////////////////////
+
+    testDistinctRegressionGetSomeWithEmptyResult : function () {
+      const query = 'FOR i IN 1..2 FOR k IN 1..1000 RETURN DISTINCT k';
+      containsDistinct(query);
+      const options = {optimizer: {rules: [ "-interchange-adjacent-enumerations" ]}};
+      internal.print(AQL_EXPLAIN(query));
+      const result = AQL_EXECUTE(query, {}, options).json;
+
+      assertEqual(1000, result.length);
+    },
+
   };
 }
 
