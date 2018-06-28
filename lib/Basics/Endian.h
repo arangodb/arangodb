@@ -77,7 +77,7 @@ template<typename T> struct EndianTraits<T,2> {
 #elif __linux__
     return htole16(in);
 #elif _WIN32
-  if(!isLittleEndian()){
+  if(!isLittleEndian()) {
     ByteSwap(in);
   }
 #endif
@@ -89,7 +89,7 @@ template<typename T> struct EndianTraits<T,2> {
 #elif __linux__
     return le16toh(in);
 #elif _WIN32
-  if(!isLittleEndian()){
+  if(!isLittleEndian()) {
     ByteSwap(in);
   }
 #endif
@@ -113,7 +113,7 @@ template<typename T> struct EndianTraits<T,2> {
 #elif __linux__
     return be16toh(in);
 #elif _WIN32
-  if(isLittleEndian()){
+  if(isLittleEndian()) {
     ByteSwap(in);
   }
 #endif
@@ -129,7 +129,7 @@ template<typename T> struct EndianTraits<T,4> {
 #elif __linux__
     return htole32(in);
 #elif _WIN32
-  if(!isLittleEndian()){
+  if(!isLittleEndian()) {
     ByteSwap(in);
   }
 #endif
@@ -141,7 +141,9 @@ template<typename T> struct EndianTraits<T,4> {
 #elif __linux__
     return le32toh(in);
 #elif _WIN32
-    ByteSwap(in);
+    if(!isLittleEndian()) {
+      ByteSwap(in);
+    }
 #endif
     return in;
   }
@@ -151,7 +153,7 @@ template<typename T> struct EndianTraits<T,4> {
 #elif __linux__
     return htobe32(in);
 #elif _WIN32
-  if(isLittleEndian()){
+  if(isLittleEndian()) {
     ByteSwap(in);
   }
 #endif
@@ -163,7 +165,7 @@ template<typename T> struct EndianTraits<T,4> {
 #elif __linux__
     return be32toh(in);
 #elif _WIN32
-  if(isLittleEndian()){
+  if(isLittleEndian()) {
     ByteSwap(in);
   }
 #endif
@@ -179,7 +181,9 @@ template<typename T> struct EndianTraits<T,8> {
 #elif __linux__
     return htole64(in);
 #elif _WIN32
-    ByteSwap(in);
+    if(!isLittleEndian()) {
+      ByteSwap(in);
+    }
 #endif
     return in;
   }
@@ -189,7 +193,9 @@ template<typename T> struct EndianTraits<T,8> {
 #elif __linux__
     return le64toh(in);
 #elif _WIN32
-    ByteSwap(in);
+    if(!isLittleEndian()) {
+      ByteSwap(in);
+    }
 #endif
     return in;
   }
@@ -211,7 +217,7 @@ template<typename T> struct EndianTraits<T,8> {
 #elif __linux__
     return be64toh(in);
 #elif _WIN32
-  if(isLittleEndian()){
+  if(isLittleEndian()) {
     ByteSwap(in);
   }
 #endif
