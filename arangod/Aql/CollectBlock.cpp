@@ -1016,8 +1016,15 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             }
 
             TRI_ASSERT(cur != nullptr);
-            res->shrink(skipped);
-          } 
+            if (skipped > 0) {
+              res->shrink(skipped);
+            }
+            else {
+              AqlItemBlock* block = res.get();
+              returnBlock(block);
+              res.release();
+            }
+          }
           returnBlock(cur);
           _done = true;
           result = res.release();
@@ -1036,7 +1043,14 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   if (!skipping) {
     TRI_ASSERT(skipped > 0);
-    res->shrink(skipped);
+    if (skipped > 0) {
+      res->shrink(skipped);
+    }
+    else {
+      AqlItemBlock* block = res.get();
+      returnBlock(block);
+      res.release();
+    }
   }
 
   result = res.release();
