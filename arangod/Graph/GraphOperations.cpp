@@ -149,7 +149,10 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
 OperationResult GraphOperations::eraseEdgeDefinition(
     bool waitForSync, std::string edgeDefinitionName, bool dropCollection) {
   // check if edgeCollection is available
-  assertEdgeCollectionAvailability(edgeDefinitionName);
+  OperationResult result = assertEdgeCollectionAvailability(edgeDefinitionName);
+  if (result.fail()) {
+    return result;
+  }
 
   std::unordered_set<std::string> possibleOrphans;
   std::unordered_set<std::string> usedVertexCollections;
@@ -230,7 +233,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   if (!res.ok()) {
     return OperationResult(res);
   }
-  OperationResult result =
+  result =
       trx.update(GraphOperations::_graphs, builder.slice(), options);
   res = trx.finish(result.result);
 
@@ -247,7 +250,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   return result;
 }
 
-void GraphOperations::assertEdgeCollectionAvailability(
+OperationResult GraphOperations::assertEdgeCollectionAvailability(
     std::string edgeDefinitionName) {
   bool found = false;
   for (auto const& edgeCollection : _graph.edgeCollections()) {
@@ -257,19 +260,23 @@ void GraphOperations::assertEdgeCollectionAvailability(
   }
 
   if (!found) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
+    return OperationResult(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
   }
+
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-void GraphOperations::assertVertexCollectionAvailability(
+OperationResult GraphOperations::assertVertexCollectionAvailability(
     std::string vertexDefinitionName) {
   GraphManager gmngr{ctx()};
 
   std::shared_ptr<LogicalCollection> def =
       gmngr.getCollectionByName(ctx()->vocbase(), vertexDefinitionName);
   if (def == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST);
+    OperationResult(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST);
   }
+
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
 OperationResult GraphOperations::editEdgeDefinition(
@@ -280,7 +287,10 @@ OperationResult GraphOperations::editEdgeDefinition(
   edgeDefinition = velocypack::Slice(buffer->data());
 
   // check if edgeCollection is available
-  assertEdgeCollectionAvailability(edgeDefinitionName);
+  OperationResult result = assertEdgeCollectionAvailability(edgeDefinitionName);
+  if (result.fail()) {
+    return result;
+  }
 
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Array));
@@ -288,7 +298,7 @@ OperationResult GraphOperations::editEdgeDefinition(
   builder.close();
 
   GraphManager gmngr{ctx()};
-  OperationResult result = gmngr.findOrCreateCollectionsByEdgeDefinitions(
+  result = gmngr.findOrCreateCollectionsByEdgeDefinitions(
       builder.slice(), waitForSync);
   if (result.fail()) {
     return result;
@@ -431,7 +441,10 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
 OperationResult GraphOperations::eraseOrphanCollection(
     bool waitForSync, std::string collectionName, bool dropCollection) {
   // check if collection exists
-  assertVertexCollectionAvailability(collectionName);
+  OperationResult result = assertVertexCollectionAvailability(collectionName);
+  if (result.fail()) {
+    return result;
+  }
 
   std::unordered_set<std::string> orphanCollections =
       _graph.orphanCollections();
@@ -470,7 +483,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   OperationOptions options;
   options.waitForSync = waitForSync;
 
-  OperationResult result =
+  result =
       trx.update(GraphOperations::_graphs, builder.slice(), options);
   res = trx.finish(result.result);
 
@@ -695,15 +708,14 @@ OperationResult GraphOperations::removeGraph(bool waitForSync,
 
     res = trx->begin();
     if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                     "not found");
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
     VPackSlice search = builder.slice();
     result = trx->remove(GraphOperations::_graphs, search, options);
 
     res = trx->finish(result.result);
     if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result.result);
+      return OperationResult(result.result);
     }
   }
   // remove graph related collections

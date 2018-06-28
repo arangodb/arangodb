@@ -193,8 +193,8 @@ class GraphOperations {
           transaction::Methods *trx, const std::string &collectionName,
           VPackSlice document, bool waitForSync, bool returnNew);
 
-  void assertEdgeCollectionAvailability(std::string edgeDefinitionName);
-  void assertVertexCollectionAvailability(std::string VertexDefinitionName);
+  OperationResult assertEdgeCollectionAvailability(std::string edgeDefinitionName);
+  OperationResult assertVertexCollectionAvailability(std::string VertexDefinitionName);
 };
 }  // namespace graph
 }  // namespace arangodb

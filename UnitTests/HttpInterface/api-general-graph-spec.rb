@@ -1190,6 +1190,14 @@ describe ArangoDB do
               doc.parsed_response['errorNum'].should eq(1926)
             end
 
+            def check400VertexUnused (doc)
+              doc.parsed_response['errorNum'].should eq(1928)
+              doc.parsed_response['error'].should eq(true)
+              doc.parsed_response['code'].should eq(400)
+              puts doc.parsed_response['errorMessage']
+              doc.parsed_response['errorMessage'].should include("not in orphan collection")
+            end
+
             def check404CRUD (doc)
               check404(doc)
               doc.parsed_response['errorNum'].should eq(1203)
@@ -1211,7 +1219,8 @@ describe ArangoDB do
             end
 
             it "delete vertex collection" do
-              check404Vertex(delete_vertex_collection( sync, graph_name, unknown_name))
+              # this checks if a not used vertex collection can be removed of a graph
+              check400VertexUnused(delete_vertex_collection( sync, graph_name, unknown_name))
             end
 
             it "create vertex" do
