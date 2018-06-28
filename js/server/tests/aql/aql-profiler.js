@@ -33,18 +33,52 @@ const internal = require('internal');
 const console = require('console');
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
+const isCluster = require("@arangodb/cluster").isCluster();
+const numDBServers = global.ArangoClusterInfo.getDBServers().length;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for AQL tracing/profiling
 ////////////////////////////////////////////////////////////////////////////////
 
+/// @brief check that numbers in actual are in the range specified by
+/// expected. Each element in expected may either be
+///  - a number, for an exact match;
+///  - a range [min, max], to check if the actual element lies in this interval;
+///  - null, so the actual element will be ignored
+/// Also, the arrays must be of equal lengths.
+let assertFuzzyNumArrayEquality = function (expected, actual, details) {
+  assert.assertEqual(expected.length, actual.length, details);
+
+  for (let i = 0; i < expected.length; i++) {
+    const exp = expected[i];
+    const act = actual[i];
+
+    if (exp === null) {
+      // do nothing
+    } else if ('number' === typeof exp) {
+      assert.assertEqual(exp, act, Object.assign({i}, details));
+    } else if (Array.isArray(exp)) {
+      assert.assertTrue(exp[0] <= act && act <= exp[1],
+        Object.assign(
+          {i, 'failed_test': `${exp[0]} <= ${act} <= ${exp[1]}`},
+          details
+        )
+      );
+    } else {
+      assert.assertTrue(false, {msg: "Logical error in the test code", exp});
+    }
+  }
+};
+
 function ahuacatlProfilerTestSuite () {
+
+  // TODO test skipSome as well, all current tests run getSome only
 
   const colName = 'UnitTestProfilerCol';
 
-  const batchSize = 1000;
+  const defaultBatchSize = 1000;
 
-  const testRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
+  const defaultTestRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
 
   const CalculationNode = 'CalculationNode';
   const CollectNode = 'CollectNode';
@@ -156,6 +190,24 @@ function ahuacatlProfilerTestSuite () {
         type: node.fromStats.blockType,
         calls: node.fromStats.calls,
         items: node.fromStats.items,
+      })
+    );
+  };
+
+  const getPlanNodesWithId = function (profile) {
+    return profile.plan.nodes.map(
+      node => ({
+        id: node.id,
+        type: node.type,
+      })
+    );
+  };
+
+  const getStatsNodesWithId = function (profile) {
+    return profile.stats.nodes.map(
+      node => ({
+        id: node.id,
+        blockType: node.blockType,
       })
     );
   };
@@ -358,47 +410,95 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   const assertStatsNodesMatchPlanNodes = function (profile) {
+    // Note: reorderings in the plan would break this comparison, because the
+    // stats are ordered by id. Thus we sort the nodes here.
     assert.assertEqual(
-      profile.plan.nodes.map(node => node.id),
-      profile.stats.nodes.map(node => node.id)
+      profile.plan.nodes.map(node => node.id).sort(),
+      profile.stats.nodes.map(node => node.id).sort(),
+      {
+        'profile.plan.nodes': getPlanNodesWithId(profile),
+        'profile.stats.nodes': getStatsNodesWithId(profile),
+      }
     );
   };
 
-  // @brief Common checks for most blocks
-  // @param query string - is assumed to have one bind parameter 'rows'
-  // @param genNodeList function: (rows, batches) => [ { type, calls, items } ]
-  //        must generate the list of expected nodes
-  // @param prepare function: (rows) => {...}
-  //        called before the query is executed
-  // @param bind function: (rows) => ({rows})
-  //        must return the bind parameters for the query
-  // Example for genNodeList:
-  // genNodeList(2500, 3) ===
-  // [
-  //   { type : SingletonNode, calls : 1, items : 1 },
-  //   { type : EnumerateListNode, calls : 3, items : 2500 },
-  //   { type : ReturnNode, calls : 3, items : 2500 }
-  // ]
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Compares lists of nodes with items and calls, i.e., expected and
+/// actual both have the structure [ { type, calls, items } ].
+/// details may contain an object that will be output when the test fails,
+/// maybe with additional fields.
+/// .calls and .items may be either a number for an exact test, or a range
+/// [min, max] which tests for min <= actualCalls <= max instead, or null to
+/// ignore the value.
+////////////////////////////////////////////////////////////////////////////////
+
+  const assertNodesItemsAndCalls = function (expected, actual, details = {}) {
+
+    // assert node types first
+    assert.assertEqual(
+      expected.map(node => node.type),
+      actual.map(node => node.type),
+      details
+    );
+
+    // assert item count second
+    assertFuzzyNumArrayEquality(
+      expected.map(node => node.items),
+      actual.map(node => node.items),
+      details
+    );
+
+    // assert call count last.
+    assertFuzzyNumArrayEquality(
+      expected.map(node => node.calls),
+      actual.map(node => node.calls),
+      details
+    );
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Common checks for most blocks
+/// @param query string - is assumed to have one bind parameter 'rows'
+/// @param genNodeList function: (rows, batches) => [ { type, calls, items } ]
+///        must generate the list of expected nodes
+/// @param prepare function: (rows) => {...}
+///        called before the query is executed
+/// @param bind function: (rows) => ({rows})
+///        must return the bind parameters for the query
+/// Example for genNodeList:
+/// genNodeList(2500, 3) ===
+/// [
+///   { type : SingletonNode, calls : 1, items : 1 },
+///   { type : EnumerateListNode, calls : 3, items : 2500 },
+///   { type : ReturnNode, calls : 3, items : 2500 }
+/// ]
+/// The number of calls may be a range [min, max], e.g.:
+///   { type : EnumerateCollectionNode, calls : [3,5] , items : 2500 }
+////////////////////////////////////////////////////////////////////////////////
+
   const runDefaultChecks = function (
-    query,
-    genNodeList,
-    prepare = () => {},
-    bind = (rows) => ({rows})
+    {
+      query,
+      genNodeList,
+      prepare = () => {},
+      bind = rows => ({rows}),
+    }
   ) {
-    for (const rows of testRowCounts) {
+    for (const rows of defaultTestRowCounts) {
       prepare(rows);
-      const profile = db._query(query, bind(rows), {profile: 2}).getExtra();
+      const profile = db._query(query, bind(rows),
+        {profile: 2, defaultBatchSize}
+      ).getExtra();
 
       assertIsLevel2Profile(profile);
       assertStatsNodesMatchPlanNodes(profile);
 
-      const batches = Math.ceil(rows / batchSize);
+      const batches = Math.ceil(rows / defaultBatchSize);
 
-      assert.assertEqual(
-        genNodeList(rows, batches),
-        getCompactStatsNodes(profile),
-        {query,rows,batches}
-      );
+      const expected = genNodeList(rows, batches);
+      const actual = getCompactStatsNodes(profile);
+
+      assertNodesItemsAndCalls(expected, actual, {query, rows, batches});
     }
   };
 
@@ -480,7 +580,10 @@ function ahuacatlProfilerTestSuite () {
       );
     },
 
-    // EnumerateListBlock
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test EnumerateListBlock
+////////////////////////////////////////////////////////////////////////////////
+
     testEnumerateListBlock : function () {
       const query = 'FOR i IN 1..@rows RETURN i';
       const genNodeList = (rows, batches) => [
@@ -489,10 +592,13 @@ function ahuacatlProfilerTestSuite () {
         { type : EnumerateListBlock, calls : batches, items : rows },
         { type : ReturnBlock, calls : batches, items : rows }
       ];
-      runDefaultChecks(query, genNodeList);
+      runDefaultChecks({query, genNodeList});
     },
 
-    // CalculationBlock
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test CalculationBlock
+////////////////////////////////////////////////////////////////////////////////
+
     testCalculationBlock : function () {
       const query = 'FOR i IN 1..@rows RETURN i*i';
       const genNodeList = (rows, batches) => [
@@ -502,10 +608,13 @@ function ahuacatlProfilerTestSuite () {
         { type : CalculationBlock, calls : batches, items : rows },
         { type : ReturnBlock, calls : batches, items : rows }
       ];
-      runDefaultChecks(query, genNodeList);
+      runDefaultChecks({query, genNodeList});
     },
 
-    // CountCollectBlock
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test CountCollectBlock
+////////////////////////////////////////////////////////////////////////////////
+
     testCountCollectBlock : function () {
       const query = 'FOR i IN 1..@rows COLLECT WITH COUNT INTO c RETURN c';
       const genNodeList = (rows, batches) => [
@@ -515,10 +624,13 @@ function ahuacatlProfilerTestSuite () {
         { type : CountCollectBlock, calls : 1, items : 1 },
         { type : ReturnBlock, calls : 1, items : 1 }
       ];
-      runDefaultChecks(query, genNodeList);
+      runDefaultChecks({query, genNodeList});
     },
 
-    // DistinctCollectBlock
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test DistinctCollectBlock
+////////////////////////////////////////////////////////////////////////////////
+
     testDistinctCollectBlock1 : function () {
       const query = 'FOR i IN 1..@rows RETURN DISTINCT i';
       const genNodeList = (rows, batches) => [
@@ -528,8 +640,12 @@ function ahuacatlProfilerTestSuite () {
         { type : DistinctCollectBlock, calls : batches, items : rows },
         { type : ReturnBlock, calls : batches, items : rows }
       ];
-      runDefaultChecks(query, genNodeList);
+      runDefaultChecks({query, genNodeList});
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test DistinctCollectBlock
+////////////////////////////////////////////////////////////////////////////////
 
     testDistinctCollectBlock2 : function () {
       const query = 'FOR i IN 1..@rows RETURN DISTINCT i%7';
@@ -545,11 +661,18 @@ function ahuacatlProfilerTestSuite () {
           {type: ReturnBlock, calls: resultBatches, items: resultRows}
         ];
       };
-      runDefaultChecks(query, genNodeList);
+      runDefaultChecks({query, genNodeList});
     },
 
-    // EnumerateCollectionBlock
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test EnumerateCollectionBlock
+////////////////////////////////////////////////////////////////////////////////
+
     testEnumerateCollectionBlock1 : function () {
+      if (isCluster) {
+        console.log('Skipping test testEnumerateCollectionBlock1 in cluster');
+        return;
+      }
       const col = db._create(colName);
       const prepare = (rows) => {
         col.truncate();
@@ -557,13 +680,14 @@ function ahuacatlProfilerTestSuite () {
       };
       const bind = () => ({'@col': colName});
       const query = `FOR d IN @@col RETURN d.value`;
+
       const genNodeList = (rows, batches) => {
         if (db._engine().name === 'mmfiles') {
           // mmfiles lies about hasMore when asked for exactly the number of
           // arguments left in the collection, so we have 1 more call when
-          // batchSize divides the actual number of rows.
+          // defaultBatchSize divides the actual number of rows.
           // rocksdb on the other hand is exact.
-          batches = Math.floor(rows / batchSize) + 1;
+          batches = Math.floor(rows / defaultBatchSize) + 1;
         }
         return [
           {type: SingletonBlock, calls: 1, items: 1},
@@ -572,8 +696,91 @@ function ahuacatlProfilerTestSuite () {
           {type: ReturnBlock, calls: batches, items: rows}
         ];
       };
-      runDefaultChecks(query, genNodeList, prepare, bind);
-    }
+      runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test EnumerateCollectionBlock with multiple input rows. slow.
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnumerateCollectionBlock2 : function () {
+      if (isCluster) {
+        console.log('Skipping test testEnumerateCollectionBlock2 in cluster');
+        return;
+      }
+
+      const col = db._create(colName);
+      const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
+      const listRowCounts = [1, 2, 3, 100, 999, 1000, 1001];
+      const collectionRowCounts = [1, 2, 499, 500, 501, 999, 1000, 1001];
+
+      for (const collectionRows of collectionRowCounts) {
+        col.truncate();
+        col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
+        for (const listRows of listRowCounts) {
+          // forbid reordering of the enumeration nodes
+          const profile = db._query(query, {listRows, '@col': colName},
+            {
+              profile: 2,
+              optimizer: {rules: ["-interchange-adjacent-enumerations"]}
+            }
+          ).getExtra();
+
+          assertIsLevel2Profile(profile);
+          assertStatsNodesMatchPlanNodes(profile);
+
+          const listBatches = Math.ceil(listRows / defaultBatchSize);
+          const totalRows = listRows * collectionRows;
+
+          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
+
+          // This is more complex due to two reasons:
+          // - mmfiles lies about hasMore and may result in +1
+          // - the current EnumerateCollectionBlock::getSome implementation
+          //   stops after iterating over the whole collection.
+          // The second point in turn means that
+          // a) there are at least as many batches as input rows times
+          //    the number of batches in the collection, i.e. ceil(#col/#batch).
+          // b) when, e.g., the collection contains 999, the parent block might
+          //    ask for 1 after receiving 999, which can up to double the count
+          //    described under a).
+          // So endBatches is a sharp lower bound for every implementation,
+          // while the upper bound may be reduced if the implementation changes.
+
+          // Number of batches at the enumerate collection node
+          const enumerateCollectionBatches = [
+            optimalBatches,
+            listRows * Math.ceil(collectionRows / defaultBatchSize) * 2 + 1
+          ];
+
+          // Number of batches at the return node
+          let endBatches = optimalBatches;
+          if (db._engine().name === 'mmfiles') {
+            endBatches = [optimalBatches, optimalBatches + 1];
+          }
+
+
+          const expected = [
+            {type: SingletonBlock, items: 1, calls: 1},
+            {type: CalculationBlock, items: 1, calls: 1},
+            {type: EnumerateListBlock, items: listRows, calls: listBatches},
+            {
+              type: EnumerateCollectionBlock,
+              items: totalRows,
+              calls: enumerateCollectionBatches
+            },
+            {type: CalculationBlock, items: totalRows, calls: endBatches},
+            {type: ReturnBlock, items: totalRows, calls: endBatches}
+          ];
+          const actual = getCompactStatsNodes(profile);
+
+          assertNodesItemsAndCalls(expected, actual,
+            {query, listRows, collectionRows});
+        }
+      }
+    },
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
@@ -583,7 +790,7 @@ function ahuacatlProfilerTestSuite () {
 // *CalculationBlock
 // *CountCollectBlock
 // *DistinctCollectBlock
-// EnumerateCollectionBlock
+// *EnumerateCollectionBlock
 // *EnumerateListBlock
 // FilterBlock
 // HashedCollectBlock

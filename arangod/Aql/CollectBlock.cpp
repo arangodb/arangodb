@@ -986,9 +986,17 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
   auto const assignReturnValues = [this, skipping, &result, &skipped_]() {
     // set &skipped_ and &result; reset _skipped and _res.
 
-    if (!skipping && _skipped > 0) {
-      TRI_ASSERT(_res != nullptr);
-      _res->shrink(_skipped);
+    if (!skipping) {
+      // shrink the result block, or delete it if there are 0 results.
+      if (_skipped > 0) {
+        TRI_ASSERT(_res != nullptr);
+        _res->shrink(_skipped);
+      } else if (_res != nullptr) {
+        // _skipped == 0, result empty
+        AqlItemBlock* res = _res.get();
+        returnBlock(res);
+        _res.release();
+      }
     }
 
     result = _res.release();
@@ -1014,6 +1022,9 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
       assignReturnValues();
       return {getHasMoreState(), TRI_ERROR_NO_ERROR};
     }
+
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(!_buffer.empty());
 
     AqlItemBlock *cur = _buffer.front();
     TRI_ASSERT(cur != nullptr);
@@ -1080,10 +1091,6 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
 
     AqlItemBlock *removedBlock = advanceCursor(1, newGroup ? 1 : 0);
     returnBlockUnlessNull(removedBlock);
-  }
-
-  if (!skipping) {
-    TRI_ASSERT(_skipped > 0);
   }
 
   assignReturnValues();

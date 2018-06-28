@@ -50,7 +50,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
   
   if (!nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
-    for (std::pair<size_t, ExecutionStats::Node> const& pair : nodes) {
+    for (std::pair<size_t const, ExecutionStats::Node> const& pair : nodes) {
       // the block type should always be set here
       TRI_ASSERT(pair.second.type != ExecutionBlock::Type::_UNDEFINED);
 
@@ -140,6 +140,8 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
       node.calls = val.get("calls").getNumber<size_t>();
       node.items = val.get("items").getNumber<size_t>();
       node.runtime = val.get("runtime").getNumber<double>();
+      node.type =
+          ExecutionBlock::typeFromString(val.get("blockType").copyString());
       nodes.emplace(nid, node);
     }
   }

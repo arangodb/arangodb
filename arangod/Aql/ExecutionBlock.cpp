@@ -237,7 +237,9 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
-    LOG_DEVEL << "getSome() called when already _done! Fix caller block.";
+    std::string blockType = typeToString(getType());
+    LOG_DEVEL << blockType << "@ExecutionBlock::getSome() called when already "
+                              "_done! Fix caller block.";
   }
 
   traceGetSomeBegin(atMost);
@@ -332,7 +334,8 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_upstreamState == ExecutionState::DONE) {
-    LOG_DEVEL << "getBlock() called when already _done! Fix caller block.";
+    LOG_DEVEL << "getBlock() called when already _done! Fix this block: "
+              << typeToString(getType());
   }
 
   throwIfKilled();  // check if we were aborted
@@ -694,11 +697,113 @@ std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
     case Type::DISTRIBUTE:
       return "DistributeBlock";
     case Type::IRESEARCH_VIEW:
-      return "IresearchViewBlock";
+      return "IResearchViewBlock";
     case Type::IRESEARCH_VIEW_ORDERED:
-      return "IresearchViewOrderedBlock";
+      return "IResearchViewOrderedBlock";
     case Type::IRESEARCH_VIEW_UNORDERED:
-      return "IresearchViewUnorderedBlock";
+      return "IResearchViewUnorderedBlock";
   }
   TRI_ASSERT(false);
+}
+
+ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
+  if (type == "-undefined-") {
+    return Type::_UNDEFINED;
+  }
+  if (type == "CalculationBlock") {
+    return Type::CALCULATION;
+  }
+  if (type == "CountCollectBlock") {
+    return Type::COUNT_COLLECT;
+  }
+  if (type == "DistinctCollectBlock") {
+    return Type::DISTINCT_COLLECT;
+  }
+  if (type == "EnumerateCollectionBlock") {
+    return Type::ENUMERATE_COLLECTION;
+  }
+  if (type == "EnumerateListBlock") {
+    return Type::ENUMERATE_LIST;
+  }
+  if (type == "FilterBlock") {
+    return Type::FILTER;
+  }
+  if (type == "HashedCollectBlock") {
+    return Type::HASHED_COLLECT;
+  }
+  if (type == "IndexBlock") {
+    return Type::INDEX;
+  }
+  if (type == "LimitBlock") {
+    return Type::LIMIT;
+  }
+  if (type == "NoResultsBlock") {
+    return Type::NO_RESULTS;
+  }
+  if (type == "RemoteBlock") {
+    return Type::REMOTE;
+  }
+  if (type == "ReturnBlock") {
+    return Type::RETURN;
+  }
+  if (type == "ShortestPathBlock") {
+    return Type::SHORTEST_PATH;
+  }
+  if (type == "SingletonBlock") {
+    return Type::SINGLETON;
+  }
+  if (type == "SortBlock") {
+    return Type::SORT;
+  }
+  if (type == "SortedCollectBlock") {
+    return Type::SORTED_COLLECT;
+  }
+  if (type == "SortingGatherBlock") {
+    return Type::SORTING_GATHER;
+  }
+  if (type == "SubqueryBlock") {
+    return Type::SUBQUERY;
+  }
+  if (type == "TraversalBlock") {
+    return Type::TRAVERSAL;
+  }
+  if (type == "UnsortingGatherBlock") {
+    return Type::UNSORTING_GATHER;
+  }
+  if (type == "RemoveBlock") {
+    return Type::REMOVE;
+  }
+  if (type == "InsertBlock") {
+    return Type::INSERT;
+  }
+  if (type == "UpdateBlock") {
+    return Type::UPDATE;
+  }
+  if (type == "ReplaceBlock") {
+    return Type::REPLACE;
+  }
+  if (type == "UpsertBlock") {
+    return Type::UPSERT;
+  }
+  if (type == "ScatterBlock") {
+    return Type::SCATTER;
+  }
+  if (type == "DistributeBlock") {
+    return Type::DISTRIBUTE;
+  }
+  if (type == "IResearchViewBlock") {
+    return Type::IRESEARCH_VIEW;
+  }
+  if (type == "IResearchViewOrderedBlock") {
+    return Type::IRESEARCH_VIEW_ORDERED;
+  }
+  if (type == "IResearchViewUnorderedBlock") {
+    return Type::IRESEARCH_VIEW_UNORDERED;
+  }
+
+  LOG_TOPIC(ERR, Logger::STATISTICS)
+      << "When converting string to ExecutionBlock::Type: Got invalid string '"
+      << type << "'";
+  TRI_ASSERT(false);
+  return Type::_UNDEFINED;
 }
