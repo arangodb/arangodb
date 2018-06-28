@@ -321,7 +321,7 @@ function check-dangling-anchors()
         if test -z "$FN"; then
             FN="$SFN"
         else
-            SFNP=$(sed 's;/[a-zA-Z0-9]*.html;;' <<< "$SFN")
+            SFNP=$(sed 's;/[a-zA-Z0-9\.-]*.html;;' <<< "$SFN")
             FN="${SFNP}/${FN}"
         fi
         if test -d "$FN"; then
@@ -775,14 +775,12 @@ case "$VERB" in
         ppbook-check-html-link "${NAME}" "some of the above errors may be because of referenced books weren't rebuilt."
         ;;
     check-book)
-        
-	#check-summary "${NAME}"
-    	#book-check-leftover-docublocks "${NAME}"
-    	#book-check-restheader-leftovers "${NAME}"
-    	#ppbook-check-directory-link "${NAME}"
-    	#book-check-images-referenced "${NAME}"
-	#book-check-markdown-leftovers "${NAME}"
-        
+        check-summary "${NAME}"
+    	book-check-leftover-docublocks "${NAME}"
+    	book-check-restheader-leftovers "${NAME}"
+    	ppbook-check-directory-link "${NAME}"
+    	book-check-images-referenced "${NAME}"
+	book-check-markdown-leftovers "${NAME}"        
         check-dangling-anchors "${NAME}" "some of the above errors may be because of referenced books weren't rebuilt."
 	;;
     build-dist-books)
