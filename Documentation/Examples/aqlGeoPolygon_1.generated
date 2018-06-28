@@ -1,6 +1,6 @@
 @Q:
 RETURN GEO_POLYGON([
-[<span class="hljs-number">1.0</span>, <span class="hljs-number">2.0</span>], [<span class="hljs-number">3.0</span>, <span class="hljs-number">4.0</span>], [<span class="hljs-number">5.0</span>, <span class="hljs-number">6.0</span>]
+[<span class="hljs-number">0.0</span>, <span class="hljs-number">0.0</span>], [<span class="hljs-number">7.5</span>, <span class="hljs-number">2.5</span>], [<span class="hljs-number">0.0</span>, <span class="hljs-number">5.0</span>]
 ])
 
 @R
@@ -9,16 +9,16 @@ RETURN GEO_POLYGON([
     <span class="hljs-string">"coordinates"</span>: [
       [
         [
-          <span class="hljs-number">1</span>,
-          <span class="hljs-number">2</span>
+          <span class="hljs-number">0</span>,
+          <span class="hljs-number">0</span>
         ],
         [
-          <span class="hljs-number">3</span>,
-          <span class="hljs-number">4</span>
+          <span class="hljs-number">7.5</span>,
+          <span class="hljs-number">2.5</span>
         ],
         [
-          <span class="hljs-number">5</span>,
-          <span class="hljs-number">6</span>
+          <span class="hljs-number">0</span>,
+          <span class="hljs-number">5</span>
         ]
       ]
     ],

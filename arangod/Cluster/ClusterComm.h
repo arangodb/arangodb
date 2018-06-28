@@ -550,7 +550,7 @@ class ClusterComm {
   /// and you should not read them. If you care for response use performRequests
   /// instead.
   ////////////////////////////////////////////////////////////////////////////////
-  void fireAndForgetRequests(std::vector<ClusterCommRequest>& requests);
+  void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
  
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
