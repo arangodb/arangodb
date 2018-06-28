@@ -189,11 +189,18 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 CalculationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
+
+  if (_done) {
+    LOG_DEVEL << "CalculationBlock::getSome() called when already _done! Fix "
+                 "caller block.";
+    return {ExecutionState::DONE, nullptr};
+  }
+
   auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
   if (res.first == ExecutionState::WAITING) {
     return res;
   }
-  if (res.second.get() == nullptr) {
+  if (res.second == nullptr) {
     TRI_ASSERT(res.first == ExecutionState::DONE);
     traceGetSomeEnd(nullptr, res.first);
     return res;

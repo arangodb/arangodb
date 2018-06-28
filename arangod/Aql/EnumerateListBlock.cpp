@@ -80,30 +80,26 @@ EnumerateListBlock::getSome(size_t atMost) {
 
   std::unique_ptr<AqlItemBlock> res;
 
-  do {
+  while (res == nullptr) {
     // repeatedly try to get more stuff from upstream
     // note that the value of the variable we have to loop over
     // can contain zero entries, in which case we have to
     // try again!
 
-    if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      auto upstreamRes = ExecutionBlock::getBlock(toFetch);
-      if (upstreamRes.first == ExecutionState::WAITING) {
-        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
-        return {upstreamRes.first, nullptr};
-      }
-      _upstreamState = upstreamRes.first;
-      if (!upstreamRes.second) {
-        _done = true;
-        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
-        traceGetSomeEnd(nullptr, ExecutionState::DONE);
-        return {ExecutionState::DONE, nullptr};
-      }
-      _pos = 0;  // this is in the first block
+    size_t toFetch = std::min(DefaultBatchSize(), atMost);
+    BufferState bufferState = getBlockIfNeeded(toFetch);
+    if (bufferState == BufferState::WAITING) {
+      TRI_ASSERT(res == nullptr);
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+      return {ExecutionState::WAITING, nullptr};
+    }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
     }
 
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
     TRI_ASSERT(!_buffer.empty());
+
     // if we make it here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
 
@@ -130,7 +126,7 @@ EnumerateListBlock::getSome(size_t atMost) {
     if (sizeInVar == 0) {
       res = nullptr;
     } else {
-      size_t toSend = (std::min)(atMost, sizeInVar - _index);
+      size_t toSend = std::min(atMost, sizeInVar - _index);
 
       // create the result
       res.reset(requestBlock(toSend, getNrOutputRegisters()));
@@ -151,7 +147,7 @@ EnumerateListBlock::getSome(size_t atMost) {
         }
         res->setValue(j, cur->getNrRegs(), a);
         guard.steal(); // itemblock is now responsible for value
-        
+
         if (j > 0) {
           // re-use already copied AqlValues
           res->copyValuesFromFirstRow(j, cur->getNrRegs());
@@ -161,14 +157,11 @@ EnumerateListBlock::getSome(size_t atMost) {
 
     if (_index == sizeInVar) {
       _index = 0;
-      // advance read position in the current block . . .
-      if (++_pos == cur->size()) {
-        returnBlock(cur);
-        _buffer.pop_front();  // does not throw
-        _pos = 0;
-      }
+
+      AqlItemBlock* removedBlock = advanceCursor(1, cur->size());
+      returnBlockUnlessNull(removedBlock);
     }
-  } while (res.get() == nullptr);
+  }
 
   // Clear out registers no longer needed later:
   _inflight = 0;
@@ -187,21 +180,17 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
   }
 
   while (_inflight < atMost) {
-    if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      auto upstreamRes = ExecutionBlock::getBlock(toFetch);
-      if (upstreamRes.first == ExecutionState::WAITING) {
-        return {upstreamRes.first, 0};
-      }
-      _upstreamState = upstreamRes.first;
-      if (!upstreamRes.second) {
-        _done = true;
-        size_t skipped = _inflight;
-        _inflight = 0;
-        return {ExecutionState::DONE, skipped};
-      }
-      _pos = 0;  // this is in the first block
+    size_t toFetch = std::min(DefaultBatchSize(), atMost - _inflight);
+    BufferState bufferState = getBlockIfNeeded(toFetch);
+    if (bufferState == BufferState::WAITING) {
+      return {ExecutionState::WAITING, 0};
     }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
+
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(!_buffer.empty());
 
     // if we make it here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();

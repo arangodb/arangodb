@@ -120,7 +120,8 @@ class SortedCollectBlock final : public ExecutionBlock {
   /// @brief details about the current group
   CollectGroup _currentGroup;
 
-  /// @brief the last input block
+  /// @brief the last input block. Only set in the iteration immediately after
+  // its last row was processed. Set to nullptr otherwise.
   AqlItemBlock* _lastBlock;
 
   /// @brief result built during getOrSkipSome
@@ -138,9 +139,6 @@ class SortedCollectBlock final : public ExecutionBlock {
 
   /// @brief list of variables names for the registers
   std::vector<std::string> _variableNames;
-  
-  /// @brief builder for temporary aggregate values
-  arangodb::velocypack::Builder _builder;
 };
 
 class HashedCollectBlock final : public ExecutionBlock {
@@ -151,6 +149,9 @@ class HashedCollectBlock final : public ExecutionBlock {
   Type getType() const override final {
     return Type::HASHED_COLLECT;
   }
+
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items,
+                                                     size_t pos) override;
 
  private:
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,

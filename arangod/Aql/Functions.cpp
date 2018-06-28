@@ -6339,7 +6339,7 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query*,
 
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
-  OperationResult res = trx->count(collectionName, true);
+  OperationResult res = trx->count(collectionName, false);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }

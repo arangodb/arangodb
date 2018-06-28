@@ -40,6 +40,8 @@ const assert = jsunity.jsUnity.assertions;
 
 function ahuacatlProfilerTestSuite () {
 
+  const colName = 'UnitTestProfilerCol';
+
   const batchSize = 1000;
 
   const testRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
@@ -365,6 +367,11 @@ function ahuacatlProfilerTestSuite () {
   // @brief Common checks for most blocks
   // @param query string - is assumed to have one bind parameter 'rows'
   // @param genNodeList function: (rows, batches) => [ { type, calls, items } ]
+  //        must generate the list of expected nodes
+  // @param prepare function: (rows) => {...}
+  //        called before the query is executed
+  // @param bind function: (rows) => ({rows})
+  //        must return the bind parameters for the query
   // Example for genNodeList:
   // genNodeList(2500, 3) ===
   // [
@@ -372,9 +379,15 @@ function ahuacatlProfilerTestSuite () {
   //   { type : EnumerateListNode, calls : 3, items : 2500 },
   //   { type : ReturnNode, calls : 3, items : 2500 }
   // ]
-  const runDefaultChecks = function (query, genNodeList) {
+  const runDefaultChecks = function (
+    query,
+    genNodeList,
+    prepare = () => {},
+    bind = (rows) => ({rows})
+  ) {
     for (const rows of testRowCounts) {
-      const profile = db._query(query, {rows}, {profile: 2}).getExtra();
+      prepare(rows);
+      const profile = db._query(query, bind(rows), {profile: 2}).getExtra();
 
       assertIsLevel2Profile(profile);
       assertStatsNodesMatchPlanNodes(profile);
@@ -383,7 +396,8 @@ function ahuacatlProfilerTestSuite () {
 
       assert.assertEqual(
         genNodeList(rows, batches),
-        getCompactStatsNodes(profile)
+        getCompactStatsNodes(profile),
+        {query,rows,batches}
       );
     }
   };
@@ -402,6 +416,7 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop(colName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,6 +518,63 @@ function ahuacatlProfilerTestSuite () {
       runDefaultChecks(query, genNodeList);
     },
 
+    // DistinctCollectBlock
+    testDistinctCollectBlock1 : function () {
+      const query = 'FOR i IN 1..@rows RETURN DISTINCT i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : DistinctCollectBlock, calls : batches, items : rows },
+        { type : ReturnBlock, calls : batches, items : rows }
+      ];
+      runDefaultChecks(query, genNodeList);
+    },
+
+    testDistinctCollectBlock2 : function () {
+      const query = 'FOR i IN 1..@rows RETURN DISTINCT i%7';
+      const genNodeList = (rows, batches) => {
+        const resultRows = Math.min(rows, 7);
+        const resultBatches = Math.ceil(resultRows / 1000);
+        return [
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: CalculationBlock, calls: 1, items: 1},
+          {type: EnumerateListBlock, calls: batches, items: rows},
+          {type: CalculationBlock, calls: batches, items: rows},
+          {type: DistinctCollectBlock, calls: resultBatches, items: resultRows},
+          {type: ReturnBlock, calls: resultBatches, items: resultRows}
+        ];
+      };
+      runDefaultChecks(query, genNodeList);
+    },
+
+    // EnumerateCollectionBlock
+    testEnumerateCollectionBlock1 : function () {
+      const col = db._create(colName);
+      const prepare = (rows) => {
+        col.truncate();
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const bind = () => ({'@col': colName});
+      const query = `FOR d IN @@col RETURN d.value`;
+      const genNodeList = (rows, batches) => {
+        if (db._engine().name === 'mmfiles') {
+          // mmfiles lies about hasMore when asked for exactly the number of
+          // arguments left in the collection, so we have 1 more call when
+          // batchSize divides the actual number of rows.
+          // rocksdb on the other hand is exact.
+          batches = Math.floor(rows / batchSize) + 1;
+        }
+        return [
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: EnumerateCollectionBlock, calls: batches, items: rows},
+          {type: CalculationBlock, calls: batches, items: rows},
+          {type: ReturnBlock, calls: batches, items: rows}
+        ];
+      };
+      runDefaultChecks(query, genNodeList, prepare, bind);
+    }
+
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
 // like ModificationBlock and BlockWithClients are never instantiated separately
@@ -510,7 +582,7 @@ function ahuacatlProfilerTestSuite () {
 
 // *CalculationBlock
 // *CountCollectBlock
-// DistinctCollectBlock
+// *DistinctCollectBlock
 // EnumerateCollectionBlock
 // *EnumerateListBlock
 // FilterBlock

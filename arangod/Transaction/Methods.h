@@ -345,7 +345,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  virtual OperationResult count(std::string const& collectionName, bool aggregate);
+  virtual OperationResult count(std::string const& collectionName, bool details);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -536,7 +536,7 @@ class Methods {
  protected:
 
   OperationResult countCoordinator(std::string const& collectionName,
-                                   bool aggregate);
+                                   bool details);
 
   OperationResult countLocal(std::string const& collectionName);
 

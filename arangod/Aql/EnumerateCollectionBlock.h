@@ -66,10 +66,6 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;
 
-  /// @brief the execution state of the dependency
-  ///        used to determine HASMORE or DONE better
-  ExecutionState _upstreamState;
-
   /// @brief Persistent counter of elements that are in flight during WAITING
   ///        has to be resetted as soon as we return with DONE/HASMORE
   size_t _inflight;

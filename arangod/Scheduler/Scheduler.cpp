@@ -99,8 +99,8 @@ class SchedulerThread : public Thread {
 
     // when we enter this method,
     // _nrRunning has already been increased for this thread
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
-                                      << _scheduler->infoStatus() << ")";
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread: "
+                                      << _scheduler->infoStatus();
 
     // some random delay value to avoid all initial threads checking for
     // their deletion at the very same time
@@ -168,10 +168,11 @@ class SchedulerThread : public Thread {
 // -----------------------------------------------------------------------------
 
 Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
-                     uint64_t maxQueueSize)
+                     uint64_t maxQueueSize, uint64_t fifo1Size,
+                     uint64_t fifo2Size)
     : _maxQueueSize(maxQueueSize),
       _counters(0),
-      _maxFifoSize{16 * 4096, 4096},
+      _maxFifoSize{fifo1Size, fifo2Size},
       _fifo1(_maxFifoSize[0]),
       _fifo2(_maxFifoSize[1]),
       _fifos{&_fifo1, &_fifo2},
@@ -206,7 +207,8 @@ Scheduler::~Scheduler() {
   }
 }
 
-void Scheduler::post(std::function<void()> const& callback) {
+// do not pass callback by reference, might get deleted before execution
+void Scheduler::post(std::function<void()> const callback) {
   incQueued();
 
   try {
@@ -225,8 +227,9 @@ void Scheduler::post(std::function<void()> const& callback) {
   }
 }
 
+// do not pass callback by reference, might get deleted before execution
 void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> const& callback) {
+                     std::function<void()> const callback) {
   incQueued();
 
   try {
@@ -299,11 +302,11 @@ void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
         VPackValue(static_cast<int32_t>(numRunning(counters))));
   b.add("in-progress", VPackValue(static_cast<int32_t>(numWorking(counters))));
   b.add("queued", VPackValue(static_cast<int32_t>(numQueued(counters))));
-  b.add("max-queue-size", VPackValue(static_cast<int32_t>(_maxQueueSize)));
-  b.add("fifo1-size", VPackValue(static_cast<int32_t>(_fifoSize[0])));
-  b.add("max-fifo1-size", VPackValue(static_cast<int32_t>(_maxFifoSize[0])));
-  b.add("fifo2-size", VPackValue(static_cast<int32_t>(_fifoSize[1])));
-  b.add("max-fifo2-size", VPackValue(static_cast<int32_t>(_maxFifoSize[1])));
+  b.add("queue-size", VPackValue(static_cast<int32_t>(_maxQueueSize)));
+  b.add("current-fifo1", VPackValue(static_cast<int32_t>(_fifoSize[0])));
+  b.add("fifo1-size", VPackValue(static_cast<int32_t>(_maxFifoSize[0])));
+  b.add("current-fifo2", VPackValue(static_cast<int32_t>(_fifoSize[1])));
+  b.add("fifo2-size", VPackValue(static_cast<int32_t>(_maxFifoSize[1])));
 }
 
 Scheduler::QueueStatistics Scheduler::queueStatistics() const {
@@ -319,10 +322,11 @@ std::string Scheduler::infoStatus() {
   return "scheduler threads " + std::to_string(numRunning(counters)) + " (" +
          std::to_string(_minThreads) + "<" + std::to_string(_maxThreads) +
          ") in-progress " + std::to_string(numWorking(counters)) + " queued " +
-         std::to_string(numQueued(counters)) + " (<" +
-         std::to_string(_maxQueueSize + 1) + ") fifo1 " +
-         std::to_string(_fifoSize[0]) + " fifo2 " +
-         std::to_string(_fifoSize[1]);
+         std::to_string(numQueued(counters)) + " (<=" +
+         std::to_string(_maxQueueSize) + ") fifo1 " +
+         std::to_string(_fifoSize[0]) + " (<=" + std::to_string(_maxFifoSize[0]) +
+         ") fifo2 " + std::to_string(_fifoSize[1]) + " (<=" +
+         std::to_string(_maxFifoSize[1]) + ")";
 }
 
 bool Scheduler::canPostDirectly() const noexcept {

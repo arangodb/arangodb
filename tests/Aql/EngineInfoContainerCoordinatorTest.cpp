@@ -110,6 +110,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     Query& query = mockQuery.get();
 
     fakeit::Mock<QueryRegistry> mockRegistry;
+    fakeit::When(Method(mockRegistry, defaultTTL)).AlwaysReturn(600.0);
     QueryRegistry& registry = mockRegistry.get();
 
     fakeit::Mock<transaction::Methods> mockTrx;
@@ -204,6 +205,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     Query& queryClone = mockQueryClone.get();
 
     fakeit::Mock<QueryRegistry> mockRegistry;
+    fakeit::When(Method(mockRegistry, defaultTTL)).AlwaysReturn(600.0);
     QueryRegistry& registry = mockRegistry.get();
 
     fakeit::Mock<transaction::Methods> mockTrx;
@@ -413,6 +415,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     Query& querySecondClone = mockQuerySecondClone.get();
 
     fakeit::Mock<QueryRegistry> mockRegistry;
+    fakeit::When(Method(mockRegistry, defaultTTL)).AlwaysReturn(600.0);
     QueryRegistry& registry = mockRegistry.get();
 
     fakeit::Mock<transaction::Methods> mockTrx;
@@ -602,6 +605,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     Query& queryClone = mockQueryClone.get();
 
     fakeit::Mock<QueryRegistry> mockRegistry;
+    fakeit::When(Method(mockRegistry, defaultTTL)).AlwaysReturn(600.0);
     QueryRegistry& registry = mockRegistry.get();
 
     fakeit::Mock<transaction::Methods> mockTrx;

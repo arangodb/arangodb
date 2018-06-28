@@ -69,47 +69,78 @@ void SchedulerFeature::collectOptions(
                      new UInt64Parameter(&_nrMaximalThreads));
 
   options->addHiddenOption(
-      "--server.maximal-queue-size",
-      "number of simultaneously queues requests in the scheduler",
+      "--server.queue-size",
+      "number of simultaneously queues requests inside the scheduler",
       new UInt64Parameter(&_queueSize));
+
+  options->addHiddenOption("--server.prio1-size", "size of the priority 1 fifo",
+                           new UInt64Parameter(&_fifo1Size));
+
+  options->addHiddenOption("--server.prio2-size", "size of the priority 2 fifo",
+                           new UInt64Parameter(&_fifo2Size));
 
   options->addHiddenOption("--server.minimal-threads",
                            "minimal number of threads",
                            new UInt64Parameter(&_nrMinimalThreads));
 
   // obsolete options
-  options->addHiddenOption("--server.maximal-threads",
-                           "maximal number of threads",
-                           new UInt64Parameter(&_nrMaximalThreads));
+  options->addObsoleteOption("--server.maximal-threads",
+                             "maximal number of threads", true);
 
+  // renamed options
   options->addOldOption("scheduler.threads", "server.threads");
+  options->addOldOption("server.maximal-queue-size", "server.queue-size");
 }
 
 void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = TRI_numberProcessors();
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-        << "Detected number of processors: " << _nrMaximalThreads;
   }
 
   if (_queueSize == 0) {
     _queueSize = _nrMaximalThreads * 8;
   }
 
-  if (_nrMinimalThreads < 2) {
-    _nrMinimalThreads = 2;
+  if (_fifo1Size < 1) {
+    _fifo1Size = 1;
   }
 
-  if (_nrMinimalThreads > _nrMaximalThreads) {
-    _nrMaximalThreads = _nrMinimalThreads;
+  if (_fifo2Size < 1) {
+    _fifo2Size = 1;
   }
-
-  TRI_ASSERT(0 < _nrMinimalThreads);
-  TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
 }
 
 void SchedulerFeature::start() {
+  auto const N = TRI_numberProcessors();
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::THREADS)
+      << "Detected number of processors: " << N;
+
+  if (_nrMaximalThreads > 2 * N) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+        << "--server.threads (" << _nrMaximalThreads
+        << ") is more than twice the number of cores (" << N
+        << "), this might overload the server";
+  }
+
+  if (_nrMinimalThreads < 2) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "--server.minimal-threads ("
+                                               << _nrMinimalThreads
+                                               << ") should be at least 2";
+    _nrMinimalThreads = 2;
+  }
+
+  if (_nrMinimalThreads >= _nrMaximalThreads) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+        << "--server.threads (" << _nrMaximalThreads << ") should be at least "
+        << (_nrMinimalThreads + 1) << ", raising it";
+    _nrMaximalThreads = _nrMinimalThreads + 1;
+  }
+
+  TRI_ASSERT(2 <= _nrMinimalThreads);
+  TRI_ASSERT(_nrMinimalThreads < _nrMaximalThreads);
+
   ArangoGlobalContext::CONTEXT->maskAllSignals();
   buildScheduler();
 
@@ -256,7 +287,7 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                           _queueSize);
+                                           _queueSize, _fifo1Size, _fifo2Size);
 
   SCHEDULER = _scheduler.get();
 }

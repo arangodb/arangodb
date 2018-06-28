@@ -122,6 +122,7 @@ class Query {
     return _profile.get();
   }
 
+  velocypack::Slice optionsSlice() const { return _options->slice(); }
   TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
@@ -390,10 +391,10 @@ class Query {
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
 
-  /// @brief query options
+  /// @brief raw query options
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 
-  /// @brief query options
+  /// @brief parsed query options
   QueryOptions _queryOptions;
 
   /// @brief collections used in the query

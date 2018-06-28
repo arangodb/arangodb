@@ -2085,7 +2085,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
 
     if (res.ok()) {
-      auto countRes = trx.count(col->name(), false);
+      auto countRes = trx.count(col->name(), true);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();

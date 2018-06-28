@@ -267,6 +267,7 @@ std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor
   DEBUG_BEGIN_BLOCK();
   _currentGroup.reset();
   _pos = 0;
+  _lastBlock = nullptr;
   DEBUG_END_BLOCK();
 
   return res;
@@ -426,9 +427,8 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // empty current group, while still initializing it)
     bool emittedGroup = updateCurrentGroup(cur, _pos, _result.get());
 
-    // never return the block here
-    _returnFrontBlock = false;
-    advanceCursor(1, emittedGroup ? 1 : 0);
+    AqlItemBlock* removedBlock = advanceCursor(1, emittedGroup ? 1 : 0);
+    TRI_ASSERT(removedBlock == nullptr || removedBlock == _lastBlock);
   }
 
   bool done = _skipped < atMost;
@@ -896,6 +896,25 @@ void HashedCollectBlock::_destroyAllGroupsAqlValues() {
   }
 }
 
+std::pair<ExecutionState, Result>
+HashedCollectBlock::initializeCursor(AqlItemBlock *items, size_t pos) {
+  ExecutionState state;
+  Result result;
+  std::tie(state, result) = ExecutionBlock::initializeCursor(items, pos);
+
+  if (state == ExecutionState::WAITING || result.fail()) {
+    // If we need to wait or get an error we return as is.
+    return {state, result};
+  }
+
+  _lastBlock = nullptr;
+  _destroyAllGroupsAqlValues();
+  _allGroups.clear();
+
+  return {state, result};
+
+}
+
 DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
                                            CollectNode const* en)
     : ExecutionBlock(engine, en),
@@ -938,6 +957,7 @@ std::pair<ExecutionState, arangodb::Result> DistinctCollectBlock::initializeCurs
 
   DEBUG_BEGIN_BLOCK();
   _pos = 0;
+  _res = nullptr;
   clearValues();
   DEBUG_END_BLOCK();
 
@@ -983,36 +1003,44 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
   std::vector<AqlValue> groupValues;
   groupValues.reserve(_groupRegisters.size());
 
-  if (_buffer.empty()) {
-    ExecutionState state;
-    bool blockAppended;
-    std::tie(state, blockAppended) = ExecutionBlock::getBlock(atMost);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!blockAppended);
+  {
+    // We need a valid cur ptr for inheritRegisters.
+    BufferState bufferState = getBlockIfNeeded(atMost);
+
+    if (bufferState == BufferState::WAITING) {
       return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
     }
-    if (!blockAppended) {
-      // done
-      _done = true;
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
       assignReturnValues();
-      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+      return {getHasMoreState(), TRI_ERROR_NO_ERROR};
     }
-    _pos = 0;  // this is in the first block
+
+    AqlItemBlock *cur = _buffer.front();
+    TRI_ASSERT(cur != nullptr);
+
+    // On the very first call, get a result block and inherit registers.
+    if (!skipping && _res == nullptr) {
+      TRI_ASSERT(_skipped == 0);
+      _res.reset(requestBlock(atMost, getNrOutputRegisters()));
+
+      TRI_ASSERT(cur->getNrRegs() <= _res->getNrRegs());
+      inheritRegisters(cur, _res.get(), _pos);
+    }
   }
 
-  // If we get here, we do have _buffer.front()
-  AqlItemBlock* cur = _buffer.front();
-  TRI_ASSERT(cur != nullptr);
+  while (!_done && _skipped < atMost) {
+    BufferState bufferState = getBlockIfNeeded(atMost);
 
-  if (!skipping && _res == nullptr) {
-    TRI_ASSERT(_skipped == 0);
-    _res.reset(requestBlock(atMost, getNrOutputRegisters()));
+    if (bufferState == BufferState::WAITING) {
+      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
 
-    TRI_ASSERT(cur->getNrRegs() <= _res->getNrRegs());
-    inheritRegisters(cur, _res.get(), _pos);
-  }
+    AqlItemBlock* cur = _buffer.front();
+    TRI_ASSERT(cur != nullptr);
 
-  while (_skipped < atMost) {
     // read the next input row
     TRI_IF_FAILURE("DistinctCollectBlock::getOrSkipSomeOuter") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -1031,7 +1059,9 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
     // now check if we already know this group
     auto foundIt = _seen->find(groupValues);
 
-    if (foundIt == _seen->end()) {
+    bool newGroup = foundIt == _seen->end();
+
+    if (newGroup) {
       if (!skipping) {
         size_t i = 0;
         for (auto& it : _groupRegisters) {
@@ -1046,61 +1076,10 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
         copy.emplace_back(it.clone());
       }
       _seen->emplace(std::move(copy));
-      ++_skipped;
     }
 
-    if (++_pos >= cur->size()) {
-      _buffer.pop_front();
-      _pos = 0;
-
-      bool hasMore = !_buffer.empty();
-
-      if (!hasMore) {
-        try {
-          TRI_IF_FAILURE("DistinctCollectBlock::hasMore") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          ExecutionState state;
-          bool blockAppended;
-          std::tie(state, blockAppended) = ExecutionBlock::getBlock(atMost);
-          if (state == ExecutionState::WAITING) {
-            TRI_ASSERT(!blockAppended);
-            return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-          }
-          hasMore = blockAppended;
-
-        } catch (...) {
-          // prevent leak
-          returnBlock(cur);
-          throw;
-        }
-      }
-
-      if (!hasMore) {
-        // no more input. we're done
-        try {
-          // emit last buffered group
-          if (!skipping) {
-            TRI_IF_FAILURE("DistinctCollectBlock::getOrSkipSome") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-            }
-            TRI_ASSERT(cur != nullptr);
-          }
-          returnBlock(cur);
-          _done = true;
-
-          assignReturnValues();
-          return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-        } catch (...) {
-          returnBlock(cur);
-          throw;
-        }
-      }
-
-      // hasMore
-      returnBlock(cur);
-      cur = _buffer.front();
-    }
+    AqlItemBlock *removedBlock = advanceCursor(1, newGroup ? 1 : 0);
+    returnBlockUnlessNull(removedBlock);
   }
 
   if (!skipping) {
@@ -1108,7 +1087,7 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
   }
 
   assignReturnValues();
-  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+  return {getHasMoreState(), TRI_ERROR_NO_ERROR};
 }
 
 CountCollectBlock::CountCollectBlock(ExecutionEngine* engine,

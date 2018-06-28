@@ -26,6 +26,7 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/Thread.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationApplierState.h"
 #include "Basics/Thread.h"
