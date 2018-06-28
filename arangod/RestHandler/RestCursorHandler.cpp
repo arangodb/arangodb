@@ -288,6 +288,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   VPackObjectBuilder obj(&options);
 
   bool hasCache = false;
+  bool hasMemoryLimit = false;
   VPackSlice opts = slice.get("options");
   bool isStream = false;
   if (opts.isObject()) {
@@ -302,6 +303,8 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
         continue;  // filter out top-level keys
       } else if (keyName == "cache") {
         hasCache = true;  // don't honor if appears below
+      } else if (keyName == "memoryLimit" && it.value.isNumber()) {
+        hasMemoryLimit = true;
       }
       options.add(keyName, it.value);
     }
@@ -328,9 +331,11 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
     options.add("batchSize", VPackValue(1000));
   }
 
-  VPackSlice memoryLimit = slice.get("memoryLimit");
-  if (memoryLimit.isNumber()) {
-    options.add("memoryLimit", memoryLimit);
+  if (!hasMemoryLimit) {
+    VPackSlice memoryLimit = slice.get("memoryLimit");
+    if (memoryLimit.isNumber()) {
+      options.add("memoryLimit", memoryLimit);
+    }
   }
 
   VPackSlice ttl = slice.get("ttl");

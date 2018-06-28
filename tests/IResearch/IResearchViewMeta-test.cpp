@@ -63,8 +63,9 @@ TEST_CASE("IResearchViewMetaTest", "[iresearch][iresearch-viewmeta]") {
 
 SECTION("test_defaults") {
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
 
-  CHECK(true == meta._collections.empty());
+  CHECK((true == metaState._collections.empty()));
   CHECK(true == (10 == meta._commit._cleanupIntervalStep));
   CHECK(true == (60 * 1000 == meta._commit._commitIntervalMsec));
   CHECK(true == (5 * 1000 == meta._commit._commitTimeoutMsec));
@@ -80,17 +81,17 @@ SECTION("test_defaults") {
 
   CHECK(true == (expectedItem.empty()));
   CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
-  CHECK(5 == meta._threadsMaxIdle);
-  CHECK(5 == meta._threadsMaxTotal);
 }
 
 SECTION("test_inheritDefaults") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
   arangodb::iresearch::IResearchViewMeta defaults;
+  arangodb::iresearch::IResearchViewMetaState defaultsState;
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
   std::string tmpString;
 
-  defaults._collections.insert(42);
+  defaultsState._collections.insert(42);
   defaults._commit._cleanupIntervalStep = 654;
   defaults._commit._commitIntervalMsec = 456;
   defaults._commit._commitTimeoutMsec = 789;
@@ -100,14 +101,13 @@ SECTION("test_inheritDefaults") {
   defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::COUNT, 201, .21f);
   defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
   defaults._locale = irs::locale_utils::locale("ru");
-  defaults._threadsMaxIdle = 8;
-  defaults._threadsMaxTotal = 16;
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     CHECK(true == meta.init(json->slice(), tmpString, defaults));
-    CHECK(1 == meta._collections.size());
-    CHECK(42 == *(meta._collections.begin()));
+    CHECK((true == metaState.init(json->slice(), tmpString, defaultsState)));
+    CHECK((1 == metaState._collections.size()));
+    CHECK((42 == *(metaState._collections.begin())));
     CHECK(654 == meta._commit._cleanupIntervalStep);
     CHECK(456 == meta._commit._commitIntervalMsec);
     CHECK(789 == meta._commit._commitTimeoutMsec);
@@ -143,20 +143,20 @@ SECTION("test_inheritDefaults") {
 
     CHECK(true == (expectedItem.empty()));
     CHECK(std::string("ru") == irs::locale_utils::name(meta._locale));
-    CHECK(8 == meta._threadsMaxIdle);
-    CHECK(16 == meta._threadsMaxTotal);
   }
 }
 
 SECTION("test_readDefaults") {
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
   std::string tmpString;
 
   {
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     CHECK(true == meta.init(json->slice(), tmpString));
-    CHECK(true == meta._collections.empty());
+    CHECK((true == metaState.init(json->slice(), tmpString)));
+    CHECK((true == metaState._collections.empty()));
     CHECK(10 == meta._commit._cleanupIntervalStep);
     CHECK(60 * 1000 == meta._commit._commitIntervalMsec);
     CHECK(5 * 1000 == meta._commit._commitTimeoutMsec);
@@ -171,8 +171,6 @@ SECTION("test_readDefaults") {
     }
 
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
-    CHECK(5 == meta._threadsMaxIdle);
-    CHECK(5 == meta._threadsMaxTotal);
   }
 }
 
@@ -180,6 +178,7 @@ SECTION("test_readCustomizedValues") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42 };
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
 
   // .............................................................................
   // test invalid value
@@ -188,13 +187,15 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"collections\": \"invalid\" }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK((true == meta.init(json->slice(), errorField)));
+    CHECK((false == metaState.init(json->slice(), errorField)));
     CHECK(std::string("collections") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": \"invalid\" }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK(std::string("commit") == errorField);
   }
@@ -202,6 +203,7 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 0.5 } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK(std::string("commit=>commitIntervalMsec") == errorField);
   }
@@ -209,6 +211,7 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"cleanupIntervalStep\": 0.5 } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK(std::string("commit=>cleanupIntervalStep") == errorField);
   }
@@ -216,6 +219,7 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": \"invalid\" } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK(std::string("commit=>consolidate") == errorField);
   }
@@ -223,6 +227,7 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"invalid\": \"abc\" } } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK(std::string("commit=>consolidate=>invalid") == errorField);
   }
@@ -230,6 +235,7 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"invalid\": 0.5 } } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK(std::string("commit=>consolidate=>invalid") == errorField);
   }
@@ -244,6 +250,7 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"bytes\": { \"threshold\": -0.5 } } } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK(std::string("commit=>consolidate=>bytes=>threshold") == errorField);
   }
@@ -251,29 +258,9 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"bytes\": { \"threshold\": 1.5 } } } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK(std::string("commit=>consolidate=>bytes=>threshold") == errorField);
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"threadsMaxIdle\": 0.5 }");
-    CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("threadsMaxIdle") == errorField);
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"threadsMaxTotal\": 0.5 }");
-    CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("threadsMaxTotal") == errorField);
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"threadsMaxTotal\": 0 }");
-    CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("threadsMaxTotal") == errorField);
   }
 
   // .............................................................................
@@ -287,6 +274,7 @@ SECTION("test_readCustomizedValues") {
       \"commit\": { \"consolidate\": {} } \
     }");
     CHECK(true == meta.init(json->slice(), errorField));
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(true == (meta._commit._consolidationPolicies.empty()));
   }
 
@@ -297,6 +285,7 @@ SECTION("test_readCustomizedValues") {
       \"commit\": { \"consolidate\": { \"bytes_accum\": { \"segmentThreshold\": 0, \"threshold\": 0.2 }, \"fill\": { \"segmentThreshold\": 0 } } } \
     }");
     CHECK(true == meta.init(json->slice(), errorField));
+    CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(true == (meta._commit._consolidationPolicies.empty()));
   }
 
@@ -305,19 +294,18 @@ SECTION("test_readCustomizedValues") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
         \"collections\": [ 42 ], \
         \"commit\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"commitTimeoutMsec\": 789, \"consolidate\": { \"bytes\": { \"segmentThreshold\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"segmentThreshold\": 1501, \"threshold\": 0.151 }, \"count\": { \"segmentThreshold\": 2001 }, \"fill\": {} } }, \
-        \"locale\": \"ru_RU.KOI8-R\", \
-        \"threadsMaxIdle\": 8, \
-        \"threadsMaxTotal\": 16 \
+        \"locale\": \"ru_RU.KOI8-R\" \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
-  CHECK(1 == meta._collections.size());
+  CHECK((true == metaState.init(json->slice(), errorField)));
+  CHECK((1 == metaState._collections.size()));
 
-  for (auto& collection: meta._collections) {
+  for (auto& collection: metaState._collections) {
     CHECK(1 == expectedCollections.erase(collection));
   }
 
   CHECK(true == expectedCollections.empty());
-  CHECK(42 == *(meta._collections.begin()));
+  CHECK((42 == *(metaState._collections.begin())));
   CHECK(654 == meta._commit._cleanupIntervalStep);
   CHECK(456 == meta._commit._commitIntervalMsec);
   CHECK(789 == meta._commit._commitTimeoutMsec);
@@ -353,8 +341,6 @@ SECTION("test_readCustomizedValues") {
 
   CHECK(true == (expectedItem.empty()));
   CHECK(std::string("ru_RU.UTF-8") == iresearch::locale_utils::name(meta._locale));
-  CHECK(8 == meta._threadsMaxIdle);
-  CHECK(16 == meta._threadsMaxTotal);
 }
 
 SECTION("test_writeDefaults") {
@@ -365,15 +351,19 @@ SECTION("test_writeDefaults") {
     { "fill",{ { "segmentThreshold", 300 },{ "threshold", .85f } } }
   };
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::Slice tmpSlice;
   arangodb::velocypack::Slice tmpSlice2;
 
-  CHECK(meta.json(arangodb::velocypack::ObjectBuilder(&builder)));
+  builder.openObject();
+  CHECK((true == meta.json(builder)));
+  CHECK((true == metaState.json(builder)));
+  builder.close();
 
   auto slice = builder.slice();
 
-  CHECK((5U == slice.length()));
+  CHECK((3U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("commit");
@@ -407,16 +397,13 @@ SECTION("test_writeDefaults") {
   CHECK(true == expectedCommitItemConsolidate.empty());
   tmpSlice = slice.get("locale");
   CHECK((true == tmpSlice.isString() && std::string("C") == tmpSlice.copyString()));
-  tmpSlice = slice.get("threadsMaxIdle");
-  CHECK((true == tmpSlice.isNumber() && 5 == tmpSlice.getUInt()));
-  tmpSlice = slice.get("threadsMaxTotal");
-  CHECK((true == tmpSlice.isNumber() && 5 == tmpSlice.getUInt()));
 }
 
 SECTION("test_writeCustomizedValues") {
   // test disabled consolidate
   {
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     meta._commit._consolidationPolicies.clear();
     meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES, 0, ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::BYTES).threshold());
     meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES_ACCUM, 0, std::numeric_limits<float>::infinity());
@@ -427,6 +414,7 @@ SECTION("test_writeCustomizedValues") {
     arangodb::velocypack::Slice tmpSlice;
 
     CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder)));
+    CHECK((true == metaState.json(arangodb::velocypack::ObjectBuilder(&builder))));
 
     auto slice = builder.slice();
     tmpSlice = slice.get("commit");
@@ -436,11 +424,12 @@ SECTION("test_writeCustomizedValues") {
   }
 
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
 
   // test all parameters set to custom values
-  meta._collections.insert(42);
-  meta._collections.insert(52);
-  meta._collections.insert(62);
+  metaState._collections.insert(42);
+  metaState._collections.insert(52);
+  metaState._collections.insert(62);
   meta._commit._cleanupIntervalStep = 654;
   meta._commit._commitIntervalMsec = 456;
   meta._commit._commitTimeoutMsec = 789;
@@ -450,8 +439,6 @@ SECTION("test_writeCustomizedValues") {
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::COUNT, 201, .21f);
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
   meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
-  meta._threadsMaxIdle = 8;
-  meta._threadsMaxTotal = 16;
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42, 52, 62 };
   std::unordered_map<std::string, std::unordered_map<std::string, double>> expectedCommitItemConsolidate = {
@@ -464,11 +451,14 @@ SECTION("test_writeCustomizedValues") {
   arangodb::velocypack::Slice tmpSlice;
   arangodb::velocypack::Slice tmpSlice2;
 
-  CHECK(meta.json(arangodb::velocypack::ObjectBuilder(&builder)));
+  builder.openObject();
+  CHECK((true == meta.json(builder)));
+  CHECK((true == metaState.json(builder)));
+  builder.close();
 
   auto slice = builder.slice();
 
-  CHECK((5U == slice.length()));
+  CHECK((3U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -509,59 +499,60 @@ SECTION("test_writeCustomizedValues") {
   CHECK(true == expectedCommitItemConsolidate.empty());
   tmpSlice = slice.get("locale");
   CHECK((tmpSlice.isString() && std::string("en_UK.UTF-8") == tmpSlice.copyString()));
-  tmpSlice = slice.get("threadsMaxIdle");
-  CHECK((true == tmpSlice.isNumber() && 8 == tmpSlice.getUInt()));
-  tmpSlice = slice.get("threadsMaxTotal");
-  CHECK((true == tmpSlice.isNumber() && 16 == tmpSlice.getUInt()));
 }
 
 SECTION("test_readMaskAll") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
   arangodb::iresearch::IResearchViewMeta::Mask mask;
+  arangodb::iresearch::IResearchViewMetaState::Mask maskState;
   std::string errorField;
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"collections\": [ 42 ], \
     \"commit\": { \"commitIntervalMsec\": 654, \"cleanupIntervalStep\": 456, \"consolidate\": {\"bytes_accum\": { \"threshold\": 0.1 } } }, \
-    \"locale\": \"ru_RU.KOI8-R\", \
-    \"threadsMaxIdle\": 8, \
-    \"threadsMaxTotal\": 16 \
+    \"locale\": \"ru_RU.KOI8-R\" \
   }");
   CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
-  CHECK(true == mask._collections);
+  CHECK((true == metaState.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState)));
+  CHECK((true == maskState._collections));
   CHECK(true == mask._commit);
   CHECK(true == mask._locale);
-  CHECK(true == mask._threadsMaxIdle);
-  CHECK(true == mask._threadsMaxTotal);
 }
 
 SECTION("test_readMaskNone") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
   arangodb::iresearch::IResearchViewMeta::Mask mask;
+  arangodb::iresearch::IResearchViewMetaState::Mask maskState;
   std::string errorField;
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
   CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
-  CHECK(false == mask._collections);
+  CHECK((true == metaState.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState)));
+  CHECK((false == maskState._collections));
   CHECK(false == mask._commit);
   CHECK(false == mask._locale);
-  CHECK(false == mask._threadsMaxIdle);
-  CHECK(false == mask._threadsMaxTotal);
 }
 
 SECTION("test_writeMaskAll") {
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
   arangodb::iresearch::IResearchViewMeta::Mask mask(true);
+  arangodb::iresearch::IResearchViewMetaState::Mask maskState(true);
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::Slice tmpSlice;
 
-  CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &mask));
+  builder.openObject();
+  CHECK((true == meta.json(builder, nullptr, &mask)));
+  CHECK((true == metaState.json(builder, nullptr, &maskState)));
+  builder.close();
 
   auto slice = builder.slice();
 
-  CHECK(5U == slice.length());
+  CHECK((3U == slice.length()));
   CHECK(true == slice.hasKey("collections"));
   CHECK(true == slice.hasKey("commit"));
   tmpSlice = slice.get("commit");
@@ -570,16 +561,17 @@ SECTION("test_writeMaskAll") {
   CHECK(true == tmpSlice.hasKey("commitTimeoutMsec"));
   CHECK(true == tmpSlice.hasKey("consolidate"));
   CHECK(true == slice.hasKey("locale"));
-  CHECK(true == slice.hasKey("threadsMaxIdle"));
-  CHECK(true == slice.hasKey("threadsMaxTotal"));
 }
 
 SECTION("test_writeMaskNone") {
   arangodb::iresearch::IResearchViewMeta meta;
+  arangodb::iresearch::IResearchViewMetaState metaState;
   arangodb::iresearch::IResearchViewMeta::Mask mask(false);
+  arangodb::iresearch::IResearchViewMetaState::Mask maskState(false);
   arangodb::velocypack::Builder builder;
 
   CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &mask));
+  CHECK((true == metaState.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &maskState)));
 
   auto slice = builder.slice();
 

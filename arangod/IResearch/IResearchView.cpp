@@ -858,19 +858,26 @@ IResearchView::IResearchView(
       auto logicalWiew = ci->getView(vocbase.name(), std::to_string(planId()));
       auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
 
-      // reference syncWorker from cluster-wide view if available to avoid thread allocation
-      // if not availble then the syncWorker will be reassigned when this instance is associated with the cluster-wide view
+      // reference meta and syncWorker from cluster-wide view if available to
+      // avoid memory and thread allocation
+      // if not availble then the meta and syncWorker will be reassigned when
+      // this instance is associated with the cluster-wide view
       if (wiew) {
         /*FIXME TODO implement
+        _meta = wiew->_meta;
         _syncWorker = wiew->syncWorker();
         */
       }
     }
   }
 
+  if (!_meta) {
+    _meta = std::make_shared<AsyncMeta>();
+  }
+
   if (!_syncWorker) {
     _syncWorker =
-      std::make_shared<ViewSyncWorker>(_meta._commit, ReadMutex(_mutex));
+      std::make_shared<ViewSyncWorker>(_meta->_commit, ReadMutex(_mutex));
   }
 
   // set up in-recovery insertion hooks
@@ -1062,9 +1069,9 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   WriteMutex mutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-  auto cid_itr = _meta._collections.find(cid);
+  auto cid_itr = _metaState._collections.find(cid);
 
-  if (cid_itr != _meta._collections.end()) {
+  if (cid_itr != _metaState._collections.end()) {
     auto result = persistProperties(*this, _asyncSelf);
 
     if (!result.ok()) {
@@ -1075,7 +1082,7 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
       return result.errorNumber();
     }
 
-    _meta._collections.erase(cid_itr);
+    _metaState._collections.erase(cid_itr);
   }
 
   mutex.unlock(true); // downgrade to a read-lock
@@ -1116,7 +1123,7 @@ arangodb::Result IResearchView::dropImpl() {
   {
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
-    stale = _meta._collections;
+    stale = _metaState._collections;
   }
 
   std::unordered_set<TRI_voc_cid_t> collections;
@@ -1143,7 +1150,9 @@ arangodb::Result IResearchView::dropImpl() {
   WriteMutex mutex(_mutex); // members can be asynchronously updated
   SCOPED_LOCK(mutex);
 
-  collections.insert(_meta._collections.begin(), _meta._collections.end());
+  collections.insert(
+    _metaState._collections.begin(), _metaState._collections.end()
+  );
   validateLinks(collections, vocbase(), *this);
 
   // ArangoDB global consistency check, no known dangling links
@@ -1215,7 +1224,7 @@ bool IResearchView::emplace(TRI_voc_cid_t cid) {
   SCOPED_LOCK(mutex);
   arangodb::Result result;
 
-  if (!_meta._collections.emplace(cid).second) {
+  if (!_metaState._collections.emplace(cid).second) {
     return false;
   }
 
@@ -1226,14 +1235,14 @@ bool IResearchView::emplace(TRI_voc_cid_t cid) {
       return true;
     }
   } catch (std::exception const& e) {
-    _meta._collections.erase(cid); // undo meta modification
+    _metaState._collections.erase(cid); // undo meta modification
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception during persisting of logical view while emplacing collection ' " << cid
       << "' into IResearch View '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
     throw;
   } catch (...) {
-    _meta._collections.erase(cid); // undo meta modification
+    _metaState._collections.erase(cid); // undo meta modification
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception during persisting of logical view while emplacing collection ' " << cid
       << "' into IResearch View '" << name() << "'";
@@ -1241,7 +1250,7 @@ bool IResearchView::emplace(TRI_voc_cid_t cid) {
     throw;
   }
 
-  _meta._collections.erase(cid); // undo meta modification
+  _metaState._collections.erase(cid); // undo meta modification
   LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
     << "failed to persist logical view while emplacing collection ' " << cid
     << "' into IResearch View '" << name() << "': " << result.errorMessage();
@@ -1302,9 +1311,15 @@ void IResearchView::getPropertiesVPack(
   arangodb::velocypack::Builder& builder, bool forPersistence
 ) const {
   ReadMutex mutex(_mutex);
-  SCOPED_LOCK(mutex); // '_meta'/'_links' can be asynchronously updated
+  SCOPED_LOCK(mutex); // '_metaState'/'_links' can be asynchronously updated
 
-  _meta.json(builder);
+  {
+    SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
+
+    _meta->json(builder);
+  }
+
+  _metaState.json(builder);
 
   if (forPersistence) {
     return; // nothing more to output (persistent configuration does not need links)
@@ -1314,7 +1329,7 @@ void IResearchView::getPropertiesVPack(
   std::vector<std::string> collections;
 
   // add CIDs of known collections to list
-  for (auto& entry: _meta._collections) {
+  for (auto& entry: _metaState._collections) {
     // skip collections missing from vocbase or UserTransaction constructor will throw an exception
     if (vocbase().lookupCollection(entry)) {
       collections.emplace_back(std::to_string(entry));
@@ -1596,7 +1611,8 @@ int IResearchView::insert(
   auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  if (!impl._meta.init(properties, error)) {
+  if (!impl._meta->init(properties, error)
+      || !impl._metaState.init(properties, error)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to initialize iResearch view from definition, error: " << error;
 
@@ -1629,7 +1645,13 @@ size_t IResearchView::memory() const {
   SCOPED_LOCK(mutex);
   size_t size = sizeof(IResearchView);
 
-  size += _meta.memory();
+  {
+    SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
+
+    size += _meta->memory();
+  }
+
+  size += _metaState.memory();
   // FIXME TODO somehow compute the size of TransactionState cookies for this view
   size += sizeof(_memoryNode) + sizeof(_toFlush) + sizeof(_memoryNodes);
   size += directoryMemory(*(_memoryNode->_store._directory), id());
@@ -1948,28 +1970,22 @@ arangodb::Result IResearchView::updateProperties(
 ) {
   std::string error;
   IResearchViewMeta meta;
-  IResearchViewMeta::Mask mask;
   WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
   arangodb::Result res;
-    arangodb::velocypack::Builder originalMetaJson; // required for reverting links on failure
   SCOPED_LOCK_NAMED(mutex, mtx);
 
-    if (!_meta.json(arangodb::velocypack::ObjectBuilder(&originalMetaJson))) {
-      return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to generate json definition while updating iResearch view '") + std::to_string(id()) + "'"
-      );
-    }
+  {
+    SCOPED_LOCK(_meta->write());
+    IResearchViewMeta* metaPtr = _meta.get();
+    auto& initialMeta = partialUpdate ? *metaPtr : IResearchViewMeta::DEFAULT();
 
-    auto& initialMeta = partialUpdate ? _meta : IResearchViewMeta::DEFAULT();
-
-    if (!meta.init(slice, error, initialMeta, &mask)) {
+    if (!meta.init(slice, error, initialMeta)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
 
-    // reset non-updatable values to match current meta
-    meta._collections = _meta._collections;
-    _meta = std::move(meta);
+    *metaPtr = std::move(meta);
+  }
+
   _syncWorker->refresh();
   mutex.unlock(true); // downgrade to a read-lock
 
@@ -1994,7 +2010,7 @@ arangodb::Result IResearchView::updateProperties(
     );
   }
 
-  auto stale = _meta._collections;
+  auto stale = _metaState._collections;
 
   mtx.unlock(); // release lock
 
@@ -2041,7 +2057,7 @@ bool IResearchView::visitCollections(
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex);
 
-  for (auto& cid: _meta._collections) {
+  for (auto& cid: _metaState._collections) {
     if (!visitor(cid)) {
       return false;
     }
@@ -2065,7 +2081,7 @@ void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) c
 }
 
 void IResearchView::verifyKnownCollections() {
-  auto cids = _meta._collections;
+  auto cids = _metaState._collections;
 
   {
     struct DummyTransaction : transaction::Methods {
