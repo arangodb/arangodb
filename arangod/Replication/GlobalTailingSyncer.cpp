@@ -39,9 +39,11 @@ GlobalTailingSyncer::GlobalTailingSyncer(
     ReplicationApplierConfiguration const& configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(ReplicationFeature::INSTANCE->globalReplicationApplier(),
-                    configuration, initialTick, useTick, barrierId) {
-      _ignoreDatabaseMarkers = false;
-      _databaseName = TRI_VOC_SYSTEM_DATABASE;
+                    configuration, initialTick, useTick, barrierId),
+      _queriedTranslations(false) {
+
+  _ignoreDatabaseMarkers = false;
+  _databaseName = TRI_VOC_SYSTEM_DATABASE;
 }
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
@@ -91,14 +93,22 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
   if (!name.isString()) {
     return false;
   }
+  
+  if (_masterInfo._majorVersion < 3 ||
+      (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
+    // globallyUniqueId only exists in 3.3 and higher
+    return false;
+  }
 
-  if (_translations.empty()) {
+  if (!_queriedTranslations) {
     // no translations yet... query master inventory to find names of all
     // collections
     try {
       GlobalInitialSyncer init(_configuration);
       VPackBuilder inventoryResponse;
       Result res = init.inventory(inventoryResponse);
+      _queriedTranslations = true;
+      
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
         return false;
