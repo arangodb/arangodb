@@ -8,7 +8,7 @@
 * __Configuration__ _(cluster setup details, notable server settings, etc)_: 
 * __Infrastructure__ _(AWS / Azure / ... / own)_: 
 * __Operating system__ _(Ubuntu 18.04 / Windows 10 / MacOS 10.13.4 / DCOS 1.10 /...)_: 
-* __Used Package__ _(Debian .deb / Ubuntu .deb / SUSE .rpm / RedHat .rpm / Fedora .rpm / Gentoo / docker - official docker library / other)_:
+* __Used Package__ _(Debian or Ubuntu .deb / SUSE or RedHat .rpm / docker - official docker library / other)_:
 
 ## Component
 
