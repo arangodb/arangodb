@@ -117,7 +117,7 @@ class Methods {
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
-  double const TRX_FOLLOWER_TIMEOUT = 3.0;
+  double const TRX_FOLLOWER_TIMEOUT = 120.0;
 
   /// @brief transaction::Methods
  private:
