@@ -281,13 +281,15 @@ std::string ShardingInfo::distributeShardsLike() const {
 
 void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo const* other) {
   if (!usesSameShardingStrategy(other)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "can only distribute shards like a collection with the same sharding strategy");
+    // other collection has a different sharding strategy
+    // adjust our sharding so it uses the same strategy as the other collection
+    _shardingStrategy = std::move(application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->create(other->shardingStrategyName(), this));
+    // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "can only distribute shards like a collection with the same sharding strategy");
   }
-  
+
   _distributeShardsLike = cid;
 
-  if (other->collection()->isSmart() && 
-      other->collection()->type() == TRI_COL_TYPE_EDGE) {
+  if (_collection->isSmart() && _collection->type() == TRI_COL_TYPE_EDGE) {
     return;
   }
 
