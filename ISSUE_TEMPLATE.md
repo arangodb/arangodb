@@ -2,18 +2,18 @@
 
 ## My environment
 
-* __ArangoDB version:__ _your exact version, e.g. 3.3.10 (or self-compiled devel branch)_: 
-* __Storage engine:__ _MMFiles / RocksDB_: 
-* __ArangoDB Deployment mode:__ _Single Server / Master/Slave / Active Failover / Cluster / DC2DC_: 
-* __Configuration:__ _cluster setup details, notable server settings, etc_: 
-* __Infrastructure:__ _AWS / Azure / ... / own_: 
-* __Operating system:__ _Ubuntu 18.04 / Windows 10 / MacOS 10.13.4 / DCOS 1.10 /..._: 
-* __Used Package:__ _Debian .deb / Ubuntu .deb / SUSE .rpm / RedHat .rpm / Fedora .rpm / Gentoo / docker - official docker library / other
+* __ArangoDB version__ _(e.g. e.g. 3.3.10 or self-compiled devel branch)_:
+* __Storage engine__ _(MMFiles / RocksDB)_:
+* __ArangoDB Deployment mode:__ _(Single Server / Master/Slave / Active Failover / Cluster / DC2DC)_: 
+* __Configuration__ _(cluster setup details, notable server settings, etc)_: 
+* __Infrastructure__ _(AWS / Azure / ... / own)_: 
+* __Operating system__ _(Ubuntu 18.04 / Windows 10 / MacOS 10.13.4 / DCOS 1.10 /...)_: 
+* __Used Package__ _(Debian .deb / Ubuntu .deb / SUSE .rpm / RedHat .rpm / Fedora .rpm / Gentoo / docker - official docker library / other):
 
 ## Component
 
 __Affected feature__
-_e.g. Installation, Foxx, AQL query using web interface / arangosh / with driver ..._:
+_(e.g. Installation, Foxx, AQL query using web interface / arangosh / with driver ...)_:
 
 __AQL query (if applicable):__
 
