@@ -1738,21 +1738,21 @@ OperationResult transaction::Methods::insertLocal(
       "&" + StaticStrings::SilentString + "=true" + 
       "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
 
-    VPackBuilder payload;
+    transaction::BuilderLeaser payload(this);
 
     auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
-      VPackObjectBuilder guard(&payload);
+      VPackObjectBuilder guard(payload.get());
       VPackSlice s = result.get(StaticStrings::KeyString);
-      payload.add(StaticStrings::KeyString, s);
+      payload->add(StaticStrings::KeyString, s);
       s = result.get(StaticStrings::RevString);
-      payload.add(StaticStrings::RevString, s);
-      TRI_SanitizeObject(doc, payload);
+      payload->add(StaticStrings::RevString, s);
+      TRI_SanitizeObject(doc, *payload.get());
     };
 
     VPackSlice ourResult = resultBuilder.slice();
     size_t count = 0;
     if (value.isArray()) {
-      VPackArrayBuilder guard(&payload);
+      VPackArrayBuilder guard(payload.get());
       VPackArrayIterator itValue(value);
       VPackArrayIterator itResult(ourResult);
       while (itValue.valid() && itResult.valid()) {
@@ -1770,7 +1770,7 @@ OperationResult transaction::Methods::insertLocal(
     }
     if (count > 0) {
       auto body = std::make_shared<std::string>();
-      *body = payload.slice().toJson();
+      *body = payload->slice().toJson();
 
       // Now prepare the requests:
       std::vector<ClusterCommRequest> requests;
@@ -2113,21 +2113,21 @@ OperationResult transaction::Methods::modifyLocal(
         "?isRestore=true&isSynchronousReplication=" +
         ServerState::instance()->getId() + "&" + StaticStrings::SilentString + "=true";
 
-      VPackBuilder payload;
+      transaction::BuilderLeaser payload(this);
 
       auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
-        VPackObjectBuilder guard(&payload);
+        VPackObjectBuilder guard(payload.get());
         VPackSlice s = result.get(StaticStrings::KeyString);
-        payload.add(StaticStrings::KeyString, s);
+        payload->add(StaticStrings::KeyString, s);
         s = result.get(StaticStrings::RevString);
-        payload.add(StaticStrings::RevString, s);
-        TRI_SanitizeObject(doc, payload);
+        payload->add(StaticStrings::RevString, s);
+        TRI_SanitizeObject(doc, *payload.get());
       };
 
       VPackSlice ourResult = resultBuilder.slice();
       size_t count = 0;
       if (multiCase) {
-        VPackArrayBuilder guard(&payload);
+        VPackArrayBuilder guard(payload.get());
         VPackArrayIterator itValue(newValue);
         VPackArrayIterator itResult(ourResult);
         while (itValue.valid() && itResult.valid()) {
@@ -2140,13 +2140,13 @@ OperationResult transaction::Methods::modifyLocal(
           itResult.next();
         }
       } else {
-        VPackArrayBuilder guard(&payload);
+        VPackArrayBuilder guard(payload.get());
         doOneDoc(newValue, ourResult);
         count++;
       }
       if (count > 0) {
         auto body = std::make_shared<std::string>();
-        *body = payload.slice().toJson();
+        *body = payload->slice().toJson();
 
         // Now prepare the requests:
         std::vector<ClusterCommRequest> requests;
@@ -2410,20 +2410,20 @@ OperationResult transaction::Methods::removeLocal(
         "?isRestore=true&isSynchronousReplication=" +
         ServerState::instance()->getId() + "&" + StaticStrings::SilentString + "=true";
 
-      VPackBuilder payload;
+      transaction::BuilderLeaser payload(this);
 
       auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
-        VPackObjectBuilder guard(&payload);
+        VPackObjectBuilder guard(payload.get());
         VPackSlice s = result.get(StaticStrings::KeyString);
-        payload.add(StaticStrings::KeyString, s);
+        payload->add(StaticStrings::KeyString, s);
         s = result.get(StaticStrings::RevString);
-        payload.add(StaticStrings::RevString, s);
+        payload->add(StaticStrings::RevString, s);
       };
 
       VPackSlice ourResult = resultBuilder.slice();
       size_t count = 0;
       if (value.isArray()) {
-        VPackArrayBuilder guard(&payload);
+        VPackArrayBuilder guard(payload.get());
         VPackArrayIterator itValue(value);
         VPackArrayIterator itResult(ourResult);
         while (itValue.valid() && itResult.valid()) {
@@ -2436,13 +2436,13 @@ OperationResult transaction::Methods::removeLocal(
           itResult.next();
         }
       } else {
-        VPackArrayBuilder guard(&payload);
+        VPackArrayBuilder guard(payload.get());
         doOneDoc(value, ourResult);
         count++;
       }
       if (count > 0) {
         auto body = std::make_shared<std::string>();
-        *body = payload.slice().toJson();
+        *body = payload->slice().toJson();
 
         // Now prepare the requests:
         std::vector<ClusterCommRequest> requests;
