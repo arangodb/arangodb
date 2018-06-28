@@ -849,8 +849,7 @@ OperationResult GraphOperations::createDocument(
 
   if (!result.ok()) {
     trx->finish(result.result);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                   "not found");
+    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   Result res = trx->finish(result.result);
 

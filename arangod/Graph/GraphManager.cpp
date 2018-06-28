@@ -223,13 +223,13 @@ OperationResult GraphManager::createGraph(
   }
 
   if (!edgeDefinitions.isArray()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
+    return OperationResult(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
   }
 
   for (auto const& def : VPackArrayIterator(edgeDefinitions)) {
     Result res = EdgeDefinition::validateEdgeDefinition(def);
     if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
+      return OperationResult(res);
     }
   }
 
@@ -240,13 +240,13 @@ OperationResult GraphManager::createGraph(
   }
 
   if (!orphanCollections.isArray()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST);
+    return OperationResult(TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST);
   }
 
   for (auto const& def : VPackArrayIterator(orphanCollections)) {
     Result res = Graph::validateOrphanCollection(def);
     if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
+      return OperationResult(res);
     }
   }
 
