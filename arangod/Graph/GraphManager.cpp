@@ -218,7 +218,6 @@ OperationResult GraphManager::createGraph(
   // validate edgeDefinitions
   VPackSlice edgeDefinitions = document.get(Graph::_attrEdgeDefs);
   if (edgeDefinitions.isNull() || edgeDefinitions.isNone()) {
-    // TODO there is no test for this
     edgeDefinitions = VPackSlice::emptyArraySlice();
   }
 

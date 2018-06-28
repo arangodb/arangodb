@@ -107,9 +107,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
       const std::string& edgeDefinitionName, const std::string& edgeKey);
 
   // GET /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-  Result vertexActionRead(std::shared_ptr<const graph::Graph> graph,
-                          const std::string& collectionName,
-                          const std::string& key);
+  void vertexActionRead(const std::shared_ptr<const graph::Graph> graph,
+                        const std::string &collectionName,
+                        const std::string &key);
 
   // DELETE /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
   Result vertexActionRemove(std::shared_ptr<const graph::Graph> graph,
@@ -131,9 +131,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                              const std::string& collectionName);
 
   // GET /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-  Result edgeActionRead(std::shared_ptr<const graph::Graph> graph,
-                        const std::string& definitionName,
-                        const std::string& key);
+  void edgeActionRead(const std::shared_ptr<const graph::Graph> graph,
+                      const std::string &definitionName,
+                      const std::string &key);
 
   // DELETE /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
   Result edgeActionRemove(std::shared_ptr<const graph::Graph> graph,

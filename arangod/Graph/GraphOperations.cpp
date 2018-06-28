@@ -198,6 +198,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
 
   newEdgeDefs.close();  // array
 
+  std::unordered_set<std::string> collectionsToMayBeRemoved;
   // build orphan array
   VPackBuilder newOrphColls;
   newOrphColls.add(VPackValue(VPackValueType::Array));
@@ -208,6 +209,8 @@ OperationResult GraphOperations::eraseEdgeDefinition(
     if (std::find(usedVertexCollections.begin(), usedVertexCollections.end(),
                   po) != usedVertexCollections.end()) {
       newOrphColls.add(VPackValue(po));
+    } else {
+      collectionsToMayBeRemoved.emplace(po);
     }
   }
   newOrphColls.close();  // array
@@ -231,18 +234,37 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   Result res = trx.begin();
 
   if (!res.ok()) {
+    res = trx.finish(res);
     return OperationResult(res);
   }
   result =
       trx.update(GraphOperations::_graphs, builder.slice(), options);
-  res = trx.finish(result.result);
 
   if (dropCollection) {
-    // TODO: also drop collection if not used
-    // old gharial api is dropping without a check, docu says we need to check
-    // if other graphs are using
-    // the collection. what should we do?!
+    std::vector<std::string> collectionsToBeRemoved;
+    for (auto const& col: collectionsToMayBeRemoved) {
+      pushCollectionIfMayBeDropped(col, _graph.name(), collectionsToBeRemoved);
+    }
+
+    for (auto const& collection : collectionsToBeRemoved) {
+      Result resIn;
+      Result found = methods::Collections::lookup(
+              &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
+                  resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
+                                                     -1.0);
+              });
+
+      if (found.fail()) {
+        res = trx.finish(result.result);
+        return OperationResult(res);
+      } else if (resIn.fail()) {
+        res = trx.finish(result.result);
+        return OperationResult(res);
+      }
+    }
   }
+
+  res = trx.finish(result.result);
 
   if (result.ok() && res.fail()) {
     return OperationResult(res);
@@ -1068,8 +1090,6 @@ OperationResult GraphOperations::removeVertex(
     }
   }
 
-  // TODO result.result is not the only result that counts here: must abort
-  // if any AQL query fails, too.
   res = trx.finish(result.result);
 
   if (result.ok() && res.fail()) {

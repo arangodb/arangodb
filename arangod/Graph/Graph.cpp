@@ -227,7 +227,7 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
   if (slice.hasKey(_attrReplicationFactor)) {
     setReplicationFactor(slice.get(_attrReplicationFactor).getUInt());
   }
-  setId("_graphs/" + graphName_);  // TODO: how to fetch id properly?
+  setId(Graph::_graphs + "/" + graphName_);
   setRev(slice.get(StaticStrings::RevString).copyString());
 }
 

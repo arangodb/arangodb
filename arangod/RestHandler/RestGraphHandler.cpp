@@ -301,9 +301,7 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
 
   switch (request()->requestType()) {
     case RequestType::GET: {
-      // TODO Maybe vertexActionRead can return void as it already handles
-      // errors
-      Result res = vertexActionRead(graph, vertexCollectionName, vertexKey);
+      vertexActionRead(graph, vertexCollectionName, vertexKey);
       return RestStatus::DONE;
     }
     case RequestType::PATCH:
@@ -326,8 +324,6 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
 
   switch (request()->requestType()) {
     case RequestType::GET:
-      // TODO Maybe edgeActionRead can return void as it already handles
-      // errors
       edgeActionRead(graph, edgeDefinitionName, edgeKey);
       return RestStatus::DONE;
     case RequestType::DELETE_REQ:
@@ -344,9 +340,9 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
   return boost::none;
 }
 
-Result RestGraphHandler::vertexActionRead(
-    const std::shared_ptr<const Graph> graph, const std::string& collectionName,
-    const std::string& key) {
+void RestGraphHandler::vertexActionRead(
+        const std::shared_ptr<const Graph> graph, const std::string &collectionName,
+        const std::string &key) {
 
   bool isValidRevision;
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
@@ -368,12 +364,11 @@ Result RestGraphHandler::vertexActionRead(
     } else {
       generateTransactionError(collectionName, result.result, key);
     }
-    return result.result;
+    return;
   }
 
   // use default options
   generateVertexRead(result.slice(), *ctx->getVPackOptionsForDump());
-  return Result();
 }
 
 /// @brief generate response object: { error, code, vertex }
@@ -425,7 +420,7 @@ void RestGraphHandler::generateGraphRemoved(bool removed, bool wasSynchronous,
     code = rest::ResponseCode::ACCEPTED;
   } else {
     code = rest::ResponseCode::ACCEPTED;
-    // code = rest::ResponseCode::CREATED; // TODO this is not as it is described in the documentation
+    // code = rest::ResponseCode::CREATED; // TODO fix this in a major release upgrade
   }
   resetResponse(code);
   VPackBuilder obj;
@@ -454,12 +449,11 @@ void RestGraphHandler::generateCreatedGraphConfig(bool wasSynchronous, VPackSlic
   generateResultMergedWithObject(slice, options);
 }
 
-// TODO DOCU not equals TESTS !!! (responseCode)
 void RestGraphHandler::generateCreatedEdgeDefinition(bool wasSynchronous, VPackSlice slice,
                                            VPackOptions const& options) {
   ResponseCode code;
   if (wasSynchronous) {
-    code = rest::ResponseCode::ACCEPTED;
+    code = rest::ResponseCode::ACCEPTED; // TODO: fix this in a major upgrade release
   } else {
     code = rest::ResponseCode::ACCEPTED;
   }
@@ -611,9 +605,9 @@ void RestGraphHandler::generateResultMergedWithObject(
 }
 
 // TODO this is nearly exactly the same as vertexActionRead. reuse somehow?
-Result RestGraphHandler::edgeActionRead(
-    const std::shared_ptr<const graph::Graph> graph,
-    const std::string& definitionName, const std::string& key) {
+void RestGraphHandler::edgeActionRead(
+        const std::shared_ptr<const Graph> graph,
+        const std::string &definitionName, const std::string &key) {
 
   bool isValidRevision;
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
@@ -629,11 +623,10 @@ Result RestGraphHandler::edgeActionRead(
 
   if (result.fail()) {
     generateTransactionError(result);
-    return result.result;
+    return;
   }
 
   generateEdgeRead(result.slice(), *ctx->getVPackOptionsForDump());
-  return Result();
 }
 
 std::shared_ptr<Graph const> RestGraphHandler::getGraph(
