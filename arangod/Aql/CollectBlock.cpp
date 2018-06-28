@@ -1042,7 +1042,6 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   }
 
   if (!skipping) {
-    TRI_ASSERT(skipped > 0);
     if (skipped > 0) {
       res->shrink(skipped);
     }
