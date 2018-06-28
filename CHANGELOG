@@ -1,6 +1,9 @@
 v3.3.12 (XXXX-XX-XX)
 --------------------
 
+* fixed potential issue in RETURN DISTINCT CollectBlock implementation
+  that led to the block producing an empty result
+
 * changed communication tasks to use boost strands instead of locks,
   this fixes a race condition with parallel VST communication over
   SSL
