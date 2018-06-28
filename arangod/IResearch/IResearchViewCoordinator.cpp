@@ -279,6 +279,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
     arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
   );
   _meta.json(builder); // regular properites
+  _metaState.json(builder); // regular properites
 
   auto links = _links.slice();
 
@@ -306,7 +307,8 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
   auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'props' then assume defaults
   std::string error;
 
-  if (!view->_meta.init(properties, error)) {
+  if (!view->_meta.init(properties, error)
+      || !view->_metaState.init(properties, error)) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
         << "failed to initialize IResearch view from definition, error: " << error;
 
@@ -409,7 +411,7 @@ IResearchViewCoordinator::IResearchViewCoordinator(
 bool IResearchViewCoordinator::visitCollections(
     CollectionVisitor const& visitor
 ) const {
-  for (auto& cid: _meta._collections) {
+  for (auto& cid: _metaState._collections) {
     if (!visitor(cid)) {
       return false;
     }
@@ -425,6 +427,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 ) {
   try {
     IResearchViewMeta meta;
+    IResearchViewMetaState metaState;
     std::string error;
 
     auto const& defaults = partialUpdate
@@ -451,24 +454,22 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
           VPackObjectBuilder const guard(&builder, StaticStrings::LinksField);
 
           bool modified = false;
-          meta._collections.clear();
-
           auto const res = updateLinks(
             properties.get(StaticStrings::LinksField),
             _links.slice(),
             *this,
             partialUpdate,
-            _meta._collections,
+            _metaState._collections,
             modified,
             builder,
-            meta._collections
+            metaState._collections
           );
 
           if (!res.ok()) {
             return res;
           }
 
-          if (!modified && _meta == meta) {
+          if (!modified && _meta == meta && _metaState == metaState) {
             // nothing to do
             return {};
           }
@@ -476,6 +477,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 
         // meta
         meta.json(builder);
+        metaState.json(builder);
       }
     }
 
@@ -538,9 +540,9 @@ Result IResearchViewCoordinator::drop() {
 }
 
 Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
-  auto cid_itr = _meta._collections.find(cid);
+  auto cid_itr = _metaState._collections.find(cid);
 
-  if (cid_itr == _meta._collections.end()) {
+  if (cid_itr == _metaState._collections.end()) {
     // no such cid
     return { TRI_ERROR_BAD_PARAMETER };
   }
