@@ -33,10 +33,42 @@ const internal = require('internal');
 const console = require('console');
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
+const isCluster = require("@arangodb/cluster").isCluster();
+const numDBServers = global.ArangoClusterInfo.getDBServers().length;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for AQL tracing/profiling
 ////////////////////////////////////////////////////////////////////////////////
+
+/// @brief check that numbers in actual are in the range specified by
+/// expected. Each element in expected may either be
+///  - a number, for an exact match;
+///  - a range [min, max], to check if the actual element lies in this interval;
+///  - null, so the actual element will be ignored
+/// Also, the arrays must be of equal lengths.
+let assertFuzzyNumArrayEquality = function (expected, actual, details) {
+  assert.assertEqual(expected.length, actual.length, details);
+
+  for (let i = 0; i < expected.length; i++) {
+    const exp = expected[i];
+    const act = actual[i];
+
+    if (exp === null) {
+      // do nothing
+    } else if ('number' === typeof exp) {
+      assert.assertEqual(exp, act, Object.assign({i}, details));
+    } else if (Array.isArray(exp)) {
+      assert.assertTrue(exp[0] <= act && act <= exp[1],
+        Object.assign(
+          {i, 'failed_test': `${exp[0]} <= ${act} <= ${exp[1]}`},
+          details
+        )
+      );
+    } else {
+      assert.assertTrue(false, {msg: "Logical error in the test code", exp});
+    }
+  }
+};
 
 function ahuacatlProfilerTestSuite () {
 
@@ -375,14 +407,14 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assert that the list of AQL nodes in the explain result matches the
 /// list of AQL nodes of the profile.
-/// Note: reorderings due to the optimizer will break this comparison,
-/// because the stats are ordered by id.
 ////////////////////////////////////////////////////////////////////////////////
 
   const assertStatsNodesMatchPlanNodes = function (profile) {
+    // Note: reorderings in the plan would break this comparison, because the
+    // stats are ordered by id. Thus we sort the nodes here.
     assert.assertEqual(
-      profile.plan.nodes.map(node => node.id),
-      profile.stats.nodes.map(node => node.id),
+      profile.plan.nodes.map(node => node.id).sort(),
+      profile.stats.nodes.map(node => node.id).sort(),
       {
         'profile.plan.nodes': getPlanNodesWithId(profile),
         'profile.stats.nodes': getStatsNodesWithId(profile),
@@ -395,8 +427,9 @@ function ahuacatlProfilerTestSuite () {
 /// actual both have the structure [ { type, calls, items } ].
 /// details may contain an object that will be output when the test fails,
 /// maybe with additional fields.
-/// expected[*].calls may be either a number for an exact test, or a range
-/// [min, max] which tests for min <= actualCalls <= max instead.
+/// .calls and .items may be either a number for an exact test, or a range
+/// [min, max] which tests for min <= actualCalls <= max instead, or null to
+/// ignore the value.
 ////////////////////////////////////////////////////////////////////////////////
 
   const assertNodesItemsAndCalls = function (expected, actual, details = {}) {
@@ -409,32 +442,18 @@ function ahuacatlProfilerTestSuite () {
     );
 
     // assert item count second
-    assert.assertEqual(
+    assertFuzzyNumArrayEquality(
       expected.map(node => node.items),
       actual.map(node => node.items),
       details
     );
 
-    // assert call count last. may be a range [min, max] instead of an exact
-    // number.
-    // the length is already asserted by the previous two asserts.
-    for (let i = 0; i < expected.length; i++) {
-      const exp = expected[i].calls;
-      const act = actual[i].calls;
-
-      if ('number' === typeof exp) {
-        assert.assertEqual(exp, act, Object.assign({i}, details));
-      } else if (Array.isArray(exp)) {
-        assert.assertTrue(exp[0] <= act && act <= exp[1],
-          Object.assign(
-            {i, 'failed_test': `${exp[0]} <= ${act} <= ${exp[1]}`},
-            details
-          )
-        );
-      } else {
-        assert.assertTrue(false, "Logical error in the test code");
-      }
-    }
+    // assert call count last.
+    assertFuzzyNumArrayEquality(
+      expected.map(node => node.calls),
+      actual.map(node => node.calls),
+      details
+    );
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -650,6 +669,10 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEnumerateCollectionBlock1 : function () {
+      if (isCluster) {
+        console.log('Skipping test testEnumerateCollectionBlock1 in cluster');
+        return;
+      }
       const col = db._create(colName);
       const prepare = (rows) => {
         col.truncate();
@@ -683,6 +706,11 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEnumerateCollectionBlock2 : function () {
+      if (isCluster) {
+        console.log('Skipping test testEnumerateCollectionBlock2 in cluster');
+        return;
+      }
+
       const col = db._create(colName);
       const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
       const listRowCounts = [1, 2, 3, 100, 999, 1000, 1001];
