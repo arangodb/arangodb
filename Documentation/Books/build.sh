@@ -355,7 +355,7 @@ function check-dangling-anchors()
         echo "${RESET}"
         exit 1
     fi
-    # rm -rf /tmp/anchorlist.txt /tmp/tags
+    rm -rf /tmp/anchorlist.txt /tmp/tags
 }
 
 function book-check-images-referenced()
