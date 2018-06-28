@@ -267,7 +267,11 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '<a href=".*\.md#*.*"' {} \; -print)
+    ERRORS=$(find "books/${NAME}" -name '*.html' \
+                  -exec grep '<a href=".*\.md#*.*"' {} \; \
+                  -print | \
+                 grep -v https:// | \
+                 grep -v http://)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
