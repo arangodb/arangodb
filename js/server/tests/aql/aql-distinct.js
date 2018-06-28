@@ -300,7 +300,42 @@ function ahuacatlCollect () {
       var query = "FOR result IN UnitTestsCollection COLLECT key=result.a.key, name = result.a.name INTO group LIMIT 2,5 RETURN [key,name]";
       var result = AQL_EXECUTE(query).json;
       assertEqual([[0,2],[0,3],[0,4],[0,5],[0,6]], result);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distinct regression test:
+/// crash when a subsequent call to DistinctCollectBlock::getSome() added no new
+/// non-distinct results. The crash may occur ONLY IN MAINTAINER MODE, while
+/// in non-maintainer mode problems may occur only because either an empty
+/// result is returned (which would cause some parent blocks to crash), or
+/// an erroneous result is returned, but I didn't find a way to produce this
+/// reliably with an AQL query.
+////////////////////////////////////////////////////////////////////////////////
+
+    testDistinctRegressionGetSomeWithEmptyResult : function () {
+      const query = 'FOR i IN 1..2 FOR k IN 1..1000 RETURN DISTINCT k';
+      containsDistinct(query);
+      const options = {optimizer: {rules: [ "-interchange-adjacent-enumerations" ]}};
+
+      // check plan
+      const plan = helper.getCompactPlan(AQL_EXPLAIN(query, {}, options));
+      assertEqual(
+        [
+          "SingletonNode",
+          "CalculationNode",
+          "CalculationNode",
+          "EnumerateListNode",
+          "EnumerateListNode",
+          "CollectNode",
+          "ReturnNode",
+        ],
+        plan.map(node => node.type)
+      );
+
+      // execute query
+      const result = AQL_EXECUTE(query, {}, options).json;
+      assertEqual(1000, result.length);
+    },
 
   };
 }
