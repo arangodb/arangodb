@@ -729,23 +729,20 @@ OperationResult GraphOperations::removeGraph(bool waitForSync,
   OperationOptions options;
   options.waitForSync = waitForSync;
 
-  transaction::Options trxOptions;
-  trxOptions.waitForSync = waitForSync;
-
   Result res;
   OperationResult result;
   {
-    std::unique_ptr<transaction::Methods> trx(new UserTransaction(
-        ctx(), trxCollections, writeCollections, {}, trxOptions));
+    SingleCollectionTransaction trx{ctx(), GraphOperations::_graphs,
+                                    AccessMode::Type::WRITE};
 
-    res = trx->begin();
+    res = trx.begin();
     if (!res.ok()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
     VPackSlice search = builder.slice();
-    result = trx->remove(GraphOperations::_graphs, search, options);
+    result = trx.remove(GraphOperations::_graphs, search, options);
 
-    res = trx->finish(result.result);
+    res = trx.finish(result.result);
     if (result.fail()) {
       return OperationResult(result.result);
     }

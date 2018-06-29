@@ -108,7 +108,7 @@ Result GraphManager::assertFeasibleEdgeDefinitions(
     auto res = EdgeDefinition::createFromVelocypack(slice);
     TRI_ASSERT(res.ok());
     if (res.fail()) {
-      return {res};
+      return res.copy_result();
     }
     EdgeDefinition& def = res.get();
     bool inserted;
@@ -160,39 +160,34 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
   std::shared_ptr<LogicalCollection> def;
 
   for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
-    std::string collection = edgeDefinition.get("collection").copyString();
+    std::string edgeCollection = edgeDefinition.get("collection").copyString();
     VPackSlice from = edgeDefinition.get(StaticStrings::GraphFrom);
     VPackSlice to = edgeDefinition.get(StaticStrings::GraphTo);
 
-    std::unordered_set<std::string> fromSet;
-    std::unordered_set<std::string> toSet;
-
-    def = getCollectionByName(ctx()->vocbase(), collection);
+    def = getCollectionByName(ctx()->vocbase(), edgeCollection);
 
     if (def == nullptr) {
       OperationResult res =
-          createEdgeCollection(collection, waitForSync, options);
+          createEdgeCollection(edgeCollection, waitForSync, options);
       if (res.fail()) {
         return res;
       }
     }
 
+    std::unordered_set<std::string> vertexCollections;
+
     // duplicates in from and to shouldn't occur, but are safely ignored here
-    for (auto const& edge : VPackArrayIterator(from)) {
-      def = getCollectionByName(ctx()->vocbase(), edge.copyString());
-      if (def == nullptr) {
-        OperationResult res =
-            createVertexCollection(edge.copyString(), waitForSync, options);
-        if (res.fail()) {
-          return res;
-        }
-      }
+    for (auto const& colName : VPackArrayIterator(from)) {
+      vertexCollections.emplace(colName.copyString());
     }
-    for (auto const& edge : VPackArrayIterator(to)) {
-      def = getCollectionByName(ctx()->vocbase(), edge.copyString());
+    for (auto const& colName : VPackArrayIterator(to)) {
+      vertexCollections.emplace(colName.copyString());
+    }
+    for (auto const& colName : vertexCollections) {
+      def = getCollectionByName(ctx()->vocbase(), colName);
       if (def == nullptr) {
         OperationResult res =
-            createVertexCollection(edge.copyString(), waitForSync, options);
+            createVertexCollection(colName, waitForSync, options);
         if (res.fail()) {
           return res;
         }
