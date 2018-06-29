@@ -161,7 +161,7 @@ function ahuacatlProfilerTestSuite () {
   };
 
   const zipPlanNodesIntoStatsNodes = function (profile) {
-    const planNodesById = profile.plan.nodes.reduce(
+    const statsNodesById = profile.stats.nodes.reduce(
       (accum, node) => {
         accum[node.id] = node;
         return accum;
@@ -169,8 +169,10 @@ function ahuacatlProfilerTestSuite () {
       {}
     );
 
-    return profile.stats.nodes.map(node => (
-      { id: node.id, fromStats: node, fromPlan: planNodesById[node.id] }
+    // Note: We need to take the order plan.nodes here, not stats.nodes,
+    // as stats.nodes is sorted by id.
+    return profile.plan.nodes.map(node => (
+      { id: node.id, fromStats: statsNodesById[node.id], fromPlan: node }
     ));
   };
 
