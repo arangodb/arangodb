@@ -2,7 +2,22 @@
 # Graph API
 
 These functions implement the
-[HTTP API for manipulating graphs](https://docs.arangodb.com/latest/HTTP/Gharial/index.html).
+[HTTP API for manipulating graphs](../../../..//HTTP/Gharial/index.html).
+
+## graph.exists
+
+`async graph.exists(): boolean`
+
+Checks whether the graph exists.
+
+**Examples**
+
+```js
+const db = new Database();
+const graph = db.graph('some-graph');
+const result = await graph.exists();
+// result indicates whether the graph exists
+```
 
 ## graph.get
 
@@ -28,10 +43,10 @@ the server response.
 
 **Arguments**
 
-* **properties**: `Object`
+- **properties**: `Object`
 
   For more information on the _properties_ object, see
-  [the HTTP API documentation for creating graphs](https://docs.arangodb.com/latest/HTTP/Gharial/Management.html).
+  [the HTTP API documentation for creating graphs](../../../..//HTTP/Gharial/Management.html).
 
 **Examples**
 
@@ -56,7 +71,7 @@ Deletes the graph from the database.
 
 **Arguments**
 
-* **dropCollections**: `boolean` (optional)
+- **dropCollections**: `boolean` (optional)
 
   If set to `true`, the collections associated with the graph will also be
   deleted.

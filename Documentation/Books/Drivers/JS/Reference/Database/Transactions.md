@@ -2,7 +2,7 @@
 # Transactions
 
 This function implements the
-[HTTP API for transactions](https://docs.arangodb.com/latest/HTTP/Transaction/index.html).
+[HTTP API for transactions](../../../..//HTTP/Transaction/index.html).
 
 ## database.transaction
 
@@ -32,7 +32,7 @@ Performs a server-side transaction and returns its return value.
   A string evaluating to a JavaScript function to be executed on the server.
 
   **Note**: For accessing the database from within ArangoDB, see
-  [the documentation for the `@arangodb` module in ArangoDB](https://docs.arangodb.com/latest/Manual/Appendix/JavaScriptModules/ArangoDB.html).
+  [the documentation for the `@arangodb` module in ArangoDB](../../../..//Manual/Appendix/JavaScriptModules/ArangoDB.html).
 
 * **params**: `Object` (optional)
 
@@ -75,7 +75,7 @@ because the function needs to be evaluated on the server and will be transmitted
 in plain text.
 
 For more information on transactions, see
-[the HTTP API documentation for transactions](https://docs.arangodb.com/latest/HTTP/Transaction/index.html).
+[the HTTP API documentation for transactions](../../../..//HTTP/Transaction/index.html).
 
 **Examples**
 
