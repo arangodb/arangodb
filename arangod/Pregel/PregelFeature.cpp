@@ -150,7 +150,7 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
     if (wit != _workers.end()) {
       _workers.erase(executionNumber);
     }
-  });
+  }, false);
 }
 
 void PregelFeature::cleanupAll() {

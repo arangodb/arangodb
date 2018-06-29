@@ -79,7 +79,7 @@ class SchedulerManagerThread final : public Thread {
   Scheduler* _scheduler;
   asio_ns::io_context* _service;
 };
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   SchedulerThread
@@ -99,8 +99,8 @@ class SchedulerThread : public Thread {
 
     // when we enter this method,
     // _nrRunning has already been increased for this thread
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread: "
-                                      << _scheduler->infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS)
+        << "started thread: " << _scheduler->infoStatus();
 
     // some random delay value to avoid all initial threads checking for
     // their deletion at the very same time
@@ -115,8 +115,8 @@ class SchedulerThread : public Thread {
       try {
         _service->run_one();
       } catch (std::exception const& ex) {
-        LOG_TOPIC(ERR, Logger::THREADS) << "scheduler loop caught exception: "
-                                        << ex.what();
+        LOG_TOPIC(ERR, Logger::THREADS)
+            << "scheduler loop caught exception: " << ex.what();
       } catch (...) {
         LOG_TOPIC(ERR, Logger::THREADS)
             << "scheduler loop caught unknown exception";
@@ -148,8 +148,8 @@ class SchedulerThread : public Thread {
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped (" << _scheduler->infoStatus()
-                                      << ")";
+    LOG_TOPIC(DEBUG, Logger::THREADS)
+        << "stopped (" << _scheduler->infoStatus() << ")";
 
     if (doDecrement) {
       // only decrement here if this wasn't already done above
@@ -161,7 +161,7 @@ class SchedulerThread : public Thread {
   Scheduler* _scheduler;
   asio_ns::io_context* _service;
 };
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         Scheduler
@@ -170,17 +170,21 @@ class SchedulerThread : public Thread {
 Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
                      uint64_t maxQueueSize, uint64_t fifo1Size,
                      uint64_t fifo2Size)
-    : _maxQueueSize(maxQueueSize),
+    : _queuedV8(0),
+      _maxQueuedV8(std::max(1ULL, nrMaximum - nrMinimum)),
+      _maxQueueSize(maxQueueSize),
       _counters(0),
-      _maxFifoSize{fifo1Size, fifo2Size},
-      _fifo1(_maxFifoSize[0]),
-      _fifo2(_maxFifoSize[1]),
-      _fifos{&_fifo1, &_fifo2},
+      _maxFifoSize{fifo1Size, fifo2Size, fifo2Size},
+      _fifo1(_maxFifoSize[FIFO1]),
+      _fifo2(_maxFifoSize[FIFO2]),
+      _fifo8(_maxFifoSize[FIFO8]),
+      _fifos{&_fifo1, &_fifo2, &_fifo8},
       _minThreads(nrMinimum),
       _maxThreads(nrMaximum),
       _lastAllBusyStamp(0.0) {
-  _fifoSize[0] = 0;
-  _fifoSize[1] = 0;
+  _fifoSize[FIFO1] = 0;
+  _fifoSize[FIFO2] = 0;
+  _fifoSize[FIFO8] = 0;
 
   // setup signal handlers
   initializeSignalHandlers();
@@ -188,12 +192,6 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
 
 Scheduler::~Scheduler() {
   stopRebalancer();
-
-  _managerGuard.reset();
-  _managerContext.reset();
-
-  _serviceGuard.reset();
-  _ioContext.reset();
 
   FifoJob* job = nullptr;
 
@@ -205,24 +203,81 @@ Scheduler::~Scheduler() {
       job = nullptr;
     }
   }
+
+  _managerGuard.reset();
+  _managerContext.reset();
+
+  _serviceGuard.reset();
+  _ioContext.reset();
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> const callback) {
+void Scheduler::post(std::function<void()> const callback, bool isV8,
+                     uint64_t timeout) {
   incQueued();
 
   try {
+    if (isV8) {
+      ++_queuedV8;
+    }
+
     // capture without self, ioContext will not live longer than scheduler
-    _ioContext.get()->post([this, callback]() {
-      JobGuard guard(this);
-      guard.work();
+    _ioContext->post([this, callback, isV8, timeout]() {
+      try {
+        if (isV8 && _queuedV8 > _maxQueuedV8 &&
+            numWorking(getCounters()) >= static_cast<uint64_t>(_maxQueuedV8)) {
+          --_queuedV8;
+          decQueued();
 
-      decQueued();
+          auto t = timeout;
 
-      callback();
+          if (t == 0) {
+            t = 10;
+          } else {
+            t *= 2;
+
+            if (200 <= t) {
+              t = 200;
+            }
+          }
+
+          std::shared_ptr<asio_ns::deadline_timer> timer(
+              newDeadlineTimer(boost::posix_time::millisec(timeout)));
+          timer->async_wait(
+              [this, callback, isV8, t](const asio::error_code& error) {
+                if (error != asio::error::operation_aborted) {
+                  post(callback, isV8, t);
+                }
+              });
+
+          return;
+        }
+
+        JobGuard guard(this);
+        guard.work();
+
+        decQueued();
+
+        callback();
+
+        if (isV8) {
+          --_queuedV8;
+        }
+      } catch (...) {
+        if (isV8) {
+          --_queuedV8;
+        }
+
+        throw;
+      }
     });
   } catch (...) {
     decQueued();
+
+    if (isV8) {
+      --_queuedV8;
+    }
+
     throw;
   }
 }
@@ -254,24 +309,29 @@ bool Scheduler::queue(RequestPriority prio,
 
   switch (prio) {
     case RequestPriority::HIGH:
-      if (0 < _fifoSize[0]) {
-        ok = pushToFifo(static_cast<int>(prio), callback);
+      if (0 < _fifoSize[FIFO1]) {
+        ok = pushToFifo(FIFO1, callback, false);
       } else if (canPostDirectly()) {
-        post(callback);
+        post(callback, false);
       } else {
-        ok = pushToFifo(static_cast<int>(prio), callback);
+        ok = pushToFifo(FIFO1, callback, false);
       }
       break;
     case RequestPriority::LOW:
-      if (0 < _fifoSize[0]) {
-        ok = pushToFifo(static_cast<int>(prio), callback);
-      } else if (0 < _fifoSize[1]) {
-        ok = pushToFifo(static_cast<int>(prio), callback);
+      if (0 < _fifoSize[FIFO1]) {
+        ok = pushToFifo(FIFO2, callback, false);
+      } else if (0 < _fifoSize[FIFO8]) {
+        ok = pushToFifo(FIFO2, callback, false);
+      } else if (0 < _fifoSize[FIFO2]) {
+        ok = pushToFifo(FIFO2, callback, false);
       } else if (canPostDirectly()) {
-        post(callback);
+        post(callback, false);
       } else {
-        pushToFifo(static_cast<int>(prio), callback);
+        ok = pushToFifo(FIFO2, callback, false);
       }
+      break;
+    case RequestPriority::V8:
+      ok = pushToFifo(FIFO2, callback, true);
       break;
     default:
       TRI_ASSERT(false);
@@ -283,14 +343,20 @@ bool Scheduler::queue(RequestPriority prio,
 
 void Scheduler::drain() {
   while (canPostDirectly()) {
-    bool found = popFifo(1);
+    bool found = popFifo(FIFO1);
 
     if (!found) {
-      found = popFifo(2);
+      found = popFifo(FIFO8);
 
       if (!found) {
-        break;
+        found = popFifo(FIFO2);
+      } else if (canPostDirectly()) {
+        popFifo(FIFO2);
       }
+    }
+
+    if (!found) {
+      break;
     }
   }
 }
@@ -303,30 +369,41 @@ void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
   b.add("in-progress", VPackValue(static_cast<int32_t>(numWorking(counters))));
   b.add("queued", VPackValue(static_cast<int32_t>(numQueued(counters))));
   b.add("queue-size", VPackValue(static_cast<int32_t>(_maxQueueSize)));
-  b.add("current-fifo1", VPackValue(static_cast<int32_t>(_fifoSize[0])));
-  b.add("fifo1-size", VPackValue(static_cast<int32_t>(_maxFifoSize[0])));
-  b.add("current-fifo2", VPackValue(static_cast<int32_t>(_fifoSize[1])));
-  b.add("fifo2-size", VPackValue(static_cast<int32_t>(_maxFifoSize[1])));
+  b.add("current-fifo1", VPackValue(static_cast<int32_t>(_fifoSize[FIFO1])));
+  b.add("fifo1-size", VPackValue(static_cast<int32_t>(_maxFifoSize[FIFO1])));
+  b.add("current-fifo2", VPackValue(static_cast<int32_t>(_fifoSize[FIFO2])));
+  b.add("fifo2-size", VPackValue(static_cast<int32_t>(_maxFifoSize[FIFO2])));
+  b.add("current-fifo8", VPackValue(static_cast<int32_t>(_fifoSize[FIFO8])));
+  b.add("fifo8-size", VPackValue(static_cast<int32_t>(_maxFifoSize[FIFO8])));
 }
 
 Scheduler::QueueStatistics Scheduler::queueStatistics() const {
   auto counters = getCounters();
 
-  return QueueStatistics{numRunning(counters), numWorking(counters),
-                         numQueued(counters)};
+  return QueueStatistics{numRunning(counters),
+                         numWorking(counters),
+                         numQueued(counters),
+                         static_cast<uint64_t>(_fifoSize[FIFO1]),
+                         static_cast<uint64_t>(_fifoSize[FIFO8]),
+                         static_cast<uint64_t>(_fifoSize[FIFO8]),
+                         static_cast<uint64_t>(_queuedV8)};
 }
 
 std::string Scheduler::infoStatus() {
   uint64_t const counters = _counters.load();
 
-  return "scheduler threads " + std::to_string(numRunning(counters)) + " (" +
+  return "scheduler " + std::to_string(numRunning(counters)) + " (" +
          std::to_string(_minThreads) + "<" + std::to_string(_maxThreads) +
          ") in-progress " + std::to_string(numWorking(counters)) + " queued " +
-         std::to_string(numQueued(counters)) + " (<=" +
-         std::to_string(_maxQueueSize) + ") fifo1 " +
-         std::to_string(_fifoSize[0]) + " (<=" + std::to_string(_maxFifoSize[0]) +
-         ") fifo2 " + std::to_string(_fifoSize[1]) + " (<=" +
-         std::to_string(_maxFifoSize[1]) + ")";
+         std::to_string(numQueued(counters)) +
+         " (<=" + std::to_string(_maxQueueSize) + ") V8 " +
+         std::to_string(_queuedV8) + " (<=" + std::to_string(_maxQueuedV8) +
+         ") F1 " + std::to_string(_fifoSize[FIFO1]) +
+         " (<=" + std::to_string(_maxFifoSize[FIFO1]) + ") F2 " +
+         std::to_string(_fifoSize[FIFO2]) +
+         " (<=" + std::to_string(_maxFifoSize[FIFO2]) + ") F8 " +
+         std::to_string(_fifoSize[FIFO8]) +
+         " (<=" + std::to_string(_maxFifoSize[FIFO8]) + ")";
 }
 
 bool Scheduler::canPostDirectly() const noexcept {
@@ -337,11 +414,13 @@ bool Scheduler::canPostDirectly() const noexcept {
   return nrWorking + nrQueued <= _maxQueueSize;
 }
 
-bool Scheduler::pushToFifo(size_t fifo, std::function<void()> const& callback) {
-  size_t p = fifo - 1;
-  TRI_ASSERT(0 < fifo && p < NUMBER_FIFOS);
+bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback,
+                           bool isV8) {
+  TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
+  TRI_ASSERT(fifo != FIFO8 || (fifo == FIFO8 && isV8));
 
-  std::unique_ptr<FifoJob> job(new FifoJob(callback));
+  size_t p = static_cast<size_t>(fifo);
+  std::unique_ptr<FifoJob> job(new FifoJob(callback, isV8));
 
   try {
     if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
@@ -361,7 +440,7 @@ bool Scheduler::pushToFifo(size_t fifo, std::function<void()> const& callback) {
     auto nrQueued = numQueued(counters);
 
     if (0 == nrWorking + nrQueued) {
-      post([] { /*wakeup call for scheduler thread*/ });
+      post([] { /*wakeup call for scheduler thread*/ }, false);
     }
   } catch (...) {
     return false;
@@ -370,16 +449,26 @@ bool Scheduler::pushToFifo(size_t fifo, std::function<void()> const& callback) {
   return true;
 }
 
-bool Scheduler::popFifo(size_t fifo) {
-  int64_t p = fifo - 1;
-  TRI_ASSERT(0 <= p && p < NUMBER_FIFOS);
+bool Scheduler::popFifo(int64_t fifo) {
+  TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
 
+  if (fifo == FIFO8 && _queuedV8 >= _maxQueuedV8) {
+    return false;
+  }
+
+  size_t p = static_cast<size_t>(fifo);
   FifoJob* job = nullptr;
+
   bool ok = _fifos[p]->pop(job) && job != nullptr;
 
   if (ok) {
-    post(job->_callback);
-    delete job;
+    if (!job->_isV8 || _queuedV8 < _maxQueuedV8) {
+      post(job->_callback, job->_isV8);
+      delete job;
+    } else {
+      pushToFifo(FIFO8, job->_callback, job->_isV8);
+      delete job;
+    }
 
     --_fifoSize[p];
   }
@@ -413,6 +502,8 @@ bool Scheduler::start() {
 
   TRI_ASSERT(0 < _minThreads);
   TRI_ASSERT(_minThreads <= _maxThreads);
+  TRI_ASSERT(0 < _maxQueueSize);
+  TRI_ASSERT(0 < _maxQueuedV8);
 
   for (uint64_t i = 0; i < _minThreads; ++i) {
     {
@@ -465,7 +556,8 @@ void Scheduler::shutdown() {
 
     std::this_thread::yield();
     // we can be quite generous here with waiting...
-    // as we are in the shutdown already, we do not care if we need to wait for
+    // as we are in the shutdown already, we do not care if we need to wait
+    // for
     // a
     // bit longer
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
@@ -532,11 +624,11 @@ void Scheduler::rebalanceThreads() {
   ++count;
 
   if (count % 50 == 0) {
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads: "
-                                      << infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS)
+        << "rebalancing threads: " << infoStatus();
   } else if (count % 5 == 0) {
-    LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: "
-                                      << infoStatus();
+    LOG_TOPIC(TRACE, Logger::THREADS)
+        << "rebalancing threads: " << infoStatus();
   }
 
   while (true) {

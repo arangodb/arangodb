@@ -89,11 +89,15 @@ class Scheduler {
     uint64_t _running;
     uint64_t _working;
     uint64_t _queued;
+    uint64_t _fifo1;
+    uint64_t _fifo2;
+    uint64_t _fifo8;
+    uint64_t _queuedV8;
   };
 
-  void post(std::function<void()> const callback);
-  void post(asio_ns::io_context::strand&,
-            std::function<void()> const callback);
+  void post(std::function<void()> const callback, bool isV8,
+            uint64_t timeout = 0);
+  void post(asio_ns::io_context::strand&, std::function<void()> const callback);
 
   bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();
@@ -147,6 +151,9 @@ class Scheduler {
     _counters -= 1ULL << 16;
   }
 
+  std::atomic<int64_t> _queuedV8;
+  int64_t const _maxQueuedV8;
+
   // maximal number of running + queued jobs in the Scheduler `io_context`
   uint64_t const _maxQueueSize;
 
@@ -175,18 +182,26 @@ class Scheduler {
   // queue is full
 
   struct FifoJob {
-    FifoJob(std::function<void()> const& callback) : _callback(callback) {}
+    FifoJob(std::function<void()> const& callback, bool isV8)
+        : _isV8(isV8), _callback(callback) {}
+    bool _isV8;
     std::function<void()> _callback;
   };
 
-  bool pushToFifo(size_t fifo, std::function<void()> const& callback);
-  bool popFifo(size_t fifo);
+  bool pushToFifo(int64_t fifo, std::function<void()> const& callback,
+                  bool isV8);
+  bool popFifo(int64_t fifo);
 
-  static int64_t const NUMBER_FIFOS = 2;
+  static constexpr int64_t NUMBER_FIFOS = 3;
+  static constexpr int64_t FIFO1 = 0;
+  static constexpr int64_t FIFO2 = 1;
+  static constexpr int64_t FIFO8 = 2;
+
   uint64_t const _maxFifoSize[NUMBER_FIFOS];
   std::atomic<int64_t> _fifoSize[NUMBER_FIFOS];
   boost::lockfree::queue<FifoJob*> _fifo1;
   boost::lockfree::queue<FifoJob*> _fifo2;
+  boost::lockfree::queue<FifoJob*> _fifo8;
   boost::lockfree::queue<FifoJob*>* _fifos[NUMBER_FIFOS];
 
   // the following methds create tasks in the `io_context`.
@@ -297,7 +312,7 @@ class Scheduler {
   mutable Mutex _threadCreateLock;
   double _lastAllBusyStamp;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif
