@@ -392,6 +392,58 @@ function ActiveFailoverSuite() {
       } catch(err) {
         assertEqual(ERRORS.ERROR_FORBIDDEN.code, err.errorNum);
       }
+    },
+
+    // Test failback case, mainly necessary so that testing.js won't talk
+    // to the follower which rejects requests
+    testFailback: function() {
+      if (currentLead === firstLeader) {
+        return; // nevermind then
+      }
+
+      setReadOnly(currentLead, true);
+
+      assertTrue(checkInSync(currentLead, servers));
+      assertEqual(checkData(currentLead), 10000);
+
+      print("Suspending followers, except original leader");
+      suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
+        arangod.endpoint !== firstLeader);
+      suspended.forEach(arangod => {
+        print("Suspending: ", arangod.endpoint);
+        assertTrue(suspendExternal(arangod.pid));
+      });
+
+      // await failover and check that follower get in sync
+      currentLead = checkForFailover(currentLead);
+      assertTrue(currentLead === firstLeader, "Did not fail to original leader");
+
+      suspended.forEach(arangod => {
+        print("Resuming: ", arangod.endpoint);
+        assertTrue(continueExternal(arangod.pid));
+      });
+      suspended = [];
+
+      assertTrue(checkInSync(currentLead, servers));
+      assertEqual(checkData(currentLead), 10000);
+
+      print("connecting shell to leader ", currentLead);
+      connectToServer(currentLead);
+
+      let col = db._collection(cname);
+      try {
+        col.save({abc:1337});
+        fail();
+      } catch(err) {
+        assertEqual(ERRORS.ERROR_ARANGO_READ_ONLY.code, err.errorNum);
+      }
+
+      try {
+        col.drop();
+        fail();
+      } catch(err) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err.errorNum);
+      }
     }
 
   };

@@ -24,6 +24,7 @@
 #include "RestAdminServerHandler.h"
 
 #include "Actions/RestActionHandler.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 
 using namespace arangodb;
@@ -152,10 +153,14 @@ void RestAdminServerHandler::handleMode() {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
     
-    ExecContext const* exec = ExecContext::CURRENT;
-    if (exec != nullptr && !exec->isAdminUser()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-      return;
+    AuthenticationFeature* af = AuthenticationFeature::instance();
+    if (af->isEnabled() && !_request->user().empty()) {
+      auth::Level lvl = af->userManager()->databaseAuthLevel(_request->user(),
+                                          TRI_VOC_SYSTEM_DATABASE, /*configured*/true);
+      if (lvl < auth::Level::RW) {
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+        return;
+      }
     }
     
     bool parseSuccess = false;
