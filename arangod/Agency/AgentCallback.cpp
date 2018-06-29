@@ -42,6 +42,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT) {
     if (_agent) {
       auto body = res->result->getBodyVelocyPack();
+      auto success = body->slice().get("success").isTrue();
       term_t otherTerm = 0;
       try {
         otherTerm = body->slice().get("term").getNumber<term_t>();
@@ -51,7 +52,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       }
       if (otherTerm > _agent->term()) {
         _agent->resign(otherTerm);
-      } else if (!body->slice().get("success").isTrue()) {
+      } else if (!success) {
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Got negative answer from follower, will retry later.";
         _agent->reportFailed(_slaveID, _toLog);

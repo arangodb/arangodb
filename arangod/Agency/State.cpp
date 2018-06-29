@@ -61,6 +61,7 @@ using namespace arangodb::rest;
 State::State()
     : _agent(nullptr),
       _vocbase(nullptr),
+      _ready(false),
       _collectionsChecked(false),
       _collectionsLoaded(false),
       _nextCompactionAfter(0),
@@ -240,6 +241,11 @@ index_t State::logFollower(query_t const& transactions) {
 
   VPackSlice slices = transactions->slice();
   size_t nqs = slices.length();
+
+  while(!_ready) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for state to get ready ...";
+    std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
+  }
 
   MUTEX_LOCKER(logLock, _logLock);
 
@@ -495,7 +501,6 @@ int State::checkLog(index_t index, term_t term) const {
 
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
-  LOG_TOPIC(ERR, Logger::AGENCY) << index << " " << term << " " << _log.back().index;
   // If index above highest entry
   if (_log.size() > 0 && index > _log.back().index) {
     return -1;
@@ -640,6 +645,11 @@ bool State::createCollection(std::string const& name) {
   return true;
 }
 
+
+// Are we ready for action?
+bool State::ready() const { return _ready; }
+
+
 /// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase,
                             QueryRegistry* queryRegistry, bool waitForSync) {
@@ -663,6 +673,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
         log_t(index_t(0), term_t(0), buf, std::string()));
       persist(0, 0, value, std::string());
     }
+    _ready = true;
     return true;
   }
 

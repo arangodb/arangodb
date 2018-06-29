@@ -322,9 +322,9 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
     MUTEX_LOCKER(guard, _tiLock);
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Resetting _earliestPackage to now for id " << slaveId;
-    _confirmed[slaveId] = 0;
     _earliestPackage[slaveId] = steady_clock::now();
   }
+  _confirmed[slaveId] = 0;
 }
 
 /// Followers' append entries
@@ -359,22 +359,27 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Not accepting appendEntries from " << leaderId;
-    
     return priv_rpc_ret_t(false,t);
-    
   }
 
+  // Empty appendEntries:
+  // We answer with success if and only if our highest index is greater 0.
+  // Else we want to indicate to the leader that we are behind and need data.
   if (nqs == 0) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Finished empty AppendEntriesRPC from "
-      << leaderId << " with term " << term;
-    {
-      WRITE_LOCKER(oLocker, _outputLock);
-      _commitIndex = leaderCommitIndex;
-      if (_commitIndex >= _state.nextCompactionAfter()) {
-        _compactor.wakeUp();
+    if (_state.lastIndex() > 0) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Finished empty AppendEntriesRPC from " << leaderId << " with term " << term;
+      {
+        WRITE_LOCKER(oLocker, _outputLock);
+        _commitIndex = leaderCommitIndex;
+        if (_commitIndex >= _state.nextCompactionAfter()) {
+          _compactor.wakeUp();
+        }
       }
+      return priv_rpc_ret_t(true,t);
+    } else {
+      return priv_rpc_ret_t(false,t);
     }
-    return priv_rpc_ret_t(true,t);
   }
 
   bool ok = true;
