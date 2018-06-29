@@ -1384,7 +1384,8 @@ static void JS_PropertiesVocbaseCol(
     consoleColl->name(),
     [&](LogicalCollection* coll) {
     VPackObjectBuilder object(&builder, true);
-    Result res = methods::Collections::properties(coll, builder);
+    methods::Collections::Context ctxt(coll->vocbase(), coll);
+    Result res = methods::Collections::properties(ctxt, builder);
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -2109,9 +2110,9 @@ static void JS_RevisionVocbaseCol(
   }
 
   TRI_voc_rid_t revisionId;
-  auto res = methods::Collections::revisionId(
-    collection->vocbase(), collection, revisionId
-  );
+
+  methods::Collections::Context ctxt(collection->vocbase(), collection);
+  auto res = methods::Collections::revisionId(ctxt, revisionId);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
