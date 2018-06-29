@@ -45,6 +45,15 @@
 using namespace arangodb;
 using namespace arangodb::communicator;
 
+/// @brief empty map with headers
+std::unordered_map<std::string, std::string> const ClusterCommRequest::noHeaders;
+
+/// @brief empty body
+std::string const ClusterCommRequest::noBody;
+
+/// @brief empty body, as a shared ptr
+std::shared_ptr<std::string const> const ClusterCommRequest::sharedNoBody(new std::string());
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief the pointer to the singleton instance
 //////////////////////////////////////////////////////////////////////////////
@@ -401,7 +410,7 @@ OperationID ClusterComm::asyncRequest(
 
   std::unique_ptr<HttpRequest> request;
   if (prepared.second == nullptr) {
-    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, std::unordered_map<std::string,std::string>()));
+    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, ClusterCommRequest::noHeaders));
     request->setRequestType(reqtype); // mop: a fake but a good one
   } else {
     request.reset(prepared.second);
@@ -928,21 +937,17 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       for (size_t i = 0; i < requests.size(); i++) {
         if (!requests[i].done) {
           if (now >= dueTime[i]) {
-            if (requests[i].headerFields.get() == nullptr) {
-              requests[i].headerFields = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
-            }
             LOG_TOPIC(TRACE, logTopic)
                 << "ClusterComm::performRequests: sending request to "
                 << requests[i].destination << ":" << requests[i].path
-                << "body:" << requests[i].body;
+                << "body:" << requests[i].getBody();
 
             dueTime[i] = endTime + 10;
             double localTimeout = endTime - now;
             OperationID opId = asyncRequest(
                 "", coordinatorTransactionID, requests[i].destination,
-                requests[i].requestType, requests[i].path, requests[i].body,
-                *requests[i].headerFields, nullptr, localTimeout, false,
+                requests[i].requestType, requests[i].path, requests[i].getBodyShared(),
+                requests[i].getHeaders(), nullptr, localTimeout, false,
                 2.0);
 
             TRI_ASSERT(opId != 0);
@@ -1078,10 +1083,10 @@ void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& r
 
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
-  double const shortTimeout = 10.0; // Picked arbitrarily
+  constexpr double shortTimeout = 10.0; // Picked arbitrarily
   for (auto const& req : requests) {
     asyncRequest("", coordinatorTransactionID, req.destination, req.requestType,
-                 req.path, req.body, *req.headerFields, nullptr, shortTimeout, false,
+                 req.path, req.getBodyShared(), req.getHeaders(), nullptr, shortTimeout, false,
                  2.0);
   }
   // Forget about it
@@ -1102,19 +1107,10 @@ size_t ClusterComm::performSingleRequest(
     size_t& nrDone, arangodb::LogTopic const& logTopic) {
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   ClusterCommRequest& req(requests[0]);
-  if (req.headerFields.get() == nullptr) {
-    req.headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
-  }
-  if (req.body == nullptr) {
-    req.result = *syncRequest("", coordinatorTransactionID, req.destination,
-                              req.requestType, req.path, "",
-                              *(req.headerFields), timeout);
-  } else {
-    req.result = *syncRequest("", coordinatorTransactionID, req.destination,
-                              req.requestType, req.path, *(req.body),
-                              *(req.headerFields), timeout);
-  }
+  
+  req.result = *syncRequest("", coordinatorTransactionID, req.destination,
+                            req.requestType, req.path, req.getBody(),
+                            req.getHeaders(), timeout);
 
   // mop: helpless attempt to fix segfaulting due to body buffer empty
   if (req.result.status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -1141,16 +1137,6 @@ size_t ClusterComm::performSingleRequest(
   rest::ContentType type = rest::ContentType::JSON;
 
   basics::StringBuffer& buffer = req.result.result->getBody();
-
-  // PERFORMANCE TODO (fc) (max) (obi)
-  // body() could return a basic_string_ref
-
-  // The FakeRequest Replacement does a copy of the body and is not as fast
-  // as the original
-
-  // auto answer = new FakeRequest(type, buffer.c_str(),
-  //                              static_cast<int64_t>(buffer.length()));
-  // answer->setHeaders(req.result.result->getHeaderFields());
 
   auto answer = HttpRequest::createHttpRequest(
       type, buffer.c_str(), static_cast<int64_t>(buffer.length()),
@@ -1229,10 +1215,11 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 #endif
 #endif
 
+  
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);
   } else {
-    request = HttpRequest::createHttpRequest(ContentType::JSON, body->c_str(), body->length(), headersCopy);
+    request = HttpRequest::createHttpRequest(ContentType::JSON, body->data(), body->size(), headersCopy);
   }
   request->setRequestType(reqtype);
 
