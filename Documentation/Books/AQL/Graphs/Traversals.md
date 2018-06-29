@@ -134,6 +134,8 @@ with a length greater than *max* will never be computed.
 In the current state, `AND` combined filters can be optimized, but `OR`
 combined filters cannot.
 
+The following examples are based on the [traversal graph](../../Manual/Graphs/index.html#the-traversal-graph).
+
 ### Filtering on paths
 
 Filtering on paths allows for the most powerful filtering and may have the

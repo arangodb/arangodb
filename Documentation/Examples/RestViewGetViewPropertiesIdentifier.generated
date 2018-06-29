@@ -1,4 +1,4 @@
-shell> curl --dump - http://localhost:8529/_api/view/14922/properties
+shell> curl --dump - http://localhost:8529/_api/view/15082/properties
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -30,8 +30,6 @@ x-content-type-options: nosniff
     } 
   }, 
   <span class="hljs-string">"locale"</span> : <span class="hljs-string">"c.UTF-8"</span>, 
-  <span class="hljs-string">"threadsMaxIdle"</span> : <span class="hljs-number">5</span>, 
-  <span class="hljs-string">"threadsMaxTotal"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"links"</span> : { 
   } 
 }

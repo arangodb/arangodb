@@ -78,7 +78,10 @@ class ShapeContainer final {
   Type type() const { return _type; }
   inline bool empty() const { return _type == Type::EMPTY; }
 
-  bool isAreaType() const noexcept { return _type == Type::S2_POLYGON; }
+  bool isAreaType() const noexcept {
+    return _type == Type::S2_POLYGON ||
+           _type == Type::S2_LATLNGRECT;
+  }
 
   /// @brief centroid of this shape
   S2Point centroid() const noexcept;

@@ -308,7 +308,7 @@ authRouter.get('/query/result/download/:query', function (req, res) {
 authRouter.post('/graph-examples/create/:name', function (req, res) {
   const name = req.pathParams.name;
 
-  if (['knows_graph', 'social', 'routeplanner'].indexOf(name) === -1) {
+  if (['knows_graph', 'social', 'routeplanner', 'traversalGraph', 'mps_graph', 'worldCountry'].indexOf(name) === -1) {
     res.throw('not found');
   }
 

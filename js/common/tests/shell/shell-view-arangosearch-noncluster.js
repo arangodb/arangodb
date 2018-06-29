@@ -159,11 +159,11 @@ function ViewSuite () {
     /// @brief modify with unacceptable properties
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingModifyUnacceptable : function () {
-      var abc = db._createView("abc", "arangosearch", {threadsMaxTotal:17});
+      var abc = db._createView("abc", "arangosearch", { "commit": { "commitTimeoutMsec": 17 } });
       assertEqual(abc.name(), "abc");
-      assertEqual(abc.properties().threadsMaxTotal, 17);
-      abc.properties({"bogus": "junk", "threadsMaxTotal":7});
-      assertEqual(abc.properties().threadsMaxTotal, 7);
+      assertEqual(abc.properties().commit.commitTimeoutMsec, 17);
+      abc.properties({"bogus": "junk", "commit": { "commitTimeoutMsec": 7 } });
+      assertEqual(abc.properties().commit.commitTimeoutMsec, 7);
       abc.drop();
     },
 
@@ -173,18 +173,18 @@ function ViewSuite () {
     testAddDrop : function () {
       db._dropView("abc");
       db._dropView("def");
-      db._createView("abc", "arangosearch", {"threadsMaxTotal": 10});
-      db._createView("def", "arangosearch", {"threadsMaxTotal": 3});
+      db._createView("abc", "arangosearch", { "commit": { "commitTimeoutMsec": 10 } });
+      db._createView("def", "arangosearch", { "commit": { "commitTimeoutMsec": 3 } });
       var abc = db._view("abc");
       var def = db._view("def");
       var propA = abc.properties();
       var propD = def.properties();
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(propA.threadsMaxTotal, 10);
+      assertEqual(propA.commit.commitTimeoutMsec, 10);
       assertEqual(def.name(), "def");
       assertEqual(def.type(), "arangosearch");
-      assertEqual(propD.threadsMaxTotal, 3);
+      assertEqual(propD.commit.commitTimeoutMsec, 3);
       abc.drop();
       def.drop();
       try {
@@ -231,20 +231,20 @@ function ViewSuite () {
     /// @brief modify properties
     ////////////////////////////////////////////////////////////////////////////
     testModifyProperties : function () {
-      var abc = db._createView("abc", "arangosearch", {"threadsMaxTotal": 10});
+      var abc = db._createView("abc", "arangosearch", { "commit": { "commitTimeoutMsec": 10 } });
       var props = abc.properties();
 
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(props.threadsMaxTotal, 10);
+      assertEqual(props.commit.commitTimeoutMsec, 10);
 
-      abc.properties({"threadsMaxTotal": 7});
+      abc.properties({ "commit": { "commitTimeoutMsec": 7 } });
       abc = db._view("abc");
       props = abc.properties();
 
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(props.threadsMaxTotal, 7);
+      assertEqual(props.commit.commitTimeoutMsec, 7);
 
       abc.drop();
     },

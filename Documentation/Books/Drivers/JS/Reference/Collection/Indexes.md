@@ -2,7 +2,7 @@
 # Manipulating indexes
 
 These functions implement the
-[HTTP API for manipulating indexes](https://docs.arangodb.com/latest/HTTP/Indexes/index.html).
+[HTTP API for manipulating indexes](../../../..//HTTP/Indexes/index.html).
 
 ## collection.createIndex
 
@@ -15,7 +15,7 @@ Creates an arbitrary index on the collection.
 * **details**: `Object`
 
   For information on the possible properties of the _details_ object, see
-  [the HTTP API for manipulating indexes](https://docs.arangodb.com/latest/HTTP/Indexes/WorkingWith.html).
+  [the HTTP API for manipulating indexes](../../../..//HTTP/Indexes/WorkingWith.html).
 
 **Examples**
 
@@ -52,7 +52,7 @@ and higher as cap constraints are no longer supported.
 If _size_ is a number, it will be interpreted as _size.size_.
 
 For more information on the properties of the _size_ object see
-[the HTTP API for creating cap constraints](https://docs.arangodb.com/latest/HTTP/Indexes/Cap.html).
+[the HTTP API for creating cap constraints](../../../..//HTTP/Indexes/Cap.html).
 
 **Examples**
 
@@ -90,7 +90,7 @@ Creates a hash index on the collection.
   interpreted as _opts.unique_.
 
 For more information on hash indexes, see
-[the HTTP API for hash indexes](https://docs.arangodb.com/latest/HTTP/Indexes/Hash.html).
+[the HTTP API for hash indexes](../../../..//HTTP/Indexes/Hash.html).
 
 **Examples**
 
@@ -128,7 +128,7 @@ Creates a skiplist index on the collection.
   interpreted as _opts.unique_.
 
 For more information on skiplist indexes, see
-[the HTTP API for skiplist indexes](https://docs.arangodb.com/latest/HTTP/Indexes/Skiplist.html).
+[the HTTP API for skiplist indexes](../../../..//HTTP/Indexes/Skiplist.html).
 
 **Examples**
 
@@ -166,7 +166,7 @@ Creates a geo-spatial index on the collection.
   An object containing additional properties of the index.
 
 For more information on the properties of the _opts_ object see
-[the HTTP API for manipulating geo indexes](https://docs.arangodb.com/latest/HTTP/Indexes/Geo.html).
+[the HTTP API for manipulating geo indexes](../../../..//HTTP/Indexes/Geo.html).
 
 **Examples**
 
@@ -205,7 +205,7 @@ Creates a fulltext index on the collection.
   value if not specified.
 
 For more information on fulltext indexes, see
-[the HTTP API for fulltext indexes](https://docs.arangodb.com/latest/HTTP/Indexes/Fulltext.html).
+[the HTTP API for fulltext indexes](../../../..//HTTP/Indexes/Fulltext.html).
 
 **Examples**
 
@@ -244,7 +244,7 @@ being that it will always be orders of magnitude slower than in-memory indexes.
   An object containing additional properties of the index.
 
 For more information on the properties of the _opts_ object see
-[the HTTP API for manipulating Persistent indexes](https://docs.arangodb.com/latest/HTTP/Indexes/Persistent.html).
+[the HTTP API for manipulating Persistent indexes](../../../..//HTTP/Indexes/Persistent.html).
 
 **Examples**
 

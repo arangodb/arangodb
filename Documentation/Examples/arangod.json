@@ -105,6 +105,21 @@
     "section" : "agency",
     "type" : "boolean"
   },
+  "audit.hostname" : {
+    "default" : "",
+    "description" : "hostname to use",
+    "hidden" : false,
+    "section" : "audit",
+    "type" : "string"
+  },
+  "audit.output" : {
+    "default" : [
+    ],
+    "description" : "audit destination(s)",
+    "hidden" : false,
+    "section" : "audit",
+    "type" : "string..."
+  },
   "cache.rebalancing-interval" : {
     "default" : 2000000,
     "description" : "microseconds between rebalancing attempts",
@@ -113,7 +128,7 @@
     "type" : "uint64"
   },
   "cache.size" : {
-    "default" : 9644884377,
+    "default" : 4364869632,
     "description" : "size of cache in bytes",
     "hidden" : false,
     "section" : "cache",
@@ -278,6 +293,13 @@
     "default" : false,
     "description" : "start a JavaScript emergency console",
     "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "daemon" : {
+    "default" : false,
+    "description" : "background the server, running it as daemon",
+    "hidden" : true,
     "section" : "",
     "type" : "boolean"
   },
@@ -446,6 +468,13 @@
     "section" : "frontend",
     "type" : "boolean"
   },
+  "gid" : {
+    "default" : "",
+    "description" : "switch to group-id after reading config files",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
   "http.allow-method-override" : {
     "default" : false,
     "description" : "allow HTTP method override using special headers",
@@ -482,13 +511,6 @@
     "section" : "",
     "type" : "boolean"
   },
-  "install-service" : {
-    "default" : false,
-    "description" : "used to register a service with windows",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
-  },
   "javascript.allow-admin-execute" : {
     "default" : false,
     "description" : "for testing purposes allow '_admin/execute', NEVER enable on production",
@@ -503,15 +525,22 @@
     "section" : "javascript",
     "type" : "string"
   },
+  "javascript.enabled" : {
+    "default" : true,
+    "description" : "enable or disable the V8 JS engine entirely",
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
   "javascript.gc-frequency" : {
-    "default" : 30,
+    "default" : 60,
     "description" : "JavaScript time-based garbage collection frequency (each x seconds)",
     "hidden" : true,
     "section" : "javascript",
     "type" : "double"
   },
   "javascript.gc-interval" : {
-    "default" : 1000,
+    "default" : 2000,
     "description" : "JavaScript request-based garbage collection interval (each x requests)",
     "hidden" : true,
     "section" : "javascript",
@@ -519,6 +548,7 @@
   },
   "javascript.module-directory" : {
     "default" : [
+      "./enterprise/js"
     ],
     "description" : "additional paths containing JavaScript modules",
     "hidden" : true,
@@ -591,6 +621,175 @@
     "section" : "javascript",
     "type" : "string..."
   },
+  "ldap.basedn" : {
+    "default" : "",
+    "description" : "ldap basedn, eg. dc=example,dc=com",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.binddn" : {
+    "default" : "",
+    "description" : "ldap binddn, eg. cn=admin,dc=example,dc=com",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.bindpasswd" : {
+    "default" : "",
+    "description" : "ldap bindpassword, eg. admin",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.enabled" : {
+    "default" : false,
+    "description" : "enable LDAP",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
+  "ldap.port" : {
+    "default" : 389,
+    "description" : "port to use",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "uint16"
+  },
+  "ldap.prefix" : {
+    "default" : "",
+    "description" : "ldap prefix, eg. uid= xor dn= xor cn=",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.refresh-rate" : {
+    "default" : 300,
+    "description" : "Refresh user settings after this time (in seconds)",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "double"
+  },
+  "ldap.roles-attribute-name" : {
+    "default" : "",
+    "description" : "ldap attributename where the role are located.",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.roles-exclude" : {
+    "default" : "",
+    "description" : "Regexp to exclude groups. Leave empty to exclude none.",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.roles-include" : {
+    "default" : "",
+    "description" : "Regexp to include groups. Leave empty to include all.",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.roles-search" : {
+    "default" : "",
+    "description" : "ldap search for roles; '{USER}' is replaced by the 'dn' of the user.",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.roles-transformation" : {
+    "default" : [
+    ],
+    "description" : "Regexp to normalizer role name, e.g. '/^ *(.*[^ ]])*/$2/'",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string..."
+  },
+  "ldap.search-attribute" : {
+    "default" : "uid",
+    "description" : "ldap search attribute, eg. uid",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.search-filter" : {
+    "default" : "objectClass=*",
+    "description" : "ldap search filter, eg. (objectClass=simpleSecurityObject)",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.search-scope" : {
+    "default" : "sub",
+    "description" : "ldap search scope, one of base, one, sub",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.server" : {
+    "default" : "",
+    "description" : "server to use",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.suffix" : {
+    "default" : "",
+    "description" : "ldap suffix, eg. ,dc=example,dc=com",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.superuser-role" : {
+    "default" : "",
+    "description" : "Role mapping to the super-users",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.tls" : {
+    "default" : false,
+    "description" : "enable TLS",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "boolean"
+  },
+  "ldap.tls-cacert-dir" : {
+    "default" : "",
+    "description" : "ldap tls cacert dir",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.tls-cacert-file" : {
+    "default" : "",
+    "description" : "ldap tls cacert file",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.tls-cert-check-strategy" : {
+    "default" : "hard",
+    "description" : "ldap tls cert check strategy, one of never, hard, demand, allow, try",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.tls-version" : {
+    "default" : "1.2",
+    "description" : "ldap tls version, one of 1.0, 1.1, 1.2",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
+  "ldap.url" : {
+    "default" : "",
+    "description" : "ldap url, eg. ldap://example.com:389/dc=example,dc=com?uid?sub",
+    "hidden" : false,
+    "section" : "ldap",
+    "type" : "string"
+  },
   "log" : {
     "default" : [
       "info",
@@ -604,6 +803,13 @@
   "log.color" : {
     "default" : true,
     "description" : "use colors for TTY logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -724,6 +930,13 @@
     "section" : "nonce",
     "type" : "uint64"
   },
+  "pid-file" : {
+    "default" : "",
+    "description" : "pid-file in daemon mode",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
   "query.cache-entries" : {
     "default" : 128,
     "description" : "maximum number of results in query result cache per database",
@@ -779,7 +992,7 @@
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
-    "values" : "Possible values: 1, 5"
+    "values" : "Possible values: 1, 2, 3, 4"
   },
   "replication.active-failover" : {
     "default" : false,
@@ -810,7 +1023,7 @@
     "type" : "int64"
   },
   "rocksdb.block-cache-size" : {
-    "default" : 9644884377,
+    "default" : 4364869632,
     "description" : "size of block cache in bytes",
     "hidden" : false,
     "section" : "rocksdb",
@@ -851,6 +1064,20 @@
     "section" : "rocksdb",
     "type" : "boolean"
   },
+  "rocksdb.encryption-key-generator" : {
+    "default" : "",
+    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "string"
+  },
+  "rocksdb.encryption-keyfile" : {
+    "default" : "",
+    "description" : "file containing encryption key. If set, encryption will be enabled.",
+    "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "string"
+  },
   "rocksdb.intermediate-commit-count" : {
     "default" : 1000000,
     "description" : "an intermediate commit will be performed automatically when this number of operations is reached in a transaction",
@@ -887,7 +1114,7 @@
     "type" : "int64"
   },
   "rocksdb.max-background-jobs" : {
-    "default" : 7,
+    "default" : 8,
     "description" : "Maximum number of concurrent background jobs (compactions and flushes)",
     "hidden" : true,
     "section" : "rocksdb",
@@ -1005,6 +1232,20 @@
     "section" : "rocksdb",
     "type" : "int64"
   },
+  "rocksdb.use-direct-io-for-flush-and-compaction" : {
+    "default" : false,
+    "description" : "use O_DIRECT for flush and compaction",
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.use-direct-reads" : {
+    "default" : false,
+    "description" : "use O_DIRECT for reading files",
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
   "rocksdb.use-fsync" : {
     "default" : false,
     "description" : "issue an fsync when writing to disk (set to true for issuing fdatasync only)",
@@ -1068,6 +1309,27 @@
     "section" : "server",
     "type" : "double"
   },
+  "server.authentication-unix-sockets" : {
+    "default" : true,
+    "description" : "authentication for requests via UNIX domain sockets",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.check-max-memory-mappings" : {
+    "default" : true,
+    "description" : "check the maximum number of memory mappings at runtime",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.descriptors-minimum" : {
+    "default" : 0,
+    "description" : "minimum number of file descriptors needed to start",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "uint64"
+  },
   "server.endpoint" : {
     "default" : [
       "tcp://0.0.0.0:8529"
@@ -1083,6 +1345,13 @@
     "hidden" : false,
     "section" : "server",
     "type" : "uint64"
+  },
+  "server.gid" : {
+    "default" : "",
+    "description" : "switch to group-id after reading config files",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "string"
   },
   "server.jwt-secret" : {
     "default" : "",
@@ -1155,33 +1424,12 @@
     "section" : "server",
     "type" : "uint64"
   },
-  "servicectl-start" : {
-    "default" : false,
-    "description" : "command an already registered service to start",
+  "server.uid" : {
+    "default" : "",
+    "description" : "switch to user-id after reading config files",
     "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
-  },
-  "servicectl-start-wait" : {
-    "default" : false,
-    "description" : "command an already registered service to start and wait till its up",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
-  },
-  "servicectl-stop" : {
-    "default" : false,
-    "description" : "command an already registered service to stop",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
-  },
-  "servicectl-stop-wait" : {
-    "default" : false,
-    "description" : "command an already registered service to stop and wait till its gone",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
+    "section" : "server",
+    "type" : "string"
   },
   "ssl.cafile" : {
     "default" : "",
@@ -1212,7 +1460,7 @@
     "type" : "string"
   },
   "ssl.options" : {
-    "default" : 18446744071563119615,
+    "default" : 2147485780,
     "description" : "ssl connection options, see OpenSSL documentation",
     "hidden" : true,
     "section" : "ssl",
@@ -1226,6 +1474,13 @@
     "type" : "uint64",
     "values" : "Possible values: 1, 2, 3, 4, 5"
   },
+  "ssl.require-peer-certificate" : {
+    "default" : false,
+    "description" : "require a peer certificate when connecting",
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "boolean"
+  },
   "ssl.session-cache" : {
     "default" : false,
     "description" : "enable the session cache for connections",
@@ -1233,9 +1488,9 @@
     "section" : "ssl",
     "type" : "boolean"
   },
-  "start-service" : {
+  "supervisor" : {
     "default" : false,
-    "description" : "used to start as windows service",
+    "description" : "background the server, starts a supervisor",
     "hidden" : true,
     "section" : "",
     "type" : "boolean"
@@ -1261,19 +1516,12 @@
     "section" : "temp",
     "type" : "string"
   },
-  "uninstall-service" : {
-    "default" : false,
-    "description" : "used to UNregister a service with windows",
+  "uid" : {
+    "default" : "",
+    "description" : "switch to user-id after reading config files",
     "hidden" : true,
     "section" : "",
-    "type" : "boolean"
-  },
-  "uninstall-service-force" : {
-    "default" : false,
-    "description" : "specify to ovrerride the protection to uninstall the service of another installation",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
+    "type" : "string"
   },
   "version" : {
     "default" : false,
@@ -1386,5 +1634,12 @@
     "hidden" : true,
     "section" : "wal",
     "type" : "boolean"
+  },
+  "working-directory" : {
+    "default" : "/var/tmp",
+    "description" : "working directory in daemon mode",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
   }
 }

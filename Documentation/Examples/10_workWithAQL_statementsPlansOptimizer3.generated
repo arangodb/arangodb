@@ -1,6 +1,6 @@
 arangosh&gt; var query = "FOR doc IN mycollection FILTER doc.value &gt; 42 RETURN doc";
 arangosh&gt; require("@arangodb/aql/explainer").explain(query, {colors:false});
-Query string:
+Query String:
  FOR doc IN mycollection FILTER doc.value &gt; 42 RETURN doc
 
 Execution plan:
