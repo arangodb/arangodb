@@ -147,6 +147,9 @@ class Graph {
 
   bool hasEdgeCollection(std::string const& collectionName) const;
 
+  boost::optional<EdgeDefinition const&> getEdgeDefinition(
+      std::string const& collectionName) const;
+
   virtual bool isSmart() const;
 
   uint64_t numberOfShards() const;

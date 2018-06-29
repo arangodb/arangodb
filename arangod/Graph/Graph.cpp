@@ -393,13 +393,10 @@ std::ostream& Graph::operator<<(std::ostream& ostream) {
 }
 
 bool Graph::hasEdgeCollection(std::string const& collectionName) const {
-  for (auto const& edgeCollection : edgeCollections()) {
-    if (collectionName == edgeCollection) {
-      return true;
-    }
-  }
-
-  return false;
+  TRI_ASSERT(
+      (edgeDefinitions().find(collectionName) != edgeDefinitions().end()) ==
+      (edgeCollections().find(collectionName) != edgeCollections().end()));
+  return edgeCollections().find(collectionName) != edgeCollections().end();
 }
 
 void Graph::graphToVpack(VPackBuilder& builder) const {
@@ -501,4 +498,17 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync, VPa
         VPackValue(options.get(StaticStrings::GraphReplicationFactor).getUInt()));
   }
   builder.close();
+}
+
+
+boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(
+    std::string const& collectionName) const {
+  auto it = edgeDefinitions().find(collectionName);
+  if (it == edgeDefinitions().end()) {
+    TRI_ASSERT(!hasEdgeCollection(collectionName));
+    return boost::none;
+  }
+
+  TRI_ASSERT(hasEdgeCollection(collectionName));
+  return {it->second};
 }

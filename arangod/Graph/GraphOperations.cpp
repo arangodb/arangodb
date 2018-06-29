@@ -542,38 +542,36 @@ OperationResult GraphOperations::eraseOrphanCollection(
   return result;
 }
 
-OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinition,
-                                                   bool waitForSync) {
-  Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
+OperationResult GraphOperations::addEdgeDefinition(
+    VPackSlice edgeDefinitionSlice, bool waitForSync) {
+  auto edgeDefOrError = ResultT<EdgeDefinition>{
+      EdgeDefinition::createFromVelocypack(edgeDefinitionSlice)};
 
-  if (res.fail()) {
-    return OperationResult(res);
+  if (edgeDefOrError.fail()) {
+    return OperationResult{edgeDefOrError.copy_result()};
   }
+
+  EdgeDefinition& edgeDefinition = edgeDefOrError.get();
 
   OperationOptions options;
   options.waitForSync = waitForSync;
 
-  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
-      EdgeDefinition::sortEdgeDefinition(edgeDefinition);
-  edgeDefinition = velocypack::Slice(buffer->data());
-
-  std::string eC = edgeDefinition.get("collection").copyString();
-  if (_graph.hasEdgeCollection(eC)) {
-    return OperationResult(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE);
+  std::string const& edgeCollection = edgeDefinition.getName();
+  if (_graph.hasEdgeCollection(edgeCollection)) {
+    return OperationResult{TRI_ERROR_GRAPH_COLLECTION_MULTI_USE};
   }
 
   // ... in different graph
   GraphManager gmngr{ctx()};
 
-  OperationResult result =
-      gmngr.checkForEdgeDefinitionConflicts(eC, edgeDefinition);
+  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(edgeDefinition)};
   if (result.fail()) {
     return result;
   }
 
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Array));
-  builder.add(edgeDefinition);
+  builder.add(edgeDefinitionSlice);
   builder.close();
 
   VPackBuilder collectionsOptions;
@@ -610,10 +608,11 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinition,
     builder.close();  // to
     builder.close();  // obj
   }
-  builder.add(edgeDefinition);
+  builder.add(edgeDefinitionSlice);
   builder.close();  // array
   builder.close();  // object
 
+  Result res;
   {
     SingleCollectionTransaction trx(ctx(), GraphOperations::_graphs,
                                     AccessMode::Type::WRITE);
@@ -633,6 +632,7 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinition,
   if (result.ok() && res.fail()) {
     return OperationResult(res);
   }
+
   return result;
 };
 
