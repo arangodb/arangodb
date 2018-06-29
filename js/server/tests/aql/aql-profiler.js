@@ -500,7 +500,8 @@ function ahuacatlProfilerTestSuite () {
       const expected = genNodeList(rows, batches);
       const actual = getCompactStatsNodes(profile);
 
-      assertNodesItemsAndCalls(expected, actual, {query, rows, batches});
+      assertNodesItemsAndCalls(expected, actual,
+        {query, rows, batches, expected, actual});
     }
   };
 
@@ -828,6 +829,51 @@ function ahuacatlProfilerTestSuite () {
           { type : CalculationBlock, calls : batches, items : rows },
           { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
+        ];
+      };
+      runDefaultChecks({query, genNodeList});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test FilterBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testFilterBlock3 : function () {
+      const query = 'FOR i IN 1..@rows FILTER i % 13 == 0 RETURN i';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterFilter = Math.floor(rows / 13);
+        const batchesAfterFilter = Math.max(1, Math.ceil(rowsAfterFilter / defaultBatchSize));
+
+        return [
+          { type : SingletonBlock, calls : 1, items : 1 },
+          { type : CalculationBlock, calls : 1, items : 1 },
+          { type : EnumerateListBlock, calls : batches, items : rows },
+          { type : CalculationBlock, calls : batches, items : rows },
+          { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
+          { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
+        ];
+      };
+      runDefaultChecks({query, genNodeList});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test HashedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testHashedCollectBlock : function () {
+      const query = 'FOR i IN 1..@rows COLLECT x = FLOOR((i-1) / 3)+1 RETURN x';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterCollect = Math.ceil(rows / 3);
+        const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: CalculationBlock, calls: batches, items: rows },
+          { type: HashedCollectBlock, calls: 1, items: rowsAfterCollect },
+          { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
         ];
       };
       runDefaultChecks({query, genNodeList});
