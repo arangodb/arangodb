@@ -85,6 +85,12 @@ std::string mangleNumeric(std::string name) {
   return name;
 }
 
+std::string mangleString(std::string name, std::string suffix) {
+  arangodb::iresearch::kludge::mangleAnalyzer(name);
+  name += suffix;
+  return name;
+}
+
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleStringField(
     name,

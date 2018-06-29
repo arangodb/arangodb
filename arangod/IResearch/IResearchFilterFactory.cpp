@@ -936,15 +936,9 @@ bool fromIn(
     if (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
       // handle negation
       filter = &filter->add<irs::Not>().filter<irs::Or>();
-      filter->boost(filterCtx.boost);
     }
 
-    FilterContext const subFilterCtx{
-      filterCtx.analyzer,
-      irs::boost::no_boost() // reset boost
-    };
-
-    return byRange(filter, *attributeNode, *range, ctx, subFilterCtx);
+    return byRange(filter, *attributeNode, *range, ctx, filterCtx);
   }
 
   ScopedAqlValue value(*valueNode);
