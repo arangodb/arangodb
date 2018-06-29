@@ -1660,6 +1660,11 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
+      
+      if (application_features::ApplicationServer::isStopping()) {
+        events::CreateCollection(name, TRI_ERROR_SHUTTING_DOWN);
+        return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
+      }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
     }
@@ -2557,6 +2562,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
       if (TRI_microtime() > endTime) {
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+
+      if (application_features::ApplicationServer::isStopping()) {
+        return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
