@@ -235,20 +235,6 @@ During view modification the following directives apply:
 * locale: (optional; default: `C`)
   the default locale used for ordering processed attribute names
 
-* threadsMaxIdle: (optional; default: `5`)
-  maximum idle number of threads for single-run tasks
-  for the case where there are a lot of short-lived asynchronous tasks, a lower
-  value will cause a lot of thread creation/deletion calls
-  for the case where there are no short-lived asynchronous tasks, a higher
-  value will only waste memory
-
-* threadsMaxTotal: (optional; default: `5`)
-  maximum total number of threads (>0) for single-run tasks
-  for the case where there are a lot of parallelizable tasks and an abundance
-  of resources, a lower value would limit performance
-  for the case where there are limited resources CPU/memory, a higher value
-  will negatively impact performance
-
 ### View properties (unmodifiable)
 
 * collections:

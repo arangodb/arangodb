@@ -181,27 +181,6 @@ std::string generateName(TRI_voc_cid_t viewId, TRI_voc_cid_t collectionId) {
    ;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute the data path to user for iresearch persisted-store
-///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
-///        the path is hardcoded to reside under:
-///        <DatabasePath>/<IResearchView::type()>-<view id>
-///        similar to the data path calculation for collections
-////////////////////////////////////////////////////////////////////////////////
-irs::utf8_path getPersistedPath(
-    arangodb::DatabasePathFeature const& dbPathFeature, TRI_voc_cid_t id
-) {
-  irs::utf8_path dataPath(dbPathFeature.directory());
-  static const std::string subPath("databases");
-
-  dataPath /= subPath;
-  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  dataPath += "-";
-  dataPath += std::to_string(id);
-
-  return dataPath;
-}
-
 }
 
 namespace arangodb {
@@ -216,8 +195,7 @@ IResearchViewDBServer::IResearchViewDBServer(
    _meta(
      info.isObject() && info.get(StaticStrings::PropertiesField).isObject()
      ? info.get(StaticStrings::PropertiesField) : emptyObjectSlice()
-   ),
-   _persistedPath(getPersistedPath(dbPathFeature, id())) {
+   ) {
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
@@ -348,6 +326,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   if (view) {
     _collections.emplace(cid, view); // track the IResearchView instance from vocbase
+    // FIXME TODO view->updateProperties(*_syncWorker) add sync jobs tho this IResearchViewDBServer sync worker
 
     return view; // do not wrap in deleter since view already present in vocbase (as if already present in '_collections')
   }
@@ -373,6 +352,10 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     arangodb::StaticStrings::DataSourceName,
     toValuePair(viewName)
   ); // mark the view definition as an internal per-cid instance
+  builder.add(
+    arangodb::StaticStrings::DataSourcePlanId,
+    arangodb::velocypack::Value(id())
+  ); // planId required for cluster-wide view lookup from per-cid view
   builder.add(
     arangodb::StaticStrings::DataSourceType,
     toValuePair(DATA_SOURCE_TYPE.name())
@@ -406,6 +389,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   // FIXME should we register?
   _collections.emplace(cid, view);
+  // FIXME TODO view->updateProperties(*_syncWorker) add sync jobs tho this IResearchViewDBServer sync worker
 
   // hold a reference to the original view in the deleter so that the view is still valid for the duration of the pointer wrapper
   // this shared_ptr should not be stored in TRI_vocbase_t since the deleter depends on 'this'
@@ -477,12 +461,6 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     auto wiew = std::shared_ptr<IResearchViewDBServer>(
       new IResearchViewDBServer(vocbase, info, *feature, planVersion)
     );
-    auto logicalWiew = ClusterInfo::instance()->getView(vocbase.name(), name);
-
-    // if not found in the plan then look for the view in vocbase (added there below)
-    if (!logicalWiew) {
-      logicalWiew = vocbase.lookupView(name);
-    }
 
     if (preCommit && !preCommit(wiew)) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
@@ -490,6 +468,8 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
       return nullptr;
     }
+
+    // FIXME TODO if a syncWorker with identical meta exists then use it instead
 
     return wiew;
   }
@@ -674,6 +654,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   props.close();
 
   IResearchViewMeta meta;
+  IResearchViewMetaState metaState;
   std::string error;
 
   if (partialUpdate) {
@@ -696,10 +677,10 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   WriteMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // '_meta' can be asynchronously read
 
-  meta._collections.clear();
+  metaState._collections.clear();
 
   for (auto& entry: _collections) {
-    meta._collections.emplace(entry.first);
+    metaState._collections.emplace(entry.first);
   }
 
   // ...........................................................................
@@ -710,7 +691,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
 
   builder.openObject();
 
-  if (!meta.json(builder)) {
+  if (!meta.json(builder) || !metaState.json(builder)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failure to generate 'properties' definition while updating IResearch View in database '") + vocbase().name() + "'"

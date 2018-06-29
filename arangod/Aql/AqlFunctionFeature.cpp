@@ -255,6 +255,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"STDDEV_SAMPLE", ".", true, false, true, &Functions::StdDevSample});
   add({"STDDEV_POPULATION", ".", true, false, true, &Functions::StdDevPopulation});
   addAlias("STDDEV", "STDDEV_POPULATION");
+  add({"COUNT_DISTINCT", ".", true, false, true, &Functions::CountDistinct});
+  addAlias("COUNT_UNIQUE", "COUNT_DISTINCT");
   add({"UNIQUE", ".", true, false, true, &Functions::Unique});
   add({"SORTED_UNIQUE", ".", true, false, true, &Functions::SortedUnique});
   add({"SORTED", ".", true, false, true, &Functions::Sorted});

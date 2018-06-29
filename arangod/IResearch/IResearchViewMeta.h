@@ -99,19 +99,13 @@ struct IResearchViewMeta {
   };
 
   struct Mask {
-    bool _collections;
     bool _commit;
     bool _locale;
-    bool _threadsMaxIdle;
-    bool _threadsMaxTotal;
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via IResearchLink creation (may contain no-longer valid cids)
   CommitMeta _commit;
   std::locale _locale; // locale used for ordering processed attribute names
-  size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks
-  size_t _threadsMaxTotal; // maximum total number of threads for single-run tasks
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -120,7 +114,7 @@ struct IResearchViewMeta {
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
   // NOTE: if adding fields don't forget to modify the init(...) function !!!
   // NOTE: if adding fields don't forget to modify the json(...) function !!!
-  // NOTE: if adding fields don't forget to modify the memSize() function !!!
+  // NOTE: if adding fields don't forget to modify the memory() function !!!
 
   IResearchViewMeta();
   IResearchViewMeta(IResearchViewMeta const& other);
@@ -173,6 +167,87 @@ struct IResearchViewMeta {
   bool json(
     arangodb::velocypack::ObjectBuilder const& builder,
     IResearchViewMeta const* ignoreEqual = nullptr,
+    Mask const* mask = nullptr
+  ) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief amount of memory in bytes occupied by this iResearch Link meta
+  ////////////////////////////////////////////////////////////////////////////////
+  size_t memory() const;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal configuration state of an IResearch view instance
+///        not directly modifiable by user
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchViewMetaState {
+  struct Mask {
+    bool _collections;
+    explicit Mask(bool mask = false) noexcept;
+  };
+
+  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via IResearchLink creation (may contain no-longer valid cids)
+  // NOTE: if adding fields don't forget to modify the default constructor !!!
+  // NOTE: if adding fields don't forget to modify the copy constructor !!!
+  // NOTE: if adding fields don't forget to modify the move constructor !!!
+  // NOTE: if adding fields don't forget to modify the comparison operator !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMetaState::Mask !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMetaState::Mask constructor !!!
+  // NOTE: if adding fields don't forget to modify the init(...) function !!!
+  // NOTE: if adding fields don't forget to modify the json(...) function !!!
+  // NOTE: if adding fields don't forget to modify the memory() function !!!
+
+  IResearchViewMetaState();
+  IResearchViewMetaState(IResearchViewMetaState const& other);
+  IResearchViewMetaState(IResearchViewMetaState&& other) noexcept;
+
+  IResearchViewMetaState& operator=(IResearchViewMetaState&& other) noexcept;
+  IResearchViewMetaState& operator=(IResearchViewMetaState const& other);
+
+  bool operator==(IResearchViewMetaState const& other) const noexcept;
+  bool operator!=(IResearchViewMetaState const& other) const noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return default IResearchViewMeta values
+  ////////////////////////////////////////////////////////////////////////////////
+  static const IResearchViewMetaState& DEFAULT();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize IResearchViewMeta with values from a JSON description
+  ///        return success or set 'errorField' to specific field with error
+  ///        on failure state is undefined
+  /// @param mask if set reflects which fields were initialized from JSON
+  ////////////////////////////////////////////////////////////////////////////////
+  bool init(
+    arangodb::velocypack::Slice const& slice,
+    std::string& errorField,
+    IResearchViewMetaState const& defaults = DEFAULT(),
+    Mask* mask = nullptr
+  ) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a JSON description of a IResearchViewMeta object
+  ///        do not fill values identical to ones available in 'ignoreEqual'
+  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
+  ///        elements are appended to an existing object
+  ///        return success or set TRI_set_errno(...) and return false
+  ////////////////////////////////////////////////////////////////////////////////
+  bool json(
+    arangodb::velocypack::Builder& builder,
+    IResearchViewMetaState const* ignoreEqual = nullptr,
+    Mask const* mask = nullptr
+  ) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a JSON description of a IResearchViewMeta object
+  ///        do not fill values identical to ones available in 'ignoreEqual'
+  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
+  ///        elements are appended to an existing object
+  ///        return success or set TRI_set_errno(...) and return false
+  ////////////////////////////////////////////////////////////////////////////////
+  bool json(
+    arangodb::velocypack::ObjectBuilder const& builder,
+    IResearchViewMetaState const* ignoreEqual = nullptr,
     Mask const* mask = nullptr
   ) const;
 

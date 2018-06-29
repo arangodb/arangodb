@@ -2,7 +2,7 @@
 # Manipulating documents
 
 These functions implement the
-[HTTP API for manipulating documents](https://docs.arangodb.com/latest/HTTP/Document/index.html).
+[HTTP API for manipulating documents](../../../..//HTTP/Document/index.html).
 
 ## collection.replace
 
@@ -51,7 +51,7 @@ If a string is passed instead of an options object, it will be interpreted as
 the _rev_ option.
 
 For more information on the _opts_ object, see
-[the HTTP API documentation for working with documents](https://docs.arangodb.com/latest/HTTP/Document/WorkingWithDocuments.html).
+[the HTTP API documentation for working with documents](../../../..//HTTP/Document/WorkingWithDocuments.html).
 
 **Examples**
 
@@ -145,7 +145,7 @@ If a string is passed instead of an options object, it will be interpreted as
 the _rev_ option.
 
 For more information on the _opts_ object, see
-[the HTTP API documentation for working with documents](https://docs.arangodb.com/latest/HTTP/Document/WorkingWithDocuments.html).
+[the HTTP API documentation for working with documents](../../../..//HTTP/Document/WorkingWithDocuments.html).
 
 **Examples**
 
@@ -217,7 +217,7 @@ ArangoDB 3.0 and higher.
     updated if the current revision is the one specified.
 
 For more information on the _opts_ object, see
-[the HTTP API documentation for working with documents](https://docs.arangodb.com/latest/HTTP/Document/WorkingWithDocuments.html).
+[the HTTP API documentation for working with documents](../../../..//HTTP/Document/WorkingWithDocuments.html).
 
 **Examples**
 
@@ -276,7 +276,7 @@ If a string is passed instead of an options object, it will be interpreted as
 the _rev_ option.
 
 For more information on the _opts_ object, see
-[the HTTP API documentation for working with documents](https://docs.arangodb.com/latest/HTTP/Document/WorkingWithDocuments.html).
+[the HTTP API documentation for working with documents](../../../..//HTTP/Document/WorkingWithDocuments.html).
 
 **Examples**
 

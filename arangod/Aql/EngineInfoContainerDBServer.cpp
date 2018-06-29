@@ -31,11 +31,13 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/BaseOptions.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -140,7 +142,11 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = ecNode->restrictedShard();
       }
-      _type = ExecutionNode::ENUMERATE_COLLECTION;
+
+      // do not set '_type' of the engine here,
+      // bacause satellite collections may consists of
+      // multiple "main nodes"
+
       break;
     }
     case ExecutionNode::INDEX: {
@@ -150,7 +156,11 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = idxNode->restrictedShard();
       }
-      _type = ExecutionNode::INDEX;
+
+      // do not set '_type' of the engine here,
+      // bacause satellite collections may consists of
+      // multiple "main nodes"
+
       break;
     }
 #ifdef USE_IRESEARCH
@@ -911,16 +921,22 @@ Result EngineInfoContainerDBServer::buildEngines(
   injectGraphNodesToMapping(dbServerMapping);
 
   auto cc = ClusterComm::instance();
-
   if (cc == nullptr) {
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
+  
+  double ttl = QueryRegistryFeature::DefaultQueryTTL;
+  if (QueryRegistryFeature::QUERY_REGISTRY != nullptr) {
+    ttl = QueryRegistryFeature::QUERY_REGISTRY->defaultTTL();
+  }
+  TRI_ASSERT(ttl > 0);
 
   std::string const url(
     "/_db/"
     + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name())
-    + "/_api/aql/setup"
+    + "/_api/aql/setup?ttl="
+    + std::to_string(ttl)
   );
   bool needCleanup = true;
   auto cleanup = [&]() {

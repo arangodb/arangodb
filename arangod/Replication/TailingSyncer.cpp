@@ -138,7 +138,7 @@ void TailingSyncer::abortOngoingTransactions() {
 
 /// @brief whether or not a marker should be skipped
 bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
-                               VPackSlice const& slice) const {
+                               VPackSlice const& slice) {
   bool tooOld = false;
   std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
@@ -177,20 +177,23 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
   if (tooOld) {
     return true;
   }
-
+  
   // the transient applier state is just used for one shard / collection
-  if (!_configuration._restrictCollections.empty()) {
-    if (_configuration._restrictType.empty() && _configuration._includeSystem) {
-      return false;
-    }
-
-    VPackSlice const name = slice.get("cname");
-    if (name.isString()) {
-      return isExcludedCollection(name.copyString());
-    }
+  if (_configuration._restrictCollections.empty()) {
+    return false;
   }
-
-  return false;
+    
+  if (_configuration._restrictType.empty() && _configuration._includeSystem) {
+    return false;
+  }
+  
+  VPackSlice const name = slice.get("cname");
+  if (name.isString()) {
+    return isExcludedCollection(name.copyString());
+  }
+  
+  // call virtual method
+  return skipMarker(slice);
 }
 
 /// @brief whether or not a collection should be excluded
@@ -227,8 +230,9 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   // the new wal access protocol contains database names
   VPackSlice const nameSlice = slice.get("db");
   if (!nameSlice.isString()) {
+    LOG_DEVEL << slice.toJson();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                                   "create database marker did not contain database");
+                                   "create database marker did not contain name");
   }
   std::string name = nameSlice.copyString();
   if (name.empty() || (name[0] >= '0' && name[0] <= '9')) {
@@ -239,6 +243,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
     if (!data.isObject()) {
+      LOG_DEVEL << slice.toJson();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                      "create database marker did not contain data");
     }

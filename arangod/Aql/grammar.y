@@ -103,7 +103,7 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
       }
       else {
         auto f = static_cast<arangodb::aql::Function*>(func->getData());
-        if (!Aggregator::isSupported(f->name)) {
+        if (!Aggregator::isValid(f->name)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
           isValid = false;
         }
