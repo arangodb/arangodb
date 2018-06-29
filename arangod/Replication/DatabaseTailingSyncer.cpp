@@ -67,7 +67,9 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
      useTick,
      barrierId
    ),
-   _vocbase(&vocbase) {
+   _vocbase(&vocbase),
+   _queriedTranslations(false) {
+
   _vocbases.emplace(
     std::piecewise_construct,
     std::forward_as_tuple(vocbase.name()),
@@ -206,14 +208,21 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
   if (!name.isString()) {
     return false;
   }
+  
+  if (_masterInfo._majorVersion < 3 ||
+      (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
+    // globallyUniqueId only exists in 3.3 and higher
+    return false;
+  }
 
-  if (_translations.empty()) {
+  if (_queriedTranslations) {
     // no translations yet... query master inventory to find names of all
     // collections
     try {
       DatabaseInitialSyncer init(*_vocbase, _configuration);
       VPackBuilder inventoryResponse;
       Result res = init.inventory(inventoryResponse);
+      _queriedTranslations = true;
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
         return false;
