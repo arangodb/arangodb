@@ -1,6 +1,13 @@
 devel
 -----
 
+* added `uuidv4` and `genRandomBytes` methods to crypto module
+
+* added `hexSlice` methods `hexWrite` to JS Buffer type
+
+* added `Buffer.from`, `Buffer.of`, `Buffer.alloc` and `Buffer.allocUnsafe`
+  for improved compatibility with Node.js
+
 * added `COUNT_DISTINCT` AQL function
 
 * make AQL optimizer rule `collect-in-cluster` optimize aggregation functions
