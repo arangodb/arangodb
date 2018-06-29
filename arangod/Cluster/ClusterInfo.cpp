@@ -1662,6 +1662,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       }
       
       if (application_features::ApplicationServer::isStopping()) {
+        events::CreateCollection(name, TRI_ERROR_SHUTTING_DOWN);
         return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
       }
 
