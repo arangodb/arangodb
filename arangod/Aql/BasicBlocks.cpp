@@ -161,8 +161,12 @@ bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
 
 /// @brief internal function to get another block
 std::pair<ExecutionState, bool> FilterBlock::getBlock(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   while (true) {  // will be left by break or return
+    if (_upstreamState == ExecutionState::DONE) {
+      // quickfix to avoid needless getBlock calls.
+      return {_upstreamState, false};
+    }
     auto res = ExecutionBlock::getBlock(atMost);
     if (res.first == ExecutionState::WAITING ||
         !res.second) {
@@ -217,7 +221,7 @@ std::pair<ExecutionState, arangodb::Result> FilterBlock::getOrSkipSome(
 
   while (_inflight < atMost) {
     if (_buffer.empty()) {
-      auto upstreamRes = getBlock(atMost - _inflight);
+      auto upstreamRes = getBlock(DefaultBatchSize());
       if (upstreamRes.first == ExecutionState::WAITING) {
         // We have not modified result or skipped up to now.
         // Make sure the caller does not have to retain it.
