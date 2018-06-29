@@ -3,6 +3,7 @@ import re
 import os
 import json
 import io
+import shutil
 
 RESET  = '\033[0m'
 def make_std_color(No):
@@ -344,6 +345,8 @@ have_RESTREPLYBODY = re.compile(r"@RESTREPLYBODY")
 have_RESTSTRUCT = re.compile(r"@RESTSTRUCT")
 remove_MULTICR = re.compile(r'\n\n\n*')
 
+RXIMAGES = re.compile(r".*\!\[([\d\s\w\/\. ()-]*)\]\(([\d\s\w\/\.-]*)\).*")
+
 def _mkdir_recursive(path):
     sub_path = os.path.dirname(path)
     if not os.path.exists(sub_path):
@@ -478,19 +481,19 @@ def walk_on_files(inDirPath, outDirPath):
         for file in files:
             if file.endswith(".md") and not file.endswith("SUMMARY.md"):
                 count += 1
-                inFileFull = os.path.join(root, file)
-                outFileFull = os.path.join(outDirPath, inFileFull)
+                nextInFileFull = os.path.join(root, file)
+                nextOutFileFull = os.path.join(outDirPath, nextInFileFull)
                 if fileFilter != None:
-                    if fileFilter.match(inFileFull) == None:
+                    if fileFilter.match(nextInFileFull) == None:
                         skipped += 1
                         # print "Skipping %s -> %s" % (inFileFull, outFileFull)
                         continue;
-                # print "%s -> %s" % (inFileFull, outFileFull)
+                print "%s -> %s" % (nextInFileFull, nextOutFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
-                findStartCode(inFileFull, outFileFull)
+                findStartCode(nextInFileFull, nextOutFileFull, inDirPath)
     print STD_COLOR + "Processed %d files, skipped %d" % (count, skipped) + RESET
 
-def findStartCode(inFileFull, outFileFull):
+def findStartCode(inFileFull, outFileFull, baseInPath):
     inFD = io.open(inFileFull, "r", encoding="utf-8", newline=None)
     textFile = inFD.read()
     inFD.close()
@@ -519,6 +522,31 @@ def findStartCode(inFileFull, outFileFull):
         raise
     #print "9" * 80
     #print textFile
+    
+    def analyzeImages(m):
+        imageLink = m.groups()[1]
+        inf = os.path.realpath(os.path.join(os.path.dirname(inFileFull), imageLink))
+        outf = os.path.realpath(os.path.join(os.path.dirname(outFileFull), imageLink))
+        bookDir = os.path.realpath(baseInPath)
+        depth = len(inFileFull.split(os.sep)) - 1 # filename + book directory
+        assets = os.path.join((".." + os.sep)*depth, baseInPath, "assets")
+	# print(inf, outf, bookDir, depth, assets)
+        
+        outdir = os.path.dirname(outf)
+        if not os.path.exists(outdir):
+            _mkdir_recursive(outdir)
+        if os.path.commonprefix([inf, bookDir]) != bookDir:
+            assetDir = os.path.join(outdir, assets)
+            if not os.path.exists(assetDir):
+                os.mkdir(assetDir)
+            outf=os.path.join(assetDir, os.path.basename(imageLink))
+            imageLink = os.path.join((".." + os.sep)* (depth - 1), "assets",os.path.basename(imageLink))
+
+        if not os.path.exists(outf):
+            shutil.copy(inf, outf)
+        return str('![' + m.groups()[0] + '](' + imageLink + ')')
+
+    textFile = re.sub(RXIMAGES,analyzeImages, textFile)
     outFD = io.open(outFileFull, "w", encoding="utf-8", newline="")
     outFD.write(textFile)
     outFD.close()

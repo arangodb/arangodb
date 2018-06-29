@@ -389,11 +389,13 @@ function build-book()
     if ditaa --help > /dev/null; then
         echo "${STD_COLOR} - generating ditaa images${RESET}"
         find "${NAME}" -name "*.ditaa" | while IFS= read -r image; do
+            mkdir -p $(dirname "ppbooks/${image//ditaa/png}")
             ditaa "${image}" "ppbooks/${image//ditaa/png}"
         done
     else
         echo "${ERR_COLOR} - generating FAKE ditaa images - no ditaa installed${RESET}"
         find "${NAME}" -name "*.ditaa" | while IFS= read -r image; do
+            mkdir -p $(dirname "ppbooks/${image//ditaa/png}")
             cp "../../js/node/node_modules/mocha/images/error.png" \
                "ppbooks/${image//ditaa/png}"
         done
@@ -412,14 +414,10 @@ function build-book()
 
     (
         cd "ppbooks/${NAME}"
+        mkdir -p styles
         cp -a "../../${NAME}/styles/"* styles/
     )
     WD=$(pwd)
-    echo "${STD_COLOR} - copying images${RESET}"
-    find "${NAME}" -name "*.png" | while IFS= read -r pic; do
-        cd "${WD}/ppbooks"
-        cp "${WD}/${pic}" "${pic}"
-    done
 
     echo "${STD_COLOR} - generating MD-Files${RESET}"
     python ../Scripts/generateMdFiles.py \
@@ -654,6 +652,10 @@ function build-dist-books()
 {
     set -x
     set -e
+    if test -z "${OUTPUT_DIR}"; then
+        echo "please specify --outputDir"
+        exit 1
+    fi
     rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
     if test "${isCygwin}" -eq 0 -a -z "${DISPLAY}"; then
