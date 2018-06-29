@@ -64,7 +64,29 @@ will avoid write conflicts but also inhibits concurrent writes.
 Currently, another restriction is due to the transaction handling in
 RocksDB. Transactions are limited in total size. If you have a statement
 modifying a lot of documents it is necessary to commit data inbetween. This will
-be done automatically for AQL by default.
+be done automatically for AQL by default. Transactions that get too big (in terms of
+number of operations involved or the total size of data modified by the transaction)
+will be committed automatically. Effectively this means that big user transactions
+are split into multiple smaller RocksDB transactions that are committed individually.
+The entire user transaction will not necessarily have ACID properties in this case.
+
+The threshold values for transaction sizes can be configured globally using the
+startup options
+
+* `--rocksdb.intermediate-commit-size`: if the size of all operations in a transaction 
+  reaches this threshold, the transaction is committed automatically and a new transaction
+  is started. The value is specified in bytes.
+
+* `--rocksdb.intermediate-commit-count`: if the number of operations in a transaction 
+  reaches this value, the transaction is committed automatically and a new transaction
+  is started.
+
+* `--rocksdb.max-transaction-size`: this is an upper limit for the total number of bytes
+  of all operations in a transaction. If the operations in a transaction consume more
+  than this threshold value, the transaction will automatically abort with error 32
+  ("resource limit exceeded").
+
+It is also possible to override these thresholds per transaction.
 
 ### Performance
 
