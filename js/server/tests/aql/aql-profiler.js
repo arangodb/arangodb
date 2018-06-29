@@ -34,7 +34,6 @@ const console = require('console');
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
 const isCluster = require("@arangodb/cluster").isCluster();
-const numDBServers = global.ArangoClusterInfo.getDBServers().length;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for AQL tracing/profiling
