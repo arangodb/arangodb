@@ -1423,10 +1423,6 @@ int RocksDBEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief Add engine-specific AQL functions.
-void RocksDBEngine::addAqlFunctions() {
-}
-
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules() {
   RocksDBOptimizerRules::registerResources();
