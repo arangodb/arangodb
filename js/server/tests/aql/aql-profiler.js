@@ -483,12 +483,13 @@ function ahuacatlProfilerTestSuite () {
       genNodeList,
       prepare = () => {},
       bind = rows => ({rows}),
+      options = {},
     }
   ) {
     for (const rows of defaultTestRowCounts) {
       prepare(rows);
       const profile = db._query(query, bind(rows),
-        {profile: 2, defaultBatchSize}
+        _.merge(options, {profile: 2, defaultBatchSize})
       ).getExtra();
 
       assertIsLevel2Profile(profile);
@@ -782,6 +783,57 @@ function ahuacatlProfilerTestSuite () {
         }
       }
     },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test FilterBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testFilterBlock1: function() {
+      const query = 'FOR i IN 1..@rows FILTER true RETURN i';
+      const options = {
+        optimizer: {
+          rules: [
+            "-remove-unnecessary-filters",
+            "-remove-unnecessary-filters-2",
+            "-move-filters-up",
+            "-move-filters-up-2",
+          ]
+        }
+      };
+      const genNodeList = (rows, batches) => [
+        {type: SingletonBlock, calls: 1, items: 1},
+        {type: CalculationBlock, calls: 1, items: 1},
+        {type: CalculationBlock, calls: 1, items: 1},
+        {type: EnumerateListBlock, calls: batches, items: rows},
+        {type: FilterBlock, calls: batches, items: rows},
+        {type: ReturnBlock, calls: batches, items: rows},
+      ];
+      runDefaultChecks({query, genNodeList, options});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test FilterBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testFilterBlock2 : function () {
+      const query = 'FOR i IN 1..@rows FILTER i % 13 != 0 RETURN i';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterFilter = rows - Math.floor(rows / 13);
+        const batchesAfterFilter = Math.ceil(rowsAfterFilter / defaultBatchSize);
+
+        return [
+          { type : SingletonBlock, calls : 1, items : 1 },
+          { type : CalculationBlock, calls : 1, items : 1 },
+          { type : EnumerateListBlock, calls : batches, items : rows },
+          { type : CalculationBlock, calls : batches, items : rows },
+          { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
+          { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
+        ];
+      };
+      runDefaultChecks({query, genNodeList});
+    },
+
+
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
