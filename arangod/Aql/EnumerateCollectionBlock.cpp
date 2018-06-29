@@ -138,7 +138,6 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
     size_t toFetch = std::min(DefaultBatchSize(), atMost);
     BufferState bufferState = getBlockIfNeeded(toFetch);
     if (bufferState == BufferState::WAITING) {
-      LOG_DEVEL << "<<<WAITING";
       return {ExecutionState::WAITING, nullptr};
     }
     if (bufferState == BufferState::NO_MORE_BLOCKS) {
@@ -146,7 +145,6 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
       _done = true;
       TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
       traceGetSomeEnd(nullptr, ExecutionState::DONE);
-      LOG_DEVEL << "<<<DONE";
       return {ExecutionState::DONE, nullptr};
     }
 

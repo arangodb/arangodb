@@ -183,8 +183,8 @@ function ahuacatlProfilerTestSuite () {
   };
 
   const getCompactStatsNodes = function (profile) {
-    // TODO as long as we don't need the node(!) type anymore, we could map the
-    // stats directly (without zipping the plan nodes)
+    // While we don't use any .fromPlan info here, zip uses the (correct) order
+    // of the plan, not from the stats (which is sorted by id).
     return zipPlanNodesIntoStatsNodes(profile).map(
       node => ({
         // type: node.fromPlan.type,
@@ -845,7 +845,7 @@ function ahuacatlProfilerTestSuite () {
 // *DistinctCollectBlock
 // *EnumerateCollectionBlock
 // *EnumerateListBlock
-// FilterBlock
+// *FilterBlock
 // HashedCollectBlock
 // IndexBlock
 // LimitBlock

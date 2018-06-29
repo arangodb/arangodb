@@ -194,6 +194,7 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
 
     // if we make it here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
+    TRI_ASSERT(cur != nullptr);
 
     // get the thing we are looping over
     AqlValue const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
