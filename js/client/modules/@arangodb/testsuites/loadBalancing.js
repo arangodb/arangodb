@@ -103,6 +103,8 @@ function loadBalancingAuthClient (options) {
   if (options.coordinators < 2) {
     options.coordinators = 2;
   }
+  options.username = 'root';
+  options.password = '';
 
   return tu.performTests(options, testCases, 'load_balancing', tu.runInArangosh, {
     'server.authentication': 'true',

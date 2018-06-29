@@ -28,13 +28,18 @@
 
 const jsunity = require("jsunity");
 
+const base64Encode = require('internal').base64Encode;
 const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
 const userModule = require("@arangodb/users");
+const _ = require("lodash");
+
 
 function getCoordinators() {
-  const endpointToURL = function (endpoint) {
+  const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
+  const toEndpoint = (d) => (d.endpoint);
+  const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {
       return 'https://' + endpoint.substr(6);
     }
@@ -46,13 +51,12 @@ function getCoordinators() {
   };
 
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  const endpoints = instanceInfo.arangods.map(d => d.endpoint);
-  return endpoints.map(e => endpointToURL(e));
+  return instanceInfo.arangods.filter(isCoordinator)
+                              .map(toEndpoint)
+                              .map(endpointToURL);
 }
 
 const servers = getCoordinators();
-
-require('console').log(servers);
 
 function CursorSyncAuthSuite () {
   'use strict';
@@ -76,11 +80,13 @@ function CursorSyncAuthSuite () {
     try {
       const envelope = {
         body,
+        headers: {
+          authorization:
+            `Basic ${base64Encode(auth.username + ':' + auth.password)}`
+        },
         json: true,
         method,
-        url: url.parse(
-          `${coordinators[i]}${endpoint}?auth=${auth.username}:${auth.password}`
-        )
+        url: `${coordinators[i]}${endpoint}`
       };
       res = request(envelope);
     } catch(err) {
@@ -96,7 +102,7 @@ function CursorSyncAuthSuite () {
   }
 
   return {
-    setUp: function() {
+    setUpAll: function() {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -107,7 +113,6 @@ function CursorSyncAuthSuite () {
         db._drop(cns[i]);
         cs.push(db._create(cns[i]));
         assertTrue(cs[i].name() === cns[i]);
-        require('internal').print(cs[i]);
         for (let key in keys[i]) {
           cs[i].save({ _key: key });
         }
@@ -124,12 +129,12 @@ function CursorSyncAuthSuite () {
       userModule.grantCollection(users[1].username, '_system', cns[1], 'none');
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cns[0]);
       db._drop(cns[1]);
     },
 
-    testCursorForwardingSameUser: function() {
+    testCursorForwardingSameUserBasic: function() {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -141,7 +146,7 @@ function CursorSyncAuthSuite () {
       };
       let result = sendRequest(users[0], 'POST', url, query, true);
 
-      assertFalse(result == {});
+      assertFalse(result === undefined || result === {});
       assertFalse(result.error);
       assertEqual(result.code, 201);
       assertTrue(result.hasMore);
@@ -150,14 +155,95 @@ function CursorSyncAuthSuite () {
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, true);
+      result = sendRequest(users[0], 'PUT', url, {}, false);
 
-      assertFalse(result == {});
+      assertFalse(result === undefined || result === {});
       assertFalse(result.error);
       assertEqual(result.code, 200);
       assertFalse(result.hasMore);
       assertEqual(result.count, 4);
       assertEqual(result.result.length, 2);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'PUT', url, {}, false);
+      require('internal').print(JSON.stringify(result));
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+    },
+
+    testCursorForwardingSameUserDeletion: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest(users[0], 'POST', url, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'DELETE', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 202);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'PUT', url, {}, false);
+      require('internal').print(JSON.stringify(result));
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+    },
+
+    testCursorForwardingDifferentUser: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest(users[0], 'POST', url, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      /* TODO enable failure assertions once cursors are user-restricted
+      result = sendRequest(users[1], 'PUT', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 401);*/
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'DELETE', url, {}, false);
+      require('internal').print(JSON.stringify(result));
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 202);
     },
 
   }

@@ -31,9 +31,12 @@ const jsunity = require("jsunity");
 const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
+const _ = require("lodash");
 
 function getCoordinators() {
-  const endpointToURL = function (endpoint) {
+  const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
+  const toEndpoint = (d) => (d.endpoint);
+  const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {
       return 'https://' + endpoint.substr(6);
     }
@@ -45,13 +48,12 @@ function getCoordinators() {
   };
 
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  const endpoints = instanceInfo.arangods.map(d => d.endpoint);
-  return endpoints.map(e => endpointToURL(e));
+  return instanceInfo.arangods.filter(isCoordinator)
+                              .map(toEndpoint)
+                              .map(endpointToURL);
 }
 
 const servers = getCoordinators();
-
-require('console').log(servers);
 
 function CursorSyncSuite () {
   'use strict';
@@ -73,7 +75,7 @@ function CursorSyncSuite () {
         body,
         json: true,
         method,
-        url: url.parse(`${coordinators[i]}/_db/${db._name()}${endpoint}?user=root:`)
+        url: `${coordinators[i]}${endpoint}`
       };
       res = request(envelope);
     } catch(err) {
@@ -89,7 +91,8 @@ function CursorSyncSuite () {
   }
 
   return {
-    setUp: function() {
+    setUpAll: function() {
+      require('internal').print("FUCK THE SETUP");
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -100,19 +103,56 @@ function CursorSyncSuite () {
         db._drop(cns[i]);
         cs.push(db._create(cns[i]));
         assertTrue(cs[i].name() === cns[i]);
-        require('internal').print(cs[i]);
         for (let key in keys[i]) {
           cs[i].save({ _key: key });
         }
       }
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       db._drop(cns[0]);
       db._drop(cns[1]);
     },
 
-    testCursorForwardingSameUser: function() {
+    testCursorForwardingBasic: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest('POST', url, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest('PUT', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 200);
+      assertFalse(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest('PUT', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+    },
+
+    testCursorForwardingDeletion: function() {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -125,7 +165,7 @@ function CursorSyncSuite () {
       let result = sendRequest('POST', url, query, true);
       require('internal').print(JSON.stringify(result));
 
-      assertFalse(result == {});
+      assertFalse(result === undefined || result === {});
       assertFalse(result.error);
       assertEqual(result.code, 201);
       assertTrue(result.hasMore);
@@ -134,14 +174,18 @@ function CursorSyncSuite () {
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
-      result = sendRequest('PUT', url, {}, true);
+      result = sendRequest('DELETE', url, {}, false);
 
-      assertFalse(result == {});
+      assertFalse(result === undefined || result === {});
       assertFalse(result.error);
-      assertEqual(result.code, 200);
-      assertFalse(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertEqual(result.code, 202);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest('PUT', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
     },
 
   }
