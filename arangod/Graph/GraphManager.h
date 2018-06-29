@@ -58,13 +58,13 @@ class GraphManager {
   /// @brief find or create vertex collection by name
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult findOrCreateVertexCollectionByName(const std::string& name,
-                                          bool waitForSync);
+                                          bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult createCollection(std::string const& name, TRI_col_type_e colType,
-                          bool waitForSync);
+                          bool waitForSync, VPackSlice options);
 
  public:
   GraphManager() = delete;
@@ -89,18 +89,20 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition,
-                                                bool waitForSync);
+  OperationResult findOrCreateCollectionsByEdgeDefinitions(
+      VPackSlice edgeDefinition, bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createVertexCollection(std::string const& name, bool waitForSync);
+  OperationResult createVertexCollection(std::string const& name,
+                                         bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an edge collection
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createEdgeCollection(std::string const& name, bool waitForSync);
+  OperationResult createEdgeCollection(std::string const& name,
+                                       bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief check if the edge definition conflicts with one in an existing

@@ -168,9 +168,9 @@ class GraphOperations {
       std::unordered_set<std::string> possibleOrphans, bool waitForSync,
       transaction::Methods& trx);
 
-  OperationResult pushCollectionIfMayBeDropped(const std::string &colName,
-                                               const std::string &graphName,
-                                               std::vector<std::string> &toBeRemoved);
+  OperationResult pushCollectionIfMayBeDropped(
+      const std::string& colName, const std::string& graphName,
+      std::vector<std::string>& toBeRemoved);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;

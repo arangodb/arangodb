@@ -52,8 +52,6 @@ using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
 std::string const GraphOperations::_graphs = "_graphs";
-char const* GraphOperations::_attrEdgeDefs = "edgeDefinitions";
-char const* GraphOperations::_attrOrphans = "orphanCollections";
 
 OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
     VPackSlice graph, VPackSlice edgeDefinition,
@@ -66,8 +64,8 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
 
   VPackSlice eDs;
 
-  if (graph.get(GraphOperations::_attrEdgeDefs).isArray()) {
-    eDs = graph.get(GraphOperations::_attrEdgeDefs);
+  if (graph.get(StaticStrings::GraphEdgeDefinitions).isArray()) {
+    eDs = graph.get(StaticStrings::GraphEdgeDefinitions);
   }
 
   OperationResult result;
@@ -89,7 +87,7 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
       // build edge definitions start
       builder.add(StaticStrings::KeyString,
                   VPackValue(graph.get(StaticStrings::KeyString).copyString()));
-      builder.add(GraphOperations::_attrEdgeDefs,
+      builder.add(StaticStrings::GraphEdgeDefinitions,
                   VPackValue(VPackValueType::Array));
       for (auto const& it : edgeDefs) {
         builder.add(VPackValue(VPackValueType::Object));
@@ -139,8 +137,10 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
   }
 
   GraphManager gmngr{ctx()};
+  VPackBuilder collectionOptions;
+  _graph.createCollectionOptions(collectionOptions, waitForSync);
   for (auto const& po : possibleOrphans) {
-    gmngr.createVertexCollection(po, waitForSync);
+    gmngr.createVertexCollection(po, waitForSync, collectionOptions.slice());
   }
 
   return result;
@@ -223,8 +223,8 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(_graph._attrEdgeDefs, newEdgeDefs.slice());
-  builder.add(_graph._attrOrphans, newOrphColls.slice());
+  builder.add(StaticStrings::GraphEdgeDefinitions, newEdgeDefs.slice());
+  builder.add(StaticStrings::GraphOrphans, newOrphColls.slice());
   builder.close();
 
   SingleCollectionTransaction trx(ctx(), GraphOperations::_graphs,
@@ -320,8 +320,10 @@ OperationResult GraphOperations::editEdgeDefinition(
   builder.close();
 
   GraphManager gmngr{ctx()};
+  VPackBuilder collectionsOptions;
+  _graph.createCollectionOptions(collectionsOptions, waitForSync);
   result = gmngr.findOrCreateCollectionsByEdgeDefinitions(
-      builder.slice(), waitForSync);
+      builder.slice(), waitForSync, collectionsOptions.slice());
   if (result.fail()) {
     return result;
   }
@@ -405,9 +407,14 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   std::shared_ptr<LogicalCollection> def;
 
   OperationResult result;
+  VPackBuilder collectionsOptions;
+  _graph.createCollectionOptions(collectionsOptions, waitForSync);
+  if (result.fail()) {
+    return result;
+  }
   def = gmngr.getCollectionByName(ctx()->vocbase(), collectionName);
   if (def == nullptr) {
-    result = gmngr.createVertexCollection(collectionName, waitForSync);
+    result = gmngr.createVertexCollection(collectionName, waitForSync, collectionsOptions.slice());
     if (result.fail()) {
       return result;
     }
@@ -431,7 +438,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(_graph._attrOrphans, VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
   for (auto const& orph : _graph.orphanCollections()) {
     builder.add(VPackValue(orph));
   }
@@ -484,7 +491,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(_graph._attrOrphans, VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
   for (auto const& orph : _graph.orphanCollections()) {
     if (orph != collectionName) {
       builder.add(VPackValue(orph));
@@ -569,8 +576,11 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinition,
   builder.add(edgeDefinition);
   builder.close();
 
-  result = gmngr.findOrCreateCollectionsByEdgeDefinitions(builder.slice(),
-                                                          waitForSync);
+  VPackBuilder collectionsOptions;
+  _graph.createCollectionOptions(collectionsOptions, waitForSync);
+
+  result = gmngr.findOrCreateCollectionsByEdgeDefinitions(
+      builder.slice(), waitForSync, collectionsOptions.slice());
   if (result.fail()) {
     return result;
   }
@@ -581,7 +591,7 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinition,
   builder.clear();
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(GraphOperations::_attrEdgeDefs,
+  builder.add(StaticStrings::GraphEdgeDefinitions,
               VPackValue(VPackValueType::Array));
   for (auto const& it : edgeDefs) {
     builder.add(VPackValue(VPackValueType::Object));
@@ -1128,7 +1138,7 @@ OperationResult GraphOperations::pushCollectionIfMayBeDropped(
     }
 
     // check edge definitions
-    VPackSlice edgeDefinitions = graph.get(GraphOperations::_attrEdgeDefs);
+    VPackSlice edgeDefinitions = graph.get(StaticStrings::GraphEdgeDefinitions);
     if (edgeDefinitions.isArray()) {
       for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
         std::string from =
@@ -1144,7 +1154,7 @@ OperationResult GraphOperations::pushCollectionIfMayBeDropped(
     }
 
     // check orphan collections
-    VPackSlice orphanCollections = graph.get(GraphOperations::_attrOrphans);
+    VPackSlice orphanCollections = graph.get(StaticStrings::GraphOrphans);
     if (orphanCollections.isArray()) {
       for (auto const& orphanCollection :
            VPackArrayIterator(orphanCollections)) {

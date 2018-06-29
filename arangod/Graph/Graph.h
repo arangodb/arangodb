@@ -120,32 +120,13 @@ class Graph {
   std::string _rev;
 
  public:
-  /// @brief Graph collection name
-  static std::string const _graphs;
-
-  /// @brief Graph collection edge definition attribute name
-  static char const* _attrDropCollections;
-
-  /// @brief Graph collection edge definition attribute name
-  static char const* _attrEdgeDefs;
-
-  /// @brief Graph collection orphan list arribute name
-  static char const* _attrOrphans;
-
-  /// @brief Graph collection smart state attribute name
-  static char const* _attrIsSmart;
-
-  /// @brief Graph collection number of shards attribute name
-  static char const* _attrNumberOfShards;
-
-  /// @brief Graph collection replication factor attribute name
-  static char const* _attrReplicationFactor;
-
-  /// @brief Graph collection smartgraph attribute name
-  static char const* _attrSmartGraphAttribute;
-
   static Result validateOrphanCollection(
       const velocypack::Slice& orphanDefinition);
+
+  void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
+
+  static void createCollectionOptions(VPackBuilder& builder, bool waitForSync,
+                                      VPackSlice options);
 
  public:
   /// @brief get the cids of all vertexCollections
@@ -167,6 +148,7 @@ class Graph {
   bool hasEdgeCollection(std::string const& collectionName) const;
 
   virtual bool isSmart() const;
+
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
   std::string const& smartGraphAttribute() const;
@@ -206,14 +188,14 @@ class Graph {
   /// @brief Add orphanCollections to the object
   void insertOrphanCollections(velocypack::Slice arr);
 
-  /// @brief Set isSmart to the graph definition
-  void setSmartState(bool state);
-
   /// @brief Set numberOfShards to the graph definition
   void setNumberOfShards(uint64_t numberOfShards);
 
   /// @brief Set replicationFactor to the graph definition
   void setReplicationFactor(uint64_t setReplicationFactor);
+
+  /// @brief Set isSmart to the graph definition
+  void setSmartState(bool state);
 
   /// @brief Set smartGraphAttribute to the graph definition
   void setSmartGraphAttribute(std::string&& smartGraphAttribute);

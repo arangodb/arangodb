@@ -778,7 +778,7 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool dropCollections =
-          _request->parsedValue(Graph::_attrDropCollections, false);
+          _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
@@ -827,7 +827,7 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
   bool waitForSync =
           _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool dropCollections =
-          _request->parsedValue(Graph::_attrDropCollections, false);
+          _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
@@ -1044,7 +1044,7 @@ Result RestGraphHandler::graphActionRemoveGraph(
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool dropCollections =
-      _request->parsedValue(Graph::_attrDropCollections, false);
+      _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};

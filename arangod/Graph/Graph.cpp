@@ -37,6 +37,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -49,15 +50,6 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
-
-std::string const Graph::_graphs = "_graphs";
-char const* Graph::_attrDropCollections = "dropCollections";
-char const* Graph::_attrEdgeDefs = "edgeDefinitions";
-char const* Graph::_attrOrphans = "orphanCollections";
-char const* Graph::_attrIsSmart = "isSmart";
-char const* Graph::_attrNumberOfShards = "numberOfShards";
-char const* Graph::_attrReplicationFactor = "replicationFactor";
-char const* Graph::_attrSmartGraphAttribute = "smartGraphAttribute";
 
 void Graph::insertVertexCollections(VPackSlice const arr) {
   TRI_ASSERT(arr.isArray());
@@ -122,16 +114,16 @@ void Graph::addOrphanCollection(std::string&& name) {
 
 void Graph::setSmartState(bool state) { _isSmart = state; }
 
+void Graph::setSmartGraphAttribute(std::string&& smartGraphAttribute) {
+  _smartGraphAttribute = std::move(smartGraphAttribute);
+}
+
 void Graph::setNumberOfShards(uint64_t numberOfShards) {
   _numberOfShards = numberOfShards;
 }
 
 void Graph::setReplicationFactor(uint64_t replicationFactor) {
   _replicationFactor = replicationFactor;
-}
-
-void Graph::setSmartGraphAttribute(std::string&& smartGraphAttribute) {
-  _smartGraphAttribute = std::move(smartGraphAttribute);
 }
 
 void Graph::setId(std::string&& id) { _id = std::move(id); }
@@ -160,8 +152,8 @@ void Graph::toVelocyPack(VPackBuilder& builder) const {
 
 Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
     : _graphName(graphName_), _vertexColls(), _edgeColls() {
-  if (slice.hasKey(_attrEdgeDefs)) {
-    VPackSlice edgeDefs = slice.get(_attrEdgeDefs);
+  if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    VPackSlice edgeDefs = slice.get(StaticStrings::GraphEdgeDefinitions);
     TRI_ASSERT(edgeDefs.isArray());
     if (!edgeDefs.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -206,28 +198,28 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
       }
     }
   }
-  if (slice.hasKey(_attrOrphans)) {
-    auto orphans = slice.get(_attrOrphans);
+  if (slice.hasKey(StaticStrings::GraphOrphans)) {
+    auto orphans = slice.get(StaticStrings::GraphOrphans);
     insertVertexCollections(orphans);
     insertOrphanCollections(orphans);
   }
 
   #ifdef USE_ENTERPRISE
-  if (slice.hasKey(_attrIsSmart)) {
-    setSmartState(slice.get(_attrIsSmart).getBool());
+  if (slice.hasKey(StaticStrings::GraphIsSmart)) {
+    setSmartState(slice.get(StaticStrings::GraphIsSmart).getBool());
   }
-  if (slice.hasKey(_attrSmartGraphAttribute)) {
-    setSmartGraphAttribute(slice.get(_attrSmartGraphAttribute).copyString());
+  if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute)) {
+    setSmartGraphAttribute(slice.get(StaticStrings::GraphSmartGraphAttribute).copyString());
   }
   #endif
 
-  if (slice.hasKey(_attrNumberOfShards)) {
-    setNumberOfShards(slice.get(_attrNumberOfShards).getUInt());
+  if (slice.hasKey(StaticStrings::GraphNumberOfShards)) {
+    setNumberOfShards(slice.get(StaticStrings::GraphNumberOfShards).getUInt());
   }
-  if (slice.hasKey(_attrReplicationFactor)) {
-    setReplicationFactor(slice.get(_attrReplicationFactor).getUInt());
+  if (slice.hasKey(StaticStrings::GraphReplicationFactor)) {
+    setReplicationFactor(slice.get(StaticStrings::GraphReplicationFactor).getUInt());
   }
-  setId(Graph::_graphs + "/" + graphName_);
+  setId(StaticStrings::GraphCollection + "/" + graphName_);
   setRev(slice.get(StaticStrings::RevString).copyString());
 }
 
@@ -481,4 +473,31 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 
 bool Graph::isSmart() const {
   return false;
+}
+
+void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
+  bool isCluster = arangodb::ServerState::instance()->isRunningInCluster();
+
+  builder.openObject();
+  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
+  if (isCluster) {
+    builder.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards()));
+    builder.add(StaticStrings::GraphReplicationFactor, VPackValue(replicationFactor()));
+  }
+  builder.close();
+}
+
+void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync, VPackSlice options) {
+  bool isCluster = arangodb::ServerState::instance()->isRunningInCluster();
+
+  builder.openObject();
+  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
+  if (isCluster) {
+    builder.add(StaticStrings::GraphNumberOfShards,
+                VPackValue(options.get(StaticStrings::GraphNumberOfShards).getUInt()));
+    builder.add(
+            StaticStrings::GraphReplicationFactor,
+        VPackValue(options.get(StaticStrings::GraphReplicationFactor).getUInt()));
+  }
+  builder.close();
 }
