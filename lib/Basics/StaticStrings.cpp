@@ -153,3 +153,14 @@ std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
+// graph attribute names
+std::string const StaticStrings::GraphCollection("_graphs");
+std::string const StaticStrings::GraphIsSmart("isSmart");
+std::string const StaticStrings::GraphFrom("from");
+std::string const StaticStrings::GraphTo("to");
+std::string const StaticStrings::GraphSmartGraphAttribute("smartGraphAttribute");
+std::string const StaticStrings::GraphNumberOfShards("numberOfShards");
+std::string const StaticStrings::GraphReplicationFactor("replicationFactor");
+std::string const StaticStrings::GraphDropCollections("dropCollections");
+std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
+std::string const StaticStrings::GraphOrphans("orphanCollections");
