@@ -181,7 +181,7 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
       }
       // TODO what if graph is not in a valid format any more
       try {
-        VPackSlice tmp = def.get("from");
+        VPackSlice tmp = def.get(StaticStrings::GraphFrom);
         insertVertexCollections(tmp);
       } catch (...) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -189,7 +189,7 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
             "didn't find from-collection in the graph definition");
       }
       try {
-        VPackSlice tmp = def.get("to");
+        VPackSlice tmp = def.get(StaticStrings::GraphTo);
         insertVertexCollections(tmp);
       } catch (...) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -235,8 +235,8 @@ Result EdgeDefinition::validateEdgeDefinition(
                   "edge definition is not an object!");
   }
 
-  for (auto const& key :
-       std::array<std::string, 3>{{"collection", "from", "to"}}) {
+  for (auto const& key : std::array<std::string, 3>{
+           {"collection", StaticStrings::GraphFrom, StaticStrings::GraphTo}}) {
     if (!edgeDefinition.hasKey(key)) {
       return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                     "Attribute '" + key + "' missing in edge definition!");
@@ -248,7 +248,8 @@ Result EdgeDefinition::validateEdgeDefinition(
                   "edge definition is not a string!");
   }
 
-  for (auto const& key : std::array<std::string, 2>{{"from", "to"}}) {
+  for (auto const& key : std::array<std::string, 2>{
+           {StaticStrings::GraphFrom, StaticStrings::GraphTo}}) {
     if (!edgeDefinition.get(key).isArray()) {
       return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                     "Edge definition '" + key + "' is not an array!");
@@ -272,13 +273,13 @@ Result EdgeDefinition::validateEdgeDefinition(
 std::shared_ptr<velocypack::Buffer<uint8_t>> EdgeDefinition::sortEdgeDefinition(
     VPackSlice const& edgeDefinition) {
   arangodb::basics::VelocyPackHelper::VPackLess<true> sorter;
-  VPackBuilder from = VPackCollection::sort(edgeDefinition.get("from"), sorter);
-  VPackBuilder to = VPackCollection::sort(edgeDefinition.get("to"), sorter);
+  VPackBuilder from = VPackCollection::sort(edgeDefinition.get(StaticStrings::GraphFrom), sorter);
+  VPackBuilder to = VPackCollection::sort(edgeDefinition.get(StaticStrings::GraphTo), sorter);
   VPackBuilder sortedBuilder;
   sortedBuilder.openObject();
   sortedBuilder.add("collection", edgeDefinition.get("collection"));
-  sortedBuilder.add("from", from.slice());
-  sortedBuilder.add("to", to.slice());
+  sortedBuilder.add(StaticStrings::GraphFrom, from.slice());
+  sortedBuilder.add(StaticStrings::GraphTo, to.slice());
   sortedBuilder.close();
 
   return sortedBuilder.steal();
@@ -294,8 +295,8 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(
     return res;
   }
   std::string collection = edgeDefinition.get("collection").copyString();
-  VPackSlice from = edgeDefinition.get("from");
-  VPackSlice to = edgeDefinition.get("to");
+  VPackSlice from = edgeDefinition.get(StaticStrings::GraphFrom);
+  VPackSlice to = edgeDefinition.get(StaticStrings::GraphTo);
 
   std::unordered_set<std::string> fromSet;
   std::unordered_set<std::string> toSet;
@@ -413,12 +414,12 @@ void Graph::graphToVpack(VPackBuilder& builder) const {
     EdgeDefinition const& def = edgeDefs.at(name);
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("collection", VPackValue(def.getName()));
-    builder.add("from", VPackValue(VPackValueType::Array));
+    builder.add(StaticStrings::GraphFrom, VPackValue(VPackValueType::Array));
     for (auto const& from : def.getFrom()) {
       builder.add(VPackValue(from));
     }
     builder.close();  // array from
-    builder.add("to", VPackValue(VPackValueType::Array));
+    builder.add(StaticStrings::GraphTo, VPackValue(VPackValueType::Array));
     for (auto const& to : def.getTo()) {
       builder.add(VPackValue(to));
     }
