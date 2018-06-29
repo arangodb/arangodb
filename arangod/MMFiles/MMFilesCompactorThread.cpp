@@ -1047,6 +1047,6 @@ int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, MMFilesMarker
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  return compactor->writeElement(*result, marker, /*forceSync*/ false);
+  return compactor->writeElement(*result, marker);
 }
 

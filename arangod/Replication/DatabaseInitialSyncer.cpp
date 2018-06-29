@@ -844,7 +844,7 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
     return -1;
   }
 
-  OperationResult result = trx.count(col->name(), true);
+  OperationResult result = trx.count(col->name(), false);
 
   if (result.result.fail()) {
     return -1;
