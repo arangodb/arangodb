@@ -1,7 +1,7 @@
 Working with collections
 ========================
 
-Foxx provides the [`module.context.collection`]() method to provide easy access to ArangoDB collections. These collections are also called "prefixed collections" because Foxx will automatically prefix the name based on the mount path of the service.
+Foxx provides the [`module.context.collection`](../Reference/Context.md) method to provide easy access to ArangoDB collections. These collections are also called "prefixed collections" because Foxx will automatically prefix the name based on the mount path of the service.
 
 The prefixes may initially feel unnecessarily verbose but help avoid conflicts between different services with similar collection names or even multiple copies of the same service sharing the same database. Keep in mind that you can also use collection objects when [writing queries](Queries.md), so you don't need to worry about writing out prefixes by hand.
 
