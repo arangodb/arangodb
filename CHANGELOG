@@ -1,6 +1,9 @@
 v3.3.12 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5679: Replication applier restrictions will crash synchronisation 
+  after initial sync
+
 * fixed potential issue in RETURN DISTINCT CollectBlock implementation
   that led to the block producing an empty result
 

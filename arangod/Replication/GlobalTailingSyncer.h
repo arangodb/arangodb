@@ -56,6 +56,8 @@ class GlobalTailingSyncer : public TailingSyncer {
  private: 
   /// @brief translation between globallyUniqueId and collection name
   std::unordered_map<std::string, std::string> _translations;
+
+  bool _queriedTranslations;
 };
 }
 
