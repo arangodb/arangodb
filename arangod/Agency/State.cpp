@@ -346,7 +346,7 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
   LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
   try {
 
-    // _log is never empty, but for now, we leave this Vorsichtsmassnahme:
+    // If we've got a snapshot anything we might have is obsolete
     index_t lastIndex = gotSnapshot ? 0 : _log.back().index;
 
     while (ndups < slices.length()) {

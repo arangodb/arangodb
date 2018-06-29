@@ -352,10 +352,14 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
 
   size_t nqs = payload.length();
   if(nqs > 0 && !payload[0].get("readDB").isNone()) {
+    // We have received a compacted state.
+    // Whatever we got in out own state is meaningless now. It is a new world.
+    // checkLeader just does plausibility as if it were an empty request
     prevIndex = 0;
     prevTerm = 0;
   }
-  
+
+  // Leadership claim plausibility check
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Not accepting appendEntries from " << leaderId;
@@ -364,7 +368,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
 
   // Empty appendEntries:
   // We answer with success if and only if our highest index is greater 0.
-  // Else we want to indicate to the leader that we are behind and need data.
+  // Else we want to indicate to the leader that we are behind and need data:
+  // a single false will go back and trigger _confirmed[thisfollower] = 0
   if (nqs == 0) {
     if (_state.lastIndex() > 0) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
@@ -463,9 +468,9 @@ void Agent::sendAppendEntriesRPC() {
 
       // If lastConfirmed is smaller than our first log entry's index, and
       // given that our first log entry is either the 0-entry or a compacted
-      // state and that compaction are only performed up to a RAFT-wide committed
-      // index, and by that up to absolut truth we can correct lastConfirmed
-      // to our first log index.
+      // state and that compactions are only performed up to a RAFT-wide
+      // committed index, and by that up to absolut truth we can correct
+      // lastConfirmed to our first log index.
       bool raiseLastConfirmed = lastConfirmed < _state.firstIndex();
       if (raiseLastConfirmed) {
         lastConfirmed = _state.firstIndex();
