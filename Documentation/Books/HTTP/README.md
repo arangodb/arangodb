@@ -8,3 +8,12 @@ not need the information provided herein.
 In general, as a user of ArangoDB you will use one of the language
 [drivers](https://www.arangodb.com/drivers/).
 
+
+Interactive Swagger documentation
+=================================
+Please note that your ArangoDB comes with an interactive version of this docmunentation using [Swagger](https://swagger.io):
+
+![accessing the documentation via swagger](assets/swagger_serverapi_overview.png)
+
+
+Please note that we also [have a blog post explaining how to work with the Swagger API](https://www.arangodb.com/2018/03/using-arangodb-swaggerio-interactive-api-documentation/). 
