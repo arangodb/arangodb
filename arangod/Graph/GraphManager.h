@@ -35,6 +35,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
+#include "Graph.h"
 
 namespace arangodb {
 namespace graph {
@@ -46,13 +47,6 @@ class GraphManager {
   std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
 
   std::shared_ptr<transaction::Context> const& ctx() const { return _ctx; };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief assert that there are no duplicate edge definitions in the
-  /// argument, and that there are no mismatching edge definitions in existing
-  /// graphs.
-  ////////////////////////////////////////////////////////////////////////////////
-  Result assertFeasibleEdgeDefinitions(VPackSlice edgeDefinitionsSlice) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create vertex collection by name
@@ -105,11 +99,30 @@ class GraphManager {
                                        bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief assert that the edge definition is valid, that there are no
+  /// duplicate edge definitions in the argument, and that there are no
+  /// mismatching edge definitions in existing graphs.
+  ////////////////////////////////////////////////////////////////////////////////
+  Result assertFeasibleEdgeDefinitions(VPackSlice edgeDefinitionsSlice) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check that the edge definition is valid and doesn't conflict with one
+  /// in an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
+  Result assertFeasibleEdgeDefinition(std::string const& edgeDefinitionName,
+                                      VPackSlice edgeDefinitionSlice);
+
+  /// @brief check if the edge definitions conflicts with one in an existing
+  /// graph
+  Result checkForEdgeDefinitionConflicts(
+    std::unordered_map<std::string, arangodb::graph::EdgeDefinition> const&
+    edgeDefinitions) const;
+
   /// @brief check if the edge definition conflicts with one in an existing
   /// graph
-  ////////////////////////////////////////////////////////////////////////////////
-  OperationResult checkForEdgeDefinitionConflicts(std::string const& edgeDefinitionName,
-                                         VPackSlice edgeDefinition);
+  Result checkForEdgeDefinitionConflicts(
+    arangodb::graph::EdgeDefinition const& edgeDefinition) const;
+
 };
 }  // namespace graph
 }  // namespace arangodb

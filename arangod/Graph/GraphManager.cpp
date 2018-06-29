@@ -120,9 +120,15 @@ Result GraphManager::assertFeasibleEdgeDefinitions(
     }
   }
 
+  return checkForEdgeDefinitionConflicts(tmpEdgeDefinitions);
+}
+
+Result GraphManager::checkForEdgeDefinitionConflicts(
+    std::unordered_map<std::string, EdgeDefinition> const& edgeDefinitions)
+    const {
   VPackBuilder graphsBuilder;
   // TODO Maybe use the cache here
-  readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  readGraphs(graphsBuilder, aql::PART_DEPENDENT);
   VPackSlice graphs = graphsBuilder.slice();
 
   TRI_ASSERT(graphs.get("graphs").isArray());
@@ -136,13 +142,19 @@ Result GraphManager::assertFeasibleEdgeDefinitions(
     if (!graphSlice.isObject() || !graphSlice.hasKey("_key")) {
       return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
     }
-    Graph graph{graphSlice.get("_key").copyString(), graphSlice};
+    std::unique_ptr<Graph> graph;
+    try {
+      graph = std::make_unique<Graph>(graphSlice.get("_key").copyString(),
+                                      graphSlice);
+    } catch (basics::Exception& e) {
+      return {e.code(), e.message()};
+    }
 
-    for (auto const& sGED : graph.edgeDefinitions()) {
-      std::string col = sGED.first;
+    for (auto const& sGED : graph->edgeDefinitions()) {
+      std::__cxx11::string col = sGED.first;
 
-      auto it = tmpEdgeDefinitions.find(col);
-      if (it != tmpEdgeDefinitions.end()) {
+      auto it = edgeDefinitions.find(col);
+      if (it != edgeDefinitions.end()) {
         if (sGED.second != it->second) {
           // found an incompatible edge definition for the same collection
           return {TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS};
@@ -440,45 +452,23 @@ OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-// TODO unify with assertFeasibleEdgeDefinitions
-OperationResult GraphManager::checkForEdgeDefinitionConflicts(
-    std::string const& edgeDefinitionName, VPackSlice edgeDefinition) {
-  VPackBuilder graphsBuilder;
-  OperationResult result =
-      readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
-  if (result.fail()) {
-    return result;
-  }
-  VPackSlice graphs = graphsBuilder.slice();
-
-  TRI_ASSERT(graphs.get("graphs").isArray());
-
-  if (!graphs.get("graphs").isArray()) {
-    return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+Result GraphManager::assertFeasibleEdgeDefinition(
+    std::string const& edgeDefinitionName, VPackSlice edgeDefinitionSlice) {
+  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
+  TRI_ASSERT(res.ok());
+  if (res.fail()) {
+    return res.copy_result();
   }
 
-  for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-    singleGraph = singleGraph.resolveExternals();
-    VPackSlice sGEDs = singleGraph.get("edgeDefinitions");
-    if (!sGEDs.isArray()) {
-      return OperationResult(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
-    }
-    for (auto const& sGED : VPackArrayIterator(sGEDs)) {
-      std::string col;
-      if (sGED.get("collection").isString()) {
-        col = sGED.get("collection").copyString();
-      } else {
-        return OperationResult(
-            TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
-      }
-      if (col == edgeDefinitionName) {
-        if (sGED.toString() != edgeDefinition.toString()) {
-          return OperationResult(
-              TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS);
-        }
-      }
-    }
-  }
+  EdgeDefinition const& edgeDefinition = res.get();
 
-  return OperationResult(TRI_ERROR_NO_ERROR);
+  return checkForEdgeDefinitionConflicts(edgeDefinition);
+}
+
+Result GraphManager::checkForEdgeDefinitionConflicts(
+    arangodb::graph::EdgeDefinition const& edgeDefinition) const {
+  std::unordered_map<std::string, EdgeDefinition> edgeDefs{
+      std::make_pair(edgeDefinition.getName(), edgeDefinition)};
+
+  return checkForEdgeDefinitionConflicts(edgeDefs);
 }

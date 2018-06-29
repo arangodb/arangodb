@@ -39,16 +39,6 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Graphs.h"
 
-// TODO this is here for easy debugging during development. most log messages
-// using this should be removed or at least have their log level reduced before
-// this is merged.
-/*#define S1(x) #x
-#define S2(x) S1(x)
-#define LOGPREFIX(func)                                                   \
-  "[" << (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__) \
-      << ":" S2(__LINE__) << "@" << func << "] "
-*/
-
 using namespace arangodb;
 using namespace arangodb::graph;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
