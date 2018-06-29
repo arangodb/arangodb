@@ -603,8 +603,7 @@ void ServerState::setId(std::string const& id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint32_t ServerState::getShortId() {
-  READ_LOCKER(readLocker, _lock);
-  return _shortId;
+  return _shortId.load(std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -616,8 +615,7 @@ void ServerState::setShortId(uint32_t id) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _lock);
-  _shortId = id;
+  _shortId.store(id, std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

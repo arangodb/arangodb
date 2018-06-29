@@ -104,7 +104,7 @@ void RestHandler::setStatistics(RequestStatistics* stat) {
   }
 }
 
-void RestHandler::forwardRequest() {
+bool RestHandler::forwardRequest() {
   // TODO refactor into a more general/customizable method
   //
   // The below is mostly copied and only lightly modified from
@@ -120,8 +120,17 @@ void RestHandler::forwardRequest() {
   // TODO verify that user-JWT works correctly
 
   uint32_t shortId = forwardingTarget();
+  if (shortId == 0) {
+    // no need to actually forward
+    return false;
+  }
   std::string serverId =
       ClusterInfo::instance()->getCoordinatorByShortID(shortId);
+  if ("" == serverId) {
+    // no mapping in agency, try to handle the request here
+    return false;
+  }
+
   LOG_TOPIC(DEBUG, Logger::REQUESTS) << "forwarding request " << _request->messageId() << " to " << serverId;
 
   bool useVst = false;
@@ -134,13 +143,13 @@ void RestHandler::forwardRequest() {
       _request->headers();
   std::unordered_map<std::string, std::string>::const_iterator it =
       oldHeaders.begin();
-  auto headers = std::make_shared<std::unordered_map<std::string, std::string>>();
+  std::unordered_map<std::string, std::string> headers;
   while (it != oldHeaders.end()) {
     std::string const& key = (*it).first;
 
     // ignore the following headers
-    if (key != "authorization") {
-      headers->emplace(key, (*it).second);
+    if (key != StaticStrings::Authorization) {
+      headers.emplace(key, (*it).second);
     }
     ++it;
   }
@@ -152,11 +161,11 @@ void RestHandler::forwardRequest() {
       payload->add("preferred_username", VPackValue(_request->user()));
     }
     VPackSlice slice = builder.slice();
-    headers->emplace(StaticStrings::Authorization,
-                     "bearer " + auth->tokenCache()->generateJwt(slice));
+    headers.emplace(StaticStrings::Authorization,
+                    "bearer " + auth->tokenCache()->generateJwt(slice));
   }
 
-  std::unordered_map<std::string, std::string> values = _request->values();
+  auto& values = _request->values();
   std::string params;
   for (auto const& i : values) {
     if (params.empty()) {
@@ -174,7 +183,7 @@ void RestHandler::forwardRequest() {
     // nullptr happens only during controlled shutdown
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                   TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return;
+    return true;
   }
 
   std::unique_ptr<ClusterCommResult> res;
@@ -190,7 +199,7 @@ void RestHandler::forwardRequest() {
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
-                          httpRequest->body(), *headers, 300.0);
+                          httpRequest->body(), headers, 300.0);
   } else {
     // do we need to handle multiple payloads here? - TODO
     // here we switch from vst to http
@@ -198,21 +207,21 @@ void RestHandler::forwardRequest() {
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
-                          _request->payload().toJson(), *headers, 300.0);
+                          _request->payload().toJson(), headers, 300.0);
   }
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
     generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
                   "timeout within cluster");
-    return;
+    return true;
   }
 
   if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
     // there is no result
     generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
                   "lost connection within cluster");
-    return;
+    return true;
   }
 
   if (res->status == CL_COMM_ERROR) {
@@ -485,6 +494,26 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
   } catch (...) {
     // exception while generating error
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error
+////////////////////////////////////////////////////////////////////////////////
+
+void RestHandler::generateError(rest::ResponseCode code, int errorCode) {
+  char const* message = TRI_errno_string(errorCode);
+
+  if (message != nullptr) {
+    generateError(code, errorCode, std::string(message));
+  } else {
+    generateError(code, errorCode, std::string("unknown error"));
+  }
+}
+
+// generates an error
+void RestHandler::generateError(arangodb::Result const& r) {
+  ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
+  generateError(code, r.errorNumber(), r.errorMessage());
 }
 
 // -----------------------------------------------------------------------------

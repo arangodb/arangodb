@@ -170,21 +170,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode) {
-  char const* message = TRI_errno_string(errorCode);
-
-  if (message != nullptr) {
-    generateError(code, errorCode, std::string(message));
-  } else {
-    generateError(code, errorCode, std::string("unknown error"));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
+/*void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
                                     std::string const& message) {
   resetResponse(code);
 
@@ -209,13 +195,7 @@ void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
   } catch (...) {
     // Building the error response failed
   }
-}
-
-// generates an error
-void RestBaseHandler::generateError(arangodb::Result const& r) {
-  ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
-  generateError(code, r.errorNumber(), r.errorMessage());
-}
+}*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message

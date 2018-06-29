@@ -65,8 +65,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   size_t queue() const override final;
 
-  virtual bool shouldForwardRequest() override;
-
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief processes the query and returns the results/cursor

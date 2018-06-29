@@ -233,8 +233,8 @@ void GeneralCommTask::executeRequest(
   }
 
   // forward to correct server if necessary
-  if (handler->shouldForwardRequest()) {
-    handler->forwardRequest();
+  bool forwarded = handler->forwardRequest();
+  if (forwarded) {
     addResponse(*handler->response(), handler->stealStatistics());
     return;
   }

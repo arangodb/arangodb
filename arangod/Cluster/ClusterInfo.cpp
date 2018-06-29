@@ -751,7 +751,7 @@ void ClusterInfo::loadPlan() {
         _plannedViews.swap(newViews);
       }
       _planProt.doneVersion = storedVersion;
-      _planProt.isValid = true;  // will never be reset to false
+      _planProt.isValid = true;
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "\"Plan\" is not an object in agency";
     }
@@ -892,7 +892,7 @@ void ClusterInfo::loadCurrent() {
         _shardIds.swap(newShardIds);
       }
       _currentProt.doneVersion = storedVersion;
-      _currentProt.isValid = true;  // will never be reset to false
+      _currentProt.isValid = true;
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Current is not an object!";
     }
@@ -2825,7 +2825,7 @@ void ClusterInfo::loadServers() {
         _servers.swap(newServers);
         _serverAliases.swap(newAliases);
         _serversProt.doneVersion = storedVersion;
-        _serversProt.isValid = true;  // will never be reset to false
+        _serversProt.isValid = true;
       }
       return;
     }
@@ -2966,7 +2966,7 @@ void ClusterInfo::loadCurrentCoordinators() {
         WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
         _coordinators.swap(newCoordinators);
         _coordinatorsProt.doneVersion = storedVersion;
-        _coordinatorsProt.isValid = true;  // will never be reset to false
+        _coordinatorsProt.isValid = true;
       }
       return;
     }
@@ -3032,7 +3032,7 @@ void ClusterInfo::loadCurrentMappings() {
         _coordinatorIdMap.swap(newCoordinatorIdMap);
         _dbserverIdMap.swap(newDBServerIdMap);
         _mappingsProt.doneVersion = storedVersion;
-        _mappingsProt.isValid = true;  // will never be reset to false
+        _mappingsProt.isValid = true;
       }
       return;
     }
@@ -3127,7 +3127,7 @@ void ClusterInfo::loadCurrentDBServers() {
         WRITE_LOCKER(writeLocker, _DBServersProt.lock);
         _DBServers.swap(newDBServers);
         _DBServersProt.doneVersion = storedVersion;
-        _DBServersProt.isValid = true;  // will never be reset to false
+        _DBServersProt.isValid = true;
       }
       return;
     }

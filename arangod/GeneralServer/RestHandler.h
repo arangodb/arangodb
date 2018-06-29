@@ -82,7 +82,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
 
   /// @brief forwards the request to the appropriate server
-  void forwardRequest();
+  bool forwardRequest();
 
  public:
   /// @brief rest handler name
@@ -105,24 +105,26 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   virtual void handleError(basics::Exception const&) = 0;
 
-  /// @brief whether the request should be forwarded to a different server
-  ///
-  /// If a particular handler requires server-specific state (e.g. a query
-  /// cursor state is stored on a specific coordinator), then it should be able
-  /// to detect this condition and override this method to return true as
-  /// appropriate
-  virtual bool shouldForwardRequest() { return false; }
-
  protected:
 
-  /// @brief returns the short id of the server which should handle this request
+  /// @brief determines the possible forwarding target for this request
   ///
-  /// This method will be called if and only if shouldForwardRequest() returns
-  /// true. In that case, this method should return a valid (non-zero) short ID
-  /// (TransactionID) for the target server.
+  /// This method will be called to determine if the request should be
+  /// forwarded to another server, and if so, which server. If it should be
+  /// handled by this server, the method should return 0. Otherwise, this
+  /// method should return a valid (non-zero) short ID (TransactionID) for the
+  /// target server.
   virtual uint32_t forwardingTarget() { return 0; }
 
   void resetResponse(rest::ResponseCode);
+
+  void generateError(rest::ResponseCode, int, std::string const&);
+
+  // generates an error
+  void generateError(rest::ResponseCode, int);
+
+  // generates an error
+  void generateError(arangodb::Result const&);
 
  private:
 
@@ -133,8 +135,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   int prepareEngine();
   int executeEngine();
   int finalizeEngine();
-
-  void generateError(rest::ResponseCode, int, std::string const&);
 
  protected:
   uint64_t const _handlerId;

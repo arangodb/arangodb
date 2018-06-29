@@ -68,13 +68,7 @@ class RestBaseHandler : public rest::RestHandler {
   void generateOk(rest::ResponseCode, velocypack::Builder const&);
 
   // generates an error
-  void generateError(rest::ResponseCode, int);
-
-  // generates an error
-  void generateError(rest::ResponseCode, int, std::string const&);
-
-  // generates an error
-  void generateError(arangodb::Result const&);
+  //void generateError(rest::ResponseCode, int, std::string const&);
 
   // generates a canceled message
   void generateCanceled();

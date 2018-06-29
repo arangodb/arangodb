@@ -83,24 +83,6 @@ size_t RestCursorHandler::queue() const {
   return JobQueue::STANDARD_QUEUE;
 }
 
-/// @brief whether the request should be forwarded to a different server
-bool RestCursorHandler::shouldForwardRequest() {
-  rest::RequestType const type = _request->requestType();
-  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
-    return false;
-  }
-
-  std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.size() < 1) {
-    return false;
-  }
-
-  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
-  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
-
-  return (sourceServer != ServerState::instance()->getShortId());
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes the query and returns the results/cursor
 /// this method is also used by derived classes
@@ -253,6 +235,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
 /// @brief returns the short id of the server which should handle this request
 uint32_t RestCursorHandler::forwardingTarget() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+    return false;
+  }
+
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
     return false;
@@ -260,7 +247,10 @@ uint32_t RestCursorHandler::forwardingTarget() {
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
-  return sourceServer;
+
+  return (sourceServer == ServerState::instance()->getShortId())
+      ? 0
+      : sourceServer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
