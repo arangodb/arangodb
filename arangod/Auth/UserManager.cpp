@@ -110,6 +110,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   // will ask us again for permissions and we get a deadlock
   ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR user IN _users RETURN user");
+  aql::QueryResult queryResult;
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(
     false,
@@ -122,7 +123,15 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
-  auto queryResult = query.execute(queryRegistry);
+
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(queryRegistry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||

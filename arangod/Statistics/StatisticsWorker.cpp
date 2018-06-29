@@ -130,6 +130,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
+  aql::QueryResult queryResult;
   arangodb::aql::Query query(
     false,
     _vocbase,
@@ -139,7 +140,14 @@ void StatisticsWorker::collectGarbage(std::string const& name,
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(_queryRegistry);
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(_queryRegistry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -267,7 +275,15 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(_queryRegistry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -304,7 +320,15 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(_queryRegistry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }

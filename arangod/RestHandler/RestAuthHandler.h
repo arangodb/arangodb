@@ -42,7 +42,7 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() override;
+  void shutdownExecute(bool isFinalized) noexcept override;
 #endif
 
  private:

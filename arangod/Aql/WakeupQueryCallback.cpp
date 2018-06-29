@@ -23,6 +23,7 @@
 #include "WakeupQueryCallback.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/Query.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -35,7 +36,16 @@ bool WakeupQueryCallback::operator()(ClusterCommResult* result) {
   // TODO Validate that _initiator and _query have not been deleted (ttl)
   // TODO Handle exceptions
   bool res = _initiator->handleAsyncResult(result);
-  // For now to stop busy waiting, can be removed later/needs to replaced with something else
-  _query->tempSignalAsyncResponse();
+  if (_query->hasHandler()) {
+    auto scheduler = SchedulerFeature::SCHEDULER;
+    TRI_ASSERT(scheduler != nullptr);
+    if (scheduler == nullptr) {
+      // We are shutting down
+      return false;
+    }
+    scheduler->post(_query->continueHandler());
+  } else {
+    _query->continueAfterPause();
+  }
   return res;
 }

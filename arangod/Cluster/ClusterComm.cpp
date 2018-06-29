@@ -29,7 +29,6 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
@@ -1185,18 +1184,6 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   result->status = CL_COMM_SUBMITTED;
 
   std::unordered_map<std::string, std::string> headersCopy(headerFields);
-  if (destination.substr(0, 6) == "shard:") {
-    if (CollectionLockState::_noLockHeaders != nullptr) {
-      // LOCKING-DEBUG
-      // std::cout << "Found Nolock header\n";
-      auto it = CollectionLockState::_noLockHeaders->find(result->shardID);
-      if (it != CollectionLockState::_noLockHeaders->end()) {
-        // LOCKING-DEBUG
-        // std::cout << "Found our shard\n";
-        headersCopy["X-Arango-Nolock"] = result->shardID;
-      }
-    }
-  }
   addAuthorization(&headersCopy);
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headersCopy[StaticStrings::HLCHeader] =

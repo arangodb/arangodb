@@ -99,7 +99,15 @@ Result arangodb::unregisterUserFunction(
       arangodb::aql::PART_MAIN
     );
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-    auto queryResult = query.execute(queryRegistry);
+    aql::QueryResult queryResult;
+    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+    while (true) {
+      auto state = query.execute(queryRegistry, queryResult);
+      if (state != aql::ExecutionState::WAITING) {
+        break;
+      }
+      query.tempWaitForAsyncResponse();
+    }
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -171,7 +179,15 @@ Result arangodb::unregisterUserFunctionsGroup(
       arangodb::aql::PART_MAIN
     );
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-    auto queryResult = query.execute(queryRegistry);
+    aql::QueryResult queryResult;
+    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+    while (true) {
+      auto state = query.execute(queryRegistry, queryResult);
+      if (state != aql::ExecutionState::WAITING) {
+        break;
+      }
+      query.tempWaitForAsyncResponse();
+    }
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -377,7 +393,16 @@ Result arangodb::toArrayUserFunctions(
     arangodb::aql::PART_MAIN
   );
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  auto queryResult = query.execute(queryRegistry);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(queryRegistry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
+
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||

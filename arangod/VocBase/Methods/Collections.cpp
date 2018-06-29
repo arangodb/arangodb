@@ -59,6 +59,59 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
+Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection* coll)
+    : _vocbase(vocbase), _coll(coll), _trx(nullptr), _responsibleForTrx(true) {
+      TRI_ASSERT(_coll != nullptr);
+    }
+
+Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection* coll,
+                              transaction::Methods* trx)
+    : _vocbase(vocbase), _coll(coll), _trx(trx), _responsibleForTrx(false) {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_coll != nullptr);
+}
+
+Collections::Context::~Context() {
+  if (_responsibleForTrx && _trx != nullptr) {
+    delete _trx;
+  }
+}
+
+transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
+                                                bool embeddable,
+                                                bool forceLoadCollection) {
+  if (_responsibleForTrx && _trx == nullptr) {
+    auto ctx = transaction::V8Context::CreateWhenRequired(_vocbase, embeddable);
+    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, _coll, type);
+    if (!trx) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, "Cannot create Transaction");
+    }
+
+    if (!forceLoadCollection) {
+      // we actually need this hint here, so that the collection is not
+      // loaded if it has status unloaded.
+      trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+    }
+
+    Result res = trx->begin();
+
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    _trx = trx.release();
+  }
+  // ADD asserts for running state and locking issues!
+  return _trx;
+}
+
+TRI_vocbase_t& Collections::Context::vocbase() const {
+  return _vocbase;
+}
+
+LogicalCollection* Collections::Context::coll() const {
+  return _coll;
+}
+
 void Collections::enumerate(
     TRI_vocbase_t* vocbase,
     std::function<void(LogicalCollection*)> const& func) {
@@ -284,7 +337,8 @@ Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   return vocbase->unloadCollection(coll, false);
 }
 
-Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
+Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
+  LogicalCollection* coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
@@ -298,31 +352,15 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
-  // this transaction is held longer than the following if...
-  std::unique_ptr<SingleCollectionTransaction> trx;
 
   if (!ServerState::instance()->isCoordinator()) {
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
                        "replicationFactor", "shardKeys"});
 
-    auto ctx =
-      transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
-
-    // populate the transaction object (which is used outside this if too)
-    trx.reset(new SingleCollectionTransaction(
-      ctx, coll, AccessMode::Type::READ
-    ));
-
-    // we actually need this hint here, so that the collection is not
-    // loaded if it has status unloaded.
-    trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-
-    Result res = trx->begin();
-
-    if (res.fail()) {
-      return res;
-    }
+    // this transaction is held longer than the following if...
+    auto trx = ctxt.trx(AccessMode::Type::READ, true, false);
+    TRI_ASSERT(trx != nullptr);
   }
 
   // note that we have an ongoing transaction here if we are in single-server
@@ -566,27 +604,16 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
 }
 
 Result Collections::revisionId(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection* coll,
+    Context& ctxt,
     TRI_voc_rid_t& rid
 ) {
-  TRI_ASSERT(coll != nullptr);
-  auto& databaseName = coll->vocbase().name();
-  auto cid = std::to_string(coll->id());
-
   if (ServerState::instance()->isCoordinator()) {
+    auto& databaseName = ctxt.coll()->vocbase().name();
+    auto cid = std::to_string(ctxt.coll()->id());
     return revisionOnCoordinator(databaseName, cid, rid);
   }
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-  SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  rid = coll->revision(&trx);
+  rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -609,7 +636,15 @@ Result Collections::revisionId(
                                std::make_shared<VPackBuilder>(), arangodb::aql::PART_MAIN);
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
     TRI_ASSERT(queryRegistry != nullptr);
-    aql::QueryResult queryResult = query.execute(queryRegistry);
+    aql::QueryResult queryResult;
+    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+    while (true) {
+      auto state = query.execute(queryRegistry, queryResult);
+      if (state != aql::ExecutionState::WAITING) {
+        break;
+      }
+      query.tempWaitForAsyncResponse();
+    }
     Result res = queryResult.code;
     if (queryResult.code == TRI_ERROR_NO_ERROR) {
       VPackSlice array = queryResult.result->slice();

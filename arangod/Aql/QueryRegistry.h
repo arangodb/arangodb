@@ -32,6 +32,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {
+class ExecutionEngine;
 class Query;
 
 class QueryRegistry {
@@ -86,6 +87,16 @@ public:
   
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
+
+ private:
+
+  /**
+   * @brief Set the thread-local _noLockHeaders variable
+   *
+   * @param engine The Query engine that contains the no-lock-header
+   *        information.
+   */
+  void setNoLockHeaders(ExecutionEngine* engine) const;
 
  private:
   /// @brief a struct for all information regarding one query in the registry

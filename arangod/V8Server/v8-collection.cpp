@@ -36,7 +36,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Cluster/FollowerInfo.h"
@@ -1385,7 +1384,8 @@ static void JS_PropertiesVocbaseCol(
     consoleColl->name(),
     [&](LogicalCollection* coll) {
     VPackObjectBuilder object(&builder, true);
-    Result res = methods::Collections::properties(coll, builder);
+    methods::Collections::Context ctxt(coll->vocbase(), coll);
+    Result res = methods::Collections::properties(ctxt, builder);
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -2110,9 +2110,9 @@ static void JS_RevisionVocbaseCol(
   }
 
   TRI_voc_rid_t revisionId;
-  auto res = methods::Collections::revisionId(
-    collection->vocbase(), collection, revisionId
-  );
+
+  methods::Collections::Context ctxt(collection->vocbase(), collection);
+  auto res = methods::Collections::revisionId(ctxt, revisionId);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2821,10 +2821,8 @@ static void JS_CountVocbaseCol(
     AccessMode::Type::READ
   );
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders->find(collectionName) != CollectionLockState::_noLockHeaders->end()) {
-      trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-    }
+  if (trx.isLockedShard(collectionName)) {
+    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
 
   Result res = trx.begin();

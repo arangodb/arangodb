@@ -112,7 +112,17 @@ arangodb::aql::QueryResult executeQuery(
     arangodb::aql::PART_MAIN
   );
 
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  arangodb::aql::QueryResult result;
+  while (true) {
+    auto state = query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY, result);
+    if (state == arangodb::aql::ExecutionState::WAITING) {
+      query.tempWaitForAsyncResponse();
+    } else {
+      break;
+    }
+  }
+
+  return result;
 }
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(

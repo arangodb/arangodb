@@ -106,9 +106,6 @@ class BlockWithClients : public ExecutionBlock {
   /// corresponding to <shardId>
   size_t getClientId(std::string const& shardId);
 
-  /// @brief reset the list of done for client information
-  void resetDoneForClient();
-
   /// @brief hasMoreForClientId: any more for client <cliendId>?
   virtual bool hasMoreForClientId(size_t clientId) = 0;
 
@@ -119,10 +116,6 @@ class BlockWithClients : public ExecutionBlock {
 
   /// @brief _nrClients: total number of clients
   size_t _nrClients;
-
-  /// @brief _doneForClient: the analogue of _done: _doneForClient.at(i) = true
-  /// if we are done for the shard with clientId = i
-  std::vector<bool> _doneForClient;
 
  private:
   bool _wasShutdown;

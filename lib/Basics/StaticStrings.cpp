@@ -144,6 +144,7 @@ std::string const StaticStrings::Server("server");
 std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
+std::string const StaticStrings::XArangoNoLock("x-arango-nolock");
 
 // mime types
 std::string const StaticStrings::MimeTypeJson(

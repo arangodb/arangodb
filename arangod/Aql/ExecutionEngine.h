@@ -121,16 +121,6 @@ class ExecutionEngine {
   /// @brief get the register the final result of the query is stored in
   RegisterId resultRegister() const { return _resultRegister; }
 
-  /// @brief _lockedShards
-  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string>* lockedShards) {
-    _lockedShards = lockedShards;
-  }
-
-  /// @brief _lockedShards
-  std::unordered_set<std::string>* lockedShards() const {
-    return _lockedShards;
-  }
-
  public:
   /// @brief execution statistics for the query
   /// note that the statistics are modification by execution blocks
@@ -157,13 +147,6 @@ class ExecutionEngine {
 
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
-  
-  /// @brief _previouslyLockedShards, this is read off at instanciating
-  /// time from a thread local variable
-  std::unordered_set<std::string>* _previouslyLockedShards;
-
-  /// @brief _lockedShards, these are the shards we have locked for our query
-  std::unordered_set<std::string>* _lockedShards;
 };
 }
 }

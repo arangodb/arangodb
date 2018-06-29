@@ -61,8 +61,6 @@ using namespace arangodb::options;
 
 V8DealerFeature* V8DealerFeature::DEALER = nullptr;
 
-static thread_local bool alreadyLockedInThread = false;
-
 namespace {
 class V8GcThread : public Thread {
  public:
@@ -366,17 +364,8 @@ bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
     return result;
   };
 
-  if (alreadyLockedInThread) {
-    // the condition lock has already been acquired in this thread
-    // we cannot detect this easily here without a thread-local variable
-    // as we may be called from a JavaScript callback here
-    return cb();
-  } else {
-    // the condition lock has not been acquired in this thread, so
-    // we are responsible for locking properly!
-    CONDITION_LOCKER(guard, _contextCondition);
-    return cb();
-  }
+  CONDITION_LOCKER(guard, _contextCondition);
+  return cb();
 }
 
 void V8DealerFeature::collectGarbage() {
@@ -536,9 +525,6 @@ void V8DealerFeature::unblockDynamicContextCreation() {
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     std::string const& file, VPackBuilder* builder) {
    
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-  
   if (builder != nullptr) {
     builder->openArray();
   }
