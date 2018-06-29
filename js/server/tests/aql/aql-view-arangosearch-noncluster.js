@@ -286,10 +286,10 @@ function iResearchAqlTestSuite () {
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 4);
-      assertEqual(result[0].name, 'full');
-      assertEqual(result[1].name, 'other half');
-      assertEqual(result[2].name, 'half');
-      assertEqual(result[3].name, 'quarter');
+      assertEqual(result[0].name, 'half');
+      assertEqual(result[1].name, 'quarter');
+      assertEqual(result[2].name, 'other half');
+      assertEqual(result[3].name, 'full');
     },
 
     testPhraseFilter : function () {
@@ -330,14 +330,46 @@ function iResearchAqlTestSuite () {
       assertEqual(expected.size, 0);
     },
 
-    testExistsFilterByAnalyzer : function () {
+    testExistsFilterByAnalyzer: function () {
       var expected = new Set();
       expected.add("full");
       expected.add("half");
       expected.add("other half");
       expected.add("quarter");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer') RETURN doc", null, { waitForSync: true }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer', 'text_en') RETURN doc", null, { waitForSync: true }).json;
+
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
+        assertTrue(expected.delete(res.name));
+      });
+      assertEqual(expected.size, 0);
+    },
+
+    testExistsFilterByContextAnalyzer: function () {
+      var expected = new Set();
+      expected.add("full");
+      expected.add("half");
+      expected.add("other half");
+      expected.add("quarter");
+
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(EXISTS(doc.text, 'analyzer'), 'text_en') RETURN doc", null, { waitForSync: true }).json;
+
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
+        assertTrue(expected.delete(res.name));
+      });
+      assertEqual(expected.size, 0);
+    },
+
+    testExistsFilterByString: function () {
+      var expected = new Set();
+      expected.add("full");
+      expected.add("half");
+      expected.add("other half");
+      expected.add("quarter");
+
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'string') RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -356,7 +388,7 @@ function iResearchAqlTestSuite () {
       var expected = new Set();
       expected.add("null");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'type', 'null') RETURN doc", null, { waitForSync: true }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'null') RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -369,7 +401,7 @@ function iResearchAqlTestSuite () {
       var expected = new Set();
       expected.add("bool");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'type', 'bool') RETURN doc", null, { waitForSync: true }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'bool') RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -382,7 +414,7 @@ function iResearchAqlTestSuite () {
       var expected = new Set();
       expected.add("numeric");
 
-      var result = AQL_EXECUTE("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'type', 'numeric') RETURN doc", null, { waitForSync: true }).json;
+      var result = AQL_EXECUTE("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'numeric') RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {

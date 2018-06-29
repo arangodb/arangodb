@@ -78,7 +78,7 @@ SECTION("test_start") {
 
   std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected = {
     // filter functions
-    { "EXISTS", { ".|.", FunctionType::FILTER } },
+    { "EXISTS", { ".|.,.", FunctionType::FILTER } },
     { "PHRASE", { ".,.|.+", FunctionType::FILTER } },
     { "STARTS_WITH", { ".,.|.", FunctionType::FILTER } },
     { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },

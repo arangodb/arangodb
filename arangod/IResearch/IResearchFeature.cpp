@@ -140,7 +140,7 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
-    ".|.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
+    ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
