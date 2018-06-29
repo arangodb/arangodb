@@ -43,6 +43,7 @@
   * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/Options.md)
     * [Security](Programs/Starter/Security.md)
+    * [Architecture](Programs/Starter/Architecture.md)
   * [Arangodump](Programs/Arangodump/README.md)
     * [Examples](Programs/Arangodump/Examples.md)
     * [Options](Programs/Arangodump/Options.md)
@@ -285,7 +286,9 @@
   * [Auditing](Administration/Auditing/README.md)
     * [Configuration](Administration/Auditing/AuditConfiguration.md)
     * [Events](Administration/Auditing/AuditEvents.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+  # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  * [Securing Starter Deployments](Security/Starter/README.md)
+  # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/

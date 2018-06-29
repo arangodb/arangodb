@@ -45,7 +45,7 @@ namespace auth_info_test {
 
 class TestQueryRegistry: public QueryRegistry {
  public:
-  TestQueryRegistry() {}; 
+  TestQueryRegistry() : QueryRegistry(1.0) {};
   virtual ~TestQueryRegistry() {}
 };
 

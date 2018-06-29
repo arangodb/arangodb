@@ -34,13 +34,6 @@
     "section" : "console",
     "type" : "boolean"
   },
-  "console.code-page" : {
-    "default" : 850,
-    "description" : "Windows code page to use",
-    "hidden" : true,
-    "section" : "console",
-    "type" : "uint16"
-  },
   "console.colors" : {
     "default" : true,
     "description" : "enable color support",
@@ -113,6 +106,13 @@
     "section" : "javascript",
     "type" : "string..."
   },
+  "javascript.client-module" : {
+    "default" : "client.js",
+    "description" : "client module to use at startup",
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "string"
+  },
   "javascript.current-module-directory" : {
     "default" : true,
     "description" : "add current directory to module path",
@@ -145,6 +145,7 @@
   },
   "javascript.module-directory" : {
     "default" : [
+      "./enterprise/js"
     ],
     "description" : "additional paths containing JavaScript modules",
     "hidden" : true,
@@ -201,6 +202,13 @@
   "log.color" : {
     "default" : true,
     "description" : "use colors for TTY logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -326,7 +334,7 @@
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
-    "values" : "Possible values: 1, 5"
+    "values" : "Possible values: 1, 2, 3, 4"
   },
   "server.ask-jwt-secret" : {
     "default" : false,

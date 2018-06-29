@@ -86,7 +86,7 @@ class HeartbeatThread : public CriticalThread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() { return HasRunOnce.load(); }
+  static bool hasRunOnce() { return HasRunOnce.load(std::memory_order_acquire); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief break runDBserver out of wait on condition after setting state in

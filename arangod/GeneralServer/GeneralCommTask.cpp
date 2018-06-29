@@ -105,16 +105,9 @@ TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
     // if no databases was specified in the request, use system database name
     // as a fallback
     req.setDatabaseName(StaticStrings::SystemDatabase);
-    if (ServerState::instance()->isCoordinator()) {
-      return databaseFeature->useDatabaseCoordinator(
-          StaticStrings::SystemDatabase);
-    }
     return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    return databaseFeature->useDatabaseCoordinator(dbName);
-  }
   return databaseFeature->useDatabase(dbName);
 }
 }

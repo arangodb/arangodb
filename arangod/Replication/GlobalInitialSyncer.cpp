@@ -322,6 +322,25 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief returns the inventory
+Result GlobalInitialSyncer::inventory(VPackBuilder& builder) {
+  if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
+    return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
+  } else if (application_features::ApplicationServer::isStopping()) {
+    return Result(TRI_ERROR_SHUTTING_DOWN);
+  }
+  
+  auto r = sendStartBatch();
+  if (r.fail()) {
+    return r;
+  }
+      
+  TRI_DEFER(sendFinishBatch());
+   
+  // caller did not supply an inventory, we need to fetch it
+  return fetchInventory(builder);
+}
+
 Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   std::string url = ReplicationUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId) + "&global=true";
