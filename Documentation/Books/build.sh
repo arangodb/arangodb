@@ -150,7 +150,6 @@ function ppbook-precheck-bad-headings()
 function ppbook-check-html-link()
 {
     NAME="$1"
-    MSG="$2"
     echo "${STD_COLOR}##### checking for invalid HTML links in ${NAME}${RESET}"
     echo "${ALLBOOKS}" | tr " " "\n" | sed -e 's;^;/;' -e 's;$;/;' > /tmp/books.regex
 
@@ -166,7 +165,7 @@ function ppbook-check-html-link()
     if test "$(wc -l < /tmp/relative_html_links.txt)" -gt 0; then
         echo "${ERR_COLOR}"
         echo "Found links to .html files inside of the document! use <foo>.md instead!"
-        echo "${MSG}"
+        echo
         cat  /tmp/relative_html_links.txt
         echo "${RESET}"
         exit 1
@@ -268,6 +267,21 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
+    ERRORS=$(find "books/${NAME}" -name '*.html' \
+                  -exec grep '<a href=".*\.md#*.*"' {} \; \
+                  -print | \
+                 grep -v https:// | \
+                 grep -v http://)
+    set -e
+    if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
+        echo "${ERR_COLOR}"
+        echo "found unconverted markdown links: "
+        echo "${ERRORS}"
+        echo "${RESET}"
+        exit 1
+    fi
+    
+    set +e
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\[.*\](.*[\.html|\.md|http|#.*])' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
@@ -289,25 +303,11 @@ function check-dangling-anchors()
         grep '<h. ' < "${htmlf}" | \
             sed -e 's;.*id=";;' -e 's;".*;;' > "/tmp/tags/${dir}/${fn}"
     done
-    rm -f /tmp/anchorlist.txt
 
     echo "${STD_COLOR}##### fetching anchors from generated http files${RESET}"
-    for file in $(find books -name \*.html); do 
-        # - strip of the menu
-        # - then the page tail.
-        # - remove links to external pages
-        cat $file | \
-            sed -r -n -e '/normal markdown-section/,${p}'| \
-            sed -r -n -e '/.*id="page-footer".*/q;p' | \
-            grep '<a href="' | \
-            grep -v 'target="_blank"' | \
-            sed -e 's;.*href=";;' -e 's;".*;;' > /tmp/thisdoc.txt
-        # Links with anchors:
-        cat /tmp/thisdoc.txt |grep '#' | sed "s;\(.*\)#\(.*\);${file},\1,\2;" >> /tmp/anchorlist.txt
-        # links without anchors:
-        cat /tmp/thisdoc.txt |grep -v '#' | sed "s;\(.*\);${file},\1,;" >> /tmp/anchorlist.txt
-        
-    done
+    grep -R "a href.*#" books/ | \
+        grep -v -E "(styles/header\\.js|/app\\.js|class=\"navigation|https*://|href=\"#\")" | \
+        sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
     echo "${STD_COLOR}##### cross checking anchors${RESET}"
     NO=0
@@ -321,19 +321,19 @@ function check-dangling-anchors()
         if test -z "$FN"; then
             FN="$SFN"
         else
-            SFNP=$(sed 's;/[a-zA-Z0-9.-]*.html;;' <<< "$SFN")
+            SFNP=$(sed 's;/[a-zA-Z0-9]*.html;;' <<< "$SFN")
             FN="${SFNP}/${FN}"
         fi
         if test -d "$FN"; then
             FN="${FN}index.html"
         fi
-        if test ! -f "/tmp/tags/${FN}"; then
-            echo "${ERR_COLOR}"
-            echo "File referenced by ${i} doesn't exist."
-            NO=$((NO + 1))
-            echo "${RESET}"
-        else
-            if test -n "$ANCHOR"; then
+        if test -n "$ANCHOR"; then
+            if test ! -f "/tmp/tags/${FN}"; then
+                echo "${ERR_COLOR}"
+                echo "File referenced by ${i} doesn't exist."
+                NO=$((NO + 1))
+                echo "${RESET}"
+            else
                 if grep -q "^$ANCHOR$" "/tmp/tags/$FN"; then
                     true
                 else
@@ -658,7 +658,7 @@ function build-books()
     done
 
     for book in ${ALLBOOKS}; do
-        ppbook-check-html-link "${book}" ""
+        ppbook-check-html-link "${book}"
     done
 
     check-docublocks ""
@@ -772,17 +772,17 @@ case "$VERB" in
         build-book "$NAME"
         check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
         check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
-        ppbook-check-html-link "${NAME}" "some of the above errors may be because of referenced books weren't rebuilt."
         ;;
     check-book)
-        check-summary "${NAME}"
-        book-check-leftover-docublocks "${NAME}"
-        book-check-restheader-leftovers "${NAME}"
-        ppbook-check-directory-link "${NAME}"
-        book-check-images-referenced "${NAME}"
-        book-check-markdown-leftovers "${NAME}"        
-        check-dangling-anchors "${NAME}" "some of the above errors may be because of referenced books weren't rebuilt."
-        ;;
+	check-summary "${NAME}"
+    	book-check-leftover-docublocks "${NAME}"
+    	book-check-restheader-leftovers "${NAME}"
+    	ppbook-check-directory-link "${NAME}"
+    	book-check-images-referenced "${NAME}"
+	book-check-markdown-leftovers "${NAME}"
+        check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+        check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
+	;;
     build-dist-books)
         build-dist-books
         ;;
