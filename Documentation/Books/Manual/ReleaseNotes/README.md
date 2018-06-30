@@ -61,7 +61,7 @@ Incompatible changes
 --------------------
 
 For a list of incompatible changes, please refer to one of the following sections.
-Also see [Upgrading](../Administration/Upgrading/README.md) in the 
+Also see [Upgrading](../Upgrading/README.md) in the 
 Administration chapter.
 
 - Incompatible changes in 3.x:
