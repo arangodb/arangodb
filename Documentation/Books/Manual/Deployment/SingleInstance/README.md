@@ -12,5 +12,5 @@ handled directly using your _System and Service Manager_.
 The following are two additional ways that can be used to start the stand-alone
 instance:
 
-1. [manually](ManualStart.md), or 
-1. using the [_ArangoDB Starter_](UsingTheStarter.md).
+1. using the [_ArangoDB Starter_](UsingTheStarter.md), or 
+1. [manually](ManualStart.md).
