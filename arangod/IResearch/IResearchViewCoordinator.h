@@ -90,6 +90,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   );
 
   IResearchViewMeta _meta;
+  IResearchViewMetaState _metaState;
   velocypack::Builder _links;
 
 }; // IResearchViewCoordinator

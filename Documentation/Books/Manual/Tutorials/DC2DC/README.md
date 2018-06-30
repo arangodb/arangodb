@@ -47,7 +47,7 @@ and keep it secure (e.g. certificate & password rotation).
 Once configured, ArangoSync will replicate both **structure and data** of an
 **entire cluster**. This means that there is no need to make additional configuration
 changes when adding/removing databases or collections.
-<br/>Also meta data such as users, foxx application & jobs are automatically replicated.
+<br/>Also meta data such as users, Foxx application & jobs are automatically replicated.
 
 ### When to use it... and when not
 
@@ -60,7 +60,7 @@ ArangoSync is not a good solution when one of the following applies:
 - You want to replicate data from cluster A to cluster B and from cluster B
   to cluster A at the same time.
 - You need synchronous replication between 2 clusters.
-- There is no network connection betwee cluster A and B.
+- There is no network connection between cluster A and B.
 - You want complete control over which database, collection & documents are replicate and which not.
 
 ## Requirements
@@ -93,7 +93,7 @@ Besides the above list, you probably want to use the following:
 In the following paragraphs you'll learn which components have to be deployed
 for datacenter to datacenter replication using the `direct` message queue.
 For detailed deployment instructions or instructions for the `kafka` message queue,
-consult the [reference manual](../../Deployment/DC2DC.md).
+consult the [reference manual](../../Deployment/DC2DC/README.md).
 
 ### ArangoDB cluster
 
@@ -114,7 +114,7 @@ One instance will be the "leader", the other will be an inactive slave. When the
 is gone for a short while, one of the other instances will take over.
 
 With clusters of a significant size, the sync master will require a significant set of resources.
-Therefore it is recommended to deploy sync masters on their own servers, equiped with sufficient
+Therefore it is recommended to deploy sync masters on their own servers, equipped with sufficient
 CPU power and memory capacity.
 
 The sync master must be reachable on a TCP port 8629 (default).
@@ -229,8 +229,8 @@ If the synchronization is not completely stopped within a reasonable period (2 m
 the command will fail.
 
 If the source datacenter is no longer available it is not possible to stop synchronization in
-a graceful manner. Consult the [reference manual](../../Administration/DC2DC/README.md#stopping-synchronization) for instructions how to abort synchronization in
-this case.
+a graceful manner. Consult the [reference manual](../../Administration/DC2DC/README.md#stopping-synchronization)
+for instructions how to abort synchronization in this case.
 
 ### Reversing synchronization direction
 
@@ -283,8 +283,9 @@ Give restarted instances some time to "catch up".
 
 ### 'What if ...'
 
-Please consult the [reference manual](../../Troubleshooting/DC2DC/README.md) for details descriptions of what to do in case of certain
-problems and how & what information to provide to support so they can assist you best when needed.
+Please consult the [reference manual](../../Troubleshooting/DC2DC/README.md)
+for details descriptions of what to do in case of certain problems and how and
+what information to provide to support so they can assist you best when needed.
 
 ### Metrics
 
@@ -300,7 +301,8 @@ Note: Both endpoints require authentication. Besides the usual authentication me
 these endpoints are also accessible using a special bearer token specified using the `--monitoring.token`
 command line option.
 
-Consult the [reference manual](../../Monitoring/DC2DC/README.md#metrics) for sample output of the metrics endpoints.
+Consult the [reference manual](../../Monitoring/DC2DC/README.md#metrics)
+for sample output of the metrics endpoints.
 
 ## Security
 
@@ -308,7 +310,8 @@ Consult the [reference manual](../../Monitoring/DC2DC/README.md#metrics) for sam
 
 The components of ArangoSync use (TCP) network connections to communicate with each other.
 
-Consult the [reference manual](../../Security/DC2DC/README.md#firewall-settings) for a detailed list of connections and the ports that should be accessible.
+Consult the [reference manual](../../Security/DC2DC/README.md#firewall-settings)
+for a detailed list of connections and the ports that should be accessible.
 
 ### Certificates
 
@@ -330,16 +333,17 @@ the client and (optionally) decides which rights should be assigned to the clien
 Note: ArangoSync does allow the use of certificates signed by a well know CA (eg. verisign)
 however it is more convenient (and common) to use your own CA.
 
-Consult the [reference manual](../../Security/DC2DC/README.md#certificates) for detailed instructions on how to create these certificates.
+Consult the [reference manual](../../Security/DC2DC/README.md#certificates)
+for detailed instructions on how to create these certificates.
 
 #### Renewing certificates
 
 All certificates have meta information in them the limit their use in function,
 target & lifetime.
-<br/> A certificate created for client authentication (function) cannot be used as a TLS server certificate
-(same is true for the reverse).
+<br/> A certificate created for client authentication (function) cannot be used as a TLS
+server certificate (same is true for the reverse).
 <br/> A certificate for host `myserver` (target) cannot be used for host `anotherserver`.
-<br/> A certificate that is valid until October 2017 (limetime) cannot be used after October 2017.
+<br/> A certificate that is valid until October 2017 (lifetime) cannot be used after October 2017.
 
 If anything changes in function, target or lifetime you need a new certificate.
 

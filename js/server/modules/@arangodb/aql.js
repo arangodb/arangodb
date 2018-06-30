@@ -570,20 +570,9 @@ function AQL_PASSTHRU (value) {
   return value;
 }
 
-function AQL_PREGEL_RESULT (executionNr) {
-  'use strict';
-
-  if (isCoordinator) {
-      return INTERNAL.db._pregelAqlResult(executionNr);
-  } else {
-    THROW('PREGEL_RESULT', INTERNAL.errors.ERROR_CLUSTER_ONLY_ON_COORDINATOR);
-  }
-}
-
 exports.FCALL_USER = FCALL_USER;
 exports.AQL_WITHIN_RECTANGLE = AQL_WITHIN_RECTANGLE;
 exports.AQL_V8 = AQL_PASSTHRU;
-exports.AQL_PREGEL_RESULT = AQL_PREGEL_RESULT;
 
 exports.reload = reloadUserFunctions;
 exports.fixValue = FIX_VALUE;

@@ -49,6 +49,33 @@ RETURN APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
 
 This is an alias for [LENGTH()](#length).
 
+## COUNT_DISTINCT()
+
+`COUNT_DISTINCT(anyArray) → number`
+
+Get the number of distinct elements in an array.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **number**: the number of distinct elements in *anyArray*.
+
+**Examples**
+
+@startDocuBlockInline aqlArrayCountDistinct_1
+@EXAMPLE_AQL{aqlArrayCountDistinct_1}
+RETURN COUNT_DISTINCT([ 1, 2, 3 ])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayCountDistinct_1
+
+@startDocuBlockInline aqlArrayCountDistinct_2
+@EXAMPLE_AQL{aqlArrayCountDistinct_2}
+RETURN COUNT_DISTINCT([ "yes", "no", "yes", "sauron", "no", "yes" ])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayCountDistinct_2
+
+## COUNT_UNIQUE()
+
+This is an alias for [COUNT_DISTINCT()](#countdistinct).
+
 ## FIRST()
 
 `FIRST(anyArray) → firstElement`
