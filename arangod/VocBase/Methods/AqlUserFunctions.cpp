@@ -269,33 +269,22 @@ Result arangodb::registerUserFunction(
                                            TRI_V8_ASCII_STRING(isolate, "userFunction"),
                                            false);
 
-      int state = 0;
-      if (result.IsEmpty()) {
-        state = 1;
-      }
-      else if (tryCatch.HasCaught()) {
-        state = 2;
-      }
-      else if (!result->IsFunction()) {
-        state = 3;
-      }
+      if (result.IsEmpty() || !result->IsFunction() || tryCatch.HasCaught()) {
+        if (tryCatch.HasCaught()) {
+          res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
+                    std::string(TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)) + ": " +
+                    TRI_StringifyV8Exception(isolate, &tryCatch));
 
-      if (state != 0) {
-        std::string const msg[] = {
-          "",
-          "Empty result.",
-          "Exception occured",
-          "Is not a function"
-        };
-        res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-                  TRI_StringifyV8Exception(isolate, &tryCatch) +
-                  msg[state]);
-        if (!tryCatch.CanContinue()) {
-          if (throwV8Exception) {
-            tryCatch.ReThrow();
+          if (!tryCatch.CanContinue()) {
+            if (throwV8Exception) {
+              tryCatch.ReThrow();
+            }
+            TRI_GET_GLOBALS();
+            v8g->_canceled = true;
           }
-          TRI_GET_GLOBALS();
-          v8g->_canceled = true;
+        } else {
+          res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
+                    std::string(TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)));
         }
       }
     }

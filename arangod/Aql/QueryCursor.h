@@ -105,7 +105,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
  private:
   DatabaseGuard _guard;
-  std::string _queryString;
+  int64_t _exportCount; // used by RocksDBRestExportHandler
   std::unique_ptr<aql::Query> _query;
 };
 

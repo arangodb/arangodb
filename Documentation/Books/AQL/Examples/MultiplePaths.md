@@ -2,9 +2,9 @@ Multiple Path Search
 ====================
 
 The shortest path algorithm can only determine one shortest path.
-For example, if this is the full graph:
+For example, if this is the full graph (based on the [mps_graph](../../Manual/Graphs/index.html#the-mps-graph)):
 
-![Example Graph](sp_graph.png)
+![Example Graph](mps_graph.png)
 
 then a shortest path query from **A** to **C** may return the path `A -> B -> C` or `A -> D -> C`, but it's undefined which one (not taking edge weights into account here).
 
@@ -16,7 +16,7 @@ You can use the efficient shortest path algorithm however, to determine the shor
     @DATASET{mps_graph}
     RETURN LENGTH(
       FOR v IN OUTBOUND
-        SHORTEST_PATH "verts/A" TO "verts/C" edges
+        SHORTEST_PATH "mps_verts/A" TO "mps_verts/C" mps_edges
           RETURN v
     )   
     @END_EXAMPLE_AQL
@@ -31,8 +31,8 @@ The following query returns all parts with length 2, start vertex **A** and targ
     @startDocuBlockInline GRAPHTRAV_multiplePathSearch2
     @EXAMPLE_AQL{GRAPHTRAV_multiplePathSearch2}
     @DATASET{mps_graph}
-    FOR v, e, p IN 2..2 OUTBOUND "verts/A" edges
-       FILTER v._id == "verts/C"
+    FOR v, e, p IN 2..2 OUTBOUND "mps_verts/A" mps_edges
+       FILTER v._id == "mps_verts/C"
          RETURN CONCAT_SEPARATOR(" -> ", p.vertices[*]._key)
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_multiplePathSearch2

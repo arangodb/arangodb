@@ -39,6 +39,11 @@ class GlobalInitialSyncer final : public InitialSyncer {
   /// @brief run method, performs a full synchronization
   /// public method, catches exceptions
   arangodb::Result run(bool incremental) override;
+  
+  /// @brief fetch the server's inventory, public method
+  Result inventory(arangodb::velocypack::Builder& builder);
+
+ private:
 
  private:
   /// @brief run method, performs a full synchronization

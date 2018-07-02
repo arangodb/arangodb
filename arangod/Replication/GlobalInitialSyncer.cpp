@@ -359,6 +359,25 @@ Result GlobalInitialSyncer::updateServerInventory(
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief returns the inventory
+Result GlobalInitialSyncer::inventory(VPackBuilder& builder) {
+  if (!_state.connection.valid()) {
+    return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
+  } else if (application_features::ApplicationServer::isStopping()) {
+    return Result(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  auto r = _batch.start(_state.connection, _progress);
+  if (r.fail()) {
+    return r;
+  }
+
+  TRI_DEFER(_batch.finish(_state.connection, _progress));
+
+  // caller did not supply an inventory, we need to fetch it
+  return fetchInventory(builder);
+}
+
 Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   std::string url = replutils::ReplicationUrl +
                     "/inventory?serverId=" + _state.localServerIdString +

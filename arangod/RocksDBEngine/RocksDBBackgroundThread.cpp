@@ -75,7 +75,6 @@ void RocksDBBackgroundThread::run() {
       }
 
       bool force = isStopping();
-
       _engine->replicationManager()->garbageCollect(force);
 
       TRI_voc_tick_t minTick = rocksutils::latestSequenceNumber();
@@ -87,12 +86,8 @@ void RocksDBBackgroundThread::run() {
 
       if (DatabaseFeature::DATABASE != nullptr) {
         DatabaseFeature::DATABASE->enumerateDatabases(
-          [force, &minTick](TRI_vocbase_t& vocbase)->void {
-              vocbase.cursorRepository()->garbageCollect(force);
-              vocbase.garbageCollectReplicationClients(TRI_microtime());
-
+          [&minTick](TRI_vocbase_t& vocbase)->void {
               auto clients = vocbase.getReplicationClients();
-
               for (auto c : clients) {
                 if (std::get<3>(c) < minTick) {
                   minTick = std::get<3>(c);

@@ -227,6 +227,23 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   }
 }
 
+/// @brief returns the inventory
+Result DatabaseInitialSyncer::inventory(VPackBuilder& builder) {
+  if (!_state.connection.valid()) {
+    return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
+  }
+
+  auto r = _config.batch.start(_config.connection, _config.progress);
+  if (r.fail()) {
+    return r;
+  }
+
+  TRI_DEFER(_config.batch.finish(_config.connection, _config.progress));
+
+  // caller did not supply an inventory, we need to fetch it
+  return fetchInventory(builder);
+}
+
 /// @brief check whether the initial synchronization should be aborted
 bool DatabaseInitialSyncer::isAborted() const {
   if (application_features::ApplicationServer::isStopping() ||

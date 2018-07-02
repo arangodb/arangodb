@@ -60,7 +60,8 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick,
                     useTick, barrierId),
-      _vocbase(&vocbase) {
+      _vocbase(&vocbase),
+      _queriedTranslations(false) {
   _state.vocbases.emplace(std::piecewise_construct,
                           std::forward_as_tuple(vocbase.name()),
                           std::forward_as_tuple(vocbase));
@@ -208,4 +209,66 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "Fetching more data fromTick " << fromTick;
   }
+}
+
+bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
+  // we do not have a "cname" attribute in the marker...
+  // now check for a globally unique id attribute ("cuid")
+  // if its present, then we will use our local cuid -> collection name
+  // translation table
+  VPackSlice const name = slice.get("cuid");
+  if (!name.isString()) {
+    return false;
+  }
+
+  if (_state.master.majorVersion < 3 ||
+      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
+    // globallyUniqueId only exists in 3.3 and higher
+    return false;
+  }
+
+  if (_queriedTranslations) {
+    // no translations yet... query master inventory to find names of all
+    // collections
+    try {
+      DatabaseInitialSyncer init(*_vocbase, _state.applier);
+      VPackBuilder inventoryResponse;
+      Result res = init.inventory(inventoryResponse);
+      _queriedTranslations = true;
+      if (res.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
+        return false;
+      }
+      VPackSlice invSlice = inventoryResponse.slice();
+      if (!invSlice.isObject()) {
+        return false;
+      }
+      invSlice = invSlice.get("collections");
+      if (!invSlice.isArray()) {
+        return false;
+      }
+
+      for (auto const& it : VPackArrayIterator(invSlice)) {
+        if (!it.isObject()) {
+          continue;
+        }
+        VPackSlice c = it.get("parameters");
+        if (c.hasKey("name") && c.hasKey("globallyUniqueId")) {
+          _translations[c.get("globallyUniqueId").copyString()] = c.get("name").copyString();
+        }
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching inventory: " << ex.what();
+      return false;
+    }
+  }
+
+  // look up cuid in translations map
+  auto it = _translations.find(name.copyString());
+
+  if (it != _translations.end()) {
+    return isExcludedCollection((*it).second);
+  }
+
+  return false;
 }
