@@ -356,10 +356,6 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
       << "upstreamState=" << (
         _upstreamState == ExecutionState::DONE ? "DONE" :
         _upstreamState == ExecutionState::HASMORE ? "HASMORE" :
-          "???")
-      << ", state=" << (
-        res.first == ExecutionState::DONE ? "DONE" :
-        res.first == ExecutionState::HASMORE ? "HASMORE" :
           "???");
   }
 

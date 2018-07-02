@@ -987,9 +987,19 @@ function ahuacatlProfilerTestSuite () {
         const enumRows = Math.floor(rows / 3) + 1;
         const enumBatches = Math.ceil(enumRows / defaultBatchSize);
         const indexRows = Math.ceil(rows / 3);
+
+        const optimalBatches = Math.ceil(indexRows / defaultBatchSize);
         // IndexBlock returns HASMORE when asked for the exact number of items
         // it has left. This could be improved.
-        const indexBatches = Math.max(1, Math.floor(indexRows / defaultBatchSize) + 1);
+        const maxIndexBatches = Math.max(1, Math.floor(indexRows / defaultBatchSize) + 1);
+        // Number of calls made to the index block. See comment for
+        // maxIndexBatches. As of now, maxIndexBatches is exact, but we don't
+        // want to fail when this improves.
+        const indexBatches = [
+          optimalBatches,
+          maxIndexBatches
+        ];
+
         return [
           {type: SingletonBlock, calls: 1, items: 1},
           {type: CalculationBlock, calls: 1, items: 1},
@@ -1002,6 +1012,106 @@ function ahuacatlProfilerTestSuite () {
       runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test IndexBlock with multiple input rows. slow.
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexBlock3 : function () {
+      if (isCluster) {
+        console.log('Skipping test testIndexBlock3 in cluster');
+        return;
+      }
+
+      const col = db._create(colName);
+      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
+      const listRowCounts = [1, 2, 3, 100, 999, 1000, 1001];
+      const collectionRowCounts = [1, 2, 499, 500, 501, 999, 1000, 1001];
+
+      for (const collectionRows of collectionRowCounts) {
+        col.truncate();
+        col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
+        for (const listRows of listRowCounts) {
+          // forbid reordering of the enumeration nodes as well as removal
+          // of one CalculationNode in case listRows == collectionRows.
+          const profile = db._query(query,
+            {listRows, collectionRows, '@col': colName},
+            {
+              profile: 2,
+              optimizer: {rules: [
+                "-interchange-adjacent-enumerations",
+                "-remove-redundant-calculations"
+              ]}
+            }
+          ).getExtra();
+
+          assertIsLevel2Profile(profile);
+          assertStatsNodesMatchPlanNodes(profile);
+
+          const listBatches = Math.ceil(listRows / defaultBatchSize);
+          const totalRows = listRows * collectionRows;
+
+          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
+
+
+          // The current IndexBlock::getSome implementation, like the
+          // EnumerateCollectionBlock::getSome implementation, stops after
+          // iterating over the index. Thus
+          // a) there are at least as many batches as input rows times
+          //    the number of batches in the collection, i.e. ceil(#col/#batch).
+          // b) when, e.g., the collection contains 999, the parent block might
+          //    ask for 1 after receiving 999, which can up to double the count
+          //    described under a).
+          // So endBatches is a sharp lower bound for every implementation,
+          // while the upper bound may be reduced if the implementation changes.
+
+          // Number of batches the index block fetches from its child
+          const indexCallsBatches = [
+            optimalBatches,
+            listRows * Math.ceil(collectionRows / defaultBatchSize) * 2 + 1
+          ];
+
+          // IndexBlock returns HASMORE when asked for the exact number of items
+          // it has left. This could be improved.
+          const maxIndexBatches = Math.floor(totalRows / defaultBatchSize) + 1;
+          // Number of calls made to the index block. See comment for
+          // maxIndexBatches. As of now, maxIndexBatches is exact, but we don't
+          // want to fail when this improves.
+          const indexBatches = [
+            optimalBatches,
+            maxIndexBatches
+          ];
+
+          const expected = [
+            {type: SingletonBlock, calls: 1, items: 1},
+            {type: CalculationBlock, calls: 1, items: 1},
+            {type: CalculationBlock, calls: 1, items: 1},
+            {type: EnumerateListBlock, calls: listBatches, items: listRows},
+            {type: EnumerateListBlock, calls: indexCallsBatches, items: totalRows},
+            {type: IndexBlock, calls: indexBatches, items: totalRows},
+            {type: CalculationBlock, calls: indexBatches, items: totalRows},
+            {type: ReturnBlock, calls: indexBatches, items: totalRows}
+          ];
+          const actual = getCompactStatsNodes(profile);
+
+          // internal.print(`=== collectionRows=${collectionRows}, listRows=${listRows}, ` +
+          // `totalRows=${totalRows}, listBatches=${listBatches}, totalBatches=${totalBatches}`);
+          // internal.print(`${actual[4].calls} \\in ${expected[4].calls}`);
+          // for (const block of actual) {
+          //   internal.print(`\t${block.calls}\t${block.items}\t${block.type}`);
+          // }
+          // internal.print("");
+          // for (const block of expected) {
+          //   internal.print(`\t${block.calls}\t${block.items}\t${block.type}`);
+          // }
+          // internal.print("");
+
+          assertNodesItemsAndCalls(expected, actual,
+            {query, listRows, collectionRows, expected, actual});
+        }
+      }
     },
 
 
