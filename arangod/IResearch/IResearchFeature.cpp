@@ -32,6 +32,7 @@
 #include "utils/log.hpp"
 
 #include "ApplicationServerHelper.h"
+#include "Containers.h"
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
@@ -45,6 +46,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -309,8 +311,228 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+class IResearchFeature::Async {
+ public:
+  typedef std::function<bool(size_t& timeoutMsec, bool timeout)> Fn;
+
+  Async();
+  ~Async();
+
+  void emplace(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    size_t timeoutMsec,
+    Fn &&fn
+  ); // add an asynchronous tasks
+  void notify() const; // notify all tasks
+
+ private:
+  struct Pending {
+    Fn _fn; // the function to execute
+    std::shared_ptr<ResourceMutex> _mutex; // mutex for the task resources
+    std::chrono::system_clock::time_point _timeout; // when the task should be notified (std::chrono::milliseconds::max() == disabled)
+
+    Pending(
+        std::shared_ptr<ResourceMutex> const& mutex,
+        size_t timeoutMsec,
+        Fn &&fn
+    ): _fn(std::move(fn)),
+       _mutex(mutex),
+       _timeout(
+         timeoutMsec
+         ? (std::chrono::system_clock::now() + std::chrono::milliseconds(timeoutMsec))
+         : std::chrono::system_clock::time_point::max()
+       ) {
+    }
+  };
+
+  struct Task: public Pending {
+    std::unique_lock<ReadMutex> _lock; // prevent resource deallocation
+
+    Task(Pending&& pending): Pending(std::move(pending)) {
+      // lock resource mutex or ignore if none supplied
+      if(_mutex) {
+        _lock = std::unique_lock<ReadMutex>(_mutex->mutex());
+      }
+    }
+  };
+
+  struct Thread: public arangodb::Thread {
+    mutable std::condition_variable _cond; // trigger task run
+    mutable std::mutex _mutex; // mutex used with '_cond' and '_pending'
+    Thread* _next; // next thread in circular-list (never null!!!) (need to store pointer for move-assignment)
+    std::vector<Pending> _pending; // pending tasks
+    std::atomic<size_t> _size; // approximate size of the active+pending task list
+    std::vector<Task> _tasks; // the tasks to perform
+    std::atomic<bool>* _terminate; // trigger termination of this thread (need to store pointer for move-assignment)
+
+    Thread(std::string const& name): arangodb::Thread(name) {}
+    Thread(Thread&& other): arangodb::Thread(other.name()) {} // used in constructor before tasks are started
+    virtual bool isSystem() override { return true; } // or start(...) will fail
+    virtual void run() override;
+  };
+
+  arangodb::basics::ConditionVariable _join; // mutex to join on
+  std::vector<Thread> _pool; // thread pool (size fixed for the entire life of object)
+  std::atomic<bool> _terminate; // unconditionaly terminate async tasks
+};
+
+void IResearchFeature::Async::Thread::run() {
+  std::chrono::system_clock::time_point timeout;
+  bool timeoutSet = false;
+
+  for (;;) {
+    {
+      SCOPED_LOCK_NAMED(_mutex, lock); // aquire before '_terminate' check so that don't miss notify()
+
+      if (_terminate->load()) {
+        return; // termination requested
+      }
+
+      // transfer any new pending tasks into active tasks
+      for (auto& pending: _pending) {
+        _tasks.emplace_back(std::move(pending)); // will aquire resource lock
+
+        auto& task = _tasks.back();
+
+        if (task._mutex && !*(task._mutex)) {
+          _tasks.pop_back(); // resource no longer valid
+          continue;
+        }
+
+        if (std::chrono::system_clock::time_point::max() != task._timeout) {
+          timeout =
+            timeoutSet ? std::min(timeout, task._timeout) : task._timeout;
+          timeoutSet = true;
+        }
+      }
+
+      _pending.clear();
+      _size.store(_tasks.size());
+
+      // sleep until timeout
+      if (!timeoutSet) {
+        _cond.wait(lock); // wait forever
+      } else {
+        _cond.wait_until(lock, timeout); // wait for timeout or notify
+      }
+
+      if (_terminate->load()) { // check again after sleep
+        return; // termination requested
+      }
+    }
+
+    timeoutSet = false;
+
+    // transfer some tasks to '_next' if have too many
+    while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
+      SCOPED_LOCK(_next->_mutex);
+      _next->_pending.emplace_back(std::move(_tasks.back()));
+      _tasks.pop_back();
+      ++_next->_size;
+      --_size;
+      _next->_cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
+    }
+
+    for (size_t i = 0, count = _tasks.size(); i < count;) {
+      auto& task = _tasks[i];
+      auto exec = std::chrono::system_clock::now() >= task._timeout;
+      size_t timeoutMsec;
+
+      try {
+        if (!task._fn(timeoutMsec, exec)) {
+          if (i + 1 < count) {
+            std::swap(task, _tasks[count - 1]); // swap 'i' with tail
+          }
+
+          _tasks.pop_back(); // remove stale tail
+          --count;
+
+          continue;
+        }
+      } catch(...) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "caught error while executing asynchronous task";
+        IR_LOG_EXCEPTION();
+        timeoutMsec = 0; // sleep until previously set timeout
+      }
+
+      // task reschedule time modification requested
+      if (timeoutMsec) {
+        task._timeout = std::chrono::system_clock::now()
+                      + std::chrono::milliseconds(timeoutMsec);
+      }
+
+      timeout = timeoutSet ? std::min(timeout, task._timeout) : task._timeout;
+      timeoutSet = true;
+      ++i;
+    }
+  }
+}
+
+IResearchFeature::Async::Async(): _terminate(false) {
+  static const unsigned int MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
+  static const unsigned int MIN_THREADS = 1; // at least one thread is required
+  auto poolSize = std::max(
+    MIN_THREADS,
+    std::min(MAX_THREADS, std::thread::hardware_concurrency())
+  );
+
+  for (size_t i = 0; i < poolSize; ++i) {
+    _pool.emplace_back(std::string("ArangoSearch #") + std::to_string(i));
+  }
+
+  auto* last = &(_pool.back());
+
+  // buld circular list and start threads
+  for (auto& thread: _pool) {
+    last->_next = &thread;
+    last = &thread;
+    thread._terminate = &_terminate;
+    thread.start(&_join);
+  }
+}
+
+IResearchFeature::Async::~Async() {
+  _terminate.store(true); // request stop asynchronous tasks
+  notify(); // notify all threads
+
+  CONDITION_LOCKER(lock, _join);
+
+  // join with all threads in pool
+  for (auto& thread: _pool) {
+    while(thread.isRunning()) {
+      _join.wait();
+    }
+  }
+}
+
+void IResearchFeature::Async::emplace(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    size_t timeoutMsec,
+    Fn &&fn
+) {
+  if (!fn) {
+    return; // skip empty functers
+  }
+
+  auto& thread = _pool[0];
+  SCOPED_LOCK(thread._mutex);
+  thread._pending.emplace_back(mutex, timeoutMsec, std::move(fn));
+  ++thread._size;
+  thread._cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
+}
+
+void IResearchFeature::Async::notify() const {
+  // notify all threads
+  for (auto& thread: _pool) {
+    SCOPED_LOCK(thread._mutex);
+    thread._cond.notify_all();
+  }
+}
+
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
+    _async(std::make_unique<Async>()),
     _running(false) {
   setOptional(true);
   startsAfter("ViewTypes");
@@ -326,6 +548,18 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter("TransactionManager");
 
   startsBefore("GeneralServer");
+}
+
+void IResearchFeature::async(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    size_t timeoutMsec,
+    Async::Fn &&fn
+) {
+  _async->emplace(mutex, timeoutMsec, std::move(fn));
+}
+
+void IResearchFeature::asyncNotify() const {
+  _async->notify();
 }
 
 void IResearchFeature::beginShutdown() {
