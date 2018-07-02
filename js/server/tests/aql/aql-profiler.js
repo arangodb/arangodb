@@ -926,6 +926,43 @@ function ahuacatlProfilerTestSuite () {
       runDefaultChecks({query, genNodeList});
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test IndexBlock
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexBlock1 : function () {
+      if (isCluster) {
+        console.log('Skipping test testIndexBlock1 in cluster');
+        return;
+      }
+      const col = db._create(colName);
+      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      const prepare = (rows) => {
+        col.truncate();
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const bind = (rows) => ({'@col': colName, rows});
+      const query = `FOR i IN 1..@rows FOR d IN @@col FILTER i == d.value RETURN d.value`;
+
+      const genNodeList = (rows, batches) => {
+        // IndexBlock returns HASMORE when asked for the exact number of items
+        // it has left. This could be improved.
+        // batches = Math.floor(rows / defaultBatchSize) + 1;
+        const indexBatches = Math.floor(rows / defaultBatchSize) + 1;
+        return [
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: CalculationBlock, calls: 1, items: 1},
+          {type: EnumerateListBlock, calls: batches, items: rows},
+          {type: IndexBlock, calls: indexBatches, items: rows},
+          {type: CalculationBlock, calls: indexBatches, items: rows},
+          {type: ReturnBlock, calls: indexBatches, items: rows}
+        ];
+      };
+      runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+    },
+
 
 
 // TODO Every block must be tested separately. Here follows the list of blocks
