@@ -362,7 +362,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   size_t nqs = payload.length();
   if(nqs > 0 && !payload[0].get("readDB").isNone()) {
     // We have received a compacted state.
-    // Whatever we got in out own state is meaningless now. It is a new world.
+    // Whatever we got in our own state is meaningless now. It is a new world.
     // checkLeader just does plausibility as if it were an empty request
     prevIndex = 0;
     prevTerm = 0;
@@ -476,10 +476,10 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // If lastConfirmed is smaller than our first log entry's index, and
-      // given that our first log entry is either the 0-entry or a compacted
-      // state and that compactions are only performed up to a RAFT-wide
-      // committed index, and by that up to absolut truth we can correct
-      // lastConfirmed to our first log index.
+      // given that our first log entry is either the 0-entry or an entry at
+      // index of a compacted state and that compactions are only performed up
+      // to a RAFT-wide committed index, and by that up to absolut truth we can
+      // correct lastConfirmed to our first log index.
       bool raiseLastConfirmed = lastConfirmed < _state.firstIndex();
       if (raiseLastConfirmed) {
         lastConfirmed = _state.firstIndex();
@@ -504,7 +504,7 @@ void Agent::sendAppendEntriesRPC() {
         TRI_ASSERT(false);
       }
 
-      if (unconfirmed.size() == 1) {
+      if (unconfirmed.size() == 1 && !raiseLastConfirmed) {
         // Note that this case means that everything we have is already
         // confirmed, since we always get everything from (and including!)
         // the last confirmed entry.
