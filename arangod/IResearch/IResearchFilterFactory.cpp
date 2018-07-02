@@ -1024,8 +1024,10 @@ bool fromNegation(
   TRI_ASSERT(member);
 
   if (filter) {
-    filter = &filter->add<irs::Not>().filter<irs::And>();
-    filter->boost(filterCtx.boost);
+    auto& notFilter = filter->add<irs::Not>();
+    notFilter.boost(filterCtx.boost);
+
+    filter = &notFilter.filter<irs::And>();
   }
 
   FilterContext const subFilterCtx{

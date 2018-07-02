@@ -56,7 +56,7 @@
 #include "index/index_writer.hpp"
 #include "store/memory_directory.hpp"
 
-NS_LOCAL
+namespace {
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -113,36 +113,7 @@ bool InvalidAnalyzer::returnNullFromMake = false;
 DEFINE_ANALYZER_TYPE_NAMED(InvalidAnalyzer, "iresearch-document-invalid");
 REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make);
 
-std::string mangleBool(std::string name) {
-  arangodb::iresearch::kludge::mangleBool(name);
-  return name;
 }
-
-std::string mangleNull(std::string name) {
-  arangodb::iresearch::kludge::mangleNull(name);
-  return name;
-}
-
-std::string mangleNumeric(std::string name) {
-  arangodb::iresearch::kludge::mangleNumeric(name);
-  return name;
-}
-
-std::string mangleString(std::string name, std::string suffix) {
-  arangodb::iresearch::kludge::mangleAnalyzer(name);
-  name += suffix;
-  return name;
-}
-
-std::string mangleStringIdentity(std::string name) {
-  arangodb::iresearch::kludge::mangleStringField(
-    name,
-    *arangodb::iresearch::IResearchAnalyzerFeature::identity()
-  );
-  return name;
-}
-
-NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

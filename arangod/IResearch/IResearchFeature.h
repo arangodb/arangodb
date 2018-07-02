@@ -36,8 +36,8 @@ struct Function;
 
 namespace iresearch {
 
-bool isScorer(arangodb::aql::Function const& func) noexcept;
 bool isFilter(arangodb::aql::Function const& func) noexcept;
+bool isScorer(arangodb::aql::Function const& func) noexcept;
 
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
