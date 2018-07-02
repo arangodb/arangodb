@@ -735,15 +735,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     options,
     arangodb::aql::PART_MAIN
   );
-  aql::QueryResult queryResult;
-  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
-  while (true) {
-    auto state = query.execute(static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry), queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
-    }
-    query.tempWaitForAsyncResponse();
-  }
+  aql::QueryResult queryResult = query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);

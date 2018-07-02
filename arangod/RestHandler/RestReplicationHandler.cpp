@@ -1335,15 +1335,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
 
-  aql::QueryResult queryResult;
-  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
-  while (true) {
-    auto state = query.execute(queryRegistry, queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
-    }
-    query.tempWaitForAsyncResponse();
-  }
+  aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
   // neither agency nor dbserver should get here
   AuthenticationFeature* af = AuthenticationFeature::instance();

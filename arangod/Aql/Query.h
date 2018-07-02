@@ -200,6 +200,10 @@ class Query {
   /// @brief execute an AQL query
   aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
 
+  /// @brief execute an AQL query and block this thread in case we
+  ///        need to wait.
+  QueryResult executeSync(QueryRegistry*);
+
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
   aql::ExecutionState executeV8(v8::Isolate* isolate, QueryRegistry*, QueryResultV8&);

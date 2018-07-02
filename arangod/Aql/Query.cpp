@@ -710,6 +710,28 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
   }
 }
 
+/**
+ * @brief Execute the query in a synchronous way, so if
+ *        the query needs to wait (e.g. IO) this thread
+ *        will be blocked.
+ *
+ * @param registry The query registry.
+ *
+ * @return The result of this query. The result is always complete
+ */
+QueryResult Query::executeSync(QueryRegistry* registry) {
+  QueryResult queryResult;
+  setContinueCallback([&]() { tempSignalAsyncResponse(); });
+  while(true) {
+    auto state = execute(registry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      TRI_ASSERT(state == aql::ExecutionState::DONE);
+      return queryResult;
+    }
+    tempWaitForAsyncResponse();
+  }
+}
+
 // execute an AQL query: may only be called with an active V8 handle scope
 ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, QueryResultV8& queryResult) {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
@@ -1378,4 +1400,3 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
 TRI_voc_tick_t Query::NextId() {
   return NextQueryId.fetch_add(1, std::memory_order_seq_cst);
 }
-

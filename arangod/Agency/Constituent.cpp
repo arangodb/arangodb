@@ -616,15 +616,7 @@ void Constituent::run() {
       arangodb::aql::PART_MAIN
     );
 
-    aql::QueryResult queryResult;
-    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
-    while (true) {
-      auto state = query.execute(_queryRegistry, queryResult);
-      if (state != aql::ExecutionState::WAITING) {
-        break;
-      }
-      query.tempWaitForAsyncResponse();
-    }
+    aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);

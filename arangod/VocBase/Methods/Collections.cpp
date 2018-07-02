@@ -636,15 +636,8 @@ Result Collections::revisionId(
                                std::make_shared<VPackBuilder>(), arangodb::aql::PART_MAIN);
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
     TRI_ASSERT(queryRegistry != nullptr);
-    aql::QueryResult queryResult;
-    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
-    while (true) {
-      auto state = query.execute(queryRegistry, queryResult);
-      if (state != aql::ExecutionState::WAITING) {
-        break;
-      }
-      query.tempWaitForAsyncResponse();
-    }
+    aql::QueryResult queryResult = query.executeSync(queryRegistry);
+
     Result res = queryResult.code;
     if (queryResult.code == TRI_ERROR_NO_ERROR) {
       VPackSlice array = queryResult.result->slice();
