@@ -64,6 +64,20 @@
     "section" : "",
     "type" : "boolean"
   },
+  "encryption.key-generator" : {
+    "default" : "",
+    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
+    "hidden" : false,
+    "section" : "encryption",
+    "type" : "string"
+  },
+  "encryption.keyfile" : {
+    "default" : "",
+    "description" : "file containing the encryption key. If set, encryption will be enabled.",
+    "hidden" : false,
+    "section" : "encryption",
+    "type" : "string"
+  },
   "force" : {
     "default" : false,
     "description" : "continue dumping even in the face of some server-side errors",
@@ -104,6 +118,13 @@
   "log.color" : {
     "default" : true,
     "description" : "use colors for TTY logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -217,14 +238,14 @@
     "type" : "boolean"
   },
   "output-directory" : {
-    "default" : "C:\\Daten\\ArangoDB\\arangodb\\dump",
+    "default" : "/home/steemann/ArangoNoAsan/dump",
     "description" : "output directory",
     "hidden" : false,
     "section" : "",
     "type" : "string"
   },
   "overwrite" : {
-    "default" : false,
+    "default" : true,
     "description" : "overwrite data in output directory",
     "hidden" : false,
     "section" : "",
@@ -243,7 +264,7 @@
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
-    "values" : "Possible values: 1, 5"
+    "values" : "Possible values: 1, 2, 3, 4"
   },
   "server.authentication" : {
     "default" : false,

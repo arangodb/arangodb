@@ -2,7 +2,7 @@
 # Bulk importing documents
 
 This function implements the
-[HTTP API for bulk imports](https://docs.arangodb.com/latest/HTTP/BulkImports/index.html).
+[HTTP API for bulk imports](../../../..//HTTP/BulkImports/index.html).
 
 ## collection.import
 
@@ -58,7 +58,7 @@ JSON instead. If _data_ is a string, it will be transmitted as it is without any
 processing.
 
 For more information on the _opts_ object, see
-[the HTTP API documentation for bulk imports](https://docs.arangodb.com/latest/HTTP/BulkImports/ImportingSelfContained.html).
+[the HTTP API documentation for bulk imports](../../../..//HTTP/BulkImports/ImportingSelfContained.html).
 
 **Examples**
 
