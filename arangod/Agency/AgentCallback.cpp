@@ -55,7 +55,8 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       } else if (!success) {
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Got negative answer from follower, will retry later.";
-        _agent->reportFailed(_slaveID, _toLog);
+        // This reportFailed will reset _confirmed in Agent fot this follower
+        _agent->reportFailed(_slaveID, _toLog, true);
       } else {
         Slice senderTimeStamp = body->slice().get("senderTimeStamp");
         if (senderTimeStamp.isInteger()) {

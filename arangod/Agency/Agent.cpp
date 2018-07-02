@@ -313,7 +313,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 }
 
 /// @brief Report a failed append entry call from AgentCallback
-void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
+void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
   if (toLog > 0) {
     // This is only used for non-empty appendEntriesRPC calls. If such calls
     // fail, we have to set this earliestPackage time to now such that the
@@ -323,8 +323,17 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Resetting _earliestPackage to now for id " << slaveId;
     _earliestPackage[slaveId] = steady_clock::now();
+  } else {
+    // answer to sendAppendEntries to empty request, when follower's highest
+    // log index is 0. This is necessary so that a possibly restarted agent
+    // without persistence immediately is brought up to date. We only want to do
+    // this, when the agent was able to answer and no or corrupt answer is
+    // handled
+    if (sent) {
+      MUTEX_LOCKER(guard, _tiLock);
+      _confirmed[slaveId] = 0;
+    }
   }
-  _confirmed[slaveId] = 0;
 }
 
 /// Followers' append entries
