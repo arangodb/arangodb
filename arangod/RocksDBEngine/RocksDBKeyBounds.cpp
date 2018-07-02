@@ -262,9 +262,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       break;
     }
-    case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::FulltextIndexValue:
-      TRI_ASSERT(false);
+      // intentionally empty
       break;
 
     default:
