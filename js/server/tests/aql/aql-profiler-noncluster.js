@@ -29,11 +29,13 @@
 const profHelper = require("@arangodb/aql-profiler-test-helper");
 
 const _ = require('lodash');
-const console = require('console');
 const db = require('@arangodb').db;
+const jsunity = require("jsunity");
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for AQL tracing/profiling: noncluster tests
+/// contains tests for EnumerateCollectionBlock and IndexBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlProfilerTestSuite () {
@@ -58,6 +60,22 @@ function ahuacatlProfilerTestSuite () {
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
 
   return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(colName);
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test EnumerateCollectionBlock
@@ -90,82 +108,6 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateCollectionBlock with multiple input rows. slow.
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnumerateCollectionBlock2: function () {
-      const col = db._create(colName);
-      const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
-      const listRowCounts = [1, 2, 3, 100, 999, 1000, 1001];
-      const collectionRowCounts = [1, 2, 499, 500, 501, 999, 1000, 1001];
-
-      for (const collectionRows of collectionRowCounts) {
-        col.truncate();
-        col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
-        for (const listRows of listRowCounts) {
-          // forbid reordering of the enumeration nodes
-          const profile = db._query(query, {listRows, '@col': colName},
-            {
-              profile: 2,
-              optimizer: {rules: ["-interchange-adjacent-enumerations"]}
-            }
-          ).getExtra();
-
-          profHelper.assertIsLevel2Profile(profile);
-          profHelper.assertStatsNodesMatchPlanNodes(profile);
-
-          const listBatches = Math.ceil(listRows / defaultBatchSize);
-          const totalRows = listRows * collectionRows;
-
-          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
-
-          // This is more complex due to two reasons:
-          // - mmfiles lies about hasMore and may result in +1
-          // - the current EnumerateCollectionBlock::getSome implementation
-          //   stops after iterating over the whole collection.
-          // The second point in turn means that
-          // a) there are at least as many batches as input rows times
-          //    the number of batches in the collection, i.e. ceil(#col/#batch).
-          // b) when, e.g., the collection contains 999, the parent block might
-          //    ask for 1 after receiving 999, which can up to double the count
-          //    described under a).
-          // So endBatches is a sharp lower bound for every implementation,
-          // while the upper bound may be reduced if the implementation changes.
-
-          // Number of batches at the enumerate collection node
-          const enumerateCollectionBatches = [
-            optimalBatches,
-            listRows * Math.ceil(collectionRows / defaultBatchSize) * 2 + 1
-          ];
-
-          // Number of batches at the return node
-          let endBatches = optimalBatches;
-          if (db._engine().name === 'mmfiles') {
-            endBatches = [optimalBatches, optimalBatches + 1];
-          }
-
-
-          const expected = [
-            {type: SingletonBlock, items: 1, calls: 1},
-            {type: CalculationBlock, items: 1, calls: 1},
-            {type: EnumerateListBlock, items: listRows, calls: listBatches},
-            {
-              type: EnumerateCollectionBlock,
-              items: totalRows,
-              calls: enumerateCollectionBatches
-            },
-            {type: CalculationBlock, items: totalRows, calls: endBatches},
-            {type: ReturnBlock, items: totalRows, calls: endBatches}
-          ];
-          const actual = profHelper.getCompactStatsNodes(profile);
-
-          profHelper.assertNodesItemsAndCalls(expected, actual,
-            {query, listRows, collectionRows});
-        }
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,88 +190,13 @@ function ahuacatlProfilerTestSuite () {
       );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test IndexBlock with multiple input rows. slow.
-////////////////////////////////////////////////////////////////////////////////
-
-    testIndexBlock3 : function () {
-      const col = db._create(colName);
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
-      const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
-      const listRowCounts = [1, 2, 3, 100, 999, 1000, 1001];
-      const collectionRowCounts = [1, 2, 499, 500, 501, 999, 1000, 1001];
-
-      for (const collectionRows of collectionRowCounts) {
-        col.truncate();
-        col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
-        for (const listRows of listRowCounts) {
-          // forbid reordering of the enumeration nodes as well as removal
-          // of one CalculationNode in case listRows == collectionRows.
-          const profile = db._query(query,
-            {listRows, collectionRows, '@col': colName},
-            {
-              profile: 2,
-              optimizer: {rules: [
-                  "-interchange-adjacent-enumerations",
-                  "-remove-redundant-calculations"
-                ]}
-            }
-          ).getExtra();
-
-          profHelper.assertIsLevel2Profile(profile);
-          profHelper.assertStatsNodesMatchPlanNodes(profile);
-
-          const listBatches = Math.ceil(listRows / defaultBatchSize);
-          const totalRows = listRows * collectionRows;
-
-          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
-
-
-          // The current IndexBlock::getSome implementation, like the
-          // EnumerateCollectionBlock::getSome implementation, stops after
-          // iterating over the index. Thus
-          // a) there are at least as many batches as input rows times
-          //    the number of batches in the collection, i.e. ceil(#col/#batch).
-          // b) when, e.g., the collection contains 999, the parent block might
-          //    ask for 1 after receiving 999, which can up to double the count
-          //    described under a).
-          // So endBatches is a sharp lower bound for every implementation,
-          // while the upper bound may be reduced if the implementation changes.
-
-          // Number of batches the index block fetches from its child
-          const indexCallsBatches = [
-            optimalBatches,
-            listRows * Math.ceil(collectionRows / defaultBatchSize) * 2 + 1
-          ];
-
-          // IndexBlock returns HASMORE when asked for the exact number of items
-          // it has left. This could be improved.
-          const maxIndexBatches = Math.floor(totalRows / defaultBatchSize) + 1;
-          // Number of calls made to the index block. See comment for
-          // maxIndexBatches. As of now, maxIndexBatches is exact, but we don't
-          // want to fail when this improves.
-          const indexBatches = [
-            optimalBatches,
-            maxIndexBatches
-          ];
-
-          const expected = [
-            {type: SingletonBlock, calls: 1, items: 1},
-            {type: CalculationBlock, calls: 1, items: 1},
-            {type: CalculationBlock, calls: 1, items: 1},
-            {type: EnumerateListBlock, calls: listBatches, items: listRows},
-            {type: EnumerateListBlock, calls: indexCallsBatches, items: totalRows},
-            {type: IndexBlock, calls: indexBatches, items: totalRows},
-            {type: CalculationBlock, calls: indexBatches, items: totalRows},
-            {type: ReturnBlock, calls: indexBatches, items: totalRows}
-          ];
-          const actual = profHelper.getCompactStatsNodes(profile);
-
-          profHelper.assertNodesItemsAndCalls(expected, actual,
-            {query, listRows, collectionRows, expected, actual});
-        }
-      }
-    },
-
   };
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
+
+jsunity.run(ahuacatlProfilerTestSuite);
+
+return jsunity.done();

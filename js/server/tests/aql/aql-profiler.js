@@ -25,12 +25,14 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+
 // contains common code for aql-profiler* tests
 const profHelper = require("@arangodb/aql-profiler-test-helper");
 
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for AQL tracing/profiling
