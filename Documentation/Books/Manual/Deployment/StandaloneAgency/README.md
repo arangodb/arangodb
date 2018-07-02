@@ -1,4 +1,4 @@
-Launching ArangoDB's standalone "agency"
+Launching ArangoDB's standalone _Agency_
 ========================================
 
 Multiple ArangoDB instances can be deployed as a fault-tolerant distributed state machine.
@@ -25,9 +25,9 @@ Typically, one achieves fairly high fault-tolerance with low, odd number of agen
 The below commands start up a 3-host agency on one physical/logical box with ports 8529, 8530 and 8531 for demonstration purposes. The adress of the first instance, port 8529, is known to the other two. After atmost 2 rounds of gossipping, the last 2 agents will have a complete picture of their surrounding and persist it for the next restart.
 
 ```
-./build/bin/arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8529 --server.authentication false --server.endpoint tcp://0.0.0.0:8529 agency-8529
-./build/bin/arangod --agency.activate true --agency.size 3 --agency.endpoint tcp://localhost:8529 --agency.my-address tcp://localhost:8530 --server.authentication false --server.endpoint tcp://0.0.0.0:8530 agency-8530
-./build/bin/arangod --agency.activate true --agency.size 3 --agency.endpoint tcp://localhost:8529 --agency.my-address tcp://localhost:8531 --server.authentication false --server.endpoint tcp://0.0.0.0:8531 agency-8531 
+./arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8529 --server.authentication false --server.endpoint tcp://0.0.0.0:8529 agency-8529
+./arangod --agency.activate true --agency.size 3 --agency.endpoint tcp://localhost:8529 --agency.my-address tcp://localhost:8530 --server.authentication false --server.endpoint tcp://0.0.0.0:8530 agency-8530
+./arangod --agency.activate true --agency.size 3 --agency.endpoint tcp://localhost:8529 --agency.my-address tcp://localhost:8531 --server.authentication false --server.endpoint tcp://0.0.0.0:8531 agency-8531 
 ```
 
 The parameter `agency.endpoint` is the key ingredient for the second and third instances to find the first instance and thus form a complete agency. Please refer to the the shell-script `scripts/startStandaloneAgency.sh` on github or in the source directory.
@@ -174,5 +174,5 @@ curl -L localhost:8529/_api/agency/write -d '[[{"foo":["bar","baz","qux"]}]]'
 
 are equivalent for example and will create and fill an array at `/foo`. Here, again, the outermost array is the container for the transaction arrays.
 
-We documentent a complete guide of the API in the [API section](../../HTTP/Agency/index.html).
+We documented a complete guide of the API in the [API section](../../../HTTP/Agency/index.html).
 

@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import inspect
+import io
 
 validExtensions = (".cpp", ".h", ".js", ".md")
 # specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
@@ -28,7 +29,7 @@ def file_content(filepath):
   """ Fetches and formats file's content to perform the required operation.
   """
 
-  infile = open(filepath, 'r')
+  infile = io.open(filepath, 'r', encoding='utf-8', newline=None)
   filelines = tuple(infile)
   infile.close()
 
@@ -91,7 +92,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   blockCount = 0;
 
   # read in the context, split into long and short
-  infile = open(filepath, 'r')
+  infile = io.open(filepath, 'r', encoding='utf-8', newline=None)
   for line in infile:
     if first:
       if blockType == "arangosh" and not line.startswith("arangosh&gt;"):
@@ -177,8 +178,8 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
     shortable = False
 
   # write example
-  fh.write("\n")
-  fh.write("<div id=\"%s_container\">\n" % tag)
+  fh.write(unicode("\n"))
+  fh.write(unicode("<div id=\"%s_container\">\n" % tag))
 
   longTag = "%s_long" % tag
   shortTag = "%s_short" % tag
@@ -187,35 +188,35 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
 
   if shortable:
-    fh.write("<div id=\"%s\" onclick=\"%s\" style=\"Display: none;\">\n" % (longTag, longToggle))
+    fh.write(unicode("<div id=\"%s\" onclick=\"%s\" style=\"Display: none;\">\n" % (longTag, longToggle)))
   else:
-    fh.write("<div id=\"%s\">\n" % longTag)
+    fh.write(unicode("<div id=\"%s\">\n" % longTag))
 
   if blockType != "AQL":
-    fh.write("<pre>\n")
-  fh.write("%s" % longText)
-  fh.write("</pre>\n")
-  fh.write("</div>\n")
+    fh.write(unicode("<pre>\n"))
+  fh.write(unicode("%s" % longText))
+  fh.write(unicode("</pre>\n"))
+  fh.write(unicode("</div>\n"))
   
   if shortable:
-    fh.write("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle))
+    fh.write(unicode("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle)))
     if blockType != "AQL":
-      fh.write("<pre>\n")
-    fh.write("%s" % short)
+      fh.write(unicode("<pre>\n"))
+    fh.write(unicode("%s" % short))
 
     if blockType == "arangosh":
-      fh.write("</pre><div class=\"example_show_button\">show execution results</div>\n")
+      fh.write(unicode("</pre><div class=\"example_show_button\">show execution results</div>\n"))
     elif blockType == "curl":
-      fh.write("</pre><div class=\"example_show_button\">show response body</div>\n")
+      fh.write(unicode("</pre><div class=\"example_show_button\">show response body</div>\n"))
     elif blockType == "AQL":
-      fh.write("</pre><div class=\"example_show_button\">show query result</div>\n")
+      fh.write(unicode("</pre><div class=\"example_show_button\">show query result</div>\n"))
     else:
-      fh.write("</pre><div class=\"example_show_button\">show</div>\n")
+      fh.write(unicode("</pre><div class=\"example_show_button\">show</div>\n"))
       
-    fh.write("</div>\n")
+    fh.write(unicode("</div>\n"))
 
-  fh.write("</div>\n")
-  fh.write("\n")
+  fh.write(unicode("</div>\n"))
+  fh.write(unicode("\n"))
 
 
 def fetch_comments(dirpath):
@@ -224,8 +225,8 @@ def fetch_comments(dirpath):
   global fullSuccess
   global validExtensions
   comments_filename = "allComments.txt"
-  fh = open(comments_filename, "a")
-  shouldIgnoreLine = False;
+  fh = io.open(comments_filename, "a", encoding="utf-8", newline="")
+  shouldIgnoreLine = False
 
   for root, directories, files in os.walk(dirpath):
     for filename in files:
@@ -234,7 +235,7 @@ def fetch_comments(dirpath):
         filepath = os.path.join(root, filename)
         file_comments = file_content(filepath)
         for comment in file_comments:
-          fh.write("\n<!-- filename: %s -->\n" % filepath)
+          fh.write(unicode("\n<!-- filename: %s -->\n" % filepath))
           for _com in comment:
             _text = re.sub(r"//(/)+\s*\n", "<br />\n", _com) # place in temporary brs...
             _text = re.sub(r"///+(\s+\s+)([-\*\d])", r"  \2", _text)
@@ -244,7 +245,7 @@ def fetch_comments(dirpath):
               if not shouldIgnoreLine:
                 if ("@startDocuBlock" in _text) or \
                   ("@endDocuBlock" in _text):
-                  fh.write("%s\n\n" % _text)
+                  fh.write(unicode("%s\n\n" % _text))
                 elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text or \
                       "@EXAMPLE_ARANGOSH_RUN" in _text or \
                       "@EXAMPLE_AQL" in _text):
@@ -269,22 +270,22 @@ def fetch_comments(dirpath):
                     fullSuccess = False
                     print "Could not find the generated example for " + _filename + " found in " + filepath
                 else:
-                  fh.write("%s\n" % _text)
+                  fh.write(unicode("%s\n" % _text))
               elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text or \
                     "@END_EXAMPLE_ARANGOSH_RUN" in _text or \
                     "@END_EXAMPLE_AQL" in _text):
                 shouldIgnoreLine = False
             else:
-              fh.write("\n")
+              fh.write(unicode("\n"))
   fh.close()
 
 if __name__ == "__main__":
-  errorsFile = open("../../lib/Basics/errors.dat", "r")
-  commentsFile = open("allComments.txt", "w")
-  commentsFile.write("@startDocuBlock errorCodes \n")
+  errorsFile = io.open("../../lib/Basics/errors.dat", "r", encoding="utf-8", newline=None)
+  commentsFile = io.open("allComments.txt", "w", encoding="utf-8", newline="")
+  commentsFile.write(unicode("@startDocuBlock errorCodes \n"))
   for line in errorsFile:
-    commentsFile.write(line + "\n")
-  commentsFile.write("@endDocuBlock \n")
+    commentsFile.write(unicode(line + "\n"))
+  commentsFile.write(unicode("@endDocuBlock \n"))
   commentsFile.close()
   errorsFile.close()
   for i in searchPaths:
