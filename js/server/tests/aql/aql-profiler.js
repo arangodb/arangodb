@@ -25,485 +25,43 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+// contains common code for aql-profiler* tests
+const profHelper = require("@arangodb/aql-profiler-test-helper");
+
 const _ = require('lodash');
-const db = require('@arangodb').db;
-const expect = require('chai').expect;
-const helper = require('@arangodb/aql-helper');
-const internal = require('internal');
 const console = require('console');
+const db = require('@arangodb').db;
+const isCluster = require("@arangodb/cluster").isCluster();
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
-const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for AQL tracing/profiling
 ////////////////////////////////////////////////////////////////////////////////
 
-/// @brief check that numbers in actual are in the range specified by
-/// expected. Each element in expected may either be
-///  - a number, for an exact match;
-///  - a range [min, max], to check if the actual element lies in this interval;
-///  - null, so the actual element will be ignored
-/// Also, the arrays must be of equal lengths.
-let assertFuzzyNumArrayEquality = function (expected, actual, details) {
-  assert.assertEqual(expected.length, actual.length, details);
-
-  for (let i = 0; i < expected.length; i++) {
-    const exp = expected[i];
-    const act = actual[i];
-
-    if (exp === null) {
-      // do nothing
-    } else if ('number' === typeof exp) {
-      assert.assertEqual(exp, act, Object.assign({i}, details));
-    } else if (Array.isArray(exp)) {
-      assert.assertTrue(exp[0] <= act && act <= exp[1],
-        Object.assign(
-          {i, 'failed_test': `${exp[0]} <= ${act} <= ${exp[1]}`},
-          details
-        )
-      );
-    } else {
-      assert.assertTrue(false, {msg: "Logical error in the test code", exp});
-    }
-  }
-};
 
 function ahuacatlProfilerTestSuite () {
 
   // TODO test skipSome as well, all current tests run getSome only
 
-  const colName = 'UnitTestProfilerCol';
+  // import some names from profHelper directly into our namespace:
+  const colName = profHelper.colName;
+  const defaultBatchSize = profHelper.defaultBatchSize;
 
-  const defaultBatchSize = 1000;
-
-  const defaultTestRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
-
-  const CalculationNode = 'CalculationNode';
-  const CollectNode = 'CollectNode';
-  const DistributeNode = 'DistributeNode';
-  const EnumerateCollectionNode = 'EnumerateCollectionNode';
-  const EnumerateListNode = 'EnumerateListNode';
-  const EnumerateViewNode = 'EnumerateViewNode';
-  const FilterNode = 'FilterNode';
-  const GatherNode = 'GatherNode';
-  const IndexNode = 'IndexNode';
-  const InsertNode = 'InsertNode';
-  const LimitNode = 'LimitNode';
-  const NoResultsNode = 'NoResultsNode';
-  const RemoteNode = 'RemoteNode';
-  const RemoveNode = 'RemoveNode';
-  const ReplaceNode = 'ReplaceNode';
-  const ReturnNode = 'ReturnNode';
-  const ScatterNode = 'ScatterNode';
-  const ShortestPathNode = 'ShortestPathNode';
-  const SingletonNode = 'SingletonNode';
-  const SortNode = 'SortNode';
-  const SubqueryNode = 'SubqueryNode';
-  const TraversalNode = 'TraversalNode';
-  const UpdateNode = 'UpdateNode';
-  const UpsertNode = 'UpsertNode';
-
-  const nodeTypesList = [
-    CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
+  const { CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode
-  ];
+    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
-  const CalculationBlock = 'CalculationBlock';
-  const CountCollectBlock = 'CountCollectBlock';
-  const DistinctCollectBlock = 'DistinctCollectBlock';
-  const EnumerateCollectionBlock = 'EnumerateCollectionBlock';
-  const EnumerateListBlock = 'EnumerateListBlock';
-  const FilterBlock = 'FilterBlock';
-  const HashedCollectBlock = 'HashedCollectBlock';
-  const IndexBlock = 'IndexBlock';
-  const LimitBlock = 'LimitBlock';
-  const NoResultsBlock = 'NoResultsBlock';
-  const RemoteBlock = 'RemoteBlock';
-  const ReturnBlock = 'ReturnBlock';
-  const ShortestPathBlock = 'ShortestPathBlock';
-  const SingletonBlock = 'SingletonBlock';
-  const SortBlock = 'SortBlock';
-  const SortedCollectBlock = 'SortedCollectBlock';
-  const SortingGatherBlock = 'SortingGatherBlock';
-  const SubqueryBlock = 'SubqueryBlock';
-  const TraversalBlock = 'TraversalBlock';
-  const UnsortingGatherBlock = 'UnsortingGatherBlock';
-  const RemoveBlock = 'RemoveBlock';
-  const InsertBlock = 'InsertBlock';
-  const UpdateBlock = 'UpdateBlock';
-  const ReplaceBlock = 'ReplaceBlock';
-  const UpsertBlock = 'UpsertBlock';
-  const ScatterBlock = 'ScatterBlock';
-  const DistributeBlock = 'DistributeBlock';
-  const IResearchViewUnorderedBlock = 'IResearchViewUnorderedBlock';
-  const IResearchViewBlock = 'IResearchViewBlock';
-  const IResearchViewOrderedBlock = 'IResearchViewOrderedBlock';
-
-  const blockTypesList = [
-    CalculationBlock, CountCollectBlock, DistinctCollectBlock,
+  const { CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
     SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
-    IResearchViewBlock, IResearchViewOrderedBlock
-  ];
-
-  const getPlanNodeTypes = function (result) {
-    return helper.getCompactPlan(result).map(function (node) {
-      return node.type;
-    });
-  };
-
-  const zipPlanNodesIntoStatsNodes = function (profile) {
-    const statsNodesById = profile.stats.nodes.reduce(
-      (accum, node) => {
-        accum[node.id] = node;
-        return accum;
-      },
-      {}
-    );
-
-    // Note: We need to take the order plan.nodes here, not stats.nodes,
-    // as stats.nodes is sorted by id.
-    return profile.plan.nodes.map(node => (
-      { id: node.id, fromStats: statsNodesById[node.id], fromPlan: node }
-    ));
-  };
-
-  const getStatsNodeTypes = function (profile) {
-    return zipPlanNodesIntoStatsNodes(profile).map(
-      node => node.fromPlan.type
-    );
-  };
-
-  const getCompactStatsNodes = function (profile) {
-    // While we don't use any .fromPlan info here, zip uses the (correct) order
-    // of the plan, not from the stats (which is sorted by id).
-    return zipPlanNodesIntoStatsNodes(profile).map(
-      node => ({
-        // type: node.fromPlan.type,
-        type: node.fromStats.blockType,
-        calls: node.fromStats.calls,
-        items: node.fromStats.items,
-      })
-    );
-  };
-
-  const getPlanNodesWithId = function (profile) {
-    return profile.plan.nodes.map(
-      node => ({
-        id: node.id,
-        type: node.type,
-      })
-    );
-  };
-
-  const getStatsNodesWithId = function (profile) {
-    return profile.stats.nodes.map(
-      node => ({
-        id: node.id,
-        blockType: node.blockType,
-      })
-    );
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert structure of profile.stats
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertIsProfileStatsObject = function (stats, {level}) {
-    // internal argument check
-    expect(level)
-      .to.be.a('number')
-      .and.to.be.oneOf([0, 1, 2]);
-
-    expect(stats).to.be.an('object');
-
-    let statsKeys = [
-      'writesExecuted',
-      'writesIgnored',
-      'scannedFull',
-      'scannedIndex',
-      'filtered',
-      'httpRequests',
-      'executionTime',
-    ];
-
-    if (level === 2) {
-      statsKeys.push('nodes');
-    }
-
-    expect(stats).to.have.all.keys(statsKeys);
-
-    // check types
-    expect(stats.writesExecuted).to.be.a('number');
-    expect(stats.writesIgnored).to.be.a('number');
-    expect(stats.scannedFull).to.be.a('number');
-    expect(stats.scannedIndex).to.be.a('number');
-    expect(stats.filtered).to.be.a('number');
-    expect(stats.httpRequests).to.be.a('number');
-    expect(stats.executionTime).to.be.a('number');
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert structure of profile.warnings
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertIsProfileWarningsArray = function (warnings) {
-    expect(warnings).to.be.an('array');
-
-    // TODO check element type
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert structure of profile.profile
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertIsProfileProfileObject = function (profile) {
-    expect(profile).to.have.all.keys([
-      'initializing',
-      'parsing',
-      'optimizing ast',
-      'loading collections',
-      'instantiating plan',
-      'optimizing plan',
-      'executing',
-      'finalizing',
-    ]);
-
-    expect(profile.initializing).to.be.a('number');
-    expect(profile.parsing).to.be.a('number');
-    expect(profile['optimizing ast']).to.be.a('number');
-    expect(profile['loading collections']).to.be.a('number');
-    expect(profile['instantiating plan']).to.be.a('number');
-    expect(profile['optimizing plan']).to.be.a('number');
-    expect(profile.executing).to.be.a('number');
-    expect(profile.finalizing).to.be.a('number');
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert structure of profile.plan
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertIsProfilePlanObject = function (plan) {
-    expect(plan).to.have.all.keys([
-      'nodes',
-      'rules',
-      'collections',
-      'variables',
-      'estimatedCost',
-      'estimatedNrItems',
-      'initialize',
-    ]);
-
-    expect(plan.nodes).to.be.an('array');
-    expect(plan.rules).to.be.an('array');
-    expect(plan.collections).to.be.an('array');
-    expect(plan.variables).to.be.an('array');
-    expect(plan.estimatedCost).to.be.a('number');
-    expect(plan.estimatedNrItems).to.be.a('number');
-    expect(plan.initialize).to.be.a('boolean');
-
-    for (let node of plan.nodes) {
-      expect(node).to.include.all.keys([
-        'type',
-        'dependencies',
-        'id',
-        'estimatedCost',
-        'estimatedNrItems',
-      ]);
-
-      expect(node.id).to.be.a('number');
-      expect(node.estimatedCost).to.be.a('number');
-      expect(node.estimatedNrItems).to.be.a('number');
-
-      expect(node.type)
-        .to.be.a('string')
-        .and.to.be.oneOf(nodeTypesList);
-
-      expect(node.dependencies)
-        .to.be.an('array');
-      // TODO add deep checks for plan.nodes[].dependencies
-
-      // TODO add checks for the optional variables, maybe dependent on the type
-      // e.g. for expression, inVariable, outVariable, canThrow, expressionType
-      // or elements...
-    }
-
-    // TODO add deep checks for plan.rules
-    // TODO add deep checks for plan.collections
-
-    for (let variable of plan.variables) {
-      expect(variable).to.have.all.keys([
-        'id',
-        'name',
-      ]);
-
-      expect(variable.id).to.be.a('number');
-      expect(variable.name).to.be.a('string');
-    }
-
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the passed variable looks like a level 0 profile
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertIsLevel0Profile = function (profile) {
-    expect(profile)
-      .to.be.an('object')
-      .that.has.all.keys([
-        'stats',
-        'warnings',
-      ]);
-
-    assertIsProfileStatsObject(profile.stats, {level: 0});
-    assertIsProfileWarningsArray(profile.warnings);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the passed variable looks like a level 1 profile
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertIsLevel1Profile = function (profile) {
-    expect(profile)
-      .to.be.an('object')
-      .that.has.all.keys([
-        'stats',
-        'warnings',
-        'profile',
-      ]);
-
-    assertIsProfileStatsObject(profile.stats, {level: 1});
-    assertIsProfileWarningsArray(profile.warnings);
-    assertIsProfileProfileObject(profile.profile);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the passed variable looks like a level 2 profile
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertIsLevel2Profile = function (profile) {
-    expect(profile)
-      .to.be.an('object')
-      .that.has.all.keys([
-        'stats',
-        'warnings',
-        'profile',
-        'plan',
-      ]);
-
-    assertIsProfileStatsObject(profile.stats, {level: 2});
-    assertIsProfileWarningsArray(profile.warnings);
-    assertIsProfileProfileObject(profile.profile);
-    assertIsProfilePlanObject(profile.plan);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the list of AQL nodes in the explain result matches the
-/// list of AQL nodes of the profile.
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertStatsNodesMatchPlanNodes = function (profile) {
-    // Note: reorderings in the plan would break this comparison, because the
-    // stats are ordered by id. Thus we sort the nodes here.
-    assert.assertEqual(
-      profile.plan.nodes.map(node => node.id).sort(),
-      profile.stats.nodes.map(node => node.id).sort(),
-      {
-        'profile.plan.nodes': getPlanNodesWithId(profile),
-        'profile.stats.nodes': getStatsNodesWithId(profile),
-      }
-    );
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Compares lists of nodes with items and calls, i.e., expected and
-/// actual both have the structure [ { type, calls, items } ].
-/// details may contain an object that will be output when the test fails,
-/// maybe with additional fields.
-/// .calls and .items may be either a number for an exact test, or a range
-/// [min, max] which tests for min <= actualCalls <= max instead, or null to
-/// ignore the value.
-////////////////////////////////////////////////////////////////////////////////
-
-  const assertNodesItemsAndCalls = function (expected, actual, details = {}) {
-
-    // assert node types first
-    assert.assertEqual(
-      expected.map(node => node.type),
-      actual.map(node => node.type),
-      details
-    );
-
-    // assert item count second
-    assertFuzzyNumArrayEquality(
-      expected.map(node => node.items),
-      actual.map(node => node.items),
-      details
-    );
-
-    // assert call count last.
-    assertFuzzyNumArrayEquality(
-      expected.map(node => node.calls),
-      actual.map(node => node.calls),
-      details
-    );
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Common checks for most blocks
-/// @param query string - is assumed to have one bind parameter 'rows'
-/// @param genNodeList function: (rows, batches) => [ { type, calls, items } ]
-///        must generate the list of expected nodes
-/// @param prepare function: (rows) => {...}
-///        called before the query is executed
-/// @param bind function: (rows) => ({rows})
-///        must return the bind parameters for the query
-/// Example for genNodeList:
-/// genNodeList(2500, 3) ===
-/// [
-///   { type : SingletonNode, calls : 1, items : 1 },
-///   { type : EnumerateListNode, calls : 3, items : 2500 },
-///   { type : ReturnNode, calls : 3, items : 2500 }
-/// ]
-/// The number of calls may be a range [min, max], e.g.:
-///   { type : EnumerateCollectionNode, calls : [3,5] , items : 2500 }
-////////////////////////////////////////////////////////////////////////////////
-
-  const runDefaultChecks = function (
-    {
-      query,
-      genNodeList,
-      prepare = () => {},
-      bind = rows => ({rows}),
-      options = {},
-    }
-  ) {
-    for (const rows of defaultTestRowCounts) {
-      prepare(rows);
-      const profile = db._query(query, bind(rows),
-        _.merge(options, {profile: 2, defaultBatchSize})
-      ).getExtra();
-
-      assertIsLevel2Profile(profile);
-      assertStatsNodesMatchPlanNodes(profile);
-
-      const batches = Math.ceil(rows / defaultBatchSize);
-
-      const expected = genNodeList(rows, batches);
-      const actual = getCompactStatsNodes(profile);
-
-      assertNodesItemsAndCalls(expected, actual,
-        {query, rows, batches, expected, actual});
-    }
-  };
+    IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
 
   return {
 
@@ -532,9 +90,9 @@ function ahuacatlProfilerTestSuite () {
       const profile0 = db._query(query, {}, {profile: 0}).getExtra();
       const profileFalse = db._query(query, {}, {profile: false}).getExtra();
 
-      assertIsLevel0Profile(profileDefault);
-      assertIsLevel0Profile(profile0);
-      assertIsLevel0Profile(profileFalse);
+      profHelper.assertIsLevel0Profile(profileDefault);
+      profHelper.assertIsLevel0Profile(profile0);
+      profHelper.assertIsLevel0Profile(profileFalse);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -546,8 +104,8 @@ function ahuacatlProfilerTestSuite () {
       const profile1 = db._query(query, {}, {profile: 1}).getExtra();
       const profileTrue = db._query(query, {}, {profile: true}).getExtra();
 
-      assertIsLevel1Profile(profile1);
-      assertIsLevel1Profile(profileTrue);
+      profHelper.assertIsLevel1Profile(profile1);
+      profHelper.assertIsLevel1Profile(profileTrue);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -558,8 +116,8 @@ function ahuacatlProfilerTestSuite () {
       const query = 'RETURN 1';
       const profile2 = db._query(query, {}, {profile: 2}).getExtra();
 
-      assertIsLevel2Profile(profile2);
-      assertStatsNodesMatchPlanNodes(profile2);
+      profHelper.assertIsLevel2Profile(profile2);
+      profHelper.assertStatsNodesMatchPlanNodes(profile2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -570,8 +128,8 @@ function ahuacatlProfilerTestSuite () {
       const query = 'RETURN 1';
       const profile = db._query(query, {}, {profile: 2}).getExtra();
 
-      assertIsLevel2Profile(profile);
-      assertStatsNodesMatchPlanNodes(profile);
+      profHelper.assertIsLevel2Profile(profile);
+      profHelper.assertStatsNodesMatchPlanNodes(profile);
 
       assert.assertEqual(
         [
@@ -579,7 +137,7 @@ function ahuacatlProfilerTestSuite () {
           { type : CalculationBlock, calls : 1, items : 1 },
           { type : ReturnBlock, calls : 1, items : 1 }
         ],
-        getCompactStatsNodes(profile)
+        profHelper.getCompactStatsNodes(profile)
       );
     },
 
@@ -595,7 +153,7 @@ function ahuacatlProfilerTestSuite () {
         { type : EnumerateListBlock, calls : batches, items : rows },
         { type : ReturnBlock, calls : batches, items : rows }
       ];
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -611,7 +169,7 @@ function ahuacatlProfilerTestSuite () {
         { type : CalculationBlock, calls : batches, items : rows },
         { type : ReturnBlock, calls : batches, items : rows }
       ];
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,7 +185,7 @@ function ahuacatlProfilerTestSuite () {
         { type : CountCollectBlock, calls : 1, items : 1 },
         { type : ReturnBlock, calls : 1, items : 1 }
       ];
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -643,7 +201,7 @@ function ahuacatlProfilerTestSuite () {
         { type : DistinctCollectBlock, calls : batches, items : rows },
         { type : ReturnBlock, calls : batches, items : rows }
       ];
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -664,7 +222,7 @@ function ahuacatlProfilerTestSuite () {
           {type: ReturnBlock, calls: resultBatches, items: resultRows}
         ];
       };
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -699,7 +257,7 @@ function ahuacatlProfilerTestSuite () {
           {type: ReturnBlock, calls: batches, items: rows}
         ];
       };
-      runDefaultChecks(
+      profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
     },
@@ -731,8 +289,8 @@ function ahuacatlProfilerTestSuite () {
             }
           ).getExtra();
 
-          assertIsLevel2Profile(profile);
-          assertStatsNodesMatchPlanNodes(profile);
+          profHelper.assertIsLevel2Profile(profile);
+          profHelper.assertStatsNodesMatchPlanNodes(profile);
 
           const listBatches = Math.ceil(listRows / defaultBatchSize);
           const totalRows = listRows * collectionRows;
@@ -777,9 +335,9 @@ function ahuacatlProfilerTestSuite () {
             {type: CalculationBlock, items: totalRows, calls: endBatches},
             {type: ReturnBlock, items: totalRows, calls: endBatches}
           ];
-          const actual = getCompactStatsNodes(profile);
+          const actual = profHelper.getCompactStatsNodes(profile);
 
-          assertNodesItemsAndCalls(expected, actual,
+          profHelper.assertNodesItemsAndCalls(expected, actual,
             {query, listRows, collectionRows});
         }
       }
@@ -809,7 +367,7 @@ function ahuacatlProfilerTestSuite () {
         {type: FilterBlock, calls: batches, items: rows},
         {type: ReturnBlock, calls: batches, items: rows},
       ];
-      runDefaultChecks({query, genNodeList, options});
+      profHelper.runDefaultChecks({query, genNodeList, options});
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -831,7 +389,7 @@ function ahuacatlProfilerTestSuite () {
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
         ];
       };
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -853,7 +411,7 @@ function ahuacatlProfilerTestSuite () {
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
         ];
       };
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -873,7 +431,7 @@ function ahuacatlProfilerTestSuite () {
           { type: ReturnBlock, calls: batches, items: rows },
         ];
       };
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -897,7 +455,7 @@ function ahuacatlProfilerTestSuite () {
           { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
         ];
       };
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -923,7 +481,7 @@ function ahuacatlProfilerTestSuite () {
           { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
         ];
       };
-      runDefaultChecks({query, genNodeList});
+      profHelper.runDefaultChecks({query, genNodeList});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -957,7 +515,7 @@ function ahuacatlProfilerTestSuite () {
           {type: ReturnBlock, calls: indexBatches, items: rows}
         ];
       };
-      runDefaultChecks(
+      profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
     },
@@ -968,7 +526,7 @@ function ahuacatlProfilerTestSuite () {
 
     testIndexBlock2 : function () {
       if (isCluster) {
-        console.log('Skipping test testIndexBlock1 in cluster');
+        console.log('Skipping test testIndexBlock2 in cluster');
         return;
       }
       const col = db._create(colName);
@@ -1009,7 +567,7 @@ function ahuacatlProfilerTestSuite () {
           {type: ReturnBlock, calls: indexBatches, items: indexRows}
         ];
       };
-      runDefaultChecks(
+      profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
     },
@@ -1047,8 +605,8 @@ function ahuacatlProfilerTestSuite () {
             }
           ).getExtra();
 
-          assertIsLevel2Profile(profile);
-          assertStatsNodesMatchPlanNodes(profile);
+          profHelper.assertIsLevel2Profile(profile);
+          profHelper.assertStatsNodesMatchPlanNodes(profile);
 
           const listBatches = Math.ceil(listRows / defaultBatchSize);
           const totalRows = listRows * collectionRows;
@@ -1094,7 +652,7 @@ function ahuacatlProfilerTestSuite () {
             {type: CalculationBlock, calls: indexBatches, items: totalRows},
             {type: ReturnBlock, calls: indexBatches, items: totalRows}
           ];
-          const actual = getCompactStatsNodes(profile);
+          const actual = profHelper.getCompactStatsNodes(profile);
 
           // internal.print(`=== collectionRows=${collectionRows}, listRows=${listRows}, ` +
           // `totalRows=${totalRows}, listBatches=${listBatches}, totalBatches=${totalBatches}`);
@@ -1108,7 +666,7 @@ function ahuacatlProfilerTestSuite () {
           // }
           // internal.print("");
 
-          assertNodesItemsAndCalls(expected, actual,
+          profHelper.assertNodesItemsAndCalls(expected, actual,
             {query, listRows, collectionRows, expected, actual});
         }
       }
