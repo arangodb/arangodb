@@ -1,6 +1,13 @@
 devel
 -----
 
+* added key generators `uuid` and `padded`
+
+  The `uuid` key generator generates universally unique 128 bit keys, which are
+  stored in hexadecimal human-readable format.  
+  The `padded` key generator generates keys of a fixed length (16 bytes) in 
+  ascending lexicographical sort order.
+
 * added `COUNT_DISTINCT` AQL function
 
 * make AQL optimizer rule `collect-in-cluster` optimize aggregation functions
