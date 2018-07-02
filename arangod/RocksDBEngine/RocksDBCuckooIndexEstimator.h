@@ -27,11 +27,14 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBFormat.h"
+
+#include <rocksdb/types.h>
 
 // In the following template:
 //   Key is the key type, it must be copyable and movable, furthermore, Key
@@ -289,7 +292,7 @@ class RocksDBCuckooIndexEstimator {
 
       for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
            i += _slotSize) {
-        rocksutils::uintToPersistent<uint16_t>(
+        rocksutils::uint16ToPersistent(
             serialized, *(reinterpret_cast<uint16_t*>(_base + i)));
       }
 
@@ -297,7 +300,7 @@ class RocksDBCuckooIndexEstimator {
 
       for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
            i += _counterSize) {
-        rocksutils::uintToPersistent<uint32_t>(
+        rocksutils::uint32ToPersistent(
             serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
 
@@ -835,8 +838,8 @@ class RocksDBCuckooIndexEstimator {
 
     uint64_t length = rocksutils::uint64FromPersistent(current);
     current += sizeof(uint64_t);
-    // Validate that the serialized format is exactly as long as we expect it to
-    // be
+    // Validate that the serialized format is exactly as long as
+    // we expect it to be
     TRI_ASSERT(serialized.size() == length);
 
     _size = rocksutils::uint64FromPersistent(current);
@@ -878,7 +881,7 @@ class RocksDBCuckooIndexEstimator {
     for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
          i += _slotSize) {
       *(reinterpret_cast<uint16_t*>(_base + i)) =
-          rocksutils::uintFromPersistent<uint16_t>(current);
+          rocksutils::uint16FromPersistent(current);
       current += _slotSize;
     }
 
@@ -887,7 +890,7 @@ class RocksDBCuckooIndexEstimator {
     for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
          i += _counterSize) {
       *(reinterpret_cast<uint32_t*>(_counters + i)) =
-          rocksutils::uintFromPersistent<uint32_t>(current);
+          rocksutils::uint32FromPersistent(current);
       current += _counterSize;
     }
   }

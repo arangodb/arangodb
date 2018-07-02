@@ -96,15 +96,13 @@ enum class RocksDBSettingsType : char {
 };
   
 enum class RocksDBEndianness : char {
+  Invalid = 0,
   Little = 'L',
   Big = 'B'
 };
   
 /// @brief rocksdb format version
 char rocksDBFormatVersion();
-  
-/// @brief format endianess
-extern RocksDBEndianness rocksDBKeyFormatEndianess;
 
 char const* rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);

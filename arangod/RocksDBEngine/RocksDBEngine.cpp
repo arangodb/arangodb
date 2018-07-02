@@ -553,6 +553,9 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
 
+#warning REMOVE
+  std::this_thread::sleep_for(std::chrono::seconds(10));
+  
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
 

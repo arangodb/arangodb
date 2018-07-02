@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
 
 #ifdef __APPLE__
   #include <machine/endian.h>

@@ -28,9 +28,6 @@ using namespace arangodb;
 /// @brief rocksdb format version
 char arangodb::rocksDBFormatVersion() { return '1'; }
 
-/// @brief format endianess
-RocksDBEndianness arangodb::rocksDBKeyFormatEndianess = RocksDBEndianness::Little;
-
 namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;

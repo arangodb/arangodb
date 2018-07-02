@@ -25,7 +25,7 @@
 #include "RocksDBKey.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
 using namespace arangodb;
@@ -67,12 +67,7 @@ void RocksDBKey::constructDocument(uint64_t objectId,
   _buffer.clear();
   _buffer.reserve(keyLength);
   uint64ToPersistent(_buffer, objectId);
-  if (rocksDBKeyFormatEndianess == RocksDBEndianness::Little) {
-    uint64ToPersistent(_buffer, documentId.id());
-  } else {
-    TRI_ASSERT(rocksDBKeyFormatEndianess == RocksDBEndianness::Big);
-    uint64ToBigEndianPersistent(_buffer, documentId.id());
-  }
+  uint64ToPersistent(_buffer, documentId.id());
   TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
@@ -160,21 +155,6 @@ void RocksDBKey::constructFulltextIndexValue(uint64_t indexId,
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
-void RocksDBKey::constructLegacyGeoIndexValue(uint64_t indexId, int32_t offset,
-                                              bool isSlot) {
-  TRI_ASSERT(indexId != 0);
-  uint64_t norm = uint64_t(offset) << 32;
-  norm |= isSlot ? 0xFFU : 0;  // encode slot|pot in lowest bit
-  _type = RocksDBEntryType::LegacyGeoIndexValue;
-  size_t keyLength = 2 * sizeof(uint64_t);
-  _buffer.clear();
-  _buffer.reserve(keyLength);
-  uint64ToPersistent(_buffer, indexId);
-  uint64ToPersistent(_buffer, norm);
-  TRI_ASSERT(_buffer.size() == keyLength);
-  _slice = rocksdb::Slice(_buffer.data(), keyLength);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Create a fully-specified key for an S2CellId
 //////////////////////////////////////////////////////////////////////////////
@@ -186,7 +166,7 @@ void RocksDBKey::constructGeoIndexValue(uint64_t indexId, uint64_t value,
   _buffer.clear();
   _buffer.reserve(keyLength);
   uint64ToPersistent(_buffer, indexId);
-  uint64ToBigEndianPersistent(_buffer, value);
+  uintToPersistentBigEndian<uint64_t>(_buffer, value);
   uint64ToPersistent(_buffer, documentId.id());
   TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
@@ -312,11 +292,7 @@ TRI_voc_cid_t RocksDBKey::viewId(rocksdb::Slice const& slice) {
 LocalDocumentId RocksDBKey::documentId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() == 2 * sizeof(uint64_t));
   // last 8 bytes should be the LocalDocumentId
-  if (rocksDBKeyFormatEndianess == RocksDBEndianness::Little) {
-    return LocalDocumentId(uint64FromPersistent(slice.data() + sizeof(uint64_t)));
-  }
-  TRI_ASSERT(rocksDBKeyFormatEndianess == RocksDBEndianness::Big);
-  return LocalDocumentId(uint64FromBigEndianPersistent(slice.data() + sizeof(uint64_t)));
+  return LocalDocumentId(uint64FromPersistent(slice.data() + sizeof(uint64_t)));
 }
 
 LocalDocumentId RocksDBKey::indexDocumentId(RocksDBEntryType type,
@@ -372,7 +348,7 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
 
 uint64_t RocksDBKey::geoValue(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() == sizeof(uint64_t) * 3);
-  return uint64FromBigEndianPersistent(slice.data() + sizeof(uint64_t));
+  return uintFromPersistentBigEndian<uint64_t>(slice.data() + sizeof(uint64_t));
 }
 
 // ====================== Private Methods ==========================

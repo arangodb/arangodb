@@ -25,6 +25,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -44,24 +45,10 @@
 
 using namespace arangodb;
 
-namespace {
-  
-  bool upgradeRoutine(rocksdb::TransactionDB* db,
-                      char oldFormat, char currentFormat) {
-
-    if (oldFormat == '0' && currentFormat == '1') {
-      static_assert(std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
-                    "RocksDBEndianness has wrong type");
-      rocksDBKeyFormatEndianess = RocksDBEndianness::Little;
-      return true;
-    }
-    
-    return false; // unhandled case
-  }
-}
-
 void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db,
                                           bool dbExisted) {
+  static_assert(std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
+                "RocksDBEndianness has wrong type");
   
   // try to find version
   char version = rocksDBFormatVersion();
@@ -75,13 +62,18 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db,
   s = db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
                versionKey.string(), &oldVersion);
   
+  // default endianess for existing DBs
+  RocksDBEndianness endianess = RocksDBEndianness::Invalid;
   if (dbExisted) {
     if (s.IsNotFound() || oldVersion.size() != 1) {
       LOG_TOPIC(FATAL, Logger::ENGINES) << "Your db directory is invalid";
       FATAL_ERROR_EXIT();
     } else if (oldVersion.data()[0] < version) {
       
-      if (!upgradeRoutine(db, oldVersion.data()[0], version)) {
+      // Performing 'upgrade' routine
+      if (oldVersion.data()[0] == '0' && version == '1') {
+        endianess = RocksDBEndianness::Little;
+      } else {
         LOG_TOPIC(FATAL, Logger::ENGINES) << "Your db directory is in an old "
         << "format. Please downgrade the server, "
         << "export & re-import your data.";
@@ -93,16 +85,17 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db,
       << "You are using an old version of ArangoDB, please update "
       << "before opening this dir.";
       FATAL_ERROR_EXIT();
-    } else if (oldVersion.data()[0] == version) {
+    } else {
+      TRI_ASSERT(oldVersion.data()[0] == version);
       
       // read current endianess
-      rocksdb::PinnableSlice endianess;
+      rocksdb::PinnableSlice endianSlice;
       s = db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
-                  endianKey.string(), &endianess);
-      if (s.ok() && endianess.size() == 1) {
-        rocksDBKeyFormatEndianess = static_cast<RocksDBEndianness>(endianess.data()[0]);
-        TRI_ASSERT(endianess.data()[0] == 'L' ||
-                   endianess.data()[0] == 'B');
+                  endianKey.string(), &endianSlice);
+      if (s.ok() && endianSlice.size() == 1) {
+        TRI_ASSERT(endianSlice.data()[0] == 'L' ||
+                   endianSlice.data()[0] == 'B');
+        endianess = static_cast<RocksDBEndianness>(endianSlice.data()[0]);
       } else {
         LOG_TOPIC(FATAL, Logger::ENGINES)
         << "Error reading key-format, your db directory is invalid";
@@ -112,11 +105,13 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db,
     
   } else {
     // new DBs are always created with Big endian data-format
-    rocksDBKeyFormatEndianess = RocksDBEndianness::Big;
+    endianess = RocksDBEndianness::Big;
   }
+  // enable correct key format
+  rocksutils::setRocksDBKeyFormatEndianess(endianess);
   
   // store endianess forever
-  const char endVal = static_cast<char>(rocksDBKeyFormatEndianess);
+  const char endVal = static_cast<char>(endianess);
   s = db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
               endianKey.string(), rocksdb::Slice(&endVal, sizeof(char)));
   if (!s.ok()) {

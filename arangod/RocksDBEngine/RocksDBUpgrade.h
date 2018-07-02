@@ -23,10 +23,6 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_UPGRADE_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_UPGRADE_H 1
 
-#include <rocksdb/options.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 namespace rocksdb {
 class TransactionDB;
 }

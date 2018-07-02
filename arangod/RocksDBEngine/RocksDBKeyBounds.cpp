@@ -25,7 +25,7 @@
 #include "RocksDBKeyBounds.h"
 #include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
 #include <iostream>
@@ -79,24 +79,6 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
 
 RocksDBKeyBounds RocksDBKeyBounds::LegacyGeoIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::LegacyGeoIndexValue, indexId);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::LegacyGeoIndex(uint64_t indexId,
-                                                  bool isSlot) {
-  RocksDBKeyBounds b(RocksDBEntryType::LegacyGeoIndexValue);
-  auto& internals = b.internals();
-  internals.reserve(4 * sizeof(uint64_t));
-  uint64ToPersistent(internals.buffer(), indexId);
-  uint64_t norm = isSlot ? 0xFFU : 0;  // encode slot|pot in lowest bit
-  uint64ToPersistent(internals.buffer(), norm);  // lower endian
-
-  internals.separate();
-
-  uint64ToPersistent(internals.buffer(), indexId);
-  norm = norm | (0xFFFFFFFFULL << 32);
-  uint64ToPersistent(internals.buffer(), norm);
-
-  return b;
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
@@ -260,7 +242,7 @@ RocksDBKeyBounds::RocksDBKeyBounds()
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
   switch (_type) {
     case RocksDBEntryType::Database: {
-      _internals.reserve(2 * sizeof(char));
+      _internals.reserve(3 * sizeof(char));
       _internals.push_back(static_cast<char>(_type));
 
       _internals.separate();
@@ -282,6 +264,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
     }
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::FulltextIndexValue:
+      TRI_ASSERT(false);
       break;
 
     default:
@@ -458,10 +441,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
     case RocksDBEntryType::GeoIndexValue: {
       _internals.reserve(sizeof(uint64_t) * 3 * 2);
       uint64ToPersistent(_internals.buffer(), first);
-      uint64ToBigEndianPersistent(_internals.buffer(), second);
+      uintToPersistentBigEndian<uint64_t>(_internals.buffer(), second);
       _internals.separate();
       uint64ToPersistent(_internals.buffer(), first);
-      uint64ToBigEndianPersistent(_internals.buffer(), third);
+      uintToPersistentBigEndian<uint64_t>(_internals.buffer(), third);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       break;
     }

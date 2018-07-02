@@ -1161,14 +1161,6 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
     return res.errorNumber();
   }
 
-  /*std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false, true);
-  auto& vocbase = _logicalCollection->vocbase();
-  auto collectionId = _logicalCollection->id();
-  VPackSlice data = builder->slice();
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(vocbase, collectionId, idx->id(), data);*/
-
   return TRI_ERROR_NO_ERROR;
 }
 
