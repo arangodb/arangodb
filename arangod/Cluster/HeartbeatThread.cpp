@@ -555,7 +555,7 @@ void HeartbeatThread::runSingleServer() {
                                     /*ttl*/ 0, /*timeout*/ 5.0);
         }
 
-        if (result.successful()) { // sucessfull leadership takeover
+        if (result.successful()) { // successful leadership takeover
           leader = myIdBuilder.slice();
           // intentionally falls through to case 2
         } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -593,7 +593,7 @@ void HeartbeatThread::runSingleServer() {
         ServerState::instance()->setFoxxmaster(_myId);
         auto prv = ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Sucessfull leadership takeover\n"
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Successful leadership takeover\n"
                                              << "All your base are belong to us";
         }
         continue; // nothing more to do
