@@ -365,6 +365,70 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks({query, genNodeList});
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test LimitBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlock1: function() {
+      const query = 'FOR i IN 1..@rows LIMIT 0, @rows RETURN i';
+      const genNodeList = (rows, batches) => [
+        {type: SingletonBlock, calls: 1, items: 1},
+        {type: CalculationBlock, calls: 1, items: 1},
+        {type: EnumerateListBlock, calls: batches, items: rows},
+        {type: LimitBlock, calls: batches, items: rows},
+        {type: ReturnBlock, calls: batches, items: rows},
+      ];
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test LimitBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlock2: function() {
+      const query = 'FOR i IN 1..@rows LIMIT @limit RETURN i';
+      const limit = rows => Math.ceil(3*rows/4);
+      const restBatches = rows => Math.max(1, Math.ceil(limit(rows) / defaultBatchSize));
+
+      const genNodeList = (rows) => [
+        {type: SingletonBlock, calls: 1, items: 1},
+        {type: CalculationBlock, calls: 1, items: 1},
+        {type: EnumerateListBlock, calls: restBatches(rows), items: limit(rows)},
+        {type: LimitBlock, calls: restBatches(rows), items: limit(rows)},
+        {type: ReturnBlock, calls: restBatches(rows), items: limit(rows)},
+      ];
+      const bind = (rows) => ({
+        rows,
+        limit: limit(rows)
+      });
+      profHelper.runDefaultChecks({query, genNodeList, bind});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test LimitBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlock3: function() {
+      const query = 'FOR i IN 1..@rows LIMIT @skip, @count RETURN i';
+      const skip = rows => Math.floor(rows/4);
+      const count = rows => Math.ceil(3*rows/4);
+      const countBatches = rows => Math.ceil(count(rows) / defaultBatchSize);
+
+      const genNodeList = (rows) => [
+        {type: SingletonBlock, calls: 1, items: 1},
+        {type: CalculationBlock, calls: 1, items: 1},
+        {type: EnumerateListBlock, calls: countBatches(rows), items: count(rows)},
+        {type: LimitBlock, calls: countBatches(rows), items: count(rows)},
+        {type: ReturnBlock, calls: countBatches(rows), items: count(rows)},
+      ];
+      const bind = (rows) => ({
+        rows,
+        skip: skip(rows),
+        count: count(rows),
+      });
+      profHelper.runDefaultChecks({query, genNodeList, bind});
+    },
+
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
@@ -378,8 +442,8 @@ function ahuacatlProfilerTestSuite () {
 // *EnumerateListBlock
 // *FilterBlock
 // *HashedCollectBlock
-// IndexBlock
-// LimitBlock
+// *IndexBlock
+// *LimitBlock
 // NoResultsBlock
 // RemoteBlock
 // ReturnBlock
