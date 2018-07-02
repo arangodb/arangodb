@@ -35,7 +35,7 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBFormat functions class
-TEST_CASE("RocksDBFormat", "[rocksdbformat]") {
+TEST_CASE("RocksDBFormat", "[rocksdb][format]") {
   std::string out;
   
    SECTION("Little-Endian") {

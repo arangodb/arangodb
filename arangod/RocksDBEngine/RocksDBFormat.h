@@ -50,7 +50,6 @@ extern void (*uint64ToPersistent)(std::string& p, uint64_t value);
 /// Enable litte endian or big-endian key formats
 void setRocksDBKeyFormatEndianess(RocksDBEndianness);
 
-
 inline uint64_t doubleToInt(double d) {
   uint64_t i;
   std::memcpy(&i, &d, sizeof(i));
@@ -62,20 +61,6 @@ inline double intToDouble(uint64_t i) {
   std::memcpy(&d, &i, sizeof(i));
   return d;
 }
-  
-/// @brief encodes number little endian
-/*template<typename T>
-inline void uintToLittleEndianPersistent(char* p, T value) {
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-  *reinterpret_cast<T*>(p) =  value;
-#else
-  char* end = p + sizeof(T);
-  do {
-    *p++ = static_cast<uint8_t>(value & 0xffU);
-    value >>= 8;
-  } while (p < end);
-#endif
-}*/
   
 template<typename T> 
 inline T uintFromPersistentLittleEndian(char const* p) {
@@ -135,16 +120,16 @@ template<typename T>
 inline void uintToPersistentBigEndian(std::string& p, T value) {
   //uintToPersistentLittleEndian<T>(p, basics::hostToBig(value));
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-/*#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
   value = basics::hostToBig(value);
   p.append(reinterpret_cast<const char*>(&value), sizeof(T));
-#else*/
+#else
   size_t len = sizeof(T) * 8;
   do {
     len -= 8;
     p.push_back(static_cast<char>((value >> len) & 0xFF));
   } while (len != 0);
-//#endif
+#endif
 }
 
 }  // namespace rocksutils

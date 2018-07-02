@@ -45,7 +45,7 @@ using namespace arangodb;
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBKey class
-TEST_CASE("RocksDBKeyTest Little-Endian", "[rocksdbkeytest]") {
+TEST_CASE("RocksDBKeyTest Little-Endian", "[rocksdb][keytest]") {
   rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Little);
   
   /// @brief test database
@@ -261,7 +261,7 @@ TEST_CASE("RocksDBKeyTest Little-Endian", "[rocksdbkeytest]") {
 }
 
 /// @brief test RocksDBKey class
-TEST_CASE("RocksDBKeyTest Big-Endian", "[rocksdbkeytest]") {
+TEST_CASE("RocksDBKeyTest Big-Endian", "[rocksdb][keytest]") {
   rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Big);
 
   /// @brief test database
@@ -476,7 +476,7 @@ TEST_CASE("RocksDBKeyTest Big-Endian", "[rocksdbkeytest]") {
 }
 
 /// @brief test RocksDBKeyBounds class
-TEST_CASE("RocksDBKeyBoundsTest Little-Endian", "[rocksdbkeybounds]") {
+TEST_CASE("RocksDBKeyBoundsTest Little-Endian", "[rocksdb][keybounds]") {
   rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Little);
 
   /// @brief test geo index key and bounds consistency
@@ -615,7 +615,7 @@ TEST_CASE("RocksDBKeyBoundsTest Little-Endian", "[rocksdbkeybounds]") {
 
 
 /// @brief test RocksDBKeyBounds class
-TEST_CASE("RocksDBKeyBoundsTest Big-Endian", "[rocksdbkeybounds]") {
+TEST_CASE("RocksDBKeyBoundsTest Big-Endian", "[rocksdb][keybounds]") {
   rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Big);
   
   /// @brief test geo index key and bounds consistency
