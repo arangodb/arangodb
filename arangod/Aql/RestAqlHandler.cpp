@@ -830,12 +830,12 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         auto atMost = VelocyPackHelper::getNumericValue<size_t>(
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         std::unique_ptr<AqlItemBlock> items;
+        ExecutionState state;
         if (shardId.empty()) {
-          auto tmpRes = query->engine()->getSome(atMost);
-          if (tmpRes.first == ExecutionState::WAITING) {
+          std::tie(state, items) = query->engine()->getSome(atMost);
+          if (state == ExecutionState::WAITING) {
             return RestStatus::WAITING;
           }
-          items.swap(tmpRes.second);
         } else {
           auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
@@ -843,13 +843,15 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "unexpected node type");
           }
-          auto tmpRes = block->getSomeForShard(atMost, shardId);
-          if (tmpRes.first == ExecutionState::WAITING) {
+          std::tie(state, items) = block->getSomeForShard(atMost, shardId);
+          if (state == ExecutionState::WAITING) {
             return RestStatus::WAITING;
           }
-          items.swap(tmpRes.second);
         }
+        // Used in 3.4.0 onwards.
+        answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
         if (items.get() == nullptr) {
+          // Backwards Compatibility
           answerBuilder.add("exhausted", VPackValue(true));
           answerBuilder.add(StaticStrings::Error, VPackValue(false));
         } else {

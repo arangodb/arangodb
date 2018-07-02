@@ -72,8 +72,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //   "number": must be a positive integer, the cursor skips as many items,
   //             possibly exhausting the cursor.
   //             The result is a JSON with the attributes "error" (boolean),
-  //             "errorMessage" (if applicable) and "exhausted" (boolean)
-  //             to indicate whether or not the cursor is exhausted.
+  //             "errorMessage" (if applicable) and "exhausted" (boolean) [3.3 and earlier]
+  //             "done" (boolean) [3.4.0 and later] to indicate whether or not the cursor is exhausted.
   RestStatus useQuery(std::string const& operation, std::string const& idString);
 
   // GET method for /_api/aql/<queryId>

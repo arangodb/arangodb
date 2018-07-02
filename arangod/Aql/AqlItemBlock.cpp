@@ -62,13 +62,6 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
     : _nrItems(0), _nrRegs(0), _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(resourceMonitor != nullptr);
 
-  bool exhausted = VelocyPackHelper::getBooleanValue(slice, "exhausted", false);
-
-  if (exhausted) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "exhausted must be false");
-  }
-
   int64_t nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   if (nrItems <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
@@ -531,6 +524,7 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
   result.add("nrItems", VPackValue(_nrItems));
   result.add("nrRegs", VPackValue(_nrRegs));
   result.add("error", VPackValue(false));
+  // Backwards compatbility 3.3
   result.add("exhausted", VPackValue(false));
   result.add("data", VPackValue(VPackValueType::Array));
 

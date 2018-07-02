@@ -1054,7 +1054,10 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
   VPackBuilder builder(&options);
   builder.openObject();
  
+  // Backwards Compatibility 3.3
   builder.add("exhausted", VPackValue(false));
+  // Used in 3.4.0 onwards
+  builder.add("done", VPackValue(false));
   builder.add("error", VPackValue(false));
   builder.add("pos", VPackValue(pos));
   builder.add(VPackValue("items"));
@@ -1176,14 +1179,17 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
     _lastResponse.reset();
     VPackSlice responseBody = responseBodyBuilder->slice();
 
-    if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
-      traceGetSomeEnd(nullptr, ExecutionState::DONE);
-      return {ExecutionState::DONE, nullptr};
+    ExecutionState state = ExecutionState::HASMORE;
+    if (VelocyPackHelper::getBooleanValue(responseBody, "done", true)) {
+      state = ExecutionState::DONE;
     }
-
-    auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
-    traceGetSomeEnd(r.get(), ExecutionState::HASMORE);
-    return {ExecutionState::HASMORE, std::move(r)};
+    if (responseBody.hasKey("data")) {
+      auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
+      traceGetSomeEnd(r.get(), state);
+      return {state, std::move(r)};
+    } 
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
   
   // We need to send a request here
