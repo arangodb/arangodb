@@ -1113,6 +1113,64 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
   return nullptr;
 }
 
+std::shared_ptr<LogicalView> ClusterInfo::getViewCurrent(
+    DatabaseID const& databaseID,
+    ViewID const& viewID
+) {
+  static const auto lookupView = [](
+      AllViews const& dbs,
+      DatabaseID const& databaseID,
+      ViewID const& viewID
+  ) noexcept -> std::shared_ptr<LogicalView> {
+    auto const db = dbs.find(databaseID); // look up database by id
+
+    if (db != dbs.end()) {
+      auto& views = db->second;
+      auto const itr = views.find(viewID); // look up view by id (or by name)
+
+      if (itr != views.end()) {
+        return itr->second;
+      }
+    }
+
+    return nullptr;
+  };
+
+  if (std::this_thread::get_id() == _planLoader) {
+    return lookupView(_plannedViews, databaseID, viewID);
+  }
+
+  size_t planReoads = 0;
+
+  if (!_planProt.isValid) {
+    loadPlan(); // current Views are actually in Plan instead of Current
+    ++planReoads;
+  }
+
+  for(;;) {
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+      auto const view = lookupView(_plannedViews, databaseID, viewID);
+
+      if (view) {
+        return view;
+      }
+    }
+
+    if (planReoads >= 2) {
+      break;
+    }
+
+    loadPlan(); // current Views are actually in Plan instead of Current (must load plan outside the lock)
+    ++planReoads;
+  }
+
+  LOG_TOPIC(INFO, Logger::CLUSTER)
+    << "View not found: '" << viewID << "' in database '" << databaseID << "'";
+
+  return nullptr;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief ask about all views of a database
 //////////////////////////////////////////////////////////////////////////////
@@ -1659,6 +1717,11 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+      
+      if (application_features::ApplicationServer::isStopping()) {
+        events::CreateCollection(name, TRI_ERROR_SHUTTING_DOWN);
+        return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
@@ -2557,6 +2620,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
       if (TRI_microtime() > endTime) {
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
+
+      if (application_features::ApplicationServer::isStopping()) {
+        return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);

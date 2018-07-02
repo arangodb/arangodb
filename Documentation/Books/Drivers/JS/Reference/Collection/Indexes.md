@@ -22,53 +22,8 @@ Creates an arbitrary index on the collection.
 ```js
 const db = new Database();
 const collection = db.collection('some-collection');
-const index = await collection.createIndex({type: 'cap', size: 20});
+const index = await collection.createIndex({type: 'hash', fields: ['a', 'a.b']});
 // the index has been created with the handle `index.id`
-```
-
-## collection.createCapConstraint
-
-`async collection.createCapConstraint(size): Object`
-
-Creates a cap constraint index on the collection.
-
-**Note**: This method is not available when using the driver with ArangoDB 3.0
-and higher as cap constraints are no longer supported.
-
-**Arguments**
-
-* **size**: `Object`
-
-  An object with any of the following properties:
-
-  * **size**: `number` (optional)
-
-    The maximum number of documents in the collection.
-
-  * **byteSize**: `number` (optional)
-
-    The maximum size of active document data in the collection (in bytes).
-
-If _size_ is a number, it will be interpreted as _size.size_.
-
-For more information on the properties of the _size_ object see
-[the HTTP API for creating cap constraints](../../../..//HTTP/Indexes/Cap.html).
-
-**Examples**
-
-```js
-const db = new Database();
-const collection = db.collection('some-collection');
-
-const index = await collection.createCapConstraint(20)
-// the index has been created with the handle `index.id`
-assert.equal(index.size, 20);
-
-// -- or --
-
-const index = await collection.createCapConstraint({size: 20})
-// the index has been created with the handle `index.id`
-assert.equal(index.size, 20);
 ```
 
 ## collection.createHashIndex
@@ -332,4 +287,49 @@ await collection.dropIndex(index.id);
 
 await collection.dropIndex(index.id.split('/')[1]);
 // the index has been removed from the collection
+```
+
+## collection.createCapConstraint
+
+`async collection.createCapConstraint(size): Object`
+
+Creates a cap constraint index on the collection.
+
+**Note**: This method is not available when using the driver with ArangoDB 3.0
+and higher as cap constraints are no longer supported.
+
+**Arguments**
+
+* **size**: `Object`
+
+  An object with any of the following properties:
+
+  * **size**: `number` (optional)
+
+    The maximum number of documents in the collection.
+
+  * **byteSize**: `number` (optional)
+
+    The maximum size of active document data in the collection (in bytes).
+
+If _size_ is a number, it will be interpreted as _size.size_.
+
+For more information on the properties of the _size_ object see
+[the HTTP API for creating cap constraints](https://docs.arangodb.com/2.8/HttpIndexes/Cap.html).
+
+**Examples**
+
+```js
+const db = new Database();
+const collection = db.collection('some-collection');
+
+const index = await collection.createCapConstraint(20)
+// the index has been created with the handle `index.id`
+assert.equal(index.size, 20);
+
+// -- or --
+
+const index = await collection.createCapConstraint({size: 20})
+// the index has been created with the handle `index.id`
+assert.equal(index.size, 20);
 ```
