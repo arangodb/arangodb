@@ -16,7 +16,7 @@ therefore you have to dump all data using `arangodump` and then
 restore it to the new ArangoDB instance using `arangorestore`.
 
 General instructions for this procedure can be found 
-[in the manual](../../Manual/Administration/Upgrading/Upgrading30.html).
+[in the manual](../../Manual/Upgrading/Upgrading30.html).
 Here, we cover some additional details about the cluster case.
 
 ### Dumping the data in ArangoDB 2.8

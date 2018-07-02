@@ -348,7 +348,9 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
     poly->set_s2debug_override(S2Debug::DISABLE);
   }
   if (poly) {
-    TRI_ASSERT(poly->IsValid());
+    if (!poly->IsValid()) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Polygon is not valid");
+    }
     region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
     return TRI_ERROR_NO_ERROR;
   }
@@ -416,6 +418,10 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
       if (!loops.back()->IsValid()) {  // will check first and last for us
         return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
       }
+      S2Loop* loop = loops.back().get();
+      // normalization ensures that CCW orientation does not matter for Polygon
+      // the RFC recommends this for better compatibility
+      loop->Normalize();
       
       // Any subsequent loop must be a hole within first loop
       if (outerLoop + 1 < loops.size() && !loops[outerLoop]->Contains(loops.back().get())) {
@@ -431,13 +437,12 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
   } else if (loops.size() > 1) {
     poly = std::make_unique<S2Polygon>();
     poly->set_s2debug_override(S2Debug::DISABLE);
-    poly->InitOriented(std::move(loops));
+    poly->InitNested(std::move(loops));
   }
   if (poly) {
     if (!poly->IsValid()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "polygon is not valid");
+      return Result(TRI_ERROR_BAD_PARAMETER, "Polygon is not valid");
     }
-    TRI_ASSERT(poly->IsValid());
     region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
     return TRI_ERROR_NO_ERROR;
   }

@@ -1,6 +1,13 @@
 devel
 -----
 
+* added `COUNT_DISTINCT` AQL function
+
+* make AQL optimizer rule `collect-in-cluster` optimize aggregation functions
+  `AVERAGE`, `VARIANCE`, `STDDEV`, `UNIQUE`, `SORTED_UNIQUE` and `COUNT_DISTINCT`
+  in a cluster by pushing parts of the aggregation onto the DB servers and only
+  doing the total aggregation on the coordinator
+
 * replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
   new optimizer rule.
 

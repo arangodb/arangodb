@@ -66,7 +66,7 @@ function recoverySuite () {
       var v1 = db._view('UnitTestsRecovery1');
       assertEqual(v1.name(), 'UnitTestsRecovery1');
       assertEqual(v1.type(), 'arangosearch');
-      assertEqual(v1.properties().threadsMaxTotal, 5);
+      assertEqual(v1.properties().commit.commitTimeoutMsec, 5000);
     }
 
   };
