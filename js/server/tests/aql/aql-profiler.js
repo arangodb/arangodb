@@ -881,7 +881,7 @@ function ahuacatlProfilerTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testHashedCollectBlock2 : function () {
-      // x is [0,0,0,1,1,1,2,2,2,3,...
+      // x is [1,1,1,2,2,2,3,3,3,4,...
       const query = 'FOR i IN 1..@rows COLLECT x = FLOOR((i-1) / 3)+1 RETURN x';
       const genNodeList = (rows, batches) => {
         const rowsAfterCollect = Math.ceil(rows / 3);
@@ -947,7 +947,6 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => {
         // IndexBlock returns HASMORE when asked for the exact number of items
         // it has left. This could be improved.
-        // batches = Math.floor(rows / defaultBatchSize) + 1;
         const indexBatches = Math.floor(rows / defaultBatchSize) + 1;
         return [
           {type: SingletonBlock, calls: 1, items: 1},
@@ -956,6 +955,48 @@ function ahuacatlProfilerTestSuite () {
           {type: IndexBlock, calls: indexBatches, items: rows},
           {type: CalculationBlock, calls: indexBatches, items: rows},
           {type: ReturnBlock, calls: indexBatches, items: rows}
+        ];
+      };
+      runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test IndexBlock, asking for every third document
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexBlock2 : function () {
+      if (isCluster) {
+        console.log('Skipping test testIndexBlock1 in cluster');
+        return;
+      }
+      const col = db._create(colName);
+      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      const prepare = (rows) => {
+        col.truncate();
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const bind = (rows) => ({'@col': colName, rows});
+      const query = `FOR i IN 0..FLOOR(@rows / 3)
+        FOR d IN @@col
+        FILTER i*3+1 == d.value
+        RETURN d.value`;
+
+      const genNodeList = (rows) => {
+        const enumRows = Math.floor(rows / 3) + 1;
+        const enumBatches = Math.ceil(enumRows / defaultBatchSize);
+        const indexRows = Math.ceil(rows / 3);
+        // IndexBlock returns HASMORE when asked for the exact number of items
+        // it has left. This could be improved.
+        const indexBatches = Math.max(1, Math.floor(indexRows / defaultBatchSize) + 1);
+        return [
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: CalculationBlock, calls: 1, items: 1},
+          {type: EnumerateListBlock, calls: enumBatches, items: enumRows},
+          {type: IndexBlock, calls: indexBatches, items: indexRows},
+          {type: CalculationBlock, calls: indexBatches, items: indexRows},
+          {type: ReturnBlock, calls: indexBatches, items: indexRows}
         ];
       };
       runDefaultChecks(
