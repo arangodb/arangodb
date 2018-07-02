@@ -860,10 +860,57 @@ function ahuacatlProfilerTestSuite () {
     /// @brief test HashedCollectBlock
     ////////////////////////////////////////////////////////////////////////////////
 
-    testHashedCollectBlock : function () {
+    testHashedCollectBlock1 : function () {
+      const query = 'FOR i IN 1..@rows COLLECT x = i RETURN x';
+      const genNodeList = (rows, batches) => {
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: HashedCollectBlock, calls: 1, items: rows },
+          { type: SortBlock, calls: batches, items: rows },
+          { type: ReturnBlock, calls: batches, items: rows },
+        ];
+      };
+      runDefaultChecks({query, genNodeList});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test HashedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testHashedCollectBlock2 : function () {
+      // x is [0,0,0,1,1,1,2,2,2,3,...
       const query = 'FOR i IN 1..@rows COLLECT x = FLOOR((i-1) / 3)+1 RETURN x';
       const genNodeList = (rows, batches) => {
         const rowsAfterCollect = Math.ceil(rows / 3);
+        const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: CalculationBlock, calls: batches, items: rows },
+          { type: HashedCollectBlock, calls: 1, items: rowsAfterCollect },
+          { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+        ];
+      };
+      runDefaultChecks({query, genNodeList});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test HashedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testHashedCollectBlock3 : function () {
+      // example:
+      // for @rows = 5,  x is [1,2,0,1,2]
+      // for @rows = 12, x is [1,2,3,4,5,0,1,2,3,4,5,0]
+      const query = 'FOR i IN 1..@rows COLLECT x = i % CEIL(@rows / 2) RETURN x';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterCollect = Math.ceil(rows / 2);
         const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
 
         return [
@@ -892,7 +939,7 @@ function ahuacatlProfilerTestSuite () {
 // *EnumerateCollectionBlock
 // *EnumerateListBlock
 // *FilterBlock
-// HashedCollectBlock
+// *HashedCollectBlock
 // IndexBlock
 // LimitBlock
 // NoResultsBlock
