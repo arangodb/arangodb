@@ -349,6 +349,20 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  if (res.second == nullptr) {
+    LOG_DEVEL << "Got no result in " << typeToString(getType())
+      << "::getBlock()! Child block is "
+      << typeToString(_dependencies[0]->getType()) << ". "
+      << "upstreamState=" << (
+        _upstreamState == ExecutionState::DONE ? "DONE" :
+        _upstreamState == ExecutionState::HASMORE ? "HASMORE" :
+          "???")
+      << ", state=" << (
+        res.first == ExecutionState::DONE ? "DONE" :
+        res.first == ExecutionState::HASMORE ? "HASMORE" :
+          "???");
+  }
+
   _upstreamState = res.first;
 
   if (res.second != nullptr) {
