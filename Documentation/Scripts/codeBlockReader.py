@@ -16,16 +16,16 @@ searchMDPaths = [
   "Drivers"
 ]
 searchPaths = [
-  "Documentation/Books/Manual/",
-  "Documentation/Books/AQL/",
-  "Documentation/Books/HTTP/",
-  "Documentation/Books/Cookbook/",
-  "Documentation/Books/Drivers/",
-  "Documentation/DocuBlocks/"
+  ["Documentation/Books/Manual/", False],
+  ["Documentation/Books/AQL/", False],
+  ["Documentation/Books/HTTP/", False],
+  ["Documentation/Books/Cookbook/", False],
+  ["Documentation/Books/Drivers/", False],
+  ["Documentation/DocuBlocks/", True]
 ]
 fullSuccess = True
 
-def file_content(filepath):
+def file_content(filepath, forceDokuBlockContent):
   """ Fetches and formats file's content to perform the required operation.
   """
 
@@ -36,9 +36,10 @@ def file_content(filepath):
   comment_indexes = []
   comments = []
   _start = None
-
+  docublockname = ""
   for line in enumerate(filelines):
     if "@startDocuBlock" in line[1]:
+      docublockname = line[1]
       # in the unprocessed md files we have non-terminated startDocuBlocks, else it is an error:
       if ((_start != None) and
           (not searchMDPaths[0] in filepath) and
@@ -47,16 +48,21 @@ def file_content(filepath):
           (not searchMDPaths[3] in filepath) and
           (not searchMDPaths[4] in filepath)):
         print "next startDocuBlock found without endDocuBlock in between in file %s [%s]" %(filepath, line)
-        raise
+        raise Exception
       _start = line[0]
     if "@endDocuBlock" in line[1]:
+      docublockname = ""
       try:
         _end = line[0] + 1
         comment_indexes.append([_start, _end])
         _start = None
       except NameError:
         print "endDocuBlock without previous startDocublock seen while analyzing file %s [%s]" %(filepath, line)
-        raise
+        raise Exception
+
+  if len(docublockname) != 0 and forceDokuBlockContent: 
+    print "no endDocuBlock found while analyzing file %s [%s]" %(filepath, docublockname)
+    raise Exception
 
   for index in comment_indexes:
     comments.append(filelines[index[0]: index[1]])
@@ -219,7 +225,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   fh.write(unicode("\n"))
 
 
-def fetch_comments(dirpath):
+def fetch_comments(dirpath, forceDokuBlockContent):
   """ Fetches comments from files and writes to a file in required format.
   """
   global fullSuccess
@@ -233,7 +239,7 @@ def fetch_comments(dirpath):
       if filename.endswith(validExtensions) and (filename.find("#") < 0):
 
         filepath = os.path.join(root, filename)
-        file_comments = file_content(filepath)
+        file_comments = file_content(filepath, forceDokuBlockContent)
         for comment in file_comments:
           fh.write(unicode("\n<!-- filename: %s -->\n" % filepath))
           for _com in comment:
@@ -289,9 +295,9 @@ if __name__ == "__main__":
   commentsFile.close()
   errorsFile.close()
   for i in searchPaths:
-    print "Searching for docublocks in " + i + ": "
-    dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i))
-    fetch_comments(dirpath)
+    print "Searching for docublocks in " + i[0] + ": "
+    dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i[0]))
+    fetch_comments(dirpath, i[1])
     os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'templates'))
-  if not fullSuccess: 
+  if not fullSuccess:
     sys.exit(1)
