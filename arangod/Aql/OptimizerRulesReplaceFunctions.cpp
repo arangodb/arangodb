@@ -43,6 +43,10 @@ using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
+  
+bool isValueTypeCollection(AstNode const* node) {
+  return node->type == NODE_TYPE_COLLECTION || node->isStringValue();
+}
 
 //NEAR(coll, 0 /*lat*/, 0 /*lon*/[, 10 /*limit*/])
 struct NearOrWithinParams{
@@ -311,7 +315,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   eSortOrFilter->addDependency(eCalc);
 
   //// create MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
-  if(params.distanceName) { //return without merging the distance into the result
+  if (params.distanceName) { //return without merging the distance into the result
     if(!params.distanceName->isStringValue()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"distance argument is not a string");
     }
@@ -354,6 +358,116 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   return createSubqueryWithLimit(plan, calcNode,
                                  eEnumerate /* first */, eSortOrFilter /* last */,
                                  enumerateOutVariable, params.limit);
+}
+  
+/// @brief replace WITHIN_RECTANGLE
+AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan) {
+  auto* ast = plan->getAst();
+  
+  TRI_ASSERT(funAstNode->type == AstNodeType::NODE_TYPE_FCALL);
+  AstNode* fargs = funAstNode->getMember(0);
+  TRI_ASSERT(fargs->type == AstNodeType::NODE_TYPE_ARRAY);
+        
+  AstNode const* coll = fargs->getMemberUnchecked(0);
+  AstNode const* lat1 = fargs->getMemberUnchecked(1);
+  AstNode const* lng1 = fargs->getMemberUnchecked(2);
+  AstNode const* lat2 = fargs->getMemberUnchecked(3);
+  AstNode const* lng2 = fargs->getMemberUnchecked(4);
+
+  if (!::isValueTypeCollection(coll)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+  
+  // check for suitable indexes
+  std::string cname = coll->getString();
+  std::shared_ptr<arangodb::Index> index;
+  // we should not access the LogicalCollection directly
+  for (auto& idx : ast->query()->trx()->indexesForCollection(cname)) {
+    if (Index::isGeoIndex(idx->type())) {
+      index = idx;
+      break;
+    }
+  }
+  if (!index) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_GEO_INDEX_MISSING);
+  }
+  
+  if (coll->type != NODE_TYPE_COLLECTION) { // TODO does this work?
+   aql::addCollectionToQuery(ast->query(), cname, false);
+   coll = ast->createNodeCollection(coll->getStringValue(),
+                                    AccessMode::Type::READ);
+  }
+  
+  // FOR part
+  Variable* collVar = ast->variables()->createTemporaryVariable();
+  AstNode* forNode = ast->createNodeFor(collVar, coll);
+
+  // Create GET_CONTAINS function
+  AstNode* loop = ast->createNodeArray(5);
+  auto fn = [&](AstNode const* lat, AstNode const* lon) {
+    AstNode* arr = ast->createNodeArray(2);
+    arr->addMember(lon);
+    arr->addMember(lat);
+    loop->addMember(arr);
+  };
+  fn(lat1, lng1); fn(lat1, lng2); fn(lat2, lng2); fn(lat2, lng1);
+  fn(lat1, lng1);
+  AstNode* polygon = ast->createNodeObject();
+  polygon->addMember(ast->createNodeObjectElement("type", 4, ast->createNodeValueString("Polygon", 7)));
+  AstNode* coords = ast->createNodeArray(1);
+  coords->addMember(loop);
+  polygon->addMember(ast->createNodeObjectElement("coordinates", 11,  coords));
+
+  fargs = ast->createNodeArray(2);
+  fargs->addMember(polygon);
+
+  // GEO_CONTAINS, needs GeoJson [Lon, Lat] ordering
+  if (index->fields().size() == 2) {
+    AstNode* arr = ast->createNodeArray(2);
+    arr->addMember(ast->createNodeAccess(collVar, index->fields()[1]));
+    arr->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
+    fargs->addMember(arr);
+  } else {
+    VPackBuilder builder;
+    index->toVelocyPack(builder,true,false);
+    bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
+    if (geoJson) {
+      fargs->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
+    } else { // combined [lat, lon] field
+      AstNode* arr = ast->createNodeArray(2);
+      AstNode* access = ast->createNodeAccess(collVar, index->fields()[0]);
+      arr->addMember(ast->createNodeIndexedAccess(access, ast->createNodeValueInt(1)));
+      arr->addMember(ast->createNodeIndexedAccess(access, ast->createNodeValueInt(0)));
+      fargs->addMember(arr);
+    }
+  }
+  AstNode* fcall = ast->createNodeFunctionCall("GEO_CONTAINS", fargs);
+
+  // FILTER part
+  AstNode* filterNode = ast->createNodeFilter(fcall);
+
+  // RETURN part
+  AstNode* returnNode = ast->createNodeReturn(ast->createNodeReference(collVar));
+
+  // create an on-the-fly subquery for a full collection access
+  AstNode* rootNode = ast->createNodeSubquery();
+  
+  // add both nodes to subquery
+  rootNode->addMember(forNode);
+  rootNode->addMember(filterNode);
+  rootNode->addMember(returnNode);
+
+  // produce the proper ExecutionNodes from the subquery AST
+  ExecutionNode* subquery = plan->fromNode(rootNode);
+  if (subquery == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // and register a reference to the subquery result in the expression
+  Variable* v = ast->variables()->createTemporaryVariable();
+  SubqueryNode* sqn = plan->registerSubquery(new SubqueryNode(plan, plan->nextId(), subquery, v));
+  plan->insertDependency(calcNode, sqn);
+  return ast->createNodeReference(v);
 }
 
 AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
@@ -440,7 +554,10 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt
         } else if (fun->name == "WITHIN"){
           replacement = replaceNearOrWithin(astnode, node, plan.get(), false /*isNear*/);
           TRI_ASSERT(replacement);
-        } else if (fun->name == "FULLTEXT"){
+        } else if (fun->name == "WITHIN_RECTANGLE"){
+          replacement = replaceWithinRectangle(astnode, node, plan.get());
+          TRI_ASSERT(replacement);
+        }  else if (fun->name == "FULLTEXT"){
           replacement = replaceFullText(astnode, node,plan.get());
           TRI_ASSERT(replacement);
         }
