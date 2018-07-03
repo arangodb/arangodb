@@ -32,6 +32,7 @@ const internal = require("internal");
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
+const errors = internal.errors;
 
 const collectionName = "UnitTestAqlModify";
 let col;
@@ -95,7 +96,12 @@ function aqlUpdateOptionsSuite () {
       let q = `UPDATE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        try {
+          db._query(q, {key: d._key});
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+        }
       }
       validateDocsAreUpdated(docs, invalid, false);
     },
@@ -104,7 +110,12 @@ function aqlUpdateOptionsSuite () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      try {
+        db._query(q, {docs: [...docs]});
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
 
       validateDocsAreUpdated(docs, invalid, false);
     },
@@ -115,7 +126,12 @@ function aqlUpdateOptionsSuite () {
                 UPDATE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
                 IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs();
-      db._query(q);
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
 
       validateDocsAreUpdated(docs, invalid, false);
     },
@@ -192,7 +208,12 @@ function aqlReplaceOptionsSuite () {
       let q = `REPLACE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        try {
+          db._query(q, {key: d._key});
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+        }
       }
       validateDocsAreUpdated(docs, invalid, false);
     },
@@ -201,7 +222,12 @@ function aqlReplaceOptionsSuite () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      try {
+        db._query(q, {docs: [...docs]});
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
 
       validateDocsAreUpdated(docs, invalid, false);
     },
@@ -212,7 +238,12 @@ function aqlReplaceOptionsSuite () {
                 REPLACE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
                 IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs();
-      db._query(q);
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
 
       validateDocsAreUpdated(docs, invalid, false);
     },
@@ -295,7 +326,12 @@ function aqlRemoveOptionsSuite () {
       let q = `REMOVE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        try {
+          db._query(q, {key: d._key});
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+        }
       }
       assertEqual(2000, col.count(), `We removed the document`)
     },
@@ -304,7 +340,12 @@ function aqlRemoveOptionsSuite () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      try {
+        db._query(q, {docs: [...docs]});
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
       assertEqual(2000, col.count(), `We removed the document`)
     },
 
@@ -314,7 +355,12 @@ function aqlRemoveOptionsSuite () {
                 REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
                 IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs();
-      db._query(q);
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
       assertEqual(2000, col.count(), `We removed the document`)
     },
 
@@ -395,7 +441,12 @@ function aqlUpsertOptionsSuite () {
       let q = `UPSERT {_key: @key} INSERT {} UPDATE {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        try { 
+          db._query(q, {key: d._key});
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+        }
       }
       assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
@@ -405,7 +456,12 @@ function aqlUpsertOptionsSuite () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPSERT {_key: doc._key} INSERT {} UPDATE {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      try {
+        db._query(q, {docs: [...docs]});
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
 
       assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
@@ -418,7 +474,12 @@ function aqlUpsertOptionsSuite () {
                 UPDATE {_rev: "invalid", val: "${invalid}"}
                 IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs();
-      db._query(q);
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
 
       assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
@@ -501,7 +562,12 @@ function aqlUpsertOptionsSuite () {
       let q = `UPSERT {_key: @key, _rev: "invalid"} INSERT {} UPDATE {val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, {key: d._key});
+        try {
+          db._query(q, {key: d._key});
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+        }
       }
       assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
@@ -511,7 +577,12 @@ function aqlUpsertOptionsSuite () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPSERT {_key: doc._key, _rev: "invalid"} INSERT {} UPDATE {val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      db._query(q, {docs: [...docs]});
+      try {
+        db._query(q, {docs: [...docs]});
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
 
       assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
@@ -524,7 +595,12 @@ function aqlUpsertOptionsSuite () {
                 UPDATE {val: "${invalid}"}
                 IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs();
-      db._query(q);
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
+      }
 
       assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
@@ -554,7 +630,7 @@ function aqlUpsertOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpsertEnumerationWithInvalidRevIgnore : function () {
+    testUpsertEnumerationWithInvalidRevIgnoreInMatch : function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPSERT {_key: doc._key, _rev: "invalid"} INSERT {}
