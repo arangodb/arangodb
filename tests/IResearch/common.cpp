@@ -274,7 +274,7 @@ std::string mangleStringIdentity(std::string name) {
 void assertExpressionFilter(
     std::string const& queryString,
     irs::boost::boost_t boost /*= irs::boost::no_boost()*/,
-    std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor /*= expressionExtractor*/,
+    std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/
 ) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");

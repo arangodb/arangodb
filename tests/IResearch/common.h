@@ -95,18 +95,18 @@ std::string mangleNumeric(std::string name);
 std::string mangleString(std::string name, std::string suffix);
 std::string mangleStringIdentity(std::string name);
 
-inline arangodb::aql::AstNode* expressionExtractor(arangodb::aql::AstNode* root) {
+inline arangodb::aql::AstNode* defaultExpressionExtractor(arangodb::aql::AstNode* root) {
   return root->getMember(0);
 }
 
 inline arangodb::aql::AstNode* wrappedExpressionExtractor(arangodb::aql::AstNode* root) {
-  return expressionExtractor(root)->getMember(0)->getMember(0);
+  return defaultExpressionExtractor(root)->getMember(0)->getMember(0);
 }
 
 void assertExpressionFilter(
   std::string const& queryString,
   irs::boost::boost_t boost = irs::boost::no_boost(),
-  std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor = expressionExtractor,
+  std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor = &defaultExpressionExtractor,
   std::string const& refName = "d"
 );
 
