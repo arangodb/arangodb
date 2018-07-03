@@ -535,29 +535,6 @@ function AQL_TO_STRING (value) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return documents within a bounding rectangle
-// //////////////////////////////////////////////////////////////////////////////
-
-function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, longitude2) {
-  'use strict';
-
-  if (TYPEWEIGHT(latitude1) !== TYPEWEIGHT_NUMBER ||
-    TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
-    TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
-    TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
-    WARN('WITHIN_RECTANGLE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
-
-  return COLLECTION(collection, 'WITHIN_RECTANGLE').withinRectangle(
-    latitude1,
-    longitude1,
-    latitude2,
-    longitude2
-  ).toArray();
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief passthru the argument
 // /
 // / this function is marked as non-deterministic so its argument withstands
@@ -571,7 +548,6 @@ function AQL_PASSTHRU (value) {
 }
 
 exports.FCALL_USER = FCALL_USER;
-exports.AQL_WITHIN_RECTANGLE = AQL_WITHIN_RECTANGLE;
 exports.AQL_V8 = AQL_PASSTHRU;
 
 exports.reload = reloadUserFunctions;
