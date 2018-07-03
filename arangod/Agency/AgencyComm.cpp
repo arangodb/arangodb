@@ -1764,7 +1764,6 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add("UserVersion", VPackValue(1));
       addEmptyVPackObject("ServerStates", builder);
       builder.add("HeartbeatIntervalMs", VPackValue(1000));
-      addEmptyVPackObject("Commands", builder);
     }
 
     builder.add(VPackValue("Supervision")); // Supervision --------------------
