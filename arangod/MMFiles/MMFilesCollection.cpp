@@ -244,7 +244,8 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
 
   physical->setRevision(revisionId, false);
 
-  if (state->_trackKeys) {
+  {
+    // track keys
     VPackValueLength length;
     char const* p = keySlice.getString(length);
     collection->keyGenerator()->track(p, static_cast<size_t>(length));
@@ -350,7 +351,8 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
   physical->setRevision(revisionId, false);
-  if (state->_trackKeys) {
+  {
+    // track keys
     VPackValueLength length;
     char const* p = keySlice.getString(length);
     collection->keyGenerator()->track(p, length);
@@ -2190,7 +2192,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
   VPackSlice data = builder->slice();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(vocbase, collectionId, idx->id(), data);
+  static_cast<MMFilesEngine*>(engine)->createIndex(vocbase, collectionId, idx->id(), data);
 
   if (!engine->inRecovery()) {
     // We need to write an index marker

@@ -521,15 +521,19 @@ void RocksDBSettingsManager::loadKeyGenerators() {
        iter->Next()) {
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
     auto properties = RocksDBValue::data(iter->value());
-    uint64_t lastValue = properties.get("lastValue").getUInt();
 
-    // If this hits we have two generators for the same collection
-    TRI_ASSERT(_generators.find(objectId) == _generators.end());
-    try {
-      _generators.emplace(objectId, lastValue);
-    } catch (...) {
-      // Nothing to do, just validate that no corrupted memory was produced.
+    VPackSlice s = properties.get(StaticStrings::LastValue);
+    if (!s.isNone()) { 
+      uint64_t lastValue = properties.get(StaticStrings::LastValue).getUInt();
+
+      // If this hits we have two generators for the same collection
       TRI_ASSERT(_generators.find(objectId) == _generators.end());
+      try {
+        _generators.emplace(objectId, lastValue);
+      } catch (...) {
+        // Nothing to do, just validate that no corrupted memory was produced.
+        TRI_ASSERT(_generators.find(objectId) == _generators.end());
+      }
     }
   }
 }
