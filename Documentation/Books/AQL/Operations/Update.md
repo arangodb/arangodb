@@ -207,6 +207,18 @@ FOR u IN users
   } IN users OPTIONS { waitForSync: true }
 ```
 
+In order to not accidentially overwrite documents that have been updated since you last fetch them
+you can use the option *ignoreRevs* to either let ArangoDB compare the `_rev` value and only succeed
+if they still match, or let ArangoDB ignore them (default):
+
+```js
+FOR i IN 1..1000
+  UPDATE { _key: CONCAT('test', i), _rev: "1287623" }
+  WITH { foobar: true } IN users
+  OPTIONS { ignoreRevs: false }
+```
+
+
 ### Returning the modified documents
 
 The modified documents can also be returned by the query. In this case, the `UPDATE` 
