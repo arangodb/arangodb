@@ -50,7 +50,7 @@
   * [Traversals explained](Graphs/TraversalsExplained.md)
   * [Traversals](Graphs/Traversals.md)
   * [Shortest Path](Graphs/ShortestPath.md)
-* [ArangoSearch](Views/README.md)
+* [ArangoSearch Views](Views/README.md)
   * [Usage](Views/ArangoSearch/README.md)
 * [Advanced Features](Advanced/README.md)
   * [Array Operators](Advanced/ArrayOperators.md)
