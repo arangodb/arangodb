@@ -26,6 +26,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
@@ -152,8 +153,6 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
   explicit TraditionalKeyGeneratorSingle(bool allowUserKeys) 
     : TraditionalKeyGenerator(allowUserKeys), _lastValue(0) {}
 
-  bool trackKeys() const override { return true; }
-
   /// @brief generate a key
   std::string generate() override {
     TRI_voc_tick_t tick = TRI_NewTickServer();
@@ -210,7 +209,7 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
     TRI_ASSERT(!builder.isClosed());
     TraditionalKeyGenerator::toVelocyPack(builder);
-    builder.add("lastValue", VPackValue(_lastValue));
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
   }
 
  private:
@@ -225,8 +224,6 @@ class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
   /// @brief create the generator
   explicit TraditionalKeyGeneratorCluster(bool allowUserKeys)
     : TraditionalKeyGenerator(allowUserKeys) {}
-
-  bool trackKeys() const override { return false; }
 
   /// @brief generate a key
   std::string generate() override {
@@ -319,8 +316,6 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
   explicit PaddedKeyGeneratorSingle(bool allowUserKeys) 
     : PaddedKeyGenerator(allowUserKeys), _lastValue(0) {}
 
-  bool trackKeys() const override { return true; }
-
   /// @brief generate a key
   std::string generate() override {
     TRI_voc_tick_t tick = TRI_NewTickServer();
@@ -373,7 +368,7 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
     TRI_ASSERT(!builder.isClosed());
     PaddedKeyGenerator::toVelocyPack(builder);
-    builder.add("lastValue", VPackValue(_lastValue));
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
   }
 
  private:
@@ -388,8 +383,6 @@ class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
   /// @brief create the generator
   explicit PaddedKeyGeneratorCluster(bool allowUserKeys)
     : PaddedKeyGenerator(allowUserKeys) {}
-
-  bool trackKeys() const override { return false; }
 
   /// @brief generate a key
   std::string generate() override {
@@ -410,26 +403,6 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
       _lastValue(0),
       _offset(offset),
       _increment(increment) {}
-
-
-  /// @brief validate a key
-  static bool validateKey(char const* key, size_t len) {
-    if (len == 0 || len > maxKeyLength) {
-      return false;
-    }
-
-    char const* p = key;
-    char const* e = p + len;
-    TRI_ASSERT(p != e);
-    do {
-      if (*p < '0' || *p > '9') {
-        return false;
-      }
-    } while (++p < e);
-    return true;
-  }
-
-  bool trackKeys() const override { return true; }
 
   /// @brief generate a key
   std::string generate() override {
@@ -466,6 +439,15 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
+  
+    char const* s = p;
+    char const* e = s + length;
+    TRI_ASSERT(s != e);
+    do {
+      if (*s < '0' || *s > '9') {
+        return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+      }
+    } while (++s < e);
 
     track(p, length);
 
@@ -499,7 +481,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
     builder.add("allowUserKeys", VPackValue(_allowUserKeys));
     builder.add("offset", VPackValue(_offset));
     builder.add("increment", VPackValue(_increment));
-    builder.add("lastValue", VPackValue(_lastValue));
+    builder.add(StaticStrings::LastValue, VPackValue(_lastValue));
   }
 
  private:
@@ -518,8 +500,6 @@ class UuidKeyGenerator final : public KeyGenerator {
   /// @brief create the generator
   UuidKeyGenerator(bool allowUserKeys)
     : KeyGenerator(allowUserKeys) {}
-
-  bool trackKeys() const override { return false; }
 
   /// @brief generate a key
   std::string generate() override {

@@ -521,7 +521,7 @@ void RocksDBSettingsManager::loadKeyGenerators() {
        iter->Next()) {
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
     auto properties = RocksDBValue::data(iter->value());
-    uint64_t lastValue = properties.get("lastValue").getUInt();
+    uint64_t lastValue = properties.get(StaticStrings::LastValue).getUInt();
 
     // If this hits we have two generators for the same collection
     TRI_ASSERT(_generators.find(objectId) == _generators.end());

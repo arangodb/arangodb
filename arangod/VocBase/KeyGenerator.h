@@ -51,8 +51,6 @@ class KeyGenerator {
   /// @brief create a key generator based on the options specified
   static KeyGenerator* factory(arangodb::velocypack::Slice const&);
 
-  virtual bool trackKeys() const = 0;
-
   /// @brief generate a key
   virtual std::string generate() = 0;
 
@@ -65,15 +63,16 @@ class KeyGenerator {
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
 
-  /// @brief check global key attributes
-  int globalCheck(char const* p, size_t length, bool isRestore);
-  
   /// @brief validate a key
   static bool validateKey(char const* key, size_t len);
  
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
 
+ protected:
+  /// @brief check global key attributes
+  int globalCheck(char const* p, size_t length, bool isRestore);
+  
  protected:
   /// @brief whether or not the users can specify their own keys
   bool _allowUserKeys;
