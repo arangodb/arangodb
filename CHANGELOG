@@ -1,6 +1,10 @@
 v3.3.12 (XXXX-XX-XX)
 --------------------
 
+* fixed internal issue #2658: AQL Modification blocks did not allow to use _rev
+  matching. You now have a new options `ignoreRevs` which can be set to false
+  in order to force AQL to match revisions
+
 * fixed issue #5679: Replication applier restrictions will crash synchronisation 
   after initial sync
 
