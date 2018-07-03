@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require*/
+/* global assertTrue, assertFalse, assertEqual, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -83,16 +83,15 @@ function CursorSyncSuite () {
       return {};
     }
 
-    var body = res.body;
-    if (typeof body === "string") {
-      body = JSON.parse(body);
+    var resultBody = res.body;
+    if (typeof resultBody === "string") {
+      resultBody = JSON.parse(resultBody);
     }
-    return body;
+    return resultBody;
   }
 
   return {
     setUpAll: function() {
-      require('internal').print("FUCK THE SETUP");
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -163,7 +162,6 @@ function CursorSyncSuite () {
         }
       };
       let result = sendRequest('POST', url, query, true);
-      require('internal').print(JSON.stringify(result));
 
       assertFalse(result === undefined || result === {});
       assertFalse(result.error);
@@ -188,7 +186,7 @@ function CursorSyncSuite () {
       assertEqual(result.code, 404);
     },
 
-  }
+  };
 }
 
 jsunity.run(CursorSyncSuite);

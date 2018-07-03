@@ -762,29 +762,7 @@ int MMFilesCollection::syncActiveJournal() {
   MMFilesDatafile* datafile = _journals.back();
   TRI_ASSERT(datafile != nullptr);
 
-  int res = TRI_ERROR_NO_ERROR;
-
-  // we only need to care about physical datafiles
-  // anonymous regions do not need to be synced
-  if (datafile->isPhysical()) {
-    char const* synced = datafile->_synced;
-    char* written = datafile->_written;
-
-    if (synced < written) {
-      res = datafile->sync(synced, written);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "msync succeeded "
-                                            << (void*)synced << ", size "
-                                            << (written - synced);
-        datafile->_synced = written;
-      } else {
-        LOG_TOPIC(ERR, Logger::COLLECTOR) << "msync failed with: " << TRI_errno_string(res);
-      }
-    }
-  }
-
-  return res;
+  return datafile->sync();
 }
 
 /// @brief reserve space in the current journal. if no create exists or the
@@ -858,7 +836,6 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
 
     // found a datafile with enough space left
     if (res == TRI_ERROR_NO_ERROR) {
-      datafile->_written = ((char*)position) + size;
       // set result
       resultPosition = reinterpret_cast<char*>(position);
       resultDatafile = datafile;
@@ -1064,7 +1041,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
       sizeof(MMFilesCollectionHeaderMarker), static_cast<TRI_voc_tick_t>(fid));
   cm._cid = _logicalCollection->id();
 
-  res = datafile->writeCrcElement(position, &cm.base, false);
+  res = datafile->writeCrcElement(position, &cm.base);
 
   TRI_IF_FAILURE("CreateJournalDocumentCollectionReserve2") {
     res = TRI_ERROR_DEBUG;
@@ -2213,7 +2190,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
   VPackSlice data = builder->slice();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(vocbase, collectionId, idx->id(), data);
+  static_cast<MMFilesEngine*>(engine)->createIndex(vocbase, collectionId, idx->id(), data);
 
   if (!engine->inRecovery()) {
     // We need to write an index marker

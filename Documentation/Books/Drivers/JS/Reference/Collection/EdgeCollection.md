@@ -49,7 +49,7 @@ _data_ and returns an object containing the edge's metadata.
 * **data**: `Object`
 
   The data of the new edge. If _fromId_ and _toId_ are not specified, the _data_
-  needs to contain the properties __from_ and __to_.
+  needs to contain the properties `_from` and `_to`.
 
 * **fromId**: `string` (optional)
 
@@ -62,6 +62,39 @@ _data_ and returns an object containing the edge's metadata.
   The handle of the end vertex of this edge. This can be either the `_id` of a
   document in the database, the `_key` of an edge in the collection, or a
   document (i.e. an object with an `_id` or `_key` property).
+
+* **opts**: `Object` (optional)
+
+  If _opts_ is set, it must be an object with any of the following properties:
+
+  * **waitForSync**: `boolean` (Default: `false`)
+
+    Wait until document has been synced to disk.
+
+  * **returnNew**: `boolean` (Default: `false`)
+
+    If set to `true`, return additionally the complete new documents under the
+    attribute `new` in the result.
+
+  * **returnOld**: `boolean` (Default: `false`)
+
+    If set to `true`, return additionally the complete old documents under the
+    attribute `old` in the result.
+
+  * **silent**: `boolean` (Default: `false`)
+
+    If set to true, an empty object will be returned as response. No meta-data
+    will be returned for the created document. This option can be used to save
+    some network traffic.
+
+  * **overwrite**: `boolean` (Default: `false`)
+
+    If set to true, the insert becomes a replace-insert. If a document with the
+    same _key already exists the new document is not rejected with unique
+    constraint violated but will replace the old document.
+
+If a boolean is passed instead of an options object, it will be interpreted as
+the _returnNew_ option.
 
 **Examples**
 
@@ -203,7 +236,7 @@ contained in this edge collection.
 * **opts**: `Object`
 
   See
-  [the HTTP API documentation](https://docs.arangodb.com/latest/HTTP/Traversal/index.html)
+  [the HTTP API documentation](../../../..//HTTP/Traversal/index.html)
   for details on the additional arguments.
 
   Please note that while _opts.filter_, _opts.visitor_, _opts.init_,

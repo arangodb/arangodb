@@ -124,8 +124,9 @@ bool RestHandler::forwardRequest() {
     // no need to actually forward
     return false;
   }
-  std::string serverId =
-      ClusterInfo::instance()->getCoordinatorByShortID(shortId);
+
+  std::string serverId = ClusterInfo::instance()->getCoordinatorByShortID(shortId);
+
   if ("" == serverId) {
     // no mapping in agency, try to handle the request here
     return false;
@@ -257,6 +258,7 @@ bool RestHandler::forwardRequest() {
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
+  return true;
 }
 
 void RestHandler::runHandlerStateMachine() {

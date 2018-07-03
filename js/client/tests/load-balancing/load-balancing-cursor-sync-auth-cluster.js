@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require*/
+/* global assertTrue, assertFalse, assertEqual, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -94,11 +94,11 @@ function CursorSyncAuthSuite () {
       return {};
     }
 
-    var body = res.body;
-    if (typeof body === "string") {
-      body = JSON.parse(body);
+    var resultBody = res.body;
+    if (typeof resultBody === "string") {
+      resultBody = JSON.parse(resultBody);
     }
-    return body;
+    return resultBody;
   }
 
   return {
@@ -166,7 +166,6 @@ function CursorSyncAuthSuite () {
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'PUT', url, {}, false);
-      require('internal').print(JSON.stringify(result));
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.error);
@@ -202,7 +201,6 @@ function CursorSyncAuthSuite () {
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'PUT', url, {}, false);
-      require('internal').print(JSON.stringify(result));
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.error);
@@ -238,7 +236,6 @@ function CursorSyncAuthSuite () {
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, false);
-      require('internal').print(JSON.stringify(result));
 
       assertFalse(result === undefined || result === {});
       assertFalse(result.error);
@@ -274,7 +271,6 @@ function CursorSyncAuthSuite () {
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, false);
-      require('internal').print(JSON.stringify(result));
 
       assertFalse(result === undefined || result === {});
       assertFalse(result.error);

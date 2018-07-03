@@ -67,9 +67,6 @@ class RestBaseHandler : public rest::RestHandler {
   /// Add `error` and `code` fields into your response
   void generateOk(rest::ResponseCode, velocypack::Builder const&);
 
-  // generates an error
-  //void generateError(rest::ResponseCode, int, std::string const&);
-
   // generates a canceled message
   void generateCanceled();
 
