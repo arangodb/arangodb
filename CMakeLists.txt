@@ -915,6 +915,7 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 ################################################################################
 ## cURL
 ################################################################################
+add_definitions(-DCURL_STATICLIB=1)
 include_directories(SYSTEM
   ${CURL_SRC_DIR}/include/
   ${CURL_BIN_DIR}/include/curl/
