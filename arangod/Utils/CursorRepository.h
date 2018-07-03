@@ -132,7 +132,7 @@ class CursorRepository {
   /// @brief list of current cursors
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<CursorId, Cursor*> _cursors;
+  std::unordered_map<CursorId, std::pair<Cursor*, std::string>> _cursors;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of cursors to garbage-collect in one go

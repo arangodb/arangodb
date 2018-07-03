@@ -134,6 +134,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _pruneWaitTime(10.0),
+      _pruneWaitTimeInitial(180.0),
       _releasedTick(0),
       _useThrottle(true) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
@@ -200,6 +201,10 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
+  
+  options->addHiddenOption("--rocksdb.wal-file-timeout-initial",
+                           "initial timeout after which unused WAL files deletion kicks in after server start",
+                           new DoubleParameter(&_pruneWaitTimeInitial));
 
   options->addOption("--rocksdb.throttle",
                      "enable write-throttling",
@@ -1390,10 +1395,6 @@ void RocksDBEngine::signalCleanup(TRI_vocbase_t& vocbase) {
 
 int RocksDBEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
   return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief Add engine-specific AQL functions.
-void RocksDBEngine::addAqlFunctions() {
 }
 
 /// @brief Add engine-specific optimizer rules
