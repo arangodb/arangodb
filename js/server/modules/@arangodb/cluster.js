@@ -146,7 +146,7 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
     } else {
       console.topic('heartbeat=debug', 'startReadLockOnLeader: Do not see read lock yet...');
     }
-    wait(0.5);
+    wait(0.5, false);
   }
   console.topic('heartbeat=error', 'startReadLockOnLeader: giving up');
   try {
@@ -394,7 +394,7 @@ function organiseLeaderResign (database, collId, shardName) {
 
 function lockSyncKeyspace () {
   while (!global.KEY_SET_CAS('shardSynchronization', 'lock', 1, null)) {
-    wait(0.001);
+    wait(0.001, false);
   }
 }
 
@@ -448,7 +448,7 @@ function tryLaunchJob () {
             if (!require('internal').isStopping()) {
               console.topic('heartbeat=debug', 'Could not registerTask for shard synchronization.',
                             err);
-              wait(1.0);
+              wait(1.0, false);
             } else {
               doCleanup = true;
               done = true;
@@ -530,7 +530,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     }
     console.topic('heartbeat=debug', 'synchronizeOneShard: waiting for leader, %s/%s, %s/%s',
       database, shard, database, planId);
-    wait(0.2);
+    wait(0.2, false);
   }
 
   // Once we get here, we know that the leader is ready for sync, so
@@ -2110,7 +2110,7 @@ function waitForSyncReplOneCollection (dbName, collName) {
     if (ok) {
       return true;
     }
-    require('internal').wait(1);
+    require('internal').wait(1, false);
   }
   console.topic('heartbeat=warn', 'waitForSyncReplOneCollection:', dbName, collName, ': BAD');
   return false;
