@@ -669,7 +669,7 @@
           }
           if ($('#general-replicationFactor').val().length > 0) {
             if (newCollectionObject.options) {
-              newCollectionObject.options.replicationFactor = $('#general-replicationFactor').val();
+              newCollectionObject.options.replicationFactor = parseInt($('#general-replicationFactor').val());
             } else {
               newCollectionObject.options = {
                 replicationFactor: parseInt($('#general-replicationFactor').val())
