@@ -227,7 +227,8 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
   } // for index in collection
 
   if(!indexFound) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_GEO_INDEX_MISSING);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
+                                  params.collection.c_str());
   }
 
   return std::pair<AstNode*, AstNode*>(accessNodeLat, accessNodeLon);
@@ -389,7 +390,8 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
     }
   }
   if (!index) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_GEO_INDEX_MISSING);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
+                                  cname.c_str());
   }
   
   if (coll->type != NODE_TYPE_COLLECTION) { // TODO does this work?
@@ -496,7 +498,8 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   }
 
   if(!index){ // not found or error
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
+                                  params.collection.c_str());
   }
 
   // index part 2 - get remaining vars required for index creation
@@ -529,8 +532,6 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 }
 
 } // namespace
-
-
 
 //! @brief replace legacy JS Functions with pure AQL
 void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt

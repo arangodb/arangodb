@@ -5394,6 +5394,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
     Variable const* out = subqueryNode->outVariable();
     TRI_ASSERT(out != nullptr);
+    // the subquery outvariable and all its aliases
+    std::unordered_set<Variable const*> subqueryVars;
+    subqueryVars.emplace(out);
+
+    // the potential calculation nodes that produce the aliases
+    std::vector<ExecutionNode*> aliasNodesToRemoveLater;
 
     std::unordered_set<Variable const*> varsUsed;
 
@@ -5411,21 +5417,30 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
         auto listNode = ExecutionNode::castTo<EnumerateListNode*>(current);
 
         // ...that use our subquery as its input
-        if (listNode->inVariable() == out) {
+        if (subqueryVars.find(listNode->inVariable()) != subqueryVars.end()) {
           // bingo!
           auto queryVariables = plan->getAst()->variables();
           std::vector<ExecutionNode*> subNodes(
               subqueryNode->getSubquery()->getDependencyChain(true));
 
-          // check if the subquery result variable is used after the FOR loop as
-          // well
+          // check if the subquery result variable or any of the aliases are used after the FOR loop
+          bool mustAbort = false;
           std::unordered_set<Variable const*> varsUsedLater(
               listNode->getVarsUsedLater());
-          if (varsUsedLater.find(listNode->inVariable()) !=
-              varsUsedLater.end()) {
-            // exit the loop
-            current = nullptr;
+          for (auto const& itSub : subqueryVars) {
+            if (varsUsedLater.find(itSub) != varsUsedLater.end()) {
+              // exit the loop
+              current = nullptr;
+              mustAbort = true;
+              break;
+            }
+          }
+          if (mustAbort) {
             break;
+          }
+          
+          for (auto const& toRemove : aliasNodesToRemoveLater) {
+            plan->unlinkNode(toRemove, false);
           }
 
           TRI_ASSERT(!subNodes.empty());
@@ -5491,6 +5506,18 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           // abort optimization
           current = nullptr;
         }
+      } else if (current->getType() == EN::CALCULATION) {
+        auto rootNode = ExecutionNode::castTo<CalculationNode*>(current)->expression()->node();
+        if (rootNode->type == NODE_TYPE_REFERENCE) {
+          if (subqueryVars.find(static_cast<Variable const*>(rootNode->getData())) != subqueryVars.end()) {
+            // found an alias for the subquery variable
+            subqueryVars.emplace(ExecutionNode::castTo<CalculationNode*>(current)->outVariable());
+            aliasNodesToRemoveLater.emplace_back(current);
+            current = current->getFirstParent();
+
+            continue;
+          }
+        }
       }
 
       if (current == nullptr) {
@@ -5499,9 +5526,17 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
       varsUsed.clear();
       current->getVariablesUsedHere(varsUsed);
-      if (varsUsed.find(out) != varsUsed.end()) {
-        // we found another node that uses the subquery variable
-        // we need to stop the optimization attempts here
+
+      bool mustAbort = false;
+      for (auto const& itSub : subqueryVars) {
+        if (varsUsed.find(itSub) != varsUsed.end()) {
+          // we found another node that uses the subquery variable
+          // we need to stop the optimization attempts here
+          mustAbort = true;
+          break;
+        }
+      }
+      if (mustAbort) {
         break;
       }
 
@@ -5560,9 +5595,6 @@ struct GeoIndexInfo {
   geo::FilterType filterMode = geo::FilterType::NONE;
   /// variable using the filter mask
   AstNode const* filterExpr = nullptr;
-
-  // ============ Limit Info ============
-  size_t actualLimit = SIZE_MAX;
 
   // ============ Accessed Fields ============
   AstNode const* locationVar = nullptr;// access to location field
@@ -6051,12 +6083,18 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
       !checkVars(info.distCenterLngExpr) || !checkVars(info.filterExpr)) {
     return false;
   }
+  
+  size_t limit = 0;
+  if (ln != nullptr) {
+    limit = ln->offset() + ln->limit();
+    TRI_ASSERT(limit != SIZE_MAX);
+  }
 
   IndexIteratorOptions opts;
   opts.sorted = info.sorted;
   opts.ascending = info.ascending;
   //opts.fullRange = info.fullRange;
-  opts.limit = (info.actualLimit < SIZE_MAX) ? info.actualLimit : 0;
+  opts.limit = limit;
   opts.evaluateFCalls = false; // workaround to avoid evaluating "doc.geo"
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
   auto inode = new IndexNode(
@@ -6111,19 +6149,6 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
     }
   }
 
-  if (info.actualLimit < SIZE_MAX) { // add or modify LIMIT
-    if (ln == nullptr) {
-      ln = new LimitNode(plan, plan->nextId(), 0, info.actualLimit);
-      plan->registerNode(ln);
-      plan->insertAfter(inode, ln);
-    } else if (info.actualLimit < ln->limit()) {
-      // LIMIT cannot be modified safely if there is a SORT node
-      // inbetween the enumerate-list / collection node
-      TRI_ASSERT(ln->getFirstDependency()->getType() != EN::SORT);
-      ln->setLimit(info.actualLimit);
-    }
-  }
-
   // signal that plan has been changed
   return true;
 }
@@ -6134,44 +6159,42 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   bool mod = false;
-  // inspect each return node and work upwards to SingletonNode
-  plan->findEndNodes(nodes, true);
 
+  plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
   for (ExecutionNode* node : nodes) {
+    TRI_ASSERT(node->getType() == EN::ENUMERATE_COLLECTION);
+    
     GeoIndexInfo info;
-    ExecutionNode* current = node;
+    ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
-
+    
     while (current) {
-      switch (current->getType()) {
-        case EN::SORT:
-          if (!optimizeSortNode(plan.get(), ExecutionNode::castTo<SortNode*>(current), info)) {
-            // 1. EnumerateCollectionNode x
-            // 2. SortNode x.abc ASC
-            // 3. LimitNode n,m  <-- cannot reuse LIMIT node here
-            limit = nullptr;
-          }
-          break;
-        case EN::FILTER:
-          optimizeFilterNode(plan.get(), ExecutionNode::castTo<FilterNode*>(current), info);
-          break;
-        case EN::LIMIT: // collect this so we can use it
-          limit = ExecutionNode::castTo<LimitNode*>(current);
-          break;
-        case EN::INDEX:
-        case EN::COLLECT:
-          info.invalidate(); // TODO reset info to original state instead
-          break;
-        case EN::ENUMERATE_COLLECTION: {
-          if (info && info.collectionNodeToReplace == current) {
-            mod = mod || applyGeoOptimization(plan.get(), limit, info);
-          }
-          break;
+      if (current->getType() == EN::SORT) {
+        if (!optimizeSortNode(plan.get(), ExecutionNode::castTo<SortNode*>(current), info)) {
+          // 1. EnumerateCollectionNode x
+          // 2. SortNode x.abc ASC
+          // 3. LimitNode n,m  <-- cannot reuse LIMIT node here
+          //limit = nullptr;
+          break; // stop parsing on non-optimizable SORT
         }
-        default:
-          break;// skip
+      } else if (current->getType() == EN::FILTER) {
+        optimizeFilterNode(plan.get(), ExecutionNode::castTo<FilterNode*>(current), info);
+      } else if (current->getType() == EN::LIMIT) {
+        limit = ExecutionNode::castTo<LimitNode*>(current);
+        break; // stop parsing after first LIMIT
+      } else if (current->getType() == EN::RETURN) {
+        break; // stop parsing on return
+      } else if (current->getType() == EN::INDEX ||
+                 current->getType() == EN::COLLECT) {
+        info.invalidate();
+        break; // unsupported
       }
-      current = current->getFirstDependency();  // inspect next node
+      current = current->getFirstParent();  // inspect next node
+    }
+  
+    // if info is valid we try to optimize ENUMERATE_COLLECTION
+    if (info && info.collectionNodeToReplace == node) {
+      mod = mod || applyGeoOptimization(plan.get(), limit, info);
     }
   }
 
