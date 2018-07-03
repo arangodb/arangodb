@@ -254,17 +254,17 @@ as holes.
 - **points** (array): array of arrays of longitude/latitude pairs
 - returns **geoJson** (object|null): a valid GeoJSON Polygon
 
-Simple Polygon Builder:
+Simple Polygon:
 
 @startDocuBlockInline aqlGeoPolygon_1
 @EXAMPLE_AQL{aqlGeoPolygon_1}
 RETURN GEO_POLYGON([
-  [1.0, 2.0], [3.0, 4.0], [5.0, 6.0]
+  [0.0, 0.0], [7.5, 2.5], [0.0, 5.0]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoPolygon_1
 
-Advanced Polygon Builder with a hole inside:
+Advanced Polygon with a hole inside:
 
 @startDocuBlockInline aqlGeoPolygon_2
 @EXAMPLE_AQL{aqlGeoPolygon_2}

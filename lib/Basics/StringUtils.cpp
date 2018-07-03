@@ -1588,7 +1588,7 @@ std::string itoa(uint64_t attr) {
 }
 
 std::string ftoa(double i) {
-  char buffer[64];
+  char buffer[24];
   int length = fpconv_dtoa(i, &buffer[0]);
   
   return std::string(&buffer[0], static_cast<size_t>(length));
@@ -1599,10 +1599,11 @@ std::string ftoa(double i) {
 // .............................................................................
 
 bool boolean(std::string const& str) {
-  std::string lower = tolower(trim(str));
+  std::string lower = trim(str);
+  tolowerInPlace(&lower);
 
   if (lower == "true" || lower == "yes" || lower == "on" || lower == "y" ||
-      lower == "1") {
+      lower == "1" || lower == "✓") {
     return true;
   } else {
     return false;

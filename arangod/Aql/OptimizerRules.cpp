@@ -3546,7 +3546,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             collectNode->groupVariables(copy);
 
             removeGatherNodeSort = true;
-          } else if (!collectNode->groupVariables().empty() &&
+          } else if (//!collectNode->groupVariables().empty() &&
                      (!collectNode->hasOutVariable() || collectNode->count())) {
             // clone a COLLECT v1 = expr, v2 = expr ... operation from the coordinator to the DB server(s),
             // and leave an aggregate COLLECT node on the coordinator for total aggregation
@@ -3554,17 +3554,14 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
             if (!collectNode->aggregateVariables().empty()) {
               for (auto const& it : collectNode->aggregateVariables()) {
-                if (it.second.second == "SUM" ||
-                    it.second.second == "MAX" ||
-                    it.second.second == "MIN" ||
-                    it.second.second == "COUNT" ||
-                    it.second.second == "LENGTH") {
-                  auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
-                  aggregateVariables.emplace_back(std::make_pair(outVariable, std::make_pair(it.second.first, it.second.second)));
-                } else {
+                std::string func = Aggregator::pushToDBServerAs(it.second.second);
+                if (func.empty()) {
                   eligible = false;
                   break;
                 }
+                // eligible!
+                auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
+                aggregateVariables.emplace_back(std::make_pair(outVariable, std::make_pair(it.second.first, func)));
               }
             }
 
@@ -3620,11 +3617,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               size_t i = 0;
               for (auto& it : collectNode->aggregateVariables()) {
                 it.second.first = aggregateVariables[i].first;
-                if (it.second.second == "COUNT" ||
-                    it.second.second == "LENGTH") {
-                  // COUNT/LENGTH need to be converted to SUM on coordinator
-                  it.second.second = "SUM";
-                }
+                it.second.second = Aggregator::runOnCoordinatorAs(it.second.second);
                 ++i;
               }
             }

@@ -27,6 +27,9 @@ for book in ${ALLBOOKS}; do
                 git pull --all
             )
         else
+            if test "${GITAUTH}" == "git"; then
+                AUTHREPO=$(echo "${AUTHREPO}" | sed -e "s;github.com/;github.com:;" -e "s;https://;;" )
+            fi
             git clone "${AUTHREPO}" "${CODIR}"
         fi
 

@@ -40,7 +40,7 @@ metadata:
   name: "replication-from-a-to-b"
 spec:
   source:
-    endpoint: ["https://163.172.149.229:31888", "https://51.15.225.110:31888", "https://51.15.229.133:31888"]
+    masterEndpoint: ["https://163.172.149.229:31888", "https://51.15.225.110:31888", "https://51.15.229.133:31888"]
     auth:
       keyfileSecretName: cluster-a-sync-auth
     tls:
@@ -52,7 +52,7 @@ spec:
 This definition results in:
 
 - the arangosync `SyncMaster` in deployment `cluster-b` is called to configure a synchronization
-  from the syncmasters located at the given list of endpoint URL's to the syncmasters `cluster-b`,
+  from the syncmasters located at the given list of endpoint URLs to the syncmasters `cluster-b`,
   using the client authentication certificate stored in `Secret` `cluster-a-sync-auth`.
   To access `cluster-a`, the keyfile (containing a client authentication certificate) is used.
   To access `cluster-b`, the JWT secret found in the deployment of `cluster-b` is used.
@@ -68,9 +68,9 @@ with sync enabled.
 
 This cluster configured as the replication source.
 
-### `spec.source.endpoint: []string`
+### `spec.source.masterEndpoint: []string`
 
-This setting specifies zero or more master endpoint URL's of the source cluster.
+This setting specifies zero or more master endpoint URLs of the source cluster.
 
 Use this setting if the source cluster is not running inside a Kubernetes cluster
 that is reachable from the Kubernetes cluster the `ArangoDeploymentReplication` resource is deployed in.
@@ -109,9 +109,9 @@ with sync enabled.
 
 This cluster configured as the replication destination.
 
-### `spec.destination.endpoint: []string`
+### `spec.destination.masterEndpoint: []string`
 
-This setting specifies zero or more master endpoint URL's of the destination cluster.
+This setting specifies zero or more master endpoint URLs of the destination cluster.
 
 Use this setting if the destination cluster is not running inside a Kubernetes cluster
 that is reachable from the Kubernetes cluster the `ArangoDeploymentReplication` resource is deployed in.

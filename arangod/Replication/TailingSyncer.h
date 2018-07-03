@@ -73,7 +73,7 @@ class TailingSyncer : public Syncer {
   void abortOngoingTransactions();
 
   /// @brief whether or not a collection should be excluded
-  bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&) const;
+  bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&);
 
   /// @brief whether or not a collection should be excluded
   bool isExcludedCollection(std::string const&) const;
@@ -131,6 +131,7 @@ class TailingSyncer : public Syncer {
   arangodb::Result runInternal();
 
  protected:
+  virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
   
   /// @brief pointer to the applier
   ReplicationApplier* _applier;

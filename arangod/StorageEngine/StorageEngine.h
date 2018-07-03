@@ -222,16 +222,6 @@ class StorageEngine : public application_features::ApplicationFeature {
     velocypack::Slice const& args,
     int& status
   ) = 0;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(
-      TRI_voc_tick_t id,
-      velocypack::Slice const& args
-  ) {
-    int status;
-    auto rv = createDatabase(id, args, status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
-    TRI_ASSERT(rv != nullptr);
-    return rv;
-  }
 
   // @brief write create marker for database
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;

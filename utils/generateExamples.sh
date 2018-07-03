@@ -49,7 +49,7 @@ fi
 [ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
 
-ALLPROGRAMS="arangobench arangod arangodump arangoexport arangoimport arangorestore arangosh"
+ALLPROGRAMS="arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh"
 
 for HELPPROGRAM in ${ALLPROGRAMS}; do
     "${BIN_PATH}/${HELPPROGRAM}${EXT}" --dump-options > "Documentation/Examples/${HELPPROGRAM}.json"
