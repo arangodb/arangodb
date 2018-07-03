@@ -1707,24 +1707,7 @@ arangodb::Result TRI_vocbase_t::dropView(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string errorMsg;
-
-    auto const res = ClusterInfo::instance()->dropViewCoordinator(
-      name(), StringUtils::itoa(view->id()), errorMsg
-    );
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "Could not drop view in agency, error: " << errorMsg
-      << ", errorCode: " << res;
-
-    return arangodb::Result(
-      res,
-      std::string("Could not drop view in agency, error: ") + errorMsg
-    );
+    return view->drop(); // will internally drop view from ClusterInfo
   }
 
   READ_LOCKER(readLocker, _inventoryLock);

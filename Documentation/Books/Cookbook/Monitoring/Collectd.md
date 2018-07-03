@@ -337,7 +337,7 @@ We will inspect the syslog to revalidate nothing went wrong:
 
 Now we start `kcollectd` to view the values in the RRD file:
 
-![Kcollectd screenshot](/assets/MonitoringWithCollectd/KCollectdJson.png)
+![Kcollectd screenshot](../assets/MonitoringWithCollectd/KCollectdJson.png)
 
 Since we started putting values in just now, we need to choose 'last hour' and zoom in a little more to inspect the values.
 
