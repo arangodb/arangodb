@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require*/
+/* global assertTrue, assertFalse, assertEqual, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -94,7 +94,7 @@ function CursorSyncAuthSuite () {
       return {};
     }
 
-    var body = res.body;
+    body = res.body;
     if (typeof body === "string") {
       body = JSON.parse(body);
     }
@@ -246,7 +246,7 @@ function CursorSyncAuthSuite () {
       assertEqual(result.code, 202);
     },
 
-  }
+  };
 }
 
 jsunity.run(CursorSyncAuthSuite);
