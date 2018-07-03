@@ -67,6 +67,7 @@
 #include "RocksDBEngine/RocksDBTransactionManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBUpgrade.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
@@ -552,32 +553,8 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
 
-  // try to find version
-  const char version = rocksDBFormatVersion();
-  RocksDBKey key;
-  key.constructSettingsValue(RocksDBSettingsType::Version);
-  rocksdb::PinnableSlice oldVersion;
-  rocksdb::Status s =
-      _db->Get(rocksdb::ReadOptions(), cfHandles[0], key.string(), &oldVersion);
-  if (dbExisted) {
-    if (s.IsNotFound() || oldVersion.data()[0] < version) {
-      // Should only ever happen if we forgot to provide an upgrade routine
-      // and CheckVersionFeature did not prevent the start for some reason
-      LOG_TOPIC(FATAL, Logger::ENGINES) << "Your db directory is in an old "
-                                        << "format. Please downgrade the server, "
-                                        << "export & re-import your data.";
-      FATAL_ERROR_EXIT();
-    } else if (oldVersion.data()[0] > version) {
-      LOG_TOPIC(FATAL, Logger::ENGINES)
-          << "You are using an old version of ArangoDB, please update "
-          << "before opening this dir.";
-      FATAL_ERROR_EXIT();
-    }
-  }
-  // store current version
-  s = _db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
-               key.string(), rocksdb::Slice(&version, sizeof(char)));
-  TRI_ASSERT(s.ok());
+  // will crash the process if version does not match
+  arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
 
   // only enable logger after RocksDB start
   logger->enable();
@@ -1284,14 +1261,6 @@ arangodb::Result RocksDBEngine::renameCollection(
   return arangodb::Result(res);
 }
 
-void RocksDBEngine::createIndex(
-    TRI_vocbase_t& /*vocbase*/,
-    TRI_voc_cid_t /*collectionId*/,
-    TRI_idx_iid_t /*indexId*/,
-    arangodb::velocypack::Slice const& /*data*/
-) {
-}
-
 void RocksDBEngine::unloadCollection(
     TRI_vocbase_t& /*vocbase*/,
     LogicalCollection& collection
@@ -1646,12 +1615,18 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   rocksdb::WriteOptions wo;
 
   // remove views
-  for (auto const& val : viewKVPairs(id)) {
+  iterateBounds(RocksDBKeyBounds::DatabaseViews(id),
+                [&](rocksdb::Iterator* it) {
+    RocksDBKey key(it->key());
     res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
-                              val.first.string(), wo);
+                              key.string(), wo);
     if (res.fail()) {
-      return res;
+      return;
     }
+  });
+  
+  if (res.fail()) {
+    return res;
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1659,9 +1634,13 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
 
   // remove collections
-  for (auto const& val : collectionKVPairs(id)) {
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(id);
+  iterateBounds(bounds, [&](rocksdb::Iterator* it) {
+    RocksDBKey key(it->key());
+    RocksDBValue value(RocksDBEntryType::Collection, it->value());
+                  
     // remove indexes
-    VPackSlice indexes = val.second.slice().get("indexes");
+    VPackSlice indexes = value.slice().get("indexes");
     if (indexes.isArray()) {
       for (auto const& it : VPackArrayIterator(indexes)) {
         // delete index documents
@@ -1677,9 +1656,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
             RocksDBIndex::getBounds(type, objectId, unique);
 
         res = rocksutils::removeLargeRange(_db, bounds, prefix_same_as_start);
-
         if (res.fail()) {
-          return res;
+          return;
         }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1691,19 +1669,18 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
 
     uint64_t objectId =
-        basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
+        basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
     res = rocksutils::removeLargeRange(_db, bounds, true);
     if (res.fail()) {
-      return res;
+      return;
     }
     // delete collection meta-data
     _settingsManager->removeCounter(objectId);
-    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
-                              val.first.string(), wo);
+    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(), value.string(), wo);
     if (res.fail()) {
-      return res;
+      return;
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1711,6 +1688,10 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     numDocsLeft +=
         rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
 #endif
+  });
+  
+  if (res.fail()) {
+    return res;
   }
 
   RocksDBKey key;

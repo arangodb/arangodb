@@ -341,14 +341,6 @@ arangodb::Result ClusterEngine::renameCollection(
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-void ClusterEngine::createIndex(
-    TRI_vocbase_t& /*vocbase*/,
-    TRI_voc_cid_t /*collectionId*/,
-    TRI_idx_iid_t /*indexId*/,
-    arangodb::velocypack::Slice const& /*data*/
-) {
-}
-
 void ClusterEngine::unloadCollection(
     TRI_vocbase_t& /*vocbase*/,
     LogicalCollection& collection
