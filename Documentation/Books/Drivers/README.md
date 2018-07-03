@@ -5,8 +5,8 @@ ArangoDB VERSION_NUMBER Drivers Documentation
 
 Name | Language | Repository | &nbsp;
 -----|----------|------------|-------
-[ArangoDB-Java-Driver](Java/README.md) | Java | https://github.com/arangodb/arangodb-java-driver | [Changelog](https://raw.githubusercontent.com/arangodb/arangodb-java-driver/master/ChangeLog)
-<span title="Same API as synchronous driver, except that it returns a CompletableFuture&lt;T&gt; instead of the result T directly" style="cursor: help;">ArangoDB-Java-Driver-Async</span> | Java | https://github.com/arangodb/arangodb-java-driver-async | [Changelog](https://raw.githubusercontent.com/arangodb/arangodb-java-driver-async/master/ChangeLog)
+[ArangoDB-Java-Driver](Java/README.md) | Java | https://github.com/arangodb/arangodb-java-driver | [Changelog](https://github.com/arangodb/arangodb-java-driver/blob/master/ChangeLog.md#readme)
+<span title="Same API as synchronous driver, except that it returns a CompletableFuture&lt;T&gt; instead of the result T directly" style="cursor: help;">ArangoDB-Java-Driver-Async</span> | Java | https://github.com/arangodb/arangodb-java-driver-async | [Changelog](https://github.com/arangodb/arangodb-java-driver-async/blob/master/ChangeLog.md#readme)
 [ArangoJS](JS/README.md) | JavaScript | https://github.com/arangodb/arangojs | [Changelog](https://github.com/arangodb/arangojs/blob/master/CHANGELOG.md#readme)
 [ArangoDB-PHP](PHP/README.md) | PHP | https://github.com/arangodb/arangodb-php | [Changelog](https://github.com/arangodb/arangodb-php/blob/devel/CHANGELOG.md#readme)
 [Go-Driver](GO/README.md) | Go | https://github.com/arangodb/go-driver |
@@ -15,7 +15,7 @@ Name | Language | Repository | &nbsp;
 
 Name | Language | Repository | &nbsp;
 -----|----------|------------|-------
-[Spring Data](SpringData/README.md) | Java | https://github.com/arangodb/spring-data | [Changelog](https://raw.githubusercontent.com/arangodb/spring-data/master/ChangeLog)
+[Spring Data](SpringData/README.md) | Java | https://github.com/arangodb/spring-data | [Changelog](https://github.com/arangodb/spring-data/blob/master/ChangeLog.md#readme)
 ArangoDB-Spark-Connector | Scala, Java | https://github.com/arangodb/arangodb-spark-connector | [Changelog](https://github.com/arangodb/arangodb-spark-connector/blob/master/ChangeLog.md#readme)
 
 **Community drivers**
