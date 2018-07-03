@@ -518,7 +518,7 @@ function AuthSuite() {
           bearer: jwt,
         }
       });
-      print(res);
+      
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
       expect(res).to.have.property('json');
