@@ -505,26 +505,179 @@ arangodb::Result synchroniseOneShard(
     
   }
   
+
   // Once we get here, we know that the leader is ready for sync, so
   // we give it a try:
+  auto vocbase = Databases::lookup(database);
+  if (vocbase == nullptr) {
+    std::string errorMsg(
+      "SynchronizeShard::SynchronizeOneShard: Failed to lookup database ");
+    errorMsg += database;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+  }
+  
+  auto collection = vocbase->lookupCollection(shard);
+  if (collection == nullptr) {
+    std::string errorMsg(
+      "SynchronizeShard::synchronizeOneShard: Failed to lookup collection ");
+    errorMsg += shard;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
+  }
   
   bool ok = false;
   auto ep = clusterInfo->getServerEndpoint(leader);
+  size_t c;
+  Result result = count(collection, c);
+  if (!result.ok()) {
+#warning missing
+    // Log couldn't count
+  }
   
-  //if (db._collection(shard).count() === 0) {
-  // We try a short cut:
-  /*console.topic('heartbeat=debug', "synchronizeOneShard: trying short cut to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
+  if (c == 0) {
+    // We have a short cut:
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
+      "synchronizeOneShard: trying short cut to synchronize local shard '" <<
+      database << "/" << shard << "' for central '" << database << "/" <<
+      planId << "'";
     try {
-    bool ok = addShardFollower(ep, database, shard);
-    if (ok) {
-    terminateAndStartOther();
-    let endTime = new Date();
-    console.topic('heartbeat=debug', 'synchronizeOneShard: shortcut worked, done, %s/%s, %s/%s, started: %s, ended: %s',
-    database, shard, database, planId, startTime.toString(), endTime.toString());
-    db._collection(shard).setTheLeader(leader);
-    return;
+      auto asResult = addShardFollower(
+        ep, database, shard, std::string(), timepointToString(startTime));
+
+      if (asResult.ok()) {
+        terminateAndStartOther();
+        auto const endTime = std::chrono::system_clock::now();
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
+          "synchronizeOneShard: shortcut worked, done, " << database << "/" <<
+          shard << ", " << database << "/" << ", started: " <<
+          timepointToString(startTime) << " ended: " << timepointToString(endTime);
+        #warning setTheLeader
+        //collection->setTheLeader(leader);
+        return Result();
+      }
+    } catch (std::exception const& e) {
     }
-    } catch (std::exception const& e) { }*/
+  }
+
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    << "synchronizeOneShard: trying to synchronize local shard '" << database
+    << "/" << shard << "' for central '" << database << "/" << planId << "'";
+
+  try {
+    // First once without a read transaction:
+    
+    if (isStopping()) {
+      return Result(TRI_ERROR_INTERNAL, "server is shutting down");
+    }
+
+    #warning setTheLeader
+    //collection->setTheLeader(leader);
+    
+/*
+    let startTime = new Date();
+    sy = rep.syncCollection(shard,
+      { endpoint: ep, incremental: true, keepBarrier: true,
+        leaderId: leader, skipCreateDrop: true });
+    let endTime = new Date();
+    let longSync = false;
+    if (endTime - startTime > 5000) {
+      console.topic('heartbeat=warn', 'synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
+      longSync = true;
+    }
+    if (sy.error) {
+      console.topic('heartbeat=error', 'synchronizeOneShard: could not initially synchronize',
+        'shard ', shard, sy);
+      throw 'Initial sync for shard ' + shard + ' failed';
+    } else {
+      if (sy.collections.length === 0 ||
+        sy.collections[0].name !== shard) {
+        if (longSync) {
+          console.topic('heartbeat=error', 'synchronizeOneShard: long sync, before cancelBarrier',
+                        new Date().toString());
+        }
+        cancelBarrier(ep, database, sy.barrierId);
+        if (longSync) {
+          console.topic('heartbeat=error', 'synchronizeOneShard: long sync, after cancelBarrier',
+                        new Date().toString());
+        }
+        throw 'Shard ' + shard + ' seems to be gone from leader!';
+      } else {
+        // Now start a read transaction to stop writes:
+        var lockJobId = false;
+        try {
+          lockJobId = startReadLockOnLeader(ep, database,
+            shard, 300);
+          console.topic('heartbeat=debug', 'lockJobId:', lockJobId);
+        } catch (err1) {
+          console.topic('heartbeat=error', 'synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
+        }
+        finally {
+          cancelBarrier(ep, database, sy.barrierId);
+        }
+        if (lockJobId !== false) {
+          try {
+            var sy2 = REPLICATION_SYNCHRONIZE_FINALIZE({ 
+              endpoint: ep, 
+              database, 
+              collection: shard, 
+              leaderId: leader, 
+              from: sy.lastLogTick,
+              requestTimeout: 60,
+              connectTimeout: 60
+            });
+             
+            try {
+              ok = addShardFollower(ep, database, shard, lockJobId);
+            } catch (err4) {
+              db._drop(shard, {isSystem: true });
+              throw err4;
+            }
+          } catch (err3) {
+            ok = false;
+            console.topic('heartbeat=error', 'synchronizeOneshard: exception in',
+              'syncCollectionFinalize:', err3);
+          }
+          finally {
+            if (!cancelReadLockOnLeader(ep, database, lockJobId)) {
+              console.topic('heartbeat=error', 'synchronizeOneShard: read lock has timed out',
+                'for shard', shard);
+              ok = false;
+            }
+          }
+        } else {
+          console.topic('heartbeat=error', 'synchronizeOneShard: lockJobId was false for shard',
+            shard);
+        }
+        if (ok) {
+          console.topic('heartbeat=debug', 'synchronizeOneShard: synchronization worked for shard',
+            shard);
+        } else {
+          throw 'Did not work for shard ' + shard + '.';
+        // just to log below in catch
+        }
+      }
+      }*/
+  } catch (std::exception const& e) {
+#warning more elaborate
+    auto const endTime = std::chrono::system_clock::now();
+    LOG_TOPIC(ERR,Logger::MAINTENANCE)
+      << "synchronization of local shard '" << database << "/" << shard
+      << "' for central '" << database << "/" << planId << "' failed: "
+      << timepointToString(endTime);
+         return Result (TRI_ERROR_INTERNAL, e.what());
+  }
+      
+      // Tell others that we are done:
+      terminateAndStartOther();
+    auto const endTime = std::chrono::system_clock::now();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "synchronizeOneShard: done, " << database << "/" << shard << ", "
+      << database << "/" << planId << ", started: "
+      << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
+
+    return Result();
+
 }
 
 SynchronizeShard::~SynchronizeShard() {};
