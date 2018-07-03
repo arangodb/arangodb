@@ -529,7 +529,7 @@ function AuthSuite() {
       try {
         db._createDatabase("other");
         // not supported on non _system
-        var res = request.get({
+        res = request.get({
           url: baseUrl() + "/_db/other/_api/database",
           auth: {
             bearer: jwt,
