@@ -38,6 +38,7 @@ const assert = jsunity.jsUnity.assertions;
 
 
 const colName = 'UnitTestProfilerCol';
+const edgeColName = 'UnitTestProfilerEdgeCol';
 
 const defaultBatchSize = 1000;
 
@@ -491,9 +492,45 @@ function runDefaultChecks (
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Fill the passed collections with a balanced binary tree.
+///        All existing documents will be deleted in both collections!
+/// @param vertexCol A document ArangoCollection
+/// @param edgeCol An edge ArangoCollection
+/// @param numVertices Number of vertices the binary tree should contain
+////////////////////////////////////////////////////////////////////////////////
+function createBinaryTree (vertexCol, edgeCol, numVertices) {
+  // clear collections
+  vertexCol.truncate();
+  edgeCol.truncate();
+
+  // add vertices
+  vertexCol.insert(_.range(1, numVertices + 1).map((i) => ({_key: ""+i})));
+
+  // create a balanced binary tree on edgeCol
+  edgeCol.insert(
+    // for every v._key from col
+    _.range(1, numVertices + 1)
+    // calculate child indices of (potential) children
+      .map(i => [{from: i, to: 2*i}, {from: i, to: 2*i+1}])
+      // flatten
+      .reduce((accum, cur) => accum.concat(cur), [])
+      // omit edges to non-existent vertices
+      .filter(e => e.to <= numVertices)
+      // create edge documents
+      .map(e => (
+        {
+          _from: `${colName}/${e.from}`,
+          _to: `${colName}/${e.to}`,
+        }
+      ))
+  );
+}
+
 
 
 exports.colName = colName;
+exports.edgeColName = edgeColName;
 exports.defaultBatchSize = defaultBatchSize;
 exports.defaultTestRowCounts = defaultTestRowCounts;
 exports.CalculationNode = CalculationNode;
@@ -567,3 +604,4 @@ exports.assertIsLevel2Profile = assertIsLevel2Profile;
 exports.assertStatsNodesMatchPlanNodes = assertStatsNodesMatchPlanNodes;
 exports.assertNodesItemsAndCalls = assertNodesItemsAndCalls;
 exports.runDefaultChecks = runDefaultChecks;
+exports.createBinaryTree = createBinaryTree;

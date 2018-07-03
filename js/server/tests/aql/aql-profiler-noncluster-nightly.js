@@ -42,7 +42,12 @@ function ahuacatlProfilerTestSuite () {
 
   // import some names from profHelper directly into our namespace:
   const colName = profHelper.colName;
+  const edgeColName = profHelper.edgeColName;
   const defaultBatchSize = profHelper.defaultBatchSize;
+
+  // row counts to test for several tests
+  const listRowCounts = [1, 2, 3, 100, 999, 1000, 1001];
+  const collectionRowCounts = [1, 2, 499, 500, 501, 999, 1000, 1001];
 
   const { CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
@@ -74,6 +79,7 @@ function ahuacatlProfilerTestSuite () {
 
     tearDown : function () {
       db._drop(colName);
+      db._drop(edgeColName);
     },
 
 
@@ -84,8 +90,6 @@ function ahuacatlProfilerTestSuite () {
     testEnumerateCollectionBlockSlow1: function () {
       const col = db._create(colName);
       const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
-      const listRowCounts = [1, 2, 3, 100, 999, 1000, 1001];
-      const collectionRowCounts = [1, 2, 499, 500, 501, 999, 1000, 1001];
 
       for (const collectionRows of collectionRowCounts) {
         col.truncate();
@@ -161,8 +165,6 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       col.ensureIndex({ type: "hash", fields: [ "value" ] });
       const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
-      const listRowCounts = [1, 2, 3, 100, 999, 1000, 1001];
-      const collectionRowCounts = [1, 2, 499, 500, 501, 999, 1000, 1001];
 
       for (const collectionRows of collectionRowCounts) {
         col.truncate();
@@ -227,6 +229,62 @@ function ahuacatlProfilerTestSuite () {
             {type: IndexBlock, calls: indexBatches, items: totalRows},
             {type: CalculationBlock, calls: indexBatches, items: totalRows},
             {type: ReturnBlock, calls: indexBatches, items: totalRows}
+          ];
+          const actual = profHelper.getCompactStatsNodes(profile);
+
+          profHelper.assertNodesItemsAndCalls(expected, actual,
+            {query, listRows, collectionRows, expected, actual});
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test TraversalBlock: traverse a tree for every input vertex
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalBlock1: function () {
+      const col = db._createDocumentCollection(colName);
+      const edgeCol = db._createEdgeCollection(edgeColName);
+      const query = `FOR i IN 1..@listRows
+        FOR v IN 0..@colRows OUTBOUND @root @@edgeCol RETURN v`;
+      const rootNodeId = `${colName}/1`;
+
+      for (const collectionRows of collectionRowCounts) {
+        profHelper.createBinaryTree(col, edgeCol, collectionRows);
+        for (const listRows of listRowCounts) {
+          // forbid reordering of the enumeration nodes
+          const profile = db._query(query,
+            {
+              listRows: listRows,
+              colRows: collectionRows,
+              root: rootNodeId,
+              '@edgeCol': edgeColName,
+            },
+            {
+              profile: 2,
+              optimizer: {rules: ["-interchange-adjacent-enumerations"]}
+            }
+          ).getExtra();
+
+          profHelper.assertIsLevel2Profile(profile);
+          profHelper.assertStatsNodesMatchPlanNodes(profile);
+
+          const listBatches = Math.ceil(listRows / defaultBatchSize);
+          const totalRows = listRows * collectionRows;
+
+          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
+          // Number of batches at the enumerate collection node
+          const traversalBatches = [
+            optimalBatches,
+            listRows * Math.ceil(collectionRows / defaultBatchSize) * 2 + 1
+          ];
+
+          const expected = [
+            {type: SingletonBlock, calls: 1, items: 1},
+            {type: CalculationBlock, calls: 1, items: 1},
+            {type: EnumerateListBlock, calls: listBatches, items: listRows},
+            {type: TraversalBlock, calls: traversalBatches, items: totalRows},
+            {type: ReturnBlock, calls: traversalBatches, items: totalRows}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 

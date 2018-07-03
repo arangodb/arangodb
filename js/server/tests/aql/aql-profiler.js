@@ -45,7 +45,6 @@ function ahuacatlProfilerTestSuite () {
   // TODO test skipSome as well, all current tests run getSome only
 
   // import some names from profHelper directly into our namespace:
-  const colName = profHelper.colName;
   const defaultBatchSize = profHelper.defaultBatchSize;
 
   const { CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
@@ -77,7 +76,6 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      db._drop(colName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,10 +140,10 @@ function ahuacatlProfilerTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateListBlock
+/// @brief test EnumerateListBlock and ReturnBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnumerateListBlock : function () {
+    testEnumerateListAndReturnBlock : function () {
       const query = 'FOR i IN 1..@rows RETURN i';
       const genNodeList = (rows, batches) => [
         { type : SingletonBlock, calls : 1, items : 1 },
@@ -500,14 +498,14 @@ function ahuacatlProfilerTestSuite () {
 // *LimitBlock
 // *NoResultsBlock
 // RemoteBlock
-// ReturnBlock
+// *ReturnBlock
 // ShortestPathBlock
 // SingletonBlock
 // SortBlock
 // SortedCollectBlock
 // SortingGatherBlock
 // SubqueryBlock
-// TraversalBlock
+// *TraversalBlock
 // UnsortingGatherBlock
 //
 // ModificationBlock
