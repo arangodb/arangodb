@@ -657,12 +657,18 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
 
   do {
     if (_buffer.empty()) {
+      if (_upstreamState == ExecutionState::DONE) {
+        _done = true;
+        break;
+      }
+
       size_t toFetch = std::min(DefaultBatchSize(), atMost);
       ExecutionState state;
       bool blockAppended;
       std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
       if (state == ExecutionState::WAITING) {
         TRI_ASSERT(!blockAppended);
+        traceGetSomeEnd(_resultInFlight.get(), ExecutionState::WAITING);
         return {ExecutionState::WAITING, nullptr};
       }
       if (!blockAppended || !initIndexes()) {
@@ -679,12 +685,17 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
         _pos = 0;
       }
       if (_buffer.empty()) {
+        if (_upstreamState == ExecutionState::DONE) {
+          _done = true;
+          break;
+        }
         ExecutionState state;
         bool blockAppended;
         std::tie(state, blockAppended) =
             ExecutionBlock::getBlock(DefaultBatchSize());
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!blockAppended);
+          traceGetSomeEnd(_resultInFlight.get(), ExecutionState::WAITING);
           return {ExecutionState::WAITING, nullptr};
         }
         if (!blockAppended) {
@@ -735,7 +746,9 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
     TRI_ASSERT(_copyFromRow == 0);
     AqlItemBlock* dummy = _resultInFlight.release();
     returnBlock(dummy);
-    return {ExecutionState::DONE, nullptr};
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(_resultInFlight.get(), getHasMoreState());
+    return {getHasMoreState(), nullptr};
   }
   if (_returned < atMost) {
     _resultInFlight->shrink(_returned);

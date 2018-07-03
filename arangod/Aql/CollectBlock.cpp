@@ -643,7 +643,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
       [this, nrInRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
 
     // try to ensure a nonempty buffer
-    if (_buffer.empty()) {
+    if (_buffer.empty() && _upstreamState != ExecutionState::DONE) {
       ExecutionState state;
       bool blockAppended;
       std::tie(state, blockAppended) =
