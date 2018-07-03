@@ -558,6 +558,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     result = comm.sendTransactionWithFailover(trx, 0.0);
 
     if (result.successful()) {
+      setShortId(num + 1); // save short ID for generating server-specific ticks
       return true;
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -596,6 +597,26 @@ void ServerState::setId(std::string const& id) {
 
   WRITE_LOCKER(writeLocker, _lock);
   _id = id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the short server id
+////////////////////////////////////////////////////////////////////////////////
+
+uint32_t ServerState::getShortId() {
+  return _shortId.load(std::memory_order_relaxed);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the short server id
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::setShortId(uint32_t id) {
+  if (id == 0) {
+    return;
+  }
+
+  _shortId.store(id, std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -153,3 +153,5 @@ std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
+// misc strings
+std::string const StaticStrings::LastValue("lastValue"); 

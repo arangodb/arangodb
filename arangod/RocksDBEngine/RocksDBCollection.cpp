@@ -653,8 +653,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       TRI_VOC_DOCUMENT_OPERATION_REMOVE
     );
 
-    LocalDocumentId const docId =
-        RocksDBKey::documentId(RocksDBEntryType::Document, iter->key());
+    LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
     auto res = removeDocument(trx, docId, doc, options);
 
     if (res.fail()) {
@@ -819,7 +818,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
-  Result res = lookupDocument(trx, key, previous);
+  Result res = this->read(trx, key, previous, /*lock*/false);
   if (res.fail()) {
     return res;
   }
@@ -939,7 +938,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   // get the previous revision
-  Result res = lookupDocument(trx, key, previous);
+  Result res = this->read(trx, key, previous, /*lock*/false);
 
   if (res.fail()) {
     return res;
@@ -1052,7 +1051,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   TRI_ASSERT(!key.isNone());
 
   // get the previous revision
-  Result res = lookupDocument(trx, key, previous);
+  Result res = this->read(trx, key, previous, /*lock*/false);
   if (res.fail()) {
     return res;
   }
@@ -1161,14 +1160,6 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   if (!res.ok()) {
     return res.errorNumber();
   }
-
-  std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false, true);
-  auto& vocbase = _logicalCollection->vocbase();
-  auto collectionId = _logicalCollection->id();
-  VPackSlice data = builder->slice();
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(vocbase, collectionId, idx->id(), data);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1342,22 +1333,6 @@ Result RocksDBCollection::removeDocument(
   }
 
   return res;
-}
-
-/// @brief looks up a document by key, low level worker
-/// the key must be a string slice, no revision check is performed
-Result RocksDBCollection::lookupDocument(
-    transaction::Methods* trx, VPackSlice const& key,
-    ManagedDocumentResult& mdr) const {
-  if (!key.isString()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-
-  LocalDocumentId documentId = primaryIndex()->lookupKey(trx, StringRef(key));
-  if (documentId.isSet()) {
-    return lookupDocumentVPack(documentId, trx, mdr, true);
-  }
-  return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 Result RocksDBCollection::updateDocument(

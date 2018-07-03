@@ -115,7 +115,7 @@ Cursor* CursorRepository::createFromQueryResult(
     double ttl, bool hasCount) {
   TRI_ASSERT(result.result != nullptr);
 
-  CursorId const id = TRI_NewTickServer();
+  CursorId const id = TRI_NewServerSpecificTick(); // embedded server id
 
   std::unique_ptr<Cursor> cursor(new aql::QueryResultCursor(
       _vocbase, id, std::move(result), batchSize, ttl, hasCount));
@@ -136,12 +136,12 @@ Cursor* CursorRepository::createQueryStream(std::string const& query,
                                             std::shared_ptr<VPackBuilder> const& opts,
                                             size_t batchSize, double ttl) {
   TRI_ASSERT(!query.empty());
-  
-  CursorId const id = TRI_NewTickServer();
+
+  CursorId const id = TRI_NewServerSpecificTick(); // embedded server id
   std::unique_ptr<Cursor> cursor(new aql::QueryStreamCursor(
         _vocbase, id, query, binds, opts, batchSize, ttl));
   cursor->use();
-  
+
   return addCursor(std::move(cursor));
 }
 

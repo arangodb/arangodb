@@ -128,6 +128,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool locked) override {
+    if (!key.isString()) {
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
     return this->read(trx, arangodb::StringRef(key), result, locked);
   }
 
@@ -224,10 +227,6 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::Result removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
-
-  arangodb::Result lookupDocument(
-      transaction::Methods* trx, arangodb::velocypack::Slice const& key,
-      ManagedDocumentResult& result) const;
 
   arangodb::Result updateDocument(
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
