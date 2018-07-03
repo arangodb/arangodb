@@ -1,329 +1,225 @@
-Writing tests
-=============
-
-If you have never written a test in a Foxx service before, we recommend you to take a look at the chapter [writing tests](../Reference/Testing.md) in our reference section.
-
-This chapter deals with the two approaches of testing your Foxx service. One is most likely to fall into the category of unit testing. The second describes the easiest way to write an integration test for your Foxx service.
-
-In both cases we take our minimal example from our [Getting Started](../GettingStarted.md) chapter.
-
-```js
-'use strict';
-const createRouter = require('@arangodb/foxx/router');
-const router = createRouter();
-
-module.context.use(router);
-
-router.get('/hello-world', function (req, res) {
-  res.send('Hello World!');
-})
-.response(['text/plain'], 'A generic greeting.')
-.summary('Generic greeting')
-.description('Prints a generic greeting.');
-```
-
-Unit test
----------
-
-In order to test the pure logic of the routes in our Foxx service, we recommend that you simply outsource these to separate modules and test them. In our example, this means that we extract out our `"Hello World!"` output from our router and write it to a file (e.g. `util/hello.js`) and then simply call it in our router.
-
-Module `util/hello.js` with our business logic:
-
-```js
-"use strict";
-module.exports = () => "Hello World!";
-```
-
-Our router only calls our new module and offers no further logi, with the exception of the handling of `req` and `res`:
-
-```js
-const hello = require("./util/hello");
-
-router.get('/hello-world', function (req, res) {
-  res.send(hello());
-})
-```
-
-Now you can simply execute and test the newly created module in your test. We create a file (e.g. `test/hello.js`) with the following content
-
-```js
-"use strict";
-const expect = require("chai").expect;
-const request = require("@arangodb/request");
-const hello = require("../util/hello");
-
-describe("Hello World module", () => {
-  it('should return "Hello World!"', () => {
-    expect(hello()).to.equal("Hello World!");
-  });
-});
-```
-
-The last thing we have to do to get the test up and running is to extend our `manifest.json` with the property `"tests": "test/**/*.js"`.
-
-Integration test
-----------------
-
-In case a simple unit test is not enough, or you still have enough logic in your routers which should be tested, you have the possibility to call your service within your tests directly via HTTP. For this we use the [request module](../../Appendix/JavaScriptModules/Request.md), which is provided by ArangoDB. With `module.context.baseUrl` we get the URL to our installed service. You only have to concat the path to the router you want to test.
-
-```js
-"use strict";
-const expect = require("chai").expect;
-const request = require("@arangodb/request");
-
-describe("Hello World service", () => {
-  it('should return "Hello World!"', () => {
-    const res = request.get(`${module.context.baseUrl}/hello-world`);
-    expect(res.body).to.equal("Hello World!");
-  });
-});
-```
-
-<!--
-
-Writing tests
-=============
+Testing Foxx services
+=====================
 
 Foxx provides out of the box support for running tests against an installed service
-using the [Mocha](https://mochajs.org) test runner.
+using an API similar to the [Mocha test runner](https://mochajs.org).
 
-Test files have full access to the [service context](./Context.md) and all ArangoDB APIs
-but like scripts can not define Foxx routes.
+Test files have full access to the [service context](../Reference/Context.md) and all ArangoDB APIs but can not define Foxx routes.
 
-Running tests
--------------
+Test files can be specified in the [service manifest](../Reference/Manifest.md) using either explicit paths of each individual file or patterns that can match multiple files (even if multiple patterns match the same file, it will only be executed once):
 
-An installed service's tests can be executed from the administrative web interface:
-
-1. Open the "Services" tab of the web interface
-2. Click on the installed service to be tested
-3. Click on the "Settings" tab
-4. Click on the flask icon in the top right
-5. Accept the confirmation dialog
-
-Note that running tests in a production database is not recommended
-and may result in data loss if the tests access the database.
-
-When running a service in development mode special care needs to be taken as
-performing requests to the service's own routes as part of the test suites
-may result in tests being executed while the database is in an inconsistent state,
-leading to unexpected behaviour.
-
-Test file paths
----------------
-
-In order to tell Foxx about files containing test suites, one or more patterns need to be specified in the `tests` option of the [service manifest](./Manifest.md):
 
 ```json
 {
   "tests": [
-    "**/test_*.js",
-    "**/*_test.js"
+    "some-specific-test-file.js",
+    "test/**/*.js",
+    "**/*.spec.js",
+    "**/__tests__/**/*.js"
   ]
 }
 ```
 
-These patterns can be either relative file paths or "globstar" patterns where
+To run a service's tests you can use the [web interface](), the [Foxx CLI]() or the [Foxx HTTP API](). Foxx will execute all test cases in the matching files and generate a report in the desired format.
 
-* `*` matches zero or more characters in a filename
-* `**` matches zero or more nested directories
+**Note**: Running tests in a production environment is not recommended and may result in data loss if the tests involve database access.
 
-For example, given the following directory structure:
+Writing tests
+-------------
 
-```
-++ test/
-|++ a/
-||+- a1.js
-||+- a2.js
-||+- test.js
-|+- b.js
-|+- c.js
-|+- d_test.js
-+- e_test.js
-+- test.js
-```
-
-The following patterns would match the following files:
-
-```
-test.js:
-  test.js
-
-test/*.js:
-  /test/b.js
-  /test/c.js
-  /test/d_test.js
-
-test/**/*.js:
-  /test/a/a1.js
-  /test/a/a2.js
-  /test/a/test.js
-  /test/b.js
-  /test/c.js
-  /test/d_test.js
-
-**/test.js:
-  /test/a/test.js
-
-**/*test.js:
-  /test/a/test.js
-  /test/d_test.js
-  /e_test.js
-  /test.js
-```
-
-Even if multiple patterns match the same file the tests in that file will only be run once.
-
-The order of tests is always determined by the file paths,
-not the order in which they are matched or specified in the manifest.
-
-Test structure
---------------
-
-Mocha test suites can be defined using one of three interfaces: BDD, TDD or Exports.
-
-The QUnit interface of Mocha is not supported in ArangoDB.
-
-Like all ArangoDB code, test code is always synchronous.
-
-### BDD interface
-
-The BDD interface defines test suites using the `describe` function
-and each test case is defined using the `it` function:
+ArangoDB bundles the [`chai` library](http://www.chaijs.com), which can be used to define test assertions:
 
 ```js
-'use strict';
-const assert = require('assert');
-const trueThing = true;
+"use strict";
+const { expect } = require("chai");
 
-describe('True things', () => {
-  it('are true', () => {
-    assert.equal(trueThing, true);
-  });
+// later
+expect("test".length).to.equal(4);
+```
+
+Alternatively ArangoDB also provides an implementation of [Node's `assert` module](https://nodejs.org/api/assert.html):
+
+```js
+"use strict";
+const assert = require("assert");
+
+// later
+assert.equal("test".length, 4);
+```
+
+Test cases can be defined in any of the following ways using helper functions injected by Foxx when executing the test file:
+
+### Functional style
+
+Test cases are defined using the `it` function and can be grouped in test suites using the `describe` function. Test suites can use the `before` and `after` functions to prepare and cleanup the suite and the `beforeEach` and `afterEach` functions to prepare and cleanup each test case individually.
+
+The `it` function also has the aliases `test` and `specify`.
+
+The `describe` function also has the aliases `suite` and `context`.
+
+The `before` and `after` functions also have the aliases `suiteSetup` and `suiteTeardown`.
+
+The `beforeEach` and `afterEach` functions also have the aliases `setup` and `teardown`.
+
+**Note**: These functions are automatically injected into the test file and don't have to be imported explicitly. The aliases can be used interchangeably.
+
+```js
+"use strict";
+const { expect } = require("chai");
+
+test("a single test case", () => {
+  expect("test".length).to.equal(4);
 });
-```
 
-The BDD interface also offers the alias `context` for `describe` and `specify` for `it`.
-
-Test fixtures can be handled using `before` and `after` for suite-wide fixtures
-and `beforeEach` and `afterEach` for per-test fixtures:
-
-```js
-describe('False things', () => {
-  let falseThing;
+describe("a test suite", () => {
   before(() => {
-    falseThing = !true;
+    // This runs before the suite's first test case
   });
-  it('are false', () => {
-    assert.equal(falseThing, false);
+  after(() => {
+    // This runs after the suite's last test case
+  });
+  beforeEach(() => {
+    // This runs before each test case of the suite
+  });
+  afterEach(() => {
+    // This runs after each test case of the suite
+  });
+  it("is a test case in the suite", () => {
+    expect(4).to.be.greaterThan(3);
+  });
+  it("is another test case in the suite", () => {
+    expect(4).to.be.lessThan(5);
+  });
+});
+
+suite("another test suite", () => {
+  test("another test case", () => {
+    expect(4).to.be.a("number");
+  });
+});
+
+context("yet another suite", () => {
+  specify("yet another case", () => {
+    expect(4).to.not.equal(5);
   });
 });
 ```
 
-### TDD interface
+### Exports style
 
-The TDD interface defines test suites using the `suite` function
-and each test case is defined using the `test` function:
-
-```js
-'use strict';
-const assert = require('assert');
-const trueThing = true;
-
-suite('True things', () => {
-  test('are true', () => {
-    assert.equal(trueThing, true);
-  });
-});
-```
-
-Test fixtures can be handled using `suiteSetup` and `suiteTeardown` for suite-wide fixtures
-and `setup` and `teardown` for per-test fixtures:
+Test cases are defined as methods of plain objects assigned to test suite properties on the `exports` object:
 
 ```js
-suite('False things', () => {
-  let falseThing;
-  suiteSetup(() => {
-    falseThing = !true;
-  });
-  test('are false', () => {
-    assert.equal(falseThing, false);
-  });
-});
-```
+"use strict";
+const { expect } = require("chai");
 
-### Exports interface
-
-The Exports interface defines test cases as methods of plain object properties of the `module.exports` object:
-
-```js
-'use strict';
-const assert = require('assert');
-const trueThing = true;
-
-exports['True things'] = {
-  'are true': function() {
-    assert.equal(trueThing, true);
+exports["this is a test suite"] = {
+  "this is a test case": () => {
+    expect("test".length).to.equal(4);
   }
 };
 ```
 
-The keys `before`, `after`, `beforeEach` and `afterEach` are special-cased
-and behave like the corresponding functions in the BDD interface:
+Methods named `before`, `after`, `beforeEach` and `afterEach` behave similarly to the corresponding functions in the functional style described above:
 
 ```js
-let falseThing;
-exports['False things'] = {
-  before () {
-    falseThing = false;
+exports["a test suite"] = {
+  before: () => {
+    // This runs before the suite's first test case
   },
-  'are false': function() {
-    assert.equal(falseThing, false);
+  after: () => {
+    // This runs after the suite's last test case
+  },
+  beforeEach: () => {
+    // This runs before each test case of the suite
+  },
+  afterEach: () => {
+    // This runs after each test case of the suite
+  },
+  "a test case in the suite": () => {
+    expect(4).to.be.greaterThan(3);
+  },
+  "another test case in the suite": () => {
+    expect(4).to.be.lessThan(5);
   }
 };
 ```
 
-Assertions
-----------
+Unit testing
+------------
 
-ArangoDB provides two bundled modules to define assertions:
+The easiest way to make your Foxx service unit-testable is to extract critical logic into side-effect-free functions and move these functions into modules your tests (and router) can require:
 
-* `assert` corresponds to the [Node.js `assert` module](http://nodejs.org/api/assert.html),
-  providing low-level assertions that can optionally specify an error message.
+```js
+// in your router
+const lookupUser = require("../util/users/lookup");
+const verifyCredentials = require("../util/users/verify");
+const users = module.context.collection("users");
 
-* `chai` is the popular [Chai Assertion Library](http://chaijs.com),
-  providing both BDD and TDD style assertions using a familiar syntax.
+router.post("/login", function (req, res) {
+  const { username, password } = req.body;
+  const user = lookupUser(username, users);
+  verifyCredentials(user, password);
+  req.session.uid = user._id;
+  res.json({ success: true });
+});
 
--->
-
-<!--
-# Testing
-
-Extract common code into modules and write unit tests:
-```
-api/
-  index.js
-  ...
-queries/
-  getUserEmails.js
-  ...
-util/
-  sluggify.js
-  formatDate.js
-  auth.js
-test/
-  queries/
-    getUserEmails.js
-    ...
-  util/
-    sluggify.js
-    ...
+// in your tests
+const verifyCredentials = require("../util/users/verify");
+describe("verifyCredentials", () => {
+  it("should throw when credentials are invalid", () => {
+    expect(() => verifyCredentials(
+      { authData: "whatever" },
+      "invalid password"
+    )).to.throw()
+  });
+})
 ```
 
-## Integration tests
+Integration testing
+-------------------
 
-Use `request` module to test JSON API with `module.context.baseUrl`.
+You can [use the `@arangodb/request` module](MakingRequests.md) to let tests talk to routes of the same service.
 
-Make sure to disable development mode to avoid instability. Also make sure you didn't accidentally lower the amount of V8 contexts so Foxx won't lock up trying to talk to itself.
+When the request module is used with a path instead of a full URL, the path is resolved as relative to the ArangoDB instance. Using the `baseUrl` property of the [service context](../Reference/Context.md) we can use this to make requests to the service itself:
 
--->
+```js
+"use strict";
+const { expect } = require("chai");
+const request = require("@arangodb/request");
+const { baseUrl } = module.context;
+
+describe("this service", () => {
+  it("should say 'Hello World!' at the index route", () => {
+    const res = request.get(baseUrl);
+    expect(res.status).to.equal(200);
+    expect(res.body).to.equal("Hello World!");
+  });
+  it("should greet us with name", () => {
+    const res = request.get(`${baseUrl}/Steve`);
+    expect(res.status).to.equal(200);
+    expect(res.body).to.equal("Hello Steve!");
+  });
+});
+```
+
+An implementation passing the above tests could look like this:
+
+```js
+"use strict";
+const createRouter = require("@arangodb/foxx/router");
+const router = createRouter();
+module.context.use(router);
+
+router.get((req, res) => {
+  res.write("Hello World!");
+})
+.response(["text/plain"]);
+
+router.get("/:name", (req, res) => {
+  res.write(`Hello ${req.pathParams.name}!`);
+})
+.response(["text/plain"]);
+```
+
+**Note**: You should avoid running integration tests while a service is mounted in [development mode](DevelopmentMode.md) as each request will cause the service to be reloaded.
