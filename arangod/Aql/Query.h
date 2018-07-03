@@ -211,7 +211,7 @@ class Query {
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
-  void finalize(QueryResult&);
+  ExecutionState finalize(QueryResult&);
 
   /// @brief parse an AQL query
   QueryResult parse();
@@ -352,8 +352,12 @@ class Query {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query
-  void cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
+  /// @brief cleanup plan and engine for current query. Synchronous variant,
+  //         will block this thread in WAITING case.
+  void cleanupPlanAndEngineSync(int, VPackBuilder* statsBuilder = nullptr) noexcept;
+
+  /// @brief cleanup plan and engine for current query can issue WAITING
+  ExecutionState cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();

@@ -62,7 +62,7 @@ class BlockWithClients : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown
-  int shutdown(int) override;
+  std::pair<ExecutionState, Result> shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
@@ -244,7 +244,7 @@ class RemoteBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown, will be called exactly once for the whole query
-  int shutdown(int) override final;
+  std::pair<ExecutionState, Result> shutdown(int) override final;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
@@ -284,6 +284,8 @@ class RemoteBlock final : public ExecutionBlock {
   arangodb::Result sendAsyncRequest(
       rest::RequestType type, std::string const& urlPart,
       std::shared_ptr<std::string const> body);
+
+  std::shared_ptr<velocypack::Builder> stealResultBody();
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;

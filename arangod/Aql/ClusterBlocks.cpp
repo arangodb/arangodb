@@ -246,13 +246,16 @@ std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
 }
 
 /// @brief shutdown
-int BlockWithClients::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
 
   if (_wasShutdown) {
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-  int res = ExecutionBlock::shutdown(errorCode);
+  auto res = ExecutionBlock::shutdown(errorCode);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
+  }
   _wasShutdown = true;
   return res;
 
@@ -856,6 +859,26 @@ arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
 
 }
 
+/**
+ * @brief Steal the last returned body. Will throw an error if
+ *        there has been an error of any kind, e.g. communication
+ *        or error created by remote server.
+ *        Will reset the lastResponse, so after this call we are
+ *        ready to send a new request.
+ *
+ * @return A shared_ptr containing the remote response.
+ */
+std::shared_ptr<VPackBuilder> RemoteBlock::stealResultBody() {
+  if (!_lastError.ok()) {
+    THROW_ARANGO_EXCEPTION(_lastError);
+  }
+  // We have an open result still.
+  // Result is the response which is an object containing the ErrorCode
+  std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
+  _lastResponse.reset();
+  return responseBodyBuilder;
+}
+
 /// @brief local helper to throw an exception if a HTTP request went wrong
 static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
                                               bool isShutdown) {
@@ -970,7 +993,9 @@ Result RemoteBlock::sendAsyncRequest(
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
-  std::shared_ptr<ClusterCommCallback> callback = std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
+  std::shared_ptr<ClusterCommCallback> callback =
+      std::make_shared<WakeupQueryCallback>(dynamic_cast<RemoteBlock*>(this),
+                                            _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
   cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
@@ -982,6 +1007,7 @@ Result RemoteBlock::sendAsyncRequest(
 
   return {TRI_ERROR_NO_ERROR};
 }
+
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
@@ -1032,14 +1058,10 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
   } 
 
   if (_lastResponse != nullptr) {
-    if (!_lastError.ok()) {
-      THROW_ARANGO_EXCEPTION(_lastError);
-    }
     // We have an open result still.
-    // Result is the response which is an object containing the ErrorCode
-    std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
-    _lastResponse.reset();
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
 
+    // Result is the response which is an object containing the ErrorCode
     VPackSlice slice = responseBodyBuilder->slice();
     if (slice.hasKey("code")) {
       return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
@@ -1093,7 +1115,7 @@ bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
 };
 
 /// @brief shutdown, will be called exactly once for the whole query
-int RemoteBlock::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
 
   /* We need to handle this here in ASYNC case
@@ -1104,55 +1126,54 @@ int RemoteBlock::shutdown(int errorCode) {
     }
   */
 
-  // For every call we simply forward via HTTP
+  if (_lastResponse != nullptr) {
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
+    VPackSlice slice = responseBodyBuilder->slice();
+    if (slice.isObject()) {
+      if (slice.hasKey("stats")) { 
+        ExecutionStats newStats(slice.get("stats"));
+        _engine->_stats.add(newStats);
+      }
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
-                  std::string("{\"code\":" + std::to_string(errorCode) + "}"));
-  try {
-    if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
-      // artificially ignore error in case query was not found during shutdown
-      return TRI_ERROR_NO_ERROR;
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    if (ex.code() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-    }
-    throw;
-  }
-
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-   
-  if (slice.isObject()) {
-    if (slice.hasKey("stats")) { 
-      ExecutionStats newStats(slice.get("stats"));
-      _engine->_stats.add(newStats);
-    }
-
-    // read "warnings" attribute if present and add it to our query
-    VPackSlice warnings = slice.get("warnings");
-    if (warnings.isArray()) {
-      auto query = _engine->getQuery();
-      for (auto const& it : VPackArrayIterator(warnings)) {
-        if (it.isObject()) {
-          VPackSlice code = it.get("code");
-          VPackSlice message = it.get("message");
-          if (code.isNumber() && message.isString()) {
-            query->registerWarning(code.getNumericValue<int>(),
-                                   message.copyString().c_str());
+      // read "warnings" attribute if present and add it to our query
+      VPackSlice warnings = slice.get("warnings");
+      if (warnings.isArray()) {
+        auto query = _engine->getQuery();
+        for (auto const& it : VPackArrayIterator(warnings)) {
+          if (it.isObject()) {
+            VPackSlice code = it.get("code");
+            VPackSlice message = it.get("message");
+            if (code.isNumber() && message.isString()) {
+              query->registerWarning(code.getNumericValue<int>(),
+                                     message.copyString().c_str());
+            }
           }
         }
       }
     }
+
+    if (slice.hasKey("code")) {
+      return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
+    }
+    return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
 
-  if (slice.hasKey("code")) {
-    return slice.get("code").getNumericValue<int>();
+  // For every call we simply forward via HTTP
+  VPackBuilder bodyBuilder;
+  bodyBuilder.openObject();
+  bodyBuilder.add("code", VPackValue(std::to_string(errorCode)));
+  bodyBuilder.close();
+
+  auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());
+
+  auto res = sendAsyncRequest(
+      rest::RequestType::PUT, "/_api/aql/shutdown/", bodyString);
+ 
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-  return TRI_ERROR_INTERNAL;
+
+  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1173,10 +1194,10 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
   if (_lastResponse != nullptr) {
     // We do not have an error but a result, all is good
     // We have an open result still.
+
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
     // Result is the response which will be a serialized AqlItemBlock
 
-    std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
-    _lastResponse.reset();
     VPackSlice responseBody = responseBodyBuilder->slice();
 
     ExecutionState state = ExecutionState::HASMORE;
@@ -1202,8 +1223,6 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
 
   auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/getSome/",
                               bodyString);
-  // TODO Check if we need to enhance this response!
-  // throwExceptionAfterBadSyncRequest(res.get(), false);
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1219,14 +1238,10 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_lastResponse != nullptr) {
-    if (!_lastError.ok()) {
-      THROW_ARANGO_EXCEPTION(_lastError);
-    }
     // We have an open result still.
     // Result is the response which will be a serialized AqlItemBlock
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
 
-    std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
-    _lastResponse.reset();
     VPackSlice slice = responseBodyBuilder->slice();
 
     if (!slice.hasKey(StaticStrings::Error) ||
@@ -1255,8 +1270,6 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 
   auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/skipSome/",
                               bodyString);
-  // TODO Check if we need to enhance this response!
-  // throwExceptionAfterBadSyncRequest(res.get(), false);
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }

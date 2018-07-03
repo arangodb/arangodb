@@ -33,6 +33,8 @@ WakeupQueryCallback::WakeupQueryCallback(ExecutionBlock* initiator,
     : _initiator(initiator), _query(query) {}
 
 bool WakeupQueryCallback::operator()(ClusterCommResult* result) {
+  TRI_ASSERT(_initiator != nullptr);
+  TRI_ASSERT(_query != nullptr);
   // TODO Validate that _initiator and _query have not been deleted (ttl)
   // TODO Handle exceptions
   bool res = _initiator->handleAsyncResult(result);

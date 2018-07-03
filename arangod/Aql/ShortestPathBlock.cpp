@@ -40,6 +40,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 
@@ -136,8 +137,17 @@ std::pair<ExecutionState, arangodb::Result> ShortestPathBlock::initializeCursor(
 }
 
 /// @brief shutdown: Inform all traverser Engines to destroy themselves
-int ShortestPathBlock::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ShortestPathBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
+
+  ExecutionState state;
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+
   // We have to clean up the engines in Coordinator Case.
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto cc = arangodb::ClusterComm::instance();
@@ -172,8 +182,7 @@ int ShortestPathBlock::shutdown(int errorCode) {
     }
   }
 
-  return ExecutionBlock::shutdown(errorCode);
-
+  return {state, result};
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }

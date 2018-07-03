@@ -912,7 +912,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
       } else if (operation == "shutdown") {
         int errorCode = VelocyPackHelper::getNumericValue<int>(
             querySlice, "code", TRI_ERROR_INTERNAL);
-        int res = query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
+        
+        ExecutionState state;
+        Result res;
+        std::tie(state, res) = query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
+        if (state == ExecutionState::WAITING) {
+          return RestStatus::WAITING;
+        }
 
         // return statistics
         answerBuilder.add(VPackValue("stats"));
@@ -927,8 +933,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         // delete the query from the registry
         _queryRegistry->destroy(&_vocbase, _qId, errorCode);
         _qId = 0;
-        answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
-        answerBuilder.add(StaticStrings::Code, VPackValue(res));
+        answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
+        answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
       } else {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
         return RestStatus::DONE;

@@ -72,8 +72,11 @@ class ExecutionEngine {
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
   
-  /// @brief shutdown, will be called exactly once for the whole query
-  int shutdown(int errorCode);
+  /// @brief shutdown, will be called exactly once for the whole query, blocking variant
+  Result shutdownSync(int errorCode) noexcept;
+
+  /// @brief shutdown, will be called exactly once for the whole query, may return waiting
+  std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);

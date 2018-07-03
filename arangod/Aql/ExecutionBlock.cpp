@@ -30,6 +30,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
   
 namespace {
@@ -51,6 +52,8 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
       _exeNode(ep),
+      _dependencyPos(_dependencies.end()),
+      _shutdownResult(TRI_ERROR_NO_ERROR),
       _pos(0),
       _done(false),
       _profile(engine->getQuery()->queryOptions().profile),
@@ -105,12 +108,14 @@ void ExecutionBlock::throwIfKilled() {
   }
 }
 
-// TODO check that *all* initializeCursor implementations reset the new state
-// added for WAITING!
 std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  for (auto& d : _dependencies) {
-    auto res = d->initializeCursor(items, pos);
+  if (_dependencyPos == _dependencies.end()) {
+    // We need to start again.
+    _dependencyPos = _dependencies.begin();
+  }
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    auto res = (*_dependencyPos)->initializeCursor(items, pos);
     if (res.first == ExecutionState::WAITING ||
         !res.second.ok()) {
       // If we need to wait or get an error we return as is.
@@ -136,32 +141,42 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   }
 
   TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
+  TRI_ASSERT(_dependencyPos == _dependencies.end());
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
 /// @brief shutdown, will be called exactly once for the whole query
-int ExecutionBlock::shutdown(int errorCode) {
-  int ret = TRI_ERROR_NO_ERROR;
-
-  for (auto& it : _buffer) {
-    delete it;
+std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
+  if (_dependencyPos == _dependencies.end()) {
+    _shutdownResult.reset(TRI_ERROR_NO_ERROR);
+    _dependencyPos = _dependencies.begin();
   }
-  _buffer.clear();
 
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res;
+  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
+    Result res;
+    ExecutionState state;
     try {
-      res = (*it)->shutdown(errorCode);
+      std::tie(state, res) = (*_dependencyPos)->shutdown(errorCode);
+      if (state == ExecutionState::WAITING) {
+        return {state, TRI_ERROR_NO_ERROR};
+      }
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
+      _shutdownResult.reset(TRI_ERROR_INTERNAL);
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      ret = res;
+    if (res.fail()) {
+      _shutdownResult = res;
     }
   }
 
-  return ret;
+  if (!_buffer.empty()) {
+    for (auto& it : _buffer) {
+      delete it;
+    }
+    _buffer.clear();
+  }
+
+  return {ExecutionState::DONE, _shutdownResult};
 }
 
 // Trace the start of a getSome call

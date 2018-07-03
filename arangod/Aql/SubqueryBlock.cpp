@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
@@ -41,7 +42,8 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
       _subqueryResults(nullptr),
       _subqueryPos(0),
       _subqueryInitialized(false),
-      _subqueryCompleted(false) {
+      _subqueryCompleted(false),
+      _hasShutdownMainQuery(false) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
@@ -217,11 +219,15 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
 }
 
 /// @brief shutdown, tell dependency and the subquery
-int SubqueryBlock::shutdown(int errorCode) {
-  int res = ExecutionBlock::shutdown(errorCode);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+std::pair<ExecutionState, Result> SubqueryBlock::shutdown(int errorCode) {
+  ExecutionState state;
+  Result res;
+  if (!_hasShutdownMainQuery) {
+    std::tie(state, res) = ExecutionBlock::shutdown(errorCode); 
+    if (state == ExecutionState::WAITING || res.fail()) {
+      return {state, res};
+    }
+    _hasShutdownMainQuery = true;
   }
 
   return getSubquery()->shutdown(errorCode);
