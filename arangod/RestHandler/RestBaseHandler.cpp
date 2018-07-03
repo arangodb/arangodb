@@ -167,37 +167,6 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error
-////////////////////////////////////////////////////////////////////////////////
-
-/*void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
-                                    std::string const& message) {
-  resetResponse(code);
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  try {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add(StaticStrings::Error, VPackValue(true));
-    if (message.empty()) {
-      // prevent empty error messages
-      builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(errorCode)));
-    } else {
-      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    }
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    builder.add(StaticStrings::ErrorNum, VPackValue(errorCode));
-    builder.close();
-
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(std::move(buffer), options);
-  } catch (...) {
-    // Building the error response failed
-  }
-}*/
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
 ////////////////////////////////////////////////////////////////////////////////
 
