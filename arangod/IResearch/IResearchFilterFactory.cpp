@@ -198,7 +198,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr extractAnalyzerFromArg(
 
     if (!analyzer) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "'PHRASE' AQL function: Unable to load requested analyzer '" << analyzerId << "'";
+        << "'" << functionName << "' AQL function: Unable to load requested analyzer '" << analyzerId << "'";
     }
   }
 
@@ -227,14 +227,16 @@ bool byTerm(
         filter->field(std::move(name));
         filter->boost(filterCtx.boost);
         filter->term(irs::null_token_stream::value_null());
-      } return true;
+      }
+      return true;
     case arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL:
       if (filter) {
         kludge::mangleBool(name);
         filter->field(std::move(name));
         filter->boost(filterCtx.boost);
         filter->term(irs::boolean_token_stream::value(value.getBoolean()));
-      } return true;
+      }
+      return true;
     case arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE:
       if (filter) {
         double_t dblValue;
@@ -255,7 +257,8 @@ bool byTerm(
         filter->field(std::move(name));
         filter->boost(filterCtx.boost);
         filter->term(term->value());
-     } return true;
+      }
+      return true;
     case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING:
       if (filter) {
         irs::string_ref strValue;
@@ -270,7 +273,8 @@ bool byTerm(
         filter->field(std::move(name));
         filter->boost(filterCtx.boost);
         filter->term(strValue);
-    } return true;
+     }
+      return true;
     default:
       // unsupported value type
       return false;
@@ -1327,7 +1331,7 @@ bool fromFuncExists(
 
   if (!fieldArg) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "'PHRASE' AQL function: 1st argument is invalid";
+      << "'EXISTS' AQL function: 1st argument is invalid";
     return false;
   }
 
@@ -1337,7 +1341,7 @@ bool fromFuncExists(
 
   if (filter && !arangodb::iresearch::nameFromAttributeAccess(fieldName, *fieldArg, ctx)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "'PHRASE' AQL function: Failed to generate field name from the 1st argument";
+      << "'EXISTS' AQL function: Failed to generate field name from the 1st argument";
     return false;
   }
 
@@ -1500,13 +1504,13 @@ bool fromFuncMinMatch(
 
   if (!minMatchCountArg) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "'ANALYZE' AQL function: " << lastArg << " argument is invalid";
+      << "'MIN_MATCH' AQL function: " << lastArg << " argument is invalid";
     return false;
   }
 
   if (!minMatchCountArg->isDeterministic()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "'ANALYZE' AQL function: " << lastArg << " argument is intended to be deterministic";
+      << "'MIN_MATCH' AQL function: " << lastArg << " argument is intended to be deterministic";
     return false;
   }
 

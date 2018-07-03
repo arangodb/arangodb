@@ -69,7 +69,7 @@ Override analyzer in a context of **filter-expression** with another one, denote
 by a specified **analyzer** argument, making it available for filter functions.
 
 - *filter-expression* - any valid filter expression
-- *analyzer* - string with the analyzer to inmbue, i.e. *"text_en"* or [one of the other available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* - string with the analyzer to imbue, i.e. *"text_en"* or [one of the other available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 
 By default, context contains `Identity` analyzer.
 
@@ -282,7 +282,7 @@ to watch the analyzer doing its work
 to match documents where 'description' best matches 'a quick brown fox'
 
     FOR doc IN VIEW someView
-      FILTER ANALYZER(doc.description IN TOKENS('a quick brown fox', 'text_en'), 'test_en')
+      FILTER ANALYZER(doc.description IN TOKENS('a quick brown fox', 'text_en'), 'text_en')
       RETURN doc
 
 ArangoSearch sort
