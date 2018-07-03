@@ -69,9 +69,9 @@ using GetGraphFromCacheResult = boost::variant<
     getGraphFromCacheResult::Success, getGraphFromCacheResult::Outdated,
     getGraphFromCacheResult::NotFound, getGraphFromCacheResult::Exception>;
 
-GetGraphFromCacheResult _getGraphFromCache(GraphCache::CacheType const& _cache,
-                                           std::string const& name,
-                                           std::chrono::seconds maxAge) {
+GetGraphFromCacheResult getGraphFromCache(GraphCache::CacheType const &_cache,
+                                          std::string const &name,
+                                          std::chrono::seconds maxAge) {
   using namespace getGraphFromCacheResult;
 
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -109,7 +109,7 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
   // try to lookup the graph in the cache first
   {
     READ_LOCKER(guard, _lock);
-    cacheResult = _getGraphFromCache(_cache, name, maxAge);
+    cacheResult = getGraphFromCache(_cache, name, maxAge);
   }
 
   /*

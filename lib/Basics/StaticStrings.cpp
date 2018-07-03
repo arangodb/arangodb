@@ -161,6 +161,7 @@ std::string const StaticStrings::GraphTo("to");
 std::string const StaticStrings::GraphSmartGraphAttribute("smartGraphAttribute");
 std::string const StaticStrings::GraphNumberOfShards("numberOfShards");
 std::string const StaticStrings::GraphReplicationFactor("replicationFactor");
+std::string const StaticStrings::GraphDistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
 std::string const StaticStrings::GraphOrphans("orphanCollections");

@@ -61,14 +61,6 @@ class GraphOperations {
   // reproduce (in the RestGraphHandler) the behaviour of the similar methods
   // in the RestDocumentHandler. A simpler type, e.g. ResultT<OperationResult>,
   // would be preferable.
-  /// @brief Graph collection name
-  static std::string const _graphs;
-
-  /// @brief Graph collection edge definition attribute name
-  static char const* _attrEdgeDefs;
-
-  /// @brief Graph collection orphan list arribute name
-  static char const* _attrOrphans;
 
   /// @brief Get a single vertex document from collection, optionally check rev
   /// The return value is as follows:

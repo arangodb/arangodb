@@ -405,7 +405,7 @@ void Graph::graphToVpack(VPackBuilder& builder) const {
 
   builder.add("name", VPackValue(name()));
 
-  builder.add("edgeDefinitions", VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphEdgeDefinitions, VPackValue(VPackValueType::Array));
   auto edgeDefs = edgeDefinitions();
   for (auto const& name : edgeDefinitionNames()) {
     EdgeDefinition const& def = edgeDefs.at(name);
@@ -425,19 +425,19 @@ void Graph::graphToVpack(VPackBuilder& builder) const {
   }
   builder.close();  // object edgedefs
 
-  builder.add("orphanCollections", VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
   for (auto const& orphan : orphanCollections()) {
     builder.add(VPackValue(orphan));
   }
   builder.close();  // orphan array
 
   if (isSmart()) {
-    builder.add("isSmart", VPackValue(isSmart()));
-    builder.add("smartGraphAttribute", VPackValue(smartGraphAttribute()));
+    builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
+    builder.add(StaticStrings::GraphSmartGraphAttribute, VPackValue(smartGraphAttribute()));
   }
 
-  builder.add("numberOfShards", VPackValue(numberOfShards()));
-  builder.add("replicationFactor", VPackValue(replicationFactor()));
+  builder.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards()));
+  builder.add(StaticStrings::GraphReplicationFactor, VPackValue(replicationFactor()));
   builder.add(StaticStrings::RevString, VPackValue(rev()));
   builder.add(StaticStrings::IdString, VPackValue(id()));
 

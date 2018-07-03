@@ -51,8 +51,6 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
-std::string const GraphOperations::_graphs = "_graphs";
-
 OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
     VPackSlice graph, VPackSlice edgeDefinition,
     std::unordered_set<std::string> possibleOrphans, bool waitForSync,
@@ -120,7 +118,7 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
       builder.close();  // object
 
       // now write to database
-      result = trx.update(GraphOperations::_graphs, builder.slice(), options);
+      result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
     } else {
       // collect all used collections
       for (auto const& from : VPackArrayIterator(eD.get("from"))) {
@@ -227,7 +225,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   builder.add(StaticStrings::GraphOrphans, newOrphColls.slice());
   builder.close();
 
-  SingleCollectionTransaction trx(ctx(), GraphOperations::_graphs,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -238,7 +236,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
     return OperationResult(res);
   }
   result =
-      trx.update(GraphOperations::_graphs, builder.slice(), options);
+      trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 
   if (dropCollection) {
     std::vector<std::string> collectionsToBeRemoved;
@@ -375,7 +373,7 @@ OperationResult GraphOperations::editEdgeDefinition(
   gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
   VPackSlice graphs = graphsBuilder.slice();
 
-  SingleCollectionTransaction trx(ctx(), GraphOperations::_graphs,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
 
   Result res = trx.begin();
@@ -446,7 +444,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   builder.close();  // array
   builder.close();  // object
 
-  SingleCollectionTransaction trx(ctx(), GraphOperations::_graphs,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
 
   Result res = trx.begin();
@@ -458,7 +456,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
 
   OperationOptions options;
   options.waitForSync = waitForSync;
-  result = trx.update(GraphOperations::_graphs, builder.slice(), options);
+  result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 
   res = trx.finish(result.result);
   if (result.ok() && res.fail()) {
@@ -500,7 +498,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   builder.close();  // array
   builder.close();  // object
 
-  SingleCollectionTransaction trx(ctx(), GraphOperations::_graphs,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -513,7 +511,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   options.waitForSync = waitForSync;
 
   result =
-      trx.update(GraphOperations::_graphs, builder.slice(), options);
+      trx.update(StaticStrings::GraphCollection, builder.slice(), options);
   res = trx.finish(result.result);
 
   if (dropCollection) {
@@ -614,7 +612,7 @@ OperationResult GraphOperations::addEdgeDefinition(
 
   Result res;
   {
-    SingleCollectionTransaction trx(ctx(), GraphOperations::_graphs,
+    SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                     AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -624,7 +622,7 @@ OperationResult GraphOperations::addEdgeDefinition(
       return OperationResult(res);
     }
 
-    result = trx.update(GraphOperations::_graphs, builder.slice(), options);
+    result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 
     res = trx.finish(result.result);
   }
@@ -702,7 +700,7 @@ OperationResult GraphOperations::removeGraph(bool waitForSync,
                                              bool dropCollections) {
   std::vector<std::string> trxCollections;
   std::vector<std::string> writeCollections;
-  writeCollections.emplace_back(GraphOperations::_graphs);
+  writeCollections.emplace_back(StaticStrings::GraphCollection);
 
   std::vector<std::string> collectionsToBeRemoved;
   if (dropCollections) {
@@ -732,7 +730,7 @@ OperationResult GraphOperations::removeGraph(bool waitForSync,
   Result res;
   OperationResult result;
   {
-    SingleCollectionTransaction trx{ctx(), GraphOperations::_graphs,
+    SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
                                     AccessMode::Type::WRITE};
 
     res = trx.begin();
@@ -740,7 +738,7 @@ OperationResult GraphOperations::removeGraph(bool waitForSync,
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
     VPackSlice search = builder.slice();
-    result = trx.remove(GraphOperations::_graphs, search, options);
+    result = trx.remove(StaticStrings::GraphCollection, search, options);
 
     res = trx.finish(result.result);
     if (result.fail()) {

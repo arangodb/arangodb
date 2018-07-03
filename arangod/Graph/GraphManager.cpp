@@ -33,9 +33,9 @@
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -51,11 +51,13 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/SmartGraph.h"
+#include "Enterprise/Graph/GraphManagerEE.h"
 #endif
 
 using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
+using VelocyPackHelper = basics::VelocyPackHelper;
 
 OperationResult GraphManager::createEdgeCollection(std::string const& name,
                                                    bool waitForSync,
@@ -74,6 +76,7 @@ OperationResult GraphManager::createCollection(std::string const& name,
                                                bool waitForSync,
                                                VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
+
 
   Result res = methods::Collections::create(&ctx()->vocbase(), name, colType,
                                             options, waitForSync, true,
@@ -151,7 +154,7 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
     }
 
     for (auto const& sGED : graph->edgeDefinitions()) {
-      std::__cxx11::string col = sGED.first;
+      std::string col = sGED.first;
 
       auto it = edgeDefinitions.find(col);
       if (it != edgeDefinitions.end()) {
@@ -212,7 +215,7 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
 
 /// @brief extract the collection by either id or name, may return nullptr!
 std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
-    const TRI_vocbase_t& vocbase, std::string const& name) const {
+    const TRI_vocbase_t& vocbase, std::string const& name) {
   std::shared_ptr<LogicalCollection> nameCol;
 
   if (!name.empty()) {
@@ -238,9 +241,11 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   if (graphName.isNone()) {
     return OperationResult(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
+  OperationResult result;
 
   // validate edgeDefinitions
-  VPackSlice edgeDefinitions = document.get(StaticStrings::GraphEdgeDefinitions);
+  VPackSlice edgeDefinitions =
+      document.get(StaticStrings::GraphEdgeDefinitions);
   if (edgeDefinitions.isNull() || edgeDefinitions.isNone()) {
     edgeDefinitions = VPackSlice::emptyArraySlice();
   }
@@ -275,10 +280,11 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 
   uint64_t replicationFactor;
   try {
-    replicationFactor = document
-                            .get(std::vector<std::string>(
-                                {"options", StaticStrings::GraphReplicationFactor}))
-                            .getUInt();
+    replicationFactor =
+        document
+            .get(std::vector<std::string>(
+                {"options", StaticStrings::GraphReplicationFactor}))
+            .getUInt();
   } catch (...) {
     replicationFactor = 1;
   }
@@ -303,11 +309,20 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 
   std::string smartGraphAttribute;
   try {
-    smartGraphAttribute = document
-                              .get(std::vector<std::string>(
-                                  {"options", StaticStrings::GraphSmartGraphAttribute}))
-                              .copyString();
+    smartGraphAttribute =
+        document
+            .get(std::vector<std::string>(
+                {"options", StaticStrings::GraphSmartGraphAttribute}))
+            .copyString();
   } catch (...) {
+  }
+
+  arangodb::enterprise::graph::SmartGraphManager smartgmngr{ctx()};
+  if (isSmart) {
+    result = smartgmngr.checkPrerequisites(edgeDefinitions, orphanCollections);
+    if (result.fail()) {
+      return result;
+    }
   }
 #endif
 
@@ -339,8 +354,8 @@ OperationResult GraphManager::createGraph(VPackSlice document,
     return OperationResult(res);
   }
 
-  OperationResult checkDoc =
-      trx.document(StaticStrings::GraphCollection, checkDocument.slice(), options);
+  OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
+                                          checkDocument.slice(), options);
   if (checkDoc.ok()) {
     trx.finish(checkDoc.result);
     return OperationResult(TRI_ERROR_GRAPH_DUPLICATE);
@@ -353,34 +368,56 @@ OperationResult GraphManager::createGraph(VPackSlice document,
     VPackObjectBuilder guard(&params);
     if (isSmart) {
       params.add(StaticStrings::GraphIsSmart, VPackValue(isSmart));
-      params.add(StaticStrings::GraphSmartGraphAttribute, VPackValue(smartGraphAttribute));
+      params.add(StaticStrings::GraphSmartGraphAttribute,
+                 VPackValue(smartGraphAttribute));
     }
     params.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards));
-    params.add(StaticStrings::GraphReplicationFactor, VPackValue(replicationFactor));
+    params.add(StaticStrings::GraphReplicationFactor,
+               VPackValue(replicationFactor));
   }
   if (isSmart) {
-    arangodb::enterprise::SmartGraph::createCollectionOptions(collectionsOptions, waitForSync, params.slice());
+    arangodb::enterprise::SmartGraph::createCollectionOptions(
+        collectionsOptions, waitForSync, params.slice(), "");
   } else {
-    Graph::createCollectionOptions(collectionsOptions, waitForSync, params.slice());
+    Graph::createCollectionOptions(collectionsOptions, waitForSync,
+                                   params.slice());
   }
 #else
   VPackBuilder params;
   {
     VPackObjectBuilder guard(&params);
     params.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards));
-    params.add(StaticStrings::GraphReplicationFactor, VPackValue(replicationFactor));
+    params.add(StaticStrings::GraphReplicationFactor,
+               VPackValue(replicationFactor));
   }
-  Graph::createCollectionOptions(collectionsOptions, waitForSync, params.slice());
+  Graph::createCollectionOptions(collectionsOptions, waitForSync,
+                                 params.slice());
 #endif
 
   VPackSlice collectionCreateOptionsSlice = collectionsOptions.slice();
 
-  // find or create the collections given by the edge definition
-  OperationResult result = findOrCreateCollectionsByEdgeDefinitions(
-      edgeDefinitions, waitForSync, collectionCreateOptionsSlice);
-  if (result.fail()) {
-    return result;
+#ifdef USE_ENTERPRISE
+  if (isSmart) {
+    result = smartgmngr.satisfyPrerequisites(edgeDefinitions, orphanCollections,
+                                             collectionCreateOptionsSlice, waitForSync);
+  } else {
+    // find or create the collections given by the edge definition
+    result = findOrCreateCollectionsByEdgeDefinitions(
+        edgeDefinitions, waitForSync, collectionCreateOptionsSlice);
+
+    // find or create the oprhan collections
+    for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
+      result = findOrCreateVertexCollectionByName(
+          orphan.copyString(), waitForSync, collectionCreateOptionsSlice);
+      if (result.fail()) {
+        return result;
+      }
+    }
   }
+#else
+  // find or create the collections given by the edge definition
+  result = findOrCreateCollectionsByEdgeDefinitions(
+      edgeDefinitions, waitForSync, collectionCreateOptionsSlice);
 
   // find or create the oprhan collections
   for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
@@ -390,6 +427,10 @@ OperationResult GraphManager::createGraph(VPackSlice document,
       return result;
     }
   }
+#endif
+  if (result.fail()) {
+    return result;
+  }
 
   // finally save the graph
   VPackBuilder builder;
@@ -397,17 +438,31 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   builder.add(StaticStrings::KeyString, graphName);
   builder.add(StaticStrings::GraphEdgeDefinitions, edgeDefinitions);
   builder.add(StaticStrings::GraphOrphans, orphanCollections);
-  builder.add(StaticStrings::GraphReplicationFactor, VPackValue(replicationFactor));
+  builder.add(StaticStrings::GraphReplicationFactor,
+              VPackValue(replicationFactor));
   builder.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards));
 
 #ifdef USE_ENTERPRISE
   builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart));
-  builder.add(StaticStrings::GraphSmartGraphAttribute, VPackValue(smartGraphAttribute));
+  builder.add(StaticStrings::GraphSmartGraphAttribute,
+              VPackValue(smartGraphAttribute));
 #endif
 
   builder.close();
 
+#ifdef USE_ENTERPRISE
+  if (isSmart) {
+    VPackBuilder eOptionsBuilder = smartgmngr.getInitialOptions();
+    VPackBuilder merged =
+        VelocyPackHelper::merge(eOptionsBuilder.slice(), builder.slice(), false, false);
+
+    result = trx.insert(StaticStrings::GraphCollection, merged.slice(), options);
+  } else {
+    result = trx.insert(StaticStrings::GraphCollection, builder.slice(), options);
+  }
+#else
   result = trx.insert(StaticStrings::GraphCollection, builder.slice(), options);
+#endif
   res = trx.finish(result.result);
 
   if (result.ok() && res.fail()) {

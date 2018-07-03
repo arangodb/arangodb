@@ -154,6 +154,7 @@ class StaticStrings {
   static std::string const GraphTo;
   static std::string const GraphSmartGraphAttribute;
   static std::string const GraphNumberOfShards;
+  static std::string const GraphDistributeShardsLike;
   static std::string const GraphReplicationFactor;
   static std::string const GraphDropCollections;
   static std::string const GraphEdgeDefinitions;

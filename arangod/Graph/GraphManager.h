@@ -72,8 +72,8 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available
   ////////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalCollection> getCollectionByName(
-      const TRI_vocbase_t& vocbase, std::string const& name) const;
+  static std::shared_ptr<LogicalCollection> getCollectionByName(
+      const TRI_vocbase_t& vocbase, std::string const& name);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a graph
