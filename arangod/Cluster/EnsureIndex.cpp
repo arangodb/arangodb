@@ -33,7 +33,6 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Indexes.h"
 
-
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;

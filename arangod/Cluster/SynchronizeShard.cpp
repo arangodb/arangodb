@@ -30,9 +30,13 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -51,10 +55,14 @@ using namespace arangodb;
 constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 constexpr auto REPL_HOLD_READ_LOCK = "/_api/replication/holdReadLockCollection";
+constexpr auto REPL_ADD_FOLLOWER = "/_api/replication/addFollower";
+constexpr auto REPL_REM_FOLLOWER = "/_api/replication/removeFollower";
 
-std::string const READ_LOCK_TIMEOUT("startReadLockOnLeader: giving up");
-std::string const DB("/_db/");
-std::string const TTL("ttl");
+std::string const READ_LOCK_TIMEOUT ("startReadLockOnLeader: giving up");
+std::string const DB ("/_db/");
+std::string const SYSTEM ("/_db/_system");
+std::string const TTL ("ttl");
+std::string const REPL_BARRIER_API ("/_api/replication/barrier/");
 
 SynchronizeShard::SynchronizeShard(
   MaintenanceFeature& feature, ActionDescription const& desc) :
@@ -117,6 +125,222 @@ arangodb::Result getReadLockId (
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
   
+  return arangodb::Result();
+  
+}
+
+
+arangodb::Result count(
+  std::shared_ptr<arangodb::LogicalCollection> const col, uint64_t& c) {
+
+  std::string collectionName(col->name());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
+  SingleCollectionTransaction trx(
+    ctx, collectionName, AccessMode::Type::READ);
+
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    if (CollectionLockState::_noLockHeaders->find(collectionName) !=
+        CollectionLockState::_noLockHeaders->end()) {
+      trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
+    }
+  }
+  
+  Result res = trx.begin();
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "Failed to start count transaction: " << res;
+    return res;
+  }
+
+  OperationResult opResult = trx.count(collectionName, false); 
+  res = trx.finish(opResult.result);
+
+  if (res.fail()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "Failed to finish count transaction: " << res;
+    return res;
+  }
+
+  VPackSlice s = opResult.slice();
+  TRI_ASSERT(s.isNumber());
+  c = s.getNumber<uint64_t>();
+
+  return opResult.result;
+  
+}
+
+arangodb::Result addShardFollower (
+  std::string const& endpoint, std::string const& database,
+  std::string const& shard, std::string const& lockJobId,
+  std::string const& clientId, double timeout = 120.0 ) {
+
+  auto cc = arangodb::ClusterComm::instance();
+  if (cc == nullptr) { // nullptr only happens during controlled shutdown
+    return arangodb::Result(
+      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
+  }
+
+  auto vocbase = Databases::lookup(database);
+  if (vocbase == nullptr) {
+    std::string errorMsg(
+      "SynchronizeShard::addShardFollower: Failed to lookup database ");
+    errorMsg += database;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+  }
+
+  auto collection = vocbase->lookupCollection(shard);
+  if (collection == nullptr) {
+    std::string errorMsg(
+      "SynchronizeShard::addShardFollower: Failed to lookup collection ");
+    errorMsg += shard;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
+  }
+
+  size_t c;
+  count(collection, c);
+  VPackBuilder body;
+  { VPackObjectBuilder b(&body);
+    body.add("followerId", VPackValue(arangodb::ServerState::instance()->getId()));
+    body.add("shard", VPackValue(shard));
+    body.add("checksum", VPackValue(c));
+    if (!lockJobId.empty()) {
+      body.add("readLockId", VPackValue(lockJobId));
+    }}
+  
+  auto comres = cc->syncRequest(
+    clientId, 1, endpoint, rest::RequestType::PUT,
+    DB + database + REPL_ADD_FOLLOWER, body.toJson(),
+    std::unordered_map<std::string, std::string>(), timeout);  
+  
+  auto result = comres->result;
+  if (result->getHttpReturnCode() != 200) {
+    std::string errorMessage (
+      "addShardFollower: could not add us to the leader's follower list. ");
+    if (!lockJobId.empty()) {
+      errorMessage += comres->stringifyErrorMessage();
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+    } else {
+      errorMessage += "with shortcut.";
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
+    }
+    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
+  return arangodb::Result();
+  
+}
+
+
+arangodb::Result removeShardFollower (
+  std::string const& endpoint, std::string const& database,
+  std::string const& shard, std::string const& clientId, double timeout = 120.0) {
+
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
+    "removeShardFollower: tell the leader to take us off the follower list...";
+  
+  auto cc = arangodb::ClusterComm::instance();
+  if (cc == nullptr) { // nullptr only happens during controlled shutdown
+    return arangodb::Result(
+      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
+  }
+
+  VPackBuilder body;
+  { VPackObjectBuilder b(&body);
+    body.add("shard", VPackValue(shard));
+    body.add("followerId",
+             VPackValue(arangodb::ServerState::instance()->getId())); }
+
+  // Note that we always use the _system database here because the actual
+  // database might be gone already on the leader and we need to cancel
+  // the read lock under all circumstances.
+  auto comres = cc->syncRequest(
+    clientId, 1, endpoint, rest::RequestType::PUT,
+    DB + database + REPL_REM_FOLLOWER, body.toJson(),
+    std::unordered_map<std::string, std::string>(), timeout);
+  
+  auto result = comres->result;
+  if (result->getHttpReturnCode() != 200) {
+    std::string errorMessage(
+      "removeShardFollower: could not remove us from the leader's follower list: ");
+    errorMessage += result->getHttpReturnCode();
+    errorMessage += comres->stringifyErrorMessage();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+  }
+
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "removeShardFollower: success" ;
+  return arangodb::Result();
+
+}
+
+
+arangodb::Result cancelReadLockOnLeader (
+  std::string const& endpoint, std::string const& database,
+  std::string const& lockJobId, std::string const& clientId,
+  double timeout = 120.0) {
+
+  auto cc = arangodb::ClusterComm::instance();
+  if (cc == nullptr) { // nullptr only happens during controlled shutdown
+    return arangodb::Result(
+      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
+  }
+
+  VPackBuilder body;
+  { VPackObjectBuilder b(&body);
+    body.add("id", VPackValue(lockJobId)); }
+
+  // Note that we always use the _system database here because the actual
+  // database might be gone already on the leader and we need to cancel
+  // the read lock under all circumstances.
+  auto comres = cc->syncRequest(
+    clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
+    SYSTEM + REPL_HOLD_READ_LOCK, body.toJson(),
+    std::unordered_map<std::string, std::string>(), timeout);
+
+  auto result = comres->result;
+  if (result->getHttpReturnCode() != 200) {
+    auto errorMessage = comres->stringifyErrorMessage();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "cancelReadLockOnLeader: exception caught for " << body.toJson()
+      << ": " << errorMessage;
+    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
+  return arangodb::Result();
+  
+}
+
+
+arangodb::Result cancelBarrier(
+  std::string const& endpoint, std::string const& database,
+  std::string const& barrierId, std::string const& clientId,
+  double timeout = 120.0) {
+
+  auto cc = arangodb::ClusterComm::instance();
+  if (cc == nullptr) { // nullptr only happens during controlled shutdown
+    return arangodb::Result(
+      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
+  }
+
+  auto comres = cc->syncRequest(
+    clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
+    DB + database + REPL_BARRIER_API + barrierId, std::string(),
+    std::unordered_map<std::string, std::string>(), timeout);
+
+  auto result = comres->result;
+  if (result->getHttpReturnCode() != 200 &&
+      result->getHttpReturnCode() != 204) {
+    auto errorMessage = comres->stringifyErrorMessage();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "CancelBarrier: error" << errorMessage;
+    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
   return arangodb::Result();
   
 }
@@ -286,6 +510,7 @@ arangodb::Result synchroniseOneShard(
   
   bool ok = false;
   auto ep = clusterInfo->getServerEndpoint(leader);
+  
   //if (db._collection(shard).count() === 0) {
   // We try a short cut:
   /*console.topic('heartbeat=debug', "synchronizeOneShard: trying short cut to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);

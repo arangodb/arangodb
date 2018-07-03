@@ -40,7 +40,6 @@ class RestAgencyHandler : public RestBaseHandler {
  public:
   char const* name() const override final { return "RestAgencyHandler"; }
   bool isDirect() const override;
-  bool needsOwnThread() const { return true; }
   RestStatus execute() override;
 
  private:
