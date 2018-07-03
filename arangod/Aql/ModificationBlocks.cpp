@@ -179,6 +179,33 @@ int ModificationBlock::extractKey(AqlValue const& value,
   return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
 }
 
+int ModificationBlock::extractKeyAndRev(AqlValue const& value,
+                                         std::string& key,
+                                         std::string& rev) {
+  if (value.isObject()) {
+    bool mustDestroy;
+    AqlValue sub = value.get(_trx, StaticStrings::KeyString, mustDestroy, false);
+    AqlValueGuard guard(sub, mustDestroy);
+
+    if (sub.isString()) {
+      key.assign(sub.slice().copyString());
+
+      bool mustDestroyToo;
+      AqlValue subTwo = value.get(_trx, StaticStrings::RevString, mustDestroyToo, false);
+      AqlValueGuard guard(subTwo, mustDestroyToo);
+      if (subTwo.isString()) {
+        rev.assign(subTwo.slice().copyString());
+      }
+      return TRI_ERROR_NO_ERROR;
+    }
+  } else if (value.isString()) {
+    key.assign(value.slice().copyString());
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+}
+
 /// @brief process the result of a data-modification operation
 void ModificationBlock::handleResult(int code, bool ignoreErrors,
                                      std::string const* errorMessage) {
@@ -310,6 +337,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     std::string key;
+    std::string rev;
     int errorCode = TRI_ERROR_NO_ERROR;
     // loop over the complete block
     // build the request block
@@ -324,9 +352,15 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       if (!ep->_options.consultAqlWriteFilter ||
           !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
         if (a.isObject()) {
-          // value is an object. now extract the _key attribute
           key.clear();
-          errorCode = extractKey(a, key);
+          if (!options.ignoreRevs) {
+            rev.clear();
+            // value is an object. now extract the _key and _rev attribute
+            errorCode = extractKeyAndRev(a, key, rev);
+          } else {
+            // value is an object. now extract the _key attribute
+            errorCode = extractKey(a, key);
+          }
         } else if (a.isString()) {
           // value is a string
           key = a.slice().copyString();
@@ -339,6 +373,9 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           // create a slice for the key
           keyBuilder.openObject();
           keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+          if (!options.ignoreRevs && !rev.empty()) {
+            keyBuilder.add(StaticStrings::RevString, VPackValue(rev));
+          }
           keyBuilder.close();
         } else {
           // We have an error, handle it
