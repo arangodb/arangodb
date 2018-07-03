@@ -1070,7 +1070,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
     if (!reply.error && reply.code === 200) {
       let res = JSON.parse(reply.body);
-      internal.print("Response ====> " + reply.body);
+      //internal.print("Response ====> " + reply.body);
       let leader = res[0].arango.Plan.AsyncReplication.Leader;
       if (!leader) {
         throw "Leader is not selected";
