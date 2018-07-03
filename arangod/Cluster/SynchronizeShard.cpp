@@ -63,6 +63,11 @@ std::string const DB ("/_db/");
 std::string const SYSTEM ("/_db/_system");
 std::string const TTL ("ttl");
 std::string const REPL_BARRIER_API ("/_api/replication/barrier/");
+std::string const ENDPOINT("endpoint");
+std::string const INCREMENTAL("incremental");
+std::string const KEEP_BARRIER("keepBarrier");
+std::string const LEADER_ID("leaderId");
+std::string const SKIP_CREATE_DROP("skipCreateDrop");
 
 SynchronizeShard::SynchronizeShard(
   MaintenanceFeature& feature, ActionDescription const& desc) :
@@ -276,7 +281,6 @@ arangodb::Result removeShardFollower (
 
 }
 
-
 arangodb::Result cancelReadLockOnLeader (
   std::string const& endpoint, std::string const& database,
   std::string const& lockJobId, std::string const& clientId,
@@ -445,13 +449,40 @@ arangodb::Result terminateAndStartOther() {
 }
 
 
+arangodb::Result replicationSynchronize(VPackBuilder const& config) {
+  return arangodb::Result();
+}
+
+arangodb::Result syncCollection(
+  std::shared_ptr<arangodb::LogicalCollection> const col,
+  VPackBuilder const& config) {
+
+  VPackBuilder builder;
+  { VPackObjectBuilder o(&builder);
+    for (auto const& i : VPackObjectIterator(config.slice())) {
+      builder.add(i.key.copyString(), i.value);
+    }
+    builder.add("restrictType", VPackValue("include"));
+    builder.add(VPackValue("restrictCollections"));
+    { VPackArrayBuilder a(&builder);
+      builder.add(VPackValue(col->name())); }
+    builder.add("includeSystem", VPackValue(true));
+    if (config.hasKey("verbose")) {
+      builder.add("verbose", VPackValue(false));
+    }}
+
+  return replicationSynchronize(builder);
+
+}
+
 arangodb::Result synchroniseOneShard(
   std::string const& database, std::string const& shard,
   std::string const& planId, std::string const& leader) {
 
   auto* clusterInfo = ClusterInfo::instance();
   auto const ourselves = arangodb::ServerState::instance()->getId();
-  auto const startTime = std::chrono::system_clock::now();
+  auto startTime = std::chrono::system_clock::now();
+  auto const startTimeStr = timepointToString(startTime);
   
   while(true) {
 
@@ -471,7 +502,7 @@ arangodb::Result synchroniseOneShard(
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: cancelled, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
-        << timepointToString(startTime) << ", ended " << timepointToString(endTime);
+        << startTimeStr << ", ended " << timepointToString(endTime);
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
@@ -497,7 +528,7 @@ arangodb::Result synchroniseOneShard(
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: already done, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
-        << timepointToString(startTime) << ", ended " << timepointToString(endTime);
+        << startTimeStr << ", ended " << timepointToString(endTime);
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
@@ -543,17 +574,16 @@ arangodb::Result synchroniseOneShard(
       planId << "'";
     try {
       auto asResult = addShardFollower(
-        ep, database, shard, std::string(), timepointToString(startTime));
+        ep, database, shard, std::string(), startTimeStr);
 
       if (asResult.ok()) {
         terminateAndStartOther();
         auto const endTime = std::chrono::system_clock::now();
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
           "synchronizeOneShard: shortcut worked, done, " << database << "/" <<
-          shard << ", " << database << "/" << ", started: " <<
-          timepointToString(startTime) << " ended: " << timepointToString(endTime);
-        #warning setTheLeader
-        //collection->setTheLeader(leader);
+          shard << ", " << database << "/" << ", started: " << startTimeStr
+          << " ended: " << timepointToString(endTime);
+        collection->followers()->setTheLeader(leader);
         return Result();
       }
     } catch (std::exception const& e) {
@@ -572,13 +602,30 @@ arangodb::Result synchroniseOneShard(
     }
 
     #warning setTheLeader
-    //collection->setTheLeader(leader);
-    
+    collection->followers()->setTheLeader(leader);
+
+    startTime = std::chrono::system_clock::now();
+
+    VPackBuilder config;
+    { VPackObjectBuilder c(&config);
+      config.add(ENDPOINT, VPackValue(ep));
+      config.add(INCREMENTAL, VPackValue(true));
+      config.add(KEEP_BARRIER, VPackValue(true));
+      config.add(LEADER_ID, VPackValue(leader));
+      config.add(SKIP_CREATE_DROP, VPackValue(true));
+    }
+    Result syncRes = syncCollection(collection, config);
+    auto const endTime = std::chrono::system_clock::now();
+    bool longSync = false;
+    if (endTime-startTime > std::chrono::seconds(5)) {
+      LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
+        "synchronizeOneShard: long call to syncCollection for shard"
+          << shard << " " << syncRes.errorMessage() <<  " start time: "
+          << timepointToString(startTime) <<  "end time: " 
+          << timepointToString(std::chrono::system_clock::now());
+      longSync = true;
+    }
 /*
-    let startTime = new Date();
-    sy = rep.syncCollection(shard,
-      { endpoint: ep, incremental: true, keepBarrier: true,
-        leaderId: leader, skipCreateDrop: true });
     let endTime = new Date();
     let longSync = false;
     if (endTime - startTime > 5000) {
