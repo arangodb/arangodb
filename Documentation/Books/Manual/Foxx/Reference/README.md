@@ -10,4 +10,4 @@ While Foxx is primarily designed to be used to access the database itself, Arang
 [Scripts](Scripts.md) can be used to perform one-off tasks, which can also be scheduled to be performed asynchronously using the built-in job queue.
 
 Finally, Foxx services can be installed and managed over the Web-UI or through
-ArangoDB's [HTTP API](../../HTTP/Foxx/Management.html).
+ArangoDB's [HTTP API](../../../HTTP/Foxx/Management.html).

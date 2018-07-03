@@ -73,7 +73,7 @@ function ExclusiveSuite () {
 
     testExclusiveExpectConflict : function () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      tasks.register({
+      let task = tasks.register({
         command: function() {
           var db = require("internal").db;
           db._executeTransaction({
@@ -108,7 +108,15 @@ function ExclusiveSuite () {
         error_in_runner2 = true;
       }
 
-      // sleep here?
+      while (true) {
+        try {
+          tasks.get(task);
+          require("internal").wait(0.25, false);
+        } catch (err) {
+          // "task not found" means the task is finished
+          break;
+        }
+      }
 
       // only one transaction should have succeeded
       assertEqual(1, c2.count());
@@ -123,11 +131,11 @@ function ExclusiveSuite () {
 
     testExclusiveExpectNoConflict : function () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      tasks.register({
+      let task = tasks.register({
         command: function() {
           var db = require("internal").db;
           db._executeTransaction({
-            collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
+            collections: { exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
             action: function () {
               var db = require("internal").db;
               for(var i = 0; i <= 100000; i++) {
@@ -140,7 +148,7 @@ function ExclusiveSuite () {
       });
 
       db._executeTransaction({
-        collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
+        collections: { exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
         action: function () {
           require("internal").wait(7, false);
           var db = require("internal").db;
@@ -151,6 +159,16 @@ function ExclusiveSuite () {
         }
       });
 
+      while (true) {
+        try {
+          tasks.get(task);
+          require("internal").wait(0.25, false);
+        } catch (err) {
+          // "task not found" means the task is finished
+          break;
+        }
+      }
+      
       // both transaction should have succeeded
       assertEqual(2, c2.count());
     }

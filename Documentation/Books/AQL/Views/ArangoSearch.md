@@ -78,7 +78,7 @@ Match documents where the **attribute-name** exists in the document
  and is of the specified type.
 
 - *attribute-name* - the path of the attribute to exist in the document
-- *analyzer* - string with the analyzer used, i.e. *"text_en"* or [one of the other available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* - string with the analyzer used, i.e. *"text_en"* or [one of the other available string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
 - *type* - data type as string; one of:
     - **bool**
     - **boolean**
@@ -101,7 +101,7 @@ The phrase can be expressed as an arbitrary number of *phraseParts* separated by
 - *attribute-name* - the path of the attribute to compare against in the document
 - *phrasePart* - a string to search in the token stream; may consist of several words; will be split using the specified *analyzer*
 - *skipTokens* number of words or tokens to treat as wildcards
-- *analyzer* - string with the analyzer used, i.e. *"text_en"* or [one of the other available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* - string with the analyzer used, i.e. *"text_en"* or [one of the other available string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
 
 ### STARTS_WITH()
 
@@ -121,7 +121,7 @@ The resulting Array can i.e. be used in subsequent `FILTER` statements with the 
 This can be used to better understand how the specific analyzer is going to behave.
 
 - *input* string to tokenize
-- *analyzer* [one of the available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* [one of the available string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
 
 #### Filtering examples
 

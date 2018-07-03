@@ -1,12 +1,14 @@
 Linux
 =====
 
-- Visit the official [ArangoDB install page](https://www.arangodb.com/install)
-  and download the correct package for your Linux distribution. You can find
-  binary packages for the most common distributions there.
+To install ArangoDB on Linux:
+
+- Visit the official [Download](https://www.arangodb.com/download) page of the
+  ArangoDB web site and download the correct package for your Linux distribution.
+  You can find binary packages for the most common distributions there.
 - Follow the instructions to use your favorite package manager for the
   major distributions. After setting up the ArangoDB repository you can
-  easily install ArangoDB using yum, aptitude, urpmi or zypper.
+  easily install ArangoDB using _yum_, _aptitude_, _urpmi_ or _zypper_.
 - Debian based packages will ask for a password during installation. For an
   unattended installation for Debian, see [below](#unattended-installation).
   Red-Hat based packages will set a random password during installation.
@@ -14,13 +16,13 @@ Linux
   `arango-secure-installation` to set a root password. 
 - Alternatively, see [Compiling](Compiling.md) if you want to build ArangoDB
   yourself.
-- Start up the database server.
-
-Normally, this is done by executing the following command:
+  
+After installation, the ArangoDB Server can be started with a command like the
+following:
 
     unix> /etc/init.d/arangod start
  
-It will start the server, and do that as well at system boot time.
+The above command will start the server, and do that as well at system boot time.
 
 To stop the server you can use the following command:
 

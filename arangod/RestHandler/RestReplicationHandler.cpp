@@ -2093,7 +2093,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
           }
 
           generateResult(rest::ResponseCode::OK, b.slice());
-
           return;
         }  
       }

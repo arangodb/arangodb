@@ -128,8 +128,6 @@ class Methods {
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
-  double const TRX_FOLLOWER_TIMEOUT = 3.0;
-
   /// @brief transaction::Methods
  private:
   Methods() = delete;
@@ -161,7 +159,7 @@ class Methods {
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
   ///               since their staus is not updated from RUNNING
-  typedef std::function<void(transaction::Methods& trx, transaction::Status& status)> StatusChangeCallback;
+  typedef std::function<void(transaction::Methods& trx, transaction::Status status)> StatusChangeCallback;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -169,8 +167,9 @@ class Methods {
   static void addDataSourceRegistrationCallback(DataSourceRegistrationCallback const& callback);
 
   /// @brief add a callback to be called for state change events
+  /// @param callback nullptr and empty functers are ignored, treated as success
   /// @return success
-  bool addStatusChangeCallback(StatusChangeCallback const& callback);
+  bool addStatusChangeCallback(StatusChangeCallback const* callback);
 
   /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
@@ -344,7 +343,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  virtual OperationResult count(std::string const& collectionName, bool aggregate);
+  virtual OperationResult count(std::string const& collectionName, bool details);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -512,7 +511,7 @@ class Methods {
  protected:
 
   OperationResult countCoordinator(std::string const& collectionName,
-                                   bool aggregate, bool sendNoLockHeader);
+                                   bool details, bool sendNoLockHeader);
 
   OperationResult countLocal(std::string const& collectionName);
 

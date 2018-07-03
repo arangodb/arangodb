@@ -121,6 +121,7 @@ class Query {
     return _profile.get();
   }
 
+  velocypack::Slice optionsSlice() const { return _options->slice(); }
   TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
@@ -230,11 +231,11 @@ class Query {
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
 
+  /// @brief whether or not a query is a modification query
+  bool isModificationQuery() const { return _isModificationQuery; }
+
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
-
-  /// @brief test is a query is a modification query
-  bool isModificationQuery() const { return _isModificationQuery; }
 
   /// @brief prepare a V8 context for execution for this expression
   /// this needs to be called once before executing any V8 function in this
@@ -348,10 +349,10 @@ class Query {
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
 
-  /// @brief query options
+  /// @brief raw query options
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 
-  /// @brief query options
+  /// @brief parsed query options
   QueryOptions _queryOptions;
 
   /// @brief collections used in the query

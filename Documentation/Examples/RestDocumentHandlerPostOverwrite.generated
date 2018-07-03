@@ -5,13 +5,13 @@ EOF
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
-etag: <span class="hljs-string">"_W3YeJtq--_"</span>
+etag: <span class="hljs-string">"_XB1lJI---_"</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/lock
 
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/lock"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"lock"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_W3YeJtq--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lJI---_"</span> 
 }
 shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document/products?overwrite=true &lt;&lt;EOF
 { "Hello": "Universe", "_key" : "lock" }
@@ -20,12 +20,12 @@ EOF
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
-etag: <span class="hljs-string">"_W3YeJuG--B"</span>
+etag: <span class="hljs-string">"_XB1lJIa--B"</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/lock
 
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/lock"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"lock"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_W3YeJuG--B"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_W3YeJtq--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lJIa--B"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XB1lJI---_"</span> 
 }

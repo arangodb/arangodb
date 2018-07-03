@@ -1071,15 +1071,15 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 /// instead.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest>& requests) {
-  if (requests.size() == 0) {
+void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests) {
+  if (requests.empty()) {
     return;
   }
 
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
   double const shortTimeout = 10.0; // Picked arbitrarily
-  for (auto& req : requests) {
+  for (auto const& req : requests) {
     asyncRequest("", coordinatorTransactionID, req.destination, req.requestType,
                  req.path, req.body, *req.headerFields, nullptr, shortTimeout, false,
                  2.0);
@@ -1181,10 +1181,10 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
       arangodb::rest::RequestType reqtype, std::string const* body,
       std::unordered_map<std::string, std::string> const& headerFields) {
   HttpRequest* request = nullptr;
-  auto result = new ClusterCommResult();
+  auto result = std::make_unique<ClusterCommResult>();
   result->setDestination(destination, logConnectionErrors());
   if (result->endpoint.empty()) {
-    return std::make_pair(result, request);
+    return std::make_pair(result.release(), request);
   }
   result->status = CL_COMM_SUBMITTED;
 
@@ -1236,7 +1236,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   }
   request->setRequestType(reqtype);
 
-  return std::make_pair(result, request);
+  return std::make_pair(result.release(), request);
 }
 
 void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {

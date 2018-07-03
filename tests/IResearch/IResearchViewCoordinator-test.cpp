@@ -156,7 +156,7 @@ struct IResearchViewCoordinatorSetup {
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::ERR);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
@@ -198,6 +198,7 @@ struct IResearchViewCoordinatorSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::ClusterInfo::cleanup(); // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
@@ -305,12 +306,14 @@ SECTION("test_defaults") {
   // +system, +properties
   {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     arangodb::velocypack::Builder builder;
     builder.openObject();
     view->toVelocyPack(builder, true, true);
     builder.close();
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(8 == slice.length());
@@ -323,20 +326,23 @@ SECTION("test_defaults") {
     CHECK(false == slice.get("deleted").getBool());
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((5 == slice.length()));
+    CHECK((3 == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
   }
 
   // -system, +properties
   {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     arangodb::velocypack::Builder builder;
     builder.openObject();
     view->toVelocyPack(builder, true, false);
     builder.close();
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
+    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(4 == slice.length());
@@ -347,9 +353,10 @@ SECTION("test_defaults") {
     CHECK(!slice.hasKey("deleted"));
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((5 == slice.length()));
+    CHECK((3 == slice.length()));
     CHECK((!slice.hasKey("links")));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
   }
 
   // -system, -properties
@@ -404,7 +411,7 @@ SECTION("test_create_drop_view") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -564,7 +571,7 @@ SECTION("test_update_properties") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -620,7 +627,7 @@ SECTION("test_update_properties") {
 
     // update properties - full update
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"threadsMaxIdle\" : 42, \"threadsMaxTotal\" : 50 }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42, \"commitTimeoutMsec\": 50 } }");
       CHECK(view->updateProperties(props->slice(), false, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -646,8 +653,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
-        expected._threadsMaxIdle = 42;
-        expected._threadsMaxTotal = 50;
+        expected._commit._commitIntervalMsec = 42;
+        expected._commit._commitTimeoutMsec = 50;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice().get("properties"), error));
         CHECK(error.empty());
@@ -671,7 +678,7 @@ SECTION("test_update_properties") {
 
     // partially update properties
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"threadsMaxTotal\" : 42 }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitTimeoutMsec\": 42 } }");
       CHECK(fullyUpdatedView->updateProperties(props->slice(), true, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -697,8 +704,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
-        expected._threadsMaxIdle = 42;
-        expected._threadsMaxTotal = 42;
+        expected._commit._commitIntervalMsec = 42;
+        expected._commit._commitTimeoutMsec = 42;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice().get("properties"), error));
         CHECK(error.empty());
@@ -728,7 +735,7 @@ SECTION("test_update_links_partial_remove") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -1288,7 +1295,7 @@ SECTION("test_update_links_partial_add") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -1854,7 +1861,7 @@ SECTION("test_update_links_replace") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -2417,7 +2424,7 @@ SECTION("test_update_links_clear") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -2847,7 +2854,7 @@ SECTION("test_drop_link") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -3077,7 +3084,7 @@ SECTION("IResearchViewNode::createBlock") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());

@@ -44,4 +44,4 @@ and keep it secure (e.g. certificate & password rotation).
 Once configured, _ArangoSync_ will replicate both **structure and data** of an
 **entire cluster**. This means that there is no need to make additional configuration
 changes when adding/removing databases or collections.
-<br/>Also meta data such as users, foxx application & jobs are automatically replicated.
+<br/>Also meta data such as users, Foxx application & jobs are automatically replicated.

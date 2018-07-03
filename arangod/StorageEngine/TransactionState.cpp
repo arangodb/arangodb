@@ -94,12 +94,6 @@ TransactionCollection* TransactionState::collection(
   return trxCollection;
 }
 
-void TransactionState::addStatusChangeCallback(
-    StatusChangeCallback const& callback
-) {
-  _statusChangeCallbacks.emplace_back(&callback);
-}
-
 TransactionState::Cookie* TransactionState::cookie(
     void const* key
 ) noexcept {
@@ -332,7 +326,7 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec != nullptr && !exec->isSuperuser() && ExecContext::isAuthEnabled()) {
     // server is in read-only mode
-    if (accessType > AccessMode::Type::READ && !ServerState::writeOpsEnabled()) {
+    if (accessType > AccessMode::Type::READ && ServerState::readOnly()) {
       LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
 
       return TRI_ERROR_ARANGO_READ_ONLY;
@@ -424,14 +418,4 @@ void TransactionState::updateStatus(transaction::Status status) {
   }
 
   _status = status;
-
-  for (auto& callback: _statusChangeCallbacks) {
-    TRI_ASSERT(callback);
-
-    try {
-      (*callback)(*this);
-    } catch (...) {
-      // we must not propagate exceptions from here
-    }
-  }
 }
