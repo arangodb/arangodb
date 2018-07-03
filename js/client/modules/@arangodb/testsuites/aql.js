@@ -28,6 +28,7 @@
 const functionsDocumentation = {
   'shell_client': 'shell client tests',
   'shell_server': 'shell server tests',
+  'shell_client_aql': 'AQL tests in the client',
   'shell_server_aql': 'AQL tests in the server',
   'shell_server_only': 'server specific tests'
 };
@@ -40,10 +41,11 @@ const _ = require('lodash');
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'shell_client': [ 'js/common/tests/shell', 'js/client/tests/http', 'js/client/tests/shell' ],
-  'shell_server': [ 'js/common/tests/shell', 'js/server/tests/shell' ],
+  'shell_client': [ 'js/common/tests/shell', 'js/client/tests/http', 'js/client/tests/shell', 'js/common/tests/aql' ],
+  'shell_server': [ 'js/common/tests/shell', 'js/server/tests/shell', 'js/common/tests/aql' ],
   'shell_server_only': [ 'js/server/tests/shell' ],
-  'shell_server_aql': [ 'js/server/tests/aql' ]
+  'shell_server_aql': [ 'js/server/tests/aql', 'js/common/tests/aql' ],
+  'shell_client_aql': [ 'js/client/tests/aql', 'js/common/tests/aql' ]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -79,7 +81,7 @@ function shellServerOnly (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_server_aql
+// / @brief test: shell_server_aql
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellServerAql (options) {
@@ -107,15 +109,46 @@ function shellServerAql (options) {
   };
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: shell_client_aql
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientAql (options) {
+  let testCases;
+  let name = 'shell_client_aql';
+
+  if (!options.skipAql) {
+    testCases = tu.scanTestPaths(testPaths.shell_client_aql);
+    if (options.skipRanges) {
+      testCases = _.filter(testCases,
+                           function (p) { return p.indexOf('ranges-combined') === -1; });
+      name = 'shell_client_aql_skipranges';
+    }
+
+    testCases = tu.splitBuckets(options, testCases);
+
+    return tu.performTests(options, testCases, name, tu.runThere);
+  }
+
+  return {
+    shell_client_aql: {
+      status: true,
+      skipped: true
+    }
+  };
+}
+
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_client'] = shellClient;
   testFns['shell_server'] = shellServer;
+  testFns['shell_client_aql'] = shellClientAql;
   testFns['shell_server_aql'] = shellServerAql;
   testFns['shell_server_only'] = shellServerOnly;
 
   defaultFns.push('shell_client');
   defaultFns.push('shell_server');
+  defaultFns.push('shell_client_aql');
   defaultFns.push('shell_server_aql');
 
   opts['skipAql'] = false;
