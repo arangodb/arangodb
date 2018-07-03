@@ -123,6 +123,7 @@ const blockTypesList = [
 ///  - a number, for an exact match;
 ///  - a range [min, max], to check if the actual element lies in this interval;
 ///  - null, so the actual element will be ignored
+///  - undefined must be undefined
 /// Also, the arrays must be of equal lengths.
 function assertFuzzyNumArrayEquality(expected, actual, details) {
   assert.assertEqual(expected.length, actual.length, details);
@@ -134,6 +135,8 @@ function assertFuzzyNumArrayEquality(expected, actual, details) {
     if (exp === null) {
       // do nothing
     } else if ('number' === typeof exp) {
+      assert.assertEqual(exp, act, Object.assign({i}, details));
+    } else if ('undefined' === typeof exp) {
       assert.assertEqual(exp, act, Object.assign({i}, details));
     } else if (Array.isArray(exp)) {
       assert.assertTrue(exp[0] <= act && act <= exp[1],
