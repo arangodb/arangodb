@@ -323,6 +323,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Resetting _earliestPackage to now for id " << slaveId;
     _earliestPackage[slaveId] = steady_clock::now();
+    _confirmed[slaveId] = 0;
   } else {
     // answer to sendAppendEntries to empty request, when follower's highest
     // log index is 0. This is necessary so that a possibly restarted agent
