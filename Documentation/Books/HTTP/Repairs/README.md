@@ -15,7 +15,7 @@ There is a job that can restore this property safely. However, while the
 job is running,
 - the `replicationFactor` *must not be changed* for any affected collection or
   prototype collection (i.e. set in `distributeShardsLike`, including
-  [SmartGraphs](../../Manual/Graphs/SmartGraphs/)),
+  [SmartGraphs](../../Manual/Graphs/SmartGraphs/index.html)),
 - *neither should shards be moved* of one of those prototypes
 - and shutdown of DBServers *should be avoided*
 during the repairs. Also only one repair job should run at any given time.
@@ -160,7 +160,7 @@ this:
 If something is to be repaired, the response will have the property
 `collections` with an entry `<db>/<collection>` for each collection which
 has to be repaired. Each collection also as a separate `error` property
-which will be `true` iff an error occured for this collection (and `false`
+which will be `true` iff an error occurred for this collection (and `false`
 otherwise). If `error` is `true`, the properties `errorNum` and
 `errorMessage` will also be set, and in some cases also `errorDetails`
 with additional information on how to handle a specific error.
@@ -170,7 +170,7 @@ with additional information on how to handle a specific error.
 As this job possibly has to move a lot of data around, it can take a while
 depending on the size of the affected collections. So this should *not
 be called synchronously*, but only via
-[Async Results](../../HTTP/AsyncResultsManagement): i.e., set the
+[Async Results](../../HTTP/AsyncResultsManagement/index.html): i.e., set the
 header `x-arango-async: store` to put the job into background and get
 its results later. Otherwise the request will most probably result in a
 timeout and the response will be lost! The job will still continue unless
@@ -224,5 +224,5 @@ $ wget --method=PUT -qSO - http://localhost:8529/_api/job/152223973119118 | jq .
 ```
 
 The final response will look like the response of the `GET` call.
-If an error occured the response should contain details on how to proceed.
+If an error occurred the response should contain details on how to proceed.
 If in doubt, ask as on Slack: https://arangodb.com/community/

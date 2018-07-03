@@ -464,8 +464,7 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
     bool wasCleanShutdown,
     bool isUpgrade
 ) {
-  // TODO make this a coordinator type vocbase
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
+  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
 }
 
 // -----------------------------------------------------------------------------

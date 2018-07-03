@@ -127,7 +127,7 @@ cluster is down, or in a bad state, irrespective of the value of this setting.
 
 ### `spec.rocksdb.encryption.keySecretName`
 
-This setting specifies the name of a kubernetes `Secret` that contains
+This setting specifies the name of a Kubernetes `Secret` that contains
 an encryption key used for encrypting all data stored by ArangoDB servers.
 When an encryption key is used, encryption of the data in the cluster is enabled,
 without it encryption is disabled.

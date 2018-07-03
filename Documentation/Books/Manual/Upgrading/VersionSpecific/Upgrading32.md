@@ -2,8 +2,8 @@ Upgrading to ArangoDB 3.2
 =========================
 
 Please read the following sections if you upgrade from a previous
-version to ArangoDB 3.2. Please be sure that you have checked the list
-of [changes in 3.2](../../ReleaseNotes/UpgradingChanges32.md) before
+version to ArangoDB 3.2. Also, please, be sure that you have checked the list
+of [incompatible changes in 3.2](../../ReleaseNotes/UpgradingChanges32.md) before
 upgrading.
 
 Switching the storage engine

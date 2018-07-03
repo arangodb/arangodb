@@ -192,7 +192,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void GeneralServerFeature::prepare() {
-  ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
+  ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
   GENERAL_SERVER = this;
 }
 

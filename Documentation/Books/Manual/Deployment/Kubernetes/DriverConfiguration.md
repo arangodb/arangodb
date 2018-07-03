@@ -125,5 +125,5 @@ The easiest way to work around it, is by making sure that the query results are 
 enough.
 When that is not feasible, it is also possible to resolve this
 when the internal DNS names of your Kubernetes cluster are exposed to your client application
-and the resuling IP addresses are routeable from your client application.
+and the resulting IP addresses are routable from your client application.
 To expose internal DNS names of your Kubernetes cluster, your can use [CoreDNS](https://coredns.io).
