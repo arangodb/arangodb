@@ -320,7 +320,7 @@ void RocksDBOptionFeature::start() {
   }
 
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
-                                    << " wal_dir: " << _walDirectory << "'"
+                                    << " wal_dir: '" << _walDirectory << "'"
                                     << ", write_buffer_size: " << _writeBufferSize
                                     << ", max_write_buffer_number: " << _maxWriteBufferNumber
                                     << ", max_total_wal_size: " << _maxTotalWalSize
