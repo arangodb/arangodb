@@ -35,10 +35,8 @@ set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "re
 if (MSVC) 
   set(SNAPPY_HOME "${SNAPPY_SOURCE_DIR}" CACHE PATH "snappy source")
   set(SNAPPY_INCLUDE "${SNAPPY_INCLUDE_DIR}" CACHE PATH "where the wintendo should look for the snappy libs")
-  set(SNAPPY_LIB_DEBUG "${SNAPPY_BUILD_DIR}/snappystatic.dir/Debug")
-  set(SNAPPY_LIB_DEBUG "${SNAPPY_LIB_DEBUG}" CACHE PATH "where the wintendo can find the debug snappy lib")
-  set(SNAPPY_LIB_RELEASE "${SNAPPY_BUILD_DIR}/snappystatic.dir/RelWithDebInfo")
-  set(SNAPPY_LIB_RELEASE "${SNAPPY_LIB_RELEASE}", CACHE PATH "where the wintendo can find the release snappy lib")
+  set(SNAPPY_LIB_DEBUG "${CMAKE_BINARY_DIR}/bin/Debug/snappystatic.lib")
+  set(SNAPPY_LIB_RELEASE "${CMAKE_BINARY_DIR}/bin/RelWithDebInfo/snappystatic.lib")
 endif ()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION} EXCLUDE_FROM_ALL)
 
