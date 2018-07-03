@@ -429,8 +429,11 @@ Result BatchInfo::finish(replutils::Connection& connection,
   }
 }
 
-MasterInfo::MasterInfo(ReplicationApplierConfiguration const& applierConfig)
-    : _force32mode{applierConfig._force32mode} {}
+MasterInfo::MasterInfo(ReplicationApplierConfiguration const& applierConfig) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _force32mode = applierConfig._force32mode;
+#endif
+}
 
 /// @brief get master state
 Result MasterInfo::getState(replutils::Connection& connection,

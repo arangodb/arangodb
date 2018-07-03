@@ -32,6 +32,8 @@
 #include "Basics/Result.h"
 #include "VocBase/ticks.h"
 
+#include <velocypack/Builder.h>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -83,7 +85,8 @@ struct ProgressInfo {
   /// @brief progress message
   std::string message{"not started"};
   /// @brief collections synced
-  std::map<TRI_voc_cid_t, std::string> processedCollections{}; // TODO worker safety
+  std::map<TRI_voc_cid_t, std::string>
+      processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
   ProgressInfo(Setter);
@@ -110,7 +113,7 @@ struct BarrierInfo {
 
   /// @brief send an "extend barrier" command
   // TODO worker-safety
-  Result extend(Connection&, TRI_voc_tick_t = 0); // TODO worker safety
+  Result extend(Connection&, TRI_voc_tick_t = 0);  // TODO worker safety
 };
 
 struct BatchInfo {
@@ -128,7 +131,8 @@ struct BatchInfo {
 
   /// @brief send an "extend batch" command
   // TODO worker-safety
-  Result extend(Connection& connection, ProgressInfo& progress); // TODO worker safety
+  Result extend(Connection& connection,
+                ProgressInfo& progress);  // TODO worker safety
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
@@ -151,8 +155,10 @@ struct MasterInfo {
   /// we need to act like a 3.2 client
   bool simulate32Client() const;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
  private:
-  bool _force32mode{false};
+  bool _force32mode{false};  // force client to act like 3.2
+#endif
 };
 
 /// @brief generates basic source headers for cluster comm requests
