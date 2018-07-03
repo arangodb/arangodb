@@ -352,6 +352,8 @@ class RocksDBEngine final : public StorageEngine {
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
+  double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
+
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
@@ -447,6 +449,10 @@ class RocksDBEngine final : public StorageEngine {
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
+  
+  // number of seconds to wait initially after server start before WAL file deletion
+  // kicks in
+  double _pruneWaitTimeInitial;
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
