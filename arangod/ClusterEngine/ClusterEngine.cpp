@@ -230,12 +230,10 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
     int& status
 ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return VPackBuilder();
 }
 
 VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return VPackBuilder();
 }
 
 // database, collection and index management
