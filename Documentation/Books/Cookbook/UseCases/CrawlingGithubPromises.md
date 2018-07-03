@@ -84,7 +84,7 @@ The `promoteError` can be used for the github callback as well as the ArangoDB d
 
 ### Queues, Queues, Queues
 
-I've only needed a very simple job queue, so [queue-it][4] is a good choice.
+I've only needed a very simple job queue, so queue-it is a good choice.
 It provides a very simple API for handling job queues:
 
 ```
@@ -148,7 +148,7 @@ Therefore we need to pass the relevant data as parameters. It is not possible to
 
 ### Riding the Beast
 
-Start an ArangoDB instance (i.e. inside a [docker container][5]) and install the simple queue.
+Start an ArangoDB instance (i.e. inside a [docker container][4]) and install the simple queue.
 
 ```
 foxx-manager install queue-it /queue
@@ -185,7 +185,6 @@ be possible to avoid nodejs / ArangoDB roundtrips using more transactions.
 
 - [ArangoJS][1]
 - [npm promises][2]
-- [ArangoDB Foxx queue-it][4]
 
 The source code of this example is available from Github: <https://github.com/fceller/Foxxmender>
 
@@ -196,5 +195,4 @@ The source code of this example is available from Github: <https://github.com/fc
 [1]: https://github.com/arangodb/arangojs
 [2]: https://www.npmjs.com/package/promises
 [3]: https://github.com/fceller/Foxxmender
-[4]: https://github.com/arangodb/queue-it
-[5]: ../Cloud/DockerContainer.md
+[4]: ../Cloud/DockerContainer.md
