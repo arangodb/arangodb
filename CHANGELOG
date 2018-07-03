@@ -8,6 +8,10 @@ devel
   The `padded` key generator generates keys of a fixed length (16 bytes) in 
   ascending lexicographical sort order.
 
+* The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
+  field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
+  the inverted meaning.
+
 * added `COUNT_DISTINCT` AQL function
 
 * make AQL optimizer rule `collect-in-cluster` optimize aggregation functions

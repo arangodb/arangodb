@@ -36,10 +36,10 @@ double VocbaseContext::ServerSessionTtl =
 VocbaseContext::VocbaseContext(
     GeneralRequest& req,
     TRI_vocbase_t& vocbase,
-    bool isInternal,
+    uint32_t flags,
     auth::Level systemLevel,
     auth::Level dbLevel
-): ExecContext(isInternal, req.user(), req.databaseName(), systemLevel, dbLevel),
+): ExecContext(flags, req.user(), req.databaseName(), systemLevel, dbLevel),
    _vocbase(vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!_vocbase.isDangling());
@@ -59,13 +59,13 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   if (auth == nullptr) {
     return nullptr;
   } else if (!auth->isActive()) {
-    return new VocbaseContext(req, vocbase, /*isInternal*/ false,
+    return new VocbaseContext(req, vocbase, /*flags*/ 0,
                               /*sysLevel*/ auth::Level::RW,
                               /*dbLevel*/ auth::Level::RW);
   }
 
   if (!req.authenticated()) {
-    return new VocbaseContext(req, vocbase, /*isInternal*/ false,
+    return new VocbaseContext(req, vocbase, /*flags*/ 0,
                               /*sysLevel*/ auth::Level::NONE,
                               /*dbLevel*/ auth::Level::NONE);
   }
@@ -94,22 +94,25 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   if (req.databaseName() != TRI_VOC_SYSTEM_DATABASE) {
     sysLvl = um->databaseAuthLevel(req.user(), TRI_VOC_SYSTEM_DATABASE);
   }
-
-  return new VocbaseContext(req, vocbase, /*isInternal*/ false,
+  
+  bool found;
+  std::string val = req.header("x-arango-allow-dirty-read", found);
+  int flags = found && basics::StringUtils::boolean(val) ? FLAG_DIRTY_READS_ALLOWED : 0;
+  return new VocbaseContext(req, vocbase, /*flags*/ flags,
                             /*sysLevel*/ sysLvl,
                             /*dbLevel*/ dbLvl);
 }
 
 void VocbaseContext::forceSuperuser() {
-  TRI_ASSERT(!_internal || _user.empty());
-  _internal = true;
+  TRI_ASSERT(!(_flags & FLAG_INTERNAL) || _user.empty());
+  _flags |= FLAG_INTERNAL;
   _systemDbAuthLevel = auth::Level::RW;
   _databaseAuthLevel = auth::Level::RW;
 }
 
 void VocbaseContext::forceReadOnly() {
-  TRI_ASSERT(!_internal || _user.empty());
-  _internal = true;
+  TRI_ASSERT(!(_flags & FLAG_INTERNAL) || _user.empty());
+  _flags |= FLAG_INTERNAL;
   _systemDbAuthLevel = auth::Level::RO;
   _databaseAuthLevel = auth::Level::RO;
 }
