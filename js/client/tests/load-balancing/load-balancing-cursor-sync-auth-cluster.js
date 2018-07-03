@@ -94,11 +94,11 @@ function CursorSyncAuthSuite () {
       return {};
     }
 
-    body = res.body;
-    if (typeof body === "string") {
-      body = JSON.parse(body);
+    var resultBody = res.body;
+    if (typeof resultBody === "string") {
+      resultBody = JSON.parse(resultBody);
     }
-    return body;
+    return resultBody;
   }
 
   return {
@@ -166,7 +166,6 @@ function CursorSyncAuthSuite () {
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'PUT', url, {}, false);
-      require('internal').print(JSON.stringify(result));
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.error);
@@ -202,7 +201,6 @@ function CursorSyncAuthSuite () {
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'PUT', url, {}, false);
-      require('internal').print(JSON.stringify(result));
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.error);
@@ -230,23 +228,56 @@ function CursorSyncAuthSuite () {
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
-      /* TODO enable failure assertions once cursors are user-restricted
       result = sendRequest(users[1], 'PUT', url, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.error);
-      assertEqual(result.code, 401);*/
+      assertEqual(result.code, 404);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, false);
-      require('internal').print(JSON.stringify(result));
 
       assertFalse(result === undefined || result === {});
       assertFalse(result.error);
       assertEqual(result.code, 202);
     },
 
-  };
+    testCursorForwardingDifferentUserDelete: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest(users[0], 'POST', url, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[1], 'DELETE', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'DELETE', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 202);
+    },
+
+  }
 }
 
 jsunity.run(CursorSyncAuthSuite);
