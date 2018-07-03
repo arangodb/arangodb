@@ -290,7 +290,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   OperationOptions options;
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
-  options.ignoreRevs = true;
+  options.ignoreRevs = ep->getOptions().ignoreRevs;
   options.returnOld = producesOutput;
   options.isRestore = ep->getOptions().useIsRestore;
 
@@ -605,7 +605,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
-  options.ignoreRevs = true;
+  options.ignoreRevs = ep->getOptions().ignoreRevs;
   options.isRestore = ep->getOptions().useIsRestore;
         
   // loop over all blocks
@@ -813,7 +813,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.mergeObjects = ep->_options.mergeObjects;
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnNew = producesOutput;
-  options.ignoreRevs = true;
+  options.ignoreRevs = ep->getOptions().ignoreRevs;
   options.isRestore = ep->getOptions().useIsRestore;
   
   VPackBuilder keyBuilder;
@@ -1073,7 +1073,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
-  options.ignoreRevs = true;
+  options.ignoreRevs = ep->getOptions().ignoreRevs;
   options.isRestore = ep->getOptions().useIsRestore;
         
   // loop over all blocks
