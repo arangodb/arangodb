@@ -59,6 +59,32 @@ operators, e.g.:
 However, the full power of ArangoSearch is harnessed and exposed via functions,
 during both the filter and sort stages.
 
+The supported AQL context functions are:
+
+### ANALYZER()
+
+`ANALYZER(filter-expression, analyzer)`
+
+Override analyzer in a context of **filter-expression** with another one, denoted
+by a specified **analyzer** argument, making it available for filter functions.
+
+- *filter-expression* - any valid filter expression
+- *analyzer* - string with the analyzer to inmbue, i.e. *"text_en"* or [one of the other available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+
+By default, context contains `Identity` analyzer.
+
+### BOOST()
+
+`BOOST(filter-expression, boost)`
+
+Override boost in a context of **filter-expression** with a specified value,
+making it available for scorer funtions.
+
+- *filter-expression* - any valid filter expression
+- *boost* - numeric boost value
+
+By default, context contains boost value equal to `1.0`.
+
 The supported filter functions are:
 
 ### EXISTS()
@@ -67,12 +93,14 @@ The supported filter functions are:
 
 Match documents where the attribute **attribute-name** exists in the document.
 
-`EXISTS(attribute-name, "analyzer", analyzer)`
+`EXISTS(attribute-name, "analyzer" [, analyzer])`
 
 Match documents where the **attribute-name** exists in the document and
 was indexed by the specified **analyzer**.
+In case if **analyzer** isn't specified, current context analyzer (e.g. specified by
+`ANALYZER` function) will be used.
 
-`EXISTS(attribute-name, "type", type)`
+`EXISTS(attribute-name, type)`
 
 Match documents where the **attribute-name** exists in the document
  and is of the specified type.
@@ -86,12 +114,15 @@ Match documents where the **attribute-name** exists in the document
     - **null**
     - **string**
 
+In case if **analyzer** isn't specified, current context analyzer (e.g. specified by
+`ANALYZER` function) will be used.
+
 ### PHRASE()
 
 ```
 PHRASE(attribute-name, 
-       phrasePart [, skipTokens, phrasePart [, ... skipTokens, phrasePart]],
-       analyzer)
+       phrasePart [, skipTokens, phrasePart [, ... skipTokens, phrasePart]]
+       [, analyzer])
 ```
 
 Search for a phrase in the referenced attributes. 
@@ -123,6 +154,16 @@ This can be used to better understand how the specific analyzer is going to beha
 - *input* string to tokenize
 - *analyzer* [one of the available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 
+### MIN_MATCH()
+
+`MIN_MATCH(filter-expression, [..., filter-expression], min-match-count)`
+
+Match documents where at least **min-match-count** of the specified **filter-expression**s
+are satisfied.
+
+- *filter-expression* - any valid filter expression
+- *min-match-count* - minimum number of filter-expression that should be satisfied
+
 #### Filtering examples
 
 to match documents which have a 'name' attribute
@@ -149,16 +190,39 @@ or
       FILTER EXISTS(doc['body'], 'analyzer', 'text_en')
       RETURN doc
 
+or
+
+    FOR doc IN VIEW someView
+      FILTER ANALYZER(EXISTS(doc['body'], 'analyzer'), 'text_en')
+      RETURN doc
+
 to match documents which have an 'age' attribute of type number
 
     FOR doc IN VIEW someView
-      FILTER EXISTS(doc.age, 'type' 'numeric')
+      FILTER EXISTS(doc.age, 'numeric')
       RETURN doc
 
 or
 
     FOR doc IN VIEW someView
-      FILTER EXISTS(doc['age'], 'type' 'numeric')
+      FILTER EXISTS(doc['age'], 'numeric')
+      RETURN doc
+
+to match documents where 'description' contains word 'quick' or word
+'brown' and has been analyzed with 'text_en' analyzer
+
+    FOR doc IN VIEW someView
+      FILTER ANALYZER(doc.description == 'quick' OR doc.description == 'brown', 'text_en')
+      RETURN doc
+
+to match documents where 'description' contains at least 2 of 3 words 'quick', 
+'brown', 'fox' and has been analyzed with 'text_en' analyzer
+
+    FOR doc IN VIEW someView
+      FILTER ANALYZER(
+        MIN_MATCH(doc.description == 'quick', doc.description == 'brown', doc.description == 'fox', 2),
+        'text_en'
+      )
       RETURN doc
 
 to match documents where 'description' contains a phrase 'quick brown'
@@ -173,6 +237,12 @@ or
       FILTER PHRASE(doc['description'], [ 'quick brown' ], 'text_en')
       RETURN doc
 
+or
+
+    FOR doc IN VIEW someView
+      FILTER ANALYZER(PHRASE(doc['description'], [ 'quick brown' ]), 'text_en')
+      RETURN doc
+
 to match documents where 'body' contains the phrase consisting of a sequence
 like this:
 'quick' * 'fox jumps' (where the asterisk can be any single word)
@@ -185,6 +255,12 @@ or
 
     FOR doc IN VIEW someView
       FILTER PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ], 'text_en')
+      RETURN doc
+
+or
+
+    FOR doc IN VIEW someView
+      FILTER ANALYZER(PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ]), 'text_en')
       RETURN doc
 
 to match documents where 'story' starts with 'In the beginning'
@@ -206,7 +282,7 @@ to watch the analyzer doing its work
 to match documents where 'description' best matches 'a quick brown fox'
 
     FOR doc IN VIEW someView
-      FILTER doc.description IN TOKENS('a quick brown fox', 'text_en')
+      FILTER ANALYZER(doc.description IN TOKENS('a quick brown fox', 'text_en'), 'test_en')
       RETURN doc
 
 ArangoSearch sort
