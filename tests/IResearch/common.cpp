@@ -38,6 +38,7 @@
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "tests/Basics/icu-helper.h"
+#include "search/scorers.hpp"
 
 #include "search/boolean_filter.hpp"
 
@@ -47,6 +48,77 @@
 #include <unordered_set>
 
 extern const char* ARGV0; // defined in main.cpp
+
+namespace {
+
+struct BoostScorer : public irs::sort {
+  struct Prepared: public irs::sort::prepared_base<irs::boost::boost_t> {
+   public:
+    DECLARE_FACTORY(Prepared);
+
+    Prepared() = default;
+
+    virtual void add(score_t& dst, const score_t& src) const override {
+      dst += src;
+    }
+
+    virtual irs::flags const& features() const override {
+      return irs::flags::empty_instance();
+    }
+
+    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
+      return lhs < rhs;
+    }
+
+    virtual irs::sort::collector::ptr prepare_collector() const override {
+      return nullptr;
+    }
+
+    virtual void prepare_score(score_t& score) const override {
+      score = 0.f;
+    }
+
+    virtual irs::sort::scorer::ptr prepare_scorer(
+      irs::sub_reader const&,
+      irs::term_reader const&,
+      irs::attribute_store const& query_attributes,
+      irs::attribute_view const&
+    ) const override {
+      struct Scorer : public irs::sort::scorer {
+        Scorer(irs::boost::boost_t score): scr(score) { }
+
+        virtual void score(irs::byte_type* score_buf) override {
+          *reinterpret_cast<score_t*>(score_buf) = scr;
+        }
+
+        irs::boost::boost_t scr;
+      };
+
+      return irs::sort::scorer::make<Scorer>(
+        irs::boost::extract(query_attributes)
+      );
+    }
+  };
+
+  static ::iresearch::sort::type_id const& type() {
+    static ::iresearch::sort::type_id TYPE("boostscorer");
+    return TYPE;
+  }
+
+  static irs::sort::ptr make(irs::string_ref const&) {
+    return std::make_shared<BoostScorer>();
+  }
+
+  BoostScorer() : irs::sort(BoostScorer::type()) {}
+
+  virtual irs::sort::prepared::ptr prepare() const override {
+    return irs::memory::make_unique<Prepared>();
+  }
+}; // BoostScorer
+
+REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
+
+}
 
 namespace arangodb {
 namespace tests {
