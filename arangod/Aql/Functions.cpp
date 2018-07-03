@@ -4159,7 +4159,7 @@ AqlValue Functions::IsKey(arangodb::aql::Query*,
 
   VPackValueLength l;
   char const* p = value.slice().getString(l);
-  return AqlValue(AqlValueHintBool(TraditionalKeyGenerator::validateKey(p, l)));
+  return AqlValue(AqlValueHintBool(KeyGenerator::validateKey(p, l)));
 }
 
 /// @brief function COUNT_DISTINCT

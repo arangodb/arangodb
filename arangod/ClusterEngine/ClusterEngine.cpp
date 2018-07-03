@@ -230,12 +230,10 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
     int& status
 ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return VPackBuilder();
 }
 
 VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return VPackBuilder();
 }
 
 // database, collection and index management
@@ -341,14 +339,6 @@ arangodb::Result ClusterEngine::renameCollection(
   std::string const& oldName
 ) {
   return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
-void ClusterEngine::createIndex(
-    TRI_vocbase_t& /*vocbase*/,
-    TRI_voc_cid_t /*collectionId*/,
-    TRI_idx_iid_t /*indexId*/,
-    arangodb::velocypack::Slice const& /*data*/
-) {
 }
 
 void ClusterEngine::unloadCollection(

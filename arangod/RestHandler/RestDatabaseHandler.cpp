@@ -44,12 +44,6 @@ RestStatus RestDatabaseHandler::execute() {
   if (type == rest::RequestType::GET) {
     return getDatabases();
   } else if (type == rest::RequestType::POST) {
-    if (!_vocbase.isSystem()) {
-      generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
-                    TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-
-      return RestStatus::DONE;
-    }
     return createDatabase();
   } else if (type == rest::RequestType::DELETE_REQ) {
     return deleteDatabase();
@@ -71,14 +65,22 @@ RestStatus RestDatabaseHandler::getDatabases() {
     return RestStatus::DONE;
   }
 
+  Result res;
   VPackBuilder builder;
-  
   if (suffixes.empty() || suffixes[0] == "user") {
     std::vector<std::string> names;
     if (suffixes.empty()) {
-      names = methods::Databases::list(std::string());
+      if (!_vocbase.isSystem()) {
+        res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+      } else {
+        names = methods::Databases::list(std::string());
+      }
     } else if (suffixes[0] == "user") {
-      names = methods::Databases::list(_request->user());
+      if (!_request->authenticated()) {
+        res.reset(TRI_ERROR_FORBIDDEN);
+      } else {
+        names = methods::Databases::list(_request->user());
+      }
     }
 
     builder.openArray();
@@ -87,16 +89,12 @@ RestStatus RestDatabaseHandler::getDatabases() {
     }
     builder.close();
   } else if (suffixes[0] == "current") {
-    Result res = methods::Databases::info(&_vocbase, builder);
-
-    if (!res.ok()) {
-      generateError(rest::ResponseCode::BAD, res.errorNumber());
-
-      return RestStatus::DONE;
-    }
+    res = methods::Databases::info(&_vocbase, builder);
   }
-
-  if (builder.isEmpty()) {
+  
+  if (res.fail()) {
+    generateError(res);
+  } else if (builder.isEmpty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   } else {
     generateOk(rest::ResponseCode::OK, builder.slice());
@@ -108,6 +106,13 @@ RestStatus RestDatabaseHandler::getDatabases() {
 // / @brief was docuBlock JSF_get_api_database_create
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::createDatabase() {
+  if (!_vocbase.isSystem()) {
+    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    
+    return RestStatus::DONE;
+  }
+  
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
