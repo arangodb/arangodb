@@ -1057,7 +1057,7 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   } 
 
-  if (_lastResponse != nullptr) {
+  if (_lastResponse != nullptr || _lastError.fail()) {
     // We have an open result still.
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
 
@@ -1126,7 +1126,7 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
     }
   */
 
-  if (_lastResponse != nullptr) {
+  if (_lastResponse != nullptr || _lastError.fail()) {
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
     VPackSlice slice = responseBodyBuilder->slice();
     if (slice.isObject()) {
@@ -1150,11 +1150,11 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
           }
         }
       }
+      if (slice.hasKey("code")) {
+        return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
+      }
     }
 
-    if (slice.hasKey("code")) {
-      return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
-    }
     return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
 
@@ -1191,7 +1191,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
     THROW_ARANGO_EXCEPTION(_lastError);
   }
 
-  if (_lastResponse != nullptr) {
+  if (_lastResponse != nullptr || _lastError.fail()) {
     // We do not have an error but a result, all is good
     // We have an open result still.
 
@@ -1237,7 +1237,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
 std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
-  if (_lastResponse != nullptr) {
+  if (_lastResponse != nullptr || _lastError.fail()) {
     // We have an open result still.
     // Result is the response which will be a serialized AqlItemBlock
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();

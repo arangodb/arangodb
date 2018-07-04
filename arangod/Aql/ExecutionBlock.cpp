@@ -91,6 +91,7 @@ bool ExecutionBlock::removeDependency(ExecutionBlock* ep) {
   while (it != _dependencies.end()) {
     if (*it == ep) {
       _dependencies.erase(it);
+      _dependencyPos = _dependencies.end();
       return true;
     }
     ++it;

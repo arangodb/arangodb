@@ -492,6 +492,7 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
       }
     }
   } catch (...) {
+    res.reset(TRI_ERROR_INTERNAL);
   }
   return res;
 }

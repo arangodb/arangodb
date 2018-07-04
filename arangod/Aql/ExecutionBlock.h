@@ -301,6 +301,7 @@ class ExecutionBlock {
 
   /// @brief position in the dependencies while iterating through them
   ///        used in initializeCursor and shutdown.
+  ///        Needs to be set to .end() everytime we modify _dependencies
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
 
   /// @brief the Result returned during the shutdown phase. Is kept for multiple
