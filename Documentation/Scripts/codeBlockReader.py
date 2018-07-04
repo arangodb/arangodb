@@ -189,28 +189,15 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   fh.write(unicode("\n"))
 
   utag = urllib.quote_plus(tag) + '_container'
-  anchor = "<a name=\"" + utag + "\" id=\"" + utag + "\" class=\"anchor\" aria-hidden=\"true\" href=\"#" + utag + "\" >" + '''<svg class="svg-icon" viewBox="0 0 20 20"> <path fill="none" d="M19.175,4.856L15.138,0.82c-0.295-0.295-0.817-0.295-1.112,0L8.748,6.098c-0.307,0.307-0.307,0.805,0,1.112l1.462,1.462l-1.533,1.535L7.215,8.746c-0.307-0.307-0.805-0.307-1.112,0l-5.278,5.276c-0.307,0.307-0.307,0.805,0,1.112l4.037,4.037c0.154,0.153,0.355,0.23,0.556,0.23c0.201,0,0.403-0.077,0.556-0.23l5.28-5.276c0.148-0.148,0.23-0.347,0.23-0.556c0-0.209-0.083-0.409-0.23-0.556l-1.464-1.464l1.533-1.535l1.462,1.462c0.153,0.153,0.355,0.23,0.556,0.23c0.201,0,0.402-0.077,0.556-0.23l5.278-5.278c0.147-0.147,0.23-0.347,0.23-0.556C19.406,5.203,19.322,5.004,19.175,4.856zM9.585,13.339l-4.167,4.164l-2.925-2.925l4.166-4.164l0.906,0.905l-0.67,0.668c-0.307,0.307-0.307,0.805,0,1.112c0.154,0.153,0.356,0.23,0.556,0.23c0.203,0,0.403-0.077,0.556-0.23l0.67-0.668L9.585,13.339z M13.341,9.578l-0.906-0.906l0.663-0.662c0.307-0.307,0.307-0.805,0-1.112c-0.307-0.307-0.805-0.307-1.112,0L11.322,7.56l-0.906-0.906l4.166-4.166l2.925,2.925L13.341,9.578z"></path></svg></a>'''
-
   ustr = u"\uE9CB"
-  # print(ustr)
-  anchor =u"<a class=\"anchorjs-link \" href=\"#"+ utag + "\" aria-label=\"Anchor\" data-anchorjs-icon=\"" + ustr + "\" style=\"font: 1em/1 anchorjs-icons; padding-left: 0.375em;\"></a>"
+  anchor = u"<a class=\"anchorjs-link \" href=\"#"+ utag + "\" aria-label=\"Anchor\" data-anchorjs-icon=\"" + ustr + "\"></a>"
 
-  
-#'''
-#<h2>
-# <a id="user-content-key-features-in-arangodb" class="anchor" aria-hidden="true" href="#key-features-in-arangodb">
-#  <svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true">
-#    <path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
-#  </svg>
-#</a>Key Features in ArangoDB</h2>
-#'''
-  
   longTag = "%s_long" % tag
   shortTag = "%s_short" % tag
   shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
   longToggle = "$('#%s').hide(); $('#%s').show();" % (longTag, shortTag)
 
-  fh.write(unicode("<div id=\"%s\">\n" % utag))
+  fh.write(unicode("<div class=\"example-container\" id=\"%s\">\n" % utag))
   fh.write(unicode(anchor))
 
 
