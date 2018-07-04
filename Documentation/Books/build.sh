@@ -665,7 +665,6 @@ function build-books()
 
 function build-dist-books()
 {
-    set -x
     set -e
     if test -z "${OUTPUT_DIR}"; then
         echo "please specify --outputDir"
