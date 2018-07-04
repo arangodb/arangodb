@@ -323,8 +323,8 @@ function iResearchAqlTestSuite () {
 
       var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text) RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.length, expected.size);      
-      result.forEach(function(res) {        
+      assertEqual(result.length, expected.size); 
+      result.forEach(function(res) {
         assertTrue(expected.delete(res.name));
       });
       assertEqual(expected.size, 0);
