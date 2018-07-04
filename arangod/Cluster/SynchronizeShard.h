@@ -53,6 +53,22 @@ public:
   
   virtual arangodb::Result progress(double& progress) override final;
 
+private:
+  arangodb::Result getReadLock(
+    std::string const& endpoint, std::string const& database,
+    std::string const& collection, std::string const& clientId, uint64_t rlid,
+    double timeout = 120.0);
+
+  arangodb::Result startReadLockOnLeader(
+    std::string const& endpoint, std::string const& database,
+    std::string const& collection, std::string const& clientId, uint64_t& rlid,
+    double timeout = 120.0);
+
+  arangodb::Result synchroniseOneShard(
+    std::string const& database, std::string const& shard,
+    std::string const& planId, std::string const& leader);
+
+  
 };
 
 }}

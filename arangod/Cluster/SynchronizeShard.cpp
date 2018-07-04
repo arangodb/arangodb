@@ -179,7 +179,7 @@ arangodb::Result count(
 
 arangodb::Result addShardFollower (
   std::string const& endpoint, std::string const& database,
-  std::string const& shard, std::string const& lockJobId,
+  std::string const& shard, uint64_t lockJobId,
   std::string const& clientId, double timeout = 120.0 ) {
 
   auto cc = arangodb::ClusterComm::instance();
@@ -213,7 +213,7 @@ arangodb::Result addShardFollower (
     body.add("followerId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add("shard", VPackValue(shard));
     body.add("checksum", VPackValue(c));
-    if (!lockJobId.empty()) {
+    if (lockJobId != 0) {
       body.add("readLockId", VPackValue(lockJobId));
     }}
   
@@ -226,7 +226,7 @@ arangodb::Result addShardFollower (
   if (result->getHttpReturnCode() != 200) {
     std::string errorMessage (
       "addShardFollower: could not add us to the leader's follower list. ");
-    if (!lockJobId.empty()) {
+    if (lockJobId != 0) {
       errorMessage += comres->stringifyErrorMessage();
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
     } else {
@@ -286,7 +286,7 @@ arangodb::Result removeShardFollower (
 
 arangodb::Result cancelReadLockOnLeader (
   std::string const& endpoint, std::string const& database,
-  std::string const& lockJobId, std::string const& clientId,
+  uint64_t lockJobId, std::string const& clientId,
   double timeout = 120.0) {
 
   auto cc = arangodb::ClusterComm::instance();
@@ -353,10 +353,10 @@ arangodb::Result cancelBarrier(
 }
 
 
-arangodb::Result getReadLock(
+arangodb::Result SynchronizeShard::getReadLock(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  uint64_t rlid, SynchronizeShard* s, double timeout) {
+  uint64_t rlid, double timeout) {
 
   auto start = steady_clock::now();
 
@@ -378,7 +378,7 @@ arangodb::Result getReadLock(
     clientId, 2, endpoint, rest::RequestType::POST, url,
     std::make_shared<std::string>(b.toJson()),
     std::unordered_map<std::string, std::string>(),
-    std::make_shared<SynchronizeShardCallback>(s), 1.0, true, 0.5);
+    std::make_shared<SynchronizeShardCallback>(this), 1.0, true, 0.5);
   
   // Intentionally do not look at the outcome, even in case of an error
   // we must make sure that the read lock on the leader is not active!
@@ -422,10 +422,10 @@ bool isStopping() {
   return application_features::ApplicationServer::isStopping();
 }
 
-static arangodb::Result startReadLockOnLeader(
+arangodb::Result SynchronizeShard::startReadLockOnLeader(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  SynchronizeShard* s, uint64_t& rlid, double timeout = 120.0) {
+  uint64_t& rlid, double timeout) {
 
   auto start = steady_clock::now();
 
@@ -438,7 +438,7 @@ static arangodb::Result startReadLockOnLeader(
     return result;
   }
 
-  result = getReadLock(endpoint, database, collection, clientId, rlid, s, timeout);
+  result = getReadLock(endpoint, database, collection, clientId, rlid, timeout);
   
   auto elapsed = (steady_clock::now() - start).count();
 
@@ -479,7 +479,14 @@ arangodb::Result syncCollection(
 
 }
 
-arangodb::Result synchroniseOneShard(
+arangodb::Result replicationSynchronizeFinalize(
+  std::string const& endpoint, std::string const& database,
+  std::string const& shard, std::string const& leaderId, uint64_t lockJobId,
+  uint64_t to1, uint64_t to2) {
+  return Result();
+}
+
+arangodb::Result SynchronizeShard::synchroniseOneShard(
   std::string const& database, std::string const& shard,
   std::string const& planId, std::string const& leader) {
   
@@ -578,8 +585,9 @@ arangodb::Result synchroniseOneShard(
       database << "/" << shard << "' for central '" << database << "/" <<
       planId << "'";
     try {
+
       auto asResult = addShardFollower(
-        ep, database, shard, std::string(), startTimeStr);
+        ep, database, shard, 0, clientId, 60.0);
 
       if (asResult.ok()) {
         terminateAndStartOther();
@@ -668,101 +676,60 @@ arangodb::Result synchroniseOneShard(
       } else {
 
         // Now start a read transaction to stop writes:
-        auto lockJobId = 0;
-        Result lockResult;
-        //lockResult = startReadLockOnLeader(ep, database, collection,
-        //                                        clientId, this, lockJobId);
-        if (lockResult.ok()) {
+        uint64_t lockJobId = 0;
+        Result result = startReadLockOnLeader(
+          ep, database, collection->name(), clientId, lockJobId);
+        if (result.ok()) {
           LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
         } else {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
             << "synchronizeOneShard: error in startReadLockOnLeader:"
-            << lockResult.errorMessage();
+            << result.errorMessage();
         }
+
         cancelBarrier(ep, database, sy.get("barrierId").copyString(), clientId);
 
+        if (lockJobId != 0) {
+
+          Result fres = replicationSynchronizeFinalize (
+            ep, database, shard, leader,
+            sy.get("lastLogTick").getNumber<uint64_t>(), 60, 60);
+
+          if (fres.ok()) {
+            result = addShardFollower(ep, database, shard, lockJobId, clientId, 60.0);
+
+            if (!result.ok()) {
+              //db._drop(shard, {isSystem: true });
+              LOG_TOPIC(ERR, Logger::MAINTENANCE)
+                << "synchronizeOneShard: failed to add follower"
+                << result.errorMessage();
+            }
+          } else {
+            std::string errorMessage(
+              "synchronizeOneshard: error in syncCollectionFinalize: ") ;
+            errorMessage += fres.errorMessage();
+            result = Result(TRI_ERROR_INTERNAL, errorMessage);
+          }
+
+          result = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+          if (!result.ok()) {
+            LOG_TOPIC(ERR, Logger::MAINTENANCE)
+              << "synchronizeOneShard: read lock has timed out for shard " << shard;
+          }
+        } else {
+          LOG_TOPIC(ERR, Logger::MAINTENANCE)
+            << "synchronizeOneShard: lockJobId was false for shard" << shard;
+        }
+          
+        if (result.ok()) {
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "synchronizeOneShard: synchronization worked for shard " << shard;
+        } else {
+          LOG_TOPIC(ERR, Logger::MAINTENANCE)
+            << "synchronizeOneShard: synchronization failed for shard " << shard;
+        }
       }
-      
     }
-      
-
-/*
-    if (sy.error) {
-      console.topic('heartbeat=error', 'synchronizeOneShard: could not initially synchronize',
-        'shard ', shard, sy);
-      throw 'Initial sync for shard ' + shard + ' failed';
-    } else {
-      if (sy.collections.length === 0 ||
-        sy.collections[0].name !== shard) {
-        if (longSync) {
-          console.topic('heartbeat=error', 'synchronizeOneShard: long sync, before cancelBarrier',
-                        new Date().toString());
-        }
-        cancelBarrier(ep, database, sy.barrierId);
-        if (longSync) {
-          console.topic('heartbeat=error', 'synchronizeOneShard: long sync, after cancelBarrier',
-                        new Date().toString());
-        }
-        throw 'Shard ' + shard + ' seems to be gone from leader!';
-      } else {
-        // Now start a read transaction to stop writes:
-        var lockJobId = false;
-        try {
-          lockJobId = startReadLockOnLeader(ep, database,
-            shard, 300);
-          console.topic('heartbeat=debug', 'lockJobId:', lockJobId);
-        } catch (err1) {
-          console.topic('heartbeat=error', 'synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
-        }
-        finally {
-          cancelBarrier(ep, database, sy.barrierId);
-        }
-
-        // HERE
-        
-        if (lockJobId !== false) {
-          try {
-            var sy2 = REPLICATION_SYNCHRONIZE_FINALIZE({ 
-              endpoint: ep, 
-              database, 
-              collection: shard, 
-              leaderId: leader, 
-              from: sy.lastLogTick,
-              requestTimeout: 60,
-              connectTimeout: 60
-            });
-             
-            try {
-              ok = addShardFollower(ep, database, shard, lockJobId);
-            } catch (err4) {
-              db._drop(shard, {isSystem: true });
-              throw err4;
-            }
-          } catch (err3) {
-            ok = false;
-            console.topic('heartbeat=error', 'synchronizeOneshard: exception in',
-              'syncCollectionFinalize:', err3);
-          }
-          finally {
-            if (!cancelReadLockOnLeader(ep, database, lockJobId)) {
-              console.topic('heartbeat=error', 'synchronizeOneShard: read lock has timed out',
-                'for shard', shard);
-              ok = false;
-            }
-          }
-        } else {
-          console.topic('heartbeat=error', 'synchronizeOneShard: lockJobId was false for shard',
-            shard);
-        }
-        if (ok) {
-          console.topic('heartbeat=debug', 'synchronizeOneShard: synchronization worked for shard',
-            shard);
-        } else {
-          throw 'Did not work for shard ' + shard + '.';
-        // just to log below in catch
-        }
-      }
-      }*/
   } catch (std::exception const& e) {
 #warning more elaborate
     auto const endTime = system_clock::now();
@@ -770,19 +737,19 @@ arangodb::Result synchroniseOneShard(
       << "synchronization of local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << planId << "' failed: "
       << timepointToString(endTime);
-         return Result (TRI_ERROR_INTERNAL, e.what());
+    return Result (TRI_ERROR_INTERNAL, e.what());
   }
-      
-      // Tell others that we are done:
-      terminateAndStartOther();
-    auto const endTime = system_clock::now();
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "synchronizeOneShard: done, " << database << "/" << shard << ", "
-      << database << "/" << planId << ", started: "
-      << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
-
-    return Result();
-
+  
+  // Tell others that we are done:
+  terminateAndStartOther();
+  auto const endTime = system_clock::now();
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    << "synchronizeOneShard: done, " << database << "/" << shard << ", "
+    << database << "/" << planId << ", started: "
+    << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
+  
+  return Result();
+  
 }
 
 SynchronizeShard::~SynchronizeShard() {};
