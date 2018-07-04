@@ -165,3 +165,6 @@ std::string const StaticStrings::GraphDistributeShardsLike("distributeShardsLike
 std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
+
+// misc strings
+std::string const StaticStrings::LastValue("lastValue"); 

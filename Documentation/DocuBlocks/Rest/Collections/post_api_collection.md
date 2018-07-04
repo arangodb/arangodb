@@ -50,7 +50,7 @@ should be a JSON array containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
-*traditional* and *autoincrement*.
+*traditional*, *autoincrement*, *uuid* and *padded*.
 
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}
 if set to *true*, then it is allowed to supply own key values in the

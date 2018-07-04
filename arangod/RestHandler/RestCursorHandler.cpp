@@ -233,6 +233,26 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   }
 }
 
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestCursorHandler::forwardingTarget() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+    return false;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return false;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+
+  return (sourceServer == ServerState::instance()->getShortId())
+      ? 0
+      : sourceServer;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
@@ -382,7 +402,7 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 
 void RestCursorHandler::createQueryCursor() {
   if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, 600);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
@@ -402,7 +422,7 @@ void RestCursorHandler::createQueryCursor() {
       // error message generated in parseVPackBody
       return;
     }
-    
+
     // tell RestCursorHandler::finalizeExecute that the request
     // could be parsed successfully and that it may look at it
     _isValidForFinalize = true;

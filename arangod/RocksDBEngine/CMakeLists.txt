@@ -45,6 +45,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
+  RocksDBEngine/RocksDBFormat.cpp
   RocksDBEngine/RocksDBFulltextIndex.cpp
   RocksDBEngine/RocksDBGeoIndex.cpp
   RocksDBEngine/RocksDBHashIndex.cpp
@@ -72,6 +73,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBThrottle.cpp
   RocksDBEngine/RocksDBTypes.cpp
+  RocksDBEngine/RocksDBUpgrade.cpp
   RocksDBEngine/RocksDBV8Functions.cpp
   RocksDBEngine/RocksDBVPackIndex.cpp
   RocksDBEngine/RocksDBValue.cpp

@@ -199,6 +199,12 @@ class ServerState {
   /// @brief set the server id
   void setId(std::string const&);
 
+  /// @brief get the short id
+  uint32_t getShortId();
+
+  /// @brief set the server short id
+  void setShortId(uint32_t);
+
   /// @brief get the server address
   std::string getAddress();
 
@@ -273,6 +279,9 @@ private:
 
   /// @brief the server's id, can be set just once
   std::string _id;
+
+  /// @brief the server's short id, can be set just once
+  std::atomic<uint32_t> _shortId;
 
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;

@@ -383,6 +383,7 @@ SET(ARANGOD_SOURCES
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
+  Replication/utilities.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
