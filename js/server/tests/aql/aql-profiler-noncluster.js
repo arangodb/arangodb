@@ -34,8 +34,9 @@ const jsunity = require("jsunity");
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for AQL tracing/profiling: noncluster tests
-/// contains tests for EnumerateCollectionBlock and IndexBlock
+/// @file test suite for AQL tracing/profiling: noncluster tests
+/// Contains tests for EnumerateCollectionBlock, IndexBlock and TraversalBlock.
+/// The main test suite (including comments) is in aql-profiler.js.
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlProfilerTestSuite () {
@@ -129,7 +130,10 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => {
         // IndexBlock returns HASMORE when asked for the exact number of items
         // it has left. This could be improved.
-        const indexBatches = Math.floor(rows / defaultBatchSize) + 1;
+        const optimalBatches = Math.ceil(rows / defaultBatchSize);
+        const maxIndexBatches = Math.floor(rows / defaultBatchSize) + 1;
+        const indexBatches = [optimalBatches, maxIndexBatches];
+
         return [
           {type: SingletonBlock, calls: 1, items: 1},
           {type: CalculationBlock, calls: 1, items: 1},
