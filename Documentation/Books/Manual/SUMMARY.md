@@ -121,9 +121,8 @@
     * [Example Data](Graphs/Traversals/ExampleData.md)
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
-* [Views](Views/README.md)
-  * [ArangoSearch](Views/ArangoSearch.md)
-    * [Analyzers](Views/ArangoSearch/Analyzers.md)
+* [ArangoSearch Views](Views/ArangoSearch/README.md)
+  * [Analyzers](Views/ArangoSearch/Analyzers.md)
 
 ## ADVANCED TOPICS
 
