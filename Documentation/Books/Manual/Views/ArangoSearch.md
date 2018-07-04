@@ -186,14 +186,6 @@ During view modification the following directives apply:
     impact performance and waste disk space for each commit call without any
     added benefits
 
-  * commitTimeoutMsec: (optional; default: `5000`; to disable use: `0`)
-    try to commit as much as possible before *count* milliseconds
-    for the case where there are a lot of inserts/updates, a lower value will
-    cause a delay in the view accounting for them, due skipping of some commits
-    for the case where there are a lot of inserts/updates, a higher value will
-    cause higher memory consumption between commits due to accumulation of
-    document modifications while a commit is in progress
-
   * consolidate: (optional; default: `none`)
     a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
     store segment merge candidates, if specified then only the listed policies
