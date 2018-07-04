@@ -285,6 +285,7 @@ function iResearchAqlTestSuite () {
     testInTokensFilterSortTFIDF : function () {
       var result = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
 
+      assertEqual(result.length, 4);
       assertEqual(result[0].name, 'half');
       assertEqual(result[1].name, 'quarter');
       assertEqual(result[2].name, 'other half');
