@@ -43,7 +43,7 @@ class Slice;
 namespace aql {
 class Query;
 class QueryRegistry;
-class QueryResult;
+struct QueryResult;
 }
 
 class Cursor;
