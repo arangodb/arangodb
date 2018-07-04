@@ -173,6 +173,7 @@ class RocksDBEngine final : public StorageEngine {
   ) override;
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
                                           bool doSync) override;
+  // TODO worker-safety
   Result handleSyncKeys(
     DatabaseInitialSyncer& syncer,
     LogicalCollection& col,
