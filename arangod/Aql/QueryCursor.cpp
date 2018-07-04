@@ -182,7 +182,7 @@ QueryStreamCursor::QueryStreamCursor(
     _exportCount = opRes.slice().getInt();
     VPackSlice limit = _query->bindParameters()->slice().get("limit");
     if (limit.isInteger()) {
-      _exportCount = std::min(limit.getInt(), _exportCount);
+      _exportCount = (std::min)(limit.getInt(), _exportCount);
     }
   }
 }

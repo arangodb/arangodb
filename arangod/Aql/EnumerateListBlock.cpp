@@ -86,7 +86,7 @@ EnumerateListBlock::getSome(size_t atMost) {
     // can contain zero entries, in which case we have to
     // try again!
 
-    size_t toFetch = std::min(DefaultBatchSize(), atMost);
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
     BufferState bufferState = getBlockIfNeeded(toFetch);
     if (bufferState == BufferState::WAITING) {
       TRI_ASSERT(res == nullptr);
@@ -127,7 +127,7 @@ EnumerateListBlock::getSome(size_t atMost) {
     if (sizeInVar == 0) {
       res = nullptr;
     } else {
-      size_t toSend = std::min(atMost, sizeInVar - _index);
+      size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
       res.reset(requestBlock(toSend, getNrOutputRegisters()));
@@ -181,7 +181,7 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
   }
 
   while (_inflight < atMost) {
-    size_t toFetch = std::min(DefaultBatchSize(), atMost - _inflight);
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
     BufferState bufferState = getBlockIfNeeded(toFetch);
     if (bufferState == BufferState::WAITING) {
       return {ExecutionState::WAITING, 0};

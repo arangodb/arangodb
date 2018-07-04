@@ -662,7 +662,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
         break;
       }
 
-      size_t toFetch = std::min(DefaultBatchSize(), atMost);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       ExecutionState state;
       bool blockAppended;
       std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
@@ -777,7 +777,7 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
 
   while (_returned < atMost) {
     if (_buffer.empty()) {
-      size_t toFetch = std::min(DefaultBatchSize(), atMost);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       ExecutionState state;
       bool blockAppended;
       std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);

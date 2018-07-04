@@ -135,7 +135,7 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
   std::unique_ptr<AqlItemBlock> res;
 
   do {
-    size_t toFetch = std::min(DefaultBatchSize(), atMost);
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
     BufferState bufferState = getBlockIfNeeded(toFetch);
     if (bufferState == BufferState::WAITING) {
       return {ExecutionState::WAITING, nullptr};
@@ -234,7 +234,7 @@ std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMo
 
   while (_inflight < atMost) {
     if (_buffer.empty()) {
-      size_t toFetch = std::min(DefaultBatchSize(), atMost - _inflight);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
       auto upstreamRes = getBlock(toFetch);
       if (upstreamRes.first == ExecutionState::WAITING) {
         return {ExecutionState::WAITING, 0};
