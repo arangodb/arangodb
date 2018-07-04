@@ -551,6 +551,83 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks({query, genNodeList, bind});
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test SortedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSortedCollectBlock1 : function () {
+      const query = 'FOR i IN 1..@rows ' +
+        'SORT i ' +
+        'COLLECT x = i ' +
+        'RETURN x';
+      const genNodeList = (rows, batches) => {
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: SortBlock, calls: batches, items: rows },
+          { type: SortedCollectBlock, calls: batches, items: rows },
+          { type: ReturnBlock, calls: batches, items: rows },
+        ];
+      };
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test SortedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSortedCollectBlock2 : function () {
+      // x is [1,1,1,2,2,2,3,3,3,4,...
+      const query = 'FOR i IN 1..@rows ' +
+        'COLLECT x = FLOOR((i-1) / 3) + 1 OPTIONS {method: "sorted"} ' +
+        'RETURN x';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterCollect = Math.ceil(rows / 3);
+        const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: CalculationBlock, calls: batches, items: rows },
+          { type: SortBlock, calls: batches, items: rows },
+          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+        ];
+      };
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test SortedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSortedCollectBlock3 : function () {
+      // example:
+      // for @rows = 5,  x is [1,2,0,1,2]
+      // for @rows = 12, x is [1,2,3,4,5,0,1,2,3,4,5,0]
+      const query = 'FOR i IN 1..@rows ' +
+        'COLLECT x = i % CEIL(@rows / 2) OPTIONS {method: "sorted"} ' +
+        'RETURN x';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterCollect = Math.ceil(rows / 2);
+        const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: CalculationBlock, calls: batches, items: rows },
+          { type: SortBlock, calls: batches, items: rows },
+          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+        ];
+      };
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
@@ -574,7 +651,7 @@ function ahuacatlProfilerTestSuite () {
 // ShortestPathBlock
 // *SingletonBlock
 // *SortBlock
-// SortedCollectBlock
+// *SortedCollectBlock
 // SortingGatherBlock
 // SubqueryBlock
 // *TraversalBlock
