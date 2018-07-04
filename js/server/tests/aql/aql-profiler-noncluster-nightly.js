@@ -273,18 +273,13 @@ function ahuacatlProfilerTestSuite () {
           const totalRows = listRows * collectionRows;
 
           const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
-          // Number of batches at the enumerate collection node
-          const traversalBatches = [
-            optimalBatches,
-            listRows * Math.ceil(collectionRows / defaultBatchSize) * 2 + 1
-          ];
 
           const expected = [
             {type: SingletonBlock, calls: 1, items: 1},
             {type: CalculationBlock, calls: 1, items: 1},
             {type: EnumerateListBlock, calls: listBatches, items: listRows},
-            {type: TraversalBlock, calls: traversalBatches, items: totalRows},
-            {type: ReturnBlock, calls: traversalBatches, items: totalRows}
+            {type: TraversalBlock, calls: optimalBatches, items: totalRows},
+            {type: ReturnBlock, calls: optimalBatches, items: totalRows}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 

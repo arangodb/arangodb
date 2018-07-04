@@ -397,7 +397,8 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
       break;
     }
 
-    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
     TRI_ASSERT(!_buffer.empty());
 
     AqlItemBlock* cur = _buffer.front();
@@ -1023,7 +1024,8 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
       return {getHasMoreState(), TRI_ERROR_NO_ERROR};
     }
 
-    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
     TRI_ASSERT(!_buffer.empty());
 
     AqlItemBlock *cur = _buffer.front();

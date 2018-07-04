@@ -97,7 +97,8 @@ EnumerateListBlock::getSome(size_t atMost) {
       break;
     }
 
-    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
     TRI_ASSERT(!_buffer.empty());
 
     // if we make it here, then _buffer.front() exists
@@ -189,7 +190,8 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
       break;
     }
 
-    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
     TRI_ASSERT(!_buffer.empty());
 
     // if we make it here, then _buffer.front() exists

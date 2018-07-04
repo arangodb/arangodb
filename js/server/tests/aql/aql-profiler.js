@@ -29,20 +29,27 @@
 // contains common code for aql-profiler* tests
 const profHelper = require("@arangodb/aql-profiler-test-helper");
 
-const _ = require('lodash');
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for AQL tracing/profiling
+/// @file test suite for AQL tracing/profiling
+/// Tests primarily that every Aql block returns the expected number of rows
+/// during queries, and that getSome() is called the expected number of times
+/// (mainly that it is not called too often).
+/// Some tests are located in aql-profiler-noncluster.js and
+/// aql-profiler-noncluster-nightly.js, namely for the following blocks:
+/// - EnumerateCollectionBlock
+/// - IndexBlock
+/// - TraversalBlock
+/// TODO Test skipSome() as well.
 ////////////////////////////////////////////////////////////////////////////////
 
 
 function ahuacatlProfilerTestSuite () {
 
-  // TODO test skipSome as well, all current tests run getSome only
 
   // import some names from profHelper directly into our namespace:
   const defaultBatchSize = profHelper.defaultBatchSize;

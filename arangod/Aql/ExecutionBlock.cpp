@@ -127,6 +127,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   _upstreamState = ExecutionState::HASMORE;
   _pos = 0;
   _skipped = 0;
+  _collector.clear();
 
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     // Set block type in per-block statistics.
@@ -480,12 +481,14 @@ ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
   TRI_ASSERT(blockAppended || state == ExecutionState::DONE);
 
   if (blockAppended) {
-    return BufferState::HAS_BLOCKS;
+    return BufferState::HAS_NEW_BLOCK;
   }
 
   return BufferState::NO_MORE_BLOCKS;
 }
 
+// TODO should better be split in two methods advanceInputCursor and
+// advanceOutputCursor.
 AqlItemBlock* ExecutionBlock::advanceCursor(size_t numInputRowsConsumed,
                                             size_t numOutputRowsCreated) {
   AqlItemBlock* cur = _buffer.front();
@@ -594,7 +597,8 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
       break;
     }
 
-    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS ||
+               bufferState == BufferState::HAS_NEW_BLOCK);
     TRI_ASSERT(!_buffer.empty());
 
     size_t rowsProcessed;
