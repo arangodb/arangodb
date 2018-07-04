@@ -488,7 +488,7 @@ def walk_on_files(inDirPath, outDirPath):
                         skipped += 1
                         # print "Skipping %s -> %s" % (inFileFull, outFileFull)
                         continue;
-                print "%s -> %s" % (nextInFileFull, nextOutFileFull)
+                #print "%s -> %s" % (nextInFileFull, nextOutFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
                 findStartCode(nextInFileFull, nextOutFileFull, inDirPath)
     print STD_COLOR + "Processed %d files, skipped %d" % (count, skipped) + RESET
