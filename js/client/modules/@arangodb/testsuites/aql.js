@@ -127,7 +127,7 @@ function shellClientAql (options) {
 
     testCases = tu.splitBuckets(options, testCases);
 
-    return tu.performTests(options, testCases, name, tu.runThere);
+    return tu.performTests(options, testCases, name, tu.runInArangosh);
   }
 
   return {
