@@ -1,6 +1,8 @@
 ArangoDB in Microsoft Azure
 ===========================
 
+WIP
+
 I want to use ArangoDB in Microsoft Azure
 
 How to

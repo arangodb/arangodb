@@ -21,3 +21,8 @@ By _Technology_:
 - [Docker](Docker/README.md)
 - [Kubernetes](Kubernetes/README.md)
 - [Mesos, DC/OS](DCOS/README.md)
+
+By _Cloud Provider_:
+
+- [AWS](Cloud/AWS.md)
+- [Azure](Cloud/Azure.md)

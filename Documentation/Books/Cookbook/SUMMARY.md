@@ -37,7 +37,7 @@
   * [OpenSSL](Compiling/OpenSSL.md)
   * [Running Custom Build](Compiling/RunningCustomBuild.md)
     * [Recompiling jemalloc](Compiling/jemalloc.md)
-* [Cloud, Docker](Cloud/README.md)
+* [Docker](Cloud/README.md)
   * [Docker ArangoDB](Cloud/DockerContainer.md)
   * [Docker with NodeJS App](Cloud/NodeJsDocker.md)
 * [Monitoring](Monitoring/Collectd.md)
