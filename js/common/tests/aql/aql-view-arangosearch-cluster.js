@@ -98,7 +98,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeEqualityFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -107,7 +107,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testMultipleAttributeEqualityFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 5);
       result.forEach(function(res) {
@@ -117,7 +117,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testMultipleAttributeEqualityFilterSortAttribute : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 5);
       var last = -1;
@@ -130,7 +130,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testMultipleAttributeEqualityFilterSortAttributeDesc : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 5);
       var last = 5;
@@ -143,7 +143,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeLessFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -152,7 +152,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeLeqFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -161,7 +161,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeGeqFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -170,7 +170,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeGreaterFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -179,7 +179,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeOpenIntervalFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 4);
       result.forEach(function(res) {
@@ -188,7 +188,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeClosedIntervalFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -197,7 +197,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeIntervalExclusionFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -206,7 +206,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeNeqFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 18); // include documents without attribute 'a'
       result.forEach(function(res) {
@@ -215,7 +215,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testStartsWithFilter : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -224,7 +224,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testStartsWithFilter2 : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -233,7 +233,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testStartsWithFilterSort : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 2);
       assertEqual(result[0].b, 'bar');
@@ -243,7 +243,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testInTokensFilterSortTFIDF : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 4);
       assertEqual(result[0].name, 'other half');
@@ -253,22 +253,22 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testPhraseFilter : function () {
-      var result0 = db._query()("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+      var result0 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result0.length, 1);
       assertEqual(result0[0].name, 'full');
 
-      var result1 = db._query()("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+      var result1 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result1.length, 1);
       assertEqual(result1[0].name, 'full');
 
-      var result2 = db._query()("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, 'quick brown fox jumps'), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+      var result2 = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, 'quick brown fox jumps'), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result2.length, 1);
       assertEqual(result2[0].name, 'full');
 
-      var result3 = db._query()("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, [ 'quick brown fox jumps' ]), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+      var result3 = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, [ 'quick brown fox jumps' ]), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result3.length, 1);
       assertEqual(result3[0].name, 'full');
@@ -281,7 +281,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text) RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text) RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -297,7 +297,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -307,7 +307,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testExistsFilterByIdentityAnalyzer: function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(0, result.length);
     },
@@ -319,7 +319,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(EXISTS(doc.text, 'analyzer'), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(EXISTS(doc.text, 'analyzer'), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -335,7 +335,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'string') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'string') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -345,7 +345,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testExistsFilterByType : function () {
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'type') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'type') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 0);
     },
@@ -354,7 +354,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       var expected = new Set();
       expected.add("null");
 
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'null') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'null') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -367,7 +367,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       var expected = new Set();
       expected.add("bool");
 
-      var result = db._query()("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'bool') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'bool') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -380,7 +380,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       var expected = new Set();
       expected.add("numeric");
 
-      var result = db._query()("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'numeric') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'numeric') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -396,7 +396,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add(JSON.stringify({ a: "bar", b: "foo", c: 1 }));
       expected.add(JSON.stringify({ a: "baz", b: "foo", c: 1 }));
 
-      var result = db._query()(
+      var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "RETURN doc"
@@ -415,7 +415,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add(JSON.stringify({ a: "foo", b: "bar", c: 0 }));
       expected.add(JSON.stringify({ a: "foo", b: "baz", c: 0 }));
 
-      var result = db._query()(
+      var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection FILTER adoc.id < 1" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "RETURN doc"
@@ -436,7 +436,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.push({ a: "foo", b: "bar", c: 0 });
       expected.push({ a: "foo", b: "baz", c: 0 });
 
-      var result = db._query()(
+      var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "SORT doc.c DESC, doc.a, doc.b " +
@@ -460,7 +460,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.push({ a: "foo", b: "bar", c: 0 });
       expected.push({ a: "foo", b: "baz", c: 0 });
 
-      var result = db._query()(
+      var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
