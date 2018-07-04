@@ -296,6 +296,7 @@
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
 * [Security](Security/README.md)
+  * [Change Root Password](Security/ChangeRootPassword)
   * [Encryption](Administration/Encryption/README.md)
   * [Auditing](Administration/Auditing/README.md)
     * [Configuration](Administration/Auditing/AuditConfiguration.md)
