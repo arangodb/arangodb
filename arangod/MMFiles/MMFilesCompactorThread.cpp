@@ -895,7 +895,7 @@ void MMFilesCompactorThread::run() {
     try {
       engine->tryPreventCompaction(
         &_vocbase,
-        [this, &numCompacted, &collections](TRI_vocbase_t* vocbase) {
+        [this, &numCompacted, &collections, &engine](TRI_vocbase_t* vocbase) {
         // compaction is currently allowed
         numCompacted = 0;
 
@@ -905,17 +905,25 @@ void MMFilesCompactorThread::run() {
         } catch (...) {
           collections.clear();
         }
-
+  
         for (auto& collection : collections) {
           bool worked = false;
+            
+          if (engine->isCompactionDisabled()) {
+            continue;
+          }
 
-          auto callback = [this, &collection, &worked]() -> void {
+          auto callback = [this, &collection, &worked, &engine]() -> void {
             if (collection->status() != TRI_VOC_COL_STATUS_LOADED &&
                 collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
               return;
             }
 
             bool doCompact = static_cast<MMFilesCollection*>(collection->getPhysical())->doCompact();
+
+            if (engine->isCompactionDisabled()) {
+              doCompact = false;
+            }
 
             // for document collection, compactify datafiles
             if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
@@ -1047,6 +1055,6 @@ int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, MMFilesMarker
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  return compactor->writeElement(*result, marker, /*forceSync*/ false);
+  return compactor->writeElement(*result, marker);
 }
 

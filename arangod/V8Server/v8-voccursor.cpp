@@ -94,9 +94,10 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::move(result), static_cast<size_t>(batchSize), ttl, true);
 
     TRI_ASSERT(cursor != nullptr);
+    TRI_DEFER(cursors->release(cursor));
+
     // need to fetch id before release() as release() might delete the cursor
     CursorId id = cursor->id();
-    cursors->release(cursor);
 
     auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
     TRI_V8_RETURN(result);

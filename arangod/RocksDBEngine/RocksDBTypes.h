@@ -91,12 +91,21 @@ enum class RocksDBLogType : char {
 enum class RocksDBSettingsType : char {
   Invalid = 0,
   Version = 'V',
-  ServerTick = 'S'
+  ServerTick = 'S',
+  Endianness = 'E'
 };
+  
+enum class RocksDBEndianness : char {
+  Invalid = 0,
+  Little = 'L',
+  Big = 'B'
+};
+  
+/// @brief rocksdb format version
+char rocksDBFormatVersion();
 
 char const* rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
-char rocksDBFormatVersion();
 }  // namespace arangodb
 
 #endif

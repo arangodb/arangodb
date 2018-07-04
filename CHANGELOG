@@ -10,6 +10,24 @@ devel
   control the size of the internal queues. The defaults are sensible, do not
   change these settings.
 
+* added key generators `uuid` and `padded`
+
+  The `uuid` key generator generates universally unique 128 bit keys, which are
+  stored in hexadecimal human-readable format.  
+  The `padded` key generator generates keys of a fixed length (16 bytes) in 
+  ascending lexicographical sort order.
+
+* The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
+  field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
+  the inverted meaning.
+
+* added `COUNT_DISTINCT` AQL function
+
+* make AQL optimizer rule `collect-in-cluster` optimize aggregation functions
+  `AVERAGE`, `VARIANCE`, `STDDEV`, `UNIQUE`, `SORTED_UNIQUE` and `COUNT_DISTINCT`
+  in a cluster by pushing parts of the aggregation onto the DB servers and only
+  doing the total aggregation on the coordinator
+
 * replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
   new optimizer rule.
 

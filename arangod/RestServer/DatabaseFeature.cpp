@@ -375,7 +375,6 @@ void DatabaseFeature::beginShutdown() {
     TRI_vocbase_t* vocbase = p.second;
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
     // throw away all open cursors in order to speed up shutdown
     vocbase->cursorRepository()->garbageCollect(true);
@@ -392,7 +391,9 @@ void DatabaseFeature::stop() {
     TRI_vocbase_t* vocbase = p.second;
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+    if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
+      continue;
+    }
 
     vocbase->processCollections([](LogicalCollection* collection) { 
       // no one else must modify the collection's status while we are in here
@@ -463,7 +464,9 @@ void DatabaseFeature::recoveryDone() {
     TRI_vocbase_t* vocbase = p.second;
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+    if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
+      continue;
+    }
 
     // execute the engine-specific callbacks on successful recovery
     engine->recoveryDone(*vocbase);
@@ -1002,8 +1005,9 @@ void DatabaseFeature::stopAppliers() {
   for (auto& p : _databasesLists.load()->_databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    replicationFeature->stopApplier(vocbase);
+    if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
+      replicationFeature->stopApplier(vocbase);
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, fail, ArangoClusterComm */
+/*global assertEqual, assertTrue, assertEqual, assertMatch, fail, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators
@@ -58,7 +58,7 @@ function TraditionalSuite () {
     tearDown : function () {
       db._drop(cn);
     },
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create with key
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,17 +206,59 @@ function TraditionalSuite () {
       assertTrue(d2 < d3);
       assertTrue(d3 < d4);
       assertTrue(d4 < d5);
+    },
+    
+    testInvalidKeyGenerator : function () {
+      try {
+        db._create(cn, { keyOptions: { type: "der-fuchs" } });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code, err.errorNum);
+      }
+    },
+
+    testAutoincrementGeneratorInCluster : function () {
+      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+        return;
+      }
+
+      try {
+        db._create(cn, { keyOptions: { type: "autoincrement" } });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, err.errorNum);
+      }
+    },
+
+    testUuid : function () {
+      let c = db._create(cn, { keyOptions: { type: "uuid" } });
+
+      let options = c.properties().keyOptions;
+      assertEqual("uuid", options.type);
+      assertTrue(options.allowUserKeys);
+
+      for (let i = 0; i < 100; ++i) {
+        let doc = c.insert({});
+        assertMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, doc._key);
+      }
+    },
+
+    testPadded : function () {
+      let c = db._create(cn, { keyOptions: { type: "padded" } });
+
+      let options = c.properties().keyOptions;
+      assertEqual("padded", options.type);
+      assertTrue(options.allowUserKeys);
+
+      for (let i = 0; i < 100; ++i) {
+        let doc = c.insert({});
+        assertMatch(/^[0-9a-f]{16}$/, doc._key);
+      }
     }
 
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(TraditionalSuite);
 
 return jsunity.done();
-

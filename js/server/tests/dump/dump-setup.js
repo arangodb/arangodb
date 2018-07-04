@@ -122,6 +122,28 @@
     c.save({ value: i, more: { value: [ i, i ] } });
   }
   
+  // custom key options
+  c = db._create("UnitTestsDumpKeygenPadded", { 
+    keyOptions: { 
+      type: "padded", 
+      allowUserKeys: false
+    } 
+  });
+  for (i = 0; i < 1000; ++i) {
+    c.save({ value: i, more: { value: [ i, i ] } });
+  }
+  
+  // custom key options
+  c = db._create("UnitTestsDumpKeygenUuid", { 
+    keyOptions: { 
+      type: "uuid", 
+      allowUserKeys: false
+    } 
+  });
+  for (i = 0; i < 1000; ++i) {
+    c.save({ value: i });
+  }
+  
   // strings
   c = db._create("UnitTestsDumpStrings");
   var texts = [

@@ -203,7 +203,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     if (!exec->canUseDatabase(vocbase->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "cannot create collection in " + vocbase->name());
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
@@ -379,7 +379,7 @@ Result Collections::updateProperties(LogicalCollection* coll,
     bool canModify = exec->canUseCollection(coll->name(), auth::Level::RW);
     if ((exec->databaseAuthLevel() != auth::Level::RW || !canModify)) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
@@ -523,7 +523,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
       return Result(TRI_ERROR_FORBIDDEN,
                     "Insufficient rights to drop collection " +
                     coll->name());
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
@@ -562,7 +562,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
   ExecContext const* exec = ExecContext::CURRENT; // disallow expensive ops
 
-  if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+  if (!exec->isSuperuser() && ServerState::readOnly()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                    "server is in read-only mode");
   }

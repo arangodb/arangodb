@@ -53,7 +53,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -1009,7 +1009,7 @@ void TRI_vocbase_t::inventory(
       collection->getIndexesVPack(result, false, false, [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
         // at least the MMFiles engine will try to create it
-        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX && 
+        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
                 idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
@@ -1707,24 +1707,7 @@ arangodb::Result TRI_vocbase_t::dropView(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string errorMsg;
-
-    auto const res = ClusterInfo::instance()->dropViewCoordinator(
-      name(), StringUtils::itoa(view->id()), errorMsg
-    );
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "Could not drop view in agency, error: " << errorMsg
-      << ", errorCode: " << res;
-
-    return arangodb::Result(
-      res,
-      std::string("Could not drop view in agency, error: ") + errorMsg
-    );
+    return view->drop(); // will internally drop view from ClusterInfo
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1898,7 +1881,7 @@ void TRI_vocbase_t::addReplicationApplier() {
 /// this only updates the ttl
 void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl) {
   if (ttl <= 0.0) {
-    ttl = InitialSyncer::defaultBatchTimeout;
+    ttl = replutils::BatchInfo::DefaultTimeout;
   }
 
   double const timestamp = TRI_microtime();
@@ -1922,7 +1905,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
                                             TRI_voc_tick_t lastFetchedTick,
                                             double ttl) {
   if (ttl <= 0.0) {
-    ttl = InitialSyncer::defaultBatchTimeout;
+    ttl = replutils::BatchInfo::DefaultTimeout;
   }
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;

@@ -33,13 +33,13 @@
 namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
-  
-enum class RestStatus { DONE, WAITING };
+
+enum class RestStatus { DONE, WAITING, FAIL};
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
   friend class GeneralCommTask;
-  
+
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
 
@@ -66,7 +66,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics* stealStatistics() {
     return _statistics.exchange(nullptr);
   }
-  
+
   void setStatistics(RequestStatistics* stat);
 
   /// Execute the rest handler state machine
@@ -78,7 +78,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   /// Execute the rest handler state machine
   void continueHandlerExecution();
-  
+
+  /// @brief forwards the request to the appropriate server
+  bool forwardRequest();
+
  public:
   // rest handler name for debugging and logging
   virtual char const* name() const = 0;
@@ -101,15 +104,32 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual void handleError(basics::Exception const&) = 0;
 
  protected:
-  
+
+  /// @brief determines the possible forwarding target for this request
+  ///
+  /// This method will be called to determine if the request should be
+  /// forwarded to another server, and if so, which server. If it should be
+  /// handled by this server, the method should return 0. Otherwise, this
+  /// method should return a valid (non-zero) short ID (TransactionID) for the
+  /// target server.
+  virtual uint32_t forwardingTarget() { return 0; }
+
   void resetResponse(rest::ResponseCode);
-  
+
+  void generateError(rest::ResponseCode, int, std::string const&);
+
+  // generates an error
+  void generateError(rest::ResponseCode, int);
+
+  // generates an error
+  void generateError(arangodb::Result const&);
+
  private:
-  
+
   enum class HandlerState { PREPARE, EXECUTE, PAUSED, CONTINUED, FINALIZE, DONE, FAILED };
-  
+
   void runHandlerStateMachine();
-  
+
   void prepareEngine();
   /// @brief Executes the RestHandler
   ///        May set the state to PAUSED, FINALIZE or FAILED

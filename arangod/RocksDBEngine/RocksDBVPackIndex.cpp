@@ -210,7 +210,7 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb,
 
     cb(_index->_unique
            ? RocksDBValue::documentId(_iterator->value())
-           : RocksDBKey::documentId(_bounds.type(), _iterator->key()));
+           : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
 
     --limit;
     if (_reverse) {
@@ -243,7 +243,7 @@ bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t 
     LocalDocumentId const documentId(
         _index->_unique
             ? RocksDBValue::documentId(_iterator->value())
-            : RocksDBKey::documentId(_bounds.type(), _iterator->key()));
+            : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
     cb(documentId, RocksDBKey::indexedVPack(_iterator->key()));
 
     --limit;
@@ -1205,8 +1205,7 @@ void RocksDBVPackIndex::recalculateEstimates() {
                               uint64_t hash =
                                   RocksDBVPackIndex::HashForKey(it->key());
                               _estimator->insert(hash);
-                            },
-                            bounds.columnFamily());
+                            });
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {

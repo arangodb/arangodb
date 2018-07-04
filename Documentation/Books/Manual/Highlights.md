@@ -9,7 +9,7 @@ Version 3.3
 
 **Enterprise Edition**
 
-- [**Datacenter to Datacenter Replication**](Deployment/DC2DC.md): Replicate
+- [**Datacenter to Datacenter Replication**](Deployment/DC2DC/README.md): Replicate
   the entire structure and content of an ArangoDB cluster asynchronously to
   another cluster in a different datacenter with ArangoSync. Multi-datacenter
   support means you can fallback to a replica of your cluster in case of a

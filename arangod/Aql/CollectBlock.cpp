@@ -697,8 +697,9 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     if (en->_aggregateVariables.empty()) {
       // no aggregate registers. this means we'll only count the number of items
       if (en->_count) {
-        aggregateValues->emplace_back(
-            std::make_unique<AggregatorLength>(_trx, 0));
+        aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, "LENGTH"));
+        // must count one item already 
+        aggregateValues->back()->reduce(AqlValue(AqlValueHintNull()));
       }
     } else {
       // we do have aggregate registers. create them as empty AqlValues
