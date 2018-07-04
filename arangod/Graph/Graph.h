@@ -123,7 +123,8 @@ class Graph {
   static Result validateOrphanCollection(
       const velocypack::Slice& orphanDefinition);
 
-  void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
+  virtual void createCollectionOptions(VPackBuilder& builder,
+                                       bool waitForSync) const;
 
   static void createCollectionOptions(VPackBuilder& builder, bool waitForSync,
                                       VPackSlice options);
