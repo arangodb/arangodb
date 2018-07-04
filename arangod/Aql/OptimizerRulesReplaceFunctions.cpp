@@ -452,7 +452,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
   // create an on-the-fly subquery for a full collection access
   AstNode* rootNode = ast->createNodeSubquery();
   
-  // add both nodes to subquery
+  // add nodes to subquery
   rootNode->addMember(forNode);
   rootNode->addMember(filterNode);
   rootNode->addMember(returnNode);
