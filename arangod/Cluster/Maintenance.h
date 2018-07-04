@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Agency/Node.h"
+#include "Cluster/MaintenanceFeature.h"
 
 namespace arangodb {
 
@@ -63,13 +64,13 @@ arangodb::Result diffPlanLocal(
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
- * @param actions  Resulting actions from difference are packed in here
+ * @param feature  Maintenance featire
  *
  * @return         Result
  */
 arangodb::Result executePlan (
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
-  std::string const& serverId);
+  std::string const& serverId, arangodb::MaintenanceFeature& feature);
 
 /**
  * @brief          Difference local and current states for phase 2 of Maintenance 
@@ -106,12 +107,13 @@ arangodb::Result synchroniseShards (
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
  * @param report   Resulting agency transaction, which is to be sent
+ * @param feature  Maintenance feature
  *
  * @return         Result
  */
 arangodb::Result phaseOne (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId);
+  std::string const& serverId, MaintenanceFeature& feature);
 
 /**
  * @brief          Phase two: Report in agency

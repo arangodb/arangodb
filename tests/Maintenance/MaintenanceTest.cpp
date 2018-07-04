@@ -28,7 +28,6 @@
 
 #include "catch.hpp"
 
-#include "Cluster/ActionRegistry.h"
 #include "Cluster/Maintenance.h"
 
 #include <velocypack/Iterator.h>

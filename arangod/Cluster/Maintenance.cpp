@@ -25,7 +25,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "Cluster/ActionRegistry.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "VocBase/LogicalCollection.h"
@@ -279,20 +278,19 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan (
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
-  std::string const& serverId) {
+  std::string const& serverId, MaintenanceFeature& feature) {
 
   arangodb::Result result;
-  //ActionRegistry* registry = ActionRegistry::instance();
-
+  
   // build difference between plan and local
   std::vector<ActionDescription> actions;
   diffPlanLocal(plan, local, serverId, actions);
-
+  
   // enact all
   for (auto const& action : actions) {
     //registry->dispatch(action);
   }
-
+  
   return result;  
 }
 
@@ -345,12 +343,12 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent (
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId) {
+  std::string const& serverId, MaintenanceFeature& feature) {
 
   arangodb::Result result;
 
   // Execute database changes
-  result = executePlan(plan, cur, local, serverId);
+  result = executePlan(plan, cur, local, serverId, feature);
   if (result.fail()) {
     return result;
   }
