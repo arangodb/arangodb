@@ -69,7 +69,7 @@ Override analyzer in a context of **filter-expression** with another one, denote
 by a specified **analyzer** argument, making it available for filter functions.
 
 - *filter-expression* - any valid filter expression
-- *analyzer* - string with the analyzer to imbue, i.e. *"text_en"* or [one of the other available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* - string with the analyzer to imbue, i.e. *"text_en"* or [one of the other available string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
 
 By default, context contains `Identity` analyzer.
 
