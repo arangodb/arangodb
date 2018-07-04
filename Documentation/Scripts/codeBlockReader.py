@@ -210,20 +210,12 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
   longToggle = "$('#%s').hide(); $('#%s').show();" % (longTag, shortTag)
 
-  if shortable:
-    anchor += '<div id="%s_popup" onclick="%s">v</div><div id="%s_collapse" onclick="%s">^</div>' % (
-      utag,
-      shortToggle,
-      utag,
-      longToggle
-      )
-  longToggle = ""
   fh.write(unicode("<div id=\"%s\">\n" % utag))
   fh.write(unicode(anchor))
 
 
   if shortable:
-    fh.write(unicode("<div id=\"%s\" onclick=\"%s\" style=\"Display: none;\">\n" % (longTag, longToggle)))
+    fh.write(unicode("<div id=\"%s\" style=\"Display: none;\">\n" % longTag))
   else:
     fh.write(unicode("<div id=\"%s\">\n" % longTag))
 
@@ -231,9 +223,24 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
     fh.write(unicode("<pre>\n"))
   fh.write(unicode("%s" % longText))
   fh.write(unicode("</pre>\n"))
-  fh.write(unicode("</div>\n"))
-  
   if shortable:
+    hideText=""
+    if blockType == "arangosh":
+      hideText = u"hide execution results"
+    elif blockType == "curl":
+      hideText = u"hide response body"
+    elif blockType == "AQL":
+      hideText = u"hide query result"
+    else:
+      hideText = u"hide"
+    fh.write(unicode('<div id="%s_collapse" onclick="%s" class="example_show_button">%s</div>' % (
+      utag,
+      longToggle,
+      hideText
+      )))
+  fh.write(unicode("</div>\n"))
+    
+  if shortable:    
     fh.write(unicode("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle)))
     if blockType != "AQL":
       fh.write(unicode("<pre>\n"))
