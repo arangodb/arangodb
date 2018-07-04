@@ -395,7 +395,7 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase,
   }
   
   StringBuffer buffer(true);
-  buffer.appendText("require('@arangodb/general-graph')._renameCollection(");
+  buffer.appendText("require('@arangodb/general-graph-common')._renameCollection(");
   buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
   buffer.appendChar(',');
   buffer.appendJsonEncoded(newName.c_str(), newName.size());

@@ -37,6 +37,8 @@ const errors = arangodb.errors;
 const users = require('@arangodb/users');
 const _ = require('lodash');
 
+const GRAPH_PREFIX = '/api/gharial';
+
 let fixWeight = function (options) {
   if (!options.hasOwnProperty('weightAttribute') && options.hasOwnProperty('weight')) {
     options.weightAttribute = options.weight;
@@ -2257,82 +2259,82 @@ exports._listObjects = function () {
 exports._registerCompatibilityFunctions = function () {
   const aqlfunctions = require('@arangodb/aql/functions');
   aqlfunctions.register('arangodb::GRAPH_EDGES', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._edges(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_VERTICES', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._vertices(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_NEIGHBORS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._neighbors(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_COMMON_NEIGHBORS', function (graphName, vertex1Example, vertex2Example, options1, options2) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._commonNeighbors(vertex1Example, vertex2Example, options1, options2);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_COMMON_PROPERTIES', function (graphName, vertex1Example, vertex2Example, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._commonProperties(vertex1Example, vertex2Example, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_PATHS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._paths(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_SHORTEST_PATH', function (graphName, startVertexExample, edgeVertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._shortestPath(startVertexExample, edgeVertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_DISTANCE_TO', function (graphName, startVertexExample, edgeVertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._distanceTo(startVertexExample, edgeVertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_ECCENTRICITY', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._absoluteEccentricity(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ECCENTRICITY', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._eccentricity(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_CLOSENESS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._farness(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_CLOSENESS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._closeness(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_BETWEENNESS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._absoluteBetweenness(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_BETWEENNESS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._betweenness(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_RADIUS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._radius(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_DIAMETER', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._diameter(options);
   }, false);

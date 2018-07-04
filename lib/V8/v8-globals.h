@@ -363,6 +363,9 @@ struct TRI_v8_global_t {
   /// @brief users template
   v8::Persistent<v8::ObjectTemplate> UsersTempl;
 
+  /// @brief general graphs template
+  v8::Persistent<v8::ObjectTemplate> GeneralGraphsTempl;
+
   /// @brief Buffer template
   v8::Persistent<v8::FunctionTemplate> BufferTempl;
 

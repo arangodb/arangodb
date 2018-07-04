@@ -79,6 +79,7 @@
 #include "V8Server/v8-views.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
+#include "V8Server/v8-general-graph.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -2058,6 +2059,7 @@ void TRI_InitV8VocBridge(
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Views(context, &vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
+  TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 
   TRI_InitV8cursor(context, v8g);
 

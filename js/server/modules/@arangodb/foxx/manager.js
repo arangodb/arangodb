@@ -47,8 +47,7 @@ const isZipBuffer = require('@arangodb/util').isZipBuffer;
 
 const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
-  '/_api/foxx', // Foxx management API.
-  '/_api/gharial' // General_Graph API.
+  '/_api/foxx' // Foxx management API.
 ];
 
 const GLOBAL_SERVICE_MAP = new Map();
