@@ -45,7 +45,7 @@ let invCounter = 0;
 const genInvalidValue = function () {
   ++invCounter;
   return `invalid${invCounter}`;
-}
+};
 
 const setUp = function () {
   tearDown();
@@ -60,7 +60,7 @@ const setUp = function () {
 
 const tearDown = function () {
   db._drop(collectionName);
-  delete col;
+  col = null;
 };
 
 const buildSetOfDocs = function (count = 0) {
@@ -69,7 +69,7 @@ const buildSetOfDocs = function (count = 0) {
   }
   const query = `FOR d IN ${collectionName} LIMIT ${count} RETURN d`;
   return new Set(db._query(query).toArray());
-}
+};
 
 const validateDocsAreUpdated = function (docs, invalid, areUpdated) {
   for (let d of docs) {
@@ -80,7 +80,7 @@ const validateDocsAreUpdated = function (docs, invalid, areUpdated) {
       assertNotEqual(invalid, nowStored.val, `Updated ${JSON.stringify(d)} using wrong _rev value`);
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -195,7 +195,7 @@ function aqlUpdateOptionsSuite () {
 
       validateDocsAreUpdated(docs, invalid, true);
     }
-  }
+  };
 };
 
 function aqlReplaceOptionsSuite () {
@@ -308,8 +308,7 @@ function aqlReplaceOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     }
   
-  }
-
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,7 +332,7 @@ function aqlRemoveOptionsSuite () {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
         }
       }
-      assertEqual(2000, col.count(), `We removed the document`)
+      assertEqual(2000, col.count(), `We removed the document`);
     },
 
     testRemoveManyWithInvalidRev : function () {
@@ -346,7 +345,7 @@ function aqlRemoveOptionsSuite () {
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
       }
-      assertEqual(2000, col.count(), `We removed the document`)
+      assertEqual(2000, col.count(), `We removed the document`);
     },
 
     testRemoveEnumerationWithInvalidRev : function () {
@@ -361,7 +360,7 @@ function aqlRemoveOptionsSuite () {
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
       }
-      assertEqual(2000, col.count(), `We removed the document`)
+      assertEqual(2000, col.count(), `We removed the document`);
     },
 
     testRemoveSingleWithInvalidRevIgnore : function () {
@@ -371,7 +370,7 @@ function aqlRemoveOptionsSuite () {
       for (let d of docs) {
         db._query(q, {key: d._key});
       }
-      assertEqual(2000 - 1, col.count(), `We did not remove the document`)
+      assertEqual(2000 - 1, col.count(), `We did not remove the document`);
     },
 
     testRemoveManyWithInvalidRevIgnore : function () {
@@ -380,7 +379,7 @@ function aqlRemoveOptionsSuite () {
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
-      assertEqual(2000 - 10, col.count(), `We did not remove the document`)
+      assertEqual(2000 - 10, col.count(), `We did not remove the document`);
     },
 
     testRemoveEnumerationWithInvalidRevIgnore : function () {
@@ -391,7 +390,7 @@ function aqlRemoveOptionsSuite () {
       let docs = buildSetOfDocs();
       db._query(q);
 
-      assertEqual(0, col.count(), `We did not remove the document`)
+      assertEqual(0, col.count(), `We did not remove the document`);
     },
 
     testRemoveSingleWithInvalidRevDefault : function () {
@@ -401,7 +400,7 @@ function aqlRemoveOptionsSuite () {
       for (let d of docs) {
         db._query(q, {key: d._key});
       }
-      assertEqual(2000 - 1, col.count(), `We did not remove the document`)
+      assertEqual(2000 - 1, col.count(), `We did not remove the document`);
     },
 
     testRemoveManyWithInvalidRevDefault : function () {
@@ -410,7 +409,7 @@ function aqlRemoveOptionsSuite () {
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
-      assertEqual(2000 - 10, col.count(), `We did not remove the document`)
+      assertEqual(2000 - 10, col.count(), `We did not remove the document`);
     },
 
     testRemoveEnumerationWithInvalidRevDefault : function () {
@@ -421,9 +420,9 @@ function aqlRemoveOptionsSuite () {
       let docs = buildSetOfDocs();
       db._query(q);
 
-      assertEqual(0, col.count(), `We did not remove the document`)
+      assertEqual(0, col.count(), `We did not remove the document`);
     }
-  }
+  };
 };
 
 
@@ -680,9 +679,8 @@ function aqlUpsertOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
     */
-  }
+  };
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
