@@ -247,6 +247,7 @@
       * [TLS](Deployment/Kubernetes/Tls.md)
       * [Troubleshooting](Deployment/Kubernetes/Troubleshooting.md)
     * [Mesos, DC/OS](Deployment/DCOS/README.md)
+      * [Cluster Deployments](Deployment/DCOS/ClusterMesos.md)
       * [ArangoDB in Mesos](Deployment/DCOS/Mesosphere.md)
       * [DC/OS: Full example](Deployment/DCOS/DcosFullExample.md)
       * [DC/OS: Choosing Container engine](Deployment/DCOS/MesosContainers.md)
