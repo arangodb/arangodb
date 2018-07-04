@@ -80,19 +80,13 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 #ifdef USE_ENTERPRISE
     if (ep->isSmart()) {
       _traverser.reset(new arangodb::traverser::SmartGraphTraverser(
-          _opts,
-          _mmdr.get(),
-          ep->engines(),
-          _trx->vocbase()->name(),
-          _trx));
+        _opts, _mmdr.get(), ep->engines(), _trx->vocbase().name(), _trx
+      ));
     } else {
 #endif
       _traverser.reset(new arangodb::traverser::ClusterTraverser(
-          _opts,
-          _mmdr.get(),
-          ep->engines(),
-          _trx->vocbase()->name(),
-          _trx));
+        _opts, _mmdr.get(), ep->engines(), _trx->vocbase().name(), _trx
+      ));
 #ifdef USE_ENTERPRISE
     }
 #endif
@@ -129,30 +123,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _engines = ep->engines();
   }
-}
-
-TraversalBlock::~TraversalBlock() {
-  freeCaches();
-}
-
-void TraversalBlock::freeCaches() {
-  for (auto& v : _vertices) {
-    v.destroy();
-  }
-  _vertices.clear();
-  for (auto& e : _edges) {
-    e.destroy();
-  }
-  _edges.clear();
-  for (auto& p : _paths) {
-    p.destroy();
-  }
-  _paths.clear();
-}
-
-int TraversalBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initialize();
+  
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
   if (usesVertexOutput()) {
@@ -176,11 +147,25 @@ int TraversalBlock::initialize() {
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _pathReg = it->second.registerId;
   }
+}
 
-  return res;
+TraversalBlock::~TraversalBlock() {
+  freeCaches();
+}
 
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+void TraversalBlock::freeCaches() {
+  for (auto& v : _vertices) {
+    v.destroy();
+  }
+  _vertices.clear();
+  for (auto& e : _edges) {
+    e.destroy();
+  }
+  _edges.clear();
+  for (auto& p : _paths) {
+    p.destroy();
+  }
+  _paths.clear();
 }
 
 int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -198,11 +183,15 @@ int TraversalBlock::shutdown(int errorCode) {
   // We have to clean up the engines in Coordinator Case.
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto cc = arangodb::ClusterComm::instance();
+
     if (cc != nullptr) {
       // nullptr only happens on controlled server shutdown
       std::string const url(
-          "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
-          "/_internal/traverser/");
+        "/_db/"
+        + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name())
+        + "/_internal/traverser/"
+      );
+
       for (auto const& it : *_engines) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
@@ -210,12 +199,15 @@ int TraversalBlock::shutdown(int errorCode) {
             "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
             url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
             30.0);
+
         if (res->status != CL_COMM_SENT) {
           // Note If there was an error on server side we do not have CL_COMM_SENT
           std::string message("Could not destroy all traversal engines");
+
           if (!res->errorMessage.empty()) {
             message += std::string(": ") + res->errorMessage;
           }
+
           LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
         }
       }

@@ -96,7 +96,8 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _index(index),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _cache(std::move(cache)),
-      _builderIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()) {
+      _builderIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()),
+      _lastKey(VPackSlice::nullSlice()) {
   TRI_ASSERT(_keys != nullptr);
   TRI_ASSERT(_keys->slice().isArray());
 
@@ -119,8 +120,30 @@ void RocksDBEdgeIndexIterator::resetInplaceMemory() { _builder.clear(); }
 void RocksDBEdgeIndexIterator::reset() {
   resetInplaceMemory();
   _keysIterator.reset();
+  _lastKey = VPackSlice::nullSlice();
   _builderIterator =
       VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+}
+    
+// returns true if we have one more key for the index lookup.
+// if true, sets the `key` Slice to point to the new key's value
+// note that the underlying data for the Slice must remain valid
+// as long as the iterator is used and the key is not moved forward.
+// returns false if there are no more keys to look for
+bool RocksDBEdgeIndexIterator::initKey(VPackSlice& key) {
+  if (!_keysIterator.valid()) {
+    // no next key
+    _lastKey = VPackSlice::nullSlice();
+    return false;
+  }
+
+  key = _keysIterator.value();
+  if (key.isObject()) {
+    key = key.get(StaticStrings::IndexEq);
+  }
+  TRI_ASSERT(key.isString());
+  _lastKey = key;
+  return true;
 }
 
 bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
@@ -186,6 +209,101 @@ bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
               TRI_ASSERT(_builderIterator.value().isNumber());
               cb(LocalDocumentId{
                   _builderIterator.value().getNumericValue<uint64_t>()});
+              limit--;
+
+              // Twice advance the iterator
+              _builderIterator.next();
+              // We always have <revision,_from> pairs
+              TRI_ASSERT(_builderIterator.valid());
+              _builderIterator.next();
+            }
+            _builderIterator = VPackArrayIterator(
+                arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+          } else {
+            // We need to copy it.
+            // And then we just get back to beginning of the loop
+            _builder.clear();
+            _builder.add(cachedData);
+            TRI_ASSERT(_builder.slice().isArray());
+            _builderIterator = VPackArrayIterator(_builder.slice());
+            // Do not set limit
+          }
+          break;
+        }
+        if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+          // We really have not found an entry.
+          // Otherwise we do not know yet
+          break;
+        }
+      }  // attempts
+    }    // if (_cache)
+
+    if (needRocksLookup) {
+      lookupInRocksDB(fromTo);
+    }
+
+    _keysIterator.next();
+  }
+  TRI_ASSERT(limit == 0);
+  return _builderIterator.valid() || _keysIterator.valid();
+}
+
+bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+#else
+  // Gracefully return in production code
+  // Nothing bad has happened
+  if (limit == 0) {
+    return false;
+  }
+#endif
+
+  while (limit > 0) {
+    while (_builderIterator.valid()) {
+      // We still have unreturned edges in memory.
+      // Just plainly return those.
+      TRI_ASSERT(_builderIterator.value().isNumber());
+      cb(LocalDocumentId{_builderIterator.value().getNumericValue<uint64_t>()}, _lastKey);
+      limit--;
+
+      // Twice advance the iterator
+      _builderIterator.next();
+      // We always have <revision,_from> pairs
+      TRI_ASSERT(_builderIterator.valid());
+      _builderIterator.next();
+
+      if (limit == 0) {
+        // Limit reached. bail out
+        return true;
+      }
+    }
+
+    VPackSlice fromToSlice;
+    if (!initKey(fromToSlice)) {
+      return false;
+    }
+
+    StringRef fromTo(fromToSlice);
+
+    bool needRocksLookup = true;
+    if (_cache) {
+      for (size_t attempts = 0; attempts < 10; ++attempts) {
+        // Try to read from cache
+        auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+        if (finding.found()) {
+          needRocksLookup = false;
+          // We got sth. in the cache
+          VPackSlice cachedData(finding.value()->value());
+          TRI_ASSERT(cachedData.isArray());
+          if (cachedData.length() / 2 < limit) {
+            // Directly return it, no need to copy
+            _builderIterator = VPackArrayIterator(cachedData);
+            while (_builderIterator.valid()) {
+              TRI_ASSERT(_builderIterator.value().isNumber());
+              cb(LocalDocumentId{
+                  _builderIterator.value().getNumericValue<uint64_t>()}, _lastKey);
               limit--;
 
               // Twice advance the iterator
@@ -343,7 +461,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    LocalDocumentId const documentId = RocksDBKey::documentId(
+    LocalDocumentId const documentId = RocksDBKey::indexDocumentId(
         RocksDBEntryType::EdgeIndexValue, _iterator->key());
 
     // adding revision ID and _from or _to value
@@ -416,15 +534,20 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
         RocksDBIndex::ESTIMATOR_SIZE);
     TRI_ASSERT(_estimator != nullptr);
   }
-  TRI_ASSERT(iid != 0);
+  // edge indexes are always created with ID 1 or 2
+  TRI_ASSERT(iid == 1 || iid == 2);
   TRI_ASSERT(_objectId != 0);
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
 
 /// @brief return a selectivity estimate for the index
-double RocksDBEdgeIndex::selectivityEstimateLocal(
+double RocksDBEdgeIndex::selectivityEstimate(
     arangodb::StringRef const* attribute) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_unique) {
+    return 1.0;
+  }
   if (attribute != nullptr && attribute->compare(_directionAttr)) {
     return 0.0;
   }
@@ -438,8 +561,14 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   // add selectivity estimate hard-coded
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(false));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 
@@ -556,8 +685,9 @@ bool RocksDBEdgeIndex::supportsFilterCondition(
 IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   // get computation node
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(node->numMembers() == 1);
@@ -601,41 +731,6 @@ arangodb::aql::AstNode* RocksDBEdgeIndex::specializeCondition(
   // SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   SimpleAttributeEqualityMatcher matcher(this->_fields);
   return matcher.specializeOne(this, node, reference);
-}
-
-/// @brief Transform the list of search slices to search values.
-///        This will multiply all IN entries and simply return all other
-///        entries.
-void RocksDBEdgeIndex::expandInSearchValues(VPackSlice const slice,
-                                            VPackBuilder& builder) const {
-  TRI_ASSERT(slice.isArray());
-  builder.openArray();
-  for (auto const& side : VPackArrayIterator(slice)) {
-    if (side.isNull()) {
-      builder.add(side);
-    } else {
-      TRI_ASSERT(side.isArray());
-      builder.openArray();
-      for (auto const& item : VPackArrayIterator(side)) {
-        TRI_ASSERT(item.isObject());
-        if (item.hasKey(StaticStrings::IndexEq)) {
-          TRI_ASSERT(!item.hasKey(StaticStrings::IndexIn));
-          builder.add(item);
-        } else {
-          TRI_ASSERT(item.hasKey(StaticStrings::IndexIn));
-          VPackSlice list = item.get(StaticStrings::IndexIn);
-          TRI_ASSERT(list.isArray());
-          for (auto const& it : VPackArrayIterator(list)) {
-            builder.openObject();
-            builder.add(StaticStrings::IndexEq, it);
-            builder.close();
-          }
-        }
-      }
-      builder.close();
-    }
-  }
-  builder.close();
 }
 
 static std::string FindMedian(rocksdb::Iterator* it,
@@ -846,9 +941,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
     if (needsInsert) {
-      LocalDocumentId const documentId = RocksDBKey::documentId(RocksDBEntryType::EdgeIndexValue, key);
-      if (rocksColl->readDocument(trx, documentId, mmdr)) {
-        builder.add(VPackValue(documentId.id()));
+      LocalDocumentId const docId = RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
+      if (rocksColl->readDocument(trx, docId, mmdr)) {
+        builder.add(VPackValue(docId.id()));
 
         VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =

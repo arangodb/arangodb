@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H
@@ -97,12 +97,18 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all entries of a fulltext index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds FulltextIndex(uint64_t indexId);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all entries belonging to specified legacy geo index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds LegacyGeoIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries belonging to a specified unique index
+  /// @brief Bounds for all entries in geo index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds GeoIndex(uint64_t indexId);
-  static RocksDBKeyBounds GeoIndex(uint64_t indexId, bool isSlot);
+  static RocksDBKeyBounds GeoIndex(uint64_t indexId, uint64_t minCell,
+                                  uint64_t maxCell);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries within a value range belonging to a
@@ -118,7 +124,7 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
                                            VPackSlice const& left,
                                            VPackSlice const& right);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index. this method is used for point lookups
@@ -209,6 +215,8 @@ class RocksDBKeyBounds {
                    VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                   uint64_t second, uint64_t third);
 
  private:
   // private class that will hold both bounds in a single buffer (with only one

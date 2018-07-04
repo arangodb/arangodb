@@ -23,11 +23,13 @@
 #ifndef ARANGODB_PREGEL_WORKER_H
 #define ARANGODB_PREGEL_WORKER_H 1
 
-#include <atomic>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include "Basics/Common.h"
+
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/asio_ns.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
@@ -44,7 +46,7 @@ namespace pregel {
 
 class IWorker {
  public:
-  virtual ~IWorker(){};
+  virtual ~IWorker() {}
   virtual void setupWorker() = 0;
   virtual void prepareGlobalStep(VPackSlice const& data,
                                  VPackBuilder& result) = 0;
@@ -58,7 +60,7 @@ class IWorker {
   virtual void startRecovery(VPackSlice const& data) = 0;
   virtual void compensateStep(VPackSlice const& data) = 0;
   virtual void finalizeRecovery(VPackSlice const& data) = 0;
-  virtual void aqlResult(VPackBuilder*) const = 0;
+  virtual void aqlResult(VPackBuilder&) const = 0;
 };
 
 template <typename V, typename E>
@@ -134,7 +136,7 @@ class Worker : public IWorker {
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
-  std::unique_ptr<boost::asio::deadline_timer> _boost_timer;
+  std::unique_ptr<asio::deadline_timer> _boost_timer;
 
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
@@ -169,7 +171,7 @@ class Worker : public IWorker {
   void compensateStep(VPackSlice const& data) override;
   void finalizeRecovery(VPackSlice const& data) override;
 
-  void aqlResult(VPackBuilder*) const override;
+  void aqlResult(VPackBuilder&) const override;
 };
 
 }

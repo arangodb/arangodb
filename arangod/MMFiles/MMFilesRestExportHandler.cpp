@@ -247,7 +247,7 @@ void MMFilesRestExportHandler::createCursor() {
 
   // this may throw!
   auto collectionExport =
-    std::make_unique<MMFilesCollectionExport>(&_vocbase, name, _restrictions);
+    std::make_unique<MMFilesCollectionExport>(_vocbase, name, _restrictions);
 
   collectionExport->run(waitTime, limit);
 

@@ -41,7 +41,8 @@ QueryProfile::QueryProfile(Query* query)
   for (auto& it : _timers) {
     it = 0.0; // reset timers
   }
-  auto queryList = query->vocbase()->queryList();
+
+  auto queryList = query->vocbase().queryList();
 
   try {
     _tracked = queryList->insert(query);
@@ -53,7 +54,8 @@ QueryProfile::QueryProfile(Query* query)
 QueryProfile::~QueryProfile() {
   // only remove from list when the query was inserted into it...
   if (_tracked) {
-    auto queryList = _query->vocbase()->queryList();
+    auto queryList = _query->vocbase().queryList();
+
     try {
       queryList->remove(_query);
      } catch (...) {

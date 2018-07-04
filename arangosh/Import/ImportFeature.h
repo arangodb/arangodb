@@ -51,6 +51,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   std::string _filename;
   bool _useBackslash;
   bool _convert;
+  bool _autoChunkSize;
   uint64_t _chunkSize;
   uint32_t _threadCount;
   std::string _collectionName;
@@ -70,6 +71,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   std::string _onDuplicateAction;
   uint64_t _rowsToSkip;
   int* _result;
+  bool _latencyStats;
 };
 }
 

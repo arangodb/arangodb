@@ -24,7 +24,6 @@
 #ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
 
-#include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -62,7 +61,9 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void finalizeExecute() override;
 #endif
 
-  bool cancel() override;
+  bool cancel() override final;
+
+  size_t queue() const override final;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -71,6 +72,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void processQuery(arangodb::velocypack::Slice const&);
+
+  virtual uint32_t forwardingTarget() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -158,13 +161,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _queryKilled;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the finalize operation is allowed to further process
   /// the request data. this will not work if the original request cannot be
   /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
   //////////////////////////////////////////////////////////////////////////////
-  
+
   bool _isValidForFinalize;
 };
 }

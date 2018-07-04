@@ -63,7 +63,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_map<std::string, std::string> const& dbServerQueryIds,
+    MapRemoteToSnippet const& dbServerQueryIds,
     std::vector<uint64_t>& coordinatorQueryIds,
     std::unordered_set<ShardID> const& lockedShards) const {
   TRI_ASSERT(!_nodes.empty());
@@ -80,7 +80,10 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     engine->setLockedShards(cpyLockedShards.release());
   }
 
-  engine->createBlocks(_nodes, {}, restrictToShards, dbServerQueryIds);
+  auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
+  if (!res.ok()) {
+    return res;
+  }
 
   TRI_ASSERT(engine->root() != nullptr);
 
@@ -90,8 +93,10 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
   if (_id != 0) {
+    double ttl = queryRegistry->defaultTTL();
+    TRI_ASSERT(ttl > 0);
     try {
-      queryRegistry->insert(_id, query, 600.0);
+      queryRegistry->insert(_id, query, ttl, true);
     } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     } catch (std::exception const& e) {
@@ -115,8 +120,11 @@ EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
 EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() {}
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
-  TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
-             node->getType() != ExecutionNode::ENUMERATE_COLLECTION);
+  TRI_ASSERT(
+    node->getType() != ExecutionNode::INDEX
+      && node->getType() != ExecutionNode::ENUMERATE_COLLECTION
+  );
+
   TRI_ASSERT(!_engines.empty());
   TRI_ASSERT(!_engineStack.empty());
   size_t idx = _engineStack.top();
@@ -142,7 +150,7 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_map<std::string, std::string>& dbServerQueryIds,
+    MapRemoteToSnippet const& dbServerQueryIds,
     std::unordered_set<ShardID> const& lockedShards) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
@@ -155,15 +163,15 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
   };
   TRI_DEFER(cleanup());
 
-  bool first = true;
   Query* localQuery = query;
   try {
+    bool first = true;
     for (auto const& info : _engines) {
       if (!first) {
         // need a new query instance on the coordinator
         localQuery = query->clone(PART_DEPENDENT, false);
         if (localQuery == nullptr) {
-          return {TRI_ERROR_INTERNAL, "cannot clone query"};
+          return ExecutionEngineResult(TRI_ERROR_INTERNAL, "cannot clone query");
         }
       }
       try {
@@ -176,7 +184,7 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
             // It is not in the registry.
             delete localQuery;
           }
-          return {res.errorNumber(), res.errorMessage()};
+          return ExecutionEngineResult(res.errorNumber(), res.errorMessage());
         }
       } catch (...) {
         // We do not catch any other error here.
@@ -187,20 +195,20 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
           // It is not in the registry.
           delete localQuery;
         }
-        return {TRI_ERROR_INTERNAL};
+        return ExecutionEngineResult(TRI_ERROR_INTERNAL);
       }
       first = false;
     }
   } catch (basics::Exception const& ex) {
-    return {ex.code(), ex.message()};
+    return ExecutionEngineResult(ex.code(), ex.message());
   } catch (std::exception const& ex) {
-    return {TRI_ERROR_INTERNAL, ex.what()};
+    return ExecutionEngineResult(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return ExecutionEngineResult(TRI_ERROR_INTERNAL);
   }
 
   // This deactivates the defered cleanup.
   // From here on we rely on the AQL shutdown mechanism.
   coordinatorQueryIds.clear();
-  return query->engine();
+  return ExecutionEngineResult(query->engine());
 }

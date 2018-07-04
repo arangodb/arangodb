@@ -78,11 +78,12 @@ VPackSlice MMFilesExportCursor::next() {
 size_t MMFilesExportCursor::count() const { return _size; }
 
 Result MMFilesExportCursor::dump(VPackBuilder& builder) {
-  auto ctx = transaction::StandaloneContext::Create(&(_guard.database()));
+  auto ctx = transaction::StandaloneContext::Create(_guard.database());
   VPackOptions const* oldOptions = builder.options;
 
   builder.options = ctx->getVPackOptions();
   TRI_ASSERT(_ex != nullptr);
+
   auto const restrictionType = _ex->_restrictions.type;
 
   try {
@@ -96,7 +97,9 @@ Result MMFilesExportCursor::dump(VPackBuilder& builder) {
 
       VPackSlice const slice(
           reinterpret_cast<char const*>(_ex->_vpack.at(_position++)));
+
       builder.openObject();
+
       // Copy over shaped values
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());
@@ -149,7 +152,7 @@ Result MMFilesExportCursor::dump(VPackBuilder& builder) {
 }
 
 std::shared_ptr<transaction::Context> MMFilesExportCursor::context() const {
-  return transaction::StandaloneContext::Create(&(_guard.database())); // likely not used
+  return transaction::StandaloneContext::Create(_guard.database()); // likely not used
 }
 
 } // arangodb

@@ -314,12 +314,64 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test read collection object
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleReadCollectionObject : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { read: db._collection(cn1) },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn1 RETURN doc', { '@cn1' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test read collection object in array
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleReadCollectionArray : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { read: [db._collection(cn1)] },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn1 RETURN doc', { '@cn1' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test allowImplicit
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleWriteOnly : function () {
       assertEqual([], db._executeTransaction({
         collections: { allowImplicit: false, write: cn1 },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write collection object
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleWriteCollectionObject : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { write: db._collection(cn1) },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write collection object in array
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleWriteCollectionArray : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { write: [db._collection(cn1)] },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
         params: { cn: cn1 }

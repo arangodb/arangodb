@@ -102,7 +102,7 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 /// @brief shared code for executing a simple or a V8 expression
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
   DEBUG_BEGIN_BLOCK();
-  bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)
+  bool const hasCondition = (ExecutionNode::castTo<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
   TRI_ASSERT(!hasCondition); // currently not implemented
 

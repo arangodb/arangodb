@@ -51,8 +51,6 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   char const* typeName() const override { return "fulltext"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }
@@ -82,7 +80,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override final;
+                                      IndexIteratorOptions const&) override final;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;
@@ -136,7 +134,7 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
   void reset() override { _pos = _docs.begin(); }
 
   void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end()) {
+    while (_pos != _docs.end() && skipped < count) {
       ++_pos;
       skipped++;
     }

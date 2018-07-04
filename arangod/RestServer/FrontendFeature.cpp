@@ -33,6 +33,7 @@ using namespace arangodb::options;
 FrontendFeature::FrontendFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Frontend"),
       _versionCheck(true) {
+  setOptional(true);
   startsAfter("Logger");
 }
 

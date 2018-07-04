@@ -53,7 +53,7 @@ struct BucketPosition {
 };
 
 template <class Element>
-class UniqueInserterTask : public LocalTask {
+class UniqueInserterTask final : public LocalTask {
  private:
   typedef arangodb::basics::IndexBucket<Element, uint64_t, SIZE_MAX> Bucket;
   typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
@@ -85,7 +85,7 @@ class UniqueInserterTask : public LocalTask {
         _userData(userData),
         _allBuckets(allBuckets) {}
 
-  void run() {
+  void run() override {
     // actually insert them
     try {
       Bucket& b = (*_buckets)[static_cast<size_t>(_i)];
@@ -117,7 +117,7 @@ class UniqueInserterTask : public LocalTask {
 };
 
 template <class Element>
-class UniquePartitionerTask : public LocalTask {
+class UniquePartitionerTask final : public LocalTask {
  private:
   typedef UniqueInserterTask<Element> Inserter;
   typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
@@ -163,7 +163,7 @@ class UniquePartitionerTask : public LocalTask {
         _inserters(inserters),
         _bucketsMask(_allBuckets->size() - 1) {}
 
-  void run() {
+  void run() override {
     try {
       std::vector<DocumentsPerBucket> partitions;
       partitions.resize(

@@ -241,7 +241,7 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  if (result.wasSynchronous) {
+  if (result._options.waitForSync) {
     resetResponse(rest::ResponseCode::CREATED);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
@@ -268,7 +268,7 @@ void RestVocbaseBaseHandler::generateSaved(
 void RestVocbaseBaseHandler::generateDeleted(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options) {
-  if (result.wasSynchronous) {
+  if (result._options.waitForSync) {
     resetResponse(rest::ResponseCode::OK);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
@@ -356,7 +356,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
 }
@@ -511,22 +511,6 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
   }
 
   return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a boolean parameter value
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestVocbaseBaseHandler::extractBooleanParameter(std::string const& name,
-                                                     bool def) const {
-  bool found;
-  std::string const& value = _request->value(name, found);
-
-  if (found) {
-    return StringUtils::boolean(value);
-  }
-
-  return def;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

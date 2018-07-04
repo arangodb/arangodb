@@ -65,7 +65,8 @@ class StaticStrings {
   static std::string const Group;
   static std::string const Namespace;
   static std::string const ReplaceExisting;
-  static std::string const Prefix;;
+  static std::string const Prefix;
+  static std::string const OverWrite;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -74,9 +75,25 @@ class StaticStrings {
   static std::string const ReplicationHeaderLastTick;
   static std::string const ReplicationHeaderFromPresent;
   static std::string const ReplicationHeaderActive;
- 
-  // database and collection names 
+
+  // database and collection names
   static std::string const SystemDatabase;
+
+  // LogicalDataSource definition fields
+  static std::string const DataSourceDeleted; // data-source deletion marker
+  static std::string const DataSourceGuid; // data-source globaly-unique id
+  static std::string const DataSourceId; // data-source id
+  static std::string const DataSourceName; // data-source name
+  static std::string const DataSourcePlanId; // data-source plan id
+  static std::string const DataSourceSystem; // data-source system marker
+  static std::string const DataSourceType; // data-source type
+
+  // Index definition fields
+  static std::string const IndexFields; // index fields
+  static std::string const IndexId; // index id
+  static std::string const IndexSparse; // index sparsness marker
+  static std::string const IndexType; // index type
+  static std::string const IndexUnique; // index uniqueness marker
 
   // HTTP headers
   static std::string const Accept;
@@ -114,13 +131,13 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
-  static std::string const MultiPartContentType;
   static std::string const NoSniff;
   static std::string const Origin;
-  static std::string const ResponseCode;
   static std::string const Queue;
+  static std::string const ResponseCode;
   static std::string const Server;
   static std::string const StartThread;
+  static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
 
@@ -128,6 +145,10 @@ class StaticStrings {
   static std::string const MimeTypeJson;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
+  static std::string const MultiPartContentType;
+  
+  // misc strings
+  static std::string const LastValue;
 };
 }
 

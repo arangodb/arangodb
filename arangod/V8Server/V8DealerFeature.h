@@ -72,6 +72,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   uint64_t _nrInflightContexts; // number of contexts currently in creation
   uint64_t _maxContextInvocations; // maximum number of V8 context invocations
   bool _allowAdminExecute;
+  bool _enableJS;
 
  public:
   JSLoader* startupLoader() { return &_startupLoader; };
@@ -83,7 +84,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   // the builder is not cleared and thus should be empty before the call.
   void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
                                        VPackBuilder* builder);
-  void startGarbageCollection();
 
   /// @brief forceContext == -1 means that any free context may be
   /// picked, or a new one will be created if we have not exceeded
@@ -125,6 +125,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
  private:
   uint64_t nextId() { return _nextId++; }
+  void startGarbageCollection();
   V8Context* addContext();
   V8Context* buildContext(size_t id);
   V8Context* pickFreeContextForGc();

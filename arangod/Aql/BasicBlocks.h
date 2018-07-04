@@ -37,15 +37,7 @@ class ExecutionEngine;
 
 class SingletonBlock final : public ExecutionBlock {
  public:
-  SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
-      : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr), _whitelistBuilt(false) {}
-
-  ~SingletonBlock() { deleteInputVariables(); }
-
-  int initialize() override final {
-    deleteInputVariables();
-    return ExecutionBlock::initialize();
-  }
+  SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep);
 
   /// @brief initializeCursor, store a copy of the register values coming from
   /// above
@@ -55,24 +47,14 @@ class SingletonBlock final : public ExecutionBlock {
 
   bool hasMore() override final { return !_done; }
 
-  int64_t count() const override final { return 1; }
-
-  int64_t remaining() override final { return _done ? 0 : 1; }
-
  private:
-  void deleteInputVariables();
-
-  void buildWhitelist();
-
   int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief _inputRegisterValues
-  AqlItemBlock* _inputRegisterValues;
+  std::unique_ptr<AqlItemBlock> _inputRegisterValues;
 
   std::unordered_set<RegisterId> _whitelist;
-
-  bool _whitelistBuilt;
 };
 
 class FilterBlock final : public ExecutionBlock {
@@ -91,18 +73,8 @@ class FilterBlock final : public ExecutionBlock {
   int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
-  bool hasMore() override final;
-
-  int64_t count() const override final {
-    return -1;  // refuse to work
-  }
-
-  int64_t remaining() override final {
-    return -1;  // refuse to work
-  }
-
-  /// @brief input register
  private:
+  /// @brief input register
   RegisterId _inReg;
 
   /// @brief vector of indices of those documents in the current block
@@ -122,13 +94,12 @@ class LimitBlock final : public ExecutionBlock {
         _state(0),  // start in the beginning
         _fullCount(ep->_fullCount) {}
 
-  ~LimitBlock() {}
-
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-  virtual int getOrSkipSome(size_t atMost, bool skipping,
-                            AqlItemBlock*& result, size_t& skipped) override;
-
+  int getOrSkipSome(size_t atMost, bool skipping,
+                    AqlItemBlock*& result, size_t& skipped) override;
+ 
+ private:
   /// @brief _offset
   size_t _offset;
 
@@ -150,8 +121,6 @@ class ReturnBlock final : public ExecutionBlock {
   ReturnBlock(ExecutionEngine* engine, ReturnNode const* ep)
       : ExecutionBlock(engine, ep), _returnInheritedResults(false) {}
 
-  ~ReturnBlock() {}
-
   /// @brief getSome
   AqlItemBlock* getSome(size_t atMost) override final;
 
@@ -170,20 +139,14 @@ class ReturnBlock final : public ExecutionBlock {
 
 class NoResultsBlock final : public ExecutionBlock {
  public:
-  NoResultsBlock(ExecutionEngine* engine, NoResultsNode const* ep)
+  NoResultsBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       : ExecutionBlock(engine, ep) {}
-
-  ~NoResultsBlock() {}
 
   /// @brief initializeCursor, store a copy of the register values coming from
   /// above
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
   bool hasMore() override final { return false; }
-
-  int64_t count() const override final { return 0; }
-
-  int64_t remaining() override final { return 0; }
 
  private:
   int getOrSkipSome(size_t atMost, bool skipping,

@@ -29,7 +29,6 @@
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 
-#include "ApplicationServerHelper.h"
 #include "VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 #include "velocypack/Builder.h"
@@ -189,7 +188,9 @@ bool IResearchLinkMeta::init(
     if (!mask->_analyzers) {
       _analyzers = defaults._analyzers;
     } else {
-      auto* analyzers = getFeature<IResearchAnalyzerFeature>();
+      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+        IResearchAnalyzerFeature
+      >();
       auto field = slice.get(fieldName);
 
       if (!analyzers || !field.isArray()) {

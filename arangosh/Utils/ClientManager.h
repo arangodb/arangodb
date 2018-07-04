@@ -44,7 +44,7 @@ class ClientManager {
    * @brief Initialize a client manager using a specific log topic for output
    * @param topic Topic to log output to
    */
-  ClientManager(LogTopic& topic);
+  explicit ClientManager(LogTopic& topic);
   virtual ~ClientManager();
 
  public:
@@ -55,13 +55,32 @@ class ClientManager {
    * mismatched, this will result in a fatal error which will terminate the
    * running program.
    *
+   * @param  httpclient Output pointer will be set on success
+   * @param  force      If true, an incompatible version will not result in an
+   *                    error result
+   * @param  logServerVersion     If true, output the server version to logs
+   * @param  logDatabaseNotFound  If true, log errors when database was not found
+   * @return            Status code and possible error message
+   */
+  Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>&
+                                httpClient, bool force, bool logServerVersion,
+                                bool logDatabaseNotFound);
+
+  /**
+   * @brief Initializes a client, connects to server, and verifies version
+   *
+   * If the client fails to connect to the server, or if the version is
+   * mismatched, this will result in a fatal error which will terminate the
+   * running program.
+   *
    * @param  force   If true, an incompatible version will not result in a fatal
    *                 error exit condition
-   * @param  verbose If true, output the server version to logs
+   * @param  logServerVersion     If true, output the server version to logs
+   * @param  logDatabaseNotFound  If true, log errors when database was not found
    * @return         A connected `SimpleHttpClient`
    */
   std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(
-      bool force = false, bool verbose = false);
+      bool force, bool logServerVersion, bool logDatabaseNotFound);
 
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path
@@ -69,8 +88,7 @@ class ClientManager {
    * @param  location Relative URI to prefix, if it does not begin with "/_db/"
    * @return          Propertly prefixed URI
    */
-  static std::string rewriteLocation(void* data,
-                                     std::string const& location);
+  static std::string rewriteLocation(void* data, std::string const& location);
 
   /**
    * @brief Determines whether the ArangoDB instance is part of a cluster
@@ -89,11 +107,10 @@ class ClientManager {
    *                in use
    */
   std::pair<Result, bool> getArangoIsUsingEngine(
-      httpclient::SimpleHttpClient& httpClient,
-      std::string const& name);
+      httpclient::SimpleHttpClient& httpClient, std::string const& name);
 
-  private:
-    LogTopic& _topic;
+ private:
+  LogTopic& _topic;
 };
 }  // namespace arangodb
 

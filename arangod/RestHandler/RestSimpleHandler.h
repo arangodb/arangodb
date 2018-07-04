@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {

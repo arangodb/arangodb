@@ -36,7 +36,7 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
 
  public:
   virtual char const* name() const override { return "RestUsersHandler"; }
-  bool isDirect() const override { return true; }
+  bool isDirect() const override { return false; }
   RestStatus execute() override;
 
  private:

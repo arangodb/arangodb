@@ -24,22 +24,23 @@
 
 #include "Scheduler.h"
 
-#include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "Basics/WorkMonitor.h"
-#include "GeneralServer/RestHandler.h"
-#include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
-#include "Rest/GeneralResponse.h"
-#include "Scheduler/JobGuard.h"
-#include "Scheduler/JobQueue.h"
-#include "Scheduler/Task.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <thread>
+
+#include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
+#include "GeneralServer/RestHandler.h"
+#include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
+#include "Rest/GeneralResponse.h"
+#include "Scheduler/Acceptor.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/JobQueue.h"
+#include "Scheduler/Task.h"
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -54,15 +55,15 @@ constexpr double MIN_SECONDS = 30.0;
 // -----------------------------------------------------------------------------
 
 namespace {
-class SchedulerManagerThread : public Thread {
+class SchedulerManagerThread final : public Thread {
  public:
-  SchedulerManagerThread(Scheduler* scheduler, boost::asio::io_service* service)
+  SchedulerManagerThread(Scheduler* scheduler, asio_ns::io_context* service)
       : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerManagerThread() { shutdown(); }
 
  public:
-  void run() {
+  void run() override {
     while (!_scheduler->isStopping()) {
       try {
         _service->run_one();
@@ -75,7 +76,7 @@ class SchedulerManagerThread : public Thread {
 
  private:
   Scheduler* _scheduler;
-  boost::asio::io_service* _service;
+  asio_ns::io_context* _service;
 };
 }
 
@@ -86,13 +87,13 @@ class SchedulerManagerThread : public Thread {
 namespace {
 class SchedulerThread : public Thread {
  public:
-  SchedulerThread(Scheduler* scheduler, boost::asio::io_service* service)
+  SchedulerThread(Scheduler* scheduler, asio_ns::io_context* service)
     : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
 
  public:
-  void run() {
+  void run() override {
     constexpr size_t EVERY_LOOP = size_t(MIN_SECONDS);
     
     // when we enter this method, 
@@ -153,7 +154,7 @@ class SchedulerThread : public Thread {
 
  private:
   Scheduler* _scheduler;
-  boost::asio::io_service* _service;
+  asio_ns::io_context* _service;
 };
 }
 
@@ -180,20 +181,48 @@ Scheduler::~Scheduler() {
   _managerService.reset();
 
   _serviceGuard.reset();
-  _ioService.reset();
+  _ioContext.reset();
 }
 
 void Scheduler::post(std::function<void()> callback) {
   ++_nrQueued;
 
-  _ioService.get()->post([this, callback]() {
+  try {
+
+    // capture without self, ioContext will not live longer than scheduler
+    _ioContext.get()->post([this, callback]() {
+        --_nrQueued;
+
+        JobGuard guard(this);
+        guard.work();
+
+        callback();
+      });
+  } catch (...) {
     --_nrQueued;
+    throw;
+  }
+}
 
-    JobGuard guard(this);
-    guard.work();
+void Scheduler::post(asio_ns::io_context::strand& strand,
+                     std::function<void()> callback) {
+  ++_nrQueued;
 
-    callback();
-  });
+  try {
+
+    // capture without self, ioContext will not live longer than scheduler
+    strand.post([this, callback]() {
+        --_nrQueued;
+
+        JobGuard guard(this);
+        guard.work();
+
+        callback();
+      });
+  } catch (...) {
+    --_nrQueued;
+    throw;
+  }
 }
 
 bool Scheduler::start() {
@@ -230,18 +259,18 @@ bool Scheduler::start() {
 }
 
 void Scheduler::startIoService() {
-  _ioService.reset(new boost::asio::io_service());
-  _serviceGuard.reset(new boost::asio::io_service::work(*_ioService));
+  _ioContext.reset(new asio_ns::io_context());
+  _serviceGuard.reset(new asio_ns::io_context::work(*_ioContext));
 
-  _managerService.reset(new boost::asio::io_service());
-  _managerGuard.reset(new boost::asio::io_service::work(*_managerService));
+  _managerService.reset(new asio_ns::io_context());
+  _managerGuard.reset(new asio_ns::io_context::work(*_managerService));
 }
 
 void Scheduler::startRebalancer() {
   std::chrono::milliseconds interval(100);
-  _threadManager.reset(new boost::asio::steady_timer(*_managerService));
+  _threadManager.reset(new asio_ns::steady_timer(*_managerService));
 
-  _threadHandler = [this, interval](const boost::system::error_code& error) {
+  _threadHandler = [this, interval](const asio_ns::error_code& error) {
     if (error || isStopping()) {
       return;
     }
@@ -280,7 +309,7 @@ void Scheduler::startManagerThread() {
 }
 
 void Scheduler::startNewThread() {
-  auto thread = new SchedulerThread(this, _ioService.get());
+  auto thread = new SchedulerThread(this, _ioContext.get());
   if (!thread->start()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start scheduler thread");
   }
@@ -347,15 +376,18 @@ bool Scheduler::shouldQueueMore() const {
   return false;
 }
 
-bool Scheduler::hasQueueCapacity() const {
-  if (!shouldQueueMore()) {
-    return false;
+bool Scheduler::shouldExecuteDirect() const {
+  uint64_t const counters = _counters.load();
+  uint64_t const nrWorking = numWorking(counters);
+  uint64_t const nrBlocked = numBlocked(counters);
+  
+  if (nrWorking + nrBlocked + _nrQueued < numRunning(counters) / 2 + 1) {
+    auto jobQueue = _jobQueue.get();
+    auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
+    return queueSize == 0;
   }
-
-  auto jobQueue = _jobQueue.get();
-  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
-
-  return queueSize == 0;
+  
+  return false;
 }
 
 bool Scheduler::queue(std::unique_ptr<Job> job) {
@@ -404,7 +436,7 @@ void Scheduler::rebalanceThreads() {
       uint64_t const nrWorking = numWorking(counters);
       uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + nrQueued + 1)) { 
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + nrQueued + 1)) {
         // all threads are working, and none are blocked. so there is no
         // need to start a new thread now
         if (nrWorking == nrRunning) {
@@ -424,10 +456,11 @@ void Scheduler::rebalanceThreads() {
         break;
       }
       
-      // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. nrRunning: " << nrRunning << ", nrWorking: " << nrWorking << ", nrBlocked: " << nrBlocked << ", nrQueued: " << nrQueued;
+      // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. " << this->infoStatus();
 
       // all threads are maxed out
       _lastAllBusyStamp = now;
+
       // increase nrRunning by one here already, while holding the lock
       incRunning();
     }
@@ -466,7 +499,7 @@ void Scheduler::beginShutdown() {
   _managerService->stop();
 
   _serviceGuard.reset();
-  _ioService->stop();
+  _ioContext->stop();
 
   // set the flag AFTER stopping the threads
   setStopping();
@@ -487,20 +520,8 @@ void Scheduler::shutdown() {
     std::this_thread::sleep_for(std::chrono::microseconds(20000)); 
   }
 
-  // remove all queued work descriptions in the work monitor first
-  // before freeing the io service a few lines later
-  // this is required because the work descriptions may have captured
-  // HttpCommTasks etc. which have references to the io service and
-  // access it in their destructors
-  // so the proper shutdown order is:
-  // - stop accepting further requests (already done by GeneralServerFeature::stop)
-  // - cancel all running scheduler tasks
-  // - free all work descriptions in work monitor
-  // - delete io service
-  WorkMonitor::clearWorkDescriptions();
-
   _managerService.reset();
-  _ioService.reset();
+  _ioContext.reset();
 }
 
 void Scheduler::initializeSignalHandlers() {
@@ -514,10 +535,11 @@ void Scheduler::initializeSignalHandlers() {
   // ignore broken pipes
   action.sa_handler = SIG_IGN;
 
-  int res = sigaction(SIGPIPE, &action, 0);
+  int res = sigaction(SIGPIPE, &action, nullptr);
 
   if (res < 0) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot initialize signal handlers for pipe";
   }
 #endif
 }
+

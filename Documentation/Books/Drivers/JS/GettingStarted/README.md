@@ -206,13 +206,13 @@ const db = new Database({
 });
 ```
 
-For AQL please check out the [`aql` template tag](../Reference/README.md#aql) for writing parametrized
+For AQL please check out the [aql template tag](../Reference/Database/Queries.md#aql) for writing parametrized
 AQL queries without making your code vulnerable to injection attacks.
 
 ## Error responses
 
 If arangojs encounters an API error, it will throw an _ArangoError_ with an
-[_errorNum_ as defined in the ArangoDB documentation](https://docs.arangodb.com/devel/Manual/Appendix/ErrorCodes.html) as well as a _code_ and _statusCode_ property indicating the intended and actual HTTP status code of the response.
+[_errorNum_ as defined in the ArangoDB documentation](../../..//Manual/Appendix/ErrorCodes.html) as well as a _code_ and _statusCode_ property indicating the intended and actual HTTP status code of the response.
 
 For any other error responses (4xx/5xx status code), it will throw an
 _HttpError_ error with the status code indicated by the _code_ and _statusCode_ properties.

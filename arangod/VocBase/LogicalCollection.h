@@ -171,7 +171,7 @@ class LogicalCollection: public LogicalDataSource {
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, bool reverse);
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
   void invokeOnAllElements(
@@ -184,11 +184,11 @@ class LogicalCollection: public LogicalDataSource {
   std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
   void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
 
-  double clusterIndexEstimatesTTL(){
+  double clusterIndexEstimatesTTL() const {
     return _clusterEstimateTTL;
   }
 
-  void clusterIndexEstimatesTTL(double ttl){
+  void clusterIndexEstimatesTTL(double ttl) {
     _clusterEstimateTTL = ttl;
   }
   // End - Estimates
@@ -205,7 +205,7 @@ class LogicalCollection: public LogicalDataSource {
   bool isSatellite() const;
 
   // SECTION: Sharding
-  int numberOfShards() const;
+  int numberOfShards() const noexcept;
   void numberOfShards(int);
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;
@@ -232,9 +232,6 @@ class LogicalCollection: public LogicalDataSource {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(velocypack::Builder&, bool translateCids,
-                    bool forPersistence = false) const;
-
   void toVelocyPackIgnore(velocypack::Builder& result,
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
       bool forPersistence) const;
@@ -302,10 +299,12 @@ class LogicalCollection: public LogicalDataSource {
                 ManagedDocumentResult& result, OperationOptions&,
                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
                 ManagedDocumentResult& previous);
+
   Result replace(transaction::Methods*, velocypack::Slice const,
                  ManagedDocumentResult& result, OperationOptions&,
-                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
+                 TRI_voc_tick_t&, bool /*lock*/, TRI_voc_rid_t& prevRev,
                  ManagedDocumentResult& previous);
+
   Result remove(transaction::Methods*, velocypack::Slice const,
                 OperationOptions&, TRI_voc_tick_t&, bool,
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
@@ -345,6 +344,13 @@ class LogicalCollection: public LogicalDataSource {
   // with the checksum provided in the reference checksum
   Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
+ protected:
+  virtual arangodb::Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override;
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -354,17 +360,14 @@ class LogicalCollection: public LogicalDataSource {
 
   void increaseInternalVersion();
 
-  std::string generateGloballyUniqueId() const;
-
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
- protected:
   // SECTION: Meta Information
   //
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-  
+
   bool const _isAStub;
 
   // @brief Collection type
@@ -411,10 +414,6 @@ class LogicalCollection: public LogicalDataSource {
   std::shared_ptr<velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
-
-  /// @brief globally unique collection id. assigned by the
-  /// initial creator of the collection
-  std::string _globallyUniqueId;
 
   std::unique_ptr<PhysicalCollection> _physical;
 

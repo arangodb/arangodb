@@ -10,7 +10,7 @@ http://127.0.0.1:8529
 
 If everything works as expected, you should see the login view:
 
-![Login View](../Administration/WebInterface/images/loginView.png)
+![Login View](../Programs/WebInterface/images/loginView.png)
 
 For more information on the ArangoDB web interface, see
-[Web Interface](../Administration/WebInterface/README.md)
+[Web Interface](../Programs/WebInterface/README.md)

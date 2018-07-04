@@ -29,21 +29,38 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 using namespace arangodb;
 
-/// @brief create the transaction, using a collection id
+/// @brief create the transaction, using a collection
 SingleCollectionTransaction::SingleCollectionTransaction(
-  std::shared_ptr<transaction::Context> const& transactionContext, TRI_voc_cid_t cid, 
-  AccessMode::Type accessType)
+  std::shared_ptr<transaction::Context> const& transactionContext,
+  LogicalCollection const* col, AccessMode::Type accessType)
       : transaction::Methods(transactionContext),
-        _cid(cid),
+        _cid(col->id()),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
         _accessType(accessType) {
 
   // add the (sole) collection
-  addCollection(cid, _accessType);
+  addCollection(col->id(), col->name(), _accessType);
+  addHint(transaction::Hints::Hint::NO_DLD);
+}
+
+
+/// @brief create the transaction, using a collection id
+SingleCollectionTransaction::SingleCollectionTransaction(
+   std::shared_ptr<transaction::Context> const& transactionContext,
+   LogicalView const& view, AccessMode::Type accessType)
+      : transaction::Methods(transactionContext),
+      _cid(view.id()),
+      _trxCollection(nullptr),
+      _documentCollection(nullptr),
+      _accessType(accessType) {
+  
+  // add the (sole) view
+  addCollection(view.id(), view.name(), _accessType);
   addHint(transaction::Hints::Hint::NO_DLD);
 }
 

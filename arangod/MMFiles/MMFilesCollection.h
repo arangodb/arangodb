@@ -86,7 +86,6 @@ class MMFilesCollection final : public PhysicalCollection {
     uint64_t _documents;
     uint64_t _operations;
     int64_t _initialCount;
-    bool const _trackKeys;
 
     OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx)
         : _collection(collection),
@@ -103,8 +102,7 @@ class MMFilesCollection final : public PhysicalCollection {
           _deletions(0),
           _documents(0),
           _operations(0),
-          _initialCount(-1),
-          _trackKeys(collection->keyGenerator()->trackKeys()) {
+          _initialCount(-1) {
       TRI_ASSERT(collection != nullptr);
       TRI_ASSERT(trx != nullptr);
     }
@@ -159,8 +157,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-  /// @brief used for updating properties
-  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   // datafile management
   bool applyForTickRange(
@@ -294,10 +290,8 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const override;
 
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                bool reverse) const override;
-  std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx) const override;
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
+  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
   void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback) override;
@@ -376,9 +370,7 @@ class MMFilesCollection final : public PhysicalCollection {
                  arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 arangodb::velocypack::Slice const fromSlice,
-                 arangodb::velocypack::Slice const toSlice) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
 
   Result remove(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const slice,
@@ -417,7 +409,6 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
  private:
-  void createInitialIndexes();
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
   bool openIndex(VPackSlice const& description, transaction::Methods* trx);
@@ -494,15 +485,14 @@ class MMFilesCollection final : public PhysicalCollection {
                                                 bool excludeWal) const;
   void batchLookupRevisionVPack(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const;
 
+  void createInitialIndexes();
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexLocal(std::shared_ptr<arangodb::Index> idx);
-  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
 
   bool removeIndex(TRI_idx_iid_t iid);
 
   /// @brief return engine-specific figures
-  void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
 
   // SECTION: Index storage
 

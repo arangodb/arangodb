@@ -31,45 +31,17 @@
 #include "VocBase/LogicalView.h"
 
 #include "IResearchRocksDBLink.h"
-
-NS_LOCAL
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a reference to a static VPackSlice of an empty RocksDB index
-///        definition
-////////////////////////////////////////////////////////////////////////////////
-VPackSlice const& emptyParentSlice() {
-  static const struct EmptySlice {
-    VPackBuilder _builder;
-    VPackSlice _slice;
-    EmptySlice() {
-      VPackBuilder fieldsBuilder;
-
-      fieldsBuilder.openArray();
-      fieldsBuilder.close();  // empty array
-      _builder.openObject();
-      _builder.add("fields", fieldsBuilder.slice());  // empty array
-      arangodb::iresearch::IResearchLink::setType(
-          _builder);     // the index type required by Index
-      _builder.close();  // object with just one field required by the Index
-                         // constructor
-      _slice = _builder.slice();
-    }
-  } emptySlice;
-
-  return emptySlice._slice;
-}
-
-NS_END
+#include "IResearchLinkHelper.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchRocksDBLink::IResearchRocksDBLink(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
-    : RocksDBIndex(iid, collection, emptyParentSlice(),
+    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
                    RocksDBColumnFamily::invalid(), false),
       IResearchLink(iid, collection) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
 }

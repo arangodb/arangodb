@@ -1065,15 +1065,6 @@ ArangoDatabase.prototype._databases = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._useDatabase = function (name) {
-  if (internal.printBrowser) {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_NOT_IMPLEMENTED.code,
-      errorNum: internal.errors.ERROR_NOT_IMPLEMENTED.code,
-      errorMessage: '_useDatabase() is not supported in the web interface'
-    });
-  }
-
   var old = this._connection.getDatabaseName();
 
   // no change
@@ -1135,13 +1126,33 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     });
   }
 
-  if (!data.collections || typeof (data.collections) !== 'object') {
+  data = Object.assign({}, data);
+
+  if (!data.collections || typeof data.collections !== 'object') {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
       errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
       errorMessage: 'missing/invalid collections definition for transaction'
     });
+  }
+
+  data.collections = Object.assign({}, data.collections);
+  if (data.collections.read) {
+    if (!Array.isArray(data.collections.read)) {
+      data.collections.read = [data.collections.read];
+    }
+    data.collections.read = data.collections.read.map(
+      col => col.isArangoCollection ? col.name() : col
+    );
+  }
+  if (data.collections.write) {
+    if (!Array.isArray(data.collections.write)) {
+      data.collections.write = [data.collections.write];
+    }
+    data.collections.write = data.collections.write.map(
+      col => col.isArangoCollection ? col.name() : col
+    );
   }
 
   if (!data.action ||
@@ -1218,7 +1229,7 @@ ArangoDatabase.prototype._dropView = function (id) {
     }
   }
 
-  var v = this._collection(id);
+  var v = this._view(id);
   if (v) {
     return v.drop();
   }

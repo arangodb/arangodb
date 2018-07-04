@@ -697,9 +697,9 @@ function multiCollectionGraphSuite () {
       });
     },
 
-    testNoBindParameterV8Function: function () {
+    testNoBindParameterRandFunction: function () {
       var query = 'FOR s IN ' + vn + ' FOR x, e, p IN OUTBOUND s ' +
-          en + ' FILTER p.vertices[1]._key == NOOPT(V8(RAND())) SORT x._key RETURN x';
+          en + ' FILTER p.vertices[1]._key == NOOPT(RAND()) SORT x._key RETURN x';
       var result = db._query(query).toArray();
       assertEqual(result.length, 0);
       var plans = AQL_EXPLAIN(query, { }, opts).plans;

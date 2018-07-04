@@ -28,7 +28,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/WorkMonitor.h"
 #include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -153,7 +152,7 @@ QueryStreamCursor::QueryStreamCursor(
 )
     : Cursor(id, batchSize, ttl, /*hasCount*/ false),
       _guard(vocbase),
-      _queryString(query) {
+      _exportCount(-1) {
   TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
   auto prevLockHeaders = CollectionLockState::_noLockHeaders;
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
@@ -161,14 +160,30 @@ QueryStreamCursor::QueryStreamCursor(
   _query = std::make_unique<Query>(
     false,
     _guard.database(),
-    aql::QueryString(_queryString.c_str(), _queryString.length()),
+    aql::QueryString(query),
     std::move(bindVars),
     std::move(opts),
     arangodb::aql::PART_MAIN
   );
   _query->prepare(QueryRegistryFeature::QUERY_REGISTRY, aql::Query::DontCache);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
-
+        
+  // we replaced the rocksdb export cursor with a stream AQL query
+  // for this case we need to support printing the collection "count"
+  if (_query->optionsSlice().hasKey("exportCollection")) {
+    std::string cname = _query->optionsSlice().get("exportCollection").copyString();
+    TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
+    OperationResult opRes = _query->trx()->count(cname, false);
+    if (opRes.fail()) {
+      THROW_ARANGO_EXCEPTION(opRes.result);
+    }
+    _exportCount = opRes.slice().getInt();
+    VPackSlice limit = _query->bindParameters()->slice().get("limit");
+    if (limit.isInteger()) {
+      _exportCount = std::min(limit.getInt(), _exportCount);
+    }
+  }
+  
   // If we have set _noLockHeaders, we need to unset it:
   if (CollectionLockState::_noLockHeaders != nullptr &&
       CollectionLockState::_noLockHeaders == _query->engine()->lockedShards()) {
@@ -195,12 +210,8 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
   CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
-  // we do have a query string... pass query to WorkMonitor
-  AqlWorkStack work(
-    &(_guard.database()), _query->id(), _queryString.data(), _queryString.size()
-  );
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
-                                    << _queryString.substr(1024) << "'";
+                                    << _query->queryString().extract(1024) << "'";
 
   VPackOptions const* oldOptions = builder.options;
   TRI_DEFER(builder.options = oldOptions);
@@ -246,7 +257,9 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       if (hasMore) {
         builder.add("id", VPackValue(std::to_string(id())));
       }
-
+      if (_exportCount >= 0) { // this is coming from /_api/export
+        builder.add("count", VPackValue(_exportCount));
+      }
       builder.add("cached", VPackValue(false));
     } catch (...) {
       delete value;
@@ -255,7 +268,7 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
 
     if (!hasMore) {
       QueryResult result;
-      _query->finalize(result);
+      _query->finalize(result); // will commit transaction
       if (result.extra && result.extra->slice().isObject()) {
         builder.add("extra", result.extra->slice());
       }

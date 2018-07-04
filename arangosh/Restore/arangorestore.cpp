@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
     server.addFeature(new ConfigFeature(&server, "arangorestore"));
     server.addFeature(new LoggerFeature(&server, false));
     server.addFeature(new RandomFeature(&server));
-    server.addFeature(new RestoreFeature(&server, &ret));
+    server.addFeature(new RestoreFeature(&server, ret));
     server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"Restore"}));
     server.addFeature(new SslFeature(&server));

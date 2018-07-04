@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -32,8 +32,8 @@
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// If these values change, make sure to reflect the changes in
-/// RocksDBPrefixExtractor as well.
+/// Used to keep track of current key type in RocksDBKey and RocksDBKeyBounds
+/// Should not be written to disk from 3.2 milestone 1 onwards
 ////////////////////////////////////////////////////////////////////////////////
 enum class RocksDBEntryType : char {
   Placeholder = '\0',
@@ -48,14 +48,18 @@ enum class RocksDBEntryType : char {
   SettingsValue = '8',
   ReplicationApplierConfig = '9',
   FulltextIndexValue = ':',
-  GeoIndexValue = ';',
+  LegacyGeoIndexValue = ';',
   IndexEstimateValue = '<',
   KeyGeneratorValue = '=',
-  View = '>'
+  View = '>',
+  GeoIndexValue = '?'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);
 
+////////////////////////////////////////////////////////////////////////////////
+/// Used to for various metadata in the write-ahead-log
+////////////////////////////////////////////////////////////////////////////////
 enum class RocksDBLogType : char {
   Invalid = 0,
   DatabaseCreate = '1',
@@ -87,12 +91,21 @@ enum class RocksDBLogType : char {
 enum class RocksDBSettingsType : char {
   Invalid = 0,
   Version = 'V',
-  ServerTick = 'S'
+  ServerTick = 'S',
+  Endianness = 'E'
 };
+  
+enum class RocksDBEndianness : char {
+  Invalid = 0,
+  Little = 'L',
+  Big = 'B'
+};
+  
+/// @brief rocksdb format version
+char rocksDBFormatVersion();
 
 char const* rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
-char rocksDBFormatVersion();
 }  // namespace arangodb
 
 #endif

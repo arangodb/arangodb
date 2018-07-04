@@ -47,7 +47,8 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _filename(""),
       _useBackslash(false),
       _convert(true),
-      _chunkSize(1024 * 1024 * 16),
+      _autoChunkSize(true),
+      _chunkSize(1024 * 1024 * 1),
       _threadCount(2),
       _collectionName(""),
       _fromCollectionPrefix(""),
@@ -63,7 +64,8 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _ignoreMissing(false),
       _onDuplicateAction("error"),
       _rowsToSkip(0),
-      _result(result) {
+      _result(result),
+      _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -177,6 +179,9 @@ void ImportFeature::collectOptions(
                          actionsJoined,
                      new DiscreteValuesParameter<StringParameter>(
                          &_onDuplicateAction, actions));
+
+  options->addOption("--latency", "show 10 second latency statistics (values in microseconds)",
+                     new BooleanParameter(&_latencyStats));
 }
 
 void ImportFeature::validateOptions(
@@ -197,15 +202,16 @@ void ImportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  static unsigned const MaxBatchSize = 768 * 1024 * 1024;
+  // _chunkSize is dynamic ... unless user explicitly sets it
+  _autoChunkSize = !options->processingResult().touched("--batch-size");
 
-  if (_chunkSize > MaxBatchSize) {
+  if (_chunkSize > arangodb::import::ImportHelper::MaxBatchSize) {
     // it's not sensible to raise the batch size beyond this value
     // because the server has a built-in limit for the batch size too
     // and will reject bigger HTTP request bodies
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --batch-size value to "
-                                             << MaxBatchSize;
-    _chunkSize = MaxBatchSize;
+                                             << arangodb::import::ImportHelper::MaxBatchSize;
+    _chunkSize = arangodb::import::ImportHelper::MaxBatchSize;
   }
 
   if (_threadCount < 1) {
@@ -214,11 +220,12 @@ void ImportFeature::validateOptions(
                                              << 1;
     _threadCount = 1;
   }
-  if (_threadCount > TRI_numberProcessors()) {
-    // it's not sensible to use just one thread
+  if (_threadCount > TRI_numberProcessors()*2) {
+    // it's not sensible to use just one thread ...
+    //  and import's CPU usage is negligible, real limit is cluster cores
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to "
-                                             << TRI_numberProcessors();
-    _threadCount = (uint32_t)TRI_numberProcessors();
+                                             << TRI_numberProcessors()*2;
+    _threadCount = (uint32_t)TRI_numberProcessors()*2;
   }
 
   for (auto const& it : _translations) {
@@ -295,7 +302,7 @@ void ImportFeature::start() {
   auto versionString = _httpClient->getServerVersion(&err);
   auto dbName = client->databaseName();
   bool createdDatabase = false;
-  
+
   auto successfulConnection = [&](){
     std::cout << "Connected to ArangoDB '"
               << _httpClient->getEndpointSpecification() << "', version "
@@ -379,7 +386,7 @@ void ImportFeature::start() {
 
   SimpleHttpClientParams params = _httpClient->params();
   arangodb::import::ImportHelper ih(client, client->endpoint(), params,
-                                    _chunkSize, _threadCount);
+                                    _chunkSize, _threadCount, _autoChunkSize);
 
   // create colletion
   if (_createCollection) {
@@ -468,6 +475,11 @@ void ImportFeature::start() {
     ih.setProgress(true);
   }
 
+  // progress
+  if (_latencyStats) {
+    ih.startHistogram();
+  }
+
   if (_onDuplicateAction != "error" && _onDuplicateAction != "update" &&
       _onDuplicateAction != "replace" && _onDuplicateAction != "ignore") {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -523,9 +535,12 @@ void ImportFeature::start() {
       }
 
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
-      for (std::string const& msg : ih.getErrorMessages()) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+      auto const& msgs = ih.getErrorMessages();
+      if (!msgs.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
+        for (std::string const& msg : msgs) {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+        }
       }
     }
   } catch (std::exception const& ex) {

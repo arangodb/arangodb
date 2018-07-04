@@ -301,7 +301,7 @@ class StringBuffer {
 
     char* buffer = new char[bufferSize];
 
-    if (buffer == 0) {
+    if (buffer == nullptr) {
       (void)inflateEnd(&strm);
 
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -396,7 +396,7 @@ class StringBuffer {
 
     char* buffer = new char[bufferSize];
 
-    if (buffer == 0) {
+    if (buffer == nullptr) {
       (void)inflateEnd(&strm);
 
       return TRI_ERROR_OUT_OF_MEMORY;

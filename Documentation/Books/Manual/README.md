@@ -23,7 +23,7 @@ The documentation is organized in four handbooks:
   solutions.
 
 Features are illustrated with interactive usage examples; you can cut'n'paste them
-into [arangosh](Administration/Arangosh/README.md) to try them out. The HTTP
+into [arangosh](Programs/Arangosh/README.md) to try them out. The HTTP
 [REST-API](../HTTP/index.html) for driver developers is demonstrated with cut'n'paste
 recipes intended to be used with the [cURL](http://curl.haxx.se). Drivers may provide
 their own examples based on these .js based examples to improve understandability
@@ -45,7 +45,7 @@ Key features include:
 * Configurable **durability**: let the application decide if it needs more durability or more performance
 * No-nonsense storage: ArangoDB uses all of the power of **modern storage hardware**, like SSD and large caches
 * JavaScript for all: **no language zoo**, you can use one language from your browser to your back-end
-* ArangoDB can be easily deployed as a [**fault-tolerant distributed state machine**](Deployment/Agency.md), which can serve as the animal brain of distributed appliances
+* ArangoDB can be easily deployed as a [**fault-tolerant distributed state machine**](Deployment/StandaloneAgency/README.md), which can serve as the animal brain of distributed appliances
 * It is **open source** (Apache License 2.0)
 
 **Community**

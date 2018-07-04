@@ -593,7 +593,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     };
 
     documents = [];
-    if (idx.type === 'geo1') {
+    if (idx.type === 'geo1' || (idx.type === 'geo' && idx.fields.length === 1)) {
       // geo1, we have both coordinates in a list
       var attribute = idx.fields[0];
       var parts = attribute.split('.');

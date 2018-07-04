@@ -83,7 +83,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message given that a condition is true
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 #define LOG_IF(a, cond)                                               \
   !(arangodb::Logger::isEnabled((arangodb::LogLevel::a)) && (cond))   \
       ? (void)0                                                       \
@@ -91,7 +91,7 @@
                                   << (arangodb::LogLevel::a)          \
                                   << arangodb::Logger::LINE(__LINE__) \
                                   << arangodb::Logger::FILE(__FILE__) \
-                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+                                  << arangodb::Logger::FUNCTION(__FUNCTION__))*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
@@ -105,13 +105,6 @@
                                   << arangodb::Logger::LINE(__LINE__)    \
                                   << arangodb::Logger::FILE(__FILE__)    \
                                   << arangodb::Logger::FUNCTION(__FUNCTION__))
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message for debugging during development
-////////////////////////////////////////////////////////////////////////////////
-
-#define LOG_DEVEL LOG_TOPIC(ERR,Logger::FIXME) << "###### "
-#define LOG_DEVEL_IF(cond) LOG_TOPIC_IF(ERR,Logger::FIXME,(cond)) << "###### "
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message every N.the time
@@ -154,6 +147,21 @@
                                   << arangodb::Logger::LINE(__LINE__) \
                                   << arangodb::Logger::FILE(__FILE__) \
                                   << arangodb::Logger::FUNCTION(__FUNCTION__))
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message for debugging during development
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#define LOG_DEVEL LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "###### "
+#define LOG_DEVEL_IF(cond) LOG_TOPIC_IF(ERR,::arangodb::Logger::FIXME,(cond)) << "###### "
+#define LOG_DEVEL_EVERY_N(a, n) LOG_TOPIC_EVERY_N(ERR,::arangodb::Logger::FIXME,(n)) << "###### "
+#else
+#define LOG_DEVEL LOG_TOPIC(DEBUG,::arangodb::Logger::FIXME) << "###### "
+#define LOG_DEVEL_IF(cond) LOG_TOPIC_IF(DEBUG,::arangodb::Logger::FIXME,(cond)) << "###### "
+#define LOG_DEVEL_EVERY_N(a, n) LOG_TOPIC_EVERY_N(DEBUG,::arangodb::Logger::FIXME,(n)) << "###### "
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper class for macros

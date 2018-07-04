@@ -15,6 +15,13 @@ To get started with AQL, have a look at our detailed
 [comparison of SQL and AQL](https://arangodb.com/why-arangodb/sql-aql-comparison/).
 It will also help you to translate SQL queries to AQL when migrating to ArangoDB.
 
+{% hint 'info' %}
+You may also be interested in the white paper
+[**Switching from Relational Databases to ArangoDB**
+](https://www.arangodb.com/white-paper-switching-relational-database/)
+on our website!
+{% endhint %}
+
 Basic queries
 -------------
 

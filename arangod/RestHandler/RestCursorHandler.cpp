@@ -24,10 +24,12 @@
 #include "RestCursorHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/QueryResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -72,6 +74,13 @@ RestStatus RestCursorHandler::execute() {
 bool RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
+}
+
+size_t RestCursorHandler::queue() const {
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::AQL_QUEUE; // needs to be on background thread
+  }
+  return JobQueue::STANDARD_QUEUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +208,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       result.add("cached", VPackValue(queryResult.cached));
       if (queryResult.cached || !queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
+        // no warnings
+        result.add("warnings", VPackSlice::emptyArraySlice());
         result.close();
       } else {
         result.add("extra", queryResult.extra->slice());
@@ -220,6 +231,26 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     TRI_DEFER(cursors->release(cursor));
     generateCursorResult(rest::ResponseCode::CREATED, cursor);
   }
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestCursorHandler::forwardingTarget() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+    return false;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return false;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+
+  return (sourceServer == ServerState::instance()->getShortId())
+      ? 0
+      : sourceServer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,6 +315,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   VPackObjectBuilder obj(&options);
 
   bool hasCache = false;
+  bool hasMemoryLimit = false;
   VPackSlice opts = slice.get("options");
   bool isStream = false;
   if (opts.isObject()) {
@@ -298,6 +330,8 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
         continue;  // filter out top-level keys
       } else if (keyName == "cache") {
         hasCache = true;  // don't honor if appears below
+      } else if (keyName == "memoryLimit" && it.value.isNumber()) {
+        hasMemoryLimit = true;
       }
       options.add(keyName, it.value);
     }
@@ -324,9 +358,11 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
     options.add("batchSize", VPackValue(1000));
   }
 
-  VPackSlice memoryLimit = slice.get("memoryLimit");
-  if (memoryLimit.isNumber()) {
-    options.add("memoryLimit", memoryLimit);
+  if (!hasMemoryLimit) {
+    VPackSlice memoryLimit = slice.get("memoryLimit");
+    if (memoryLimit.isNumber()) {
+      options.add("memoryLimit", memoryLimit);
+    }
   }
 
   VPackSlice ttl = slice.get("ttl");
@@ -366,7 +402,7 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 
 void RestCursorHandler::createQueryCursor() {
   if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, 600);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
@@ -386,7 +422,7 @@ void RestCursorHandler::createQueryCursor() {
       // error message generated in parseVPackBody
       return;
     }
-    
+
     // tell RestCursorHandler::finalizeExecute that the request
     // could be parsed successfully and that it may look at it
     _isValidForFinalize = true;

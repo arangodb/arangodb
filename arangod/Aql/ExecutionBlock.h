@@ -102,16 +102,7 @@ class ExecutionBlock {
   /// @brief remove a dependency, returns true if the pointer was found and
   /// removed, please note that this does not delete ep!
   bool removeDependency(ExecutionBlock* ep);
-
-  /// @brief access the pos-th dependency
-  ExecutionBlock* operator[](size_t pos) {
-    if (pos >= _dependencies.size()) {
-      return nullptr;
-    }
-
-    return _dependencies.at(pos);
-  }
-
+  
   /// @brief Methods for execution
   /// Lifecycle is:
   ///    CONSTRUCTOR
@@ -123,8 +114,6 @@ class ExecutionBlock {
   ///    then the ExecutionEngine automatically calls
   ///      shutdown()
   ///    DESTRUCTOR
-  /// @brief initialize
-  virtual int initialize();
 
   /// @brief initializeCursor, could be called multiple times
   virtual int initializeCursor(AqlItemBlock* items, size_t pos);
@@ -144,6 +133,22 @@ class ExecutionBlock {
 
   void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*) const;
+ 
+  /// @brief getSome, skips some more items, semantic is as follows: not
+  /// more than atMost items may be skipped. The method tries to
+  /// skip a block of at most atMost items, however, it may skip
+  /// less (for example if there are not enough items to come). The number of
+  /// elements skipped is returned.
+  virtual size_t skipSome(size_t atMost);
+
+  virtual bool hasMore();
+  
+  // skip exactly atMost outputs
+  void skip(size_t atMost, size_t& numActuallySkipped);
+  
+  ExecutionNode const* getPlanNode() const { return _exeNode; }
+  
+  transaction::Methods* transaction() const { return _trx; }
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager
@@ -174,34 +179,12 @@ class ExecutionBlock {
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
-
- public:
-  /// @brief getSome, skips some more items, semantic is as follows: not
-  /// more than atMost items may be skipped. The method tries to
-  /// skip a block of at most atMost items, however, it may skip
-  /// less (for example if there are not enough items to come). The number of
-  /// elements skipped is returned.
-  virtual size_t skipSome(size_t atMost);
-
-  // skip exactly <number> outputs, returns <true> if _done after
-  // skipping, and <false> otherwise . . .
-  bool skip(size_t number, size_t& numActuallySkipped);
-
-  virtual bool hasMore();
-
-  virtual int64_t count() const { return _dependencies[0]->count(); }
-
-  virtual int64_t remaining();
-
-  ExecutionNode const* getPlanNode() const { return _exeNode; }
   
-  transaction::Methods* transaction() const { return _trx; }
-
- protected:
   /// @brief generic method to get or skip some
   virtual int getOrSkipSome(size_t atMost, bool skipping,
                             AqlItemBlock*& result, size_t& skipped);
 
+ protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
 
@@ -227,7 +210,7 @@ class ExecutionBlock {
 
   /// @brief current working position in the first entry of _buffer
   size_t _pos;
-
+  
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 

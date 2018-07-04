@@ -48,7 +48,7 @@ namespace graph {
 struct BaseOptions;
 struct SingleServerEdgeDocumentToken;
 
-class SingleServerEdgeCursor : public EdgeCursor {
+class SingleServerEdgeCursor final : public EdgeCursor {
  private:
   BaseOptions* _opts;
   transaction::Methods* _trx;

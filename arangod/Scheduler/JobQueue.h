@@ -29,7 +29,6 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Basics/asio-helper.h"
 #include "Scheduler/Job.h"
 
 namespace arangodb {
@@ -45,6 +44,7 @@ class JobQueue {
   // ordered by priority (highst prio first)
   static size_t const AQL_QUEUE = 1;
   static size_t const STANDARD_QUEUE = 2;
+  static size_t const BACKGROUND_QUEUE = 3;
 
  public:
   JobQueue(size_t maxQueueSize, rest::Scheduler*);

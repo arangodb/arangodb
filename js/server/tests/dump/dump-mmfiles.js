@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -226,7 +226,7 @@ function dumpTestSuite () {
         assertEqual("fulltext", c.getIndexes()[7].type);
         assertEqual([ "a_f" ], c.getIndexes()[7].fields);
 
-        assertEqual("geo2", c.getIndexes()[8].type);
+        assertEqual("geo", c.getIndexes()[8].type);
         assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
         assertFalse(c.getIndexes()[8].unique);
       }
@@ -278,6 +278,48 @@ function dumpTestSuite () {
         assertEqual(i, doc.value);
         assertEqual({ value: [ i, i ] }, doc.more);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test keygen padded
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenPadded : function () {
+      var c = db._collection("UnitTestsDumpKeygenPadded");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertEqual("padded", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1000, c.count());
+
+      c.toArray().forEach(function(doc) {
+        assertMatch(/^[0-9a-f]{16}$/, doc._key);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test keygen uuid
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenUuid : function () {
+      var c = db._collection("UnitTestsDumpKeygenUuid");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertEqual("uuid", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1000, c.count());
+
+      c.toArray().forEach(function(doc) {
+        assertMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, doc._key);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

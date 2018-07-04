@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +65,7 @@ config_t::config_t(
     _waitForSync(w),
     _supervisionFrequency(f),
     _compactionStepSize(c),
-    _compactionKeepSize(k),      
+    _compactionKeepSize(k),
     _supervisionGracePeriod(p),
     _cmdLineTimings(t),
     _version(0),
@@ -73,9 +73,9 @@ config_t::config_t(
     _maxAppendSize(a),
     _lock() {}
 
-config_t::config_t(config_t const& other) { 
+config_t::config_t(config_t const& other) {
   // will call operator=, which will ensure proper locking
-  *this = other; 
+  *this = other;
 }
 
 config_t& config_t::operator=(config_t const& other) {
@@ -176,7 +176,7 @@ void config_t::setTimeoutMult(int64_t m) {
   WRITE_LOCKER(writeLocker, _lock);
   if (_timeoutMult != m) {
     _timeoutMult = m;
-    ++_version;
+    // this is called during election, do NOT update ++_version
   }
 }
 
@@ -637,5 +637,3 @@ bool config_t::merge(VPackSlice const& conf) {
   ++_version;
   return true;
 }
-
-

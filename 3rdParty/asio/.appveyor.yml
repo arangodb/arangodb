@@ -1,0 +1,24 @@
+version: "{branch} (#{build})"
+
+image:
+  - Visual Studio 2015
+
+environment:
+  matrix:
+    - DEBUG: 1
+      STANDALONE: 1
+      WARNINGS: 1
+    - DEBUG: 1
+      STANDALONE: 1
+      WARNINGS: 1
+      WIN9X: 1
+    - DEBUG: 1
+      BOOSTDIR: C:\Libraries\boost_1_63_0
+      WARNINGS: 1
+
+build_script:
+  - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
+  - cd asio\src
+  - nmake -f Makefile.msc
+  - nmake -f Makefile.msc check

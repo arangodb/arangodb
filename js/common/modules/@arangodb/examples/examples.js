@@ -37,6 +37,14 @@ exports.Examples = {
       examples.dropGraph("traversalGraph");
     }
   },
+  'mps_graph': {
+    createDS: function() {
+      examples.loadGraph("mps_graph");
+    },  
+    removeDS: function() {
+      examples.dropGraph("mps_graph");
+    }   
+  }, 
   'joinSampleDataset': {
     createDS: function() {
       db._create("users");

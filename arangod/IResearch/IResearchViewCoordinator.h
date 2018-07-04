@@ -25,6 +25,10 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H 1
 
 #include "VocBase/LogicalView.h"
+#include "IResearch/IResearchViewMeta.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace iresearch {
@@ -34,7 +38,7 @@ namespace iresearch {
 /// @brief an abstraction over the distributed IResearch index implementing the
 ///        LogicalView interface
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewCoordinator final: public arangodb::LogicalView {
+class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
@@ -42,38 +46,53 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
+    velocypack::Slice const& info,
+    bool isNew,
     uint64_t planVersion,
     LogicalView::PreCommitCallback const& preCommit
   );
 
-  bool visitCollections(CollectionVisitor const& visitor) const override {
-    return false;
+  bool visitCollections(CollectionVisitor const& visitor) const override;
+
+  void open() override {
+    // NOOP
   }
 
-  void open() override { }
+  Result drop() override;
 
-  arangodb::Result drop() override { return TRI_ERROR_NOT_IMPLEMENTED; }
+  // drops collection from a view
+  Result drop(TRI_voc_cid_t cid);
 
-  virtual Result rename(std::string&& newName, bool doSync) override {
+  virtual Result rename(
+      std::string&& /*newName*/,
+      bool /*doSync*/
+  ) override {
+    // not supported in a cluster
     return { TRI_ERROR_NOT_IMPLEMENTED };
-  }
-
-  virtual void toVelocyPack(
-    arangodb::velocypack::Builder& result,
-    bool includeProperties = false,
-    bool includeSystem = false
-  ) const override {
-    // FIXME: implement
   }
 
   virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& properties,
-      bool partialUpdate,
-      bool doSync
-  ) override {
-    return { TRI_ERROR_NOT_IMPLEMENTED };
-  }
+    velocypack::Slice const& properties,
+    bool partialUpdate,
+    bool doSync
+  ) override;
+
+ protected:
+  virtual Result appendVelocyPack(
+      arangodb::velocypack::Builder& builder,
+      bool detailed,
+      bool forPersistence
+  ) const override ;
+
+ private:
+  IResearchViewCoordinator(
+    TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion
+  );
+
+  IResearchViewMeta _meta;
+  IResearchViewMetaState _metaState;
+  velocypack::Builder _links;
+
 }; // IResearchViewCoordinator
 
 } // iresearch

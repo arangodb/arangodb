@@ -63,7 +63,7 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -71,7 +71,7 @@ describe('User Rights Management', () => {
   });
 
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -106,6 +106,9 @@ describe('User Rights Management', () => {
                   RETURN service.checksum
                 `).toArray().length;
                 expect(size).to.equal(1, `${name} could not register foxx service with sufficient rights`);
+                // The service should return the user we acces it as:
+                let res = arango.PUT(mount, '');
+                expect(res.hello._documents[0]).to.be.equal(name);
               } catch (e) {
                 if (e.errorNum === errors.ERROR_ARANGO_READ_ONLY.code ||
                     e.errorNum === errors.ERROR_FORBIDDEN.code) {
@@ -116,7 +119,7 @@ describe('User Rights Management', () => {
               try {
                 foxxManager.install(fs.join(basePath, 'minimal-working-service'), mount);
               } catch (e) {
-                //expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                // expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
                 // TODO should be forbidden rather than read only
                 // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
               }

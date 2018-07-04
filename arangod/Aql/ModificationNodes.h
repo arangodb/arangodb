@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
@@ -40,49 +41,37 @@ class ExecutionBlock;
 class ExecutionPlan;
 
 /// @brief abstract base class for modification operations
-class ModificationNode : public ExecutionNode {
+class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class ModificationBlock;
 
   /// @brief constructor with a vocbase and a collection and options
  protected:
-  ModificationNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                   Collection* collection, ModificationOptions const& options,
+  ModificationNode(ExecutionPlan* plan, size_t id,
+                   Collection const* collection, ModificationOptions const& options,
                    Variable const* outVariableOld,
                    Variable const* outVariableNew)
       : ExecutionNode(plan, id),
-        _vocbase(vocbase),
-        _collection(collection),
+        CollectionAccessingNode(collection),
         _options(options),
         _outVariableOld(outVariableOld),
         _outVariableNew(outVariableNew),
         _countStats(true) {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(_collection != nullptr);
   }
 
   ModificationNode(ExecutionPlan*, arangodb::velocypack::Slice const& slice);
 
   /// @brief export to VelocyPack
   virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                                  bool) const override;
+                                  unsigned flags) const override;
 
  public:
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection* collection() const { return _collection; }
-
-  /// @brief modify collection afterwards
-  void setCollection(Collection* coll) { _collection = coll; }
-
   /// @brief estimateCost
   /// Note that all the modifying nodes use this estimateCost method which is
   /// why we can make it final here.
   double estimateCost(size_t&) const override final;
 
-  /// @brief data modification is non-deterministic  
+  /// @brief data modification is non-deterministic
   bool isDeterministic() override final { return false; }
 
   /// @brief getOptions
@@ -129,18 +118,12 @@ class ModificationNode : public ExecutionNode {
   bool isModificationNode() const override { return true; }
 
   /// @brief whether this node contributes to statistics. Only disabled in SmartGraph case
-  bool countStats() const { return _countStats; } 
+  bool countStats() const { return _countStats; }
 
   /// @brief Disable that this node is contributing to statistics. Only disabled in SmartGraph case
   void disableStatistics() { _countStats = false; }
 
  protected:
-  /// @brief _vocbase, the database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief collection
-  Collection* _collection;
-
   /// @brief modification operation options
   ModificationOptions _options;
 
@@ -163,10 +146,10 @@ class RemoveNode : public ModificationNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  RemoveNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection* collection, ModificationOptions const& options,
+  RemoveNode(ExecutionPlan* plan, size_t id, 
+             Collection const* collection, ModificationOptions const& options,
              Variable const* inVariable, Variable const* outVariableOld)
-      : ModificationNode(plan, id, vocbase, collection, options, outVariableOld,
+      : ModificationNode(plan, id, collection, options, outVariableOld,
                          nullptr),
         _inVariable(inVariable) {
     TRI_ASSERT(_inVariable != nullptr);
@@ -179,13 +162,12 @@ class RemoveNode : public ModificationNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -221,11 +203,10 @@ class InsertNode : public ModificationNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  InsertNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection* collection, ModificationOptions const& options,
-             Variable const* inVariable, Variable const* outVariableNew)
-      : ModificationNode(plan, id, vocbase, collection, options, nullptr,
-                         outVariableNew),
+  InsertNode(ExecutionPlan* plan, size_t id, 
+             Collection const* collection, ModificationOptions const& options,
+             Variable const* inVariable, Variable const* outVariableOld, Variable const* outVariableNew)
+      : ModificationNode(plan, id, collection, options, outVariableOld, outVariableNew),
         _inVariable(inVariable) {
     TRI_ASSERT(_inVariable != nullptr);
     // _outVariable might be a nullptr
@@ -238,13 +219,12 @@ class InsertNode : public ModificationNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -281,11 +261,11 @@ class UpdateNode : public ModificationNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  UpdateNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection* collection, ModificationOptions const& options,
+  UpdateNode(ExecutionPlan* plan, size_t id,
+             Collection const* collection, ModificationOptions const& options,
              Variable const* inDocVariable, Variable const* inKeyVariable,
              Variable const* outVariableOld, Variable const* outVariableNew)
-      : ModificationNode(plan, id, vocbase, collection, options, outVariableOld,
+      : ModificationNode(plan, id, collection, options, outVariableOld,
                          outVariableNew),
         _inDocVariable(inDocVariable),
         _inKeyVariable(inKeyVariable) {
@@ -300,13 +280,12 @@ class UpdateNode : public ModificationNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -358,11 +337,11 @@ class ReplaceNode : public ModificationNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  ReplaceNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-              Collection* collection, ModificationOptions const& options,
+  ReplaceNode(ExecutionPlan* plan, size_t id,
+              Collection const* collection, ModificationOptions const& options,
               Variable const* inDocVariable, Variable const* inKeyVariable,
               Variable const* outVariableOld, Variable const* outVariableNew)
-      : ModificationNode(plan, id, vocbase, collection, options, outVariableOld,
+      : ModificationNode(plan, id, collection, options, outVariableOld,
                          outVariableNew),
         _inDocVariable(inDocVariable),
         _inKeyVariable(inKeyVariable) {
@@ -377,13 +356,12 @@ class ReplaceNode : public ModificationNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -435,12 +413,12 @@ class UpsertNode : public ModificationNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  UpsertNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection* collection, ModificationOptions const& options,
+  UpsertNode(ExecutionPlan* plan, size_t id,
+             Collection const* collection, ModificationOptions const& options,
              Variable const* inDocVariable, Variable const* insertVariable,
              Variable const* updateVariable, Variable const* outVariableNew,
              bool isReplace)
-      : ModificationNode(plan, id, vocbase, collection, options, nullptr,
+      : ModificationNode(plan, id, collection, options, nullptr,
                          outVariableNew),
         _inDocVariable(inDocVariable),
         _insertVariable(insertVariable),
@@ -460,13 +438,12 @@ class UpsertNode : public ModificationNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively

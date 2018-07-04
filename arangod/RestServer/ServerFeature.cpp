@@ -59,7 +59,6 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Statistics");
   startsAfter("Upgrade");
   startsAfter("V8Dealer");
-  startsAfter("WorkMonitor");
   startsAfter("Temp");
 }
 
@@ -112,6 +111,21 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
+  
+  V8DealerFeature* v8dealer =
+    ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  
+  if (v8dealer->isEnabled()) {
+    if (_operationMode == OperationMode::MODE_SCRIPT) {
+      v8dealer->setMinimumContexts(2);
+    } else {
+      v8dealer->setMinimumContexts(1);
+    }
+  } else if (_operationMode != OperationMode::MODE_SERVER) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Options '--console', '--javascript.unit-tests'"
+       << " or '--javascript.script' are not supported without V8";
+    FATAL_ERROR_EXIT();
+  }
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
@@ -129,15 +143,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     StatisticsFeature* statisticsFeature =
         ApplicationServer::getFeature<StatisticsFeature>("Statistics");
     statisticsFeature->disableStatistics();
-  }
-
-  V8DealerFeature* v8dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  if (_operationMode == OperationMode::MODE_SCRIPT) {
-    v8dealer->setMinimumContexts(2);
-  } else {
-    v8dealer->setMinimumContexts(1);
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {

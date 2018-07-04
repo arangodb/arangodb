@@ -23,6 +23,7 @@
 #include "ReplicationFeature.h"
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Thread.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -43,8 +44,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false) {
-
-  setOptional(false);
+  setOptional(true);
   startsAfter("Database");
   startsAfter("ServerId");
   startsAfter("StorageEngine");
@@ -56,7 +56,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                            "switch to enable or disable the automatic start "
                            "of replication appliers",
                            new BooleanParameter(&_replicationApplierAutoStart));
-  
+
   options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
@@ -79,21 +79,26 @@ void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions
   }
 }
 
-void ReplicationFeature::prepare() { 
+void ReplicationFeature::prepare() {
+  if (ServerState::instance()->isCoordinator()) {
+    setEnabled(false);
+    return;
+  }
+  
   INSTANCE = this;
 }
 
-void ReplicationFeature::start() { 
+void ReplicationFeature::start() {
   _globalReplicationApplier.reset(new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
- 
+
   try {
     _globalReplicationApplier->loadState();
   } catch (...) {
     // :snake:
   }
- 
+
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "checking global applier startup. autoStart: " << _globalReplicationApplier->autoStart() << ", hasState: " << _globalReplicationApplier->hasState();
-  
+
   if (_globalReplicationApplier->autoStart() &&
       _globalReplicationApplier->hasState() &&
       _replicationApplierAutoStart) {
@@ -127,7 +132,7 @@ void ReplicationFeature::unprepare() {
   }
   _globalReplicationApplier.reset();
 }
-    
+
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
@@ -182,10 +187,26 @@ static void writeError(int code, GeneralResponse* response) {
   builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
   builder.add(StaticStrings::Code, VPackValue((int)response->responseCode()));
   builder.close();
-  
+
   VPackOptions options(VPackOptions::Defaults);
   options.escapeUnicode = true;
   response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+}
+
+/// @brief set the x-arango-endpoint header
+void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
+                                           arangodb::ServerState::Mode mode) {
+  std::string endpoint;
+  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+  if (replication != nullptr && replication->isActiveFailoverEnabled()) {
+    GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+    if (applier != nullptr) {
+      endpoint = applier->endpoint();
+      // replace tcp:// with http://, and ssl:// with https://
+      endpoint = FixEndpointProto(endpoint);
+    }
+  }
+  res->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
 }
 
 /// @brief fill a response object with correct response for a follower
@@ -193,22 +214,12 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
                                                  arangodb::ServerState::Mode mode) {
   switch (mode) {
     case ServerState::Mode::REDIRECT: {
-      std::string endpoint;
-      ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-      if (replication != nullptr && replication->isActiveFailoverEnabled()) {
-        GlobalReplicationApplier* applier = replication->globalReplicationApplier();
-        if (applier != nullptr) {
-          endpoint = applier->endpoint();
-          // replace tcp:// with http://, and ssl:// with https://
-          endpoint = FixEndpointProto(endpoint);
-        }
-      }
-      response->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
+      setEndpointHeader(response, mode);
       writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
       // return the endpoint of the actual leader
     }
     break;
-      
+
     case ServerState::Mode::TRYAGAIN:
       // intentionally do not set "Location" header, but use a custom header that
       // clients can inspect. if they find an empty endpoint, it means that there

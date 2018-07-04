@@ -42,17 +42,14 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
     : ExecutionBlock(engine, ep), 
       DocumentProducingBlock(ep, _trx),
-      _collection(ep->_collection),
+      _collection(ep->collection()),
       _cursor(
-          _trx->indexScan(_collection->getName(),
+          _trx->indexScan(_collection->name(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
-                                       : transaction::Methods::CursorType::ALL),
-                          false)) {
+                                       : transaction::Methods::CursorType::ALL))) {
   TRI_ASSERT(_cursor->ok());
-}
 
-int EnumerateCollectionBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
+  buildCallback();
 
   if (ServerState::instance()->isRunningInCluster() && _collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
@@ -68,7 +65,7 @@ int EnumerateCollectionBlock::initialize() {
     while (!inSync) {
       auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
         dbName, std::to_string(cid));
-      auto followers = collectionInfoCurrent->servers(_collection->getName());
+      auto followers = collectionInfoCurrent->servers(_collection->name());
       inSync = std::find(followers.begin(), followers.end(),
                          ServerState::instance()->getId()) != followers.end();
       if (!inSync) {
@@ -86,14 +83,9 @@ int EnumerateCollectionBlock::initialize() {
     if (!inSync) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          "collection " + _collection->name + " did not come into sync in time (" + std::to_string(maxWait) +")");
+          "collection " + _collection->name() + " did not come into sync in time (" + std::to_string(maxWait) +")");
     }
   }
-
-  return ExecutionBlock::initialize();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
@@ -251,11 +243,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atMost) {
     uint64_t skippedHere = 0;
 
     if (_cursor->hasMore()) {
-      int res = _cursor->skip(atMost - skipped, skippedHere);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      _cursor->skip(atMost - skipped, skippedHere);
     }
 
     skipped += skippedHere;

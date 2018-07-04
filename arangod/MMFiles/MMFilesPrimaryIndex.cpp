@@ -97,20 +97,15 @@ void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
 MMFilesAllIndexIterator::MMFilesAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesPrimaryIndex const* index,
-    MMFilesPrimaryIndexImpl const* indexImpl, bool reverse)
+    MMFilesPrimaryIndexImpl const* indexImpl)
     : IndexIterator(collection, trx, index),
       _index(indexImpl),
-      _reverse(reverse),
       _total(0) {}
 
 bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(nullptr, _position);
-    } else {
-      element = _index->findSequential(nullptr, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       cb(LocalDocumentId{element.localDocumentId()});
       --limit;
@@ -127,12 +122,8 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
 
   bool done = false;
   while (limit > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(nullptr, _position);
-    } else {
-      element = _index->findSequential(nullptr, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       _documentIds.emplace_back(std::make_pair(element.localDocumentId(), nullptr));
       --limit;
@@ -150,12 +141,8 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
 // Skip the first count-many entries
 void MMFilesAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   while (count > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(nullptr, _position);
-    } else {
-      element = _index->findSequential(nullptr, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       ++skipped;
       --count;
@@ -242,8 +229,14 @@ void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   {
     Index::toVelocyPack(builder, withFigures, forPersistence);
     // hard-coded
-    builder.add("unique", VPackValue(true));
-    builder.add("sparse", VPackValue(false));
+    builder.add(
+      arangodb::StaticStrings::IndexUnique,
+      arangodb::velocypack::Value(true)
+    );
+    builder.add(
+      arangodb::StaticStrings::IndexSparse,
+      arangodb::velocypack::Value(false)
+    );
   }
   builder.close();
 }
@@ -345,9 +338,8 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
 
 /// @brief request an iterator over all elements in the index in
 ///        a sequential order.
-IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx,
-                                                bool reverse) const {
-  return new MMFilesAllIndexIterator(_collection, trx, this, _primaryIndex.get(), reverse);
+IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx) const {
+  return new MMFilesAllIndexIterator(_collection, trx, this, _primaryIndex.get());
 }
 
 /// @brief request an iterator over all elements in the index in
@@ -463,7 +455,9 @@ bool MMFilesPrimaryIndex::supportsFilterCondition(
 IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   TRI_ASSERT(node->numMembers() == 1);

@@ -31,7 +31,7 @@ the data-centers has enough bandwidth. It is fault-tolerant
 without a single point of failure and includes a lot of
 metrics for monitoring in a production scenario.
 
-[DC2DC](../Deployment/DC2DC.md) is available in the *Enterprise* edition.
+[DC2DC](../Deployment/DC2DC/README.md) is available in the *Enterprise* edition.
 
 Encrypted backups
 -----------------
@@ -80,7 +80,7 @@ Note that encrypted backups can be used together with the already existing
 RocksDB encryption-at-rest feature, but they can also be used for the MMFiles
 engine, which does not have encryption-at-rest.
 
-[Encrypted backups](../Administration/Arangodump.md#encryption) are available
+[Encrypted backups](../Programs/Arangodump/Examples.md#encryption) are available
 in the *Enterprise* edition.
 
 Server-level replication

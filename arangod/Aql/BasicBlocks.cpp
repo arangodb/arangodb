@@ -28,42 +28,30 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
-  
-void SingletonBlock::deleteInputVariables() {
-  delete _inputRegisterValues;
-  _inputRegisterValues = nullptr;
-}
 
-void SingletonBlock::buildWhitelist() {
-  if (!_whitelistBuilt) {
-    auto en = static_cast<SingletonNode const*>(getPlanNode());
-    auto const& registerPlan = en->getRegisterPlan()->varInfo;
-    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
+SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
+    : ExecutionBlock(engine, ep) {
+  auto en = ExecutionNode::castTo<SingletonNode const*>(getPlanNode());
+  auto const& registerPlan = en->getRegisterPlan()->varInfo;
+  std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
 
-    for (auto const& it : varsUsedLater) {
-      auto it2 = registerPlan.find(it->id);
+  for (auto const& it : varsUsedLater) {
+    auto it2 = registerPlan.find(it->id);
 
-      if (it2 != registerPlan.end()) {
-        _whitelist.emplace((*it2).second.registerId);
-      }
+    if (it2 != registerPlan.end()) {
+      _whitelist.emplace((*it2).second.registerId);
     }
   }
-  _whitelistBuilt = true;
 }
-
+  
 /// @brief initializeCursor, store a copy of the register values coming from
 /// above
 int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
   // Create a deep copy of the register values given to us:
-  deleteInputVariables();
-
   if (items != nullptr) {
     // build a whitelist with all the registers that we will copy from above
-    buildWhitelist();
-    deleteInputVariables();
-    TRI_ASSERT(_whitelistBuilt);
-    _inputRegisterValues = items->slice(pos, _whitelist);
+    _inputRegisterValues.reset(items->slice(pos, _whitelist));
   }
 
   _done = false;
@@ -75,11 +63,8 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
 /// @brief shutdown the singleton block
 int SingletonBlock::shutdown(int errorCode) {
-  int res = ExecutionBlock::shutdown(errorCode);
-
-  deleteInputVariables();
-
-  return res;
+  _inputRegisterValues.reset();
+  return ExecutionBlock::shutdown(errorCode);
 }
 
 int SingletonBlock::getOrSkipSome(size_t atMost, bool skipping,
@@ -96,9 +81,6 @@ int SingletonBlock::getOrSkipSome(size_t atMost, bool skipping,
 
     try {
       if (_inputRegisterValues != nullptr) {
-        buildWhitelist();
-        TRI_ASSERT(_whitelistBuilt); 
-
         skipped++;
         for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs();
              ++reg) {
@@ -294,35 +276,6 @@ int FilterBlock::getOrSkipSome(size_t atMost, bool skipping,
   DEBUG_END_BLOCK();  
 }
 
-bool FilterBlock::hasMore() {
-  DEBUG_BEGIN_BLOCK();  
-  if (_done) {
-    return false;
-  }
-
-  if (_buffer.empty()) {
-    // QUESTION: Is this sensible? Asking whether there is more might
-    // trigger an expensive fetching operation, even if later on only
-    // a single document is needed due to a LIMIT...
-    // However, how should we know this here?
-    if (!getBlock(DefaultBatchSize())) {
-      _done = true;
-      return false;
-    }
-    _pos = 0;
-  }
-
-  TRI_ASSERT(!_buffer.empty());
-
-  // Here, _buffer.size() is > 0 and _pos points to a valid place
-  // in it.
-
-  return true;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
-}
-
 int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
@@ -353,7 +306,7 @@ int LimitBlock::getOrSkipSome(size_t atMost, bool skipping,
 
     if (_offset > 0) {
       size_t numActuallySkipped = 0;
-      ExecutionBlock::_dependencies[0]->skip(_offset, numActuallySkipped);
+      _dependencies[0]->skip(_offset, numActuallySkipped);
       if (_fullCount) {
         _engine->_stats.fullCount += static_cast<int64_t>(numActuallySkipped);
       }
@@ -419,15 +372,21 @@ int LimitBlock::getOrSkipSome(size_t atMost, bool skipping,
 AqlItemBlock* ReturnBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
+  
+  auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
+
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
-  if (res.get() == nullptr) {
+  if (res == nullptr) {
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
   if (_returnInheritedResults) {
+    if (ep->_count) {
+    _engine->_stats.count += static_cast<int64_t>(res->size());
+    }
     traceGetSomeEnd(res.get());
     return res.release();
   }
@@ -435,7 +394,6 @@ AqlItemBlock* ReturnBlock::getSome(size_t atMost) {
   size_t const n = res->size();
 
   // Let's steal the actual result and throw away the vars:
-  auto ep = static_cast<ReturnNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
@@ -467,9 +425,10 @@ AqlItemBlock* ReturnBlock::getSome(size_t atMost) {
       }
     }
   }
-
-  delete res.get();
-  res.release();
+        
+  if (ep->_count) {
+    _engine->_stats.count += static_cast<int64_t>(n);
+  }
 
   traceGetSomeEnd(stripped.get());
   return stripped.release();
@@ -485,7 +444,7 @@ RegisterId ReturnBlock::returnInheritedResults() {
   DEBUG_BEGIN_BLOCK();
   _returnInheritedResults = true;
 
-  auto ep = static_cast<ReturnNode const*>(getPlanNode());
+  auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
 

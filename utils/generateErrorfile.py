@@ -49,6 +49,9 @@ def genJsFile(errors):
 
   out = out\
       + "  };\n"\
+      + "\n"\
+      + "  // For compatibility with <= 3.3\n"\
+      + "  internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;\n"\
       + "}());\n"\
       + "\n"
 

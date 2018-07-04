@@ -26,7 +26,6 @@
 #include "StorageEngineMock.h"
 #include "ExpressionContextMock.h"
 
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Query.h"
@@ -235,7 +234,6 @@ struct IResearchAttributeScorerSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);

@@ -436,8 +436,8 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   };
 
   arangodb::SingleCollectionTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(&(collection->vocbase())),
-    collection->id(),
+    arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
+    collection,
     AccessMode::Type::WRITE
   );
 
@@ -613,9 +613,8 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         if (b == nullptr) {
           LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-rename ditch";
         } else {
-          _vocbase->signalCleanup();
+          _vocbase.signalCleanup();
         }
-
       } else {
         // datafile is empty after compaction and thus useless
         removeDatafile(collection, compaction._datafile);
@@ -630,7 +629,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         if (b == nullptr) {
           LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
         } else {
-          _vocbase->signalCleanup();
+          _vocbase.signalCleanup();
         }
       }
     }
@@ -874,7 +873,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   return true;
 }
 
-MMFilesCompactorThread::MMFilesCompactorThread(TRI_vocbase_t* vocbase) 
+MMFilesCompactorThread::MMFilesCompactorThread(TRI_vocbase_t& vocbase)
     : Thread("Compactor"), _vocbase(vocbase) {}
 
 MMFilesCompactorThread::~MMFilesCompactorThread() { shutdown(); }
@@ -891,29 +890,40 @@ void MMFilesCompactorThread::run() {
   while (true) {
     // keep initial _state value as vocbase->_state might change during
     // compaction loop
-    TRI_vocbase_t::State state = _vocbase->state();
+    TRI_vocbase_t::State state = _vocbase.state();
 
     try {
-      engine->tryPreventCompaction(_vocbase, [this, &numCompacted, &collections](TRI_vocbase_t* vocbase) {
+      engine->tryPreventCompaction(
+        &_vocbase,
+        [this, &numCompacted, &collections, &engine](TRI_vocbase_t* vocbase) {
         // compaction is currently allowed
         numCompacted = 0;
+
         try {
           // copy all collections
-          collections = _vocbase->collections(false);
+          collections = _vocbase.collections(false);
         } catch (...) {
           collections.clear();
         }
-
+  
         for (auto& collection : collections) {
           bool worked = false;
+            
+          if (engine->isCompactionDisabled()) {
+            continue;
+          }
 
-          auto callback = [this, &collection, &worked]() -> void {
+          auto callback = [this, &collection, &worked, &engine]() -> void {
             if (collection->status() != TRI_VOC_COL_STATUS_LOADED &&
                 collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
               return;
             }
 
             bool doCompact = static_cast<MMFilesCollection*>(collection->getPhysical())->doCompact();
+
+            if (engine->isCompactionDisabled()) {
+              doCompact = false;
+            }
 
             // for document collection, compactify datafiles
             if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
@@ -992,17 +1002,17 @@ void MMFilesCompactorThread::run() {
         // no need to sleep long or go into wait state if we worked.
         // maybe there's still work left
         std::this_thread::sleep_for(std::chrono::microseconds(1000));
-      } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR && _vocbase->state() == TRI_vocbase_t::State::NORMAL) {
+      } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR
+                 && _vocbase.state() == TRI_vocbase_t::State::NORMAL) {
         // only sleep while server is still running
         CONDITION_LOCKER(locker, _condition);
         _condition.wait(MMFilesCompactionFeature::COMPACTOR->compactionSleepTime());
       }
-    
+
       if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR || isStopping()) {
         // server shutdown or database has been removed
         break;
       }
-      
     } catch (...) {
       // caught an error during compaction. simply ignore it and go on
     }
@@ -1015,7 +1025,7 @@ void MMFilesCompactorThread::run() {
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(_vocbase),
-    collection->id(),
+    collection,
     AccessMode::Type::READ
   );
 
@@ -1045,6 +1055,6 @@ int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, MMFilesMarker
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  return compactor->writeElement(*result, marker, false);
+  return compactor->writeElement(*result, marker);
 }
 

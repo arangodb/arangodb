@@ -59,50 +59,50 @@ class explicit_matcher final : public MatcherBase<typename MatcherImpl::FST::Arc
       match_type_(rhs.match_type_) {
   }
 
-  explicit_matcher* Copy(bool safe = false) const {
+  explicit_matcher* Copy(bool safe = false) const override {
     return new explicit_matcher(*this, safe);
   }
 
-  MatchType Type(bool test) const {
+  MatchType Type(bool test) const override {
     return matcher_.Type(test);
   }
 
-  void SetState(StateId s) {
+  void SetState(StateId s) override {
     matcher_.SetState(s);
   }
 
-  bool Find(Label match_label) {
+  bool Find(Label match_label) override {
     matcher_.Find(match_label);
     CheckArc();
     return !Done();
   }
 
-  bool Done() const { return matcher_.Done(); }
+  bool Done() const override { return matcher_.Done(); }
 
-  const Arc& Value() const { return matcher_.Value(); }
+  const Arc& Value() const override { return matcher_.Value(); }
 
-  void Next() {
+  void Next() override {
     matcher_.Next();
     CheckArc();
   }
 
-  Weight Final(StateId s) const {
+  Weight Final(StateId s) const override {
     return matcher_.Final(s);
   }
 
-  ssize_t Priority(StateId s) {
+  ssize_t Priority(StateId s) override {
     return  matcher_.Priority(s);
   }
 
-  const FST& GetFst() const {
+  const FST& GetFst() const override {
     return matcher_.GetFst();
   }
 
-  uint64 Properties(uint64 inprops) const {
+  uint64 Properties(uint64 inprops) const override {
     return matcher_.Properties(inprops);
   }
 
-  uint32 Flags() const {
+  uint32 Flags() const override {
     return matcher_.Flags();
   }
 

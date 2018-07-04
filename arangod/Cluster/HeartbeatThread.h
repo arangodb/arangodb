@@ -29,7 +29,6 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Basics/asio-helper.h"
 #include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
@@ -87,7 +86,7 @@ class HeartbeatThread : public CriticalThread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() { return HasRunOnce.load(); }
+  static bool hasRunOnce() { return HasRunOnce.load(std::memory_order_acquire); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief break runDBserver out of wait on condition after setting state in
@@ -136,10 +135,10 @@ class HeartbeatThread : public CriticalThread,
   void runSingleServer();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop, agent version
+  /// @brief heartbeat main loop for agent and single db ... provides thread crash reporting
   //////////////////////////////////////////////////////////////////////////////
 
-  void runAgentServer();
+  void runSimpleServer();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
@@ -152,12 +151,6 @@ class HeartbeatThread : public CriticalThread,
   //////////////////////////////////////////////////////////////////////////////
 
   bool handlePlanChangeDBServer(uint64_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handles a state change
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool handleStateChange(AgencyCommResult&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sends the current server's state to the agency

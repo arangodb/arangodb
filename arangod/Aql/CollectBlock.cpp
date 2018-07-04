@@ -80,6 +80,8 @@ void SortedCollectBlock::CollectGroup::initialize(size_t capacity) {
   for (auto& it : aggregators) {
     it->reset();
   }
+  
+  rowsAreValid = false;
 }
 
 void SortedCollectBlock::CollectGroup::reset() {
@@ -239,23 +241,10 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
       }
     }
   }
-}
-
-SortedCollectBlock::~SortedCollectBlock() {}
-
-/// @brief initialize
-int SortedCollectBlock::initialize() {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
+  
   // reserve space for the current row
   _currentGroup.initialize(_groupRegisters.size());
   _pos = 0;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 int SortedCollectBlock::initializeCursor(AqlItemBlock* items,
@@ -452,6 +441,8 @@ int SortedCollectBlock::getOrSkipSome(size_t atMost,
 
       returnBlock(cur);
       cur = _buffer.front();
+      _currentGroup.firstRow = 0; 
+      _currentGroup.lastRow = 0; 
     }
   }
 
@@ -467,6 +458,8 @@ int SortedCollectBlock::getOrSkipSome(size_t atMost,
 /// @brief writes the current group data into the result
 void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
                                    size_t row, bool skipping) {
+  TRI_ASSERT(res != nullptr);
+
   if (row > 0 && !skipping) {
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);
@@ -512,10 +505,10 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
     if (_collectRegister != ExecutionNode::MaxRegisterId) {
       _currentGroup.addValues(cur, _collectRegister);
 
-      if (static_cast<CollectNode const*>(_exeNode)->_count) {
+      if (ExecutionNode::castTo<CollectNode const*>(_exeNode)->_count) {
         // only set group count in result register
         res->emplaceValue(row, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_currentGroup.groupLength)));
-      } else if (static_cast<CollectNode const*>(_exeNode)->_expressionVariable !=
+      } else if (ExecutionNode::castTo<CollectNode const*>(_exeNode)->_expressionVariable !=
                 nullptr) {
         // copy expression result into result register
         res->setValue(row, _collectRegister,
@@ -583,7 +576,7 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
   TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
 
   if (en->_outVariable != nullptr) {
-    TRI_ASSERT(static_cast<CollectNode const*>(_exeNode)->_count);
+    TRI_ASSERT(ExecutionNode::castTo<CollectNode const*>(_exeNode)->_count);
 
     auto const& registerPlan = en->getRegisterPlan()->varInfo;
     auto it = registerPlan.find(en->_outVariable->id);
@@ -592,13 +585,11 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
     TRI_ASSERT(_collectRegister > 0 &&
                _collectRegister < ExecutionNode::MaxRegisterId);
   } else {
-    TRI_ASSERT(!static_cast<CollectNode const*>(_exeNode)->_count);
+    TRI_ASSERT(!ExecutionNode::castTo<CollectNode const*>(_exeNode)->_count);
   }
 
   TRI_ASSERT(!_groupRegisters.empty());
 }
-
-HashedCollectBlock::~HashedCollectBlock() {}
 
 int HashedCollectBlock::getOrSkipSome(size_t atMost,
                                       bool skipping, AqlItemBlock*& result,
@@ -619,7 +610,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atMost,
     _pos = 0;  // this is in the first block
   }
 
-  auto* en = static_cast<CollectNode const*>(_exeNode);
+  auto* en = ExecutionNode::castTo<CollectNode const*>(_exeNode);
 
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
@@ -733,7 +724,9 @@ int HashedCollectBlock::getOrSkipSome(size_t atMost,
           // no aggregate registers. this means we'll only count the number of
           // items
           if (en->_count) {
-            aggregateValues->emplace_back(std::make_unique<AggregatorLength>(_trx, 1));
+            aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, "LENGTH"));
+            // must count one item already 
+            aggregateValues->back()->reduce(AqlValue(AqlValueHintNull()));
           }
         } else {
           // we do have aggregate registers. create them as empty AqlValues
@@ -866,17 +859,6 @@ DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
 
 DistinctCollectBlock::~DistinctCollectBlock() {
   clearValues();
-}
-
-/// @brief initialize
-int DistinctCollectBlock::initialize() {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 int DistinctCollectBlock::initializeCursor(AqlItemBlock* items,

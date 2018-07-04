@@ -106,7 +106,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   void work(ExecContext const*);
   void queue(std::chrono::microseconds offset);
   void unqueue() noexcept;
-  std::function<void(boost::system::error_code const&)> callbackFunction();
+  std::function<void(asio::error_code const&)> callbackFunction();
   std::string const& name() const { return _name; }
 
  private:
@@ -115,7 +115,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   double const _created;
   std::string _user;
 
-  std::unique_ptr<boost::asio::steady_timer> _timer;
+  std::unique_ptr<asio::steady_timer> _timer;
 
   // guard to make sure the database is not dropped while used by us
   std::unique_ptr<DatabaseGuard> _dbGuard;
@@ -285,11 +285,11 @@ void V8Task::setUser(std::string const& user) {
   _user = user;
 }
 
-std::function<void(const boost::system::error_code&)>
+std::function<void(const asio::error_code&)>
 V8Task::callbackFunction() {
   auto self = shared_from_this();
 
-  return [self, this](const boost::system::error_code& error) {
+  return [self, this](const asio::error_code& error) {
     unqueue();
     
     // First tell the scheduler that this thread is working:
@@ -320,7 +320,7 @@ V8Task::callbackFunction() {
 
       execContext.reset(ExecContext::create(_user, dbname));
       allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
-      allowContinue = allowContinue && ServerState::writeOpsEnabled();
+      allowContinue = allowContinue && !ServerState::readOnly();
     }
 
     ExecContextScope scope(_user.empty() ?
@@ -351,8 +351,8 @@ void V8Task::start() {
              ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
   
-  auto ioService = SchedulerFeature::SCHEDULER->ioService();
-  _timer.reset(new boost::asio::steady_timer(*ioService));
+  _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
   }
@@ -394,7 +394,7 @@ void V8Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic = false;
 
-  boost::system::error_code ec;
+  asio::error_code ec;
   _timer->cancel(ec);
 
   unqueue();
@@ -560,7 +560,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
@@ -711,7 +711,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
@@ -758,58 +758,66 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   TRI_vocbase_t* vocbase = v8g->_vocbase;
+
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsNumber()) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>, <maxWorkers>)");
   }
-  
+
   std::string runAsUser;
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (exec != nullptr) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "createQueue() needs db RW permissions");
     }
+
     runAsUser = exec->user();
     TRI_ASSERT(exec->isAdminUser() || !runAsUser.empty());
   }
-  
+
   std::string key = TRI_ObjectToString(args[0]);
   uint64_t maxWorkers = std::min(TRI_ObjectToUInt64(args[1], false), (uint64_t)64);
-  
+
   VPackBuilder doc;
+
   doc.openObject();
   doc.add(StaticStrings::KeyString, VPackValue(key));
   doc.add("maxWorkers", VPackValue(maxWorkers));
   doc.add("runAsUser", VPackValue(runAsUser));
   doc.close();
-  
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
-  auto ctx = transaction::V8Context::Create(vocbase, false);
+  auto ctx = transaction::V8Context::Create(*vocbase, false);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   OperationOptions opts;
   OperationResult result = trx.insert("_queues", doc.slice(), opts);
+
   if (result.fail() &&
       result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     result = trx.replace("_queues", doc.slice(), opts);
   }
+
   res = trx.finish(result.result);
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.ok()));
   TRI_V8_TRY_CATCH_END
 }
@@ -817,42 +825,49 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   TRI_vocbase_t* vocbase = v8g->_vocbase;
+
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("deleteQueue(<id>)");
   }
+
   std::string key = TRI_ObjectToString(args[0]);
   VPackBuilder doc;
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
-  
+
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (exec != nullptr && exec->databaseAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
-  
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
-  auto ctx = transaction::V8Context::Create(vocbase, false);
+  auto ctx = transaction::V8Context::Create(*vocbase, false);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+
   OperationOptions opts;
   OperationResult result = trx.remove("_queues", doc.slice(), opts);
+
   res = trx.finish(result.result);
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.ok()));
   TRI_V8_TRY_CATCH_END
 }

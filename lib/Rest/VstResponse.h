@@ -41,12 +41,12 @@ using rest::VPackMessageNoOwnBuffer;
 class VstResponse : public GeneralResponse {
   friend class rest::GeneralCommTask;
   friend class rest::VstCommTask;
-  friend class RestBatchHandler;  // TODO must be removed
-
-  VstResponse(ResponseCode code, uint64_t id);
 
  public:
   static bool HIDE_PRODUCT_HEADER;
+  
+  VstResponse(ResponseCode code, uint64_t id);
+
 
   // required by base
   uint64_t messageId() const override { return _messageId; }
@@ -56,7 +56,7 @@ class VstResponse : public GeneralResponse {
 
   VPackMessageNoOwnBuffer prepareForNetwork();
   
-  void reset(ResponseCode code) final;
+  void reset(ResponseCode code) override final;
   void addPayload(VPackSlice const&,
                   arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;

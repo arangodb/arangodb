@@ -35,7 +35,6 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -69,118 +68,106 @@ struct TraverserEngineShardLists {
 #endif
 };
 
-void ExecutionEngine::createBlocks(
+/**
+ * @brief Create AQL blocks from a list of ExectionNodes
+ * Only works in cluster mode
+ *
+ * @param nodes The list of Nodes => Blocks
+ * @param restrictToShards This query is restricted to those shards
+ * @param queryIds A Mapping: RemoteNodeId -> DBServerId -> [snippetId]
+ *
+ * @return A result containing the error in bad case.
+ */
+Result ExecutionEngine::createBlocks(
     std::vector<ExecutionNode*> const& nodes,
-    std::unordered_set<std::string> const& includedShards,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_map<std::string, std::string> const& queryIds) {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto clusterInfo = arangodb::ClusterInfo::instance();
+    MapRemoteToSnippet const& queryIds) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
-    RemoteNode const* remoteNode = nullptr;
+  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+  RemoteNode const* remoteNode = nullptr;
 
-    // We need to traverse the nodes from back to front, the walker collects
-    // them
-    // in the wrong ordering
-    for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
-      auto en = *it;
-      auto const nodeType = en->getType();
+  // We need to traverse the nodes from back to front, the walker collects
+  // them in the wrong ordering
+  for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
+    auto en = *it;
+    auto const nodeType = en->getType();
 
-      if (nodeType == ExecutionNode::REMOTE) {
-        remoteNode = static_cast<RemoteNode const*>(en);
-        continue;
+    if (nodeType == ExecutionNode::REMOTE) {
+      remoteNode = ExecutionNode::castTo<RemoteNode const*>(en);
+      continue;
+    }
+
+    // for all node types but REMOTEs, we create blocks
+    auto uptrEb = en->createBlock(*this, cache);
+
+    if (!uptrEb) {
+      return {TRI_ERROR_INTERNAL, "illegal node type"};
+    }
+
+    auto eb = uptrEb.get();
+
+    // Transfers ownership
+    addBlock(eb);
+    uptrEb.release();
+
+    for (auto const& dep : en->getDependencies()) {
+      auto d = cache.find(dep);
+
+      if (d != cache.end()) {
+        // add regular dependencies
+        TRI_ASSERT((*d).second != nullptr);
+        eb->addDependency((*d).second);
+      }
+    }
+
+    if (nodeType == ExecutionNode::GATHER) {
+      // we found a gather node
+      if (remoteNode == nullptr) {
+        return {TRI_ERROR_INTERNAL, "expecting a remoteNode"};
       }
 
-      // for all node types but REMOTEs, we create blocks
-      std::unique_ptr<ExecutionBlock> uptrEb(
-          en->createBlock(*this, cache, includedShards));
-
-      if (uptrEb == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
+      // now we'll create a remote node for each shard and add it to the
+      // gather node (eb->addDependency)
+      auto serversForRemote = queryIds.find(remoteNode->id());
+      // Planning gone terribly wrong. The RemoteNode does not have a
+      // counter-part to fetch data from.
+      TRI_ASSERT(serversForRemote != queryIds.end());
+      if (serversForRemote == queryIds.end()) {
+        return {TRI_ERROR_INTERNAL, "Did not find a DBServer to contact for RemoteNode."};
       }
 
-      auto eb = uptrEb.get();
-
-      // Transfers ownership
-      addBlock(eb);
-      uptrEb.release();
-
-      for (auto const& dep : en->getDependencies()) {
-        auto d = cache.find(dep);
-
-        if (d != cache.end()) {
-          // add regular dependencies
-          TRI_ASSERT((*d).second != nullptr);
-          eb->addDependency((*d).second);
-        }
-      }
-
-      if (nodeType == ExecutionNode::GATHER) {
-        // we found a gather node
-        if (remoteNode == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expecting a remoteNode");
-        }
-
-        // now we'll create a remote node for each shard and add it to the
-        // gather node
-        auto gatherNode = static_cast<GatherNode const*>(en);
-        Collection const* collection = gatherNode->collection();
-
-        auto shardIds = collection->shardIds(restrictToShards);
-        for (auto const& shardId : *shardIds) {
-          std::string theId =
-              arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
-              shardId;
-
-          auto it = queryIds.find(theId);
-          if (it == queryIds.end()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                "could not find query id " + theId + " in list");
-          }
-
-          auto serverList = clusterInfo->getResponsibleServer(shardId);
-          if (serverList->empty()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                "Could not find responsible server for shard " + shardId);
-          }
-
-          // use "server:" instead of "shard:" to send query fragments to
-          // the correct servers, even after failover or when a follower drops
-          // the problem with using the previous shard-based approach was that
-          // responsibilities for shards may change at runtime.
-          // however, an AQL query must send all requests for the query to the
-          // initially used servers.
-          // if there is a failover while the query is executing, we must still
-          // send all following requests to the same servers, and not the newly
-          // responsible servers.
-          // otherwise we potentially would try to get data from a query from
-          // server B while the query was only instanciated on server A.
-          TRI_ASSERT(!serverList->empty());
-          auto& leader = (*serverList)[0];
+      // use "server:" instead of "shard:" to send query fragments to
+      // the correct servers, even after failover or when a follower drops
+      // the problem with using the previous shard-based approach was that
+      // responsibilities for shards may change at runtime.
+      // however, an AQL query must send all requests for the query to the
+      // initially used servers.
+      // if there is a failover while the query is executing, we must still
+      // send all following requests to the same servers, and not the newly
+      // responsible servers.
+      // otherwise we potentially would try to get data from a query from
+      // server B while the query was only instanciated on server A.
+      for (auto const& serverToSnippet : serversForRemote->second) {
+        auto const& serverID = serverToSnippet.first;
+        for (auto const& snippetId : serverToSnippet.second) {
           auto r = std::make_unique<RemoteBlock>(this, remoteNode,
-                                                 "server:" + leader,  // server
-                                                 "",                  // ownName
-                                                 it->second);         // queryId
-
+              serverID, "", snippetId);
           TRI_ASSERT(r != nullptr);
-
           eb->addDependency(r.get());
           addBlock(r.get());
           r.release();
         }
       }
-
-      // the last block is always the root
-      root(eb);
-
-      // put it into our cache:
-      cache.emplace(en, eb);
     }
+
+    // the last block is always the root
+    root(eb);
+
+    // put it into our cache:
+    cache.emplace(en, eb);
   }
+  return {TRI_ERROR_NO_ERROR};
 }
 
 /// @brief create the engine
@@ -191,6 +178,7 @@ ExecutionEngine::ExecutionEngine(Query* query)
       _root(nullptr),
       _query(query),
       _resultRegister(0),
+      _initializeCursorCalled(false),
       _wasShutdown(false),
       _previouslyLockedShards(nullptr),
       _lockedShards(nullptr) {
@@ -212,13 +200,12 @@ ExecutionEngine::~ExecutionEngine() {
 
 struct Instanciator final : public WalkerWorker<ExecutionNode> {
   ExecutionEngine* engine;
-  ExecutionBlock* root;
+  ExecutionBlock* root{};
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
 
-  explicit Instanciator(ExecutionEngine* engine)
-      : engine(engine), root(nullptr) {}
-
-  ~Instanciator() {}
+  explicit Instanciator(ExecutionEngine* engine) noexcept
+    : engine(engine) {
+  }
 
   virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
@@ -226,7 +213,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
       if (en->getType() == ExecutionNode::TRAVERSAL ||
           en->getType() == ExecutionNode::SHORTEST_PATH) {
         // We have to prepare the options before we build the block
-        static_cast<GraphNode*>(en)->prepareOptions();
+        ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
       }
 
       // do we need to adjust the root node?
@@ -239,8 +226,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
       }
 
-      static const std::unordered_set<std::string> EMPTY;
-      block = engine->addBlock(en->createBlock(*engine, cache, EMPTY));
+      block = engine->addBlock(en->createBlock(*engine, cache));
 
       if (!en->hasParent()) {
         // yes. found a new root!
@@ -347,7 +333,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 // of them the nodes from left to right in these lists. In the end, we have
 // a proper instantiation of the whole thing.
 
-struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
+struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
  private:
   EngineInfoContainerCoordinator _coordinatorParts;
   EngineInfoContainerDBServer _dbserverParts;
@@ -356,13 +342,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   Query* _query;
 
  public:
-  CoordinatorInstanciator(Query* query)
-      : _isCoordinator(true), _lastClosed(0), _query(query) {}
-
-  ~CoordinatorInstanciator() {}
+  explicit CoordinatorInstanciator(Query* query) noexcept
+      : _dbserverParts(query),
+        _isCoordinator(true),
+        _lastClosed(0),
+        _query(query) {
+    TRI_ASSERT(_query);
+  }
 
   /// @brief before method for collection of pieces phase
-  ///        Collects all nodes on the path and devides them
+  ///        Collects all nodes on the path and divides them
   ///        into coordinator and dbserver parts
   bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
@@ -377,7 +366,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
-          _dbserverParts.addGraphNode(_query, static_cast<GraphNode*>(en));
+          _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en));
           break;
         default:
           // Do nothing
@@ -386,7 +375,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     } else {
       // on dbserver
       _dbserverParts.addNode(en);
-      if (nodeType == ExecutionNode::REMOTE) {
+      if (ExecutionNode::REMOTE == nodeType) {
         _isCoordinator = true;
         _coordinatorParts.openSnippet(en->id());
       }
@@ -430,29 +419,40 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ExecutionEngineResult buildEngines(
       QueryRegistry* registry, std::unordered_set<ShardID>& lockedShards) {
     // QueryIds are filled by responses of DBServer parts.
-    std::unordered_map<std::string, std::string> queryIds;
+    MapRemoteToSnippet queryIds{};
 
     bool needsErrorCleanup = true;
     auto cleanup = [&]() {
       if (needsErrorCleanup) {
-        _dbserverParts.cleanupEngines(ClusterComm::instance(),
-                                      TRI_ERROR_INTERNAL,
-                                      _query->vocbase()->name(), queryIds);
+        _dbserverParts.cleanupEngines(
+          ClusterComm::instance(),
+          TRI_ERROR_INTERNAL,
+          _query->vocbase().name(), queryIds
+        );
       }
     };
     TRI_DEFER(cleanup());
 
-    _dbserverParts.buildEngines(_query, queryIds,
-                                _query->queryOptions().shardIds, lockedShards);
+    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, lockedShards);
+    if (res.fail()) {
+      return res;
+    }
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    auto res = _coordinatorParts.buildEngines(
-        _query, registry, _query->vocbase()->name(),
-        _query->queryOptions().shardIds, queryIds, lockedShards);
+    res = _coordinatorParts.buildEngines(
+      _query,
+      registry,
+      _query->vocbase().name(),
+      _query->queryOptions().shardIds,
+      queryIds,
+      lockedShards
+    );
+
     if (res.ok()) {
       needsErrorCleanup = false;
     }
+
     return res;
   }
 };
@@ -544,16 +544,14 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AQL)
             << "Coordinator query instantiation failed: " << e.what();
-        throw e;
-      } catch (...) {
         throw;
       }
     } else {
       // instantiate the engine on a local server
-      engine = new ExecutionEngine(query); 
-      auto inst = std::make_unique<Instanciator>(engine); 
-      plan->root()->walk(*inst); 
-      root = inst.get()->root; 
+      engine = new ExecutionEngine(query);
+      Instanciator inst(engine);
+      plan->root()->walk(inst);
+      root = inst.root;
       TRI_ASSERT(root != nullptr);
     }
 
@@ -574,7 +572,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     engine->_root = root;
 
     if (plan->isResponsibleForInitialize()) {
-      root->initialize();
       root->initializeCursor(nullptr, 0);
     }
 

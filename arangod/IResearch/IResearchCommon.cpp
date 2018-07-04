@@ -47,6 +47,15 @@ arangodb::LogTopic& logTopic() {
   return topic;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     StaticStrings
+// -----------------------------------------------------------------------------
+
+std::string const StaticStrings::CollectionsField("collections");
+std::string const StaticStrings::LinksField("links");
+std::string const StaticStrings::PropertiesField("properties");
+std::string const StaticStrings::ViewIdField("view");
+
 } // iresearch
 } // arangodb
 

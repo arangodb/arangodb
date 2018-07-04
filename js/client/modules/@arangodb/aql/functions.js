@@ -83,7 +83,7 @@ var registerFunction = function (name, code, isDeterministic = false) {
                                           }));
 
   arangosh.checkRequestResult(requestResult);
-  return requestResult;
+  return !requestResult.isNewlyCreated;
 };
 
 // //////////////////////////////////////////////////////////////////////////////

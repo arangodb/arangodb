@@ -636,7 +636,7 @@ ClusterCommResult const ClusterComm::wait(
   ClusterCommTimeout endTime = TRI_microtime() + timeout;
 
   TRI_ASSERT(timeout >= 0.0);
-  
+
   // if we cannot find the sought operation, we will return the status
   // DROPPED. if we get into the timeout while waiting, we will still return
   // CL_COMM_TIMEOUT.
@@ -1060,7 +1060,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this method performs the given requests described by the vector
-/// of ClusterCommRequest structs in the following way: 
+/// of ClusterCommRequest structs in the following way:
 /// Each request is done with asyncRequest.
 /// After each request is successfully send out we drop all requests.
 /// Hence it is guaranteed that all requests are send, but
@@ -1071,15 +1071,15 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 /// instead.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest>& requests) {
-  if (requests.size() == 0) {
+void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests) {
+  if (requests.empty()) {
     return;
   }
 
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
   double const shortTimeout = 10.0; // Picked arbitrarily
-  for (auto& req : requests) {
+  for (auto const& req : requests) {
     asyncRequest("", coordinatorTransactionID, req.destination, req.requestType,
                  req.path, req.body, *req.headerFields, nullptr, shortTimeout, false,
                  2.0);
@@ -1181,10 +1181,10 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
       arangodb::rest::RequestType reqtype, std::string const* body,
       std::unordered_map<std::string, std::string> const& headerFields) {
   HttpRequest* request = nullptr;
-  auto result = new ClusterCommResult();
+  auto result = std::make_unique<ClusterCommResult>();
   result->setDestination(destination, logConnectionErrors());
   if (result->endpoint.empty()) {
-    return std::make_pair(result, request);
+    return std::make_pair(result.release(), request);
   }
   result->status = CL_COMM_SUBMITTED;
 
@@ -1236,12 +1236,13 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   }
   request->setRequestType(reqtype);
 
-  return std::make_pair(result, request);
+  return std::make_pair(result.release(), request);
 }
 
 void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {
-  if (_authenticationEnabled) {
-    headers->emplace("Authorization", _jwtAuthorization);
+  if (_authenticationEnabled &&
+      headers->find(StaticStrings::Authorization) == headers->end()) {
+    headers->emplace(StaticStrings::Authorization, _jwtAuthorization);
   }
 }
 

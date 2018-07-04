@@ -33,7 +33,6 @@
 #include "ApplicationFeatures/EngineEqualityCheckFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
@@ -80,7 +79,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RestServer/WorkMonitorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
@@ -105,6 +103,7 @@
 #endif
 
 // storage engines
+#include "ClusterEngine/ClusterEngine.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
@@ -161,7 +160,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new GeneralServerFeature(&server));
     server.addFeature(new GreetingsFeature(&server));
     server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
-    server.addFeature(new JemallocFeature(&server));
     server.addFeature(new LanguageFeature(&server));
     server.addFeature(new LockfileFeature(&server));
     server.addFeature(new LoggerBufferFeature(&server));
@@ -192,7 +190,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new V8PlatformFeature(&server));
     server.addFeature(new VersionFeature(&server));
     server.addFeature(new ViewTypesFeature(&server));
-    server.addFeature(new WorkMonitorFeature(&server));
     server.addFeature(new aql::AqlFunctionFeature(&server));
     server.addFeature(new aql::OptimizerRulesFeature(&server));
     server.addFeature(new pregel::PregelFeature(&server));
@@ -219,6 +216,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
 #endif
 
     // storage engines
+    server.addFeature(new ClusterEngine(&server));
     server.addFeature(new MMFilesEngine(&server));
     server.addFeature(new RocksDBEngine(&server));
 

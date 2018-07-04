@@ -306,31 +306,40 @@ struct MMFilesWalAccessContext : WalAccessContext {
     if (type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
+
       _builder.add("db", slice.get("name"));
     } else if (type == TRI_DF_MARKER_VPACK_DROP_COLLECTION) {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
+
       if (vocbase == nullptr) {
         // ignore markers from dropped dbs
         return TRI_ERROR_NO_ERROR;
       }
+
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
+
       _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("cuid", slice.get("cuid"));
     } else {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
+
       if (vocbase == nullptr) {
         return TRI_ERROR_NO_ERROR;  // ignore dropped dbs
       }
+
       _builder.add("db", VPackValue(vocbase->name()));
+
       if (collectionId > 0) {
         LogicalCollection* col = loadCollection(databaseId, collectionId);
+
         if (col == nullptr) {
           return TRI_ERROR_NO_ERROR;  // ignore dropped collections
         }
-        _builder.add("cuid", VPackValue(col->globallyUniqueId()));
+
+        _builder.add("cuid", VPackValue(col->guid()));
       }
     }
 

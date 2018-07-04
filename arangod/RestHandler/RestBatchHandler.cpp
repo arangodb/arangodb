@@ -212,8 +212,8 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       // ignore any errors here, will be handled later by inspecting the response
       try {
-        ExecContextScope scope(nullptr);// workaround because of assertions
-        handler->syncRunEngine();
+        ExecContextScope scope(nullptr);// workaround because of assertions        
+        handler->runHandler([](RestHandler*) {});
       } catch (...) {
       }
 
@@ -239,7 +239,7 @@ RestStatus RestBatchHandler::executeHttp() {
       httpResponse->body().appendText(StaticStrings::BatchContentType);
 
       // append content-id if it is present
-      if (helper.contentId != 0) {
+      if (helper.contentId != nullptr) {
         httpResponse->body().appendText(
             "\r\nContent-Id: " +
             std::string(helper.contentId, helper.contentIdLength));
@@ -389,7 +389,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
   helper->foundStart = nullptr;
   helper->foundLength = 0;
   helper->containsMore = false;
-  helper->contentId = 0;
+  helper->contentId = nullptr;
   helper->contentIdLength = 0;
 
   char const* searchEnd = helper->message->messageEnd;

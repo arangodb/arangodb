@@ -95,7 +95,7 @@ class Query {
     QueryPart
   );
 
-  TEST_VIRTUAL ~Query();
+  virtual ~Query();
 
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
@@ -107,15 +107,21 @@ class Query {
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction (transaction::Methods* trx) {
+  void injectTransaction(transaction::Methods* trx) {
     _trx = trx;
     init();
+  }
+  
+  /// @brief inject a transaction context to use
+  void setTransactionContext(std::shared_ptr<transaction::Context> const& ctx) {
+    _transactionContext = ctx;
   }
 
   QueryProfile* profile() const {
     return _profile.get();
   }
 
+  velocypack::Slice optionsSlice() const { return _options->slice(); }
   TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
@@ -142,7 +148,7 @@ class Query {
   inline QueryPart part() const { return _part; }
 
   /// @brief get the vocbase
-  inline TRI_vocbase_t* vocbase() const { return &_vocbase; }
+  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief collections
   inline Collections* collections() { return &_collections; }
@@ -224,6 +230,9 @@ class Query {
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
+
+  /// @brief whether or not a query is a modification query
+  bool isModificationQuery() const { return _isModificationQuery; }
 
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
@@ -308,7 +317,7 @@ class Query {
 
  public:
   constexpr static uint64_t DontCache = 0;
-
+  
  private:
   /// @brief query id
   TRI_voc_tick_t _id;
@@ -321,6 +330,9 @@ class Query {
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t& _vocbase;
+  
+  /// @brief transaction context to use for this query
+  std::shared_ptr<transaction::Context> _transactionContext;
 
   /// @brief the currently used V8 context
   V8Context* _context;
@@ -337,10 +349,10 @@ class Query {
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
 
-  /// @brief query options
+  /// @brief raw query options
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 
-  /// @brief query options
+  /// @brief parsed query options
   QueryOptions _queryOptions;
 
   /// @brief collections used in the query

@@ -217,6 +217,7 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "hash-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -225,35 +226,11 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   MMFilesHashIndexLookupBuilder _lookups;
   std::vector<MMFilesHashIndexElement*> _buffer;
   size_t _posInBuffer;
-};
-
-class MMFilesHashIndexIteratorVPack final : public IndexIterator {
- public:
-  /// @brief Construct an MMFilesHashIndexIterator based on VelocyPack
-  MMFilesHashIndexIteratorVPack(
-      LogicalCollection* collection, transaction::Methods* trx,
-      MMFilesHashIndex const* index,
-      std::unique_ptr<arangodb::velocypack::Builder> searchValues);
-
-  ~MMFilesHashIndexIteratorVPack();
-
-  char const* typeName() const override { return "hash-index-iterator-vpack"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  MMFilesHashIndex const* _index;
-  std::unique_ptr<arangodb::velocypack::Builder> _searchValues;
-  arangodb::velocypack::ArrayIterator _iterator;
-  std::vector<MMFilesHashIndexElement*> _buffer;
-  size_t _posInBuffer;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 };
 
 class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   friend class MMFilesHashIndexIterator;
-  friend class MMFilesHashIndexIteratorVPack;
 
  public:
   MMFilesHashIndex() = delete;
@@ -268,16 +245,13 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   char const* typeName() const override { return "hash"; }
 
-  bool allowExpansion() const override { return true; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -312,7 +286,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

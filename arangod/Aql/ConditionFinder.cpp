@@ -78,7 +78,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::SORT: {
       // register which variables are used in a SORT
       if (_sorts.empty()) {
-        for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
+        for (auto& it : ExecutionNode::castTo<SortNode const*>(en)->elements()) {
           _sorts.emplace_back(it.var, it.ascending);
           TRI_IF_FAILURE("ConditionFinder::sortNode") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -94,7 +94,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
       _variableDefinitions.emplace(
           outvars[0]->id,
-          static_cast<CalculationNode const*>(en)->expression()->node());
+          ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -102,7 +102,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_COLLECTION: {
-      auto node = static_cast<EnumerateCollectionNode const*>(en);
+      auto node = ExecutionNode::castTo<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
         break;
@@ -127,9 +127,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
           condition->findIndexes(node, usedIndexes, sortCondition.get());
 
       if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
-        bool reverse = false;
+        bool descending = false;
         if (canUseIndex.second && sortCondition->isUnidirectional()) {
-          reverse = sortCondition->isDescending();
+          descending = sortCondition->isDescending();
         }
 
         if (!canUseIndex.first) {
@@ -142,12 +142,13 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
         TRI_ASSERT(!usedIndexes.empty());
 
-        // We either can find indexes for everything or findIndexes will clear
-        // out usedIndexes
+        // We either can find indexes for everything or findIndexes
+        // will clear out usedIndexes
+        IndexIteratorOptions opts;
+        opts.ascending = !descending;
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(), node->vocbase(), node->collection(),
-            node->outVariable(), usedIndexes, condition.get(), reverse));
-        condition.release();
+            _plan, _plan->nextId(), node->collection(),
+            node->outVariable(), usedIndexes, std::move(condition), opts));
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -158,6 +159,11 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       break;
+    }
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
     }
   }
 
@@ -188,7 +194,7 @@ bool ConditionFinder::handleFilterCondition(
               auto setter = _plan->getVarSetBy(variable->id);
 
               if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-                auto s = static_cast<CalculationNode*>(setter);
+                auto s = ExecutionNode::castTo<CalculationNode*>(setter);
                 auto filterExpression = s->expression();
                 AstNode* inNode = filterExpression->nodeForModification();
                 if (!inNode->canThrow() && inNode->isDeterministic() &&

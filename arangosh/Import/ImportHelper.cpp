@@ -46,6 +46,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine if a field value is an integer
 /// this function is here to avoid usage of regexes, which are too slow
@@ -136,15 +137,26 @@ namespace import {
 double const ImportHelper::ProgressStep = 3.0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// the server has a built-in limit for the batch size
+///  and will reject bigger HTTP request bodies
+////////////////////////////////////////////////////////////////////////////////
+
+unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
+
+////////////////////////////////////////////////////////////////////////////////
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 ImportHelper::ImportHelper(ClientFeature const* client,
                            std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
-                           uint64_t maxUploadSize, uint32_t threadCount)
+                           uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
     : _httpClient(client->createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
+      _periodByteCount(0),
+      _autoUploadSize(autoUploadSize),
+      _threadCount(threadCount),
+      _tempBuffer(false),
       _separator(","),
       _quote("\""),
       _createCollectionType("document"),
@@ -175,8 +187,14 @@ ImportHelper::ImportHelper(ClientFeature const* client,
     }));
     _senderThreads.back()->start();
   }
- 
-  // wait until all sender threads are ready 
+
+  // should self tuning code activate?
+  if (_autoUploadSize) {
+    _autoTuneThread.reset(new AutoTuneThread(*this));
+    _autoTuneThread->start();
+  } // if
+
+  // wait until all sender threads are ready
   while (true) {
     uint32_t numReady = 0;
     for (auto const& t : _senderThreads) {
@@ -209,6 +227,13 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _lineBuffer.clear();
   _errorMessages.clear();
   _hasError = false;
+  
+  if (!checkCreateCollection()) {
+    return false;
+  }
+  if (!collectionExists()) {
+    return false;
+  }
 
   // read and convert
   int fd;
@@ -306,7 +331,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   waitForSenders();
   reportProgress(totalLength, totalRead, nextProgress);
-  
+
   _outputBuffer.clear();
   return !_hasError;
 }
@@ -319,6 +344,13 @@ bool ImportHelper::importJson(std::string const& collectionName,
   _outputBuffer.clear();
   _errorMessages.clear();
   _hasError = false;
+  
+  if (!checkCreateCollection()) {
+    return false;
+  }
+  if (!collectionExists()) {
+    return false;
+  }
 
   // read and convert
   int fd;
@@ -432,7 +464,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
   waitForSenders();
   reportProgress(totalLength, totalRead, nextProgress);
-  
+
   MUTEX_LOCKER(guard, _stats._mutex);
   // this is an approximation only. _numberLines is more meaningful for CSV
   // imports
@@ -540,11 +572,11 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       _removeAttributes.find(_columnNames[column]) != _removeAttributes.end()) {
     return;
   }
-  
+
   if (column > 0) {
     _lineBuffer.appendChar(',');
   }
-  
+
   if (_keyColumn == -1 && row == _rowsToSkip && fieldLength == 4 &&
       memcmp(field, "_key", 4) == 0) {
     _keyColumn = column;
@@ -690,6 +722,41 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   }
 }
 
+bool ImportHelper::collectionExists() {
+  std::string const url("/_api/collection/" + StringUtils::urlEncode(_collectionName));
+  std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
+      rest::RequestType::GET, url, nullptr, 0));
+
+  if (result == nullptr) {
+    return false;
+  }
+
+  auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
+  if (code == rest::ResponseCode::OK ||
+      code == rest::ResponseCode::CREATED ||
+      code == rest::ResponseCode::ACCEPTED) {
+    // collection already exists or was created successfully
+    return true;
+  }
+
+  std::shared_ptr<velocypack::Builder> bodyBuilder(result->getBodyVelocyPack());
+  velocypack::Slice error = bodyBuilder->slice();
+  if (!error.isNone()) {
+    auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
+    auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unable to access collection '" << _collectionName
+        << "', server returned status code: " << static_cast<int>(code)
+        << "; error [" << errorNum << "] " << errorMsg;
+  } else {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unable to accesss collection '" << _collectionName
+        << "', server returned status code: " << static_cast<int>(code)
+        << "; server returned message: " << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
+  }
+  return false;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if we must create the target collection, and create it if
 /// required
@@ -700,20 +767,21 @@ bool ImportHelper::checkCreateCollection() {
     return true;
   }
 
-  if (!_firstChunk) {
-    return true;
-  }
-
   std::string const url("/_api/collection");
-
   VPackBuilder builder;
+
   builder.openObject();
-  builder.add("name", VPackValue(_collectionName));
-  builder.add("type", VPackValue(_createCollectionType == "edge" ? 3 : 2));
+  builder.add(
+    arangodb::StaticStrings::DataSourceName,
+    arangodb::velocypack::Value(_collectionName)
+  );
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(_createCollectionType == "edge" ? 3 : 2)
+  );
   builder.close();
 
   std::string data = builder.slice().toJson();
-
   std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
       rest::RequestType::POST, url, data.c_str(), data.size()));
 
@@ -742,7 +810,7 @@ bool ImportHelper::checkCreateCollection() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
-        << "; server returned message: " << result->getBody();
+        << "; server returned message: " << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
   }
   _hasError = true;
   return false;
@@ -783,10 +851,6 @@ void ImportHelper::sendCsvBuffer() {
     return;
   }
 
-  if (!checkCreateCollection()) {
-    return;
-  }
-
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
                   StringUtils::urlEncode(_onDuplicateAction) + "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
@@ -805,7 +869,9 @@ void ImportHelper::sendCsvBuffer() {
 
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
+    uint64_t tmp_length = _outputBuffer.length();
     t->sendData(url, &_outputBuffer);
+    addPeriodByteCount(tmp_length + url.length());
   }
 
   _outputBuffer.reset();
@@ -814,10 +880,6 @@ void ImportHelper::sendCsvBuffer() {
 
 void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   if (_hasError) {
-    return;
-  }
-
-  if (!checkCreateCollection()) {
     return;
   }
 
@@ -845,15 +907,20 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
-    StringBuffer buff(len, false);
-    buff.appendText(str, len);
-    t->sendData(url, &buff);
+    _tempBuffer.reset();
+    _tempBuffer.appendText(str, len);
+    t->sendData(url, &_tempBuffer);
+    addPeriodByteCount(len + url.length());
   }
 }
 
 /// Should return an idle sender, collect all errors
 /// and return nullptr, if there was an error
 SenderThread* ImportHelper::findIdleSender() {
+  if (_autoUploadSize) {
+    _autoTuneThread->paceSends();
+  } // if
+
   while (!_senderThreads.empty()) {
     for (auto const& t : _senderThreads) {
       if (t->hasError()) {

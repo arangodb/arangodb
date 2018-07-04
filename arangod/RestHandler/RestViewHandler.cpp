@@ -108,9 +108,11 @@ void RestViewHandler::createView() {
     badParamError();
     return;
   }
-  VPackSlice const nameSlice = body.get("name");
-  VPackSlice const typeSlice = body.get("type");
+
+  auto nameSlice = body.get(StaticStrings::DataSourceName);
+  auto typeSlice = body.get(StaticStrings::DataSourceType);
   VPackSlice const propertiesSlice = body.get("properties");
+
   if (!nameSlice.isString() || !typeSlice.isString() ||
       !propertiesSlice.isObject()) {
     badParamError();

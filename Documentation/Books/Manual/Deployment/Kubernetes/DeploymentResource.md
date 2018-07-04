@@ -108,9 +108,26 @@ Possible values are:
 
 This setting cannot be changed after the cluster has been created.
 
+### `spec.downtimeAllowed: bool`
+
+This setting is used to allow automatic reconciliation actions that yield
+some downtime of the ArangoDB deployment.
+When this setting is set to `false` (the default), no automatic action that
+may result in downtime is allowed.
+If the need for such an action is detected, an event is added to the `ArangoDeployment`.
+
+Once this setting is set to `true`, the automatic action is executed.
+
+Operations that may result in downtime are:
+
+- Rotating TLS CA certificate
+
+Note: It is still possible that there is some downtime when the Kubernetes
+cluster is down, or in a bad state, irrespective of the value of this setting.
+
 ### `spec.rocksdb.encryption.keySecretName`
 
-This setting specifies the name of a kubernetes `Secret` that contains
+This setting specifies the name of a Kubernetes `Secret` that contains
 an encryption key used for encrypting all data stored by ArangoDB servers.
 When an encryption key is used, encryption of the data in the cluster is enabled,
 without it encryption is disabled.
@@ -206,16 +223,54 @@ replication in the cluster. When enabled, the cluster will contain
 a number of `syncmaster` & `syncworker` servers.
 The default value is `false`.
 
-### `spec.sync.image: string`
+### `spec.sync.externalAccess.type: string`
 
-This setting specifies the docker image to use for all ArangoSync servers.
-When not specified, the `spec.image` value is used.
+This setting specifies the type of `Service` that will be created to provide
+access to the ArangoSync syncMasters from outside the Kubernetes cluster.
+Possible values are:
 
-### `spec.sync.imagePullPolicy: string`
+- `None` To limit access to applications running inside the Kubernetes cluster.
+- `LoadBalancer` To create a `Service` of type `LoadBalancer` for the ArangoSync SyncMasters.
+- `NodePort` To create a `Service` of type `NodePort` for the ArangoSync SyncMasters.
+- `Auto` (default) To create a `Service` of type `LoadBalancer` and fallback to a `Service` or type `NodePort` when the
+  `LoadBalancer` is not assigned an IP address.
 
-This setting specifies the pull policy for the docker image to use for all ArangoSync servers.
-For possible values, see `spec.imagePullPolicy`.
-When not specified, the `spec.imagePullPolicy` value is used.
+Note that when you specify a value of `None`, a `Service` will still be created, but of type `ClusterIP`.
+
+### `spec.sync.externalAccess.loadBalancerIP: string`
+
+This setting specifies the IP used for the LoadBalancer to expose the ArangoSync SyncMasters on.
+This setting is used when `spec.sync.externalAccess.type` is set to `LoadBalancer` or `Auto`.
+
+If you do not specify this setting, an IP will be chosen automatically by the load-balancer provisioner.
+
+### `spec.sync.externalAccess.nodePort: int`
+
+This setting specifies the port used to expose the ArangoSync SyncMasters on.
+This setting is used when `spec.sync.externalAccess.type` is set to `NodePort` or `Auto`.
+
+If you do not specify this setting, a random port will be chosen automatically.
+
+### `spec.sync.externalAccess.masterEndpoint: []string`
+
+This setting specifies the master endpoint(s) advertised by the ArangoSync SyncMasters.
+If not set, this setting defaults to:
+
+- If `spec.sync.externalAccess.loadBalancerIP` is set, it defaults to `https://<load-balancer-ip>:<8629>`.
+- Otherwise it defaults to `https://<sync-service-dns-name>:<8629>`.
+
+### `spec.sync.externalAccess.accessPackageSecretNames: []string`
+
+This setting specifies the names of zero of more `Secrets` that will be created by the deployment
+operator containing "access packages". An access package contains those `Secrets` that are needed
+to access the SyncMasters of this `ArangoDeployment`.
+
+By removing a name from this setting, the corresponding `Secret` is also deleted.
+Note that to remove all access packages, leave an empty array in place (`[]`).
+Completely removing the setting results in not modifying the list.
+
+See [the `ArangoDeploymentReplication` specification](./DeploymentReplicationResource.md) for more information
+on access packages.
 
 ### `spec.sync.auth.jwtSecretName: string`
 
@@ -311,6 +366,14 @@ The default value is `8Gi`.
 This setting is not available for group `coordinators`, `syncmasters` & `syncworkers`
 because servers in these groups do not need persistent storage.
 
+### `spec.<group>.serviceAccountName: string`
+
+This setting specifies the `serviceAccountName` for the `Pods` created
+for each server of this group.
+
+Using an alternative `ServiceAccount` is typically used to separate access rights.
+The ArangoDB deployments do not require any special rights.
+
 ### `spec.<group>.storageClassName: string`
 
 This setting specifies the `storageClass` for the `PersistentVolume`s created
@@ -318,3 +381,16 @@ for each server of this group.
 
 This setting is not available for group `coordinators`, `syncmasters` & `syncworkers`
 because servers in these groups do not need persistent storage.
+
+### `spec.<group>.tolerations: [Toleration]`
+
+This setting specifies the `tolerations` for the `Pod`s created
+for each server of this group.
+
+By default, suitable tolerations are set for the following keys with the `NoExecute` effect:
+
+- `node.kubernetes.io/not-ready`
+- `node.kubernetes.io/unreachable`
+- `node.alpha.kubernetes.io/unreachable` (will be removed in future version)
+
+For more information on tolerations, consult the [Kubernetes documentation](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/).

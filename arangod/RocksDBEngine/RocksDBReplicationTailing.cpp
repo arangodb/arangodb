@@ -89,7 +89,7 @@ TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
 }
 
 /// WAL parser
-class WALParser : public rocksdb::WriteBatch::Handler {
+class WALParser final : public rocksdb::WriteBatch::Handler {
   // internal WAL parser states
   enum State : char {
     INVALID = 0,
@@ -183,30 +183,32 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         }
         break;
       }
-        
       case RocksDBLogType::IndexCreate: {
         resetTransientState(); // finish ongoing trx
+
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+
         if (shouldHandleCollection(dbid, cid)) {
           TRI_ASSERT(_vocbase->id() == dbid);
           LogicalCollection* coll = loadCollection(cid);
           TRI_ASSERT(coll != nullptr);
           VPackSlice indexDef = RocksDBLogValue::indexSlice(blob);
           auto stripped = rocksutils::stripObjectIds(indexDef);
-
           uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+
           _builder.openObject();
           _builder.add("tick", VPackValue(std::to_string(tick)));
           _builder.add("type", VPackValue(REPLICATION_INDEX_CREATE));
           _builder.add("database", VPackValue(std::to_string(dbid)));
           _builder.add("cid", VPackValue(std::to_string(cid)));
-          _builder.add("cuid", VPackValue(coll->globallyUniqueId()));
+          _builder.add("cuid", VPackValue(coll->guid()));
           _builder.add("cname", VPackValue(coll->name()));
           _builder.add("data", stripped.first);
           _builder.close();
           updateLastEmittedTick(tick);
         }
+
         break;
       }
       case RocksDBLogType::IndexDrop: {

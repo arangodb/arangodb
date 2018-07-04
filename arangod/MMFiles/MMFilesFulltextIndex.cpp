@@ -24,6 +24,7 @@
 #include "MMFilesFulltextIndex.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
@@ -120,8 +121,14 @@ void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                         bool forPersistence) const {
   builder.openObject();
   Index::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(true));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(true)
+  );
   builder.add("minLength", VPackValue(_minWordLength));
   builder.close();
 }
@@ -130,12 +137,13 @@ void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
@@ -164,7 +172,8 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
 
-  value = info.get("fields");
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }
@@ -174,11 +183,15 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                 )
+     ) {
     return false;
   }
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
+                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                 )
+     ) {
     return false;
   }
 
@@ -232,10 +245,11 @@ void MMFilesFulltextIndex::unload() {
 }
 
 IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*,
-    aql::AstNode const* condNode, aql::Variable const* var, bool reverse) {
+    transaction::Methods* trx, ManagedDocumentResult*, 
+    aql::AstNode const* condNode, aql::Variable const* var,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
-
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL
   aql::AstNode const* fcall = condNode->getMember(0);
   TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);

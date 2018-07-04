@@ -33,44 +33,9 @@ namespace arangodb {
 namespace httpclient {
 class SimpleHttpResult;
 }
-class DumpFeature;
-class EncryptionFeature;
 class ManagedDirectory;
 
 class DumpFeature : public application_features::ApplicationFeature {
- public:
-  /// @brief Stores stats about the overall dump progress
-  struct Stats {
-    Stats(uint64_t b, uint64_t c, uint64_t w);
-    std::atomic<uint64_t> totalBatches;
-    std::atomic<uint64_t> totalCollections;
-    std::atomic<uint64_t> totalWritten;
-  };
-
-  /// @brief Stores all necessary data to dump a single collection or shard
-  struct JobData {
-    JobData(DumpFeature&, ManagedDirectory&, Stats&, VPackSlice const&,
-            bool const&, bool const&, bool const&, uint64_t const&,
-            uint64_t const&, uint64_t const&, uint64_t const&, uint64_t const,
-            std::string const&, std::string const&,
-            std::string const&);
-    DumpFeature& feature;
-    ManagedDirectory& directory;
-    Stats& stats;
-    VPackSlice const collectionInfo;
-    bool const clusterMode;
-    bool const showProgress;
-    bool const dumpData;
-    uint64_t const initialChunkSize;
-    uint64_t const maxChunkSize;
-    uint64_t const tickStart;
-    uint64_t const tickEnd;
-    uint64_t const batchId;
-    std::string const cid;
-    std::string const name;
-    std::string const type;
-  };
-
  public:
   DumpFeature(application_features::ApplicationServer* server, int& exitCode);
 
@@ -95,38 +60,63 @@ class DumpFeature : public application_features::ApplicationFeature {
    */
   void reportError(Result const& error);
 
- private:
-  Result runDump(httpclient::SimpleHttpClient& client, std::string& dbName);
-  Result runClusterDump(httpclient::SimpleHttpClient& client);
+ public:
+  /// @brief Holds configuration data to pass between methods
+  struct Options {
+    std::vector<std::string> collections{};
+    std::string outputPath{};
+    uint64_t initialChunkSize{1024 * 1024 * 8};
+    uint64_t maxChunkSize{1024 * 1024 * 64};
+    uint32_t threadCount{2};
+    uint64_t tickStart{0};
+    uint64_t tickEnd{0};
+    bool clusterMode{false};
+    bool dumpData{true};
+    bool force{false};
+    bool ignoreDistributeShardsLikeErrors{false};
+    bool includeSystemCollections{false};
+    bool overwrite{true};
+    bool progress{true};
+  };
 
-  bool isIgnoredHiddenEnterpriseCollection(std::string const &name) const;
+  /// @brief Stores stats about the overall dump progress
+  struct Stats {
+    std::atomic<uint64_t> totalBatches{0};
+    std::atomic<uint64_t> totalCollections{0};
+    std::atomic<uint64_t> totalWritten{0};
+  };
 
- private:
-  int& _exitCode;
+  /// @brief Stores all necessary data to dump a single collection or shard
+  struct JobData {
+    JobData(ManagedDirectory&, DumpFeature&, Options const&, Stats&,
+            VPackSlice const&, uint64_t const, std::string const&,
+            std::string const&, std::string const&);
+
+    ManagedDirectory& directory;
+    DumpFeature& feature;
+    Options const& options;
+    Stats& stats;
+
+    VPackSlice const collectionInfo;
+    uint64_t const batchId;
+    std::string const cid;
+    std::string const name;
+    std::string const type;
+  };
 
  private:
   ClientManager _clientManager;
   ClientTaskQueue<JobData> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;
+  int& _exitCode;
+  Options _options;
   Stats _stats;
-  std::vector<std::string> _collections;
   Mutex _workerErrorLock;
   std::queue<Result> _workerErrors;
 
  private:
-  bool _dumpData;
-  bool _force;
-  bool _ignoreDistributeShardsLikeErrors;
-  bool _includeSystemCollections;
-  bool _overwrite;
-  bool _progress;
-  bool _clusterMode;
-  uint64_t _initialChunkSize;
-  uint64_t _maxChunkSize;
-  uint64_t _tickStart;
-  uint64_t _tickEnd;
-  uint32_t _threadCount;
-  std::string _outputPath;
+  Result runDump(httpclient::SimpleHttpClient& client, std::string& dbName);
+  Result runClusterDump(httpclient::SimpleHttpClient& client);
 };
 }  // namespace arangodb
 

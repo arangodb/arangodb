@@ -47,8 +47,8 @@ namespace basics {
 ///      This is necessary to avoid starvation of writers by many readers.
 ///      The current implementation can starve readers, though.
 class ReadWriteLock {
- public:
-  ReadWriteLock() : _state(0), _wantWrite(false) {}
+public:
+  ReadWriteLock() : _state(0) {}
 
   /// @brief locks for writing
   void writeLock();
@@ -64,26 +64,49 @@ class ReadWriteLock {
 
   /// @brief releases the read-lock or write-lock
   void unlock();
-  
+
   /// @brief releases the read-lock
   void unlockRead();
-  
+
   /// @brief releases the write-lock
   void unlockWrite();
 
- private:
-  /// @brief a mutex
-  std::mutex _mut;
+private:
 
-  /// @brief a condition variable to wake up threads
-  std::condition_variable _bell;
+  /// @brief mutex for _readers_bell cv
+  std::mutex _reader_mutex;
 
-  /// @brief _state, 0 means unlocked, -1 means write locked, positive means
-  /// a number of read locks
-  int _state;
+  /// @brief a condition variable to wake up all reader threads
+  std::condition_variable _readers_bell;
 
-  /// @brief _wantWrite, is set if somebody is waiting for the write lock
-  bool _wantWrite;
+  /// @brief mutex for _writers_bell cv
+  std::mutex _writer_mutex;
+
+  /// @brief a condition variable to wake up one writer thread
+  std::condition_variable _writers_bell;
+
+  /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of queued writers,
+  /// the last 16 bits the number of active readers.  
+  std::atomic<uint32_t> _state;
+
+  static const unsigned WRITE_LOCK = 1;
+
+  static const unsigned READER_INC = 1 << 16;
+  static const unsigned READER_MASK = ~(READER_INC - 1);
+
+  static const unsigned QUEUED_WRITER_INC = 1 << 1;
+  static const unsigned QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
+
+  static_assert((READER_MASK & WRITE_LOCK) == 0, "READER_MASK and WRITE_LOCK conflict");
+  static_assert((READER_MASK & QUEUED_WRITER_MASK) == 0, "READER_MASK and QUEUED_WRITER_MASK conflict");
+  static_assert((QUEUED_WRITER_MASK & WRITE_LOCK) == 0, "QUEUED_WRITER_MASK and WRITE_LOCK conflict");
+
+  static_assert((READER_MASK & READER_INC) != 0 &&
+                  (READER_MASK & (READER_INC >> 1)) == 0,
+                "READER_INC must be first bit in READER_MASK");
+  static_assert((QUEUED_WRITER_MASK & QUEUED_WRITER_INC) != 0 &&
+                  (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
+                "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
 };
 }
 }

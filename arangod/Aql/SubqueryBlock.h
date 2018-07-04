@@ -39,9 +39,6 @@ class SubqueryBlock : public ExecutionBlock {
   SubqueryBlock(ExecutionEngine*, SubqueryNode const*, ExecutionBlock*);
   ~SubqueryBlock() = default;
 
-  /// @brief initialize, tell dependency and the subquery
-  int initialize() override final;
-
   /// @brief getSome
   AqlItemBlock* getSome(size_t atMost) override final;
 
@@ -50,7 +47,7 @@ class SubqueryBlock : public ExecutionBlock {
 
   /// @brief getter for the pointer to the subquery
   ExecutionBlock* getSubquery() { return _subquery; }
-
+  
  private:
   /// @brief execute the subquery and return its results
   std::vector<AqlItemBlock*>* executeSubquery();
@@ -66,7 +63,7 @@ class SubqueryBlock : public ExecutionBlock {
 
   /// @brief whether the subquery is const and will always return the same values
   /// when invoked multiple times
-  bool _subqueryIsConst;
+  bool const _subqueryIsConst;
 };
 
 }  // namespace arangodb::aql

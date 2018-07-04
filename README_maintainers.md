@@ -39,7 +39,23 @@ CMake flags
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
  * *-DUSE_CATCH_TESTS=On (default is On so this is set unless you explicitly disable it)
 
-If you have made changes to errors.dat, remember to use the -DUSE_MAINTAINER_MODE flag.
+Errors in ArangoDB
+------------------
+
+If one changes any error in the ArangoDB system, then one has to:
+
+ 1. Only touch `lib/Basics/errors.dat` and not the files which are
+    automatically generated from it (`lib/Basics/voc-errors.h`,
+    `lib/Basics/voc-errors.cpp` and `js/common/bootstrap/errors.js`)
+ 2. Always do a full build with `USE_MAINTAINER_MODE` switched ON
+    afterwards, *before* you commit the change.
+ 3. A `make arangod` is not enough! Since it will not recreate these
+    files!
+
+*Reason*: These files are only built in maintainer mode, we want that a
+build in non-maintainer-mode works from every commit.
+If you only change the generated files, the next build with maintainer
+mode will delete your changes.
 
 CFLAGS
 ------
@@ -138,6 +154,22 @@ Dependencies
 * *Ruby*, *rspec*, *httparty* to install the required dependencies run:
   `cd UnitTests/HttpInterface; bundler`
 * catch (compile time, shipped in the 3rdParty directory)
+
+Invoking
+--------
+Since several testing technoligies are utilized, and different arangodb startup options may be required 
+(even different compilation options may be required) the framework is split into testsuites. 
+Get a list of the available testsuites and options by invoking: 
+
+    ./scripts/unittest
+
+To locate the suite(s) associated with a specific test file use: 
+
+    ./scripts/unittest find --test js/common/tests/shell/shell-aqlfunctions.js
+
+or to run all of them: 
+
+    ./scripts/unittest auto --test js/common/tests/shell/shell-aqlfunctions.js
 
 
 Filename conventions

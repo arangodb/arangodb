@@ -23,9 +23,11 @@
 
 #include "v8-views.h"
 #include "Basics/conversions.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -141,12 +143,7 @@ static void JS_CreateViewVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   // we require exactly 3 arguments
   if (args.Length() != 3) {
@@ -171,8 +168,8 @@ static void JS_CreateViewVocbase(
 
   VPackBuilder full;
   full.openObject();
-  full.add("name", VPackValue(name));
-  full.add("type", VPackValue(type));
+  full.add(arangodb::StaticStrings::DataSourceName, VPackValue(name));
+  full.add(arangodb::StaticStrings::DataSourceType, VPackValue(type));
   VPackSlice infoSlice;
 
   VPackBuilder properties;
@@ -187,7 +184,7 @@ static void JS_CreateViewVocbase(
   infoSlice = full.slice();
 
   try {
-    auto view = vocbase->createView(infoSlice);
+    auto view = vocbase.createView(infoSlice);
 
     TRI_ASSERT(view != nullptr);
 
@@ -211,12 +208,7 @@ static void JS_DropViewVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   // we require exactly 1 string argument and an optional boolean argument
   if (args.Length() < 1 || args.Length() > 2) {
@@ -244,10 +236,10 @@ static void JS_DropViewVocbase(
 
   // extract the name
   std::string const name = TRI_ObjectToString(args[0]);
-  auto view = vocbase->lookupView(name);
+  auto view = vocbase.lookupView(name);
 
   if (view) {
-    auto res = vocbase->dropView(view->id(), allowDropSystem).errorNumber();
+    auto res = vocbase.dropView(view->id(), allowDropSystem).errorNumber();
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -307,14 +299,9 @@ static void JS_DropViewVocbaseObj(
 static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->isDropped()) {
+  if (vocbase.isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -324,8 +311,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> val = args[0];
-  std::shared_ptr<arangodb::LogicalView> view =
-      GetViewFromArgument(vocbase, val);
+  auto view = GetViewFromArgument(&vocbase, val);
 
   if (view == nullptr) {
     TRI_V8_RETURN_NULL();
@@ -345,14 +331,8 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  std::vector<std::shared_ptr<LogicalView>> views = vocbase->views();
+  auto& vocbase = GetContextVocBase(isolate);
+  auto views = vocbase.views();
 
   std::sort(views.begin(), views.end(),
             [](std::shared_ptr<LogicalView> const& lhs,
@@ -417,68 +397,79 @@ static void JS_NameViewVocbase(
 
 /// @brief returns the properties of a view
 static void JS_PropertiesViewVocbase(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args
+) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto* viewPtr = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
+    args.Holder(), WRP_VOCBASE_VIEW_TYPE
+  );
 
-  std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
-          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
-
-  if (v == nullptr || v->get() == nullptr) {
+  if (!viewPtr || !*viewPtr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
 
-  LogicalView* view = v->get();
+  auto view = *viewPtr;
 
-  bool const isModification = (args.Length() != 0);
+  // In the cluster the view object might contain outdated properties,
+  // which will break tests. We need an extra lookup for each operation.
+  arangodb::CollectionNameResolver resolver(view->vocbase());
 
   // check if we want to change some parameters
-  if (isModification) {
-    v8::Handle<v8::Value> par = args[0];
-    bool partialUpdate = true; // partial update by default
+  if (args.Length() > 0 && args[0]->IsObject()) {
+    arangodb::velocypack::Builder builder;
 
-    if (par->IsObject()) {
-      VPackBuilder builder;
-      int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+    {
+      auto res = TRI_V8ToVPack(isolate, builder, args[0], false);
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (TRI_ERROR_NO_ERROR != res) {
         TRI_V8_THROW_EXCEPTION(res);
       }
+    }
 
-      if (args.Length() > 1) {
-        if (!args[1]->IsBoolean()) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER("<partialUpdate> must be a boolean");
-        }
+    bool partialUpdate = true; // partial update by default
 
-        partialUpdate = args[1]->ToBoolean()->Value();
+    if (args.Length() > 1) {
+      if (!args[1]->IsBoolean()) {
+        TRI_V8_THROW_EXCEPTION_PARAMETER("<partialUpdate> must be a boolean");
       }
 
-      VPackSlice const slice = builder.slice();
+      partialUpdate = args[1]->ToBoolean()->Value();
+    }
 
-      // try to write new parameter to file
-      bool doSync =
-          application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")
-              ->forceSyncProperties();
-      auto updateRes = view->updateProperties(slice, partialUpdate, doSync);
+    auto doSync = arangodb::application_features::ApplicationServer::getFeature<
+      DatabaseFeature
+    >("Database")->forceSyncProperties();
 
-      if (!updateRes.ok()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.errorNumber(),
-                                       updateRes.errorMessage());
-      }
+    view = resolver.getView(view->id()); // ensure have the latest definition
+
+    if (!view) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    }
+
+    auto res = view->updateProperties(builder.slice(), partialUpdate, doSync);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
   }
 
-  VPackBuilder vpackProperties;
-  vpackProperties.openObject();
-  view->toVelocyPack(vpackProperties, true, false);
-  vpackProperties.close();
+  view = resolver.getView(view->id());
+
+  if (!view) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
+  arangodb::velocypack::Builder builder;
+
+  builder.openObject();
+  view->toVelocyPack(builder, true, false);
+  builder.close();
 
   // return the current parameter set
-  v8::Handle<v8::Object> result =
-      TRI_VPackToV8(isolate, vpackProperties.slice().get("properties"))
-          ->ToObject();
+  // FIXME TODO this should be the full view representation similar to JS_PropertiesVocbaseCol(...), not just "properties"
+  auto result =
+    TRI_VPackToV8(isolate, builder.slice().get("properties")) ->ToObject();
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

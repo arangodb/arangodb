@@ -3,6 +3,8 @@ div.example_show_button {
   text-align: center;
   position: relative;
   top: -10px;
+  display: flex;
+  justify-content: center;
 }
 
 .book .book-body .navigation.navigation-next {
@@ -34,6 +36,18 @@ div.example_show_button {
   -o-column-count: 3;
   column-count: 3;
   columns: 3;
+}
+
+.book .book-body .program-options code {
+  background-color: #f0f0f0;
+}
+
+.book .book-body .program-options td {
+  vertical-align: top;
+}
+
+.book .book-body .program-options td:first-child {
+  min-width: 250px;
 }
 
 .localized-footer {

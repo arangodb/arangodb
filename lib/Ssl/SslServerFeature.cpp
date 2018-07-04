@@ -43,7 +43,7 @@ SslServerFeature::SslServerFeature(
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
       _sslProtocol(TLS_V12),
-      _sslOptions(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use),
+      _sslOptions(asio::ssl::context::default_workarounds | asio::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
   startsAfter("Ssl");
@@ -90,6 +90,14 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--ssl.ecdh-curve",
       "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
       new StringParameter(&_ecdhCurve));
+}
+
+void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // check for SSLv2
+  if (_sslProtocol == 1) {
+    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "SSLv2 is not supported any longer because of security vulnerabilities in this protocol";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void SslServerFeature::prepare() {
@@ -158,13 +166,13 @@ class BIOGuard {
 };
 }
 
-boost::asio::ssl::context SslServerFeature::createSslContext() const {
+asio::ssl::context SslServerFeature::createSslContext() const {
   try {
     // create context
-    boost::asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
     
     // and use this native handle
-    boost::asio::ssl::context::native_handle_type nativeContext =
+    asio::ssl::context::native_handle_type nativeContext =
         sslContext.native_handle();
 
     // set cache mode
@@ -236,7 +244,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
       LOG_TOPIC(TRACE, arangodb::Logger::SSL)
           << "trying to load CA certificates from '" << _cafile << "'";
 
-      int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), 0);
+      int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), nullptr);
 
       if (res == 0) {
         LOG_TOPIC(ERR, arangodb::Logger::SSL)

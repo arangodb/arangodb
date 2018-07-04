@@ -26,8 +26,10 @@
 #include "Aql/SortCondition.h"
 #include "VelocyPackHelper.h"
 
+#include "search/sort.hpp"
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
+
 
 #ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
 #define ARANGOD_IRESEARCH__AQL_HELPER_H 1
@@ -39,32 +41,31 @@
   #endif
 #endif
 
-NS_BEGIN(arangodb)
-
-NS_BEGIN(aql)
+namespace arangodb {
+namespace aql {
 
 struct Variable; // forward declaration
 class ExecutionPlan; // forward declaration
 class ExpressionContext; // forward declaration
 class Ast; // forward declaration
 
-NS_END // aql
+} // aql
 
-NS_BEGIN(transaction)
+namespace transaction {
 
 class Methods; // forward declaration
 
-NS_END // transaction
+} // transaction
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief extracts string_ref from an AstNode, note that provided 'node'
 ///        must be an arangodb::aql::VALUE_TYPE_STRING
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
-inline irs::string_ref getStringRef(arangodb::aql::AstNode const& node) {
-  TRI_ASSERT(arangodb::aql::VALUE_TYPE_STRING == node.value.type);
+inline irs::string_ref getStringRef(aql::AstNode const& node) {
+  TRI_ASSERT(aql::VALUE_TYPE_STRING == node.value.type);
 
   return irs::string_ref(node.getStringValue(), node.getStringLength());
 }
@@ -73,16 +74,16 @@ inline irs::string_ref getStringRef(arangodb::aql::AstNode const& node) {
 /// @brief tries to extract 'size_t' value from the specified AstNode 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-inline bool parseValue(size_t& value, arangodb::aql::AstNode const& node) {
+inline bool parseValue(size_t& value, aql::AstNode const& node) {
   switch (node.value.type) {
-    case arangodb::aql::VALUE_TYPE_NULL:
-    case arangodb::aql::VALUE_TYPE_BOOL:
+    case aql::VALUE_TYPE_NULL:
+    case aql::VALUE_TYPE_BOOL:
       return false;
-    case arangodb::aql::VALUE_TYPE_INT:
-    case arangodb::aql::VALUE_TYPE_DOUBLE:
+    case aql::VALUE_TYPE_INT:
+    case aql::VALUE_TYPE_DOUBLE:
       value = node.getIntValue();
       return true;
-    case arangodb::aql::VALUE_TYPE_STRING:
+    case aql::VALUE_TYPE_STRING:
       return false;
   }
 
@@ -97,17 +98,17 @@ inline bool parseValue(size_t& value, arangodb::aql::AstNode const& node) {
 template<typename String>
 inline bool parseValue(
     String& value,
-    arangodb::aql::AstNode const& node
+    aql::AstNode const& node
 ) {
   typedef typename String::traits_type traits_t;
 
   switch (node.value.type) {
-    case arangodb::aql::VALUE_TYPE_NULL:
-    case arangodb::aql::VALUE_TYPE_BOOL:
-    case arangodb::aql::VALUE_TYPE_INT:
-    case arangodb::aql::VALUE_TYPE_DOUBLE:
+    case aql::VALUE_TYPE_NULL:
+    case aql::VALUE_TYPE_BOOL:
+    case aql::VALUE_TYPE_INT:
+    case aql::VALUE_TYPE_DOUBLE:
       return false;
-    case arangodb::aql::VALUE_TYPE_STRING:
+    case aql::VALUE_TYPE_STRING:
       value = String(
         reinterpret_cast<typename traits_t::char_type const*>(node.getStringValue()),
         node.getStringLength()
@@ -119,7 +120,7 @@ inline bool parseValue(
 }
 
 template<typename Visitor>
-bool visit(arangodb::aql::SortCondition const& sort, Visitor const& visitor) {
+bool visit(aql::SortCondition const& sort, Visitor const& visitor) {
   for (size_t i = 0, size = sort.numAttributes(); i < size; ++i) {
     auto entry = sort.field(i);
 
@@ -136,7 +137,7 @@ bool visit(arangodb::aql::SortCondition const& sort, Visitor const& visitor) {
 ///        to the specified visiting strategy (preorder/postorder)
 ////////////////////////////////////////////////////////////////////////////////
 template<bool Preorder, typename Visitor>
-bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
+bool visit(aql::AstNode const& root, Visitor visitor) {
   if (Preorder && !visitor(root)) {
     return false;
   }
@@ -174,7 +175,7 @@ enum ScopedValueType {
 ////////////////////////////////////////////////////////////////////////////////
 struct AqlValueTraits {
   static ScopedValueType type(
-      arangodb::aql::AqlValue const& value
+      aql::AqlValue const& value
   ) noexcept {
     typedef typename std::underlying_type<
       ScopedValueType
@@ -191,26 +192,26 @@ struct AqlValueTraits {
   }
 
   static ScopedValueType type(
-      arangodb::aql::AstNode const& node
+      aql::AstNode const& node
   ) noexcept {
     switch (node.type) {
-      case arangodb::aql::NODE_TYPE_VALUE:
+      case aql::NODE_TYPE_VALUE:
         switch (node.value.type) {
-          case arangodb::aql::VALUE_TYPE_NULL:
+          case aql::VALUE_TYPE_NULL:
             return SCOPED_VALUE_TYPE_NULL;
-          case arangodb::aql::VALUE_TYPE_BOOL:
+          case aql::VALUE_TYPE_BOOL:
             return SCOPED_VALUE_TYPE_BOOL;
-          case arangodb::aql::VALUE_TYPE_INT: // all numerics are doubles here
-          case arangodb::aql::VALUE_TYPE_DOUBLE:
+          case aql::VALUE_TYPE_INT: // all numerics are doubles here
+          case aql::VALUE_TYPE_DOUBLE:
             return SCOPED_VALUE_TYPE_DOUBLE;
-          case arangodb::aql::VALUE_TYPE_STRING:
+          case aql::VALUE_TYPE_STRING:
             return SCOPED_VALUE_TYPE_STRING;
           default:
             return SCOPED_VALUE_TYPE_INVALID;
         }
-      case arangodb::aql::NODE_TYPE_ARRAY:
+      case aql::NODE_TYPE_ARRAY:
         return SCOPED_VALUE_TYPE_ARRAY;
-      case arangodb::aql::NODE_TYPE_RANGE:
+      case aql::NODE_TYPE_RANGE:
         return SCOPED_VALUE_TYPE_RANGE;
       default:
         return SCOPED_VALUE_TYPE_INVALID;
@@ -222,11 +223,11 @@ struct AqlValueTraits {
 /// @struct QueryContext
 ////////////////////////////////////////////////////////////////////////////////
 struct QueryContext {
-  arangodb::transaction::Methods* trx;
-  arangodb::aql::ExecutionPlan* plan;
-  arangodb::aql::Ast* ast;
-  arangodb::aql::ExpressionContext* ctx;
-  arangodb::aql::Variable const* ref;
+  transaction::Methods* trx;
+  aql::ExecutionPlan* plan;
+  aql::Ast* ast;
+  aql::ExpressionContext* ctx;
+  aql::Variable const* ref;
 }; // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,10 +236,10 @@ struct QueryContext {
 ////////////////////////////////////////////////////////////////////////////////
 class ScopedAqlValue : private irs::util::noncopyable {
  public:
-  static arangodb::aql::AstNode const INVALID_NODE;
+  static aql::AstNode const INVALID_NODE;
 
   explicit ScopedAqlValue(
-      arangodb::aql::AstNode const& node = INVALID_NODE
+      aql::AstNode const& node = INVALID_NODE
   ) noexcept {
     reset(node);
   }
@@ -253,7 +254,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     rhs._executed = true;
   }
 
-  void reset(arangodb::aql::AstNode const& node = INVALID_NODE) noexcept {
+  void reset(aql::AstNode const& node = INVALID_NODE) noexcept {
     _node = &node;
     _type = AqlValueTraits::type(node);
     _executed = node.isConstant();
@@ -309,13 +310,19 @@ class ScopedAqlValue : private irs::util::noncopyable {
     if (_node->isConstant()) {
       return parseValue(value, *_node);
     } else {
-      value = getStringRef(_value.slice());
+      auto const valueSlice = _value.slice();
+
+      if (VPackValueType::String != valueSlice.type()) {
+        return false;
+      }
+
+      value = getStringRef(valueSlice);
     }
 
     return true;
   }
 
-  arangodb::aql::Range const* getRange() const {
+  aql::Range const* getRange() const {
     return _node->isConstant()
       ? nullptr
       : _value.range();
@@ -327,14 +334,14 @@ class ScopedAqlValue : private irs::util::noncopyable {
       : _value.length();
   }
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const {
+  void toVelocyPack(velocypack::Builder& builder) const {
     _node->isConstant()
       ? _node->toVelocyPackValue(builder)
       : _value.toVelocyPack(nullptr, builder, false);
   }
 
  private:
-  ScopedAqlValue(arangodb::aql::AqlValue const& src, size_t i, bool doCopy) {
+  ScopedAqlValue(aql::AqlValue const& src, size_t i, bool doCopy) {
     _value = src.at(nullptr, i, _destroy, doCopy);
     _node = &INVALID_NODE;
     _executed = true;
@@ -347,8 +354,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
     }
   }
 
-  arangodb::aql::AqlValue _value;
-  arangodb::aql::AstNode const* _node;
+  aql::AqlValue _value;
+  aql::AstNode const* _node;
   ScopedValueType _type;
   bool _destroy{ false };
   bool _executed;
@@ -365,8 +372,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 bool visitAttributeAccess(
-    arangodb::aql::AstNode const*& head,
-    arangodb::aql::AstNode const* node,
+    aql::AstNode const*& head,
+    aql::AstNode const* node,
     T& visitor
 ) {
   if (!node) {
@@ -374,11 +381,11 @@ bool visitAttributeAccess(
   }
 
   switch (node->type) {
-    case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS: // .
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS: // .
       return node->numMembers() >= 1
         && visitAttributeAccess(head, node->getMemberUnchecked(0), visitor)
         && visitor.attributeAccess(*node);
-    case arangodb::aql::NODE_TYPE_INDEXED_ACCESS: { // [<something>]
+    case aql::NODE_TYPE_INDEXED_ACCESS: { // [<something>]
       if (node->numMembers() < 2) {
         // malformed node
         return false;
@@ -390,7 +397,7 @@ bool visitAttributeAccess(
         && visitAttributeAccess(head, node->getMemberUnchecked(0), visitor)
         && visitor.indexAccess(*offset);
     }
-    case arangodb::aql::NODE_TYPE_EXPANSION: { // [*]
+    case aql::NODE_TYPE_EXPANSION: { // [*]
       if (node->numMembers() < 2) {
         // malformed node
         return false;
@@ -404,14 +411,14 @@ bool visitAttributeAccess(
         auto* var = itr->getMemberUnchecked(0);
 
         return ref
-            && arangodb::aql::NODE_TYPE_ITERATOR == itr->type
-            && arangodb::aql::NODE_TYPE_REFERENCE == ref->type
-            && var && arangodb::aql::NODE_TYPE_VARIABLE == var->type
+            && aql::NODE_TYPE_ITERATOR == itr->type
+            && aql::NODE_TYPE_REFERENCE == ref->type
+            && var && aql::NODE_TYPE_VARIABLE == var->type
             && visitAttributeAccess(head, root, visitor) // 1st visit root
             && visitor.expansion(*node); // 2nd visit current node
       }
     }
-    case arangodb::aql::NODE_TYPE_REFERENCE: {
+    case aql::NODE_TYPE_REFERENCE: {
       head = node;
       return true;
     }
@@ -431,12 +438,12 @@ bool visitAttributeAccess(
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 bool visitAttributePath(
-  arangodb::aql::AstNode const*& head,
-  arangodb::aql::AstNode const& node,
+  aql::AstNode const*& head,
+  aql::AstNode const& node,
   T& visitor
 ) {
   if (node.numMembers() >= 2
-      && arangodb::aql::NODE_TYPE_EXPANSION == node.type) { // [*]
+      && aql::NODE_TYPE_EXPANSION == node.type) { // [*]
     auto* itr = node.getMemberUnchecked(0);
     auto* ref = node.getMemberUnchecked(1);
 
@@ -445,15 +452,15 @@ bool visitAttributePath(
       auto* var = itr->getMemberUnchecked(0);
 
       return ref
-        && arangodb::aql::NODE_TYPE_ITERATOR == itr->type
-        && arangodb::aql::NODE_TYPE_REFERENCE == ref->type
+        && aql::NODE_TYPE_ITERATOR == itr->type
+        && aql::NODE_TYPE_REFERENCE == ref->type
         && root && var
-        && arangodb::aql::NODE_TYPE_VARIABLE == var->type
+        && aql::NODE_TYPE_VARIABLE == var->type
         && visitAttributePath(head, *root, visitor) // 1st visit root
         && visitor(); // 2nd visit current node
     }
   } else if (node.numMembers() == 2
-             && arangodb::aql::NODE_TYPE_INDEXED_ACCESS == node.type) { // [<something>]
+             && aql::NODE_TYPE_INDEXED_ACCESS == node.type) { // [<something>]
     auto* root = node.getMemberUnchecked(0);
     auto* offset = node.getMemberUnchecked(1);
 
@@ -466,22 +473,22 @@ bool visitAttributePath(
 
     return root && offset && offset->isStringValue()
       && visitAttributePath(head, *root, visitor) // 1st visit root
-      && visitor(arangodb::iresearch::getStringRef(*offset)); // 2nd visit current node
+      && visitor(iresearch::getStringRef(*offset)); // 2nd visit current node
   } else if (node.numMembers() == 1
-             && arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type) {
+             && aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type) {
     auto* root = node.getMemberUnchecked(0);
 
     return root
-      && arangodb::aql::VALUE_TYPE_STRING == node.value.type
+      && aql::VALUE_TYPE_STRING == node.value.type
       && visitAttributePath(head, *root, visitor) // 1st visit root
-      && visitor(arangodb::iresearch::getStringRef(node)); // 2nd visit current node
+      && visitor(iresearch::getStringRef(node)); // 2nd visit current node
   } else if (!node.numMembers()) { // end of attribute path (base case)
     head = &node;
 
-    return arangodb::aql::NODE_TYPE_REFERENCE == node.type
-      || (arangodb::aql::NODE_TYPE_VALUE == node.type
-          && arangodb::aql::VALUE_TYPE_STRING == node.value.type
-          && visitor(arangodb::iresearch::getStringRef(node))
+    return aql::NODE_TYPE_REFERENCE == node.type
+      || (aql::NODE_TYPE_VALUE == node.type
+          && aql::VALUE_TYPE_STRING == node.value.type
+          && visitor(iresearch::getStringRef(node))
          );
   }
 
@@ -489,9 +496,9 @@ bool visitAttributePath(
 }
 
 struct NormalizedCmpNode {
-  arangodb::aql::AstNode const* attribute;
-  arangodb::aql::AstNode const* value;
-  arangodb::aql::AstNodeType cmp;
+  aql::AstNode const* attribute;
+  aql::AstNode const* value;
+  aql::AstNodeType cmp;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -499,11 +506,11 @@ struct NormalizedCmpNode {
 ///          TypeMap, nullptr otherwise
 ////////////////////////////////////////////////////////////////////////////////
 inline std::string const* getNodeTypeName(
-    arangodb::aql::AstNodeType type
+    aql::AstNodeType type
 ) noexcept {
-  auto const it = arangodb::aql::AstNode::TypeNames.find(type);
+  auto const it = aql::AstNode::TypeNames.find(type);
 
-  if (arangodb::aql::AstNode::TypeNames.end() == it) {
+  if (aql::AstNode::TypeNames.end() == it) {
     return nullptr;
   }
 
@@ -513,10 +520,10 @@ inline std::string const* getNodeTypeName(
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns pointer to 'idx'th member of type 'expectedType', or nullptr
 ////////////////////////////////////////////////////////////////////////////////
-inline arangodb::aql::AstNode const* getNode(
-    arangodb::aql::AstNode const& node,
+inline aql::AstNode const* getNode(
+    aql::AstNode const& node,
     size_t idx,
-    arangodb::aql::AstNodeType expectedType
+    aql::AstNodeType expectedType
 ) {
   TRI_ASSERT(idx < node.numMembers());
 
@@ -532,11 +539,11 @@ inline arangodb::aql::AstNode const* getNode(
 /// @returns true if the specified node contains variable, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 inline bool findReference(
-    arangodb::aql::AstNode const& root,
-    arangodb::aql::Variable const& ref
+    aql::AstNode const& root,
+    aql::Variable const& ref
 ) noexcept {
-  auto visitor = [&ref](arangodb::aql::AstNode const& node) noexcept {
-    return arangodb::aql::NODE_TYPE_REFERENCE != node.type
+  auto visitor = [&ref](aql::AstNode const& node) noexcept {
+    return aql::NODE_TYPE_REFERENCE != node.type
       || reinterpret_cast<void const*>(&ref) != node.getData();
   };
 
@@ -550,8 +557,8 @@ inline bool findReference(
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool normalizeCmpNode(
-  arangodb::aql::AstNode const& in,
-  arangodb::aql::Variable const& ref,
+  aql::AstNode const& in,
+  aql::Variable const& ref,
   NormalizedCmpNode& out
 );
 
@@ -560,8 +567,8 @@ bool normalizeCmpNode(
 /// @returns true if the specified nodes are equal, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool attributeAccessEqual(
-  arangodb::aql::AstNode const* lhs,
-  arangodb::aql::AstNode const* rhs,
+  aql::AstNode const* lhs,
+  aql::AstNode const* rhs,
   QueryContext const* ctx
 );
 
@@ -571,7 +578,7 @@ bool attributeAccessEqual(
 ////////////////////////////////////////////////////////////////////////////////
 bool nameFromAttributeAccess(
   std::string& name,
-  arangodb::aql::AstNode const& node,
+  aql::AstNode const& node,
   QueryContext const& ctx
 );
 
@@ -580,13 +587,13 @@ bool nameFromAttributeAccess(
 ///        treats node of type NODE_TYPE_REFERENCE as invalid
 /// @returns the specified node on success, nullptr otherwise
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::aql::AstNode const* checkAttributeAccess(
-  arangodb::aql::AstNode const* node,
-  arangodb::aql::Variable const& ref
+aql::AstNode const* checkAttributeAccess(
+  aql::AstNode const* node,
+  aql::Variable const& ref
 ) noexcept;
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif // ARANGOD_IRESEARCH__AQL_HELPER_H
 

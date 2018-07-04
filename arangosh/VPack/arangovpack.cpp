@@ -50,7 +50,8 @@ int main(int argc, char* argv[]) {
 
     int ret;
 
-    server.addFeature(new ConfigFeature(&server, "arangovpack"));
+    // default is to use no config file
+    server.addFeature(new ConfigFeature(&server, "arangovpack", "none"));
     server.addFeature(new LoggerFeature(&server, false));
     server.addFeature(new RandomFeature(&server));
     server.addFeature(new ShellColorsFeature(&server));

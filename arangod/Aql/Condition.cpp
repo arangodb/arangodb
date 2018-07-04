@@ -410,7 +410,7 @@ std::pair<bool, bool> Condition::findIndexes(
     SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
-  std::string collectionName = node->collection()->getName();
+  std::string collectionName = node->collection()->name();
 
   transaction::Methods* trx = _ast->query()->trx();
 
@@ -1148,7 +1148,7 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
           plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
       if (setter != nullptr &&
           setter->getType() == ExecutionNode::CALCULATION) {
-        auto cn = static_cast<CalculationNode const*>(setter);
+        auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
         // use expression node instead
         node = cn->expression()->node();
       }

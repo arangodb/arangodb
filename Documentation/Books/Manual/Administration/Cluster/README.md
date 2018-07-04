@@ -108,7 +108,7 @@ Moving/Rebalancing _shards_
 ---------------------------
 
 A _shard_ can be moved from a _DBServer_ to another, and the entire shard distribution
-can be rebalanced using the correponding buttons in the web [UI](../WebInterface/Cluster.md).
+can be rebalanced using the correponding buttons in the web [UI](../../Programs/WebInterface/Cluster.md).
 
 Replacing/Removing a _Coordinator_
 ----------------------------------

@@ -39,7 +39,7 @@ void RegexCache::clear() noexcept {
   clear(_regexCache);
   clear(_likeCache);
 }
- 
+
 icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
   buildRegexPattern(_temp, ptr, length, caseInsensitive);
 
@@ -64,11 +64,11 @@ static void escapeRegexParams(std::string &out, const char* ptr, size_t length) 
     out.push_back(c);
   }
 }
-      
+
 icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
 
   std::string rx;
-  
+
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(splitExpression, false);
   if (splitExpression.isArray()) {
@@ -82,7 +82,7 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arang
       if (rx.size() != 0) {
         rx += '|';
       }
-      
+
       arangodb::velocypack::ValueLength length;
       const char *str = it.getString(length);
       escapeRegexParams(rx, str, length);
@@ -101,7 +101,7 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arang
   }
   return fromCache(rx, _likeCache);
 }
-                                         
+
 void RegexCache::clear(std::unordered_map<std::string, icu::RegexMatcher*>& cache) noexcept {
   try {
     for (auto& it : cache) {
@@ -113,14 +113,14 @@ void RegexCache::clear(std::unordered_map<std::string, icu::RegexMatcher*>& cach
 }
 
 /// @brief get matcher from cache, or insert a new matcher for the specified pattern
-icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern, 
+icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern,
                                          std::unordered_map<std::string, icu::RegexMatcher*>& cache) {
   auto it = cache.find(pattern);
 
   if (it != cache.end()) {
     return (*it).second;
   }
-    
+
   icu::RegexMatcher* matcher = arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
 
   try {
@@ -152,7 +152,7 @@ void RegexCache::buildLikePattern(std::string& out,
                                   bool caseInsensitive) {
   out.clear();
   out.reserve(length + 8); // reserve some room
-  
+
   // pattern is always anchored
   out.push_back('^');
   if (caseInsensitive) {
@@ -189,7 +189,7 @@ void RegexCache::buildLikePattern(std::string& out,
         }
       } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
                  c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
-                 c == '\\' || c == '.') {
+                 c == '\\' || c == '.' || c == '*') {
         // character with special meaning in a regex
         out.push_back('\\');
         out.push_back(c);

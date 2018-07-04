@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 
 namespace {
+
 /// @brief size of char buffer to use for file slurping
 constexpr size_t DefaultIOChunkSize = 8192;
 
@@ -38,25 +39,19 @@ constexpr auto EncryptionFilename = "ENCRYPTION";
 
 /// @brief encryption type specification for no encryption
 constexpr auto EncryptionTypeNone = "none";
-}  // namespace
 
-namespace {
 /// @brief determines whether a given bit flag is set
 inline bool flagIsSet(int value, int flagToCheck) {
   TRI_ASSERT(0 != flagToCheck);  // does not work correctly if flag is 0
   return (flagToCheck == (value & flagToCheck));
 }
-}  // namespace
 
-namespace {
 /// @brief determines whether a given bit flag is not set
 inline bool flagNotSet(int value, int flagToCheck) {
   TRI_ASSERT(0 != flagToCheck);  // does not work correctly if flag is 0
   return (flagToCheck != (value & flagToCheck));
 }
-}  // namespace
 
-namespace {
 /// @brief Generates a generic I/O error based on the path and flags
 inline arangodb::Result genericError(std::string const& path, int flags) {
   if (::flagIsSet(flags, O_WRONLY)) {
@@ -64,45 +59,35 @@ inline arangodb::Result genericError(std::string const& path, int flags) {
   }
   return {TRI_ERROR_CANNOT_READ_FILE, "error while reading file " + path};
 }
-}  // namespace
 
-namespace {
 /// @brief Assembles the file path from the directory and filename
 inline std::string filePath(arangodb::ManagedDirectory const& directory,
                             std::string const& filename) {
   using arangodb::basics::FileUtils::buildFilename;
   return buildFilename(directory.path(), filename);
 }
-}  // namespace
 
-namespace {
 /// @brief Assembles the file path from the directory path and filename
 inline std::string filePath(std::string const& directory,
                             std::string const& filename) {
   using arangodb::basics::FileUtils::buildFilename;
   return buildFilename(directory, filename);
 }
-}  // namespace
 
-namespace {
 /// @brief Opens a file given a path and flags
 inline int openFile(std::string const& path, int flags) {
   return (::flagIsSet(flags, O_CREAT)
               ? TRI_TRACKED_CREATE_FILE(path.c_str(), flags, S_IRUSR | S_IWUSR)
               : TRI_TRACKED_OPEN_FILE(path.c_str(), flags));
 }
-}  // namespace
 
-namespace {
 /// @brief Closes an open file and sets the status
 inline void closeFile(int& fd, arangodb::Result& status) {
   TRI_ASSERT(fd >= 0);
   status = arangodb::Result{TRI_TRACKED_CLOSE_FILE(fd)};
   fd = -1;
 }
-}  // namespace
 
-namespace {
 /// @brief determines if a file is writable
 bool isWritable(int fd, int flags, std::string const& path,
                 arangodb::Result& status) {
@@ -119,9 +104,7 @@ bool isWritable(int fd, int flags, std::string const& path,
   }
   return status.ok();
 }
-}  // namespace
 
-namespace {
 /// @brief determines if a file is readable
 bool isReadable(int fd, int flags, std::string const& path,
                 arangodb::Result& status) {
@@ -138,10 +121,8 @@ bool isReadable(int fd, int flags, std::string const& path,
   }
   return status.ok();
 }
-}  // namespace
 
 #ifdef USE_ENTERPRISE
-namespace {
 /// @brief Begins encryption for the file and returns the encryption context
 inline std::unique_ptr<arangodb::EncryptionFeature::Context> getContext(
     arangodb::ManagedDirectory const& directory, int fd, int flags) {
@@ -153,10 +134,8 @@ inline std::unique_ptr<arangodb::EncryptionFeature::Context> getContext(
               ? directory.encryptionFeature()->beginEncryption(fd)
               : directory.encryptionFeature()->beginDecryption(fd));
 }
-}  // namespace
 #endif
 
-namespace {
 /// @brief Generates the initial status for the directory
 #ifdef USE_ENTERPRISE
 arangodb::Result initialStatus(int fd, std::string const& path, int flags,
@@ -175,9 +154,7 @@ arangodb::Result initialStatus(int fd, std::string const& path, int flags)
   return {TRI_ERROR_NO_ERROR};
 #endif
 }
-}  // namespace
 
-namespace {
 /// @brief Performs a raw (non-encrypted) write
 inline void rawWrite(int fd, char const* data, size_t length,
                      arangodb::Result& status, std::string const& path,
@@ -192,9 +169,7 @@ inline void rawWrite(int fd, char const* data, size_t length,
     data += written;
   }
 }
-}  // namespace
 
-namespace {
 /// @brief Performs a raw (non-decrypted) read
 inline ssize_t rawRead(int fd, char* buffer, size_t length,
                        arangodb::Result& status, std::string const& path,
@@ -205,9 +180,7 @@ inline ssize_t rawRead(int fd, char* buffer, size_t length,
   }
   return bytesRead;
 }
-}  // namespace
 
-namespace {
 void readEncryptionFile(std::string const& directory, std::string& type) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
@@ -217,9 +190,7 @@ void readEncryptionFile(std::string const& directory, std::string& type) {
     type = trim(slurp(filename));
   }
 }
-}  // namespace
 
-namespace {
 #ifdef USE_ENTERPRISE
 void writeEncryptionFile(std::string const& directory, std::string& type,
                          arangodb::EncryptionFeature* encryptionFeature) {
@@ -236,6 +207,7 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 #endif
   spit(filename, type);
 }
+
 }  // namespace
 
 namespace arangodb {
@@ -505,10 +477,9 @@ std::string ManagedDirectory::File::slurp() {
     return content;
   }
 
-  ssize_t bytesRead = 0;
   char buffer[::DefaultIOChunkSize];
   while (true) {
-    bytesRead = read(buffer, ::DefaultIOChunkSize);
+    ssize_t bytesRead = read(buffer, ::DefaultIOChunkSize);
     if (_status.ok()) {
       content.append(buffer, bytesRead);
     }

@@ -31,6 +31,14 @@
 // for size_t:
 #include <cstring>
 
+#if defined(__GNUC__) || defined(__GNUG__)
+#define VELOCYPACK_LIKELY(v) __builtin_expect(!!(v), 1)
+#define VELOCYPACK_UNLIKELY(v) __builtin_expect(!!(v), 0)
+#else
+#define VELOCYPACK_LIKELY(v) v
+#define VELOCYPACK_UNLIKELY(v) v
+#endif
+
 // debug mode
 #ifndef NDEBUG
 #ifndef VELOCYPACK_DEBUG
@@ -89,7 +97,7 @@ bool assemblerFunctionsDisabled();
 std::size_t checkOverflow(ValueLength);
 #else
 // on a 64 bit platform, the following function is probably a no-op
-static inline constexpr std::size_t checkOverflow(ValueLength length) {
+static inline constexpr std::size_t checkOverflow(ValueLength length) noexcept {
   return static_cast<std::size_t>(length);
 }
 #endif
@@ -106,7 +114,7 @@ static inline ValueLength getVariableValueLength(ValueLength value) noexcept {
 
 // read a variable length integer in unsigned LEB128 format
 template <bool reverse>
-static inline ValueLength readVariableValueLength(uint8_t const* source) {
+static inline ValueLength readVariableValueLength(uint8_t const* source) noexcept {
   ValueLength len = 0;
   uint8_t v;
   ValueLength p = 0;
@@ -125,7 +133,7 @@ static inline ValueLength readVariableValueLength(uint8_t const* source) {
 
 // store a variable length integer in unsigned LEB128 format
 template <bool reverse>
-static inline void storeVariableValueLength(uint8_t* dst, ValueLength value) {
+static inline void storeVariableValueLength(uint8_t* dst, ValueLength value) noexcept {
   VELOCYPACK_ASSERT(value > 0);
 
   if (reverse) {

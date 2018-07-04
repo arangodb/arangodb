@@ -206,9 +206,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const collectionName(collection->name());
 
   std::shared_ptr<transaction::V8Context> transactionContext =
-      transaction::V8Context::Create(&(collection->vocbase()), true);
+      transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, collection->id(), AccessMode::Type::READ
+    transactionContext, collection, AccessMode::Type::READ
   );
   Result res = trx.begin();
 
@@ -218,13 +218,13 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, false);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   if (opCursor->fail()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
   }
 
-  OperationResult countResult = trx.count(collectionName, true);
+  OperationResult countResult = trx.count(collectionName, false);
 
   if (countResult.fail()) {
     TRI_V8_THROW_EXCEPTION(countResult.result);
@@ -297,9 +297,9 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const collectionName(col->name());
 
   std::shared_ptr<transaction::V8Context> transactionContext =
-      transaction::V8Context::Create(&(col->vocbase()), true);
+      transaction::V8Context::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, col->id(), AccessMode::Type::READ
+    transactionContext, col, AccessMode::Type::READ
   );
   Result res = trx.begin();
 
