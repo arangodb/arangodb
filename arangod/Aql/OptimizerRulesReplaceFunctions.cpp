@@ -366,7 +366,11 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
   TRI_ASSERT(funAstNode->type == AstNodeType::NODE_TYPE_FCALL);
   AstNode* fargs = funAstNode->getMember(0);
   TRI_ASSERT(fargs->type == AstNodeType::NODE_TYPE_ARRAY);
-        
+       
+  if (fargs->numMembers() < 5) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "WITHIN_RECTANGLE", 5, 5);
+  }
+
   AstNode const* coll = fargs->getMemberUnchecked(0);
   AstNode const* lat1 = fargs->getMemberUnchecked(1);
   AstNode const* lng1 = fargs->getMemberUnchecked(2);
