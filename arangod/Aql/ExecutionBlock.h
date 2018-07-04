@@ -77,6 +77,9 @@ class ExecutionBlock {
 
   virtual ~ExecutionBlock();
 
+  ExecutionBlock(ExecutionBlock const&) = delete;
+  ExecutionBlock operator=(ExecutionBlock const&) = delete;
+
   /// @brief type of the block. only the blocks actually instantiated are
   // needed, so e.g. ModificationBlock or ExecutionBlock are omitted.
   enum class Type {
@@ -141,6 +144,7 @@ class ExecutionBlock {
   TEST_VIRTUAL void addDependency(ExecutionBlock* ep) { 
     TRI_ASSERT(ep != nullptr);
     _dependencies.emplace_back(ep); 
+    _dependencyPos = _dependencies.end();
   }
 
   /// @brief get all dependencies
@@ -166,7 +170,7 @@ class ExecutionBlock {
   virtual std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
 
   /// @brief shutdown, will be called exactly once for the whole query
-  virtual int shutdown(int);
+  virtual std::pair<ExecutionState, Result> shutdown(int);
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to
@@ -211,7 +215,7 @@ class ExecutionBlock {
 
   RegisterId getNrOutputRegisters() const;
 
-  virtual Type getType() const = 0;
+  virtual Type getType() const {return Type::_UNDEFINED;}
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager
@@ -295,6 +299,14 @@ class ExecutionBlock {
   /// @brief our dependent nodes
   std::vector<ExecutionBlock*> _dependencies;
 
+  /// @brief position in the dependencies while iterating through them
+  ///        used in initializeCursor and shutdown.
+  std::vector<ExecutionBlock*>::iterator _dependencyPos;
+
+  /// @brief the Result returned during the shutdown phase. Is kept for multiple
+  ///        waiting phases.
+  Result _shutdownResult;
+
   /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
   /// We keep the following invariant between this and the other two variables
   /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
@@ -332,6 +344,8 @@ class ExecutionBlock {
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;
+
+
 };
 
 }  // namespace arangodb::aql

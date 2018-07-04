@@ -48,7 +48,7 @@ class SubqueryBlock final : public ExecutionBlock {
       size_t atMost) override final;
 
   /// @brief shutdown, tell dependency and the subquery
-  int shutdown(int errorCode) override final;
+  std::pair<ExecutionState, Result> shutdown(int errorCode) override final;
 
   /// @brief getter for the pointer to the subquery
   ExecutionBlock* getSubquery() { return _subquery; }
@@ -105,6 +105,9 @@ class SubqueryBlock final : public ExecutionBlock {
 
   /// @brief track if we have completely executed the subquery.
   bool _subqueryCompleted;
+
+  /// @brief track if we have completely shutdown the main query.
+  bool _hasShutdownMainQuery;
 };
 
 }  // namespace arangodb::aql

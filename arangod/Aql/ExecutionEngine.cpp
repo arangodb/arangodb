@@ -186,7 +186,7 @@ ExecutionEngine::ExecutionEngine(Query* query)
 /// @brief destroy the engine, frees all assigned blocks
 ExecutionEngine::~ExecutionEngine() {
   try {
-    shutdown(TRI_ERROR_INTERNAL);
+    shutdownSync(TRI_ERROR_INTERNAL);
   } catch (...) {
     // shutdown can throw - ignore it in the destructor
   }
@@ -480,18 +480,37 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   return _root->skipSome(atMost);
 }
 
+Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
+  Result res{TRI_ERROR_INTERNAL};
+  ExecutionState state = ExecutionState::WAITING;
+  try {
+    _query->setContinueCallback([&]() { _query->tempSignalAsyncResponse(); });
+    while (state == ExecutionState::WAITING) {
+      std::tie(state, res) = shutdown(errorCode);
+      if (state == ExecutionState::WAITING) {
+        _query->tempWaitForAsyncResponse();
+      }
+    }
+  } catch (...) {
+  }
+  return res;
+}
 
 /// @brief shutdown, will be called exactly once for the whole query
-int ExecutionEngine::shutdown(int errorCode) {
-  int res = TRI_ERROR_NO_ERROR;
+std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
+  ExecutionState state = ExecutionState::DONE;
+  Result res;
   if (_root != nullptr && !_wasShutdown) {
-    res = _root->shutdown(errorCode);
+    std::tie(state, res) = _root->shutdown(errorCode);
+    if (state == ExecutionState::WAITING) {
+      return {state, res};
+    }
 
     // prevent a duplicate shutdown
     _wasShutdown = true;
   }
 
-  return res;
+  return {state, res};
 }
 
 /// @brief create an execution engine from a plan
