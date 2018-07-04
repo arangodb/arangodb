@@ -1,10 +1,10 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal &lt;&lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"persons/alice"</span>, 
-  <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, 
-  <span class="hljs-string">"direction"</span> : <span class="hljs-string">"outbound"</span>, 
-  <span class="hljs-string">"init"</span> : <span class="hljs-string">"result.visited = 0; result.myVertices = [ ];"</span>, 
-  <span class="hljs-string">"visitor"</span> : <span class="hljs-string">"result.visited++; result.myVertices.push(vertex);"</span> 
+  "startVertex" : "persons/alice", 
+  "graphName" : "knows_graph", 
+  "direction" : "outbound", 
+  "init" : "result.visited = 0; result.myVertices = [ ];", 
+  "visitor" : "result.visited++; result.myVertices.push(vertex);" 
 }
 EOF
 
@@ -19,25 +19,25 @@ x-content-type-options: nosniff
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lRBW--_"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfTKa--_"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       }, 
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lRBW--B"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfTKe--_"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       }, 
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlie"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/charlie"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lRBW--D"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfTKi--_"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charlie"</span> 
       }, 
       { 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"dave"</span>, 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/dave"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lRBW--F"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfTKm--_"</span>, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dave"</span> 
       } 
     ] 

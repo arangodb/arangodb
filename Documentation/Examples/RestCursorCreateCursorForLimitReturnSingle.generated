@@ -1,8 +1,8 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products LIMIT 2 RETURN p"</span>, 
-  <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">2</span> 
+  "query" : "FOR p IN products LIMIT 2 RETURN p", 
+  "count" : true, 
+  "batchSize" : 2 
 }
 EOF
 
@@ -13,15 +13,15 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12072"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12072"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lHfK--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12091"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12091"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUe2wG--_"</span>, 
       <span class="hljs-string">"hello1"</span> : <span class="hljs-string">"world1"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12076"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12076"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lHfK--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12095"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12095"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUe2wG--B"</span>, 
       <span class="hljs-string">"hello2"</span> : <span class="hljs-string">"world1"</span> 
     } 
   ], 
@@ -36,7 +36,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00014853477478027344</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0006649494171142578</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
