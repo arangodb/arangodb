@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, AQL_EXECUTE */
+/*global assertUndefined, assertEqual, assertTrue, assertFalse, db._query */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -46,22 +46,22 @@ function iResearchFeatureAqlTestSuite () {
     testDefaultAnalyzers : function() {
       // invalid
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'invalid')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertEqual(null, result[0]);
       }
 
       // text_de
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_de')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -70,11 +70,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_en
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_en')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -83,11 +83,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_es
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_es')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -96,11 +96,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_fi
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_fi')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -109,11 +109,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_fr
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_fr')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -122,11 +122,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_it
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_it')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -135,11 +135,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_nl
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_nl')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -148,11 +148,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_no
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_no')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -161,11 +161,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_pt
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_pt')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -174,11 +174,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_ru (codepoints)
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('ArangoDB - \u044D\u0442\u043E \u043C\u043D\u043E\u0433\u043E\u043C\u043E\u0434\u0435\u043B\u044C\u043D\u0430\u044F \u0431\u0430\u0437\u0430 \u0434\u0430\u043D\u043D\u044B\u0445', 'text_ru')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -188,11 +188,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_ru (unicode)
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('ArangoDB - это многомодельная база данных', 'text_ru')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -202,11 +202,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_sv
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('a quick brown fox jumps', 'text_sv')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
@@ -215,11 +215,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_zh (codepoints)
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
            "RETURN TOKENS('ArangoDB \u662F\u4E00\u4E2A\u591A\u6A21\u578B\u6570\u636E\u5E93\u3002', 'text_zh')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(7, result[0].length);
@@ -229,11 +229,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_zh (unicode)
       {
-        let result = AQL_EXECUTE(
+        let result = db._query(
           "RETURN TOKENS('ArangoDB 是一个多模型数据库。', 'text_zh')",
           null,
           { }
-        ).json;
+        ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(7, result[0].length);
