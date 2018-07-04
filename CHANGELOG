@@ -1,6 +1,11 @@
 v3.3.12 (XXXX-XX-XX)
 --------------------
 
+* fixed internal issue #2658: AQL modification queries did not allow `_rev`
+  checking. There is now a new option `ignoreRevs` which can be set to `false`
+  in order to force AQL modification queries to match revision ids before
+  doing any modifications
+
 * fixed issue #5679: Replication applier restrictions will crash synchronisation 
   after initial sync
 
