@@ -21,11 +21,13 @@ devel
   in a cluster by pushing parts of the aggregation onto the DB servers and only
   doing the total aggregation on the coordinator
 
-* replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
-  new optimizer rule.
+* replace JavaScript functions FULLTEXT, NEAR, WITHIN and WITHIN_RECTANGLE with 
+  regular AQL subqueries via a new optimizer rule "replace-function-with-index".
 
-  - The NEAR function now does not default to a limit of 100 documents any more.
-  - "fulltext-index-optimizer" optimizer rule has been removed.
+* the existing "fulltext-index-optimizer" optimizer rule has been removed because its
+  duty is now handled by the "replace-function-with-index" rule.
+
+* The `NEAR` AQL function now does not default to a limit of 100 documents any more.
 
 * added option "--latency true" option to arangoimport. Lists microsecond latency
   statistics on 10 second intervals.
