@@ -625,8 +625,16 @@ arangodb::Result processInputDirectory(
       }
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
-
-    // Step 2: run the actual import
+    
+    // Step 2: recreate all views
+    for (VPackBuilder viewDefinition : views) {
+      Result res = ::restoreView(httpClient, options, viewDefinition.slice());
+      if (res.fail()) {
+        return res;
+      }
+    }
+    
+    // Step 3: run the actual import
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
 
@@ -651,14 +659,6 @@ arangodb::Result processInputDirectory(
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
       return firstError;
-    }
-    
-    // Step 3: recreate all views
-    for (VPackBuilder viewDefinition : views) {
-      Result res = ::restoreView(httpClient, options, viewDefinition.slice());
-      if (res.fail()) {
-        return res;
-      }
     }
     
   } catch (std::exception const& ex) {

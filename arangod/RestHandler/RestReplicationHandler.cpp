@@ -1762,10 +1762,9 @@ void RestReplicationHandler::handleCommandRestoreView() {
   
   auto nameSlice = slice.get(StaticStrings::DataSourceName);
   auto typeSlice = slice.get(StaticStrings::DataSourceType);
-  VPackSlice const propertiesSlice = slice.get("properties");
-  
-  if (!nameSlice.isString() || !typeSlice.isString() ||
-      !propertiesSlice.isObject()) {
+  //VPackSlice const propertiesSlice = slice.get("properties");
+  //|| !propertiesSlice.isObject()
+  if (!nameSlice.isString() || !typeSlice.isString()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
@@ -1773,7 +1772,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
   auto view = _vocbase.lookupView(nameSlice.copyString());
   if (view) {
     if (overwrite) {
-      Result res = _vocbase.dropView(view->id(), /*dropSytem*/false);
+      Result res = _vocbase.dropView(view->id(), /*dropSytem*/force);
       if (res.fail()) {
         generateError(res);
         return;
@@ -2637,10 +2636,6 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   patch.add("objectId", VPackSlice::nullSlice());
   patch.add("cid", VPackSlice::nullSlice());
   patch.add("id", VPackSlice::nullSlice());
-  
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  engine->addParametersForNewCollection(patch, slice);
   patch.close();
 
   VPackBuilder builder = VPackCollection::merge(slice, patch.slice(),

@@ -1029,8 +1029,9 @@ void TRI_vocbase_t::inventory(
     if (dataSource.second->category() != LogicalView::category()) {
       continue;
     }
+    LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
     result.openObject();
-    dataSource.second->toVelocyPack(result, true, true);
+    view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
     result.close();
   }
   result.close();
