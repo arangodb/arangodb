@@ -42,8 +42,6 @@ namespace aql {
 
 class Query;
 
-typedef std::function<bool()> ExecutionCondition;
-
 typedef SmallVector<AqlValue> VPackFunctionParameters;
 
 typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
@@ -467,9 +465,11 @@ struct Functions {
     static AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
     static AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
-                         VPackFunctionParameters const&);
+                           VPackFunctionParameters const&);
     static AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
-                         VPackFunctionParameters const&);
+                             VPackFunctionParameters const&);
+    static AqlValue WithinRectangle(arangodb::aql::Query*, transaction::Methods*,
+                                    VPackFunctionParameters const&);
 };
 
 }
