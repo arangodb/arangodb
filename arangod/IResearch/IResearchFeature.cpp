@@ -108,7 +108,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
     }
 
     auto irsLevel = static_cast<irs::logger::level_t>(
-      static_cast<std::underlying_type<decltype(level)>::type>(level) - 1
+      static_cast<arangoLogLevelType>(level) - 1
     ); // -1 for DEFAULT
 
     irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
