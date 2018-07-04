@@ -24,7 +24,6 @@
 #include "RestCursorHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Aql/QueryResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -47,6 +46,7 @@ RestCursorHandler::RestCursorHandler(
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
       _query(nullptr),
+      _queryResult(),
       _queryRegistry(queryRegistry),
       _queryLock(),
       _hasStarted(false),
@@ -54,7 +54,6 @@ RestCursorHandler::RestCursorHandler(
       _isValidForFinalize(false) {}
 
 RestCursorHandler::~RestCursorHandler() {}
-
 
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
@@ -186,9 +185,8 @@ RestStatus RestCursorHandler::processQuery() {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Illegal state in RestQueryHandler, query not found.");
   }
-  aql::QueryResult queryResult;
   try {
-    auto state = _query->execute(_queryRegistry, queryResult);
+    auto state = _query->execute(_queryRegistry, _queryResult);
     if (state == aql::ExecutionState::WAITING) {
       return RestStatus::WAITING;
     }
@@ -200,21 +198,21 @@ RestStatus RestCursorHandler::processQuery() {
   }
   // We cannot get into HASMORE here, or we would loose results.
   unregisterQuery();
-  handleQueryResult(queryResult);
+  handleQueryResult();
   return RestStatus::DONE;
 }
 
-void RestCursorHandler::handleQueryResult(aql::QueryResult& queryResult) {
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
+void RestCursorHandler::handleQueryResult() {
+  if (_queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (_queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        (_queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(_queryResult.code, _queryResult.details);
   }
 
-  VPackSlice qResult = queryResult.result->slice();
+  VPackSlice qResult = _queryResult.result->slice();
   if (qResult.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -262,14 +260,14 @@ void RestCursorHandler::handleQueryResult(aql::QueryResult& queryResult) {
       if (VelocyPackHelper::getBooleanValue(opts, "count", false)) {
         result.add("count", VPackValue(n));
       }
-      result.add("cached", VPackValue(queryResult.cached));
-      if (queryResult.cached || !queryResult.extra) {
+      result.add("cached", VPackValue(_queryResult.cached));
+      if (_queryResult.cached || !_queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
         // no warnings
         result.add("warnings", VPackSlice::emptyArraySlice());
         result.close();
       } else {
-        result.add("extra", queryResult.extra->slice());
+        result.add("extra", _queryResult.extra->slice());
       }
       result.add(StaticStrings::Error, VPackValue(false));
       result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));
@@ -277,14 +275,14 @@ void RestCursorHandler::handleQueryResult(aql::QueryResult& queryResult) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     generateResult(rest::ResponseCode::CREATED, std::move(buffer),
-                   queryResult.context);
+                   _queryResult.context);
   } else {
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     // result is bigger than batchSize, and a cursor will be created
-    TRI_ASSERT(queryResult.result.get() != nullptr);
+    TRI_ASSERT(_queryResult.result.get() != nullptr);
     // steal the query result, cursor will take over the ownership
-    Cursor* cursor = cursors->createFromQueryResult(std::move(queryResult),
+    Cursor* cursor = cursors->createFromQueryResult(std::move(_queryResult),
                                                     batchSize, ttl, count);
 
     TRI_DEFER(cursors->release(cursor));
