@@ -99,6 +99,17 @@ arangodb::Result diffLocalCurrent (
 arangodb::Result synchroniseShards (
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local);
 
+
+/**
+ * @brief         Execute both phases and report
+ *
+ * @param report  Reference to report
+ * @return        Success
+ */
+arangodb::Result handleChange(
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report);
+
 /**
  * @brief          Phase one: Execute plan, shard replication startups
  *
@@ -113,7 +124,7 @@ arangodb::Result synchroniseShards (
  */
 arangodb::Result phaseOne (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature);
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
  * @brief          Phase two: Report in agency
@@ -125,7 +136,8 @@ arangodb::Result phaseOne (
  * @return         Result
  */
 arangodb::Result phaseTwo (
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local);
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  VPackBuilder& report);
 
 }}
 

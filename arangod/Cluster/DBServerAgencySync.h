@@ -37,6 +37,9 @@ struct DBServerAgencySyncResult {
   DBServerAgencySyncResult()
       : success(false), planVersion(0), currentVersion(0) {}
 
+  DBServerAgencySyncResult(bool s, uint64_t p, uint64_t c)
+      : success(s), planVersion(p), currentVersion(c) {}
+
   DBServerAgencySyncResult(const DBServerAgencySyncResult& other)
       : success(other.success),
         planVersion(other.planVersion),

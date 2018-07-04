@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -340,25 +341,39 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent (
 }
 
 
+arangodb::Result arangodb::maintenance::handleChange(
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
+  arangodb::Result result;
+
+  VPackObjectBuilder o(&report);
+  report.add(VPackValue("phaseOne"));
+  result = phaseOne(plan, cur, local, serverId, feature, report);
+  if (result.fail()) {
+    report.add(VPackValue("phaseTwo"));
+    result = phaseTwo(plan, cur, local, report);
+  }
+  return result;
+}
+
+
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature) {
-
+  std::string const& serverId, MaintenanceFeature& feature,
+  VPackBuilder& report) {
+  VPackObjectBuilder por(&report);
   arangodb::Result result;
-
   // Execute database changes
   result = executePlan(plan, cur, local, serverId, feature);
-  if (result.fail()) {
-    return result;
-  }
   return result;
 }
 
 
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo (
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local) {
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  VPackBuilder& report) {
   arangodb::Result result;
 
   // Synchronise shards
