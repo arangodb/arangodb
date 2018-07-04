@@ -159,10 +159,10 @@ function ahuacatlProfilerTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateListBlock and ReturnBlock
+/// @brief test EnumerateListBlock and ReturnBlock and SingletonBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnumerateListAndReturnBlock : function () {
+    testEnumerateListAndReturnAndSingletonBlock : function () {
       const query = 'FOR i IN 1..@rows RETURN i';
       const genNodeList = (rows, batches) => [
         { type : SingletonBlock, calls : 1, items : 1 },
@@ -498,6 +498,59 @@ function ahuacatlProfilerTestSuite () {
       }
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test SortBlock
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortBlock1 : function () {
+      const query = 'FOR i IN 1..@rows SORT i DESC RETURN i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : SortBlock, calls : batches, items : rows },
+        { type : ReturnBlock, calls : batches, items : rows }
+      ];
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test SortBlock
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortBlock2 : function () {
+      const query = 'FOR i IN @rows..1 SORT i ASC RETURN i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : SortBlock, calls : batches, items : rows },
+        { type : ReturnBlock, calls : batches, items : rows }
+      ];
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test SortBlock
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortBlock3 : function () {
+      // effectively sort [ 0, 1, 2, ..., 0, 1, 2, ... ]
+      const query = 'FOR i IN 1..@rows SORT i % @mod RETURN i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : CalculationBlock, calls : batches, items : rows },
+        { type : SortBlock, calls : batches, items : rows },
+        { type : ReturnBlock, calls : batches, items : rows }
+      ];
+      const bind = rows => ({rows, mod: Math.ceil(rows / 2)});
+      profHelper.runDefaultChecks({query, genNodeList, bind});
+    },
+
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
@@ -519,8 +572,8 @@ function ahuacatlProfilerTestSuite () {
 // RemoteBlock
 // *ReturnBlock
 // ShortestPathBlock
-// SingletonBlock
-// SortBlock
+// *SingletonBlock
+// *SortBlock
 // SortedCollectBlock
 // SortingGatherBlock
 // SubqueryBlock
