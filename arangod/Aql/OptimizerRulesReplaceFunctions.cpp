@@ -402,7 +402,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
   Variable* collVar = ast->variables()->createTemporaryVariable();
   AstNode* forNode = ast->createNodeFor(collVar, coll);
 
-  // Create GET_CONTAINS function
+  // Create GEO_CONTAINS function
   AstNode* loop = ast->createNodeArray(5);
   auto fn = [&](AstNode const* lat, AstNode const* lon) {
     AstNode* arr = ast->createNodeArray(2);
