@@ -704,10 +704,8 @@ AstNode* Ast::createNodeAccess(Variable const* variable,
                                std::vector<basics::AttributeName> const& field) {
   TRI_ASSERT(!field.empty());
   AstNode* node = createNodeReference(variable);
-  for (size_t i = field.size(); i != 0; i--) {
-    //if (field[i-1].shouldExpand) TODO not supported probably
-    node = createNodeAttributeAccess(node, field[i-1].name.c_str(),
-                                     field[i-1].name.length());
+  for (auto const& it : field) {
+    node = createNodeAttributeAccess(node, it.name.data(), it.name.size());
   }
   return node;
 }

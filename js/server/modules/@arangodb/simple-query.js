@@ -316,9 +316,6 @@ SimpleQueryFulltext.prototype.execute = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryWithinRectangle.prototype.execute = function () {
-  var result;
-  var documents;
-
   if (this._execution !== null) {
     return;
   }
@@ -333,137 +330,24 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     err.errorMessage = 'skip must be non-negative';
     throw err;
   }
-
-  var distanceMeters = function (lat1, lon1, lat2, lon2) {
-    var deltaLat = (lat2 - lat1) * Math.PI / 180;
-    var deltaLon = (lon2 - lon1) * Math.PI / 180;
-    var a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return 6378.137 /* radius of earth in kilometers */
-      * c
-      * 1000; // kilometers to meters
+  
+  var bindVars = {
+    '@collection': this._collection.name(),
+    latitude1: this._latitude1,
+    longitude1: this._longitude1,
+    latitude2: this._latitude2,
+    longitude2: this._longitude2
   };
 
-  var diameter = distanceMeters(this._latitude1, this._longitude1, this._latitude2, this._longitude2);
-  var midpoint = [
-    this._latitude1 + (this._latitude2 - this._latitude1) * 0.5,
-    this._longitude1 + (this._longitude2 - this._longitude1) * 0.5
-  ];
+  let query = 'FOR doc IN WITHIN_RECTANGLE(@@collection, @latitude1, @longitude1, @latitude2, @longitude2) ';
+  
+  query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  result = this._collection.within(midpoint[0], midpoint[1], diameter).toArray();
+  let documents = require('internal').db._query({ query, bindVars }).toArray();
 
-  var idx = this._collection.index(this._index);
-  var latLower, latUpper, lonLower, lonUpper;
-
-  if (this._latitude1 < this._latitude2) {
-    latLower = this._latitude1;
-    latUpper = this._latitude2;
-  } else {
-    latLower = this._latitude2;
-    latUpper = this._latitude1;
-  }
-
-  if (this._longitude1 < this._longitude2) {
-    lonLower = this._longitude1;
-    lonUpper = this._longitude2;
-  } else {
-    lonLower = this._longitude2;
-    lonUpper = this._longitude1;
-  }
-
-  var deref = function (doc, parts) {
-    if (parts.length === 1) {
-      return doc[parts[0]];
-    }
-
-    var i = 0;
-    try {
-      while (i < parts.length && doc !== null && doc !== undefined) {
-        doc = doc[parts[i]];
-        ++i;
-      }
-      return doc;
-    } catch (err) {
-      return null;
-    }
-  };
-
-  documents = [];
-  if (idx.type === 'geo1' || (idx.type === 'geo' && idx.fields.length === 1)) {
-    // geo1, we have both coordinates in a list
-    var attribute = idx.fields[0];
-    var parts = attribute.split('.');
-
-    if (idx.geoJson) {
-      result.forEach(function (document) {
-        var doc = deref(document, parts);
-        if (!Array.isArray(doc)) {
-          return;
-        }
-
-        // check if within bounding rectangle
-        // first list value is longitude, then latitude
-        if (doc[1] >= latLower && doc[1] <= latUpper &&
-          doc[0] >= lonLower && doc[0] <= lonUpper) {
-          documents.push(document);
-        }
-      });
-    } else {
-      result.forEach(function (document) {
-        var doc = deref(document, parts);
-        if (!Array.isArray(doc)) {
-          return;
-        }
-
-        // check if within bounding rectangle
-        // first list value is latitude, then longitude
-        if (doc[0] >= latLower && doc[0] <= latUpper &&
-          doc[1] >= lonLower && doc[1] <= lonUpper) {
-          documents.push(document);
-        }
-      });
-    }
-  } else {
-    // geo2, we have dedicated latitude and longitude attributes
-    var latAtt = idx.fields[0], lonAtt = idx.fields[1];
-    var latParts = latAtt.split('.');
-    var lonParts = lonAtt.split('.');
-
-    result.forEach(function (document) {
-      var latDoc = deref(document, latParts);
-      if (latDoc === null || latDoc === undefined) {
-        return;
-      }
-      var lonDoc = deref(document, lonParts);
-      if (lonDoc === null || lonDoc === undefined) {
-        return;
-      }
-
-      // check if within bounding rectangle
-      if (latDoc >= latLower && latDoc <= latUpper &&
-        lonDoc >= lonLower && lonDoc <= lonUpper) {
-        documents.push(document);
-      }
-    });
-  }
-
-  documents = {
-    documents: documents,
-    count: result.length,
-    total: result.length
-  };
-
-  if (this._limit > 0) {
-    documents.documents = documents.documents.slice(0, this._skip + this._limit);
-    documents.count = documents.documents.length;
-  }
-
-  this._execution = new GeneralArrayCursor(documents.documents, this._skip, null);
-  this._countQuery = documents.total - this._skip;
-  this._countTotal = documents.total;
+  this._execution = new GeneralArrayCursor(documents);
+  this._countQuery = documents.length - this._skip;
+  this._countTotal = documents.length;
 };
 
 exports.GeneralArrayCursor = GeneralArrayCursor;
