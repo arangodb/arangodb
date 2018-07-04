@@ -2,14 +2,17 @@ Features and Improvements
 =========================
 
 The following list shows in detail which features have been added or improved in
-ArangoDB 3.4. ArangoDB 3.4 also contains several bugfixes that are not listed
+ArangoDB 3.4. ArangoDB 3.4 also contains several bug fixes that are not listed
 here.
-   
-   
-ArangoSearch 
+
+ArangoSearch
 ------------
 
-[ArangoSearch](../Views/ArangoSearch.md)
+ArangoSearch is a sophisticated, integrated full-text search solution over
+a user-defined set of attributes and collections. It is the first type of
+view in ArangoDB.
+
+[ArangoSearch](../Views/ArangoSearch/README.md)
 
 
 Streaming AQL Cursors

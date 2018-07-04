@@ -348,7 +348,7 @@ bool setStringValue(
 
   // it's important to unconditionally mangle name
   // since we unconditionally unmangle it in 'next'
-  arangodb::iresearch::kludge::mangleStringField(name, pool);
+  arangodb::iresearch::kludge::mangleStringField(name, *pool);
 
   // init stream
   auto analyzer = pool->get();
@@ -568,7 +568,7 @@ void FieldIterator::next() {
     auto& name = nameBuffer();
 
     // remove previous suffix
-    arangodb::iresearch::kludge::unmangleStringField(name, *prev);
+    arangodb::iresearch::kludge::demangleStringField(name, **prev);
 
     // can have multiple analyzers for string values only
     if (setStringValue(topValue().value, name, _value, *_begin)) {

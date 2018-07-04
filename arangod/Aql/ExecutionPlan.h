@@ -192,7 +192,7 @@ class ExecutionPlan {
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
-  void unlinkNode(ExecutionNode*, bool = false);
+  void unlinkNode(ExecutionNode*, bool allowUnlinkingRoot = false);
 
   /// @brief register a node with the plan
   ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>);

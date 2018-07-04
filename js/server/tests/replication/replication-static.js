@@ -1428,6 +1428,50 @@ function BaseTestConfig() {
         }
       );
     },
+    
+    testCreateCollectionKeygenUuid: function() {
+      compare(
+        function(state) {
+          var c = db._create(cn, {
+            keyOptions: {
+              type: "uuid",
+              allowUserKeys: false
+            }
+          });
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function(state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(cn, db._collection(cn).name());
+          assertFalse(properties.keyOptions.allowUserKeys);
+          assertEqual("uuid", properties.keyOptions.type);
+        }
+      );
+    },
+    
+    testCreateCollectionKeygenPadded: function() {
+      compare(
+        function(state) {
+          var c = db._create(cn, {
+            keyOptions: {
+              type: "padded",
+              allowUserKeys: false
+            }
+          });
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function(state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(cn, db._collection(cn).name());
+          assertFalse(properties.keyOptions.allowUserKeys);
+          assertEqual("padded", properties.keyOptions.type);
+        }
+      );
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test create collection

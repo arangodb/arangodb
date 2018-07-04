@@ -30,12 +30,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
 
-/// @brief determines if code is executed on coordinator or not
-static ExecutionCondition const NotInCoordinator = [] {
-  return !arangodb::ServerState::instance()->isRunningInCluster() ||
-         !arangodb::ServerState::instance()->isCoordinator();
-};
-
 AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 
 AqlFunctionFeature::AqlFunctionFeature(
@@ -255,6 +249,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"STDDEV_SAMPLE", ".", true, false, true, &Functions::StdDevSample});
   add({"STDDEV_POPULATION", ".", true, false, true, &Functions::StdDevPopulation});
   addAlias("STDDEV", "STDDEV_POPULATION");
+  add({"COUNT_DISTINCT", ".", true, false, true, &Functions::CountDistinct});
+  addAlias("COUNT_UNIQUE", "COUNT_DISTINCT");
   add({"UNIQUE", ".", true, false, true, &Functions::Unique});
   add({"SORTED_UNIQUE", ".", true, false, true, &Functions::SortedUnique});
   add({"SORTED", ".", true, false, true, &Functions::Sorted});
@@ -297,7 +293,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
 void AqlFunctionFeature::addGeoFunctions() {
   // geo functions
   add({"DISTANCE", ".,.,.,.", true, false, true, &Functions::Distance});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false, true, false });
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false, true, false, &Functions::WithinRectangle });
   add({"IS_IN_POLYGON", ".,.|.", true, false, true, &Functions::IsInPolygon});
   add({"GEO_DISTANCE", ".,.", true, false, true, &Functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.", true, false, true, &Functions::GeoContains});

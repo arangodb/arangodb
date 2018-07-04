@@ -220,6 +220,7 @@ endif()
 ################################################################################
 ## cURL
 ################################################################################
+add_definitions(-DCURL_STATICLIB=1)
 
 set(ENABLE_MANUAL OFF CACHE type BOOL)
 set(BUILD_CURL_EXE OFF CACHE type BOOL)
@@ -230,14 +231,24 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
+set(CURL_VERSION "7.57.0")
+set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
+add_subdirectory(${CURL_SRC_DIR})
+
+set(CURL_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/curl/curl-${CURL_VERSION}")
+set(CURL_BIN_DIR "${CURL_BIN_DIR}" PARENT_SCOPE)
+set(CURL_SRC_DIR "${CURL_SRC_DIR}" PARENT_SCOPE)
+
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
 ## SNAPPY
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
+set(SNAPPY_VERSION "d53de18")
+set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-${SNAPPY_VERSION}")
+set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/google-snappy-${SNAPPY_VERSION}")
+add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## JEMALLOC
@@ -263,6 +274,7 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 include_directories(${ROCKSDB_INCLUDE_DIR})
+set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## ASIO

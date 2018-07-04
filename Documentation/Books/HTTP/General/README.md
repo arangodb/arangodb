@@ -80,7 +80,7 @@ response to the client instantly and thus finish this HTTP-request.
 The server will execute the tasks from the queue asynchronously as fast
 as possible, while clients can continue to do other work.
 If the server queue is full (i.e. contains as many tasks as specified by the
-option ["--scheduler.maximal-queue-size"](../../Manual/Administration/Configuration/Communication.html)),
+option ["--server.maximal-queue-size"](../../Manual/Programs/Arangod/Options.html#server-options)),
 then the request will be rejected instantly with an *HTTP 500* (internal
 server error) response.
 
@@ -198,7 +198,7 @@ HTTP layer:
   *HTTP/1.1* will get an *HTTP 505* (HTTP version not supported) error in return.
 * ArangoDB will reject client requests with a negative value in the
   *Content-Length* request header with *HTTP 411* (Length Required).
-* Arangodb doesn't support POST with *transfer-encoding: chunked* which forbids
+* ArangoDB doesn't support POST with *transfer-encoding: chunked* which forbids
   the *Content-Length* header above.
 * the maximum URL length accepted by ArangoDB is 16K. Incoming requests with
   longer URLs will be rejected with an *HTTP 414* (Request-URI too long) error.
@@ -213,7 +213,7 @@ HTTP layer:
   complete its request. If the client does not send the remaining body data
   within this time, ArangoDB will close the connection. Clients should avoid
   sending such malformed requests as this will block one tcp connection,
-  and may lead to a temporary filedescriptor leak.
+  and may lead to a temporary file descriptor leak.
 * when clients send a body or a *Content-Length* value bigger than the maximum
   allowed value (512 MB), ArangoDB will respond with *HTTP 413* (Request Entity
   Too Large).
@@ -260,7 +260,7 @@ ArangoDB will set the following headers in the response:
 * `access-control-allow-credentials`: will be set to `false` by default.
   For details on when it will be set to `true` see the next section on cookies.
 
-* `access-control-allow-headers`: will be set to the exect value of the
+* `access-control-allow-headers`: will be set to the exact value of the
   request's `access-control-request-headers` header or omitted if no such
   header was sent in the request.
 
@@ -275,7 +275,7 @@ ArangoDB will set the following headers in the response:
 * `access-control-expose-headers`: will be set to a list of response headers used
   by the ArangoDB HTTP API.
 
-* `access-control-max-age`: will be set to an implementation-specifc value.
+* `access-control-max-age`: will be set to an implementation-specific value.
 
 ### Actual request
 
@@ -294,7 +294,7 @@ ArangoDB will add the following headers to the response:
 When making CORS requests to endpoints of Foxx services, the value of the
 `access-control-expose-headers` header will instead be set to a list of
 response headers used in the response itself (but not including the
-`access-control-` headers). Note that [Foxx services may override this behaviour](../../Manual/Foxx/Cors).
+`access-control-` headers). Note that [Foxx services may override this behavior](../../Manual/Foxx/Reference/Cors.html).
 
 ### Cookies and authentication
 

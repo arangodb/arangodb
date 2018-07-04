@@ -1,19 +1,41 @@
 devel
 -----
 
-* introduce SingleRemoteOperationNode via optimize-cluster-single-document-operations,
-  which does single document operations directly from the coordinator instead of
-  using respective AQL queries. This saves cluster roundtrips.
+* introduce SingleRemoteOperationNode via "optimize-cluster-single-document-operations"
+  optimizer rule, which triggers single document operations directly from the coordinator 
+  instead of using a full-featured AQL setup. This saves cluster roundtrips.
 
   Queries directly referencing the document key benefit from this:
 
-	UPDATE {_key: '1'} WITH {foo: 'bar'} IN collection RETURN OLD
+	    UPDATE {_key: '1'} WITH {foo: 'bar'} IN collection RETURN OLD
 
-* replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
-  new optimizer rule.
+* upgraded bundled RocksDB library version to 5.14
 
-  - The NEAR function now does not default to a limit of 100 documents any more.
-  - "fulltext-index-optimizer" optimizer rule has been removed.
+* added key generators `uuid` and `padded`
+
+  The `uuid` key generator generates universally unique 128 bit keys, which are
+  stored in hexadecimal human-readable format.  
+  The `padded` key generator generates keys of a fixed length (16 bytes) in 
+  ascending lexicographical sort order.
+
+* The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
+  field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
+  the inverted meaning.
+
+* added `COUNT_DISTINCT` AQL function
+
+* make AQL optimizer rule `collect-in-cluster` optimize aggregation functions
+  `AVERAGE`, `VARIANCE`, `STDDEV`, `UNIQUE`, `SORTED_UNIQUE` and `COUNT_DISTINCT`
+  in a cluster by pushing parts of the aggregation onto the DB servers and only
+  doing the total aggregation on the coordinator
+
+* replace JavaScript functions FULLTEXT, NEAR, WITHIN and WITHIN_RECTANGLE with 
+  regular AQL subqueries via a new optimizer rule "replace-function-with-index".
+
+* the existing "fulltext-index-optimizer" optimizer rule has been removed because its
+  duty is now handled by the "replace-function-with-index" rule.
+
+* The `NEAR` AQL function now does not default to a limit of 100 documents any more.
 
 * added option "--latency true" option to arangoimport. Lists microsecond latency
   statistics on 10 second intervals.

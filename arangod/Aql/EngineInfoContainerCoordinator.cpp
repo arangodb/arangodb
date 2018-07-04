@@ -93,8 +93,10 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
   if (_id != 0) {
+    double ttl = queryRegistry->defaultTTL();
+    TRI_ASSERT(ttl > 0);
     try {
-      queryRegistry->insert(_id, query, QueryInsertTTL, true);
+      queryRegistry->insert(_id, query, ttl, true);
     } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     } catch (std::exception const& e) {

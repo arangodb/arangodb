@@ -25,7 +25,8 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_DBSERVER_H 1
 
 #include "utils/async_utils.hpp"
-#include "utils/utf8_path.hpp"
+
+#include "Transaction/Status.h"
 #include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
@@ -46,6 +47,8 @@ class Methods; // forward declaration
 namespace arangodb {
 namespace iresearch {
 
+class AsyncMeta;
+class IResearchViewSyncWorker; // forward declaration
 class PrimaryKeyIndexReader;
 
 class IResearchViewDBServer final: public arangodb::LogicalView {
@@ -118,9 +121,9 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
 
  private:
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
-  arangodb::velocypack::Builder _meta; // the view definition
+  std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
-  irs::utf8_path const _persistedPath;
+  std::shared_ptr<IResearchViewSyncWorker> _syncWorker; // object used for sync/consolidate/cleanup of data-stores (never null!!!)
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,
