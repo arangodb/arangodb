@@ -284,16 +284,15 @@ function iResearchAqlTestSuite () {
       assertEqual(result[1].c, 0);
     },
 
-// FIXME uncomment when TOKENS function will be fixed
-//    testInTokensFilterSortTFIDF : function () {
-//      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.text IN TOKENS('the quick brown', 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
-//
-//      assertEqual(result.length, 4);
-//      assertEqual(result[0].name, 'full');
-//      assertEqual(result[1].name, 'other half');
-//      assertEqual(result[2].name, 'half');
-//      assertEqual(result[3].name, 'quarter');
-//    },
+    testInTokensFilterSortTFIDF : function () {
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.text IN TOKENS('the quick brown', 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
+
+      assertEqual(result.length, 4);
+      assertEqual(result[0].name, 'full');
+      assertEqual(result[1].name, 'other half');
+      assertEqual(result[2].name, 'half');
+      assertEqual(result[3].name, 'quarter');
+    },
 
     testPhraseFilter : function () {
       var result0 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
@@ -319,7 +318,7 @@ function iResearchAqlTestSuite () {
       assertEqual(result.length, expected.size);      
       
       result.forEach(function(res) {        
-        assertTrue(expected.delete(res.name.toString()));
+        assertTrue(expected.delete(res.name));
       });
       assertEqual(expected.size, 0);
     },
@@ -335,7 +334,7 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result.length, expected.size);      
       result.forEach(function(res) {
-        assertTrue(expected.delete(res.name.toString()));
+        assertTrue(expected.delete(res.name));
       });
       assertEqual(expected.size, 0);
     },
@@ -354,7 +353,7 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
-        assertTrue(expected.delete(res.name.toString()));
+        assertTrue(expected.delete(res.name));
       });
       assertEqual(expected.size, 0);
     },
@@ -367,7 +366,7 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
-        assertTrue(expected.delete(res.name.toString()));
+        assertTrue(expected.delete(res.name));
       });
       assertEqual(expected.size, 0);
     },
@@ -380,7 +379,7 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
-        assertTrue(expected.delete(res.name.toString()));
+        assertTrue(expected.delete(res.name));
       });
       assertEqual(expected.size, 0);
     },
