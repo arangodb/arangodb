@@ -43,7 +43,7 @@ class Slice;
 namespace aql {
 class Query;
 class QueryRegistry;
-class QueryResult;
+struct QueryResult;
 }
 
 class Cursor;
@@ -87,6 +87,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   RestStatus processQuery();
+
+  virtual uint32_t forwardingTarget() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the currently running query
@@ -188,13 +190,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _queryKilled;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the finalize operation is allowed to further process
   /// the request data. this will not work if the original request cannot be
   /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
   //////////////////////////////////////////////////////////////////////////////
-  
+
   bool _isValidForFinalize;
 
 

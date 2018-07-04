@@ -154,28 +154,28 @@ struct NearIterator final : public IndexIterator {
     auto it = tree.begin();
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& interval = scan[i];
-      TRI_ASSERT(interval.min <= interval.max);
+      TRI_ASSERT(interval.range_min <= interval.range_max);
 
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
       if (i > 0) {
-        TRI_ASSERT(scan[i - 1].max < interval.min);
+        TRI_ASSERT(scan[i - 1].range_max < interval.range_min);
         if (it == tree.end()) {  // no more valid keys after this
           break;
-        } else if (it->first > interval.max) {
+        } else if (it->first > interval.range_max) {
           continue;  // beyond range already
-        } else if (interval.min <= it->first) {
+        } else if (interval.range_min <= it->first) {
           seek = false;  // already in range: min <= key <= max
-          TRI_ASSERT(it->first <= interval.max);
+          TRI_ASSERT(it->first <= interval.range_max);
         }
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        it = tree.lower_bound(interval.min);
+        it = tree.lower_bound(interval.range_min);
       }
 
-      while (it != tree.end() && it->first <= interval.max) {
+      while (it != tree.end() && it->first <= interval.range_max) {
         _near.reportFound(it->second.documentId, it->second.centroid);
         it++;
       }

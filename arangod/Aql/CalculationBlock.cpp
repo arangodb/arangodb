@@ -191,8 +191,6 @@ CalculationBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
   if (_done) {
-    LOG_DEVEL << "CalculationBlock::getSome() called when already _done! Fix "
-                 "caller block.";
     return {ExecutionState::DONE, nullptr};
   }
 

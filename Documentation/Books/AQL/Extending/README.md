@@ -33,7 +33,7 @@ Rule of thumb is, the closer the UDF is to your final `RETURN` statement
 (or maybe even inside it), the better. 
 
 When used in clusters, UDFs are always executed on the
-[coordinator](../../Manual/Scalability/Architecture.html).
+[coordinator](../../Manual/Scalability/Cluster/Architecture.html).
 
 Using UDFs in clusters may result in a higher resource allocation
 in terms of used V8 contexts and server threads. If you run out 
@@ -60,6 +60,6 @@ Once it is in the `_aqlfunctions` collection, it is available on all
 coordinators without additional effort.
 
 Keep in mind that system collections are excluded from dumps created with
-[arangodump](../../Manual/Administration/Arangodump.html) by default.
+[arangodump](../../Manual/Programs/Arangodump/index.html) by default.
 To include AQL UDF in a dump, the dump needs to be started with
 the option *--include-system-collections true*.

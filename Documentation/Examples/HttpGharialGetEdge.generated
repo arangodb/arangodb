@@ -1,20 +1,20 @@
-shell> curl --dump - http://localhost:8529/_api/gharial/social/edge/relation/10223
+shell> curl --dump - http://localhost:8529/_api/gharial/social/edge/relation/10365
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _WnWWvai--_
+etag: _XB1lCUi--F
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"edge"</span> : { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10223"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/10223"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWWvai--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10365"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/10365"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lCUi--F"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span>, 
-    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"bob"</span> 
   } 
 }

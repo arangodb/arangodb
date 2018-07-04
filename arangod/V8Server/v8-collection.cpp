@@ -2048,7 +2048,7 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>)");
   }
   uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
   auto c = pregel::PregelFeature::instance()->conductor(executionNum);
@@ -2070,23 +2070,33 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
   uint32_t const argLength = args.Length();
   if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>)");
+  }
+  
+  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  if (!feature) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
 
   uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
     auto c = pregel::PregelFeature::instance()->conductor(executionNum);
     if (!c) {
       TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
     }
-
-    VPackBuilder docs = c->collectAQLResults();
+    
+    VPackBuilder docs;
+    c->collectAQLResults(docs);
+    if (docs.isEmpty()) {
+      TRI_V8_RETURN_NULL();
+    }
     TRI_ASSERT(docs.slice().isArray());
+    
     VPackOptions resultOptions = VPackOptions::Defaults;
     auto documents = TRI_VPackToV8(isolate, docs.slice(), &resultOptions);
     TRI_V8_RETURN(documents);
   } else {
-    TRI_V8_THROW_EXCEPTION_USAGE("Only valid on the conductor");
+    TRI_V8_THROW_EXCEPTION_USAGE("Only valid on the coordinator");
   }
 
   TRI_V8_RETURN_UNDEFINED();

@@ -5,7 +5,7 @@ This section includes information related to the _datacenter to datacenter repli
 security.
 
 For a general introduction to the _datacenter to datacenter replication_, please
-refer to the [Datacenter to datacenter replication](..\..\Scalability\DC2DC\README.md)
+refer to the [Datacenter to datacenter replication](../../Scalability/DC2DC/README.md)
 chapter.
 
 ## Firewall settings
@@ -83,8 +83,8 @@ however it is more convenient (and common) to use your own CA.
 ### Formats
 
 All certificates are x509 certificates with a public key, a private key and
-an optional chain of certificates used to sign the certificate (this chain is
-typically provided by the Certificate Authority (CA)).
+an optional chain of certificates used to sign the certificate. This chain is
+typically provided by the Certificate Authority (CA).
 <br/>Depending on their use, certificates stored in a different format.
 
 The following formats are used:
@@ -166,8 +166,6 @@ arangosync create tls ca \
 ```
 
 Make sure to protect and store both generated files (`my-tls-ca.crt` & `my-tls-ca.key`) in a safe place.
-<br/>Note: CA certificates have a much longer lifetime than normal certificates.
-Therefore even more care is needed to store them safely.
 
 To create a CA certificate used to **sign client authentication certificates**, run:
 
@@ -188,7 +186,7 @@ target & lifetime.
 <br/> A certificate created for client authentication (function) cannot be used as a TLS server certificate
 (same is true for the reverse).
 <br/> A certificate for host `myserver` (target) cannot be used for host `anotherserver`.
-<br/> A certficiate that is valid until October 2017 (limetime) cannot be used after October 2017.
+<br/> A certificate that is valid until October 2017 (lifetime) cannot be used after October 2017.
 
 If anything changes in function, target or lifetime you need a new certificate.
 

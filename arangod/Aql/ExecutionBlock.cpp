@@ -254,8 +254,6 @@ ExecutionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
     std::string blockType = typeToString(getType());
-    LOG_DEVEL << blockType << "@ExecutionBlock::getSome() called when already "
-                              "_done! Fix caller block.";
   }
 
   traceGetSomeBegin(atMost);
@@ -350,8 +348,6 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_upstreamState == ExecutionState::DONE) {
-    LOG_DEVEL << "getBlock() called when already _done! Fix this block: "
-              << typeToString(getType());
   }
 
   throwIfKilled();  // check if we were aborted
@@ -363,16 +359,6 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
 
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (res.second == nullptr) {
-    LOG_DEVEL << "Got no result in " << typeToString(getType())
-      << "::getBlock()! Child block is "
-      << typeToString(_dependencies[0]->getType()) << ". "
-      << "upstreamState=" << (
-        _upstreamState == ExecutionState::DONE ? "DONE" :
-        _upstreamState == ExecutionState::HASMORE ? "HASMORE" :
-          "???");
   }
 
   _upstreamState = res.first;

@@ -159,40 +159,6 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(String === properties.locale.constructor);
       assertTrue(properties.locale.length > 0);
       assertEqual("de_DE.UTF-8", properties.locale);
-
-      // threads max idle/total
-      db._dropView("TestView");
-      view = db._createView("TestView", "arangosearch", {});
-
-      properties = view.properties();
-      assertTrue(Number === properties.threadsMaxIdle.constructor);
-      assertEqual(5, properties.threadsMaxIdle);
-      assertTrue(Number === properties.threadsMaxTotal.constructor);
-      assertEqual(5, properties.threadsMaxTotal);
-
-      meta = { threadsMaxIdle: 42 };
-      view.properties(meta, true); // partial update
-      properties = view.properties();
-      assertTrue(Number === properties.threadsMaxIdle.constructor);
-      assertEqual(42, properties.threadsMaxIdle);
-      assertTrue(Number === properties.threadsMaxTotal.constructor);
-      assertEqual(5, properties.threadsMaxTotal);
-
-      meta = { threadsMaxTotal: 1 };
-      view.properties(meta, true); // partial update
-      properties = view.properties();
-      assertTrue(Number === properties.threadsMaxIdle.constructor);
-      assertEqual(42, properties.threadsMaxIdle);
-      assertTrue(Number === properties.threadsMaxTotal.constructor);
-      assertEqual(1, properties.threadsMaxTotal);
-
-      meta = { threadsMaxIdle: 0 };
-      view.properties(meta, false); // full update
-      properties = view.properties();
-      assertTrue(Number === properties.threadsMaxIdle.constructor);
-      assertEqual(0, properties.threadsMaxIdle);
-      assertTrue(Number === properties.threadsMaxTotal.constructor);
-      assertEqual(5, properties.threadsMaxTotal);
     },
 
     testLinkDDL: function() {
@@ -451,9 +417,7 @@ function iResearchFeatureAqlTestSuite () {
             count: {}
           }
         },
-        locale: "de_DE.UTF-16",
-        threadsMaxIdle: 42,
-        threadsMaxTotal: 1
+        locale: "de_DE.UTF-16"
       };
       view.properties(meta, true); // partial update
 
@@ -471,8 +435,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-8", properties.locale);
-      assertEqual(42, properties.threadsMaxIdle);
-      assertEqual(1, properties.threadsMaxTotal);
 
       col0.save({ name: "quarter", text: "quick over" });
       result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
@@ -502,9 +464,7 @@ function iResearchFeatureAqlTestSuite () {
             count: {}
           }
         },
-        locale: "de_DE.UTF-16",
-        threadsMaxIdle: 42,
-        threadsMaxTotal: 1
+        locale: "de_DE.UTF-16"
       };
       view.properties(meta, true); // partial update
 
@@ -526,8 +486,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-8", properties.locale);
-      assertEqual(42, properties.threadsMaxIdle);
-      assertEqual(1, properties.threadsMaxTotal);
 
       // 2 non-empty collections
       db._dropView("TestView");
@@ -557,9 +515,7 @@ function iResearchFeatureAqlTestSuite () {
             count: {}
           }
         },
-        locale: "de_DE.UTF-16",
-        threadsMaxIdle: 42,
-        threadsMaxTotal: 1
+        locale: "de_DE.UTF-16"
       };
       view.properties(meta, true); // partial update
 
@@ -581,8 +537,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-8", properties.locale);
-      assertEqual(42, properties.threadsMaxIdle);
-      assertEqual(1, properties.threadsMaxTotal);
 
       // 1 empty collection + 2 non-empty collections
       db._dropView("TestView");
@@ -615,9 +569,7 @@ function iResearchFeatureAqlTestSuite () {
             count: {}
           }
         },
-        locale: "de_DE.UTF-16",
-        threadsMaxIdle: 42,
-        threadsMaxTotal: 1
+        locale: "de_DE.UTF-16"
       };
       view.properties(meta, true); // partial update
 
@@ -639,8 +591,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-8", properties.locale);
-      assertEqual(42, properties.threadsMaxIdle);
-      assertEqual(1, properties.threadsMaxTotal);
     },
 
     testLinkModify: function() {
@@ -664,6 +614,10 @@ function iResearchFeatureAqlTestSuite () {
 
       meta = { links: { "TestCollection0": { fields: { b: {} } } } };
       view.properties(meta, true); // partial update
+
+      var updatedMeta = view.properties();
+      assertNotEqual(undefined, updatedMeta.links.TestCollection0.fields.b);
+      assertEqual(undefined, updatedMeta.links.TestCollection0.fields.a);
 
       result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).json;
       assertEqual(2, result.length);

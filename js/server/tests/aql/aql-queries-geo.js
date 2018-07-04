@@ -1011,7 +1011,7 @@ function geoJsonTestSuite() {
         bindVars: {
           "@cc": locations.name(),
         },
-        expected: indonesiaKeys.slice(0,3)
+        expected: indonesiaKeys
       });
     },
 
@@ -1025,7 +1025,7 @@ function geoJsonTestSuite() {
         bindVars: {
           "@cc": locations.name(),
         },
-        expected: [indonesiaKeys[0], indonesiaKeys[2]]
+        expected: [indonesiaKeys[0], indonesiaKeys[2], indonesiaKeys[3]]
       });
     },
 

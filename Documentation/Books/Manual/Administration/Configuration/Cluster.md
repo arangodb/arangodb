@@ -88,7 +88,7 @@ false for the initial startup and only turned on for restarts.
 More advanced options
 ---------------------
 
-{% hint 'warn' %}
+{% hint 'warning' %}
 These options should generally remain untouched.
 {% endhint %}
 

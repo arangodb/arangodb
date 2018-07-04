@@ -146,6 +146,9 @@ class StaticStrings {
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
+  
+  // misc strings
+  static std::string const LastValue;
 };
 }
 

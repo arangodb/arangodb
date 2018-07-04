@@ -1,6 +1,8 @@
 Windows
 =======
 
+**Note:** Please note that ArangoDB will only work on 64bit.
+
 The default installation directory is *C:\Program Files\ArangoDB-3.x.x*. During the
 installation process you may change this. In the following description we will assume
 that ArangoDB has been installed in the location *&lt;ROOTDIR&gt;*.

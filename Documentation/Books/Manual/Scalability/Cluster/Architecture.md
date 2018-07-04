@@ -32,6 +32,8 @@ roles:
 
 In the following sections we will shed light on each of them.
 
+![ArangoDB Cluster](cluster_topology.png)
+
 ### Agents
 
 One or multiple _Agents_ form the _Agency_ in an ArangoDB Cluster. The

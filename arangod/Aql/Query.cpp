@@ -203,6 +203,12 @@ Query::Query(
         << "options: " << options->slice().toJson();
   }
 
+  // adjust the _isModificationQuery value from the slice we got
+  auto s = _queryBuilder->slice().get("isModificationQuery");
+  if (s.isBoolean()) {
+    _isModificationQuery = s.getBoolean();
+  }
+
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
 }
 
@@ -239,6 +245,10 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   clone->_resourceMonitor = _resourceMonitor;
   clone->_resourceMonitor.clear();
+
+  if (_isModificationQuery) {
+    clone->setIsModificationQuery();
+  }
 
   if (_plan != nullptr) {
     if (withPlan) {

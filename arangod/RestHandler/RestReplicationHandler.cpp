@@ -2077,7 +2077,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
 
     if (res.ok()) {
-      auto countRes = trx.count(col->name(), true);
+      auto countRes = trx.count(col->name(), false);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
@@ -2093,7 +2093,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
           }
 
           generateResult(rest::ResponseCode::OK, b.slice());
-
           return;
         }  
       }
