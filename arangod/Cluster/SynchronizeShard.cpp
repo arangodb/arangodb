@@ -34,6 +34,13 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
+#include "Replication/DatabaseTailingSyncer.h"
+#include "Replication/DatabaseInitialSyncer.h"
+#include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalInitialSyncer.h"
+#include "Replication/GlobalReplicationApplier.h"
+#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -69,7 +76,8 @@ std::string const KEEP_BARRIER("keepBarrier");
 std::string const LEADER_ID("leaderId");
 std::string const SKIP_CREATE_DROP("skipCreateDrop");
 std::string const COLLECTIONS("collections");
-
+std::string const LAST_LOG_TICK("lastLogTick");
+std::string const BARRIER_ID("barrierId");
 using namespace std::chrono;
 
 SynchronizeShard::SynchronizeShard(
@@ -452,18 +460,117 @@ arangodb::Result terminateAndStartOther() {
 }
 
 
+enum ApplierType {
+  APPLIER_DATABASE,
+  APPLIER_GLOBAL
+};
+
 arangodb::Result replicationSynchronize(
-  VPackBuilder const& config, std::shared_ptr<VPackBuilder> sy) {
+  VPackSlice const& config, ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
+
+  auto database = config.get(DATABASE).copyString();
+  auto shard = config.get(SHARD).copyString();
+  bool keepBarrier = config.get(KEEP_BARRIER).getBool();
+  std::string leaderId;
+  if (config.hasKey(LEADER_ID)) {
+    leaderId = config.get(LEADER_ID).copyString();
+  }
+
+  auto cc = arangodb::ClusterComm::instance();
+  if (cc == nullptr) { // nullptr only happens during controlled shutdown
+    return arangodb::Result(
+      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
+  }
+
+  auto vocbase = Databases::lookup(database);
+  if (vocbase == nullptr) {
+    std::string errorMsg(
+      "SynchronizeShard::addShardFollower: Failed to lookup database ");
+    errorMsg += database;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+  }
+
+  auto collection = vocbase->lookupCollection(shard);
+  if (collection == nullptr) {
+    std::string errorMsg(
+      "SynchronizeShard::addShardFollower: Failed to lookup collection ");
+    errorMsg += shard;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
+  }
+
+  ReplicationApplierConfiguration configuration =
+    ReplicationApplierConfiguration::fromVelocyPack(config, database);
+  configuration.validate();
+
+  std::unique_ptr<InitialSyncer> syncer;
+ 
+  if (applierType == APPLIER_DATABASE) { 
+    // database-specific synchronization
+    syncer.reset(new DatabaseInitialSyncer(*vocbase, configuration));
+
+    if (!leaderId.empty()) {
+      syncer->setLeaderId(leaderId);
+    }
+  } else if (applierType == APPLIER_GLOBAL) {
+    configuration._skipCreateDrop = false;
+    syncer.reset(new GlobalInitialSyncer(configuration));
+  } else {
+    TRI_ASSERT(false);
+  }
+
+  try {
+    Result r = syncer->run(configuration._incremental);
+    
+    if (r.fail()) {
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "initial sync failed for database '" << vocbase->name() << "': "
+        << r.errorMessage();
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        r.errorNumber(), "cannot sync from remote endpoint: " +
+        r.errorMessage() + ". last progress message was '" + syncer->progress()
+        + "'");
+    }
+    
+    { VPackObjectBuilder o(sy.get());
+      if (keepBarrier) {
+        sy->add(BARRIER_ID, VPackValue(syncer->stealBarrier()));
+      }
+      sy->add(LAST_LOG_TICK, VPackValue(syncer->getLastLogTick()));
+      sy->add(VPackValue(COLLECTIONS));
+      { VPackArrayBuilder a(sy.get());
+        for (auto const& i : syncer->getProcessedCollections()) {
+          VPackObjectBuilder e(sy.get());
+          sy->add(ID, VPackValue(i.first));
+          sy->add(NAME, VPackValue(i.second));
+        }}}
+    
+  } catch (arangodb::basics::Exception const& ex) {
+    std::string s("cannot sync from remote endpoint: ");
+    s += ex.what() + std::string(". last progress message was '") + syncer->progress() + "'";
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    std::string s("cannot sync from remote endpoint: ");
+    s += ex.what() + std::string(". last progress message was '") + syncer->progress() + "'";
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    std::string s(
+      "cannot sync from remote endpoint: unknown exception. last progress message was '");
+      s+= syncer->progress() + "'";
+    return Result(TRI_ERROR_INTERNAL);
+  }
+ 
   return arangodb::Result();
 }
 
 arangodb::Result syncCollection(
   std::shared_ptr<arangodb::LogicalCollection> const col,
-  VPackBuilder const& config, std::shared_ptr<VPackBuilder> sy) {
+  VPackSlice const& config, std::shared_ptr<VPackBuilder> sy) {
 
   VPackBuilder builder;
   { VPackObjectBuilder o(&builder);
-    for (auto const& i : VPackObjectIterator(config.slice())) {
+    for (auto const& i : VPackObjectIterator(config)) {
       builder.add(i.key.copyString(), i.value);
     }
     builder.add("restrictType", VPackValue("include"));
@@ -475,7 +582,7 @@ arangodb::Result syncCollection(
       builder.add("verbose", VPackValue(false));
     }}
 
-  return replicationSynchronize(builder, sy);
+  return replicationSynchronize(builder.slice(), APPLIER_DATABASE, sy);
 
 }
 
@@ -629,7 +736,7 @@ arangodb::Result SynchronizeShard::synchroniseOneShard(
     }
 
     auto details = std::make_shared<VPackBuilder>();
-    Result syncRes = syncCollection(collection, config, details);
+    Result syncRes = syncCollection(collection, config.slice(), details);
     auto sy = details->slice();
     auto const endTime = system_clock::now();
     bool longSync = false;
@@ -662,7 +769,7 @@ arangodb::Result SynchronizeShard::synchroniseOneShard(
             << "synchronizeOneShard: long sync, before cancelBarrier" 
             << timepointToString(system_clock::now());
         }
-        cancelBarrier(ep, database, sy.get("barrierId").copyString(), clientId);
+        cancelBarrier(ep, database, sy.get(BARRIER_ID).copyString(), clientId);
         if (longSync) {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
             << "synchronizeOneShard: long sync, after cancelBarrier" 
