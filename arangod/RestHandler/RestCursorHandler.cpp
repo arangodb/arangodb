@@ -167,7 +167,6 @@ bool RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   auto self = shared_from_this();
   auto continueHandler = [this, self]() {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Posted continuation on Scheduler";
     continueHandlerExecution();
   };
   query->setContinueHandler(continueHandler);

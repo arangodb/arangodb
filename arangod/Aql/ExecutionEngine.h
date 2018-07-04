@@ -90,11 +90,10 @@ class ExecutionEngine {
   /// @brief hasMore - synchronous (cannot return WAITING, but blocks the
   /// thread)
   inline bool hasMoreSync() const {
+    getQuery()->setContinueCallback([&]() { getQuery()->tempSignalAsyncResponse(); });
     ExecutionState state = _root->hasMoreState();
 
     while (state == ExecutionState::WAITING) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-      << "We are actively blocking a thread, needs to be fixed";
       getQuery()->tempWaitForAsyncResponse();
       state = _root->hasMoreState();
     }

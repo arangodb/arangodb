@@ -762,6 +762,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
                                     << " this: " << (uintptr_t) this;
   TRI_ASSERT(registry != nullptr);
 
+  setContinueCallback([&]() { tempSignalAsyncResponse(); });
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryHash = hash();
