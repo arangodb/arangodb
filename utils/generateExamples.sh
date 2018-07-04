@@ -70,7 +70,7 @@ rc=$?
 
 if test $rc -eq 0; then
     echo "removing ${LOGFILE} ${DBDIR}"
-    rm -rf ${LOGFILE} ${DBDIR} arangosh.examples.js
+    # rm -rf ${LOGFILE} ${DBDIR} arangosh.examples.js
 else
     echo "failed - don't remove ${LOGFILE} ${DBDIR} - here's the logfile:"
     cat ${LOGFILE}
