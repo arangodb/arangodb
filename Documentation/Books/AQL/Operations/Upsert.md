@@ -81,9 +81,9 @@ explicitly.
 To make sure data are durable when an update query returns, there is the *waitForSync* 
 query option.
 
-In order to not accidentially update documents that have been written and updated since you last
-fetch them you can use the option *ignoreRevs* to either let ArangoDB compare the `_rev` value
-and only succeed if they still match, or let ArangoDB ignore them (default):
+In order to not accidentially update documents that have been written and updated since 
+you last fetched them you can use the option *ignoreRevs* to either let ArangoDB compare 
+the `_rev` value and only succeed if they still match, or let ArangoDB ignore them (default):
 
 ```
 FOR i IN 1..1000
@@ -93,8 +93,8 @@ FOR i IN 1..1000
   IN users OPTIONS { ignoreRevs: false }
 ```
 
-*NOTE* You need to add the `_rev` value in the updateExpression, it will not be
-used within the searchExpression, even worse if you use an outdated `_rev` in the searchExpression
+*NOTE*: You need to add the `_rev` value in the updateExpression, it will not be used within 
+the searchExpression. Even worse, if you use an outdated `_rev` in the searchExpression
 UPSERT will trigger the INSERT path instead of the UPDATE path, because it has not found a document
 exactly matching the searchExpression.
 
