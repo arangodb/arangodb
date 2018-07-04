@@ -244,7 +244,8 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
 
   physical->setRevision(revisionId, false);
 
-  if (state->_trackKeys) {
+  {
+    // track keys
     VPackValueLength length;
     char const* p = keySlice.getString(length);
     collection->keyGenerator()->track(p, static_cast<size_t>(length));
@@ -350,7 +351,8 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
   physical->setRevision(revisionId, false);
-  if (state->_trackKeys) {
+  {
+    // track keys
     VPackValueLength length;
     char const* p = keySlice.getString(length);
     collection->keyGenerator()->track(p, length);

@@ -94,15 +94,31 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 }; // IResearchLogTopic
 
-arangodb::aql::AqlValue noop(
+arangodb::aql::AqlValue filter(
     arangodb::aql::Query*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
     TRI_ERROR_NOT_IMPLEMENTED,
-    "Function is designed to be used with IResearchView only"
+    "Filter function is designed to be used with ArangoSearch view only"
   );
 }
+
+arangodb::aql::AqlValue scorer(
+    arangodb::aql::Query*,
+    arangodb::transaction::Methods* ,
+    arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+    TRI_ERROR_NOT_IMPLEMENTED,
+    "Scorer function is designed to be used with ArangoSearch view only"
+  );
+}
+
+typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
+  arangodb::aql::Query*,
+  arangodb::transaction::Methods* ,
+  arangodb::SmallVector<arangodb::aql::AqlValue> const&
+);
 
 void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
@@ -124,11 +140,11 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
-    ".|.,.",       // positional arguments (attribute, [ "analyzer"|"type", analyzer-name|"string"|"numeric"|"bool"|"null" ])
+    ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
@@ -137,16 +153,43 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "PHRASE",      // name
-    ".,.,.|.+",    // positional arguments (attribute, input [, offset, input... ], analyzer)
+    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "MIN_MATCH",   // name
+    ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "BOOST",       // name
+    ".,.",         // positional arguments (filter expression, boost)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "ANALYZER",    // name
+    ".,.",         // positional arguments (filter expression, analyzer)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
   });
 }
 
@@ -216,7 +259,7 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       true,   // deterministic
       false,  // can't throw
       true,   // can be run on server
-      &noop   // function implementation (use function name as placeholder)
+      &scorer // function implementation (use function name as placeholder)
     });
 
     return true;
@@ -308,6 +351,16 @@ NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
+
+bool isFilter(arangodb::aql::Function const& func) noexcept {
+  auto* pimpl = func.implementation.target<IResearchFunctionPtr>();
+  return pimpl && *pimpl == &filter;
+}
+
+bool isScorer(arangodb::aql::Function const& func) noexcept {
+  auto* pimpl = func.implementation.target<IResearchFunctionPtr>();
+  return pimpl && *pimpl == &scorer;
+}
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
