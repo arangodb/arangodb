@@ -388,7 +388,7 @@ function iResearchAqlTestSuite () {
       var expected = new Set();
       expected.add("null");
 
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'type', 'null') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'null') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -401,7 +401,7 @@ function iResearchAqlTestSuite () {
       var expected = new Set();
       expected.add("bool");
 
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'type', 'bool') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'bool') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -414,7 +414,7 @@ function iResearchAqlTestSuite () {
       var expected = new Set();
       expected.add("numeric");
 
-      var result = db._query("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'type', 'numeric') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'numeric') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {

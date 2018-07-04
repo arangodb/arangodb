@@ -41,8 +41,8 @@ const _ = require('lodash');
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'shell_client': [ 'js/common/tests/shell', 'js/client/tests/http', 'js/client/tests/shell', 'js/common/tests/aql' ],
-  'shell_server': [ 'js/common/tests/shell', 'js/server/tests/shell', 'js/common/tests/aql' ],
+  'shell_client': [ 'js/common/tests/shell', 'js/client/tests/http', 'js/client/tests/shell' ],
+  'shell_server': [ 'js/common/tests/shell', 'js/server/tests/shell' ],
   'shell_server_only': [ 'js/server/tests/shell' ],
   'shell_server_aql': [ 'js/server/tests/aql', 'js/common/tests/aql' ],
   'shell_client_aql': [ 'js/client/tests/aql', 'js/common/tests/aql' ]
