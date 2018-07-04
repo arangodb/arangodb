@@ -68,6 +68,9 @@ std::string const INCREMENTAL("incremental");
 std::string const KEEP_BARRIER("keepBarrier");
 std::string const LEADER_ID("leaderId");
 std::string const SKIP_CREATE_DROP("skipCreateDrop");
+std::string const COLLECTIONS("collections");
+
+using namespace std::chrono;
 
 SynchronizeShard::SynchronizeShard(
   MaintenanceFeature& feature, ActionDescription const& desc) :
@@ -355,7 +358,7 @@ arangodb::Result getReadLock(
   std::string const& collection, std::string const& clientId,
   uint64_t rlid, SynchronizeShard* s, double timeout) {
 
-  auto start = std::chrono::steady_clock::now();
+  auto start = steady_clock::now();
 
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
@@ -406,8 +409,8 @@ arangodb::Result getReadLock(
     }
 
     // std::hash<ActionDescription>(_description)
-    std::this_thread::sleep_for(std::chrono::duration<double>(.5));
-    if ((std::chrono::steady_clock::now() - start).count() > timeout) {
+    std::this_thread::sleep_for(duration<double>(.5));
+    if ((steady_clock::now() - start).count() > timeout) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
     }
@@ -419,15 +422,15 @@ bool isStopping() {
   return application_features::ApplicationServer::isStopping();
 }
 
-arangodb::Result startReadLockOnLeader(
+static arangodb::Result startReadLockOnLeader(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  SynchronizeShard* s,  double timeout = 120.0) {
+  SynchronizeShard* s, uint64_t& rlid, double timeout = 120.0) {
 
-  auto start = std::chrono::steady_clock::now();
+  auto start = steady_clock::now();
 
   // Read lock id
-  uint64_t rlid = 0;
+  rlid = 0;
   arangodb::Result result =
     getReadLockId(endpoint, database, clientId, timeout, rlid);
   if (!result.ok()) {
@@ -437,7 +440,7 @@ arangodb::Result startReadLockOnLeader(
 
   result = getReadLock(endpoint, database, collection, clientId, rlid, s, timeout);
   
-  auto elapsed = (std::chrono::steady_clock::now() - start).count();
+  auto elapsed = (steady_clock::now() - start).count();
 
   return result;
   
@@ -449,13 +452,14 @@ arangodb::Result terminateAndStartOther() {
 }
 
 
-arangodb::Result replicationSynchronize(VPackBuilder const& config) {
+arangodb::Result replicationSynchronize(
+  VPackBuilder const& config, std::shared_ptr<VPackBuilder> sy) {
   return arangodb::Result();
 }
 
 arangodb::Result syncCollection(
   std::shared_ptr<arangodb::LogicalCollection> const col,
-  VPackBuilder const& config) {
+  VPackBuilder const& config, std::shared_ptr<VPackBuilder> sy) {
 
   VPackBuilder builder;
   { VPackObjectBuilder o(&builder);
@@ -471,18 +475,19 @@ arangodb::Result syncCollection(
       builder.add("verbose", VPackValue(false));
     }}
 
-  return replicationSynchronize(builder);
+  return replicationSynchronize(builder, sy);
 
 }
 
 arangodb::Result synchroniseOneShard(
   std::string const& database, std::string const& shard,
   std::string const& planId, std::string const& leader) {
-
+  
   auto* clusterInfo = ClusterInfo::instance();
   auto const ourselves = arangodb::ServerState::instance()->getId();
-  auto startTime = std::chrono::system_clock::now();
+  auto startTime = system_clock::now();
   auto const startTimeStr = timepointToString(startTime);
+  auto const clientId(database + shard + planId + leader);
   
   while(true) {
 
@@ -498,7 +503,7 @@ arangodb::Result synchroniseOneShard(
         planned.front() != leader) {
       // Things have changed again, simply terminate:
       terminateAndStartOther();
-      auto const endTime = std::chrono::system_clock::now();
+      auto const endTime = system_clock::now();
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: cancelled, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
@@ -524,7 +529,7 @@ arangodb::Result synchroniseOneShard(
       }
       // We are already there, this is rather strange, but never mind:
       terminateAndStartOther();
-      auto const endTime = std::chrono::system_clock::now();
+      auto const endTime = system_clock::now();
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: already done, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
@@ -532,7 +537,7 @@ arangodb::Result synchroniseOneShard(
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
-    std::this_thread::sleep_for(std::chrono::duration<double>(0.2));
+    std::this_thread::sleep_for(duration<double>(0.2));
     
   }
   
@@ -578,7 +583,7 @@ arangodb::Result synchroniseOneShard(
 
       if (asResult.ok()) {
         terminateAndStartOther();
-        auto const endTime = std::chrono::system_clock::now();
+        auto const endTime = system_clock::now();
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
           "synchronizeOneShard: shortcut worked, done, " << database << "/" <<
           shard << ", " << database << "/" << ", started: " << startTimeStr
@@ -604,7 +609,7 @@ arangodb::Result synchroniseOneShard(
     #warning setTheLeader
     collection->followers()->setTheLeader(leader);
 
-    startTime = std::chrono::system_clock::now();
+    startTime = system_clock::now();
 
     VPackBuilder config;
     { VPackObjectBuilder c(&config);
@@ -614,24 +619,74 @@ arangodb::Result synchroniseOneShard(
       config.add(LEADER_ID, VPackValue(leader));
       config.add(SKIP_CREATE_DROP, VPackValue(true));
     }
-    Result syncRes = syncCollection(collection, config);
-    auto const endTime = std::chrono::system_clock::now();
+
+    auto details = std::make_shared<VPackBuilder>();
+    Result syncRes = syncCollection(collection, config, details);
+    auto sy = details->slice();
+    auto const endTime = system_clock::now();
     bool longSync = false;
-    if (endTime-startTime > std::chrono::seconds(5)) {
+
+    // Long shard sync initialisation
+    if (endTime-startTime > seconds(5)) {
       LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
         "synchronizeOneShard: long call to syncCollection for shard"
           << shard << " " << syncRes.errorMessage() <<  " start time: "
           << timepointToString(startTime) <<  "end time: " 
-          << timepointToString(std::chrono::system_clock::now());
+          << timepointToString(system_clock::now());
       longSync = true;
     }
+    
+    // 
+    if (!syncRes.ok()) {
+      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "synchronizeOneShard: could not initially synchronize shard " << shard
+        << syncRes.errorMessage();
+      return syncRes;
+    } else {
+
+      VPackSlice collections = sy.get(COLLECTIONS);
+
+      if (collections.length() == 0 ||
+          collections[0].get("name").copyString() != shard) {
+
+        if (longSync) {
+          LOG_TOPIC(ERR, Logger::MAINTENANCE)
+            << "synchronizeOneShard: long sync, before cancelBarrier" 
+            << timepointToString(system_clock::now());
+        }
+        cancelBarrier(ep, database, sy.get("barrierId").copyString(), clientId);
+        if (longSync) {
+          LOG_TOPIC(ERR, Logger::MAINTENANCE)
+            << "synchronizeOneShard: long sync, after cancelBarrier" 
+            << timepointToString(system_clock::now());
+        }
+        std::string errorMessage("synchronizeOneShard: Shard ");
+        errorMessage += shard + " seems to be gone from leader!";
+        LOG_TOPIC(ERR,  Logger::MAINTENANCE) << errorMessage;
+        return Result(TRI_ERROR_INTERNAL, errorMessage);
+
+      } else {
+
+        // Now start a read transaction to stop writes:
+        auto lockJobId = 0;
+        Result lockResult;
+        //lockResult = startReadLockOnLeader(ep, database, collection,
+        //                                        clientId, this, lockJobId);
+        if (lockResult.ok()) {
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
+        } else {
+          LOG_TOPIC(ERR, Logger::MAINTENANCE)
+            << "synchronizeOneShard: error in startReadLockOnLeader:"
+            << lockResult.errorMessage();
+        }
+        cancelBarrier(ep, database, sy.get("barrierId").copyString(), clientId);
+
+      }
+      
+    }
+      
+
 /*
-    let endTime = new Date();
-    let longSync = false;
-    if (endTime - startTime > 5000) {
-      console.topic('heartbeat=warn', 'synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
-      longSync = true;
-    }
     if (sy.error) {
       console.topic('heartbeat=error', 'synchronizeOneShard: could not initially synchronize',
         'shard ', shard, sy);
@@ -662,6 +717,9 @@ arangodb::Result synchroniseOneShard(
         finally {
           cancelBarrier(ep, database, sy.barrierId);
         }
+
+        // HERE
+        
         if (lockJobId !== false) {
           try {
             var sy2 = REPLICATION_SYNCHRONIZE_FINALIZE({ 
@@ -707,7 +765,7 @@ arangodb::Result synchroniseOneShard(
       }*/
   } catch (std::exception const& e) {
 #warning more elaborate
-    auto const endTime = std::chrono::system_clock::now();
+    auto const endTime = system_clock::now();
     LOG_TOPIC(ERR,Logger::MAINTENANCE)
       << "synchronization of local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << planId << "' failed: "
@@ -717,7 +775,7 @@ arangodb::Result synchroniseOneShard(
       
       // Tell others that we are done:
       terminateAndStartOther();
-    auto const endTime = std::chrono::system_clock::now();
+    auto const endTime = system_clock::now();
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "synchronizeOneShard: done, " << database << "/" << shard << ", "
       << database << "/" << planId << ", started: "
@@ -734,7 +792,7 @@ bool SynchronizeShard::first() {
 }
 
 arangodb::Result SynchronizeShard::run(
-  std::chrono::duration<double> const&, bool& finished) {
+  duration<double> const&, bool& finished) {
   arangodb::Result res;
   return res;
 }

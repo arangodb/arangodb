@@ -636,7 +636,7 @@ ClusterCommResult const ClusterComm::wait(
   ClusterCommTimeout endTime = TRI_microtime() + timeout;
 
   TRI_ASSERT(timeout >= 0.0);
-  
+
   // if we cannot find the sought operation, we will return the status
   // DROPPED. if we get into the timeout while waiting, we will still return
   // CL_COMM_TIMEOUT.
@@ -1060,7 +1060,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this method performs the given requests described by the vector
-/// of ClusterCommRequest structs in the following way: 
+/// of ClusterCommRequest structs in the following way:
 /// Each request is done with asyncRequest.
 /// After each request is successfully send out we drop all requests.
 /// Hence it is guaranteed that all requests are send, but
@@ -1240,8 +1240,9 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 }
 
 void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {
-  if (_authenticationEnabled) {
-    headers->emplace("Authorization", _jwtAuthorization);
+  if (_authenticationEnabled &&
+      headers->find(StaticStrings::Authorization) == headers->end()) {
+    headers->emplace(StaticStrings::Authorization, _jwtAuthorization);
   }
 }
 

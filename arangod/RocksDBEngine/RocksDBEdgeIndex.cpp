@@ -461,7 +461,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    LocalDocumentId const documentId = RocksDBKey::documentId(
+    LocalDocumentId const documentId = RocksDBKey::indexDocumentId(
         RocksDBEntryType::EdgeIndexValue, _iterator->key());
 
     // adding revision ID and _from or _to value
@@ -941,9 +941,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
     if (needsInsert) {
-      LocalDocumentId const documentId = RocksDBKey::documentId(RocksDBEntryType::EdgeIndexValue, key);
-      if (rocksColl->readDocument(trx, documentId, mmdr)) {
-        builder.add(VPackValue(documentId.id()));
+      LocalDocumentId const docId = RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
+      if (rocksColl->readDocument(trx, docId, mmdr)) {
+        builder.add(VPackValue(docId.id()));
 
         VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =

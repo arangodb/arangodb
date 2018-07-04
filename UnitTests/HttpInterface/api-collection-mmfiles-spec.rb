@@ -930,6 +930,58 @@ describe ArangoDB do
 
         ArangoDB.drop_collection(cn)
       end
+      
+      it "create collection with explicit keyOptions property, padded keygen" do
+        cn = "UnitTestsCollectionBasics"
+
+        cmd = "/_api/collection"
+        body = "{ \"name\" : \"#{cn}\", \"keyOptions\" : {\"type\": \"padded\", \"allowUserKeys\": true } }"
+        doc = ArangoDB.log_post("#{prefix}-with-create-options", cmd, :body => body)
+
+        doc.code.should eq(200)
+        cid = doc.parsed_response['id']
+
+        cmd = api + "/" + cn + "/properties"
+        body = "{ \"waitForSync\" : true }"
+        doc = ArangoDB.log_put("#{prefix}-with-create-options", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should eq(cid)
+        doc.parsed_response['name'].should eq(cn)
+        doc.parsed_response['keyOptions']['type'].should eq("padded")
+        doc.parsed_response['keyOptions']['allowUserKeys'].should eq(true)
+
+        ArangoDB.drop_collection(cn)
+      end
+      
+      it "create collection with explicit keyOptions property, uuid keygen" do
+        cn = "UnitTestsCollectionBasics"
+
+        cmd = "/_api/collection"
+        body = "{ \"name\" : \"#{cn}\", \"keyOptions\" : {\"type\": \"uuid\", \"allowUserKeys\": true } }"
+        doc = ArangoDB.log_post("#{prefix}-with-create-options", cmd, :body => body)
+
+        doc.code.should eq(200)
+        cid = doc.parsed_response['id']
+
+        cmd = api + "/" + cn + "/properties"
+        body = "{ \"waitForSync\" : true }"
+        doc = ArangoDB.log_put("#{prefix}-with-create-options", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should eq(cid)
+        doc.parsed_response['name'].should eq(cn)
+        doc.parsed_response['keyOptions']['type'].should eq("uuid")
+        doc.parsed_response['keyOptions']['allowUserKeys'].should eq(true)
+
+        ArangoDB.drop_collection(cn)
+      end
 
       it "create a collection with isVolatile property" do
         cn = "UnitTestsCollectionBasics"

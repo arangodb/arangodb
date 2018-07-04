@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
