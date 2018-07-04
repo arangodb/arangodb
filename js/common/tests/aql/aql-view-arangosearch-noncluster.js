@@ -140,30 +140,30 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeEqualityFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 10);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
         assertEqual(res.a, "foo");
       });
     },
 
     testMultipleAttributeEqualityFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 5);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 5);
+      result.forEach(function(res) {
         assertEqual(res.a, "foo");
         assertEqual(res.b, "bar");
       });
     },
 
     testMultipleAttributeEqualityFilterSortAttribute : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 5);
+      assertEqual(result.length, 5);
       var last = -1;
-      result.toArray().forEach(function(res) {
+      result.forEach(function(res) {
         assertEqual(res.a, "foo");
         assertEqual(res.b, "bar");
         assertEqual(res.c, last + 1);
@@ -172,11 +172,11 @@ function iResearchAqlTestSuite () {
     },
 
     testMultipleAttributeEqualityFilterSortAttributeDesc : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 5);
+      assertEqual(result.length, 5);
       var last = 5;
-      result.toArray().forEach(function(res) {
+      result.forEach(function(res) {
         assertEqual(res.a, "foo");
         assertEqual(res.b, "bar");
         assertEqual(res.c, last - 1);
@@ -185,129 +185,126 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeLessFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 8);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 8);
+      result.forEach(function(res) {
         assertTrue(res.c < 2);
       });
     },
 
     testAttributeLeqFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 12);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
         assertTrue(res.c <= 2);
       });
     },
 
     testAttributeGeqFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 12);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
         assertTrue(res.c >= 2);
       });
     },
 
     testAttributeGreaterFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 8);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 8);
+      result.forEach(function(res) {
         assertTrue(res.c > 2);
       });
     },
 
     testAttributeOpenIntervalFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 4);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 4);
+      result.forEach(function(res) {
         assertTrue(res.c > 1 && res.c < 3);
       });
     },
 
     testAttributeClosedIntervalFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 12);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
         assertTrue(res.c >= 1 && res.c <= 3);
       });
     },
 
     testAttributeIntervalExclusionFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 8);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 8);
+      result.forEach(function(res) {
         assertTrue(res.c < 1 || res.c > 3);
       });
     },
 
     testAttributeNeqFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 18); // include documents without attribute 'a'
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 18); // include documents without attribute 'a'
+      result.forEach(function(res) {
         assertFalse(res.a === 'foo');
       });
     },
 
     testStartsWithFilter : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 10);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
         assertEqual(res.a, 'foo');
       });
     },
 
     testStartsWithFilter2 : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 10);
-      result.toArray().forEach(function(res) {
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
         assertTrue(res.b === 'bar' || res.b === 'baz');
       });
     },
 
     testStartsWithFilterSort : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { waitForSync: true }).toArray();
 
-      resultArray=result.toArray();
-      assertEqual(resultArray.length, 2);
-      assertEqual(resultArray[0].b, 'bar');
-      assertEqual(resultArray[1].b, 'baz');
-      assertEqual(resultArray[0].c, 0);
-      assertEqual(resultArray[1].c, 0);
+      assertEqual(result.length, 2);
+      assertEqual(result[0].b, 'bar');
+      assertEqual(result[1].b, 'baz');
+      assertEqual(result[0].c, 0);
+      assertEqual(result[1].c, 0);
     },
 
 // FIXME uncomment when TOKENS function will be fixed
 //    testInTokensFilterSortTFIDF : function () {
-//      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.text IN TOKENS('the quick brown', 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true });
+//      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.text IN TOKENS('the quick brown', 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
 //
-//      assertEqual(result.toArray().length, 4);
-//      assertEqual(result.toArray()[0].name, 'full');
-//      assertEqual(result.toArray()[1].name, 'other half');
-//      assertEqual(result.toArray()[2].name, 'half');
-//      assertEqual(result.toArray()[3].name, 'quarter');
+//      assertEqual(result.length, 4);
+//      assertEqual(result[0].name, 'full');
+//      assertEqual(result[1].name, 'other half');
+//      assertEqual(result[2].name, 'half');
+//      assertEqual(result[3].name, 'quarter');
 //    },
 
     testPhraseFilter : function () {
-      var result0 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true });
+      var result0 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
-      result0Array=result0.toArray();
-      assertEqual(result0Array.length, 1);
-      assertEqual(result0Array[0].name, 'full');
+      assertEqual(result0.length, 1);
+      assertEqual(result0[0].name, 'full');
 
-      var result1 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc", null, { waitForSync: true });
+      var result1 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
-      result1Array=result1.toArray();
-      assertEqual(result1Array.length, 1);
-      assertEqual(result1Array[0].name, 'full');
+      assertEqual(result1.length, 1);
+      assertEqual(result1[0].name, 'full');
     },
 
     testExistsFilter : function () {
@@ -317,12 +314,11 @@ function iResearchAqlTestSuite () {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text) RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text) RETURN doc", null, { waitForSync: true }).toArray();
 
-      resultArray=result.toArray();
-      assertEqual(resultArray.length, expected.size);      
+      assertEqual(result.length, expected.size);      
       
-      resultArray.forEach(function(res) {        
+      result.forEach(function(res) {        
         assertTrue(expected.delete(res.name.toString()));
       });
       assertEqual(expected.size, 0);
@@ -335,33 +331,29 @@ function iResearchAqlTestSuite () {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer') RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer') RETURN doc", null, { waitForSync: true }).toArray();
 
-      resultArray=result.toArray();
-
-      assertEqual(resultArray.length, expected.size);      
-      resultArray.forEach(function(res) {
+      assertEqual(result.length, expected.size);      
+      result.forEach(function(res) {
         assertTrue(expected.delete(res.name.toString()));
       });
       assertEqual(expected.size, 0);
     },
 
     testExistsFilterByType : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'type') RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'type') RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, 0);
+      assertEqual(result.length, 0);
     },
 
     testExistsFilterByTypeNull : function () {
       var expected = new Set();
       expected.add("null");
 
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'type', 'null') RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'type', 'null') RETURN doc", null, { waitForSync: true }).toArray();
 
-      resultArray=result.toArray();
-
-      assertEqual(resultArray.length, expected.size);
-      resultArray.forEach(function(res) {
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
         assertTrue(expected.delete(res.name.toString()));
       });
       assertEqual(expected.size, 0);
@@ -371,12 +363,10 @@ function iResearchAqlTestSuite () {
       var expected = new Set();
       expected.add("bool");
 
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'type', 'bool') RETURN doc", null, { waitForSync: true });
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'type', 'bool') RETURN doc", null, { waitForSync: true }).toArray();
 
-      resultArray=result.toArray();
-
-      assertEqual(resultArray.length, expected.size);
-      resultArray.forEach(function(res) {
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
         assertTrue(expected.delete(res.name.toString()));
       });
       assertEqual(expected.size, 0);
@@ -386,12 +376,10 @@ function iResearchAqlTestSuite () {
       var expected = new Set();
       expected.add("numeric");
 
-      var result = db._query("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'type', 'numeric') RETURN doc", null, { waitForSync: true });
+      var result = db._query("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'type', 'numeric') RETURN doc", null, { waitForSync: true }).toArray();
 
-      resultArray=result.toArray();
-
-      assertEqual(resultArray.length, expected.size);
-      resultArray.forEach(function(res) {
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
         assertTrue(expected.delete(res.name.toString()));
       });
       assertEqual(expected.size, 0);
@@ -408,11 +396,10 @@ function iResearchAqlTestSuite () {
         "FOR adoc IN AnotherUnitTestsCollection" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "RETURN doc"
-      , null, { waitForSync: true });
+      , null, { waitForSync: true }).toArray();
 
-      resultArray=result.toArray();
-      assertEqual(resultArray.length, expected.size);
-      resultArray.forEach(function(res) {        
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {        
         assertTrue(expected.delete(JSON.stringify({ a: res.a, b: res.b, c: res.c })));
       });
       assertEqual(expected.size, 0);
@@ -427,11 +414,10 @@ function iResearchAqlTestSuite () {
         "FOR adoc IN AnotherUnitTestsCollection FILTER adoc.id < 1" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "RETURN doc"
-      , null, { waitForSync: true });
+      , null, { waitForSync: true }).toArray();
 
-      resultArray=result.toArray();
-      assertEqual(resultArray.length, expected.size);
-      resultArray.forEach(function(res) {
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
         assertTrue(expected.delete(JSON.stringify({ a: res.a, b: res.b, c: res.c })));
       });
       assertEqual(expected.size, 0);
@@ -449,11 +435,11 @@ function iResearchAqlTestSuite () {
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "SORT doc.c DESC, doc.a, doc.b " +
         "RETURN doc"
-      , null, { waitForSync: true });
+      , null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, expected.length);
+      assertEqual(result.length, expected.length);
       var i = 0;
-      result.toArray().forEach(function(res) {
+      result.forEach(function(res) {
         var doc = expected[i++];
         assertEqual(doc.a, res.a);
         assertEqual(doc.b, res.b);
@@ -473,11 +459,11 @@ function iResearchAqlTestSuite () {
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
         "RETURN doc"
-      , null, { waitForSync: true });
+      , null, { waitForSync: true }).toArray();
 
-      assertEqual(result.toArray().length, expected.length);
+      assertEqual(result.length, expected.length);
       var i = 0;
-      result.toArray().forEach(function(res) {
+      result.forEach(function(res) {
         var doc = expected[i++];
         assertEqual(doc.a, res.a);
         assertEqual(doc.c, res.c);
