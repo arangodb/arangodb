@@ -1,6 +1,8 @@
 devel
 -----
 
+* upgraded bundled RocksDB library version to 5.14
+
 * added key generators `uuid` and `padded`
 
   The `uuid` key generator generates universally unique 128 bit keys, which are
