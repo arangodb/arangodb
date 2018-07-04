@@ -100,9 +100,7 @@ function iResearchAqlTestSuite () {
         action: function () {
           var db = require("@arangodb").db;
           var c = db._collection("UnitTestsCollection");
-//          assertEqual(1, c.document('foo').xyz);
           return {length: c.toArray().length, value: c.document('foo').xyz}
-//          return c.toArray().length;
         }
       });
       assertEqual(1, result.value);
@@ -285,13 +283,12 @@ function iResearchAqlTestSuite () {
     },
 
     testInTokensFilterSortTFIDF : function () {
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.text IN TOKENS('the quick brown', 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.length, 4);
-      assertEqual(result[0].name, 'full');
-      assertEqual(result[1].name, 'other half');
-      assertEqual(result[2].name, 'half');
-      assertEqual(result[3].name, 'quarter');
+      assertEqual(result[0].name, 'half');
+      assertEqual(result[1].name, 'quarter');
+      assertEqual(result[2].name, 'other half');
+      assertEqual(result[3].name, 'full');
     },
 
     testPhraseFilter : function () {
@@ -304,6 +301,16 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result1.length, 1);
       assertEqual(result1[0].name, 'full');
+
+      var result2 = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, 'quick brown fox jumps'), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+
+      assertEqual(result2.length, 1);
+      assertEqual(result2[0].name, 'full');
+
+      var result3 = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, [ 'quick brown fox jumps' ]), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+
+      assertEqual(result3.length, 1);
+      assertEqual(result3[0].name, 'full');
     },
 
     testExistsFilter : function () {
@@ -316,7 +323,6 @@ function iResearchAqlTestSuite () {
       var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text) RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);      
-      
       result.forEach(function(res) {        
         assertTrue(expected.delete(res.name));
       });
@@ -330,9 +336,41 @@ function iResearchAqlTestSuite () {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer') RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.length, expected.size);      
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
+        assertTrue(expected.delete(res.name));
+      });
+      assertEqual(expected.size, 0);
+    },
+
+    testExistsFilterByContextAnalyzer: function () {
+      var expected = new Set();
+      expected.add("full");
+      expected.add("half");
+      expected.add("other half");
+      expected.add("quarter");
+
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(EXISTS(doc.text, 'analyzer'), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
+
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
+        assertTrue(expected.delete(res.name));
+      });
+      assertEqual(expected.size, 0);
+    },
+
+    testExistsFilterByString: function () {
+      var expected = new Set();
+      expected.add("full");
+      expected.add("half");
+      expected.add("other half");
+      expected.add("quarter");
+
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'string') RETURN doc", null, { waitForSync: true }).toArray();
+
+      assertEqual(result.length, expected.size);
       result.forEach(function(res) {
         assertTrue(expected.delete(res.name));
       });
@@ -398,7 +436,7 @@ function iResearchAqlTestSuite () {
       , null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
-      result.forEach(function(res) {        
+      result.forEach(function(res) {
         assertTrue(expected.delete(JSON.stringify({ a: res.a, b: res.b, c: res.c })));
       });
       assertEqual(expected.size, 0);
@@ -465,9 +503,10 @@ function iResearchAqlTestSuite () {
       result.forEach(function(res) {
         var doc = expected[i++];
         assertEqual(doc.a, res.a);
+        assertEqual(doc.b, res.b);
         assertEqual(doc.c, res.c);
       });
-    }
+    },
   };
 }
 
