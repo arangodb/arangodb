@@ -385,6 +385,6 @@ std::pair<ExecutionState, size_t> ShortestPathBlock::skipSome(size_t atMost) {
   if (res.first == ExecutionState::WAITING) {
     return {res.first, 0};
   }
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "TEMP Lenght of skipped path " << res.second->size();
+  // LOG_DEVEL << "TEMP Length of skipped path " << res.second->size();
   return {res.first, res.second->size()};
 }
