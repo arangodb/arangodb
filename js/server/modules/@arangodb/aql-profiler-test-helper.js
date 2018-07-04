@@ -287,6 +287,7 @@ function assertIsProfilePlanObject (plan) {
     'estimatedCost',
     'estimatedNrItems',
     'initialize',
+    'isModificationQuery',
   ]);
 
   expect(plan.nodes).to.be.an('array');
