@@ -73,18 +73,11 @@ The entire user transaction will not necessarily have ACID properties in this ca
 The threshold values for transaction sizes can be configured globally using the
 startup options
 
-* `--rocksdb.intermediate-commit-size`: if the size of all operations in a transaction 
-  reaches this threshold, the transaction is committed automatically and a new transaction
-  is started. The value is specified in bytes.
+* [`--rocksdb.intermediate-commit-size`](../Administration/Configuration/RocksDB.md#non-pass-through-options)
 
-* `--rocksdb.intermediate-commit-count`: if the number of operations in a transaction 
-  reaches this value, the transaction is committed automatically and a new transaction
-  is started.
+* [`--rocksdb.intermediate-commit-count`](../Administration/Configuration/RocksDB.md#non-pass-through-options)
 
-* `--rocksdb.max-transaction-size`: this is an upper limit for the total number of bytes
-  of all operations in a transaction. If the operations in a transaction consume more
-  than this threshold value, the transaction will automatically abort with error 32
-  ("resource limit exceeded").
+* [`--rocksdb.max-transaction-size`](../Administration/Configuration/RocksDB.md#non-pass-through-options)
 
 It is also possible to override these thresholds per transaction.
 
