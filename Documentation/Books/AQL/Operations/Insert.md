@@ -40,6 +40,13 @@ FOR i IN 1..100
   INSERT { value: i } INTO numbers
 ```
 
+An insert operation can also be performed without a *FOR* loop to insert a
+single document:
+
+```js
+INSERT { value: 1 } INTO numbers
+```
+
 When inserting into an [edge collection](../../Manual/Appendix/Glossary.html#edge-collection),
 it is mandatory to specify the attributes *_from* and *_to* in document:
 
