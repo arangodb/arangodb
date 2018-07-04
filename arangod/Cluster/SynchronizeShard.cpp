@@ -476,12 +476,6 @@ arangodb::Result replicationSynchronize(
     leaderId = config.get(LEADER_ID).copyString();
   }
 
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) { // nullptr only happens during controlled shutdown
-    return arangodb::Result(
-      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
-  }
-
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
     std::string errorMsg(
@@ -586,11 +580,72 @@ arangodb::Result syncCollection(
 
 }
 
+
 arangodb::Result replicationSynchronizeFinalize(
   std::string const& endpoint, std::string const& database,
-  std::string const& shard, std::string const& leaderId, uint64_t lockJobId,
-  uint64_t to1, uint64_t to2) {
-  return Result();
+  std::string const& shard, std::string const& leaderId,
+  uint64_t fromTick, uint64_t requestTimeout, uint64_t connectTimeout) {
+
+  auto vocbase = Databases::lookup(database);
+  if (vocbase == nullptr) {
+    std::string errorMsg(
+      "SynchronizeShard::addShardFollower: Failed to lookup database ");
+    errorMsg += database;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+  }
+
+  auto collection = vocbase->lookupCollection(shard);
+  if (collection == nullptr) {
+    std::string errorMsg(
+      "SynchronizeShard::addShardFollower: Failed to lookup collection ");
+    errorMsg += shard;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
+  }
+
+  VPackBuilder builder;
+  { VPackObjectBuilder o(&builder);
+    builder.add(ENDPOINT, VPackValue(endpoint));
+    builder.add(DATABASE, VPackValue(database));
+    builder.add(COLLECTION, VPackValue(SHARD));
+    builder.add(LEADER_ID, VPackValue(leaderId));
+    builder.add("from", VPackValue(fromTick));
+    builder.add("requestTimeout", VPackValue(requestTimeout));
+    builder.add("connectTimeout", VPackValue(connectTimeout));
+  }
+  
+  ReplicationApplierConfiguration configuration =
+    ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), database);
+  // will throw if invalid
+  configuration.validate();
+  
+  DatabaseGuard guard(database);
+  
+  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
+
+  if (!leaderId.empty()) {
+    syncer.setLeaderId(leaderId);
+  }
+
+  Result r;
+  try {
+    r = syncer.syncCollectionFinalize(shard);
+  } catch (arangodb::basics::Exception const& ex) {
+    r = Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    r = Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    r = Result(TRI_ERROR_INTERNAL, "unknown exception");
+  }
+
+  if (r.fail()) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "syncCollectionFinalize failed: " << r.errorMessage();
+    std::string errorMsg = std::string("cannot sync data for shard '") + shard +
+    "' from remote endpoint: " + r.errorMessage();
+  }
+
+  return r;
 }
 
 arangodb::Result SynchronizeShard::synchroniseOneShard(
