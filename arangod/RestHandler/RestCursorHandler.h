@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Builder.h>
@@ -97,7 +98,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief handle the result returned by the query. This function is guaranteed
   ///        to not be interrupted and is guaranteed to get a complete queryResult.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void handleQueryResult(aql::QueryResult& queryResult);
+  virtual void handleQueryResult();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query was canceled
@@ -157,6 +158,12 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   std::unique_ptr<arangodb::aql::Query> _query;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reference to a queryResult, which is reused after waiting.
+  //////////////////////////////////////////////////////////////////////////////
+
+  aql::QueryResult _queryResult;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our query registry
@@ -196,6 +203,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   ///        to reparse and set default options
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<arangodb::velocypack::Builder> _options;
+
 };
 }
 

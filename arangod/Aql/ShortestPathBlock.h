@@ -52,7 +52,7 @@ class ShortestPathBlock final : public ExecutionBlock {
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  int shutdown(int errorCode) override;
+  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(

@@ -23,7 +23,6 @@
 
 #include "RestSimpleHandler.h"
 #include "Aql/BindParameters.h"
-#include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -185,15 +184,15 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   return RestStatus::DONE;
 }
     
-void RestSimpleHandler::handleQueryResult(aql::QueryResult& queryResult) {
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
+void RestSimpleHandler::handleQueryResult() {
+  if (_queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (_queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        (_queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
       generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
       return;
     }
 
-    generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
+    generateError(GeneralResponse::responseCode(_queryResult.code), _queryResult.code, _queryResult.details);
     return;
   }
 
@@ -203,10 +202,10 @@ void RestSimpleHandler::handleQueryResult(aql::QueryResult& queryResult) {
 
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
-      handleQueryResultRemoveByKeys(queryResult);
+      handleQueryResultRemoveByKeys();
       return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
-      handleQueryResultLookupByKeys(queryResult);
+      handleQueryResultLookupByKeys();
       return;
     }
   }
@@ -218,11 +217,11 @@ void RestSimpleHandler::handleQueryResult(aql::QueryResult& queryResult) {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-void RestSimpleHandler::handleQueryResultRemoveByKeys(aql::QueryResult& queryResult) {
+void RestSimpleHandler::handleQueryResultRemoveByKeys() {
   size_t ignored = 0;
   size_t removed = 0;
-  if (queryResult.extra) {
-    VPackSlice stats = queryResult.extra->slice().get("stats");
+  if (_queryResult.extra) {
+    VPackSlice stats = _queryResult.extra->slice().get("stats");
     if (!stats.isNone()) {
       TRI_ASSERT(stats.isObject());
       VPackSlice found = stats.get("writesIgnored");
@@ -242,15 +241,15 @@ void RestSimpleHandler::handleQueryResultRemoveByKeys(aql::QueryResult& queryRes
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   if (!_silent) {
-    result.add("old", queryResult.result->slice());
+    result.add("old", _queryResult.result->slice());
   }
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice(),
-                 queryResult.context);
+                 _queryResult.context);
 }
 
-void RestSimpleHandler::handleQueryResultLookupByKeys(aql::QueryResult& queryResult) {
+void RestSimpleHandler::handleQueryResultLookupByKeys() {
   VPackBuffer<uint8_t> resultBuffer;
   VPackBuilder result(resultBuffer);
   {
@@ -260,14 +259,14 @@ void RestSimpleHandler::handleQueryResultLookupByKeys(aql::QueryResult& queryRes
     response()->setContentType(rest::ContentType::JSON);
     result.add(VPackValue("documents"));
 
-    result.addExternal(queryResult.result->slice().begin());
+    result.addExternal(_queryResult.result->slice().begin());
     result.add(StaticStrings::Error, VPackValue(false));
     result.add(StaticStrings::Code,
                VPackValue(static_cast<int>(_response->responseCode())));
   }
 
   generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
-                 queryResult.context);
+                 _queryResult.context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
