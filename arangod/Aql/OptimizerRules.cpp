@@ -5921,8 +5921,13 @@ static bool optimizeSortNode(ExecutionPlan* plan,
   if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
     info.sorted = true;// do not parse another SORT
     info.ascending = elements[0].ascending;
-    info.exesToModify.emplace(sort, expr);
-    info.nodesToRemove.emplace(expr->node());
+    if (!ServerState::instance()->isCoordinator()) {
+      // we must not remove a sort in the cluster... the results from each
+      // shard will be sorted by using the index, however we still need to
+      // establish a cross-shard sortedness by distance.
+      info.exesToModify.emplace(sort, expr);
+      info.nodesToRemove.emplace(expr->node());
+    }
     calc->canRemoveIfThrows(true);
     return true;
   }

@@ -140,9 +140,8 @@ AstNode* createSubqueryWithLimit(
   // part) of a `CalculationNode`.
   //
   if (limit && !(limit->isIntValue() || limit->isNullValue())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"limit parameter is for wrong type");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "limit parameter has wrong type");
   }
-
 
   auto* ast = plan->getAst();
 
@@ -162,7 +161,7 @@ AstNode* createSubqueryWithLimit(
   eReturn->addDependency(last);
 
   /// add optional limit node
-  if(limit && !limit->isNullValue()) {
+  if (limit && !limit->isNullValue()) {
     ExecutionNode* eLimit = plan->registerNode(
       new LimitNode(plan, plan->nextId(), 0 /*offset*/, limit->getIntValue())
     );
@@ -179,10 +178,9 @@ AstNode* createSubqueryWithLimit(
 
   // return reference to outVariable
   return ast->createNodeReference(subqueryOutVariable);
-
 }
 
-std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* docRef, NearOrWithinParams& params){
+std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* docRef, NearOrWithinParams& params) {
   auto* trx = ast->query()->trx();
 
   AstNode* accessNodeLat = docRef;
@@ -226,7 +224,7 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
 
   } // for index in collection
 
-  if(!indexFound) {
+  if (!indexFound) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
                                   params.collection.c_str());
   }
@@ -250,8 +248,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   //// enumerate collection
   auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
-  if(!aqlCollection) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"collection used in NEAR or WITHIN not found");
+  if (!aqlCollection) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "collection used in NEAR or WITHIN not found");
   }
 
   Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
@@ -279,9 +277,9 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   AstNode* expressionAst = funDist;
 
   //// build filter condition for
-  if(!isNear){
-    if(!params.radius->isNumericValue()){
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"radius argument is not a numeric value");
+  if (!isNear) {
+    if (!params.radius->isNumericValue()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "radius argument is not a numeric value");
     }
 
     expressionAst = ast->createNodeBinaryOperator(
@@ -300,9 +298,9 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   );
   eCalc->addDependency(eEnumerate);
 
-  //// create SORT of FILTER
+  //// create SORT or FILTER
   ExecutionNode* eSortOrFilter = nullptr;
-  if(isNear){
+  if (isNear) {
     // use calculation node in sort node
     SortElementVector sortElements { SortElement{ calcOutVariable, /*asc*/ true} };
     eSortOrFilter = plan->registerNode(
@@ -317,18 +315,18 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   //// create MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
   if (params.distanceName) { //return without merging the distance into the result
-    if(!params.distanceName->isStringValue()) {
+    if (!params.distanceName->isStringValue()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"distance argument is not a string");
     }
     AstNode* elem = nullptr;
     AstNode* funDistMerge = nullptr;
-    if(isNear){
+    if (isNear) {
       funDistMerge = ast->createNodeReference(calcOutVariable);
     } else {
       //NOTE - recycling the Ast seems to work - tested with ASAN
       funDistMerge = funDist;
     }
-    if(params.distanceName->isConstant()){
+    if (params.distanceName->isConstant()) {
       elem = ast->createNodeObjectElement(params.distanceName->getStringValue()
                                          ,params.distanceName->getStringLength()
                                          ,funDistMerge);
