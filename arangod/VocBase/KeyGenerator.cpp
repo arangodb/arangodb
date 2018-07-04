@@ -498,7 +498,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
 class UuidKeyGenerator final : public KeyGenerator {
  public:
   /// @brief create the generator
-  UuidKeyGenerator(bool allowUserKeys)
+  explicit UuidKeyGenerator(bool allowUserKeys)
     : KeyGenerator(allowUserKeys) {}
 
   /// @brief generate a key
