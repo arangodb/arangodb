@@ -182,15 +182,13 @@ QueryStreamCursor::QueryStreamCursor(
     _exportCount = opRes.slice().getInt();
     VPackSlice limit = _query->bindParameters()->slice().get("limit");
     if (limit.isInteger()) {
-      _exportCount = std::min(limit.getInt(), _exportCount);
+      _exportCount = (std::min)(limit.getInt(), _exportCount);
     }
   }
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
   if (_query) { // cursor is canceled or timed-out
-    /*QueryResult result;
-    _query->finalize(result);*/
     // Query destructor will  cleanup plan and abort transaction
     _query.reset();
   }
@@ -341,7 +339,11 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder, ExecutionState stat
 
     if (!hasMore) {
       QueryResult result;
-      _query->finalize(result); // will commit transaction
+      ExecutionState state = _query->finalize(result); // will commit transaction
+      while (state == ExecutionState::WAITING) {
+        _query->tempWaitForAsyncResponse();
+        state = _query->finalize(result);
+      }
       if (result.extra && result.extra->slice().isObject()) {
         builder.add("extra", result.extra->slice());
       }

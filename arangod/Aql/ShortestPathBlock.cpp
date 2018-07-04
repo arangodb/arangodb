@@ -296,7 +296,7 @@ ShortestPathBlock::getSome(size_t atMost) {
     }
 
     if (_buffer.empty()) {
-      size_t toFetch = std::min(DefaultBatchSize(), atMost);
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       ExecutionState state;
       bool blockAppended;
       std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
@@ -333,7 +333,7 @@ ShortestPathBlock::getSome(size_t atMost) {
     }
 
     size_t available = _pathLength - _posInPath;
-    size_t toSend = std::min(atMost, available);
+    size_t toSend = (std::min)(atMost, available);
 
     std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrOutRegs));
     // automatically freed if we throw

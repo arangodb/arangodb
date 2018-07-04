@@ -422,7 +422,7 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
   size_t available = blockForClient->size() - pos.second;
   // available should be non-zero
 
-  skipped = std::min(available, atMost);  // nr rows in outgoing block
+  skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   if (!skipping) {
     result.reset(blockForClient->slice(pos.second, pos.second + skipped));
@@ -579,7 +579,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
     }
   }
 
-  skipped = std::min(buf.size(), atMost);
+  skipped = (std::min)(buf.size(), atMost);
 
   if (skipping) {
     for (size_t i = 0; i < skipped; i++) {
@@ -1644,7 +1644,7 @@ SortingGatherBlock::getSome(size_t atMost) {
     return {ExecutionState::DONE, nullptr};
   }
 
-  size_t toSend = std::min(available, atMost);  // nr rows in outgoing block
+  size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
 
   // the following is similar to AqlItemBlock's slice method . . .
   std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
@@ -1726,7 +1726,7 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
     return {ExecutionState::DONE, 0};
   }
 
-  size_t const skipped = std::min(available, atMost);  // nr rows in outgoing block
+  size_t const skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   _strategy->prepare(_gatherBlockPos);
 

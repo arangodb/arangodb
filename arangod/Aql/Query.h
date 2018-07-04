@@ -72,6 +72,10 @@ enum QueryPart { PART_MAIN, PART_DEPENDENT };
 
 /// @brief an AQL query
 class Query {
+
+ private:
+   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+
  private:
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
@@ -468,6 +472,9 @@ class Query {
   /// Create the result in this builder. It is also used to determine
   /// if we are continuing the query or of we called
   std::shared_ptr<arangodb::velocypack::Builder> _resultBuilder;
+
+  /// Track in which phase of execution we are, in order to implement repeatability.
+  ExecutionPhase _executionPhase;
 
   /// Temporary Section only used during the development of
   /// async AQL

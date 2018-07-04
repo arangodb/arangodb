@@ -272,10 +272,11 @@ class ExecutionBlock {
 
   /// @brief If the buffer is empty, calls getBlock(atMost). The return values
   /// mean:
-  /// - WAITING: upstream returned WAITING, state is unchanged
-  /// - HAS_BLOCKS: there is at least one block in the buffer
   /// - NO_MORE_BLOCKS: the buffer is empty and the upstream is DONE
-  enum class BufferState { HAS_BLOCKS, NO_MORE_BLOCKS, WAITING };
+  /// - HAS_BLOCKS: there is at least one block in the buffer
+  /// - HAS_NEW_BLOCK: the buffer was empty before and a new block was added
+  /// - WAITING: upstream returned WAITING, state is unchanged
+  enum class BufferState { NO_MORE_BLOCKS, HAS_BLOCKS, HAS_NEW_BLOCK, WAITING };
   BufferState getBlockIfNeeded(size_t atMost);
 
   /// @brief Updates _skipped and _pos; removes the first item from the
@@ -340,7 +341,6 @@ class ExecutionBlock {
   /// _skipped counter.
   size_t _skipped;
 
- private:
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;

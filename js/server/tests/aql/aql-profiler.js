@@ -35,16 +35,23 @@ const assert = jsunity.jsUnity.assertions;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for AQL tracing/profiling
+/// @file test suite for AQL tracing/profiling
+/// Tests primarily that every Aql block returns the expected number of rows
+/// during queries, and that getSome() is called the expected number of times
+/// (mainly that it is not called too often).
+/// Some tests are located in aql-profiler-noncluster.js and
+/// aql-profiler-noncluster-nightly.js, namely for the following blocks:
+/// - EnumerateCollectionBlock
+/// - IndexBlock
+/// - TraversalBlock
+/// TODO Test skipSome() as well.
 ////////////////////////////////////////////////////////////////////////////////
 
 
 function ahuacatlProfilerTestSuite () {
 
-  // TODO test skipSome as well, all current tests run getSome only
 
   // import some names from profHelper directly into our namespace:
-  const colName = profHelper.colName;
   const defaultBatchSize = profHelper.defaultBatchSize;
 
   const { CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
@@ -76,7 +83,6 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      db._drop(colName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,10 +147,10 @@ function ahuacatlProfilerTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateListBlock
+/// @brief test EnumerateListBlock and ReturnBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnumerateListBlock : function () {
+    testEnumerateListAndReturnBlock : function () {
       const query = 'FOR i IN 1..@rows RETURN i';
       const genNodeList = (rows, batches) => [
         { type : SingletonBlock, calls : 1, items : 1 },
@@ -429,11 +435,64 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks({query, genNodeList, bind});
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test NoResultsBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testNoResultsBlock1: function() {
+      const query = 'FOR i IN 1..@rows FILTER 1 == 0 RETURN i';
+
+      // As the descendant blocks of NoResultsBlock don't get a single getSome
+      // call, they don't show up in the statistics.
+
+      const genNodeList = () => [
+        {}, // SingletonBlock
+        {}, // CalculationBlock
+        {type: NoResultsBlock, calls: 1, items: 0},
+        {type: EnumerateListBlock, calls: 1, items: 0},
+        {type: ReturnBlock, calls: 1, items: 0},
+      ];
+
+      // This is essentially runDefaultChecks, but we cannot use it because
+      // of the missing blocks in the stats.
+
+      for (const rows of profHelper.defaultTestRowCounts) {
+        const profile = db._query(query, {rows},
+          {profile: 2, defaultBatchSize}
+        ).getExtra();
+
+        profHelper.assertIsLevel2Profile(profile);
+        // This can't work because of the missing blocks in the stats:
+        // profHelper.assertStatsNodesMatchPlanNodes(profile);
+
+        const batches = Math.ceil(rows / defaultBatchSize);
+
+        const expected = genNodeList(rows, batches);
+        // Like profHelper.getCompactStatsNodes(), but allows for missing stats
+        // nodes.
+        const actual = profHelper.zipPlanNodesIntoStatsNodes(profile).map(
+          node => (
+            node.fromStats ?
+            {
+            // type: node.fromPlan.type,
+            type: node.fromStats.blockType,
+            calls: node.fromStats.calls,
+            items: node.fromStats.items,
+          } : {})
+        );
+
+        profHelper.assertNodesItemsAndCalls(expected, actual,
+          {query, rows, batches, expected, actual});
+      }
+    },
+
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
 // like ModificationBlock and BlockWithClients are never instantiated separately
 // and therefore don't need to be tested on their own.
+// TODO when this is done, write a list of tested blocks at the top of each
+// test file.
 
 // *CalculationBlock
 // *CountCollectBlock
@@ -444,16 +503,16 @@ function ahuacatlProfilerTestSuite () {
 // *HashedCollectBlock
 // *IndexBlock
 // *LimitBlock
-// NoResultsBlock
+// *NoResultsBlock
 // RemoteBlock
-// ReturnBlock
+// *ReturnBlock
 // ShortestPathBlock
 // SingletonBlock
 // SortBlock
 // SortedCollectBlock
 // SortingGatherBlock
 // SubqueryBlock
-// TraversalBlock
+// *TraversalBlock
 // UnsortingGatherBlock
 //
 // ModificationBlock

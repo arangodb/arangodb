@@ -187,7 +187,7 @@ function limitSuite () {
       ];
 
       queries.forEach(function (query) {
-        assertEqual(query[1], AQL_EXECUTE(query[0]).json.length, queries[0]);
+        assertEqual(query[1], AQL_EXECUTE(query[0]).json.length, query);
       });
     },
 

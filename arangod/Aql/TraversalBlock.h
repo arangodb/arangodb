@@ -63,8 +63,9 @@ class TraversalBlock final : public ExecutionBlock {
   /// @brief cleanup, here we clean up all internally generated values
   void freeCaches();
 
-  /// @brief continue fetching of paths
-  bool morePaths(size_t hint);
+  /// @brief read more paths from _traverser. returns true if there are more
+  /// paths.
+  bool getSomePaths(size_t hint);
 
   /// @brief skip the next paths
   size_t skipPaths(size_t hint);
@@ -147,9 +148,6 @@ class TraversalBlock final : public ExecutionBlock {
   /// @brief _inRegs, a vector containing for each expression above
   /// a vector of RegisterId, used to execute the expression
   std::vector<RegisterId> _inRegs;
-
-  /// @brief Remember how many documents were inflight when we kick in WAITING
-  size_t _inflight;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 };
