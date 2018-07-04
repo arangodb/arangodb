@@ -607,27 +607,17 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     return true;
   };
 
-  // collections and indexes
-  VPackBuilder inventoryBuilder;
-
-  if (global) {
-    DatabaseFeature::DATABASE->inventory(inventoryBuilder, tick, nameFilter);
-  } else {
-    _vocbase.inventory(inventoryBuilder, tick, nameFilter);
-  }
-
-  VPackSlice const inventory = inventoryBuilder.slice();
   VPackBuilder builder;
-
   builder.openObject();
 
+  // collections and indexes
   if (global) {
-    TRI_ASSERT(inventory.isObject());
-    builder.add("databases", inventory);
+    builder.add("databases", VPackValue(VPackValueType::Object));
+    DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
   } else {
-    // add collections data
-    TRI_ASSERT(inventory.isArray());
-    builder.add("collections", inventory);
+    // add collections and views
+    _vocbase.inventory(builder, tick, nameFilter);
+    TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
 
   // "state"

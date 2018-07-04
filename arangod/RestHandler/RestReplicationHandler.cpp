@@ -54,6 +54,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -351,6 +352,12 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       handleCommandRestoreData();
+    } else if (command == "restore-view") {
+      if (type != rest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+      
+      handleCommandRestoreView();
     } else if (command == "sync") {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
@@ -739,43 +746,14 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   auto pair = rocksutils::stripObjectIds(parsedRequest->slice());
   VPackSlice const slice = pair.first;
 
-  bool overwrite = false;
-
-  bool found;
-  std::string const& value1 = _request->value("overwrite", found);
-
-  if (found) {
-    overwrite = StringUtils::boolean(value1);
-  }
-
-  bool force = false;
-  std::string const& value3 = _request->value("force", found);
-
-  if (found) {
-    force = StringUtils::boolean(value3);
-  }
-
-  std::string const& value9 =
-      _request->value("ignoreDistributeShardsLikeErrors", found);
+  bool overwrite = _request->parsedValue<bool>("overwrite", false);
+  bool force = _request->parsedValue<bool>("force", false);;
   bool ignoreDistributeShardsLikeErrors =
-      found ? StringUtils::boolean(value9) : false;
-
-  uint64_t numberOfShards = 0;
-  std::string const& value4 = _request->value("numberOfShards", found);
-
-  if (found) {
-    numberOfShards = StringUtils::uint64(value4);
-  }
-
-  uint64_t replicationFactor = 1;
-  std::string const& value5 = _request->value("replicationFactor", found);
-
-  if (found) {
-    replicationFactor = StringUtils::uint64(value5);
-  }
+      _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
+  uint64_t numberOfShards = _request->parsedValue<uint64_t>("numberOfShards", 0);
+  uint64_t replicationFactor = _request->parsedValue<uint64_t>("replicationFactor", 1);
 
   Result res;
-
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(
         slice, overwrite, force, numberOfShards,
@@ -878,7 +856,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreCollection(
-    VPackSlice const& collection, bool dropExisting, bool force) {
+    VPackSlice const& collection, bool dropExisting, bool /*force*/) {
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection declaration is invalid");
   }
@@ -1764,6 +1742,70 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief restores the views
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRestoreView() {
+  
+  bool parseSuccess = false;
+  VPackSlice slice = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return; // error message generated in parseVPackBody
+  }
+  if (!slice.isObject()) {
+    generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+  
+  bool force = _request->parsedValue<bool>("force", false);
+  bool overwrite = _request->parsedValue<bool>("overwrite", false);
+  
+  auto nameSlice = slice.get(StaticStrings::DataSourceName);
+  auto typeSlice = slice.get(StaticStrings::DataSourceType);
+  VPackSlice const propertiesSlice = slice.get("properties");
+  
+  if (!nameSlice.isString() || !typeSlice.isString() ||
+      !propertiesSlice.isObject()) {
+    generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+  
+  auto view = _vocbase.lookupView(nameSlice.copyString());
+  if (view) {
+    if (overwrite) {
+      Result res = _vocbase.dropView(view->id(), /*dropSytem*/false);
+      if (res.fail()) {
+        generateError(res);
+        return;
+      }
+    } else {
+      generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+      return;
+    }
+  }
+  
+  try {
+    view = _vocbase.createView(slice);
+    if (view == nullptr) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "problem creating view");
+      return;
+    }
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
+  } catch (...) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "problem creating view");
+  }
+  
+  VPackBuilder result;
+  result.openObject();
+  result.add("result", VPackValue(true));
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_put_api_replication_serverID
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2038,6 +2080,8 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandAddFollower() {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
@@ -2168,6 +2212,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRemoveFollower() {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+  
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
@@ -2212,6 +2258,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
@@ -2353,6 +2400,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
@@ -2403,6 +2452,8 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
@@ -2454,8 +2505,9 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
-  std::string id = std::to_string(TRI_NewTickServer());
+  TRI_ASSERT(ServerState::instance()->isDBServer());
 
+  std::string id = std::to_string(TRI_NewTickServer());
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);

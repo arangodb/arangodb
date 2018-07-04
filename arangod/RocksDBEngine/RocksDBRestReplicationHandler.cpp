@@ -396,32 +396,28 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   bool isGlobal = false;
   getApplier(isGlobal);
 
-  VPackBuilder inventoryBuilder;
-  Result res =
-    ctx->getInventory(&_vocbase, includeSystem, isGlobal, inventoryBuilder);
+  VPackBuilder builder;
+  builder.openObject();
 
+  // add collections and views
+  Result res;
+  if (isGlobal) {
+    builder.add("databases", VPackValue(VPackValueType::Object));
+    res = ctx->getInventory(&_vocbase, includeSystem, true, builder);
+  } else {
+    res = ctx->getInventory(&_vocbase, includeSystem, false, builder);
+    TRI_ASSERT(builder.hasKey("collections") &&
+               builder.hasKey("views"));
+  }
+  
   if (res.fail()) {
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   "inventory could not be created");
     return;
   }
 
-  VPackBuilder builder;
-  builder.openObject();
-
-  VPackSlice const inventory = inventoryBuilder.slice();
-  if (isGlobal) {
-    TRI_ASSERT(inventory.isObject());
-    builder.add("databases", inventory);
-  } else {
-    // add collections data
-    TRI_ASSERT(inventory.isArray());
-    builder.add("collections", inventory);
-  }
-
-  // "state"
+  // <state>
   builder.add("state", VPackValue(VPackValueType::Object));
-
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));
   builder.add(
@@ -430,7 +426,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.add("totalEvents",
               VPackValue(ctx->lastTick()));  // s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
-  builder.close();  // state
+  builder.close();  // </state>
 
   std::string const tickString(std::to_string(tick));
   builder.add("tick", VPackValue(tickString));

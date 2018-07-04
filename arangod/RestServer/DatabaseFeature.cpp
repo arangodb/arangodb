@@ -839,9 +839,7 @@ void DatabaseFeature::inventory(VPackBuilder& result,
       result.add(VPackValue(VPackValueType::Object));
       result.add("id", VPackValue(std::to_string(vocbase->id())));
       result.add("name", VPackValue(vocbase->name()));
-      result.add(VPackValue("collections"));
       vocbase->inventory(result, maxTick, nameFilter);
-      result.close();
     }
   }
   result.close();

@@ -428,7 +428,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 }
 
 /// @brief drops a collection
-bool TRI_vocbase_t::DropCollectionCallback(
+/*static */ bool TRI_vocbase_t::DropCollectionCallback(
     arangodb::LogicalCollection* collection) {
   std::string const name(collection->name());
 
@@ -943,17 +943,20 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 void TRI_vocbase_t::inventory(
     VPackBuilder& result,
     TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
+  TRI_ASSERT(result.isOpenObject());
 
   // cycle on write-lock
   WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
+  std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> dataSourceById;
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   {
     RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
     collections = _collections;
+    dataSourceById = _dataSourceById;
   }
 
   if (collections.size() > 1) {
@@ -975,7 +978,7 @@ void TRI_vocbase_t::inventory(
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
-  result.openArray();
+  result.add("collections", VPackValue(VPackValueType::Array));
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
 
@@ -1019,7 +1022,17 @@ void TRI_vocbase_t::inventory(
       result.close();
     }
   }
-
+  result.close();
+  
+  result.add("views", VPackValue(VPackValueType::Array, true));
+  for (auto const& dataSource : dataSourceById) {
+    if (dataSource.second->category() != LogicalView::category()) {
+      continue;
+    }
+    result.openObject();
+    dataSource.second->toVelocyPack(result, true, true);
+    result.close();
+  }
   result.close();
 }
 
