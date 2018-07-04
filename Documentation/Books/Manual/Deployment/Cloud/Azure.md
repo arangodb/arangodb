@@ -1,39 +1,17 @@
-ArangoDB in Microsoft Azure
-===========================
+Deploying ArangoDB on Microsoft Azure
+=====================================
 
-WIP
+ArangoDB can be deployed on Azure or other cloud platforms. Deploying on a cloud
+provider is common choice and many of the most big ArangoDB installation are running
+on the cloud.
 
-I want to use ArangoDB in Microsoft Azure
+No specific scripts or tools are available to deploy on Azure. Deploying on Azure
+is still possible, and again, a quite common scenario.
 
-How to
-------
+Using the [ArangoDB Starter](../ArangoDBStarter/README.md), [Kubernetes](../Kubernetes/README.md),
+or performing a [Manual Deployment](../Manually/README.md) are all valid
+options to deploy on Azure. Please refer to the corresponding chapters for further 
+information.
 
-The short answer is: go to
-
-```
-https://vmdepot.msopentech.com/
-```
-
-type in "ArangoDB", select the version you require and press "Create Virtual Machine".
-
-![VMDepot](../assets/UsingArangoDBAzure/vmdepot-arangodb.png)
-
-Follow the instructions given there and within minutes you have a running ArangoDB
-instance in Microsoft Azure. You will receive an email as soon as your machine
-is ready.
-
-Assume your machine is called `myarangodb`, than you can access ArangoDB pointing
-your browser to
-
-```
-http://myarangodb.cloudapp.net:8529
-```
-
-Please note that for security reasons the default instance is password protected.
-
-However, the password for "root" is empty. So, please log in and change the
-password as soon as possible.
-
-**Authors**: [Frank Celler](https://github.com/fceller)
-
-**Tags**: #azure, #howto
+**Important:** In order to deploy on Azure, general guidelines, like using a fast,
+local, SSD disk for the data directory of the ArangoDB processes apply.

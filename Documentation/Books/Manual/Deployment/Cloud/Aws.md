@@ -1,5 +1,5 @@
-Running ArangoDB on AWS
-=======================
+Deploying ArangoDB on AWS
+=========================
 
 ArangoDB can be deployed on AWS or other cloud platforms. Deploying on a cloud
 provider is common choice and many of the most big ArangoDB installation are running
@@ -11,7 +11,8 @@ still possible, and again, a quite common scenario.
 
 Using the [ArangoDB Starter](../ArangoDBStarter/README.md), [Kubernetes](../Kubernetes/README.md),
 or performing a [Manual Deployment](../Manually/README.md) are all valid
-options. Please refer to the corresponding chapter for further information.
+options to deploy on AWS. Please refer to the corresponding chapters for further 
+information.
 
 **Important:** In order to deploy on AWS, general guidelines, like using a fast,
 local, SSD disk for the data directory of the ArangoDB processes apply.
