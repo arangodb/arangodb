@@ -124,7 +124,7 @@ bool RestHandler::forwardRequest() {
     // no need to actually forward
     return false;
   }
-  
+
   std::string serverId = ClusterInfo::instance()->getCoordinatorByShortID(shortId);
 
   if ("" == serverId) {

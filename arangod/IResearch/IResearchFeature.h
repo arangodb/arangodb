@@ -27,7 +27,17 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
+namespace aql {
+
+struct Function;
+
+} // aql
+
 namespace iresearch {
+
+bool isFilter(arangodb::aql::Function const& func) noexcept;
+bool isScorer(arangodb::aql::Function const& func) noexcept;
 
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:

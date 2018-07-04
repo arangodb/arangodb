@@ -86,7 +86,6 @@ class MMFilesCollection final : public PhysicalCollection {
     uint64_t _documents;
     uint64_t _operations;
     int64_t _initialCount;
-    bool const _trackKeys;
 
     OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx)
         : _collection(collection),
@@ -103,8 +102,7 @@ class MMFilesCollection final : public PhysicalCollection {
           _deletions(0),
           _documents(0),
           _operations(0),
-          _initialCount(-1),
-          _trackKeys(collection->keyGenerator()->trackKeys()) {
+          _initialCount(-1) {
       TRI_ASSERT(collection != nullptr);
       TRI_ASSERT(trx != nullptr);
     }
