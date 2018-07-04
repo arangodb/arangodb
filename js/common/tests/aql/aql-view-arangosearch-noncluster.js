@@ -100,7 +100,7 @@ function iResearchAqlTestSuite () {
         action: function () {
           var db = require("@arangodb").db;
           var c = db._collection("UnitTestsCollection");
-          return {length: c.toArray().length, value: c.document('foo').xyz}
+          return {length: c.toArray().length, value: c.document('foo').xyz};
         }
       });
       assertEqual(1, result.value);
