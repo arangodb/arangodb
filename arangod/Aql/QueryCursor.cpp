@@ -339,6 +339,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder, ExecutionState stat
 
     if (!hasMore) {
       QueryResult result;
+      _query->setContinueCallback([&]() { _query->tempSignalAsyncResponse(); });
       ExecutionState state = _query->finalize(result); // will commit transaction
       while (state == ExecutionState::WAITING) {
         _query->tempWaitForAsyncResponse();

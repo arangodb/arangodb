@@ -1360,9 +1360,10 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) noexcept {
   try {
-    ExecutionState state = ExecutionState::WAITING;
     setContinueCallback([&]() { tempSignalAsyncResponse(); });
+    ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
     while (state == ExecutionState::WAITING) {
+      tempWaitForAsyncResponse();
       state = cleanupPlanAndEngine(errorCode, statsBuilder);
     }
   } catch (...) {
