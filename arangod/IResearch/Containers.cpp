@@ -21,10 +21,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/thread_utils.hpp"
+
 #include "Containers.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
+
+void ResourceMutex::reset() {
+  if (get()) {
+    SCOPED_LOCK(mutex());
+    _resource.store(nullptr);
+  }
+}
 
 NS_END // iresearch
 NS_END // arangodb
