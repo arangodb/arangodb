@@ -4,7 +4,7 @@ Multiple Path Search
 The shortest path algorithm can only determine one shortest path.
 For example, if this is the full graph (based on the [mps_graph](../../Manual/Graphs/index.html#the-mps-graph)):
 
-![Example Graph](mps_graph.png)
+![Example Graph](../../Manual/Graphs/mps_graph.png)
 
 then a shortest path query from **A** to **C** may return the path `A -> B -> C` or `A -> D -> C`, but it's undefined which one (not taking edge weights into account here).
 

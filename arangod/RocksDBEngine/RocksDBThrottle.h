@@ -72,8 +72,6 @@ public:
   RocksDBThrottle();
   virtual ~RocksDBThrottle();
 
-  CompactionEventListener * GetCompactionEventListener() override;
-
   void OnFlushBegin(rocksdb::DB* db,
                     const rocksdb::FlushJobInfo& flush_job_info) override;
 

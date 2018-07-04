@@ -222,7 +222,7 @@ renamed. Renaming a view will change the view name, but not the view identifier.
 The conceptual transformation function employed by a view type is implementation
 specific. The type is specified by the user when the view is created, and cannot
 be changed later. The following view types are currently supported:
-* [arangosearch](../Views/ArangoSearch.md)
+* [arangosearch](../Views/ArangoSearch/README.md)
 
 View Identifier
 ---------------

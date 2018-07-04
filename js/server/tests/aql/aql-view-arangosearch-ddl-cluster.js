@@ -696,6 +696,10 @@ function IResearchFeatureDDLTestSuite () {
       meta = { links: { "TestCollection0": { fields: { b: {} } } } };
       view.properties(meta, true); // partial update
 
+      var updatedMeta = view.properties();
+      assertNotEqual(undefined, updatedMeta.links.TestCollection0.fields.b);
+      assertEqual(undefined, updatedMeta.links.TestCollection0.fields.a);
+
       result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).json;
       assertEqual(2, result.length);
       assertEqual(2, result[0].z);
