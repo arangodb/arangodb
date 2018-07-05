@@ -48,8 +48,8 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         success = body->slice().get("success").isTrue();
         otherTerm = body->slice().get("term").getNumber<term_t>();
       } catch (std::exception const&) {
-        LOG_TOPIC(WARN, Logger::AGENCY) <<
-          "Received agent call back with unusable data";
+        LOG_TOPIC(WARN, Logger::AGENCY) 
+          << "Bad callback message received: " << e.what();
         _agent->reportFailed(_slaveID, _toLog);
       }
       if (otherTerm > _agent->term()) {
