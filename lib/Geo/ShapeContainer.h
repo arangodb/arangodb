@@ -95,7 +95,7 @@ class ShapeContainer final {
   /// @brief may intersect the cell
   bool mayIntersect(S2CellId) const noexcept;
 
-  /// @brief update query parameters
+  /// @brief adjust query parameters (specifically max distance)
   void updateBounds(QueryParams& qp) const noexcept;
 
   /// contains this region the coordinate

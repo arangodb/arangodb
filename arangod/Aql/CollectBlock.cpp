@@ -496,7 +496,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
         res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
       } else {
         res->emplaceValue(
-            row, _aggregateRegisters[j].first, arangodb::basics::VelocyPackHelper::NullValue());
+            row, _aggregateRegisters[j].first, AqlValueHintNull());
       }
       ++j;
     }

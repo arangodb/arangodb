@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, AQL_EXECUTE */
+/*global assertUndefined, assertEqual, assertTrue, assertFalse*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -35,24 +35,17 @@ var db = require("@arangodb").db;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
+function iResearchAqlTestSuite () {
   var c;
   var v;
-
-  // provided arguments
-  var args = {
-    numberOfShards: numberOfShards, 
-    replicationFactor: replicationFactor 
-  };
-  console.info("Test suite arguments: " + JSON.stringify(args));
 
   return {
     setUp : function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection", args);
+      c = db._create("UnitTestsCollection");
 
       db._drop("AnotherUnitTestsCollection");
-      var ac = db._create("AnotherUnitTestsCollection", args);
+      var ac = db._create("AnotherUnitTestsCollection");
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
@@ -97,8 +90,55 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       db._drop("AnotherUnitTestsCollection");
     },
 
+    testTransactionRegistration : function () {
+      // read lock
+      var result = db._executeTransaction({
+        collections: {
+          allowImplicit: false,
+          read: [ v.name() ]
+        },
+        action: function () {
+          var db = require("@arangodb").db;
+          var c = db._collection("UnitTestsCollection");
+          return {length: c.toArray().length, value: c.document('foo').xyz};
+        }
+      });
+      assertEqual(1, result.value);
+      assertEqual(28, result.length);
+
+      // write lock
+      result = db._executeTransaction({
+        collections: {
+          allowImplicit: false,
+          write: [ v.name() ]
+        },
+        action: function () {
+          var db = require("@arangodb").db;
+          var c = db._collection("UnitTestsCollection");
+          c.save({ _key: "bar", xyz: 2 });
+          return c.toArray().length;
+        }
+      });
+      assertEqual(29, result);
+
+      // exclusive lock
+      result = db._executeTransaction({
+        collections: {
+          allowImplicit: false,
+          exclusive: [ v.name() ]
+        },
+        action: function () {
+          var db = require("@arangodb").db;
+          var c = db._collection("UnitTestsCollection");
+          c.save({ _key: "baz", xyz: 3 });
+          return c.toArray().length;
+        }
+      });
+      assertEqual(30, result);
+    },
+
     testAttributeEqualityFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -107,7 +147,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testMultipleAttributeEqualityFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 5);
       result.forEach(function(res) {
@@ -117,7 +157,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testMultipleAttributeEqualityFilterSortAttribute : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 5);
       var last = -1;
@@ -130,7 +170,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testMultipleAttributeEqualityFilterSortAttributeDesc : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 5);
       var last = 5;
@@ -143,7 +183,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeLessFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -152,7 +192,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeLeqFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -161,7 +201,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeGeqFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -170,7 +210,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeGreaterFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -179,7 +219,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeOpenIntervalFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 4);
       result.forEach(function(res) {
@@ -188,7 +228,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeClosedIntervalFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -197,7 +237,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeIntervalExclusionFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -206,7 +246,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testAttributeNeqFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 18); // include documents without attribute 'a'
       result.forEach(function(res) {
@@ -215,7 +255,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testStartsWithFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -224,7 +264,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testStartsWithFilter2 : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -233,7 +273,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testStartsWithFilterSort : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 2);
       assertEqual(result[0].b, 'bar');
@@ -243,32 +283,32 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testInTokensFilterSortTFIDF : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 4);
-      assertEqual(result[0].name, 'other half');
-      assertEqual(result[1].name, 'full');
-      assertEqual(result[2].name, 'half');
-      assertEqual(result[3].name, 'quarter');
+      assertEqual(result[0].name, 'half');
+      assertEqual(result[1].name, 'quarter');
+      assertEqual(result[2].name, 'other half');
+      assertEqual(result[3].name, 'full');
     },
 
     testPhraseFilter : function () {
-      var result0 = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).json;
+      var result0 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result0.length, 1);
       assertEqual(result0[0].name, 'full');
 
-      var result1 = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc", null, { waitForSync: true }).json;
+      var result1 = db._query("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result1.length, 1);
       assertEqual(result1[0].name, 'full');
 
-      var result2 = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, 'quick brown fox jumps'), 'text_en') RETURN doc", null, { waitForSync: true }).json;
+      var result2 = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, 'quick brown fox jumps'), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result2.length, 1);
       assertEqual(result2[0].name, 'full');
 
-      var result3 = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, [ 'quick brown fox jumps' ]), 'text_en') RETURN doc", null, { waitForSync: true }).json;
+      var result3 = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(PHRASE(doc.text, [ 'quick brown fox jumps' ]), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result3.length, 1);
       assertEqual(result3[0].name, 'full');
@@ -281,35 +321,29 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text) RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text) RETURN doc", null, { waitForSync: true }).toArray();
 
-      assertEqual(result.length, expected.size);
+      assertEqual(result.length, expected.size); 
       result.forEach(function(res) {
         assertTrue(expected.delete(res.name));
       });
       assertEqual(expected.size, 0);
     },
 
-    testExistsFilterByAnalyzer: function () {
+    testExistsFilterByAnalyzer : function () {
       var expected = new Set();
       expected.add("full");
       expected.add("half");
       expected.add("other half");
       expected.add("quarter");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer', 'text_en') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer', 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
         assertTrue(expected.delete(res.name));
       });
       assertEqual(expected.size, 0);
-    },
-
-    testExistsFilterByIdentityAnalyzer: function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'analyzer') RETURN doc", null, { waitForSync: true }).json;
-
-      assertEqual(0, result.length);
     },
 
     testExistsFilterByContextAnalyzer: function () {
@@ -319,7 +353,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(EXISTS(doc.text, 'analyzer'), 'text_en') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER ANALYZER(EXISTS(doc.text, 'analyzer'), 'text_en') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -335,7 +369,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add("other half");
       expected.add("quarter");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'string') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'string') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -345,7 +379,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testExistsFilterByType : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'type') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.text, 'type') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 0);
     },
@@ -354,7 +388,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       var expected = new Set();
       expected.add("null");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'null') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc.anotherNullField, 'null') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -367,7 +401,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       var expected = new Set();
       expected.add("bool");
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'bool') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc['anotherBoolField'], 'bool') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -380,7 +414,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       var expected = new Set();
       expected.add("numeric");
 
-      var result = AQL_EXECUTE("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'numeric') RETURN doc", null, { waitForSync: true }).json;
+      var result = db._query("LET suffix='NumericField' LET fieldName = CONCAT('another', suffix) FOR doc IN VIEW UnitTestsView FILTER EXISTS(doc[fieldName], 'numeric') RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -396,12 +430,11 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add(JSON.stringify({ a: "bar", b: "foo", c: 1 }));
       expected.add(JSON.stringify({ a: "baz", b: "foo", c: 1 }));
 
-      var result = AQL_EXECUTE(
+      var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "RETURN doc"
-      , null, { waitForSync: true }).json;
-
+      , null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -415,12 +448,11 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.add(JSON.stringify({ a: "foo", b: "bar", c: 0 }));
       expected.add(JSON.stringify({ a: "foo", b: "baz", c: 0 }));
 
-      var result = AQL_EXECUTE(
+      var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection FILTER adoc.id < 1" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "RETURN doc"
-      , null, { waitForSync: true }).json;
-
+      , null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.size);
       result.forEach(function(res) {
@@ -436,12 +468,12 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.push({ a: "foo", b: "bar", c: 0 });
       expected.push({ a: "foo", b: "baz", c: 0 });
 
-      var result = AQL_EXECUTE(
+      var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "SORT doc.c DESC, doc.a, doc.b " +
         "RETURN doc"
-      , null, { waitForSync: true }).json;
+      , null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.length);
       var i = 0;
@@ -452,7 +484,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
         assertEqual(doc.c, res.c);
       });
     },
-/*
+
     testViewInInnerLoopSortByTFIDF_BM25_Attribute : function() {
       var expected = [];
       expected.push({ a: "baz", b: "foo", c: 1 });
@@ -460,12 +492,12 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       expected.push({ a: "foo", b: "bar", c: 0 });
       expected.push({ a: "foo", b: "baz", c: 0 });
 
-      var result = AQL_EXECUTE(
+      var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection" +
         "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
         "SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
         "RETURN doc"
-      , null, { waitForSync: true }).json;
+      , null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.length);
       var i = 0;
@@ -476,7 +508,6 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
         assertEqual(doc.c, res.c);
       });
     },
-*/
   };
 }
 
@@ -484,24 +515,6 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(function IResearchAqlTestSuite_s1_r1() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 });
-});
-
-jsunity.run(function IResearchAqlTestSuite_s4_r1() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 });
-});
-
-/*
-
-jsunity.run(function IResearchAqlTestSuite_s1_r2() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 })
-});
-
-jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 })
-});
-
-*/
+jsunity.run(iResearchAqlTestSuite);
 
 return jsunity.done();

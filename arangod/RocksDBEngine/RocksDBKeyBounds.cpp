@@ -307,7 +307,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
-
       break;
     }
     case RocksDBEntryType::Document:
