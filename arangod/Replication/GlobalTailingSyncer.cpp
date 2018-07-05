@@ -43,16 +43,16 @@ GlobalTailingSyncer::GlobalTailingSyncer(
       _queriedTranslations(false) {
 
   _ignoreDatabaseMarkers = false;
-  _databaseName = TRI_VOC_SYSTEM_DATABASE;
+  _state.databaseName = TRI_VOC_SYSTEM_DATABASE;
 }
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
-  TRI_ASSERT(!_masterInfo._endpoint.empty());
-  TRI_ASSERT(_masterInfo._serverId != 0);
-  TRI_ASSERT(_masterInfo._majorVersion != 0);
+  TRI_ASSERT(!_state.master.endpoint.empty());
+  TRI_ASSERT(_state.master.serverId != 0);
+  TRI_ASSERT(_state.master.majorVersion != 0);
 
-  if (_masterInfo._majorVersion < 3 ||
-      (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
+  if (_state.master.majorVersion < 3 ||
+      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
     std::string err = "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC(ERR, Logger::REPLICATION) << err;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, err);
@@ -88,14 +88,14 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
   // we do not have a "cname" attribute in the marker...
   // now check for a globally unique id attribute ("cuid")
   // if its present, then we will use our local cuid -> collection name
-  // translation table 
+  // translation table
   VPackSlice const name = slice.get("cuid");
   if (!name.isString()) {
     return false;
   }
-  
-  if (_masterInfo._majorVersion < 3 ||
-      (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
+
+  if (_state.master.majorVersion < 3 ||
+      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }
@@ -104,18 +104,18 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     // no translations yet... query master inventory to find names of all
     // collections
     try {
-      GlobalInitialSyncer init(_configuration);
+      GlobalInitialSyncer init(_state.applier);
       VPackBuilder inventoryResponse;
       Result res = init.inventory(inventoryResponse);
       _queriedTranslations = true;
-      
+
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
         return false;
       }
 
       VPackSlice invSlice = inventoryResponse.slice();
-      if (!invSlice.isObject()) { 
+      if (!invSlice.isObject()) {
         return false;
       }
       invSlice = invSlice.get("databases");
@@ -133,7 +133,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
         if (!dbObj.isArray()) {
           return false;
         }
-    
+
         for (auto const& it : VPackArrayIterator(dbObj)) {
           if (!it.isObject()) {
             continue;
@@ -152,7 +152,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     }
   }
 
-  // look up cuid in translations map 
+  // look up cuid in translations map
   auto it = _translations.find(name.copyString());
 
   if (it != _translations.end()) {

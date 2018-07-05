@@ -1,6 +1,18 @@
 devel
 -----
 
+* if authentication is turned on requests to databases by users with insufficient rights
+ will be answered with the HTTP forbidden (401) response.
+  
+* upgraded bundled RocksDB library version to 5.14
+
+* added key generators `uuid` and `padded`
+
+  The `uuid` key generator generates universally unique 128 bit keys, which are
+  stored in hexadecimal human-readable format.  
+  The `padded` key generator generates keys of a fixed length (16 bytes) in 
+  ascending lexicographical sort order.
+
 * The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
   field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
   the inverted meaning.
@@ -12,11 +24,13 @@ devel
   in a cluster by pushing parts of the aggregation onto the DB servers and only
   doing the total aggregation on the coordinator
 
-* replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
-  new optimizer rule.
+* replace JavaScript functions FULLTEXT, NEAR, WITHIN and WITHIN_RECTANGLE with 
+  regular AQL subqueries via a new optimizer rule "replace-function-with-index".
 
-  - The NEAR function now does not default to a limit of 100 documents any more.
-  - "fulltext-index-optimizer" optimizer rule has been removed.
+* the existing "fulltext-index-optimizer" optimizer rule has been removed because its
+  duty is now handled by the "replace-function-with-index" rule.
+
+* The `NEAR` AQL function now does not default to a limit of 100 documents any more.
 
 * added option "--latency true" option to arangoimport. Lists microsecond latency
   statistics on 10 second intervals.

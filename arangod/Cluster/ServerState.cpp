@@ -207,7 +207,7 @@ ServerState::StateEnum ServerState::stringToState(std::string const& value) {
     return STATE_SHUTDOWN;
   }
   // TODO MAX: do we need to understand other states, too?
-  
+
   return STATE_UNDEFINED;
 }
 
@@ -323,7 +323,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   //    lookup in agency
   //    if (found) {
   //      persist id
-  //    } 
+  //    }
   //  }
   //  if (id still not set) {
   //    generate and persist new id
@@ -347,7 +347,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
 
   Logger::setRole(roleToString(role)[0]);
   _role.store(role, std::memory_order_release);
-  
+
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
     << roleToString(role) << " and our id is "
     << id;
@@ -370,7 +370,7 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
       return "Coordinator";
     case ROLE_SINGLE:
       return "Single";
-      
+
     case ROLE_UNDEFINED:
     case ROLE_AGENT: {
       TRI_ASSERT(false);
@@ -397,7 +397,7 @@ std::string ServerState::getUuidFilename() {
 }
 
 bool ServerState::hasPersistedId() {
-  std::string uuidFilename = getUuidFilename(); 
+  std::string uuidFilename = getUuidFilename();
   return FileUtils::exists(uuidFilename);
 }
 
@@ -426,7 +426,7 @@ std::string ServerState::generatePersistedId(RoleEnum const& role) {
 
 std::string ServerState::getPersistedId() {
   if (hasPersistedId()) {
-    std::string uuidFilename = getUuidFilename(); 
+    std::string uuidFilename = getUuidFilename();
     std::ifstream ifs(uuidFilename);
 
     std::string id;
@@ -436,7 +436,7 @@ std::string ServerState::getPersistedId() {
       return id;
     }
   }
-    
+
   LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << getUuidFilename() << "'";
   FATAL_ERROR_EXIT();
 }
@@ -496,7 +496,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     AgencyReadTransaction readValueTrx(std::vector<std::string>{AgencyCommManager::path(targetIdStr),
                                                                 AgencyCommManager::path(targetUrl)});
     AgencyCommResult result = comm.sendTransactionWithFailover(readValueTrx, 0.0);
-    
+
     if (!result.successful()) {
       LOG_TOPIC(WARN, Logger::CLUSTER) << "Couldn't fetch " << targetIdStr
         << " and " << targetUrl;
@@ -558,6 +558,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     result = comm.sendTransactionWithFailover(trx, 0.0);
 
     if (result.successful()) {
+      setShortId(num + 1); // save short ID for generating server-specific ticks
       return true;
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -596,6 +597,26 @@ void ServerState::setId(std::string const& id) {
 
   WRITE_LOCKER(writeLocker, _lock);
   _id = id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the short server id
+////////////////////////////////////////////////////////////////////////////////
+
+uint32_t ServerState::getShortId() {
+  return _shortId.load(std::memory_order_relaxed);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the short server id
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::setShortId(uint32_t id) {
+  if (id == 0) {
+    return;
+  }
+
+  _shortId.store(id, std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -756,7 +777,7 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
     VPackBuilder builder;
     builder.add(VPackValue(mode));
     operations.push_back(AgencyOperation("Readonly", AgencyValueOperationType::SET, builder.slice()));
-  
+
     AgencyWriteTransaction readonlyMode(operations);
     AgencyComm comm;
     AgencyCommResult r = comm.sendTransactionWithFailover(readonlyMode);

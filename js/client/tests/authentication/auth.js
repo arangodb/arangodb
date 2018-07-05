@@ -35,6 +35,7 @@ const users = require("@arangodb/users");
 const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
+const ERRORS = require('internal').errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -46,6 +47,7 @@ function AuthSuite() {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
 
+  // hardcoded in testsuite
   const jwtSecret = 'haxxmann';
   const user = 'hackers@arangodb.com';
   
@@ -487,6 +489,67 @@ function AuthSuite() {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
+
+    testDatabaseGuessing: function() {
+      let jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
+      // should respond with not-found because we are root
+      var res = request.get({
+        url: baseUrl() + "/_db/nonexisting/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 404);
+
+      // should prevent name guessing by unauthorized users
+      var res = request.get({
+        url: baseUrl() + "/_db/nonexisting/_api/version"
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 404);
+    },
+
+    testDatabaseListNonSystem: function() {
+      let jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
+      // supported
+      var res = request.get({
+        url: baseUrl() + "/_api/database",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+      expect(res).to.have.property('json');
+      expect(res.json).to.have.property('result');
+      expect(res.json.result).to.be.an('array');
+      expect(res.json.result).to.include("_system");
+
+      try {
+        db._createDatabase("other");
+        // not supported on non _system
+        res = request.get({
+          url: baseUrl() + "/_db/other/_api/database",
+          auth: {
+            bearer: jwt,
+          }
+        });
+        expect(res).to.be.an.instanceof(request.Response);
+        expect(res).to.have.property('statusCode', ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code);
+      } catch(e) {
+
+      } finally {
+        db._dropDatabase("other");
+      }
+    }
   };
 }
 

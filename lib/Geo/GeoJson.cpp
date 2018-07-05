@@ -38,6 +38,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/S2/S2MultiPointRegion.h"
 #include "Geo/S2/S2MultiPolyline.h"
+#include "Geo/GeoParams.h"
 #include "Geo/ShapeContainer.h"
 #include "Logger/Logger.h"
 
@@ -68,7 +69,7 @@ arangodb::Result verifyClosedLoop(std::vector<S2Point> const& vertices) {
   using arangodb::Result;
 
   if (vertices.empty()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Empty loop");
+    return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
   } else if (vertices.front() != vertices.back()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Loop not closed");
   }
@@ -291,21 +292,26 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
     if (res.fail()) {
       return res;
     }
+    
+    // A linear ring is a closed LineString with four or more positions.
+    if (vtx.size() < 4) {  // last vertex must be same as first
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "Invalid loop in polygon, must have at least 4 vertices");
+    }
+    
     res = ::verifyClosedLoop(vtx);  // check last vertices are same
     if (res.fail()) {
       return res;
     }
-    ::removeAdjacentDuplicates(vtx);  // s2loop doesn't like duplicates
-    
-    if (vtx.size() < 3 + 1) {  // last vertex must be same as first
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "Invalid loop in polygon, "
-                    "must have at least 3 distinct vertices");
+    ::removeAdjacentDuplicates(vtx); // s2loop doesn't like duplicates
+    if (vtx.size() >= 2 && vtx.front() == vtx.back()) {
+      vtx.resize(vtx.size() - 1);  // remove redundant last vertex
+    } else if (vtx.empty()) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
     }
-    vtx.resize(vtx.size() - 1);  // remove redundant last vertex
     
     if (n == 1) {  // cheap rectangle detection
-      if (vtx.size() == 1) {
+      if (vtx.size() == 1) { // empty rectangle
         S2LatLng v0(vtx[0]);
         region.reset(std::make_unique<S2LatLngRect>(v0, v0),
                      ShapeContainer::Type::S2_LATLNGRECT);
@@ -317,7 +323,10 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
             (v1.lng() - v2.lng()).abs() < eps &&
             (v2.lat() - v3.lat()).abs() < eps &&
             (v3.lng() - v0.lng()).abs() < eps) {
-          region.reset(std::make_unique<S2LatLngRect>(v0, v2),
+          R1Interval r1 = R1Interval::FromPointPair(v0.lat().radians(), v2.lat().radians());
+          S1Interval s1 = S1Interval::FromPointPair(v0.lng().radians(), v2.lng().radians());
+          region.reset(std::make_unique<S2LatLngRect>(r1.Expanded(geo::kRadEps),
+                                                      s1.Expanded(geo::kRadEps)),
                        ShapeContainer::Type::S2_LATLNGRECT);
           return TRI_ERROR_NO_ERROR;
         }
@@ -401,18 +410,22 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
       if (res.fail()) {
         return res;
       }
+      // A linear ring is a closed LineString with four or more positions.
+      if (vtx.size() < 4) {  // last vertex must be same as first
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Invalid loop in polygon, must have at least 4 vertices");
+      }
+      
       res = ::verifyClosedLoop(vtx);  // check last vertices are same
       if (res.fail()) {
         return res;
       }
-      ::removeAdjacentDuplicates(vtx);  // s2loop doesn't like duplicates
-      
-      if (vtx.size() < 3 + 1) {  // last vertex must be same as first
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "Invalid loop in polygon, "
-                      "must have at least 3 distinct vertices");
+      ::removeAdjacentDuplicates(vtx); // s2loop doesn't like duplicates
+      if (vtx.size() >= 2 && vtx.front() == vtx.back()) {
+        vtx.resize(vtx.size() - 1);  // remove redundant last vertex
+      } else if (vtx.empty()) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
       }
-      vtx.resize(vtx.size() - 1);  // remove redundant last vertex
       
       loops.push_back(std::make_unique<S2Loop>(vtx, S2Debug::DISABLE));
       if (!loops.back()->IsValid()) {  // will check first and last for us

@@ -16,3 +16,4 @@ This is a public API so it does *not* require authentication.
 
 @RESTRETURNCODE{200}
 This API will return HTTP 200 if everything is ok
+@endDocuBlock

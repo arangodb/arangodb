@@ -665,7 +665,6 @@ function build-books()
 
 function build-dist-books()
 {
-    set -x
     set -e
     if test -z "${OUTPUT_DIR}"; then
         echo "please specify --outputDir"
@@ -701,7 +700,7 @@ Usage: VERB arguments
 Available Verbs:
     build-dist-books - build all books in all representations (HTML(+tarball)/PDF/...) - takes some time.
     build-books - builds the HTML representation of all books
-    build-book - build one book, spetify with --name, optionally specify --filter to limit the md files to be regenerated.
+    build-book - build one book specified with --name, optionally specify --filter to limit the md files to be regenerated.
     build-book-keep-md - don't flush pregenerated files while building a book - shortcut version.
     clean - clean the working directory
 

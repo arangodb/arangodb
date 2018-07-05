@@ -136,10 +136,21 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     GeneralRequest& req) {
-  if (!::resolveRequestContext(req)) {
+  if (!::resolveRequestContext(req)) { // false if db not found
+    if (_auth->isActive()) {
+      // prevent guessing database names (issue #5030)
+      auth::Level lvl = auth::Level::NONE;
+      if (req.authenticated()) {
+        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+      }
+      if (lvl == auth::Level::NONE) {
+        addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                         req.messageId(), TRI_ERROR_FORBIDDEN);
+        return RequestFlow::Abort;
+      }
+    }
     addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return RequestFlow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
@@ -217,7 +228,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
                      "not authorized to execute this request");
     return RequestFlow::Abort;
   }
-  
+
   if (code == rest::ResponseCode::OK && req.authenticated()) {
     // check for an HLC time stamp only with auth
     std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
@@ -277,6 +288,13 @@ void GeneralCommTask::executeRequest(
     return;
   }
 
+  // forward to correct server if necessary
+  bool forwarded = handler->forwardRequest();
+  if (forwarded) {
+    addResponse(*handler->response(), handler->stealStatistics());
+    return;
+  }
+
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
     RequestStatistics::SET_ASYNC(statistics(messageId));
@@ -306,8 +324,7 @@ void GeneralCommTask::executeRequest(
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        request->contentTypeResponse(), messageId,
-                       TRI_ERROR_QUEUE_FULL,
-                       TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+                       TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
@@ -391,6 +408,12 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
   addSimpleResponse(code, respType, messageId, std::move(buffer));
 }
 
+void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
+                                       rest::ContentType respType,
+                                       uint64_t messageId, int errorNum) {
+  addErrorResponse(code, respType, messageId, errorNum, TRI_errno_string(errorNum));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -455,8 +478,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
-                     TRI_ERROR_QUEUE_FULL,
-                     TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+                     TRI_ERROR_QUEUE_FULL);
   }
 
   return ok;
