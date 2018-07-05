@@ -101,6 +101,7 @@ private:
   std::shared_ptr<SynchronizeShard> _callie;
 };
 
+
 arangodb::Result getReadLockId (
   std::string const& endpoint, std::string const& database,
   std::string const& clientId, double timeout, uint64_t& id) {
