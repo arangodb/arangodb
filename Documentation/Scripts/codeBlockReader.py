@@ -195,7 +195,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   longTag = "%s_long" % tag
   shortTag = "%s_short" % tag
   shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
-  longToggle = "$('#%s').hide(); $('#%s').show();" % (longTag, shortTag)
+  longToggle = "$('#%s').hide(); $('#%s').show(); window.location.hash='%s';" % (longTag, shortTag, utag)
 
   fh.write(unicode("<div class=\"example-container\" id=\"%s\">\n" % utag))
   fh.write(unicode(anchor))
