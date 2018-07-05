@@ -1,5 +1,21 @@
 /* jshint -W051:true */
 /* eslint-disable */
+
+let appendHeaders = function(appender, headers) {
+  var key;
+  // generate header
+  appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
+
+  for (key in headers) {
+    if (headers.hasOwnProperty(key)) {
+      if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+          && key !== 'content-length') {
+        appender(key + ': ' + headers[key] + '\n');
+      }
+    }
+  }
+};
+  
 ;(function () {
   'use strict'
   /* eslint-enable */
@@ -138,7 +154,7 @@
   // / @brief logs a request in curl format
   // //////////////////////////////////////////////////////////////////////////////
 
-  exports.appendCurlRequest = function (jsonAppender, rawAppender) {
+  exports.appendCurlRequest = function (jsonAppender, rawAppender, shellAppender) {
     return function (method, url, body, headers) {
       var response;
       var curl;
@@ -206,21 +222,6 @@
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a raw response
   // //////////////////////////////////////////////////////////////////////////////
-  appendHeaders(appender, headers) {
-    var key;
-    // generate header
-    appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
-
-    for (key in headers) {
-      if (headers.hasOwnProperty(key)) {
-        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-            && key !== 'content-length') {
-          appender(key + ': ' + headers[key] + '\n');
-        }
-      }
-    }
-  }
-  
   exports.appendRawResponse = function (appender, syntaxAppender) {
     return function (response) {
       appendHeaders(response.headers);
@@ -279,7 +280,7 @@
           throw ` ${e}: (${line})\n${JSON.stringify(response)}`;
         }
       }
-                      )
+                      );
     };
   };
 

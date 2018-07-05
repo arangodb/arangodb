@@ -107,7 +107,7 @@ const log = function (a) {
   appender(internal.stopCaptureMode());
 };
 
-var logCurlRequestRaw = internal.appendCurlRequest(shellAppender,jsonAppender, rawAppender);
+var logCurlRequestRaw = internal.appendCurlRequest(jsonAppender, rawAppender, shellAppender);
 var logCurlRequest = function () {
   if ((arguments.length > 1) &&
       (arguments[1] !== undefined) &&
