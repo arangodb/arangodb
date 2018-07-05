@@ -1,7 +1,7 @@
 LDAP
 ====
 
-__This feature is only available in the Enterprise Edition.__
+**This feature is only available in the Enterprise Edition.**
 
 Basics Concepts
 ---------------
