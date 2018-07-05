@@ -23,16 +23,15 @@
 
 #include "IResearchCommon.h"
 #include "IResearchDocument.h"
+#include "IResearchFeature.h"
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewDBServer.h"
 #include "VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
@@ -195,7 +194,6 @@ IResearchViewDBServer::IResearchViewDBServer(
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
-  _syncWorker.reset(); // ensure destructor called if required (before view destructor)
   _collections.clear(); // ensure view distructors called before mutex is deallocated
 }
 
@@ -325,7 +323,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   if (impl) {
     _collections.emplace(cid, view); // track the IResearchView instance from vocbase
-    impl->updateProperties(_meta, _syncWorker);
+    impl->updateProperties(_meta);
 
     return view; // do not wrap in deleter since view already present in vocbase (as if already present in '_collections')
   }
@@ -388,7 +386,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   // FIXME should we register?
   _collections.emplace(cid, view);
-  impl->updateProperties(_meta, _syncWorker);
+  impl->updateProperties(_meta);
 
   // hold a reference to the original view in the deleter so that the view is still valid for the duration of the pointer wrapper
   // this shared_ptr should not be stored in TRI_vocbase_t since the deleter depends on 'this'
@@ -483,18 +481,12 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
       if (oldWiew && *(oldWiew->_meta) == meta) {
         wiew->_meta = oldWiew->_meta;
-        wiew->_syncWorker = oldWiew->_syncWorker;
       }
     }
 
     if (!(wiew->_meta)) {
       wiew->_meta = std::make_shared<AsyncMeta>();
       static_cast<IResearchViewMeta&>(*(wiew->_meta)) = std::move(meta);
-    }
-
-    if (!(wiew->_syncWorker)) {
-      wiew->_syncWorker =
-        std::make_shared<IResearchViewSyncWorker>(wiew->_meta);
     }
 
     if (preCommit && !preCommit(wiew)) {
@@ -519,11 +511,10 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   auto* ci = ClusterInfo::instance();
   std::shared_ptr<AsyncMeta> meta;
-  std::shared_ptr<IResearchViewSyncWorker> syncWorker;
 
-  // reference meta and syncWorker from cluster-wide view if available to
+  // reference meta from cluster-wide view if available to
   // avoid memory and thread allocation
-  // if not availble then the meta and syncWorker will be reassigned when
+  // if not availble then the meta will be reassigned when
   // the per-cid instance is associated with the cluster-wide view
   if (ci) {
     auto planId = arangodb::basics::VelocyPackHelper::stringUInt64(
@@ -541,16 +532,14 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
     if (wiew) {
       meta = wiew->_meta;
-      syncWorker = wiew->_syncWorker;
     }
   }
 
   // no view for shard
-  view = IResearchView::makeWithMeta(
-    vocbase, info, isNew, planVersion, meta, syncWorker, preCommit
-  );
+  view = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
 
-  if (!view) {
+  if (!view
+      || (meta && !LogicalView::cast<IResearchView>(*view).updateProperties(meta).ok())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure while creating an IResearch View '" << name << "' in database '" << vocbase.name() << "'";
 
@@ -757,7 +746,13 @@ arangodb::Result IResearchViewDBServer::updateProperties(
     static_cast<IResearchViewMeta&>(*_meta) = std::move(meta);
   }
 
-  _syncWorker->refresh();
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchFeature
+  >();
+
+  if (feature) {
+    feature->asyncNotify();
+  }
 
   if (!properties.hasKey(StaticStrings::LinksField)) {
     return arangodb::Result();
