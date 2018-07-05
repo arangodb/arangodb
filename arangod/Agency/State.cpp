@@ -239,7 +239,7 @@ index_t State::logFollower(query_t const& transactions) {
   VPackSlice slices = transactions->slice();
   size_t nqs = slices.length();
 
-  while(!_ready) {
+  while(!_ready && !_agent->isStopping()) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for state to get ready ...";
     std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
   }
