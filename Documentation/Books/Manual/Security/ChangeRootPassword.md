@@ -3,7 +3,7 @@
 One can reset Root Password in the following way:
 
 1) Stop the Server
-2) Set `authentication=false` in the `arangod.conf` file
+2) Set `authentication=false` in the `arangod.conf file`
 3) Restart the Server. **Note** you might need to take any needed precaution to avoid this server can be accessed from outside as currently authentication is temporarily disabled. You might do this disabling network access or using localhost for the binding (`--server.endpoint tcp://127.0.0.1:8529`)
 4) Change the password using the following command via `Arangosh`
 
