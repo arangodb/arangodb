@@ -458,18 +458,13 @@ struct Functions {
     static AqlValue Fail(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
 
-   static AqlValue CurrentUser(arangodb::aql::Query*,
+    static AqlValue CurrentUser(arangodb::aql::Query*,
                                 transaction::Methods*,
                                 VPackFunctionParameters const&);
 
-    static AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
-                         VPackFunctionParameters const&);
-    static AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
-                           VPackFunctionParameters const&);
-    static AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
-                             VPackFunctionParameters const&);
-    static AqlValue WithinRectangle(arangodb::aql::Query*, transaction::Methods*,
-                                    VPackFunctionParameters const&);
+    /// @brief dummy function that will only throw an error when called
+    static AqlValue NotImplemented(arangodb::aql::Query*, transaction::Methods*,
+                                   VPackFunctionParameters const&);
 };
 
 }

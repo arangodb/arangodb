@@ -348,12 +348,16 @@ struct ClusterCommOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommRequest {
+  static std::unordered_map<std::string, std::string> const noHeaders;
+  static std::string const noBody;
+  static std::shared_ptr<std::string const> const sharedNoBody;
+
   std::string destination;
   rest::RequestType requestType;
   std::string path;
+  ClusterCommResult result;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
-  ClusterCommResult result;
   bool done;
 
   ClusterCommRequest() : done(false) {}
@@ -378,10 +382,33 @@ struct ClusterCommRequest {
         headerFields(std::move(headers)),
         done(false) {}
 
-
+  /// @brief "safe" accessor for header
+  std::unordered_map<std::string, std::string> const& getHeaders() const {
+    if (headerFields == nullptr) {
+      return noHeaders;
+    }
+    return *headerFields;
+  }
+  
   void setHeaders(
       std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
     headerFields = std::move(headers);
+  }
+ 
+  /// @brief "safe" accessor for body 
+  std::string const& getBody() const {
+    if (body == nullptr) {
+      return noBody;
+    }
+    return *body;
+  }
+  
+  /// @brief "safe" accessor for body 
+  std::shared_ptr<std::string const> getBodyShared() const {
+    if (body == nullptr) {
+      return sharedNoBody;
+    }
+    return body;
   }
 };
 
