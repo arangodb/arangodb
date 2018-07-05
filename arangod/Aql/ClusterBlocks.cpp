@@ -994,7 +994,7 @@ Result RemoteBlock::sendAsyncRequest(
 
   ++_engine->_stats.requests;
   std::shared_ptr<ClusterCommCallback> callback =
-      std::make_shared<WakeupQueryCallback>(dynamic_cast<RemoteBlock*>(this),
+      std::make_shared<WakeupQueryCallback>(dynamic_cast<ExecutionBlock*>(this),
                                             _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
@@ -1161,7 +1161,7 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
   // For every call we simply forward via HTTP
   VPackBuilder bodyBuilder;
   bodyBuilder.openObject();
-  bodyBuilder.add("code", VPackValue(std::to_string(errorCode)));
+  bodyBuilder.add("code", VPackValue(errorCode));
   bodyBuilder.close();
 
   auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());

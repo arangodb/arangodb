@@ -939,7 +939,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
         return RestStatus::DONE;
       }
-    }
+    } // here, answerBuilder is closed
 
     sendResponse(rest::ResponseCode::OK, answerBuilder.slice(), transactionContext.get());
   } catch (arangodb::basics::Exception const& ex) {
