@@ -495,7 +495,7 @@ function AuthSuite() {
         "preferred_username": "root",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
       }, 'HS256');
-      // should respond with unauthorized name guessing
+      // should respond with not-found because we are root
       var res = request.get({
         url: baseUrl() + "/_db/nonexisting/_api/version",
         auth: {
@@ -503,7 +503,14 @@ function AuthSuite() {
         }
       });
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 401);
+      expect(res).to.have.property('statusCode', 404);
+
+      // should prevent name guessing by unauthorized users
+      var res = request.get({
+        url: baseUrl() + "/_db/nonexisting/_api/version"
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 404);
     },
 
     testDatabaseListNonSystem: function() {

@@ -136,16 +136,21 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     GeneralRequest& req) {
-  if (!::resolveRequestContext(req)) {
+  if (!::resolveRequestContext(req)) { // false if db not found
     if (_auth->isActive()) {
-      // prevent guessing of database names (issue #5030)
-      addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
-                       req.contentTypeResponse(), req.messageId(),
-                       TRI_ERROR_FORBIDDEN);
-    } else {
-      addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                       req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      // prevent guessing database names (issue #5030)
+      auth::Level lvl = auth::Level::NONE;
+      if (req.authenticated()) {
+        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+      }
+      if (lvl == auth::Level::NONE) {
+        addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                         req.messageId(), TRI_ERROR_FORBIDDEN);
+        return RequestFlow::Abort;
+      }
     }
+    addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return RequestFlow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
