@@ -148,6 +148,23 @@ SECTION("test_async") {
     CHECK((true == deallocated));
   }
 
+  // shcedule task (null resource mutex value)
+  {
+    arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    arangodb::iresearch::IResearchFeature feature(&server);
+    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
+    bool deallocated = false;
+    DestructFlag flag(deallocated);
+    std::condition_variable cond;
+    std::mutex mutex;
+    SCOPED_LOCK_NAMED(mutex, lock);
+
+    feature.async(resourceMutex, 1, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    CHECK((std::cv_status::timeout == cond.wait_for(lock, std::chrono::milliseconds(100))));
+    std::this_thread::yield();
+    CHECK((true == deallocated));
+  }
+
   // schedule task (null functr)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
