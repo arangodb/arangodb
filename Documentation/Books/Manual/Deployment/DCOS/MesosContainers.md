@@ -1,4 +1,6 @@
-# Running ArangoDB on DC/OS with Mesos Containers
+Running ArangoDB on DC/OS with Mesos Containers
+===============================================
+
 Since DC/OS 1.8 a new way of running containers in Mesos clouds has become available. It re-uses the docker on-disk format and distribution infrastructure,
 but pairs it with management features that make it a better fit for DC/OS environments. 
 

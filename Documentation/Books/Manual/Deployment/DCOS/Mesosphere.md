@@ -185,7 +185,3 @@ And finally, on port `32211`, you can play the guesser game.
 
 Your game becomes a success. Well, scaling up the front-end is trivial. Simply, go to
 the marathon page and scale up `/guesser/frontend/node`.
-
-**Authors**: [Frank Celler](https://github.com/fceller)
-
-**Tags**: #docker, #mesos, #mesosphere, #howto

@@ -179,7 +179,3 @@ Have fun!
 ### Conclusion
 
 There are quite a few components involved in this process but once you are finished you will have a highly resilient system which surely was worth the effort. None of the components involved is a single point of failure.
-
-**Author:** [Andreas Streichardt](https://github.com/m0ppers)
-
-**Tags:** #docker #howto #dcos #cluster #ha
