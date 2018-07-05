@@ -217,7 +217,7 @@ void RestAqlHandler::setupClusterQuery() {
   collectionBuilder.close();
 
   // Now the query is ready to go, store it in the registry and return:
-  double ttl = _request->parsedValue("ttl", _queryRegistry->defaultTTL());
+  double ttl = _request->parsedValue<double>("ttl", _queryRegistry->defaultTTL());
   if (ttl <= 0) {
     ttl = _queryRegistry->defaultTTL();
   }
@@ -453,7 +453,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   }
 
   // Now the query is ready to go, store it in the registry and return:
-  double ttl = _request->parsedValue("ttl", _queryRegistry->defaultTTL());
+  double ttl = _request->parsedValue<double>("ttl", _queryRegistry->defaultTTL());
 
   _qId = TRI_NewTickServer();
   try {

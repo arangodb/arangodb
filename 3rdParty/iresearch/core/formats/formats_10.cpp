@@ -1947,7 +1947,7 @@ class writer final : public iresearch::columnstore_writer {
         // flush block if we've overcome INDEX_BLOCK_SIZE size (before push_back)
         if (INDEX_BLOCK_SIZE <= block_index_.size()) {
           flush_block();
-          min_ = key;
+          min_ = pending_key_;
           offset = block_buf_.size(); // reset offset to position in the current block
         }
 

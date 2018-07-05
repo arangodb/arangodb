@@ -638,6 +638,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
+  
+  // get the view list
+  VPackSlice views = body.get("views");
+  if (!views.isArray()) {
+    views = VPackSlice::emptyArraySlice();
+  }
 
   // read the server's max tick value
   std::string const tickString =
@@ -655,6 +661,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     maxTick = _options.tickEnd;
   }
 
+  // Step 1. write the dump.json file
   try {
     VPackBuilder meta;
     meta.openObject();
@@ -688,7 +695,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         std::pair<std::string, bool>(_options.collections[i], true));
   }
 
-  // iterate over collections
+  // Step 2. iterate over collections, queue dump jobs
   for (VPackSlice const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
@@ -738,13 +745,43 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
-
+  
   // wait for all jobs to finish, then check for errors
   _clientTaskQueue.waitForIdle();
   {
     MUTEX_LOCKER(lock, _workerErrorLock);
     if (!_workerErrors.empty()) {
       return _workerErrors.front();
+    }
+  }
+  
+  // Step 3. Store view definition files
+  for (VPackSlice view : VPackArrayIterator(views)) {
+    auto nameSlice = view.get(StaticStrings::DataSourceName);
+    if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+      continue; // ignore
+    }
+    
+    try {
+      std::string fname = nameSlice.copyString();
+      fname.append(".view.json");
+      // save last tick in file
+      auto file = _directory->writableFile(fname, true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
+      
+      std::string const viewString = view.toJson();
+      file->write(viewString.c_str(), viewString.size());
+      if (file->status().fail()) {
+        return file->status();
+      }
+    } catch (basics::Exception const& ex) {
+      return {ex.code(), ex.what()};
+    } catch (std::exception const& ex) {
+      return {TRI_ERROR_INTERNAL, ex.what()};
+    } catch (...) {
+      return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
     }
   }
 
@@ -888,7 +925,7 @@ void DumpFeature::start() {
 
   // set up the output directory, not much else
   _directory =
-      std::make_unique<ManagedDirectory>(_options.outputPath, true, true);
+      std::make_unique<ManagedDirectory>(_options.outputPath, !_options.overwrite, true);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_EXISTS:
