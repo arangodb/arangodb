@@ -473,6 +473,10 @@ class Query {
   /// if we are continuing the query or of we called
   std::shared_ptr<arangodb::velocypack::Builder> _resultBuilder;
 
+  /// Options for _resultBuilder. Optimally, it's lifetime should be linked to
+  /// it, but this is hard to do.
+  std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
+
   /// Track in which phase of execution we are, in order to implement repeatability.
   ExecutionPhase _executionPhase;
 

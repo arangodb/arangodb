@@ -609,11 +609,13 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
         log();
 
-        VPackOptions options = VPackOptions::Defaults;
-        options.buildUnindexedArrays = true;
-        options.buildUnindexedObjects = true;
+        _resultBuilderOptions = std::make_shared<VPackOptions>(VPackOptions::Defaults);
+        _resultBuilderOptions->buildUnindexedArrays = true;
+        _resultBuilderOptions->buildUnindexedObjects = true;
 
-        _resultBuilder = std::make_shared<VPackBuilder>(&options);
+        // NOTE: If the options have a shorter lifetime than the builder, it
+        // gets invalid (at least set() and close() are broken).
+        _resultBuilder = std::make_shared<VPackBuilder>(_resultBuilderOptions.get());
 
         // reserve some space in Builder to avoid frequent reallocs
         _resultBuilder->reserve(16 * 1024);
