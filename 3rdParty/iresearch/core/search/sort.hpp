@@ -491,10 +491,7 @@ class IRESEARCH_API order final {
     template<typename T>
     CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
       #if !defined(__APPLE__) && defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++14-extensions"
         assert(sizeof(T) == order_[i].bucket->size());
-#pragma clang diagnostic pop
       #endif
       return reinterpret_cast<const T&>(*(score + order_[i].offset));
     }
