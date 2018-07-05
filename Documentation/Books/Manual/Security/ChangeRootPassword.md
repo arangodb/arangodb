@@ -22,7 +22,7 @@ This command should return:
   "code" : 200
 }
 ```
-5) Set `authentication=true` from `arangod.conf` file
+5) Set `authentication=true` from `arangod.conf file`
 6) Restart the server
 7) Test the connection 
 
