@@ -108,7 +108,6 @@ SECTION("test_start") {
     auto* function = arangodb::iresearch::getFunction(*functions, entry.first);
     CHECK((nullptr != function));
     CHECK((entry.second.first == function->arguments));
-    REQUIRE(function->hasImplementation());
     CHECK((
       entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function)
       || entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function)

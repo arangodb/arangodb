@@ -189,6 +189,7 @@ bool ShapeContainer::mayIntersect(S2CellId cell) const noexcept {
   return _data->MayIntersect(S2Cell(cell));
 }
 
+/// @brief adjust query parameters (specifically max distance)
 void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
   TRI_ASSERT(_data != nullptr);
   if (_data == nullptr) {
