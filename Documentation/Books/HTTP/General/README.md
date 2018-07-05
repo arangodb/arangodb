@@ -11,20 +11,20 @@ can optionally be SSL-encrypted.
 ArangoDB uses the standard HTTP methods (e.g. *GET*, *POST*, *PUT*, *DELETE*) plus
 the *PATCH* method described in [RFC 5789](http://tools.ietf.org/html/rfc5789).
 
-Most server APIs expect clients to send any payload data in [JSON](http://www.json.org) 
+Most server APIs expect clients to send any payload data in [JSON](http://www.json.org)
 format. Details on the expected format and JSON attributes can be found in the
 documentation of the individual server methods.
 
 Clients sending requests to ArangoDB must use either HTTP 1.0 or HTTP 1.1.
-Other HTTP versions are not supported by ArangoDB and any attempt to send 
+Other HTTP versions are not supported by ArangoDB and any attempt to send
 a different HTTP version signature will result in the server responding with
 an HTTP 505 (HTTP version not supported) error.
 
 ArangoDB will always respond to client requests with HTTP 1.1. Clients
-should therefore support HTTP version 1.1. 
+should therefore support HTTP version 1.1.
 
-Clients are required to include the *Content-Length* HTTP header with the 
-correct content length in every request that can have a body (e.g. *POST*, 
+Clients are required to include the *Content-Length* HTTP header with the
+correct content length in every request that can have a body (e.g. *POST*,
 *PUT* or *PATCH*) request. ArangoDB will not process requests without a
 *Content-Length* header - thus chunked transfer encoding for POST-documents
 is not supported.
@@ -33,10 +33,10 @@ HTTP Keep-Alive
 ---------------
 
 ArangoDB supports HTTP keep-alive. If the client does not send a *Connection*
-header in its request, and the client uses HTTP version 1.1, ArangoDB will assume 
-the client wants to keep alive the connection. 
+header in its request, and the client uses HTTP version 1.1, ArangoDB will assume
+the client wants to keep alive the connection.
 If clients do not wish to use the keep-alive feature, they should
-explicitly indicate that by sending a *Connection: Close* HTTP header in 
+explicitly indicate that by sending a *Connection: Close* HTTP header in
 the request.
 
 ArangoDB will close connections automatically for clients that send requests
@@ -58,24 +58,24 @@ Blocking vs. Non-blocking HTTP Requests
 
 ArangoDB supports both blocking and non-blocking HTTP requests.
 
-ArangoDB is a multi-threaded server, allowing the processing of multiple 
-client requests at the same time. Request/response handling and the actual 
+ArangoDB is a multi-threaded server, allowing the processing of multiple
+client requests at the same time. Request/response handling and the actual
 work are performed on the server in parallel by multiple worker threads.
 
 Still, clients need to wait for their requests to be processed by the server,
 and thus keep one connection of a pool occupied.
-By default, the server will fully process an incoming request and then return 
-the result to the client when the operation is finished. The client must 
-wait for the server's HTTP response before it can send additional requests over 
-the same connection. For clients that are single-threaded and/or are 
-blocking on I/O themselves, waiting idle for the server response may be 
+By default, the server will fully process an incoming request and then return
+the result to the client when the operation is finished. The client must
+wait for the server's HTTP response before it can send additional requests over
+the same connection. For clients that are single-threaded and/or are
+blocking on I/O themselves, waiting idle for the server response may be
 non-optimal.
 
 To reduce blocking on the client side, ArangoDB offers a generic mechanism for
 non-blocking, asynchronous execution: clients can add the
-HTTP header *x-arango-async: true* to any of their requests, marking 
-them as to be executed asynchronously on the server. ArangoDB will put such 
-requests into an in-memory task queue and return an *HTTP 202* (accepted) 
+HTTP header *x-arango-async: true* to any of their requests, marking
+them as to be executed asynchronously on the server. ArangoDB will put such
+requests into an in-memory task queue and return an *HTTP 202* (accepted)
 response to the client instantly and thus finish this HTTP-request.
 The server will execute the tasks from the queue asynchronously as fast
 as possible, while clients can continue to do other work.
@@ -84,23 +84,23 @@ option ["--server.maximal-queue-size"](../../Manual/Programs/Arangod/Options.htm
 then the request will be rejected instantly with an *HTTP 500* (internal
 server error) response.
 
-Asynchronous execution decouples the request/response handling from the actual 
-work to be performed, allowing fast server responses and greatly reducing wait 
-time for clients. Overall this allows for much higher throughput than if 
+Asynchronous execution decouples the request/response handling from the actual
+work to be performed, allowing fast server responses and greatly reducing wait
+time for clients. Overall this allows for much higher throughput than if
 clients would always wait for the server's response.
 
-Keep in mind that the asynchronous execution is just "fire and forget". 
-Clients will get any of their asynchronous requests answered with a generic 
-HTTP 202 response. At the time the server sends this response, it does not 
-know whether the requested operation can be carried out successfully (the 
-actual operation execution will happen at some later point). Clients therefore 
-cannot make a decision based on the server response and must rely on their 
+Keep in mind that the asynchronous execution is just "fire and forget".
+Clients will get any of their asynchronous requests answered with a generic
+HTTP 202 response. At the time the server sends this response, it does not
+know whether the requested operation can be carried out successfully (the
+actual operation execution will happen at some later point). Clients therefore
+cannot make a decision based on the server response and must rely on their
 requests being valid and processable by the server.
 
-Additionally, the server's asynchronous task queue is an in-memory data 
-structure, meaning not-yet processed tasks from the queue might be lost in 
-case of a crash. Clients should therefore not use the asynchronous feature 
-when they have strict durability requirements or if they rely on the immediate 
+Additionally, the server's asynchronous task queue is an in-memory data
+structure, meaning not-yet processed tasks from the queue might be lost in
+case of a crash. Clients should therefore not use the asynchronous feature
+when they have strict durability requirements or if they rely on the immediate
 result of the request they send.
 
 For details on the subsequent processing
@@ -124,17 +124,17 @@ The response to an HTTP OPTIONS request will be generic and not expose any priva
 
 There is an additional option to control authentication for custom Foxx apps. The option
 [--server.authentication-system-only](../../Manual/Administration/Configuration/GeneralArangod.html)
-controls whether authentication is required only for requests to the internal database APIs and the admin interface. 
+controls whether authentication is required only for requests to the internal database APIs and the admin interface.
 It is turned on by default, meaning that other APIs (this includes custom Foxx apps) do not require authentication.
 
 The default values allow exposing a public custom Foxx API built with ArangoDB to the outside
 world without the need for HTTP authentication, but still protecting the usage of the
 internal database APIs (i.e. */_api/*, */_admin/*) with HTTP authentication.
 
-If the server is started with the *--server.authentication-system-only* option set 
-to *false*, all incoming requests will need HTTP authentication if the server is configured 
-to require HTTP authentication (i.e. *--server.authentication true*). 
-Setting the option to *true* will make the server require authentication only for requests to the 
+If the server is started with the *--server.authentication-system-only* option set
+to *false*, all incoming requests will need HTTP authentication if the server is configured
+to require HTTP authentication (i.e. *--server.authentication true*).
+Setting the option to *true* will make the server require authentication only for requests to the
 internal database APIs and will allow unauthenticated requests to all other URLs.
 
 Here's a short summary:
@@ -146,12 +146,12 @@ Here's a short summary:
   authentication for all requests (including custom Foxx apps).
 * `--server.authentication false`: authentication disabled for all requests
 
-Whenever authentication is required and the client has not yet authenticated, 
+Whenever authentication is required and the client has not yet authenticated,
 ArangoDB will return *HTTP 401* (Unauthorized). It will also send the *WWW-Authenticate*
-response header, indicating that the client should prompt the user for username and 
+response header, indicating that the client should prompt the user for username and
 password if supported. If the client is a browser, then sending back this header will
 normally trigger the display of the browser-side HTTP authentication dialog.
-As showing the browser HTTP authentication dialog is undesired in AJAX requests, 
+As showing the browser HTTP authentication dialog is undesired in AJAX requests,
 ArangoDB can be told to not send the *WWW-Authenticate* header back to the client.
 Whenever a client sends the *X-Omit-WWW-Authenticate* HTTP header (with an arbitrary value)
 to ArangoDB, ArangoDB will only send status code 401, but no *WWW-Authenticate* header.
@@ -194,7 +194,7 @@ Error Handling
 The following should be noted about how ArangoDB handles client errors in its
 HTTP layer:
 
-* client requests using an HTTP version signature different than *HTTP/1.0* or 
+* client requests using an HTTP version signature different than *HTTP/1.0* or
   *HTTP/1.1* will get an *HTTP 505* (HTTP version not supported) error in return.
 * ArangoDB will reject client requests with a negative value in the
   *Content-Length* request header with *HTTP 411* (Length Required).
@@ -356,11 +356,24 @@ PUT, DELETE, PATCH) of a request using one of the following custom HTTP headers:
 * *x-http-method*
 * *x-method-override*
 
-This allows using HTTP clients that do not support all "common" HTTP methods such as 
-PUT, PATCH and DELETE. It also allows bypassing proxies and tools that would otherwise 
-just let certain types of requests (e.g. GET and POST) pass through. 
+This allows using HTTP clients that do not support all "common" HTTP methods such as
+PUT, PATCH and DELETE. It also allows bypassing proxies and tools that would otherwise
+just let certain types of requests (e.g. GET and POST) pass through.
 
-Enabling this option may impose a security risk, so it should only be used in very 
-controlled environments. Thus the default value for this option is *false* (no method 
+Enabling this option may impose a security risk, so it should only be used in very
+controlled environments. Thus the default value for this option is *false* (no method
 overriding allowed). You need to enable it explicitly if you want to use this
 feature.
+
+Load-balancer support
+---------------------
+
+When running in cluster mode, ArangoDB exposes some APIs which store request state data on specific coordinator nodes, and thus subsequent requests which require access to this state must be served by the coordinator node which owns this state data. In order to support function behind a load-balancer, ArangoDB can transparently forward requests within the cluster to the correct node. If a request is forwarded, the response will contain the following custom HTTP header whose value will be the ID of the node which actually answered the request:
+
+* *x-arango-request-served-by*
+
+The following APIs may use request forwarding:
+
+* `/_api/cursor`
+
+Note: since forwarding such requests require an additional cluster-internal HTTP request, they should be avoided when possible for best performance. Typically this is accomplished either by directing the requests to the correct coordinator at a client-level or by enabling request "stickiness" on a load balancer. Since these approaches are not always possible in a given environment, we support the request forwarding as a fall-back solution.

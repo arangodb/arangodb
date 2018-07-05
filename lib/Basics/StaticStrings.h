@@ -134,6 +134,7 @@ class StaticStrings {
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const Queue;
+  static std::string const RequestServedBy;
   static std::string const ResponseCode;
   static std::string const Server;
   static std::string const StartThread;
@@ -146,7 +147,7 @@ class StaticStrings {
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
-  
+
   // misc strings
   static std::string const LastValue;
 };
