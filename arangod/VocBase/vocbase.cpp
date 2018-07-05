@@ -1022,7 +1022,7 @@ void TRI_vocbase_t::inventory(
       result.close();
     }
   }
-  result.close();
+  result.close(); // </collection>
   
   result.add("views", VPackValue(VPackValueType::Array, true));
   for (auto const& dataSource : dataSourceById) {
@@ -1034,7 +1034,7 @@ void TRI_vocbase_t::inventory(
     view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
     result.close();
   }
-  result.close();
+  result.close(); // </views>
 }
 
 /// @brief looks up a collection by identifier

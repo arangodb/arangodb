@@ -612,7 +612,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
 
   // collections and indexes
   if (global) {
-    builder.add("databases", VPackValue(VPackValueType::Object));
+    builder.add(VPackValue("databases"));
     DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
   } else {
     // add collections and views

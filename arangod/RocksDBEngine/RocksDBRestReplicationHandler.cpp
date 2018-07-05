@@ -402,7 +402,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // add collections and views
   Result res;
   if (isGlobal) {
-    builder.add("databases", VPackValue(VPackValueType::Object));
+    builder.add(VPackValue("databases"));
     res = ctx->getInventory(&_vocbase, includeSystem, true, builder);
   } else {
     res = ctx->getInventory(&_vocbase, includeSystem, false, builder);
