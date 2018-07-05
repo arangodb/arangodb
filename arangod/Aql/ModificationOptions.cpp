@@ -44,6 +44,8 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice) {
       basics::VelocyPackHelper::getBooleanValue(obj, "useIsRestore", false);
   consultAqlWriteFilter =
       basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
+  ignoreRevs =
+      basics::VelocyPackHelper::getBooleanValue(obj, "ignoreRevs", true);
 }
 
 void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
@@ -56,4 +58,5 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("readCompleteInput", VPackValue(readCompleteInput));
   builder.add("useIsRestore", VPackValue(useIsRestore));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
+  builder.add("ignoreRevs", VPackValue(ignoreRevs));
 }

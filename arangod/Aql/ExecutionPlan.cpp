@@ -516,6 +516,8 @@ ModificationOptions ExecutionPlan::createModificationOptions(
           options.nullMeansRemove = value->isFalse();
         } else if (name == "mergeObjects") {
           options.mergeObjects = value->isTrue();
+        } else if (name == "ignoreRevs") {
+          options.ignoreRevs = value->isTrue();
         }
       }
     }
