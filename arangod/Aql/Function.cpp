@@ -41,9 +41,7 @@ Function::Function(std::string const& name,
   initializeArguments();
 
   // almost all AQL functions have a cxx implementation
-  // only function V8() does not
-  TRI_ASSERT(implementation != nullptr || name == "V8");
-
+  // only function V8() plus the ArangoSearch functions do not
   LOG_TOPIC(TRACE, Logger::FIXME) << "registered AQL function '" << name <<
                                      "'. cacheable: " << isCacheable() <<
                                      ", deterministic: " << isDeterministic <<
