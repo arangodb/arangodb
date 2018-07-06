@@ -183,13 +183,6 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     }
   }
 
-  // forward to correct server if necessary
-  bool forwarded = handler->forwardRequest();
-  if (forwarded) {
-    addResponse(*handler->response(), handler->stealStatistics());
-    return RequestFlow::Abort;
-  }
-
   return RequestFlow::Continue;
 }
 
@@ -235,6 +228,13 @@ void GeneralCommTask::executeRequest(
         << "no handler is known, giving up";
     addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
                       VPackBuffer<uint8_t>());
+    return;
+  }
+
+  // forward to correct server if necessary
+  bool forwarded = handler->forwardRequest();
+  if (forwarded) {
+    addResponse(*handler->response(), handler->stealStatistics());
     return;
   }
 

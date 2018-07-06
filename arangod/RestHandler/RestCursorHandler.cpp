@@ -28,9 +28,11 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Transaction/Context.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>

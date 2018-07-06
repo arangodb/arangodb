@@ -47,12 +47,12 @@ class Slice;
 class ClusterInfo;
 class LogicalCollection;
 
--typedef std::string ServerID;         // ID of a server
--typedef std::string DatabaseID;       // ID/name of a database
--typedef std::string CollectionID;     // ID of a collection
--typedef std::string ShardID;          // ID of a shard
--typedef uint32_t ServerShortID;       // Short ID of a server
--typedef std::string ServerShortName;  // Short name of a server
+typedef std::string ServerID;         // ID of a server
+typedef std::string DatabaseID;       // ID/name of a database
+typedef std::string CollectionID;     // ID of a collection
+typedef std::string ShardID;          // ID of a shard
+typedef uint32_t ServerShortID;       // Short ID of a server
+typedef std::string ServerShortName;  // Short name of a server
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;

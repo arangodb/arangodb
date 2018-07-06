@@ -91,7 +91,7 @@ CursorRepository::~CursorRepository() {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it : _cursors) {
-      delete it.second;
+      delete it.second.first;
     }
 
     _cursors.clear();
