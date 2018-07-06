@@ -254,12 +254,23 @@ OperationResult GraphManager::createGraph(VPackSlice document,
     return OperationResult(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
   }
 
+  VPackBuilder sortedEdgeDefinitions;
+  sortedEdgeDefinitions.openObject();
+  sortedEdgeDefinitions.add(StaticStrings::GraphEdgeDefinitions, VPackValue(VPackValueType::Array));
   for (auto const& def : VPackArrayIterator(edgeDefinitions)) {
     Result res = EdgeDefinition::validateEdgeDefinition(def);
     if (res.fail()) {
       return OperationResult(res);
+    } else {
+      std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
+              EdgeDefinition::sortEdgeDefinition(def);
+      sortedEdgeDefinitions.add(velocypack::Slice(buffer->data()));
+
     }
   }
+  sortedEdgeDefinitions.close();
+  sortedEdgeDefinitions.close();
+  VPackSlice sortedEdgeDefinitionsSlice = sortedEdgeDefinitions.slice().get(StaticStrings::GraphEdgeDefinitions);
 
   // validate orphans
   VPackSlice orphanCollections = document.get(StaticStrings::GraphOrphans);
@@ -319,7 +330,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 
   arangodb::enterprise::graph::SmartGraphManager smartgmngr{ctx()};
   if (isSmart) {
-    result = smartgmngr.checkPrerequisites(edgeDefinitions, orphanCollections);
+    result = smartgmngr.checkPrerequisites(sortedEdgeDefinitionsSlice, orphanCollections);
     if (result.fail()) {
       return result;
     }
@@ -349,7 +360,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   options.waitForSync = waitForSync;
 
   // check, if a collection is already used in a different edgeDefinition
-  res = assertFeasibleEdgeDefinitions(edgeDefinitions);
+  res = assertFeasibleEdgeDefinitions(sortedEdgeDefinitionsSlice);
   if (!res.ok()) {
     return OperationResult(res);
   }
@@ -398,12 +409,12 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 
 #ifdef USE_ENTERPRISE
   if (isSmart) {
-    result = smartgmngr.satisfyPrerequisites(edgeDefinitions, orphanCollections,
+    result = smartgmngr.satisfyPrerequisites(sortedEdgeDefinitionsSlice, orphanCollections,
                                              collectionCreateOptionsSlice, waitForSync);
   } else {
     // find or create the collections given by the edge definition
     result = findOrCreateCollectionsByEdgeDefinitions(
-        edgeDefinitions, waitForSync, collectionCreateOptionsSlice);
+        sortedEdgeDefinitionsSlice, waitForSync, collectionCreateOptionsSlice);
 
     // find or create the oprhan collections
     for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
@@ -417,7 +428,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 #else
   // find or create the collections given by the edge definition
   result = findOrCreateCollectionsByEdgeDefinitions(
-      edgeDefinitions, waitForSync, collectionCreateOptionsSlice);
+      sortedEdgeDefinitionsSlice, waitForSync, collectionCreateOptionsSlice);
 
   // find or create the oprhan collections
   for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
@@ -436,7 +447,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Object));
   builder.add(StaticStrings::KeyString, graphName);
-  builder.add(StaticStrings::GraphEdgeDefinitions, edgeDefinitions);
+  builder.add(StaticStrings::GraphEdgeDefinitions, sortedEdgeDefinitionsSlice);
   builder.add(StaticStrings::GraphOrphans, orphanCollections);
   builder.add(StaticStrings::GraphReplicationFactor,
               VPackValue(replicationFactor));

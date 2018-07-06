@@ -229,9 +229,8 @@ void Graph::enhanceEngineInfo(VPackBuilder&) const {}
 // edgeDefinition : { collection : string, from : [string], to : [string] }
 Result EdgeDefinition::validateEdgeDefinition(
     VPackSlice const& edgeDefinition) {
-  TRI_ASSERT(edgeDefinition.isObject());
   if (!edgeDefinition.isObject()) {
-    return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
+    return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,
                   "edge definition is not an object!");
   }
 

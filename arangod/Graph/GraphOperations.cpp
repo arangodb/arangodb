@@ -379,7 +379,6 @@ OperationResult GraphOperations::editEdgeDefinition(
   Result res = trx.begin();
 
   if (!res.ok()) {
-    trx.finish(TRI_ERROR_NO_ERROR);
     return OperationResult(res);
   }
 
@@ -388,6 +387,9 @@ OperationResult GraphOperations::editEdgeDefinition(
       result = changeEdgeDefinitionsForGraph(singleGraph.resolveExternals(),
                                              edgeDefinition, possibleOrphans,
                                              waitForSync, trx);
+    }
+    if (result.fail()) {
+      return result;
     }
   }
 

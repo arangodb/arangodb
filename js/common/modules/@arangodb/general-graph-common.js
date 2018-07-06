@@ -764,7 +764,7 @@ class Graph {
     var self = this;
     // Create Hidden Properties
     createHiddenProperty(this, '__useBuiltIn', useBuiltIn);
-    createHiddenProperty(this, '__name', info._key);
+    createHiddenProperty(this, '__name', info._key || info.name);
     createHiddenProperty(this, '__vertexCollections', vertexCollections);
     createHiddenProperty(this, '__edgeCollections', edgeCollections);
     createHiddenProperty(this, '__edgeDefinitions', info.edgeDefinitions);
