@@ -96,7 +96,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
 
         let plan = AQL_EXPLAIN(query, {}, disableRestrictToSingleShard).plan;
-        assertTrue(hasDistributeNode(plan.nodes));
+        //assertTrue(hasDistributeNode(plan.nodes)); // the distribute node is not required here
         assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'UpdateNode', c));
         assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
 
