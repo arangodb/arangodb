@@ -251,6 +251,8 @@
   * [General Upgrade Information](Upgrading/GeneralInfo/README.md)
   * [OS-specific Information](Upgrading/OSSpecificInfo/README.md)
     * [Upgrading on Linux](Upgrading/OSSpecificInfo/Linux.md)
+    * [Upgrading on Windows](Upgrading/OSSpecificInfo/Windows.md)
+    * [Upgrading on MacOS](Upgrading/OSSpecificInfo/MacOS.md)
   * [Upgrading _Starter_ Deployments](Upgrading/Starter/README.md)  
   * [Upgrading Manual Deployments](Upgrading/Manually/README.md)
     * [Upgrading a Cluster](Upgrading/Manually/Cluster.md)	
