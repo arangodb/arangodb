@@ -89,7 +89,6 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Object === properties.commit.constructor);
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(60000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(4, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.bytes.constructor);
@@ -426,7 +425,6 @@ function iResearchFeatureAqlTestSuite () {
       var properties = view.properties();
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
