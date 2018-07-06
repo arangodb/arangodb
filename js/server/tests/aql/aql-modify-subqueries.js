@@ -35,7 +35,7 @@ var helper = require("@arangodb/aql-helper");
 var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 var assertQueryError = helper.assertQueryError;
 const isCluster = require('@arangodb/cluster').isCluster();
-
+const disableRestrictToSingleShard = { optimizer : { rules : ["-restrict-to-single-shard"] } };
 var sanitizeStats = function (stats) {
   // remove these members from the stats because they don't matter
   // for the comparisons
@@ -87,6 +87,25 @@ function ahuacatlModifySuite () {
         return;
       }
       let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+
+      { // RestrictToSingleShard
+        let key = c.insert({ id: "test", value: 1 })._key;
+
+        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
+        let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
+
+        let plan = AQL_EXPLAIN(query, {}, disableRestrictToSingleShard).plan;
+        assertTrue(hasDistributeNode(plan.nodes));
+        assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'UpdateNode', c));
+        assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+
+        assertEqual(1, c.count());
+        assertEqual(0, actual.json.length);
+        assertEqual(expected, sanitizeStats(actual.stats));
+        c.truncate();
+      }
+
       let key = c.insert({ id: "test", value: 1 })._key;
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
@@ -119,6 +138,20 @@ function ahuacatlModifySuite () {
         return;
       }
       let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+      { // RestrictToSingleShard
+        let key = c.insert({ id: "test", value: 1 })._key;
+
+        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let query = "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { id: 'test', value: 2 } IN " + cn;
+        let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
+
+        let plan = AQL_EXPLAIN(query, {}, disableRestrictToSingleShard).plan;
+        assertTrue(hasDistributeNode(plan.nodes));
+        assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
+        assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+        c.truncate();
+      }
+
       let key = c.insert({ id: "test", value: 1 })._key;
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
@@ -152,11 +185,10 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", id: 'test" + i + "' } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query, {}, { optimizer : { rules : ["-restrict-to-single-shard"] } });
+        let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query, {}, { optimizer : { rules : ["-restrict-to-single-shard"] } }).plan;
-          db._explain(query, {}, { optimizer : { rules : ["-restrict-to-single-shard"] } })
+          let plan = AQL_EXPLAIN(query, {}, disableRestrictToSingleShard).plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -165,7 +197,7 @@ function ahuacatlModifySuite () {
         assertEqual(expected, sanitizeStats(actual.stats));
       }
       assertEqual(30, c.count());
-      c.truncate()
+      c.truncate();
 
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
