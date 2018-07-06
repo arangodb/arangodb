@@ -90,7 +90,8 @@ int IResearchLinkCoordinator::drop() {
   }
 
   // if the collection is in the process of being removed then drop it from the view
-  if (_collection->deleted()) {
+  if (_collection->deleted()
+      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection->status()) {
     // revalidate all links
     auto const result = _view->updateProperties(
       emptyObjectSlice(), true, false

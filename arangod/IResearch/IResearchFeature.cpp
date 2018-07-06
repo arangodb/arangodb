@@ -570,11 +570,15 @@ IResearchFeature::Async::Async(): _terminate(false) {
 
   auto* last = &(_pool.back());
 
-  // buld circular list and start threads
+  // buld circular list
   for (auto& thread: _pool) {
     last->_next = &thread;
     last = &thread;
     thread._terminate = &_terminate;
+  }
+
+  // start threads
+  for (auto& thread: _pool) {
     thread.start(&_join);
   }
 }
@@ -607,6 +611,14 @@ void IResearchFeature::Async::emplace(
   thread._pending.emplace_back(mutex, timeoutMsec, std::move(fn));
   ++thread._size;
   thread._cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
+  thread._wasNotified = true; // FIXME TODO remove this workaround for scenario:
+  // T0: task scheduled with '0' timeout
+  // T0: internally terminated
+  // T0: notified
+  // T1: woken up to process _pending
+  // T1: resourceMutex read-locked
+  // T1: sleep indefinite
+  // T0: resourceMutex write-locked
 }
 
 void IResearchFeature::Async::notify() const {
