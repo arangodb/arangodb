@@ -1646,8 +1646,9 @@ SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 }
 
+namespace {
 std::unique_ptr<VPackBuilder>
-merge(VPackSlice document, std::string key, TRI_voc_rid_t revision){
+merge(VPackSlice document, std::string const& key, TRI_voc_rid_t revision){
   auto builder = std::make_unique<VPackBuilder>() ;
   {
     VPackObjectBuilder guard(builder.get());
@@ -1665,9 +1666,9 @@ merge(VPackSlice document, std::string key, TRI_voc_rid_t revision){
   }
   return builder;
 }
+}
 
-bool SingleRemoteOperationBlock::getOne(size_t atMost,
-                                        arangodb::aql::AqlItemBlock* aqlres,
+bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
                                         size_t outputCounter) {
   int possibleWrites = 0; // TODO - get real statistic values!
   auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
@@ -1677,10 +1678,10 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
   auto NEW = node->_outVariableNew;
 
 
-  RegisterId inRegId = 0;
-  RegisterId outRegId = 0;
-  RegisterId oldRegId = 0;
-  RegisterId newRegId = 0;
+  RegisterId inRegId  = ExecutionNode::MaxRegisterId;
+  RegisterId outRegId = ExecutionNode::MaxRegisterId;
+  RegisterId oldRegId = ExecutionNode::MaxRegisterId;
+  RegisterId newRegId = ExecutionNode::MaxRegisterId;
 
   if(in != nullptr) {
     auto itIn = node->getRegisterPlan()->varInfo.find(in->id);
@@ -1689,14 +1690,8 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
     inRegId = (*itIn).second.registerId;
   }
 
-  if(_key.empty()){
-    if(in == nullptr) {
-      //fail! document must exist
-    }
-
-    if(false /*key not in in*/){
-      //fail! key must be in the document
-    }
+  if(_key.empty() && (in == nullptr)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "missing document reference");
   }
 
   if(out != nullptr) {
@@ -1723,6 +1718,9 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
   VPackBuilder inBuilder;
   VPackSlice inSlice = VPackSlice::emptyObjectSlice();
   if(in) {// IF NOT REMOVE OR SELECT
+    if (_buffer.size() < 1) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "missing document reference in Register");
+    }
     AqlValue const& inDocument = _buffer.front()->getValueReference(_pos, inRegId);
     inBuilder.add(inDocument.slice());
     inSlice = inBuilder.slice();
@@ -1731,13 +1729,13 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
   auto const& nodeOps = node->_options;
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs = true; // CHECKME
+  opOptions.ignoreRevs = nodeOps.ignoreRevs;
   opOptions.keepNull = !nodeOps.nullMeansRemove;
   opOptions.mergeObjects = nodeOps.mergeObjects;
   opOptions.returnNew = !!NEW;
   opOptions.returnOld = !!OLD;
   opOptions.waitForSync = nodeOps.waitForSync;
-  opOptions.silent = nodeOps.ignoreErrors; // CHECKME
+  opOptions.silent = false;
   opOptions.overwrite = nodeOps.overwrite;
 
   std::unique_ptr<VPackBuilder> mergedBuilder;
@@ -1751,7 +1749,8 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
     result = _trx->document(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
     if(opOptions.returnOld && !opOptions.overwrite){
-      THROW_ARANGO_EXCEPTION_MESSAGE(666, "OLD is only available when using INSERT with the overwrite option");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
+                                     "OLD is only available when using INSERT with the overwrite option");
     }
     result = _trx->insert(_collection->name(), inSlice, opOptions);
     possibleWrites = 1;
@@ -1782,14 +1781,12 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
         // document not there is not an error in this situation.
         // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
         _done = true;
-        traceGetSomeEnd(nullptr);
         return false;
-      } else if (!opOptions.silent){
+      } else if (!nodeOps.ignoreErrors){ // TODO remove if
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
 
     if (node->_mode == ExecutionNode::NodeType::INDEX) {
-      traceGetSomeEnd(nullptr);
       return false;
     }
   }
@@ -1798,7 +1795,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
   _engine->_stats.scannedIndex++;
 
   if (!(out || OLD || NEW)) {
-    traceGetSomeEnd(nullptr);
     return node->hasParent();
   }
 
@@ -1859,7 +1855,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   if(!aqlValueSet) {
-    traceGetSomeEnd(nullptr);
     return false;
   }
   return true;
@@ -1898,7 +1893,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   size_t n = cur->size();
   for (size_t i = 0; i < n; i++) {
     inheritRegisters(cur, aqlres.get(), _pos);
-    if (getOne(1, aqlres.get(), outputCounter)) {
+    if (getOne(aqlres.get(), outputCounter)) {
       outputCounter++;
     }
     _pos++;
@@ -1907,12 +1902,14 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   returnBlock(cur);
   _pos = 0;
   if (outputCounter == 0) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
   aqlres->shrink(outputCounter);
 
   // Clear out registers no longer needed later:
   clearRegisters(aqlres.get());
+  traceGetSomeEnd(nullptr);
   return aqlres.release();
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1929,7 +1926,7 @@ size_t SingleRemoteOperationBlock::skipSome(size_t atMost) {
 /// @brief hasMore
 bool SingleRemoteOperationBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
-  return _done;
+  return !_done;
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }

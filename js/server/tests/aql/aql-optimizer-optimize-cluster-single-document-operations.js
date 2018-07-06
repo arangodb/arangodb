@@ -22,10 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Wilfried Goesgens
+/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
@@ -108,7 +108,6 @@ function optimizerClusterSingleDocumentTestSuite () {
   var runTestSet = function(sets, expectedRules, expectedNodes) {
     let count = 0;
     sets.forEach(function(set) {
-
       let queryString = set[0];
       let expectRule = expectedRules[set[1]];
       let expectNode = expectedNodes[set[2]];
@@ -174,6 +173,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN 123", 2, 2, true, s, 0],
+        [ "FOR d IN " + cn1 + " FILTER d._key == '1' LIMIT 10, 1 RETURN d", 3, 3, false, s, 0],
       ];
       var expectedRules = [[ "use-indexes",
                              "remove-filter-covered-by-index",
@@ -186,7 +186,11 @@ function optimizerClusterSingleDocumentTestSuite () {
                              "use-indexes", 
                              "remove-filter-covered-by-index", 
                              "remove-unnecessary-calculations-2", 
-                             "optimize-cluster-single-document-operations" ]
+                             "optimize-cluster-single-document-operations" ],
+                           [ "use-indexes", "remove-filter-covered-by-index",
+                             "remove-unnecessary-calculations-2",
+                             "scatter-in-cluster", "remove-unnecessary-remote-scatter",
+                             "restrict-to-single-shard"]
                           ];
 
       var expectedNodes = [
@@ -194,7 +198,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "SingletonNode", "EnumerateCollectionNode", "CalculationNode",
           "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode",
-          "ReturnNode"]
+          "ReturnNode"],
+        [ "SingletonNode", "IndexNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ]
       ];
       runTestSet(queries, expectedRules, expectedNodes);
     },

@@ -35,12 +35,12 @@ The default value is *false*
 Single document operations
 --------------------------
 
-When you now have AQL queries that `INSERT`, `UPDATE`, `REMOVE` or fetch a single document
-in a cluster by i.e. using `FILTER _key == '123'`, the coordinator node will now directly
-carry out the change on the db-server instead of instanciating respective AQL-Snippets
-on the DB-Servers. This reduces the amount of cluster roundtrips and thus improve the performance.
-This may also be used when working with simple queries, where you don't even use AQL by 
-yourselves.
+When you now have AQL queries that `INSERT`, `UPDATE`, `REMOVE`, `REPLACE` or fetch a single document
+in a cluster by e.g. using `FILTER _key == '123'`, the coordinator node will now directly
+carry out the change on the db-server instead of instanciating respective AQL-snippets
+on the DB-Servers. This reduces the amount of cluster roundtrips and thus improves the performance.
+This may also be used when working [with simple queries](../Appendix/Deprecated/SimpleQueries),
+where you don't even use AQL by yourselves.
 
 Miscellaneous features
 ----------------------

@@ -417,7 +417,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
                             size_t id,
                             NodeType mode,
                             bool replaceIndexNode,
-                            std::string key,
+                            std::string const& key,
                             aql::Collection const* collection,
                             ModificationOptions const& options,
                             Variable const* update,
@@ -429,7 +429,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   // We probably do not need this, because the rule will only be used on the coordinator
   SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
   : ExecutionNode(plan, base), CollectionAccessingNode(plan, base){
-    std::terminate();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "single remote operation node deserialization not implemented.");
   }
 
   /// @brief return the type of the node

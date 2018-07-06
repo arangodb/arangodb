@@ -351,7 +351,7 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
  - we force the logging not to happen asynchroneous
  - eventually you may still add temporary `console.log()` statements to tests you debug.
 
-Debugging AQL-Execution blocks
+Debugging AQL execution blocks
 ------------------------------
 To debug AQL execution blocks, two steps are required: 
 

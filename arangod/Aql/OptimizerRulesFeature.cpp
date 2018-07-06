@@ -268,8 +268,8 @@ void OptimizerRulesFeature::addRules() {
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 
-  registerRule("optimize-cluster-single-document-operations", substituteClusterSingleDocumentOperations,
-                 OptimizerRule::substituteSingleDocumentOperations_pass6, CreatesAdditionalPlans, CanBeDisabled);
+    registerRule("optimize-cluster-single-document-operations", substituteClusterSingleDocumentOperations,
+                 OptimizerRule::substituteSingleDocumentOperations_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
 #if 0
     registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,

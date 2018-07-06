@@ -23,37 +23,15 @@
 
 #include "OptimizerRules.h"
 #include "Aql/ClusterNodes.h"
-#include "Aql/CollectNode.h"
-#include "Aql/CollectOptions.h"
-#include "Aql/Collection.h"
-#include "Aql/ConditionFinder.h"
-#include "Aql/DocumentProducingNode.h"
-#include "Aql/ExecutionEngine.h"
+
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Condition.h"
+
 #include "Aql/Optimizer.h"
-#include "Aql/Query.h"
-#include "Aql/ShortestPathNode.h"
-#include "Aql/SortCondition.h"
-#include "Aql/SortNode.h"
-#include "Aql/TraversalConditionFinder.h"
-#include "Aql/TraversalNode.h"
-#include "Aql/Variable.h"
-#include "Aql/types.h"
-#include "Basics/AttributeNameParser.h"
-#include "Basics/SmallVector.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
-#include "Cluster/ClusterInfo.h"
-#include "Geo/GeoParams.h"
-#include "GeoIndex/Index.h"
-#include "Graph/TraverserOptions.h"
-#include "Indexes/Index.h"
-#include "Transaction/Methods.h"
-#include "VocBase/Methods/Collections.h"
 
 #include <boost/optional.hpp>
 #include <tuple>
