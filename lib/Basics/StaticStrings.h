@@ -62,8 +62,8 @@ class StaticStrings {
   static std::string const SilentString;
   static std::string const WaitForSyncString;
   static std::string const IsSynchronousReplicationString;
- 
-  // database and collection names 
+
+  // database and collection names
   static std::string const SystemDatabase;
 
   // HTTP headers
@@ -106,6 +106,7 @@ class StaticStrings {
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const Queue;
+  static std::string const RequestServedBy;
   static std::string const Server;
   static std::string const StartThread;
   static std::string const WwwAuthenticate;

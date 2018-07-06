@@ -183,6 +183,13 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     }
   }
 
+  // forward to correct server if necessary
+  bool forwarded = handler->forwardRequest();
+  if (forwarded) {
+    addResponse(*handler->response(), handler->stealStatistics());
+    return RequestFlow::Abort;
+  }
+
   return RequestFlow::Continue;
 }
 
