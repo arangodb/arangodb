@@ -161,13 +161,15 @@ void RocksDBTrxMethods::EnableIndexing() {
 }
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : RocksDBMethods(state) {}
+  : RocksDBMethods(state),
+    _readOptions(state->_rocksReadOptions) {}
 
 bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
                                RocksDBKey const& key) {
+  _readOptions.snapshot = _state->_rocksTransaction->GetSnapshot();
   TRI_ASSERT(cf != nullptr);
   std::string val;
-  rocksdb::Status s = _state->_rocksTransaction->Get(_state->_rocksReadOptions,
+  rocksdb::Status s = _state->_rocksTransaction->Get(_readOptions,
                                                      cf, key.string(), &val);
   return !s.IsNotFound();
 }
@@ -175,11 +177,11 @@ bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                         rocksdb::Slice const& key,
                                         std::string* val) {
+  _readOptions.snapshot = _state->_rocksTransaction->GetSnapshot();
   arangodb::Result rv;
   TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
+  TRI_ASSERT(_readOptions.snapshot != nullptr);
+  rocksdb::Status s = _state->_rocksTransaction->Get(_readOptions, cf, key, val);
   if (!s.ok()) {
     rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");
   }

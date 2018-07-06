@@ -150,8 +150,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
       _total(0),
       _returned(0) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  // intentional copy of the read options
-  auto options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->readOptions(); // intentional copy
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = AnyIteratorFillBlockCache;
@@ -278,8 +277,8 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
       _cmp(index->comparator()) {
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  // intentional copy of the read options
-  auto options = mthds->readOptions();
+  
+  rocksdb::ReadOptions options = mthds->readOptions(); // intentional copy
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = false; // only used for incremental sync

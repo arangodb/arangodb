@@ -154,6 +154,8 @@ class RocksDBTrxMethods : public RocksDBMethods {
 
   void SetSavePoint() override;
   arangodb::Result RollbackToSavePoint() override;
+protected:
+  rocksdb::ReadOptions _readOptions;
 };
 
 /// transaction wrapper, uses the current rocksdb transaction and non-tracking methods
