@@ -1568,6 +1568,101 @@ TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
 
     REQUIRE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
   }
+  
+  SECTION("Valid Polygon, empty rectangle") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(41.41));
+          point->add(VPackValue(41.41));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(41.41));
+          point->add(VPackValue(41.41));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(41.41));
+          point->add(VPackValue(41.41));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(41.41));
+          point->add(VPackValue(41.41));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(41.41));
+          point->add(VPackValue(41.41));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+    
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).ok());
+    
+    REQUIRE(shape.type() == ShapeContainer::Type::S2_LATLNGRECT);
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(41.0, 41.0).ToPoint()));
+  }
+  
+  SECTION("Valid Polygon, rectangle") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1));
+          point->add(VPackValue(-1));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1));
+          point->add(VPackValue(-1));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1));
+          point->add(VPackValue(1));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1));
+          point->add(VPackValue(1));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1));
+          point->add(VPackValue(-1));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+    
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).ok());
+    
+    REQUIRE(shape.type() == ShapeContainer::Type::S2_LATLNGRECT);
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0, 0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1, 0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(-1, 0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0, -1).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0, 1).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1, -1).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1, 1).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(-1, 1).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(-1,-1).ToPoint()));
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(-1.00001,-1.00001).ToPoint()));
+  }
 
   SECTION("Valid Polygon, nested rings") {
     {

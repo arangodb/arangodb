@@ -1046,17 +1046,12 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
   }
 
   status = TRI_ERROR_NO_ERROR;
-
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, args.get("name").copyString());
-}
-
-void StorageEngineMock::createIndex(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t collectionId,
-    TRI_idx_iid_t id,
-    arangodb::velocypack::Slice const& data
-) {
-  TRI_ASSERT(false);
+  
+  std::string cname = args.get("name").copyString();
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, id, cname);
+  }
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, cname);
 }
 
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {

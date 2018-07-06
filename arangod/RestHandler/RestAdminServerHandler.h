@@ -49,7 +49,7 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleId();
   void handleRole();
   void handleAvailability();
-  void writeModeResult(ServerState::Mode const&);
+  void writeModeResult(bool);
 };
 }
 

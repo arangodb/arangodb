@@ -161,7 +161,7 @@ and [Arangorestore](../Programs/Arangorestore/README.md) to restore a backup int
 Managing graphs
 ---------------
 
-By default you should use [the interface your driver provides to manage graphs](../HTTP/Gharial/Management.html).
+By default you should use [the interface your driver provides to manage graphs](../../HTTP/Gharial/Management.html).
 
 This is i.e. documented [in Graphs-Section of the ArangoDB Java driver](https://github.com/arangodb/arangodb-java-driver#graphs).
 
@@ -201,6 +201,7 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock graph_create_knows_sample
 
+**Note:** with the default "Search Depth" of 2 of the graph viewer you may not see all edges of this graph.
 
 ### The Social Graph
 
@@ -263,7 +264,11 @@ Circles have unique numeric labels. Edges have two boolean attributes (*theFalse
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_traversal_sample
 
+**Note:** with the default "Search Depth" of 2 of the graph viewer you may not see all nodes of this graph.
+
 ### The World Graph
+
+![world graph](world_graph.png)
 
 The world country graph structures its nodes like that: world → continent → country → capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
@@ -280,6 +285,26 @@ It is used to demonstrate raw traversal operations.
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_world_sample
 
+### The Mps Graph
+
+This graph was created to demonstrate a use case of the shortest path algorithm. Even though the algorithm can only determine one shortest path, it is possible to return multiple shortest paths with two separate queries. Therefore the graph is named after the [**m**ultiple **p**ath **s**earch](../../AQL/Examples/MultiplePaths.html) use case.
+
+![mps graph](mps_graph.png)
+
+The example graph consists of *vertices* in the `mps_verts` collection and *edges* in the `mps_edges` collection. It is a simple traversal graph with start node *A* and end node *C*.
+
+This is how we create it, inspect its *vertices* and *edges*, and drop it again:
+
+    @startDocuBlockInline graph_create_mps_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_mps_sample}
+    var examples = require("@arangodb/graph-examples/example-graph.js");
+    var g = examples.loadGraph("mps_graph");
+    db.mps_verts.toArray();
+    db.mps_edges.toArray();
+    examples.dropGraph("mps_graph");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock graph_create_mps_sample
+
 ### Higher volume graph examples
 
 All of the above examples are rather small so they are easier to comprehend and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/arangodb/example-datasets) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.
@@ -290,7 +315,6 @@ Cookbook examples
 The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
 
  - [Traversing a graph in full depth](../../Cookbook/Graph/FulldepthTraversal.html)
- - [Using an example vertex with the java driver](../../Cookbook/Graph/JavaDriverGraphExampleVertex.html)
  - [Retrieving documents from ArangoDB without knowing the structure](../../Cookbook/UseCases/JavaDriverBaseDocument.html)
  - [Using a custom visitor from node.js](../../Cookbook/Graph/CustomVisitorFromNodeJs.html)
  - [AQL Example Queries on an Actors and Movies Database](../../Cookbook/Graph/ExampleActorsAndMovies.html)

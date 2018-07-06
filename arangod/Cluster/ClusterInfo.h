@@ -48,11 +48,13 @@ class Slice;
 class ClusterInfo;
 class LogicalCollection;
 
-typedef std::string ServerID;      // ID of a server
-typedef std::string DatabaseID;    // ID/name of a database
-typedef std::string CollectionID;  // ID of a collection
-typedef std::string ViewID;        // ID of a view
-typedef std::string ShardID;       // ID of a shard
+typedef std::string ServerID;         // ID of a server
+typedef std::string DatabaseID;       // ID/name of a database
+typedef std::string CollectionID;     // ID of a collection
+typedef std::string ViewID;           // ID of a view
+typedef std::string ShardID;          // ID of a shard
+typedef uint32_t ServerShortID;       // Short ID of a server
+typedef std::string ServerShortName;  // Short name of a server
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;
@@ -261,7 +263,7 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   static ClusterInfo* instance();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
   //////////////////////////////////////////////////////////////////////////////
@@ -312,7 +314,7 @@ class ClusterInfo {
   /// @brief ask about a collection
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a collection name (both cluster-wide).
-  /// if the collection is not found afterwards, this method will throw an 
+  /// if the collection is not found afterwards, this method will throw an
   /// exception
   //////////////////////////////////////////////////////////////////////////////
 
@@ -335,6 +337,16 @@ class ClusterInfo {
   std::shared_ptr<LogicalView> getView(
       DatabaseID const& vocbase,
       ViewID const& viewID
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a view in current.
+  /// If it is not found in the cache (and not currently loading plan), then the
+  /// cache is reloaded once.
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalView> getViewCurrent(
+    DatabaseID const& vocbase,
+    ViewID const& viewID
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -479,6 +491,13 @@ class ClusterInfo {
   void loadCurrentCoordinators();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief (re-)load the mappings between different IDs/names from the agency
+  /// Usually one does not have to call this directly.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void loadCurrentMappings();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about all DBservers from the agency
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
@@ -525,6 +544,24 @@ class ClusterInfo {
   std::vector<ServerID> getCurrentCoordinators();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief lookup a full coordinator ID by short ID
+  //////////////////////////////////////////////////////////////////////////////
+
+  ServerID getCoordinatorByShortID(ServerShortID);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief lookup a full dbserver ID by short ID
+  //////////////////////////////////////////////////////////////////////////////
+
+  ServerID getDBServerByShortID(ServerShortID);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief lookup a full server ID by short name
+  //////////////////////////////////////////////////////////////////////////////
+
+  ServerID getServerByShortName(ServerShortName const&);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
   //////////////////////////////////////////////////////////////////////////////
 
@@ -541,6 +578,12 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   void invalidateCurrentCoordinators();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidate current id mappings
+  //////////////////////////////////////////////////////////////////////////////
+
+  void invalidateCurrentMappings();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Plan" structure
@@ -560,7 +603,7 @@ class ClusterInfo {
   std::unordered_map<ServerID, std::string> getServers();
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
-  
+
  private:
 
   void loadClusterId();
@@ -649,6 +692,12 @@ class ClusterInfo {
       _coordinators;  // from Current/Coordinators
   ProtectionData _coordinatorsProt;
 
+  // Mappings between short names/IDs and full server IDs
+  std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
+  std::unordered_map<ServerShortID, ServerID> _dbserverIdMap;
+  std::unordered_map<ServerShortName, ServerID> _nameMap;
+  ProtectionData _mappingsProt;
+
   std::shared_ptr<VPackBuilder> _plan;
   std::shared_ptr<VPackBuilder> _current;
 
@@ -736,8 +785,8 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   static double const reloadServerListTimeout;
-  
-  arangodb::Mutex _failedServersMutex;  
+
+  arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
 };
 
