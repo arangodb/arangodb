@@ -627,7 +627,7 @@ SECTION("test_update_properties") {
 
     // update properties - full update
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42, \"commitTimeoutMsec\": 50 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 } }");
       CHECK(view->updateProperties(props->slice(), false, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -653,8 +653,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
-        expected._commit._commitIntervalMsec = 42;
-        expected._commit._commitTimeoutMsec = 50;
+        expected._commit._cleanupIntervalStep = 42;
+        expected._commit._commitIntervalMsec = 50;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice().get("properties"), error));
         CHECK(error.empty());
@@ -678,7 +678,7 @@ SECTION("test_update_properties") {
 
     // partially update properties
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitTimeoutMsec\": 42 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42 } }");
       CHECK(fullyUpdatedView->updateProperties(props->slice(), true, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -704,8 +704,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
+        expected._commit._cleanupIntervalStep = 42;
         expected._commit._commitIntervalMsec = 42;
-        expected._commit._commitTimeoutMsec = 42;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice().get("properties"), error));
         CHECK(error.empty());

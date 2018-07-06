@@ -69,6 +69,17 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
   _sparse = true;  // always sparse
 }
 
+IResearchLinkCoordinator::~IResearchLinkCoordinator() {
+  if (!_collection || !_view) {
+    return; // nothing else can be done
+  }
+
+  if (_collection->deleted()
+      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection->status()) {
+    _view->drop(_collection->id());
+  }
+}
+
 int IResearchLinkCoordinator::drop() {
   if (!_collection) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
