@@ -154,7 +154,7 @@ let appendHeaders = function(appender, headers) {
   // / @brief logs a request in curl format
   // //////////////////////////////////////////////////////////////////////////////
 
-  exports.appendCurlRequest = function (jsonAppender, rawAppender, shellAppender) {
+  exports.appendCurlRequest = function (shellAppender, jsonAppender, rawAppender) {
     return function (method, url, body, headers) {
       var response;
       var curl;
@@ -222,9 +222,10 @@ let appendHeaders = function(appender, headers) {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a raw response
   // //////////////////////////////////////////////////////////////////////////////
+
   exports.appendRawResponse = function (appender, syntaxAppender) {
     return function (response) {
-      appendHeaders(response.headers);
+      appendHeaders(appender, response.headers);
       appender('\n');
 
       // append body
@@ -266,7 +267,7 @@ let appendHeaders = function(appender, headers) {
     return function (response) {
       var syntaxAppend = exports.appendRawResponse(syntaxAppender, syntaxAppender);
 
-      appendHeaders(response.headers);
+      appendHeaders(appender, response.headers);
       appender('\n');
 
       var splitted = response.body.split("\n");
