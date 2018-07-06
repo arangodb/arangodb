@@ -1,9 +1,9 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"collections"</span> : { 
-    <span class="hljs-string">"read"</span> : <span class="hljs-string">"products"</span> 
+  "collections" : { 
+    "read" : "products" 
   }, 
-  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () { throw 'doh!'; }"</span> 
+  "action" : "function () { throw 'doh!'; }" 
 }
 EOF
 
