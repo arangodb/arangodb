@@ -1127,6 +1127,8 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
   */
 
   if (_lastResponse != nullptr || _lastError.fail()) {
+    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
+
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
     VPackSlice slice = responseBodyBuilder->slice();
     if (slice.isObject()) {
@@ -1187,13 +1189,17 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
   traceGetSomeBegin(atMost);
 
   if (!_lastError.ok()) {
+    Result res = _lastError;
+    _lastError.reset();
     // we were called with an error need to throw it.
-    THROW_ARANGO_EXCEPTION(_lastError);
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   if (_lastResponse != nullptr || _lastError.fail()) {
     // We do not have an error but a result, all is good
     // We have an open result still.
+
+    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
 
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
     // Result is the response which will be a serialized AqlItemBlock
@@ -1238,6 +1244,8 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_lastResponse != nullptr || _lastError.fail()) {
+    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
+
     // We have an open result still.
     // Result is the response which will be a serialized AqlItemBlock
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
