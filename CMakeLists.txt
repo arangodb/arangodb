@@ -446,14 +446,6 @@ endif ()
 ## INCLUDE DIRECTORIES
 ################################################################################
 
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/552f562/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
-
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
 
@@ -648,13 +640,7 @@ endif ()
 # NDEBUG
 # ------------------------------------------------------------------------------
 
-if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-                                 )
-   )
-   add_definitions(-DNDEBUG)
-endif ()
+add_definitions(-DNDEBUG)
 
 ################################################################################
 ## FLAGS
@@ -860,11 +846,23 @@ add_subdirectory(3rdParty)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
+
+################################################################################
+## 3rd Party INCLUDE DIRECTORIES
+################################################################################
+
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;snappystatic)
@@ -911,12 +909,10 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 ################################################################################
 ## cURL
 ################################################################################
-
-# This does not belong here! it should be handled in 3rdParty!
 add_definitions(-DCURL_STATICLIB=1)
 include_directories(SYSTEM
-  ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.57.0/include/
-  ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.57.0/include/curl/
+  ${CURL_SRC_DIR}/include/
+  ${CURL_BIN_DIR}/include/curl/
 )
 
 ################################################################################

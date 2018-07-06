@@ -83,7 +83,7 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
     return false;
   }
 
-  // Next we sort by colleciton type so that vertex collections are recreated
+  // Next we sort by collection type so that vertex collections are recreated
   // before edge, etc.
   int leftType =
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
@@ -490,6 +490,31 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   return result;
 }
 
+/// @brief Restore the data for a given view
+arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
+                             arangodb::RestoreFeature::Options const& options,
+                             VPackSlice const& viewDefinition) {
+  using arangodb::httpclient::SimpleHttpResult;
+  
+  std::string url = "/_api/replication/restore-view?overwrite=" +
+    std::string(options.overwrite ? "true" : "false") +
+    "&force=" + std::string(options.force ? "true" : "false");
+  
+
+  std::string const body = viewDefinition.toJson();
+  std::unique_ptr<SimpleHttpResult> response(httpClient.request(arangodb::rest::RequestType::PUT,
+                                                                url, body.c_str(), body.size()));
+  if (response == nullptr || !response->isComplete()) {
+    return {TRI_ERROR_INTERNAL, "got invalid response from server: " +
+      httpClient.getErrorMessage()};
+  }
+  if (response->wasHttpError()) {
+    return ::checkHttpResponse(httpClient, response);
+  }
+  
+  return {TRI_ERROR_NO_ERROR};
+}
+  
 arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
@@ -509,8 +534,9 @@ arangodb::Result processInputDirectory(
   }
   try {
     std::vector<std::string> const files = listFiles(options.inputPath);
-    std::string const suffix = std::string(".structure.json");
-    std::vector<VPackBuilder> collections;
+    std::string const collectionSuffix = std::string(".structure.json");
+    std::string const viewsSuffix = std::string(".view.json");
+    std::vector<VPackBuilder> collections, views;
 
     // Step 1 determine all collections to process
     {
@@ -518,16 +544,27 @@ arangodb::Result processInputDirectory(
       // files
       for (std::string const& file : files) {
         size_t const nameLength = file.size();
+        
+        if (nameLength > viewsSuffix.size() &&
+            file.substr(file.size() - viewsSuffix.size()) == viewsSuffix) {
+          VPackBuilder fileContentBuilder = directory.vpackFromJsonFile(file);
+          VPackSlice const fileContent = fileContentBuilder.slice();
+          if (!fileContent.isObject()) {
+            return {TRI_ERROR_INTERNAL,
+              "could not read view file '" + directory.pathToFile(file) + "'"};
+          }
+          views.emplace_back(std::move(fileContentBuilder));
+          continue;
+        }
 
-        if (nameLength <= suffix.size() ||
-            file.substr(file.size() - suffix.size()) != suffix) {
+        if (nameLength <= collectionSuffix.size() ||
+            file.substr(file.size() - collectionSuffix.size()) != collectionSuffix) {
           // some other file
           continue;
         }
 
         // found a structure.json file
-        std::string name = file.substr(0, file.size() - suffix.size());
-
+        std::string name = file.substr(0, file.size() - collectionSuffix.size());
         if (!options.includeSystemCollections && name[0] == '_') {
           continue;
         }
@@ -588,8 +625,16 @@ arangodb::Result processInputDirectory(
       }
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
-
-    // Step 2: run the actual import
+    
+    // Step 2: recreate all views
+    for (VPackBuilder viewDefinition : views) {
+      Result res = ::restoreView(httpClient, options, viewDefinition.slice());
+      if (res.fail()) {
+        return res;
+      }
+    }
+    
+    // Step 3: run the actual import
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
 
@@ -615,6 +660,7 @@ arangodb::Result processInputDirectory(
     if (firstError.fail()) {
       return firstError;
     }
+    
   } catch (std::exception const& ex) {
     return {TRI_ERROR_INTERNAL,
             std::string(

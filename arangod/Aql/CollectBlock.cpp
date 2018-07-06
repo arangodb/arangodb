@@ -496,7 +496,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
         res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
       } else {
         res->emplaceValue(
-            row, _aggregateRegisters[j].first, arangodb::basics::VelocyPackHelper::NullValue());
+            row, _aggregateRegisters[j].first, AqlValueHintNull());
       }
       ++j;
     }
@@ -724,7 +724,9 @@ int HashedCollectBlock::getOrSkipSome(size_t atMost,
           // no aggregate registers. this means we'll only count the number of
           // items
           if (en->_count) {
-            aggregateValues->emplace_back(std::make_unique<AggregatorLength>(_trx, 1));
+            aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, "LENGTH"));
+            // must count one item already 
+            aggregateValues->back()->reduce(AqlValue(AqlValueHintNull()));
           }
         } else {
           // we do have aggregate registers. create them as empty AqlValues

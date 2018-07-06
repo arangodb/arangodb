@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecContext.h"
+
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
 
@@ -54,12 +56,12 @@ ExecContext* ExecContext::create(std::string const& user,
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
   }
-  return new ExecContext(false, user, dbname, sysLvl, dbLvl);
+  return new ExecContext(0, user, dbname, sysLvl, dbLvl);
 }
 
 bool ExecContext::canUseDatabase(std::string const& db,
                                  auth::Level requested) const {
-  if (_internal || _database == db) {
+  if (isInternal() || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
   }
@@ -76,7 +78,7 @@ bool ExecContext::canUseDatabase(std::string const& db,
 /// @brief returns auth level for user
 auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
                                              std::string const& coll) const {
-  if (_internal) {
+  if (isInternal()) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }

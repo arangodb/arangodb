@@ -184,8 +184,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::lastEdgeToAqlValue() {
   TRI_ASSERT(_lastReturned < _schreier.size());
   if (_lastReturned == 0) {
     // This is the first Vertex. No Edge Pointing to it
-    return arangodb::aql::AqlValue(
-        arangodb::basics::VelocyPackHelper::NullValue());
+    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
   }
   return _opts->cache()->fetchEdgeAqlResult(_schreier[_lastReturned]->edge);
 }

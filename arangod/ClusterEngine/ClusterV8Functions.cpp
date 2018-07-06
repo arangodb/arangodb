@@ -91,12 +91,8 @@ static void JS_WaitCollectorWal(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 
-  // this is just a stub
-  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -106,12 +102,8 @@ static void JS_TransactionsWal(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 
-  // this is just a stub
-  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -120,12 +112,8 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 
-  // this is just a stub
-  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 

@@ -32,6 +32,7 @@
 #include "utils/log.hpp"
 
 #include "ApplicationServerHelper.h"
+#include "Containers.h"
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
@@ -45,6 +46,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -74,9 +76,9 @@ NS_LOCAL
 
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
-  IResearchLogTopic(std::string const& name, arangodb::LogLevel level)
-    : arangodb::LogTopic(name, level) {
-    setIResearchLogLevel(level);
+  IResearchLogTopic(std::string const& name)
+    : arangodb::LogTopic(name, DEFAULT_LEVEL) {
+    setIResearchLogLevel(DEFAULT_LEVEL);
   }
 
   virtual void setLogLevel(arangodb::LogLevel level) override {
@@ -85,24 +87,62 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 
  private:
+  static arangodb::LogLevel const DEFAULT_LEVEL= arangodb::LogLevel::INFO;
+
+  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
+  typedef std::underlying_type<arangodb::LogLevel>::type arangoLogLevelType;
+
+  static_assert(
+    static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) == static_cast<arangoLogLevelType>(arangodb::LogLevel::FATAL) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) == static_cast<arangoLogLevelType>(arangodb::LogLevel::ERR) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_WARN) == static_cast<arangoLogLevelType>(arangodb::LogLevel::WARN) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_INFO) == static_cast<arangoLogLevelType>(arangodb::LogLevel::INFO) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) == static_cast<arangoLogLevelType>(arangodb::LogLevel::DEBUG) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) == static_cast<arangoLogLevelType>(arangodb::LogLevel::TRACE) - 1,
+    "inconsistent log level mapping"
+  );
+
   static void setIResearchLogLevel(arangodb::LogLevel level) {
-    auto irsLevel = static_cast<irs::logger::level_t>(level);
+    if (level == arangodb::LogLevel::DEFAULT) {
+      level = DEFAULT_LEVEL;
+    }
+
+    auto irsLevel = static_cast<irs::logger::level_t>(
+      static_cast<arangoLogLevelType>(level) - 1
+    ); // -1 for DEFAULT
+
     irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
     irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
 
-    irs::logger::enabled(irsLevel);
+    irs::logger::output_le(irsLevel, stderr);
   }
 }; // IResearchLogTopic
 
-arangodb::aql::AqlValue noop(
+arangodb::aql::AqlValue filter(
     arangodb::aql::Query*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
     TRI_ERROR_NOT_IMPLEMENTED,
-    "Function is designed to be used with IResearchView only"
+    "Filter function is designed to be used with ArangoSearch view only"
   );
 }
+
+arangodb::aql::AqlValue scorer(
+    arangodb::aql::Query*,
+    arangodb::transaction::Methods* ,
+    arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+    TRI_ERROR_NOT_IMPLEMENTED,
+    "Scorer function is designed to be used with ArangoSearch view only"
+  );
+}
+
+typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
+  arangodb::aql::Query*,
+  arangodb::transaction::Methods* ,
+  arangodb::SmallVector<arangodb::aql::AqlValue> const&
+);
 
 void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
@@ -124,11 +164,11 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
-    ".|.,.",       // positional arguments (attribute, [ "analyzer"|"type", analyzer-name|"string"|"numeric"|"bool"|"null" ])
+    ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
@@ -137,16 +177,43 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "PHRASE",      // name
-    ".,.,.|.+",    // positional arguments (attribute, input [, offset, input... ], analyzer)
+    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "MIN_MATCH",   // name
+    ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "BOOST",       // name
+    ".,.",         // positional arguments (filter expression, boost)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "ANALYZER",    // name
+    ".,.",         // positional arguments (filter expression, analyzer)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
   });
 }
 
@@ -216,7 +283,7 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       true,   // deterministic
       false,  // can't throw
       true,   // can be run on server
-      &noop   // function implementation (use function name as placeholder)
+      &scorer // function implementation (use function name as placeholder)
     });
 
     return true;
@@ -302,15 +369,254 @@ void registerTransactionDataSourceRegistrationCallback() {
 }
 
 std::string const FEATURE_NAME("ArangoSearch");
-IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
+IResearchLogTopic LIBIRESEARCH("libiresearch");
 
 NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+bool isFilter(arangodb::aql::Function const& func) noexcept {
+  auto* pimpl = func.implementation.target<IResearchFunctionPtr>();
+  return pimpl && *pimpl == &filter;
+}
+
+bool isScorer(arangodb::aql::Function const& func) noexcept {
+  auto* pimpl = func.implementation.target<IResearchFunctionPtr>();
+  return pimpl && *pimpl == &scorer;
+}
+
+class IResearchFeature::Async {
+ public:
+  typedef std::function<bool(size_t& timeoutMsec, bool timeout)> Fn;
+
+  Async();
+  ~Async();
+
+  void emplace(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    size_t timeoutMsec,
+    Fn &&fn
+  ); // add an asynchronous tasks
+  void notify() const; // notify all tasks
+
+ private:
+  struct Pending {
+    Fn _fn; // the function to execute
+    std::shared_ptr<ResourceMutex> _mutex; // mutex for the task resources
+    std::chrono::system_clock::time_point _timeout; // when the task should be notified (std::chrono::milliseconds::max() == disabled)
+
+    Pending(
+        std::shared_ptr<ResourceMutex> const& mutex,
+        size_t timeoutMsec,
+        Fn &&fn
+    ): _fn(std::move(fn)),
+       _mutex(mutex),
+       _timeout(
+         timeoutMsec
+         ? (std::chrono::system_clock::now() + std::chrono::milliseconds(timeoutMsec))
+         : std::chrono::system_clock::time_point::max()
+       ) {
+    }
+  };
+
+  struct Task: public Pending {
+    std::unique_lock<ReadMutex> _lock; // prevent resource deallocation
+
+    Task(Pending&& pending): Pending(std::move(pending)) {
+      // lock resource mutex or ignore if none supplied
+      if(_mutex) {
+        _lock = std::unique_lock<ReadMutex>(_mutex->mutex());
+      }
+    }
+  };
+
+  struct Thread: public arangodb::Thread {
+    mutable std::condition_variable _cond; // trigger task run
+    mutable std::mutex _mutex; // mutex used with '_cond' and '_pending'
+    Thread* _next; // next thread in circular-list (never null!!!) (need to store pointer for move-assignment)
+    std::vector<Pending> _pending; // pending tasks
+    std::atomic<size_t> _size; // approximate size of the active+pending task list
+    std::vector<Task> _tasks; // the tasks to perform
+    std::atomic<bool>* _terminate; // trigger termination of this thread (need to store pointer for move-assignment)
+
+    Thread(std::string const& name): arangodb::Thread(name) {}
+    Thread(Thread&& other): arangodb::Thread(other.name()) {} // used in constructor before tasks are started
+    virtual bool isSystem() override { return true; } // or start(...) will fail
+    virtual void run() override;
+  };
+
+  arangodb::basics::ConditionVariable _join; // mutex to join on
+  std::vector<Thread> _pool; // thread pool (size fixed for the entire life of object)
+  std::atomic<bool> _terminate; // unconditionaly terminate async tasks
+};
+
+void IResearchFeature::Async::Thread::run() {
+  std::chrono::system_clock::time_point timeout;
+  bool timeoutSet = false;
+
+  for (;;) {
+    bool timeoutReached = false;
+
+    {
+      SCOPED_LOCK_NAMED(_mutex, lock); // aquire before '_terminate' check so that don't miss notify()
+
+      if (_terminate->load()) {
+        return; // termination requested
+      }
+
+      // transfer any new pending tasks into active tasks
+      for (auto& pending: _pending) {
+        _tasks.emplace_back(std::move(pending)); // will aquire resource lock
+
+        auto& task = _tasks.back();
+
+        if (task._mutex && !*(task._mutex)) {
+          _tasks.pop_back(); // resource no longer valid
+          continue;
+        }
+
+        if (std::chrono::system_clock::time_point::max() != task._timeout) {
+          timeout =
+            timeoutSet ? std::min(timeout, task._timeout) : task._timeout;
+          timeoutSet = true;
+        }
+      }
+
+      _pending.clear();
+      _size.store(_tasks.size());
+
+      // sleep until timeout
+      if (!timeoutSet) {
+        _cond.wait(lock); // wait forever
+      } else {
+        timeoutReached =
+          std::cv_status::timeout ==_cond.wait_until(lock, timeout); // wait for timeout or notify
+      }
+
+      if (_terminate->load()) { // check again after sleep
+        return; // termination requested
+      }
+    }
+
+    timeoutSet = false;
+
+    // transfer some tasks to '_next' if have too many
+    while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
+      SCOPED_LOCK(_next->_mutex);
+      _next->_pending.emplace_back(std::move(_tasks.back()));
+      _tasks.pop_back();
+      ++_next->_size;
+      --_size;
+      _next->_cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
+    }
+
+    for (size_t i = 0, count = _tasks.size(); i < count;) {
+      auto& task = _tasks[i];
+      auto exec = std::chrono::system_clock::now() >= task._timeout;
+      size_t timeoutMsec;
+
+      if (timeoutReached && !exec) {
+        ++i;
+
+        continue; // skip task if its time has not arrived and thread woken up by timeout
+      }
+
+      try {
+        if (!task._fn(timeoutMsec, exec)) {
+          if (i + 1 < count) {
+            std::swap(task, _tasks[count - 1]); // swap 'i' with tail
+          }
+
+          _tasks.pop_back(); // remove stale tail
+          --count;
+
+          continue;
+        }
+      } catch(...) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "caught error while executing asynchronous task";
+        IR_LOG_EXCEPTION();
+        timeoutMsec = 0; // sleep until previously set timeout
+      }
+
+      // task reschedule time modification requested
+      if (timeoutMsec) {
+        task._timeout = std::chrono::system_clock::now()
+                      + std::chrono::milliseconds(timeoutMsec);
+      }
+
+      timeout = timeoutSet ? std::min(timeout, task._timeout) : task._timeout;
+      timeoutSet = true;
+      ++i;
+    }
+  }
+}
+
+IResearchFeature::Async::Async(): _terminate(false) {
+  static const unsigned int MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
+  static const unsigned int MIN_THREADS = 1; // at least one thread is required
+  auto poolSize = std::max(
+    MIN_THREADS,
+    std::min(MAX_THREADS, std::thread::hardware_concurrency())
+  );
+
+  for (size_t i = 0; i < poolSize; ++i) {
+    _pool.emplace_back(std::string("ArangoSearch #") + std::to_string(i));
+  }
+
+  auto* last = &(_pool.back());
+
+  // buld circular list and start threads
+  for (auto& thread: _pool) {
+    last->_next = &thread;
+    last = &thread;
+    thread._terminate = &_terminate;
+    thread.start(&_join);
+  }
+}
+
+IResearchFeature::Async::~Async() {
+  _terminate.store(true); // request stop asynchronous tasks
+  notify(); // notify all threads
+
+  CONDITION_LOCKER(lock, _join);
+
+  // join with all threads in pool
+  for (auto& thread: _pool) {
+    while(thread.isRunning()) {
+      _join.wait();
+    }
+  }
+}
+
+void IResearchFeature::Async::emplace(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    size_t timeoutMsec,
+    Fn &&fn
+) {
+  if (!fn) {
+    return; // skip empty functers
+  }
+
+  auto& thread = _pool[0];
+  SCOPED_LOCK(thread._mutex);
+  thread._pending.emplace_back(mutex, timeoutMsec, std::move(fn));
+  ++thread._size;
+  thread._cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
+}
+
+void IResearchFeature::Async::notify() const {
+  // notify all threads
+  for (auto& thread: _pool) {
+    SCOPED_LOCK(thread._mutex);
+    thread._cond.notify_all();
+  }
+}
+
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
+    _async(std::make_unique<Async>()),
     _running(false) {
   setOptional(true);
   startsAfter("ViewTypes");
@@ -326,6 +632,18 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter("TransactionManager");
 
   startsBefore("GeneralServer");
+}
+
+void IResearchFeature::async(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    size_t timeoutMsec,
+    Async::Fn &&fn
+) {
+  _async->emplace(mutex, timeoutMsec, std::move(fn));
+}
+
+void IResearchFeature::asyncNotify() const {
+  _async->notify();
 }
 
 void IResearchFeature::beginShutdown() {

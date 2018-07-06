@@ -27,11 +27,14 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBFormat.h"
+
+#include <rocksdb/types.h>
 
 // In the following template:
 //   Key is the key type, it must be copyable and movable, furthermore, Key
@@ -835,8 +838,8 @@ class RocksDBCuckooIndexEstimator {
 
     uint64_t length = rocksutils::uint64FromPersistent(current);
     current += sizeof(uint64_t);
-    // Validate that the serialized format is exactly as long as we expect it to
-    // be
+    // Validate that the serialized format is exactly as long as
+    // we expect it to be
     TRI_ASSERT(serialized.size() == length);
 
     _size = rocksutils::uint64FromPersistent(current);

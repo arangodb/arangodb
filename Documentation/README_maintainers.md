@@ -77,6 +77,7 @@ be driver or other utilities which shouldn't be directly in sync to the ArangoDB
 The maintainer of the respective component can alter the documentation, and once a good point in 
 time is reached, it can be sync'ed over via `Documentation/Scripts/fetchRefs.sh`, which spiders 
 the `SUMMARY.md` files of all books, creates a clone of the external resource, adds a `don't edit this here` note to the files, and copies them over. 
+Use your *github username* as first parameter to clone using HTTP + authentification, or `git` if you want to use ssh+key for authentification
 
 The syntax of the `SUMMARY.md` integration are special comment lines that contain `git` in them in a semicolon separated value list:
 

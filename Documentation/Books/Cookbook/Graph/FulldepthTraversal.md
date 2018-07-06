@@ -56,15 +56,17 @@ while(cursor.hasNext()) {
 config.known; // Returns the result of type name: counter. In arangosh this will print out complete result
 ```
 
-To execute this script accordingly replace db.v and db.e with your collections (v is vertices, e is edges) and write it to a file: (e.g.) traverse.js
+To execute this script accordingly replace db.v and db.e with your collections
+(v is vertices, e is edges) and write it to a file, e.g. traverse.js,
 then execute it in arangosh:
 
 ```
 cat traverse.js | arangosh
 ```
 
-If you want to use it in production you should have a look at the Foxx framework which allows you to store and execute this script on server side and make it accessible via your own API:
-[Foxx](../../../2.8/Foxx/index.html)
+If you want to use it in production you should have a look at the Foxx framework which allows
+you to store and execute this script on server side and make it accessible via your own API:
+[Foxx](../../Manual/Foxx/index.html)
 
 
 Comment

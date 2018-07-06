@@ -36,7 +36,7 @@ class Query;
 
 class QueryRegistry {
  public:
-  QueryRegistry(double defTTL) : _defaultTTL(defTTL) {}
+  explicit QueryRegistry(double defTTL) : _defaultTTL(defTTL) {}
 
   TEST_VIRTUAL ~QueryRegistry();
   
