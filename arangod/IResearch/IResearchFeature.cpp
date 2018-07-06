@@ -76,9 +76,9 @@ NS_LOCAL
 
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
-  IResearchLogTopic(std::string const& name, arangodb::LogLevel level)
-    : arangodb::LogTopic(name, level) {
-    setIResearchLogLevel(level);
+  IResearchLogTopic(std::string const& name)
+    : arangodb::LogTopic(name, DEFAULT_LEVEL) {
+    setIResearchLogLevel(DEFAULT_LEVEL);
   }
 
   virtual void setLogLevel(arangodb::LogLevel level) override {
@@ -87,12 +87,34 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 
  private:
+  static arangodb::LogLevel const DEFAULT_LEVEL= arangodb::LogLevel::INFO;
+
+  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
+  typedef std::underlying_type<arangodb::LogLevel>::type arangoLogLevelType;
+
+  static_assert(
+    static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) == static_cast<arangoLogLevelType>(arangodb::LogLevel::FATAL) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) == static_cast<arangoLogLevelType>(arangodb::LogLevel::ERR) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_WARN) == static_cast<arangoLogLevelType>(arangodb::LogLevel::WARN) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_INFO) == static_cast<arangoLogLevelType>(arangodb::LogLevel::INFO) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) == static_cast<arangoLogLevelType>(arangodb::LogLevel::DEBUG) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) == static_cast<arangoLogLevelType>(arangodb::LogLevel::TRACE) - 1,
+    "inconsistent log level mapping"
+  );
+
   static void setIResearchLogLevel(arangodb::LogLevel level) {
-    auto irsLevel = static_cast<irs::logger::level_t>(level);
+    if (level == arangodb::LogLevel::DEFAULT) {
+      level = DEFAULT_LEVEL;
+    }
+
+    auto irsLevel = static_cast<irs::logger::level_t>(
+      static_cast<arangoLogLevelType>(level) - 1
+    ); // -1 for DEFAULT
+
     irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
     irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
 
-    irs::logger::enabled(irsLevel);
+    irs::logger::output_le(irsLevel, stderr);
   }
 }; // IResearchLogTopic
 
@@ -347,7 +369,7 @@ void registerTransactionDataSourceRegistrationCallback() {
 }
 
 std::string const FEATURE_NAME("ArangoSearch");
-IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
+IResearchLogTopic LIBIRESEARCH("libiresearch");
 
 NS_END
 

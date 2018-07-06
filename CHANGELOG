@@ -1,16 +1,23 @@
 devel
 -----
 
+* Added load balancer support and user-restriction to cursor API.
+
+  If a cursor is accessed on a different coordinator than where it was created,
+  the requests will be forwarded to the correct coordinator. If a cursor is
+  accessed by a different user than the one who created it, the request will
+  be denied.
+
 * if authentication is turned on requests to databases by users with insufficient rights
  will be answered with the HTTP forbidden (401) response.
-  
+
 * upgraded bundled RocksDB library version to 5.14
 
 * added key generators `uuid` and `padded`
 
   The `uuid` key generator generates universally unique 128 bit keys, which are
-  stored in hexadecimal human-readable format.  
-  The `padded` key generator generates keys of a fixed length (16 bytes) in 
+  stored in hexadecimal human-readable format.
+  The `padded` key generator generates keys of a fixed length (16 bytes) in
   ascending lexicographical sort order.
 
 * The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
@@ -24,7 +31,7 @@ devel
   in a cluster by pushing parts of the aggregation onto the DB servers and only
   doing the total aggregation on the coordinator
 
-* replace JavaScript functions FULLTEXT, NEAR, WITHIN and WITHIN_RECTANGLE with 
+* replace JavaScript functions FULLTEXT, NEAR, WITHIN and WITHIN_RECTANGLE with
   regular AQL subqueries via a new optimizer rule "replace-function-with-index".
 
 * the existing "fulltext-index-optimizer" optimizer rule has been removed because its
