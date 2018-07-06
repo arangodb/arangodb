@@ -143,7 +143,7 @@ SECTION("test_async") {
 
     feature.async(nullptr, 1, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100))));
-    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
   }
 
@@ -160,7 +160,7 @@ SECTION("test_async") {
 
     feature.async(resourceMutex, 1, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
     CHECK((std::cv_status::timeout == cond.wait_for(lock, std::chrono::milliseconds(100))));
-    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
   }
 
@@ -208,7 +208,7 @@ SECTION("test_async") {
 
     feature.async(resourceMutex, 1, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100))));
-    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
   }
 
@@ -236,7 +236,7 @@ SECTION("test_async") {
       return false;
     });
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(1000))));
-    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
     CHECK((2 == count));
     CHECK((std::chrono::milliseconds(100) < diff));
@@ -260,7 +260,7 @@ SECTION("test_async") {
     CHECK((false == deallocated));
     feature.asyncNotify();
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100))));
-    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
     CHECK((false == execVal));
     auto diff = std::chrono::system_clock::now() - last;
@@ -282,11 +282,11 @@ SECTION("test_async") {
 
     feature.async(resourceMutex, 100, [&cond, &mutex, flag, &execVal](size_t&, bool exec)->bool { execVal = exec; SCOPED_LOCK(mutex); cond.notify_all(); return false; });
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(1000))));
-    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
     CHECK((true == execVal));
     auto diff = std::chrono::system_clock::now() - last;
-    CHECK((std::chrono::milliseconds(200) >= diff));
+    CHECK((std::chrono::milliseconds(300) >= diff)); // could be a little more then 100ms+100ms
   }
 
   // deallocate empty
