@@ -175,9 +175,9 @@ It will create its own toplevel directory with the version number in the string.
 This step is optional. If the default configuration of ArangoDB do not suite your needs,
 you might edit `etc\arangodb3\arangod.conf` to change some configuration options, like
 
-- [the location of the database files](../..//Manual/Administration/Configuration/Wal.html)
-- [ports to bind](../../Manual/Administration/Configuration/Endpoint.html)
-- [storage engine](../../Manual/Administration/Configuration/GeneralArangod.html#storage-engine)
+- [the location of the database files](../Administration/Configuration/Wal.html)
+- [ports to bind](../Administration/Configuration/Endpoint.html)
+- [storage engine](../Administration/Configuration/GeneralArangod.html#storage-engine)
 
 and so on.
 
