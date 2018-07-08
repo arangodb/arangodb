@@ -1,3 +1,3 @@
-Deploying ArangoDB in Apache Mesos
+Deploying ArangoDB in Mesos, DC/OS
 ==================================
 
