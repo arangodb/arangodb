@@ -81,6 +81,50 @@ in a shell, you should see errors logged there as well.
 
 ##### XCopy Installation
 
+This was on the xcopy file:
+
+
+To start the database simply run it:
+
+```
+C:\Program Files\ArangoDB-3.1.11>usr\bin\arangod
+```
+
+Once the server is ready the output will be similar to the following:
+
+```
+INFO ArangoDB (version 3.1.11 [windows]) is ready for business. Have fun!
+```
+
+Now you can open the administrative webinterface in your browser using http://127.0.0.1:8529/.
+
+#### Installing as service
+
+If you don't want to run `arangod` from a cmd-shell each time installing it as a system service is the right thing to do.
+This requires administrative privileges. You need to *Run as Administrator* the cmd-shell.
+First we need to grant the SYSTEM-user access to our database directory, since `arangod` is going to be running as that user:
+
+```
+C:\Program Files\ArangoDB-3.1.11>icacls var /grant SYSTEM:F /t
+```
+
+Next we can install the service itself:
+
+```
+C:\Program Files\ArangoDB-3.1.11>usr\bin\arangod --install-service
+```
+
+Now you will have a new entry in the **Services** dialog labeled **ArangoDB - the multi-purpose database**. You can start it there or just do it on the `commandline` using:
+
+```
+C:\Program Files\ArangoDB-3.1.11>NET START ArangoDB
+```
+
+It will take a similar amount of time to start from the `comandline` above till the service is up and running.
+Since you don't have any console to inspect the startup, messages of the severity FATAL & ERROR are also output into the windows eventlog, so in case of failure you can have a look at the **Eventlog** in the **Managementconsole**
+
+
+
 
 ### Master-Slave
 

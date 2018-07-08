@@ -16,11 +16,11 @@ After installation, you may start ArangoDB in several ways. The exact start-up c
 depends on your Linux distribution, as well as on the type of ArangoDB deployment you
 are interested on (Single Server, Master-Slave, Active Failover, Cluster, DC2DC).
 
-Please refer to the _Deployment_ chapter for further information on deployment.
+Please refer to the [_Deployment_](../Deployment/README.md) chapter for further information
+on deployment.
 
-A reference on how to start and stop ArangoDB, can be found in the [_Starting & Stopping_](../Administration/StartingStopping.md)
-page.
-
+A reference on how to start and stop ArangoDB, can be found in the
+[_Starting & Stopping_](../Administration/StartingStopping.md) page.
 
 Securing your Installation
 --------------------------
