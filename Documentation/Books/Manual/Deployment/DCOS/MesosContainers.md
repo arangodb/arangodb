@@ -7,11 +7,11 @@ but pairs it with management features that make it a better fit for DC/OS enviro
 With ArangoDB 3.2.6 we introduce the possibility to instanciate an ArangoDB Clusters using the Mesos containerizer. You can deploy clusters with it
 by unchecking the `USEDOCKER` checkmark:
 
-![Using the Mesos container engine](../assets/UsingArangoDBMesosphere/ArangoMesosContainerizer.png)
+![Using the Mesos container engine](UsingArangoDBMesosphere/ArangoMesosContainerizer.png)
 
 Once the ArangoDB framework task is up and running you can revalidate its running using the Mesos container engine by clicking on the task, 
 and scroll all the way down in the *Details* tab:
-![Inspecting running task](../assets/UsingArangoDBMesosphere/RunningInMesosContainerizer.png)
+![Inspecting running task](UsingArangoDBMesosphere/RunningInMesosContainerizer.png)
 
 Using the DC/OS cli we can now also list the running tasks:
 
