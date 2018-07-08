@@ -30,7 +30,7 @@ Upgrade Paths
 -------------
 
 - It is always possible to upgrade between hot-fixes of the same GA release, i.e
-  from X.Y.w to X.Y.z, where z>w
+  from X.Y.w to X.Y.z, where z>w.
   - Examples: 
     - Upgrading from 3.4.0 to 3.4.1 or (directly to) 3.4.2 is supported.
     - Upgrading from 3.3.7 to 3.3.8 or (directly to) 3.3.11 is supported.
@@ -42,14 +42,12 @@ Upgrade Paths
     - Upgrading from 3.3 to 3.4 is supported.
     - Upgrading from 3.2 to 3.3 is supported.
     - Upgrading from 3.2 to 3.4 directly is not officially supported: the officially
-      supported upgrade path in this case is 3.2 to 3.3, and then 3.3 to 3.4.
-	  
-**Important:** before upgrading between two consecutive GA releases it is recommended
-to first upgrade the previous GA release to its latest hot-fix.
-
-Examples: 
- - To upgrade from 3.2 to 3.3, first upgrade your 3.2 installation to 3.2.latest.
- - To upgrade from 3.3 to 3.4, first upgrade your 3.3 installation to 3.3.latest.
+      supported upgrade path in this case is 3.2 to 3.3, and then 3.3 to 3.4.	  
+  - **Important:** before upgrading between two consecutive GA releases it is recommended
+    to first upgrade the previous GA release to its latest hot-fix.
+    - Examples: 
+      - To upgrade from 3.2 to 3.3, first upgrade your 3.2 installation to 3.2.latest.
+      - To upgrade from 3.3 to 3.4, first upgrade your 3.3 installation to 3.3.latest.
 	  
 ### Additional Notes Regarding Rolling Upgrades
 
