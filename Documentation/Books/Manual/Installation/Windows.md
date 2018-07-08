@@ -1,5 +1,5 @@
-Windows
-=======
+Installing ArangoDB on Windows
+==============================
 
 **TMP**
 
