@@ -9,9 +9,10 @@ Up to ArangoDB 3.2, official ArangoDB AMI were available in the [AWS marketplace
 Such AMI is not being maintained anymore, though. However, deploying on AWS is
 still possible, and again, a quite common scenario.
 
-Using the [ArangoDB Starter](../ArangoDBStarter/README.md), [Kubernetes](../Kubernetes/README.md),
-or performing a [Manual Deployment](../Manually/README.md) are all valid
-options to deploy on AWS. Please refer to the corresponding chapters for further 
+After having initialized your preferred AWS instance, with one of the ArangoDB supported
+operating systems, using the [ArangoDB Starter](../ArangoDBStarter/README.md),
+performing a [Manual Deployment](../Manually/README.md), or using [Kubernetes](../Kubernetes/README.md), 
+are all valid options to deploy on AWS. Please refer to the corresponding chapters for further 
 information.
 
 **Important:** In order to deploy on AWS, general guidelines, like using a fast,
