@@ -268,6 +268,7 @@
     * [Upgrading to 2.4](Upgrading/VersionSpecific/Upgrading24.md)
     * [Upgrading to 2.3](Upgrading/VersionSpecific/Upgrading23.md)
     * [Upgrading to 2.2](Upgrading/VersionSpecific/Upgrading22.md)
+* [Downgrading](Downgrading/README.md)
 * [Administration](Administration/README.md)
   * [Backup & Restore](Administration/BackupRestore.md)
   * [Import & Export](Administration/ImportExport.md)
