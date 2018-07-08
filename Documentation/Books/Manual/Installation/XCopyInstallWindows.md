@@ -80,7 +80,3 @@ C:\Program Files\ArangoDB-3.1.11>NET START ArangoDB
 
 It will take a similar amount of time to start from the `comandline` above till the service is up and running.
 Since you don't have any console to inspect the startup, messages of the severity FATAL & ERROR are also output into the windows eventlog, so in case of failure you can have a look at the **Eventlog** in the **Managementconsole**
-
-**Author:** [Wilfried Goesgens](https://github.com/dothebart)
-
-**Tags:** #windows #install
