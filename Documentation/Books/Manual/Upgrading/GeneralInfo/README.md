@@ -24,7 +24,7 @@ Before upgrading, it is suggested to:
   can deal with them.
 - As an extra precaution, you might want to take a backup, and also copy the entire
   "old" data directory to a safe place (after stopping the ArangoDB Server running
-  on it).
+  on it). The backup from the "old" version is required in case a downgrade will be needed. 
 
 Upgrade Paths
 -------------
