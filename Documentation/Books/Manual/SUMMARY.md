@@ -267,6 +267,7 @@
     * [Upgrading to 2.3](Upgrading/VersionSpecific/Upgrading23.md)
     * [Upgrading to 2.2](Upgrading/VersionSpecific/Upgrading22.md)
 * [Administration](Administration/README.md)
+  * [Starting & Stopping](Administration/StartingStopping.md)
   * [Backup & Restore](Administration/BackupRestore.md)
   * [Import & Export](Administration/ImportExport.md)
   * [User Management](Administration/ManagingUsers/README.md)
