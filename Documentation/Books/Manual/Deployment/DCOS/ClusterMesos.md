@@ -158,4 +158,4 @@ The easiest is to simply delete ArangoDB and then deploy the cleanup-framework (
 Configuration options
 ---------------------
 
-The Arangodb Mesos framework has a ton of different options which are listed and described here: https://github.com/arangodb/arangodb-mesos-framework/tree/3.1
+The Arangodb Mesos framework has a ton of different options which are listed and described here: https://github.com/arangodb/arangodb-mesos-framework/tree/3.2
