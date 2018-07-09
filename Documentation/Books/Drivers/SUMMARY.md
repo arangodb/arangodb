@@ -26,6 +26,13 @@
 	  * [Edges Manipulation](Java/Reference/Graph/Edges.md)
 	* [Route](Java/Reference/Route.md)
 	* [Serialization](Java/Reference/Serialization.md)
+	* [Manipulating databases/collections](Java/Reference/DatabaseCollection.md)
+	* [Basic document operations](Java/Reference/Document.md)
+	* [Multi document operations](Java/Reference/MultiDocument.md)
+	* [AQL](Java/Reference/AQL.md)
+	* [Graphs](Java/Reference/Graph.md)
+	* [Foxx](Java/Reference/Foxx.md)
+	* [User Management](Java/Reference/UserManagement.md)
 #   https://@github.com/arangodb/arangodbjs.git;arangodbjs;docs/Drivers;;/ 
 * [ArangoJS - JavaScript Driver](JS/README.md)
   * [Getting Started](JS/GettingStarted/README.md)
