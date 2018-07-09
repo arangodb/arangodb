@@ -284,6 +284,7 @@ void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
 void QueryRegistry::expireQueries() {
   double now = TRI_microtime();
   std::vector<std::pair<std::string, QueryId>> toDelete;
+  std::vector<QueryId> queriesLeft;
 
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -296,9 +297,15 @@ void QueryRegistry::expireQueries() {
         QueryInfo*& qi = y.second;
         if (!qi->_isOpen && now > qi->_expires) {
           toDelete.emplace_back(x.first, y.first);
+        } else {
+          queriesLeft.emplace_back(y.first);
         }
       }
     }
+  }
+
+  if (!queriesLeft.empty()) {
+    LOG_TOPIC(TRACE, Logger::QUERIES) << "queries left in QueryRegistry: " << queriesLeft;
   }
 
   for (auto& p : toDelete) {
