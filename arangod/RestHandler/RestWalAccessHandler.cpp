@@ -31,6 +31,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Scheduler/JobQueue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/WalAccess.h"
@@ -67,6 +68,10 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
 RestWalAccessHandler::RestWalAccessHandler(GeneralRequest* request,
                                            GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
+
+// returns the queue name
+size_t RestWalAccessHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
+
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   bool found = false;

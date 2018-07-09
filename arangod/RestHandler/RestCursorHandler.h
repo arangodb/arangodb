@@ -55,6 +55,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
                     arangodb::aql::QueryRegistry*);
 
  public:
+  size_t queue() const override;
   virtual RestStatus execute() override;
   char const* name() const override final { return "RestCursorHandler"; }
 
