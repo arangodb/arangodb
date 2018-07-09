@@ -1,11 +1,11 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-keys &lt;&lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-keys &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"keys"</span> : [ 
-    <span class="hljs-string">"foo"</span>, 
-    <span class="hljs-string">"bar"</span>, 
-    <span class="hljs-string">"baz"</span> 
+  "keys" : [ 
+    "foo", 
+    "bar", 
+    "baz" 
   ], 
-  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"test"</span> 
+  "collection" : "test" 
 }
 EOF
 

@@ -1,6 +1,9 @@
 devel
 -----
 
+* use sparse indexes in more cases now, when it is clear that the index attribute
+  value cannot be null
+
 * introduce SingleRemoteOperationNode via "optimize-cluster-single-document-operations"
   optimizer rule, which triggers single document operations directly from the coordinator 
   instead of using a full-featured AQL setup. This saves cluster roundtrips.

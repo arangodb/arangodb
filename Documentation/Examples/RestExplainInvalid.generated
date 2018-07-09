@@ -1,6 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain &lt;&lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n"</span> 
+  "query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n" 
 }
 EOF
 
