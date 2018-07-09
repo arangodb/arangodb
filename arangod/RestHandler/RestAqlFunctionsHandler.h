@@ -38,6 +38,7 @@ class RestAqlFunctionsHandler : public RestVocbaseBaseHandler {
   explicit RestAqlFunctionsHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  size_t queue() const override;
   RestStatus execute() override;
   char const* name() const override final { return "RestAqlFunctionsHandler"; }
 };

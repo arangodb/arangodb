@@ -29,25 +29,25 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-  
-  class V8Context;
-  
-  class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
-    V8Context* _v8Context;
-    basics::ReadWriteLock _lock;
-    
-  public:
-    RestTransactionHandler(GeneralRequest*, GeneralResponse*);
-    
-  public:
-    char const* name() const override final { return "RestTransactionHandler"; }
-    bool isDirect() const override { return false; }
-    RestStatus execute() override;
-    bool cancel() override final;
-    
-  private:
-    void returnContext();
-  };
+class V8Context;
+
+class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
+  V8Context* _v8Context;
+  basics::ReadWriteLock _lock;
+
+ public:
+  RestTransactionHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  char const* name() const override final { return "RestTransactionHandler"; }
+  size_t queue() const override;
+  bool isDirect() const override { return false; }
+  RestStatus execute() override;
+  bool cancel() override final;
+
+ private:
+  void returnContext();
+};
 }
 
 #endif

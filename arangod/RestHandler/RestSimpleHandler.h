@@ -40,6 +40,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
 
  public:
   RestStatus execute() override final;
+  size_t queue() const override;
   char const* name() const override final { return "RestSimpleHandler"; }
   bool cancel() override;
 
