@@ -220,17 +220,34 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
 
 /// @brief shutdown, tell dependency and the subquery
 std::pair<ExecutionState, Result> SubqueryBlock::shutdown(int errorCode) {
-  ExecutionState state;
-  Result res;
   if (!_hasShutdownMainQuery) {
-    std::tie(state, res) = ExecutionBlock::shutdown(errorCode); 
-    if (state == ExecutionState::WAITING || res.fail()) {
+    ExecutionState state;
+    Result res;
+    std::tie(state, res) = ExecutionBlock::shutdown(errorCode);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(res.ok());
       return {state, res};
     }
+    TRI_ASSERT(state == ExecutionState::DONE);
     _hasShutdownMainQuery = true;
+    _mainQueryShutdownResult = res;
   }
 
-  return getSubquery()->shutdown(errorCode);
+  ExecutionState state;
+  Result res;
+  std::tie(state, res) = getSubquery()->shutdown(errorCode);
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(res.ok());
+    return {state, res};
+  }
+  TRI_ASSERT(state == ExecutionState::DONE);
+
+  if (_mainQueryShutdownResult.fail()) {
+    return {state, _mainQueryShutdownResult};
+  }
+
+  return {state, res};
 }
 
 /// @brief execute the subquery and store it's results in _subqueryResults

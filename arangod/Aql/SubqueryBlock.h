@@ -108,6 +108,9 @@ class SubqueryBlock final : public ExecutionBlock {
 
   /// @brief track if we have completely shutdown the main query.
   bool _hasShutdownMainQuery;
+
+  /// @brief result of the main query shutdown. is only valid if _hasShutdownMainQuery == true.
+  Result _mainQueryShutdownResult;
 };
 
 }  // namespace arangodb::aql
