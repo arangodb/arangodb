@@ -38,7 +38,6 @@ class RestSimpleQueryHandler : public RestCursorHandler {
                          arangodb::aql::QueryRegistry*);
 
  public:
-  size_t queue() const override;
   RestStatus execute() override final;
   RestStatus continueExecute() override final;
   char const* name() const override final { return "RestSimpleQueryHandler"; }

@@ -43,7 +43,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   explicit RestEdgesHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  size_t queue() const override;
   RestStatus execute() override final;
   char const* name() const override final { return "RestEdgesHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }

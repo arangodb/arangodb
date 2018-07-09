@@ -23,7 +23,6 @@
 
 #include "RestAqlFunctionsHandler.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Scheduler/JobQueue.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -34,9 +33,6 @@ using namespace arangodb::rest;
 RestAqlFunctionsHandler::RestAqlFunctionsHandler(GeneralRequest* request,
                                                  GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
-
-// returns the queue name
-size_t RestAqlFunctionsHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestAqlFunctionsHandler::execute() {
   // extract the sub-request type

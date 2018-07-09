@@ -24,7 +24,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Rest/HttpRequest.h"
-#include "Scheduler/JobQueue.h"
 #include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Builder.h>
@@ -38,9 +37,6 @@ using namespace arangodb::rest;
 RestDatabaseHandler::RestDatabaseHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
-
-// returns the queue name
-size_t RestDatabaseHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestDatabaseHandler::execute() {
   // extract the request type

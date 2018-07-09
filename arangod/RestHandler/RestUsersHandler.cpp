@@ -26,7 +26,6 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Scheduler/JobQueue.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -43,9 +42,6 @@ using namespace arangodb::rest;
 RestUsersHandler::RestUsersHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestBaseHandler(request, response) {}
-
-// returns the queue name
-size_t RestUsersHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();

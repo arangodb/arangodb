@@ -30,7 +30,6 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
-#include "Scheduler/JobQueue.h"
 #include "Transaction/Context.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -49,9 +48,6 @@ RestSimpleHandler::RestSimpleHandler(
     GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(request, response, queryRegistry), _silent(true) {}
-
-// returns the queue name
-size_t RestSimpleHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestSimpleHandler::execute() {
   // extract the request type

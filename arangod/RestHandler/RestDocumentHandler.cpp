@@ -28,7 +28,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
-#include "Scheduler/JobQueue.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -44,14 +43,6 @@ using namespace arangodb::rest;
 RestDocumentHandler::RestDocumentHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
-
-// returns the queue name
-size_t RestDocumentHandler::queue() const { 
-  if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::BACKGROUND_QUEUE; 
-  }
-  return JobQueue::STANDARD_QUEUE; 
-}
 
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
