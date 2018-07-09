@@ -149,24 +149,6 @@ collection.create(new CollectionCreateOptions());
 // the document collection "potatos" now exists
 ```
 
-## ArangoCollection.exists
-
-```
-ArangoCollection.exists() : boolean
-```
-
-Checks whether the collection exists
-
-**Examples**
-
-```Java
-ArangoDB arango = new ArangoDB.Builder().build();
-ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatos");
-
-boolean exists = collection.exists();
-```
-
 ## ArangoCollection.load
 
 ```
