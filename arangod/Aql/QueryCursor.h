@@ -33,20 +33,17 @@
 namespace arangodb {
 namespace aql {
 
+class AqlItemBlock;
+enum class ExecutionState;
 class Query;
 
 /// Cursor managing an entire query result in-memory
 /// Should be used in conjunction with the RestCursorHandler
 class QueryResultCursor final : public arangodb::Cursor {
  public:
-  QueryResultCursor(
-    TRI_vocbase_t& vocbase,
-    CursorId id,
-    aql::QueryResult&& result,
-    size_t batchSize,
-    double ttl,
-    bool hasCount
-  );
+  QueryResultCursor(TRI_vocbase_t& vocbase, CursorId id,
+                    aql::QueryResult&& result, size_t batchSize, double ttl,
+                    bool hasCount);
 
   ~QueryResultCursor() = default;
 
@@ -60,7 +57,11 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   size_t count() const override final;
 
-  Result dump(velocypack::Builder&) override final;
+  std::pair<ExecutionState, Result> dump(
+      velocypack::Builder& result,
+      std::function<void()>& continueHandler) override final;
+
+  Result dumpSync(velocypack::Builder& result) override final;
 
   std::shared_ptr<transaction::Context> context() const override final {
     return _result.context;
@@ -83,15 +84,11 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(
-    TRI_vocbase_t& vocbase,
-    CursorId id,
-    std::string const& query,
-    std::shared_ptr<velocypack::Builder> bindVars,
-    std::shared_ptr<velocypack::Builder> opts,
-    size_t batchSize,
-    double ttl
-  );
+  QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id,
+                    std::string const& query,
+                    std::shared_ptr<velocypack::Builder> bindVars,
+                    std::shared_ptr<velocypack::Builder> opts, size_t batchSize,
+                    double ttl);
 
   ~QueryStreamCursor();
 
@@ -99,13 +96,21 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   size_t count() const override final { return 0; }
 
-  Result dump(velocypack::Builder&) override final;
+  std::pair<ExecutionState, Result> dump(
+      velocypack::Builder& result,
+      std::function<void()>& continueHandler) override final;
+
+  Result dumpSync(velocypack::Builder& result) override final;
 
   std::shared_ptr<transaction::Context> context() const override final;
 
  private:
+
+  Result writeResult(velocypack::Builder& builder, ExecutionState state, std::unique_ptr<AqlItemBlock>& value);
+
+ private:
   DatabaseGuard _guard;
-  int64_t _exportCount; // used by RocksDBRestExportHandler
+  int64_t _exportCount;  // used by RocksDBRestExportHandler
   std::unique_ptr<aql::Query> _query;
 };
 

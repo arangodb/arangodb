@@ -40,6 +40,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 
@@ -119,16 +120,34 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   }
 }
 
-int ShortestPathBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> ShortestPathBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+  
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
+    return res;
+  }
   _posInPath = 0;
   _pathLength = 0;
   _usedConstant = false;
-  return ExecutionBlock::initializeCursor(items, pos);
+
+  return res;
 }
 
 /// @brief shutdown: Inform all traverser Engines to destroy themselves
-int ShortestPathBlock::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ShortestPathBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
+
+  ExecutionState state;
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+
   // We have to clean up the engines in Coordinator Case.
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto cc = arangodb::ClusterComm::instance();
@@ -163,12 +182,10 @@ int ShortestPathBlock::shutdown(int errorCode) {
     }
   }
 
-  return ExecutionBlock::shutdown(errorCode);
-
+  return {state, result};
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
-
 
 bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   if (_usedConstant) {
@@ -265,28 +282,41 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   return hasPath;
 }
 
-AqlItemBlock* ShortestPathBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ShortestPathBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
+  RegisterId const nrInRegs = getNrInputRegisters();
+  RegisterId const nrOutRegs = getNrOutputRegisters();
   while (true) {
     if (_done) {
-      traceGetSomeEnd(nullptr);
-      return nullptr;
+      TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
+      return {ExecutionState::DONE, nullptr};
     }
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch)) {
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+      if (state == ExecutionState::WAITING) {
+        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+        return {ExecutionState::WAITING, nullptr};
+      }
+      if (!blockAppended) {
         _done = true;
-        traceGetSomeEnd(nullptr);
-        return nullptr;
+        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+        traceGetSomeEnd(nullptr, ExecutionState::DONE);
+        return {ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
     }
 
     // If we get here, we do have _buffer.front()
     AqlItemBlock* cur = _buffer.front();
-    size_t const curRegs = cur->getNrRegs();
+    TRI_ASSERT(cur != nullptr);
+    TRI_ASSERT(nrInRegs == cur->getNrRegs());
 
     // Collect the next path:
     if (_posInPath >= _pathLength) {
@@ -305,11 +335,9 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t atMost) {
     size_t available = _pathLength - _posInPath;
     size_t toSend = (std::min)(atMost, available);
 
-    RegisterId nrRegs =
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
+    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrOutRegs));
     // automatically freed if we throw
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(nrInRegs <= nrOutRegs);
 
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
@@ -325,7 +353,7 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t atMost) {
       }
       if (j > 0) {
         // re-use already copied aqlvalues
-        res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
+        res->copyValuesFromFirstRow(j, nrInRegs);
       }
       ++_posInPath;
     }
@@ -341,12 +369,22 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t atMost) {
 
     // Clear out registers no longer needed later:
     clearRegisters(res.get());
-    traceGetSomeEnd(res.get());
-    return res.release();
+    traceGetSomeEnd(res.get(), getHasMoreState());
+    return {getHasMoreState(), std::move(res)};
   }
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
-size_t ShortestPathBlock::skipSome(size_t atMost) { return 0; }
+std::pair<ExecutionState, size_t> ShortestPathBlock::skipSome(size_t atMost) {
+  // TODO implement without data reading
+  // There is a regression test for this:
+  // testShortestPathDijkstraOutboundSkipFirst in aql-graph.js
+  auto res = getSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return {res.first, 0};
+  }
+  // LOG_DEVEL << "TEMP Length of skipped path " << res.second->size();
+  return {res.first, res.second->size()};
+}

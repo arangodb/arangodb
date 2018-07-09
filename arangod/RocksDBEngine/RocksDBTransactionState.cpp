@@ -276,7 +276,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       collection->prepareCommit(id(), preCommitSeq);
     }
     bool committed = false;
-    auto cleanupCollectionTransactions = [this, &committed]() -> void {
+    auto cleanupCollectionTransactions = scopeGuard([this, &committed]() {
       // if we didn't commit, make sure we remove blockers, etc.
       if (!committed) {
         for (auto& trxCollection : _collections) {
@@ -285,8 +285,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
           collection->abortCommit(id());
         }
       }
-    };
-    TRI_DEFER(cleanupCollectionTransactions());
+    });
 
     ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());

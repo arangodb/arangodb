@@ -44,12 +44,15 @@ struct MMFilesDatafile;
 struct MMFilesMarker;
 
 namespace arangodb {
+
+
 class LogicalCollection;
 class ManagedDocumentResult;
 struct MMFilesDocumentOperation;
 class MMFilesPrimaryIndex;
 class MMFilesWalMarker;
 class Result;
+class TransactionState;
 
 class MMFilesCollection final : public PhysicalCollection {
   friend class MMFilesCompactorThread;
@@ -311,13 +314,13 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Locking --
   ///////////////////////////////////
 
-  int lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
+  int lockRead(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
 
-  int lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
+  int lockWrite(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
 
-  int unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid);
+  int unlockRead(bool useDeadlockDetector, TransactionState const* state);
 
-  int unlockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid);
+  int unlockWrite(bool useDeadlockDetector, TransactionState const* state);
 
   ////////////////////////////////////
   // -- SECTION DML Operations --

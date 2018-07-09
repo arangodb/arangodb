@@ -451,7 +451,7 @@ void DatabaseFeature::recoveryDone() {
                 << TRI_errno_string(result.errorNumber()) << "' message: "
                 << result.errorMessage();
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      THROW_ARANGO_EXCEPTION(result);
     }
   }
 

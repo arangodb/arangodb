@@ -146,7 +146,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder builder(&opts);
   builder.openObject(true); // conversion uses sequential iterator, no indexing
-  Result r = cursor->dump(builder);
+  Result r = cursor->dumpSync(builder);
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MEMORY(); // for compatibility
   }

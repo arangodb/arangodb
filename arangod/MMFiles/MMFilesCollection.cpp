@@ -36,7 +36,6 @@
 #include "Basics/encoding.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterMethods.h"
-#include "Cluster/CollectionLockState.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionWriteLocker.h"
@@ -54,6 +53,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -1918,12 +1918,12 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   if (lock) {
-    int res = lockRead(useDeadlockDetector, trx->tid());
+    int res = lockRead(useDeadlockDetector, trx->state());
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-  TRI_DEFER(if (lock) { unlockRead(useDeadlockDetector, trx->tid()); });
+  TRI_DEFER(if (lock) { unlockRead(useDeadlockDetector, trx->state()); });
   
   Result res = lookupDocument(trx, key, result);
   if (res.fail()) {
@@ -2404,18 +2404,13 @@ void MMFilesCollection::invokeOnAllElements(
 }
 
 /// @brief read locks a collection, with a timeout (in µseconds)
-int MMFilesCollection::lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginReadTimed blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const* state, double timeout) {
+  TRI_ASSERT(state != nullptr);
+  if (state->isLockedShard(_logicalCollection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
+  TRI_voc_tid_t tid = state->id();
 
   // LOCKING-DEBUG
   // std::cout << "BeginReadTimed: " << _name << std::endl;
@@ -2521,18 +2516,13 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, dou
 }
 
 /// @brief write locks a collection, with a timeout
-int MMFilesCollection::lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWriteTimed blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState const* state, double timeout) {
+  TRI_ASSERT(state != nullptr);
+  if (state->isLockedShard(_logicalCollection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
+  TRI_voc_tid_t tid = state->id();
 
   // LOCKING-DEBUG
   // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
@@ -2637,17 +2627,13 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, do
 }
 
 /// @brief read unlocks a collection
-int MMFilesCollection::unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndRead blocked: " << _name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+int MMFilesCollection::unlockRead(bool useDeadlockDetector, TransactionState const* state) {
+  TRI_ASSERT(state != nullptr);
+  if (state->isLockedShard(_logicalCollection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
+  TRI_voc_tid_t tid = state->id();
 
   if (useDeadlockDetector) {
     // unregister reader
@@ -2666,18 +2652,13 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid) {
 }
 
 /// @brief write unlocks a collection
-int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndWrite blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TransactionState const* state) {
+  TRI_ASSERT(state != nullptr);
+  if (state->isLockedShard(_logicalCollection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
+  TRI_voc_tid_t tid = state->id();
 
   if (useDeadlockDetector) {
     // unregister writer
@@ -2856,7 +2837,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
     try {
       arangodb::MMFilesCollectionWriteLocker collectionLocker(
-          this, useDeadlockDetector, trx->tid(), lock);
+          this, useDeadlockDetector, trx->state(), lock);
 
       try {
         // insert into indexes
@@ -3199,7 +3180,7 @@ Result MMFilesCollection::update(
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
-      this, useDeadlockDetector, trx->tid(), lock);
+      this, useDeadlockDetector, trx->state(), lock);
 
   // get the previous revision
   Result res = lookupDocument(trx, key, previous);
@@ -3347,7 +3328,7 @@ Result MMFilesCollection::replace(
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
-      this, useDeadlockDetector, trx->tid(), lock);
+      this, useDeadlockDetector, trx->state(), lock);
 
   // get the previous revision
   Result res = lookupDocument(trx, key, previous);
@@ -3519,7 +3500,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
-      this, useDeadlockDetector, trx->tid(), lock);
+      this, useDeadlockDetector, trx->state(), lock);
 
   // get the previous revision
   Result res = lookupDocument(trx, key, previous);

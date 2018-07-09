@@ -31,6 +31,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/Query.h"
+#include "Aql/WakeupQueryCallback.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -60,6 +61,7 @@ using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
+
 
 namespace {
 
@@ -228,39 +230,35 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine,
   }
 }
 
-/// @brief initializeCursor: reset _doneForClient
-int BlockWithClients::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
-  _doneForClient.clear();
-  _doneForClient.reserve(_nrClients);
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    _doneForClient.push_back(false);
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief shutdown
-int BlockWithClients::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> BlockWithClients::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
 
-  _doneForClient.clear();
-
   if (_wasShutdown) {
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-  int res = ExecutionBlock::shutdown(errorCode);
+  auto res = ExecutionBlock::shutdown(errorCode);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
+  }
   _wasShutdown = true;
   return res;
 
@@ -269,58 +267,46 @@ int BlockWithClients::shutdown(int errorCode) {
 }
 
 /// @brief getSomeForShard
-AqlItemBlock* BlockWithClients::getSomeForShard(size_t atMost,
-                                                std::string const& shardId) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+BlockWithClients::getSomeForShard(size_t atMost, std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin(atMost);
+
+  // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
-  AqlItemBlock* result = nullptr;
-
-  int out =
-      getOrSkipSomeForShard(atMost, false, result, skipped, shardId);
-
-  if (out == TRI_ERROR_NO_ERROR) {
-    return result;
+  std::unique_ptr<AqlItemBlock> result = nullptr;
+  auto out = getOrSkipSomeForShard(atMost, false, result, skipped, shardId);
+  if (out.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(result.get(), out.first);
+    return {out.first, nullptr};
   }
-
-  if (result != nullptr) {
-    delete result;
+  if (!out.second.ok()) {
+    THROW_ARANGO_EXCEPTION(out.second);
   }
-
-  THROW_ARANGO_EXCEPTION(out);
+  traceGetSomeEnd(result.get(), out.first);
+  return {out.first, std::move(result)};
 
   DEBUG_END_BLOCK();
 }
 
 /// @brief skipSomeForShard
-size_t BlockWithClients::skipSomeForShard(size_t atMost, std::string const& shardId) {
+std::pair<ExecutionState, size_t> BlockWithClients::skipSomeForShard(
+    size_t atMost, std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+
+  // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
-  AqlItemBlock* result = nullptr;
-  int out =
-      getOrSkipSomeForShard(atMost, true, result, skipped, shardId);
+  std::unique_ptr<AqlItemBlock> result = nullptr;
+  auto out = getOrSkipSomeForShard(atMost, true, result, skipped, shardId);
+  if (out.first == ExecutionState::WAITING) {
+    return {out.first, 0};
+  }
   TRI_ASSERT(result == nullptr);
-  if (out != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(out);
+  if (!out.second.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(out.second.errorNumber(),
+                                   out.second.errorMessage());
   }
-  return skipped;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief skipForShard
-bool BlockWithClients::skipForShard(size_t number, std::string const& shardId) {
-  DEBUG_BEGIN_BLOCK();
-  size_t skipped = skipSomeForShard(number, shardId);
-  size_t nr = skipped;
-  while (nr != 0 && skipped < number) {
-    nr = skipSomeForShard(number - skipped, shardId);
-    skipped += nr;
-  }
-  if (nr == 0) {
-    return true;
-  }
-  return !hasMoreForShard(shardId);
+  return {out.first, skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -347,13 +333,9 @@ size_t BlockWithClients::getClientId(std::string const& shardId) {
 }
 
 /// @brief initializeCursor
-int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> ScatterBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-
-  int res = BlockWithClients::initializeCursor(items, pos);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
 
   // local clean up
   _posForClient.clear();
@@ -361,24 +343,34 @@ int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   for (size_t i = 0; i < _nrClients; i++) {
     _posForClient.emplace_back(0, 0);
   }
-  return TRI_ERROR_NO_ERROR;
+
+  return BlockWithClients::initializeCursor(items, pos);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
-/// @brief initializeCursor
-int ScatterBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  int res = BlockWithClients::shutdown(errorCode);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+ExecutionState ScatterBlock::getHasMoreStateForClientId(size_t clientId) {
+  if (hasMoreForClientId(clientId)) {
+    return ExecutionState::HASMORE;
   }
+  return ExecutionState::DONE;
+}
 
-  // local clean up
-  _posForClient.clear();
+bool ScatterBlock::hasMoreForClientId(size_t clientId) {
+  DEBUG_BEGIN_BLOCK();
 
-  return TRI_ERROR_NO_ERROR;
+  TRI_ASSERT(_nrClients != 0);
+
+  TRI_ASSERT(clientId < _posForClient.size());
+  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
+  // (i, j) where i is the position in _buffer, and j is the position in
+  // _buffer[i] we are sending to <clientId>
+
+  if (pos.first <= _buffer.size()) {
+    return true;
+  }
+  return _upstreamState == ExecutionState::HASMORE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -388,52 +380,29 @@ int ScatterBlock::shutdown(int errorCode) {
 bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
 
-  TRI_ASSERT(_nrClients != 0);
-
-  size_t const clientId = getClientId(shardId);
-
-  // reference to "a finish mark" for a client
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
-
-  if (doneForClient) {
-    return false;
-  }
-
-  TRI_ASSERT(_posForClient.size() > clientId);
-  std::pair<size_t, size_t> const& pos = _posForClient[clientId];
-  // (i, j) where i is the position in _buffer, and j is the position in
-  // _buffer[i] we are sending to <clientId>
-
-  if (pos.first > _buffer.size()) {
-    if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
-      doneForClient = true;
-      return false;
-    }
-  }
-  return true;
+  return hasMoreForClientId(getClientId(shardId));
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
+ExecutionState ScatterBlock::getHasMoreStateForShard(
+    std::string const& shardId) {
+  return getHasMoreStateForClientId(getClientId(shardId));
+}
+
 /// @brief getOrSkipSomeForShard
-int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
-                                        bool skipping, AqlItemBlock*& result,
-                                        size_t& skipped,
-                                        std::string const& shardId) {
+std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
+    size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result, size_t& skipped,
+    std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
   size_t const clientId = getClientId(shardId);
 
-  // reference to "a finish mark" for a client
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
-
-  if (doneForClient) {
-    return TRI_ERROR_NO_ERROR;
+  if (!hasMoreForClientId(clientId)) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
   TRI_ASSERT(_posForClient.size() > clientId);
@@ -441,9 +410,13 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
 
   // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
-    if (!getBlock(atMost)) {
-      doneForClient = true;
-      return TRI_ERROR_NO_ERROR;
+    auto res = getBlock(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      return {res.first, TRI_ERROR_NO_ERROR};
+    }
+    if (!res.second) {
+      TRI_ASSERT(res.first == ExecutionState::DONE);
+      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
   }
 
@@ -455,7 +428,7 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
   skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   if (!skipping) {
-    result = blockForClient->slice(pos.second, pos.second + skipped);
+    result.reset(blockForClient->slice(pos.second, pos.second + skipped));
   }
 
   // increment the position . . .
@@ -484,7 +457,7 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -524,14 +497,9 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
 }
 
 /// @brief initializeCursor
-int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> DistributeBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-
-  int res = BlockWithClients::initializeCursor(items, pos);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
 
   // local clean up
   _distBuffer.clear();
@@ -541,25 +509,30 @@ int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     _distBuffer.emplace_back();
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return BlockWithClients::initializeCursor(items, pos);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
-/// @brief shutdown
-int DistributeBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  int res = BlockWithClients::shutdown(errorCode);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+ExecutionState DistributeBlock::getHasMoreStateForClientId(size_t clientId) {
+  if (hasMoreForClientId(clientId)) {
+    return ExecutionState::HASMORE;
   }
+  return ExecutionState::DONE;
+}
 
-  // local clean up
-  _distBuffer.clear();
+bool DistributeBlock::hasMoreForClientId(size_t clientId) {
+  DEBUG_BEGIN_BLOCK();
+  // We have more for a client ID if
+  // we still have some information in the local buffer
+  // or if there is still some information from upstream
 
-  return TRI_ERROR_NO_ERROR;
-
+  TRI_ASSERT(_distBuffer.size() > clientId);
+  if (!_distBuffer[clientId].empty()) {
+    return true;
+  }
+  return _upstreamState == ExecutionState::HASMORE;
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
@@ -568,59 +541,44 @@ int DistributeBlock::shutdown(int errorCode) {
 bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
 
-  size_t const clientId = getClientId(shardId);
-
-  // reference to "a finish mark" for a client
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
-
-  if (doneForClient) {
-    return false;
-  }
-
-  TRI_ASSERT(_distBuffer.size() > clientId);
-  if (!_distBuffer[clientId].empty()) {
-    return true;
-  }
-
-  if (!getBlockForClient(DefaultBatchSize(), clientId)) {
-    doneForClient = true;
-    return false;
-  }
-  return true;
+  return hasMoreForClientId(getClientId(shardId));
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
+ExecutionState DistributeBlock::getHasMoreStateForShard(
+    std::string const& shardId) {
+  return getHasMoreStateForClientId(getClientId(shardId));
+}
+
 /// @brief getOrSkipSomeForShard
-int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
-                                           bool skipping, AqlItemBlock*& result,
-                                           size_t& skipped,
-                                           std::string const& shardId) {
+std::pair<ExecutionState, arangodb::Result>
+DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
+                                       std::unique_ptr<AqlItemBlock>& result,
+                                       size_t& skipped,
+                                       std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t const clientId = getClientId(shardId);
-  TRI_ASSERT(_doneForClient.size() > clientId);
+  size_t clientId = getClientId(shardId);
 
-  // reference to "a finish mark" for a client
-  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
-
-  if (doneForClient) {
-    traceGetSomeEnd(result);
-    return TRI_ERROR_NO_ERROR;
+  if (!hasMoreForClientId(clientId)) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer[clientId];
+  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
   if (buf.empty()) {
-    if (!getBlockForClient(atMost, clientId)) {
-      doneForClient = true;
-      traceGetSomeEnd(result);
-      return TRI_ERROR_NO_ERROR;
+    auto res = getBlockForClient(atMost, clientId);
+    if (res.first == ExecutionState::WAITING) {
+      return {res.first, TRI_ERROR_NO_ERROR};
+    }
+    if (!res.second) {
+      // Upstream is empty!
+      TRI_ASSERT(res.first == ExecutionState::DONE);
+      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
   }
 
@@ -630,8 +588,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
     for (size_t i = 0; i < skipped; i++) {
       buf.pop_front();
     }
-    traceGetSomeEnd(result);
-    return TRI_ERROR_NO_ERROR;
+    return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
   }
 
   BlockCollector collector(&_engine->_itemBlockManager);
@@ -658,13 +615,12 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
   }
 
   if (!skipping) {
-    result = collector.steal();
+    result.reset(collector.steal());
   }
 
   // _buffer is left intact, deleted and cleared at shutdown
 
-  traceGetSomeEnd(result);
-  return TRI_ERROR_NO_ERROR;
+  return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -675,7 +631,8 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
 /// incoming blocks until they run out or we find enough rows for clientId. We
 /// also keep track of blocks which should be sent to other clients than the
 /// current one.
-bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
+std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
+    size_t atMost, size_t clientId) {
   DEBUG_BEGIN_BLOCK();
   if (_buffer.empty()) {
     _index = 0;  // position in _buffer
@@ -687,10 +644,15 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
 
   while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
-      if (!ExecutionBlock::getBlock(atMost)) {
-        if (buf.size() == 0) {
-          _doneForClient[clientId] = true;
-          return false;
+      auto res = ExecutionBlock::getBlock(atMost);
+      if (res.first == ExecutionState::WAITING) {
+        return {res.first, false};
+      }
+      if (!res.second) {
+        TRI_ASSERT(res.first == ExecutionState::DONE);
+        if (buf.empty()) {
+          TRI_ASSERT(getHasMoreStateForClientId(clientId) == ExecutionState::DONE);
+          return {ExecutionState::DONE, false};
         }
         break;
       }
@@ -698,7 +660,7 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
 
     AqlItemBlock* cur = _buffer[_index];
 
-    while (_pos < cur->size() && buf.size() < atMost) {
+    while (_pos < cur->size()) {
       // this may modify the input item buffer in place
       size_t const id = sendToClient(cur);
 
@@ -713,8 +675,7 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
     }
   }
 
-  return true;
-
+  return {getHasMoreStateForClientId(clientId), true};
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
@@ -840,6 +801,87 @@ std::string DistributeBlock::createKey(VPackSlice) const {
 }
 #endif
 
+arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
+  DEBUG_BEGIN_BLOCK();
+  if (res->status == CL_COMM_TIMEOUT ||
+      res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    return { res->getErrorCode(), res->stringifyErrorMessage()};
+  }
+  if (res->status == CL_COMM_ERROR) {
+    std::string errorMessage = std::string("Error message received from shard '") +
+                     std::string(res->shardID) +
+                     std::string("' on cluster node '") +
+                     std::string(res->serverID) + std::string("': ");
+
+
+    int errorNum = TRI_ERROR_INTERNAL;
+    if (res->result != nullptr) {
+      errorNum = TRI_ERROR_NO_ERROR;
+      arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+          responseBodyBuf.c_str(), responseBodyBuf.length());
+      VPackSlice slice = builder->slice();
+
+      if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
+        errorNum = TRI_ERROR_INTERNAL;
+      }
+
+      if (slice.isObject()) {
+        VPackSlice v = slice.get(StaticStrings::ErrorNum);
+        if (v.isNumber()) {
+          if (v.getNumericValue<int>() != TRI_ERROR_NO_ERROR) {
+            /* if we've got an error num, error has to be true. */
+            TRI_ASSERT(errorNum == TRI_ERROR_INTERNAL);
+            errorNum = v.getNumericValue<int>();
+          }
+        }
+
+        v = slice.get(StaticStrings::ErrorMessage);
+        if (v.isString()) {
+          errorMessage += v.copyString();
+        } else {
+          errorMessage += std::string("(no valid error in response)");
+        }
+      }
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    if (errorNum > 0 && !errorMessage.empty()) {
+      return {errorNum, errorMessage};
+    }
+
+    // default error
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION};
+  }
+
+  TRI_ASSERT(res->status == CL_COMM_SENT);
+
+  return {TRI_ERROR_NO_ERROR};
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+
+}
+
+/**
+ * @brief Steal the last returned body. Will throw an error if
+ *        there has been an error of any kind, e.g. communication
+ *        or error created by remote server.
+ *        Will reset the lastResponse, so after this call we are
+ *        ready to send a new request.
+ *
+ * @return A shared_ptr containing the remote response.
+ */
+std::shared_ptr<VPackBuilder> RemoteBlock::stealResultBody() {
+  if (!_lastError.ok()) {
+    THROW_ARANGO_EXCEPTION(_lastError);
+  }
+  // We have an open result still.
+  // Result is the response which is an object containing the ErrorCode
+  std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
+  _lastResponse.reset();
+  return responseBodyBuilder;
+}
+
 /// @brief local helper to throw an exception if a HTTP request went wrong
 static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
                                               bool isShutdown) {
@@ -921,12 +963,52 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _ownName(ownName),
       _queryId(queryId),
       _isResponsibleForInitializeCursor(
-          en->isResponsibleForInitializeCursor()) {
+          en->isResponsibleForInitializeCursor()),
+      _lastResponse(nullptr),
+      _lastError(TRI_ERROR_NO_ERROR) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT(
       (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
       (!arangodb::ServerState::instance()->isCoordinator() &&
        !ownName.empty()));
+}
+
+Result RemoteBlock::sendAsyncRequest(
+    arangodb::rest::RequestType type, std::string const& urlPart,
+    std::shared_ptr<std::string const> body) {
+  DEBUG_BEGIN_BLOCK();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens on controlled shutdown
+    return {TRI_ERROR_SHUTTING_DOWN};
+  }
+
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = std::string("AQL");
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
+  if (!_ownName.empty()) {
+    headers.emplace("Shard-Id", _ownName);
+  }
+    
+  std::string url = std::string("/_db/") +
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    urlPart + _queryId;
+
+  ++_engine->_stats.requests;
+  std::shared_ptr<ClusterCommCallback> callback =
+      std::make_shared<WakeupQueryCallback>(dynamic_cast<ExecutionBlock*>(this),
+                                            _engine->getQuery());
+
+  // TODO Returns OperationID do we need it in any way?
+  cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
+                   std::move(url), body, headers, callback, defaultTimeOut,
+                   true);
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+
+  return {TRI_ERROR_NO_ERROR};
 }
 
 /// @brief local helper to send a request
@@ -953,32 +1035,41 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
-  {
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
 
-    return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                           std::move(url), body, headers, defaultTimeOut);
-  }
+  return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                         std::move(url), body, headers, defaultTimeOut);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief initializeCursor, could be called multiple times
-int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
 
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
   if (items == nullptr) {
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+
+  if (_lastResponse != nullptr || _lastError.fail()) {
+    // We have an open result still.
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
+
+    // Result is the response which is an object containing the ErrorCode
+    VPackSlice slice = responseBodyBuilder->slice();
+    if (slice.hasKey("code")) {
+      return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
+    }
+    return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
 
   VPackOptions options(VPackOptions::Defaults);
@@ -988,7 +1079,10 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   VPackBuilder builder(&options);
   builder.openObject();
 
+  // Backwards Compatibility 3.3
   builder.add("exhausted", VPackValue(false));
+  // Used in 3.4.0 onwards
+  builder.add("done", VPackValue(false));
   builder.add("error", VPackValue(false));
   builder.add("pos", VPackValue(pos));
   builder.add(VPackValue("items"));
@@ -998,128 +1092,184 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   builder.close();
 
-  std::string bodyString(builder.slice().toJson());
+  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
+  auto res = sendAsyncRequest(
       rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
 
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-        responseBodyBuf.c_str(), responseBodyBuf.length());
-
-    VPackSlice slice = builder->slice();
-
-    if (slice.hasKey("code")) {
-      return slice.get("code").getNumericValue<int>();
-    }
-    return TRI_ERROR_INTERNAL;
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
+
+  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
+bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
+  // TODO Handle exceptions thrown while we are in this code
+  // Query will not be woken up again.
+  _lastError = handleCommErrors(result);
+  if (_lastError.ok()) {
+    _lastResponse = result->result;
+  }
+  return true;
+};
+
 /// @brief shutdown, will be called exactly once for the whole query
-int RemoteBlock::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
 
-  // For every call we simply forward via HTTP
-
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
-                  std::string("{\"code\":" + std::to_string(errorCode) + "}"));
-  try {
-    if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
-      // artificially ignore error in case query was not found during shutdown
-      return TRI_ERROR_NO_ERROR;
+  /* We need to handle this here in ASYNC case
+    if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
+      // this error may happen on shutdown and is thus tolerated
+      // pass the info to the caller who can opt to ignore this error
+      return true;
     }
-  } catch (arangodb::basics::Exception const& ex) {
-    if (ex.code() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-    }
-    throw;
-  }
+  */
 
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
+  if (_lastResponse != nullptr || _lastError.fail()) {
+    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
 
-  if (slice.isObject()) {
-    if (slice.hasKey("stats")) {
-      ExecutionStats newStats(slice.get("stats"));
-      _engine->_stats.add(newStats);
-    }
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
+    VPackSlice slice = responseBodyBuilder->slice();
+    if (slice.isObject()) {
+      if (slice.hasKey("stats")) { 
+        ExecutionStats newStats(slice.get("stats"));
+        _engine->_stats.add(newStats);
+      }
 
-    // read "warnings" attribute if present and add it to our query
-    VPackSlice warnings = slice.get("warnings");
-    if (warnings.isArray()) {
-      auto query = _engine->getQuery();
-      for (auto const& it : VPackArrayIterator(warnings)) {
-        if (it.isObject()) {
-          VPackSlice code = it.get("code");
-          VPackSlice message = it.get("message");
-          if (code.isNumber() && message.isString()) {
-            query->registerWarning(code.getNumericValue<int>(),
-                                   message.copyString().c_str());
+      // read "warnings" attribute if present and add it to our query
+      VPackSlice warnings = slice.get("warnings");
+      if (warnings.isArray()) {
+        auto query = _engine->getQuery();
+        for (auto const& it : VPackArrayIterator(warnings)) {
+          if (it.isObject()) {
+            VPackSlice code = it.get("code");
+            VPackSlice message = it.get("message");
+            if (code.isNumber() && message.isString()) {
+              query->registerWarning(code.getNumericValue<int>(),
+                                     message.copyString().c_str());
+            }
           }
         }
       }
+      if (slice.hasKey("code")) {
+        return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
+      }
     }
+
+    return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
 
-  if (slice.hasKey("code")) {
-    return slice.get("code").getNumericValue<int>();
+  // For every call we simply forward via HTTP
+  VPackBuilder bodyBuilder;
+  bodyBuilder.openObject();
+  bodyBuilder.add("code", VPackValue(errorCode));
+  bodyBuilder.close();
+
+  auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());
+
+  auto res = sendAsyncRequest(
+      rest::RequestType::PUT, "/_api/aql/shutdown/", bodyString);
+ 
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-  return TRI_ERROR_INTERNAL;
+
+  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief getSome
-AqlItemBlock* RemoteBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
 
   traceGetSomeBegin(atMost);
+
+  if (!_lastError.ok()) {
+    Result res = _lastError;
+    _lastError.reset();
+    // we were called with an error need to throw it.
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  if (_lastResponse != nullptr || _lastError.fail()) {
+    // We do not have an error but a result, all is good
+    // We have an open result still.
+
+    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
+
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
+    // Result is the response which will be a serialized AqlItemBlock
+
+    VPackSlice responseBody = responseBodyBuilder->slice();
+
+    ExecutionState state = ExecutionState::HASMORE;
+    if (VelocyPackHelper::getBooleanValue(responseBody, "done", true)) {
+      state = ExecutionState::DONE;
+    }
+    if (responseBody.hasKey("data")) {
+      auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
+      traceGetSomeEnd(r.get(), state);
+      return {state, std::move(r)};
+    } 
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
+  }
+  
+  // We need to send a request here
   VPackBuilder builder;
   builder.openObject();
   builder.add("atMost", VPackValue(atMost));
   builder.close();
 
-  std::string bodyString(builder.slice().toJson());
+  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  std::shared_ptr<VPackBuilder> responseBodyBuilder =
-      res->result->getBodyVelocyPack();
-  VPackSlice responseBody = responseBodyBuilder->slice();
-
-  if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/getSome/",
+                              bodyString);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
-  traceGetSomeEnd(r.get());
-  return r.release();
+  return {ExecutionState::WAITING, nullptr};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
-size_t RemoteBlock::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+
+  if (_lastResponse != nullptr || _lastError.fail()) {
+    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
+
+    // We have an open result still.
+    // Result is the response which will be a serialized AqlItemBlock
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
+
+    VPackSlice slice = responseBodyBuilder->slice();
+
+    if (!slice.hasKey(StaticStrings::Error) ||
+        slice.get(StaticStrings::Error).getBoolean()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+    }
+    size_t skipped = 0;
+    if (slice.hasKey("skipped")) {
+      skipped = slice.get("skipped").getNumericValue<size_t>();
+    }
+    // TODO Check if we can get better with HASMORE/DONE
+    if (skipped == 0) {
+      return {ExecutionState::DONE, skipped};
+    }
+    return {ExecutionState::HASMORE, skipped};
+  }
+
   // For every call we simply forward via HTTP
 
   VPackBuilder builder;
@@ -1127,40 +1277,28 @@ size_t RemoteBlock::skipSome(size_t atMost) {
   builder.add("atMost", VPackValue(atMost));
   builder.close();
 
-  std::string bodyString(builder.slice().toJson());
+  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-        responseBodyBuf.c_str(), responseBodyBuf.length());
-    VPackSlice slice = builder->slice();
-
-    if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-    }
-    size_t skipped = 0;
-    if (slice.hasKey("skipped")) {
-      skipped = slice.get("skipped").getNumericValue<size_t>();
-    }
-    return skipped;
+  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/skipSome/",
+                              bodyString);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
+
+  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+
+
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief hasMore
-bool RemoteBlock::hasMore() {
+ExecutionState RemoteBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::RequestType::GET, "/_api/aql/hasMoreState/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1173,11 +1311,24 @@ bool RemoteBlock::hasMore() {
   if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  bool hasMore = true;
-  if (slice.hasKey("hasMore")) {
-    hasMore = slice.get("hasMore").getBoolean();
+
+  if (!slice.hasKey("hasMoreState") || !slice.get("hasMoreState").isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  return hasMore;
+  std::string hasMoreStateString = slice.get("hasMoreState").copyString();
+
+  ExecutionState hasMoreState;
+  if (hasMoreStateString == "HASMORE") {
+    hasMoreState = ExecutionState::HASMORE;
+  } else if (hasMoreStateString == "DONE") {
+    hasMoreState = ExecutionState::DONE;
+  } else if (hasMoreStateString == "WAITING") {
+    hasMoreState = ExecutionState::WAITING;
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+
+  return hasMoreState;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1187,114 +1338,113 @@ bool RemoteBlock::hasMore() {
 // -- SECTION --                                            UnsortingGatherBlock
 // -----------------------------------------------------------------------------
 
-/// @brief shutdown: need our own method since our _buffer is different
-int UnsortingGatherBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  // don't call default shutdown method since it does the wrong thing to
-  // _gatherBlockBuffer
-  int ret = TRI_ERROR_NO_ERROR;
-  for (auto* dependency : _dependencies) {
-    int res = dependency->shutdown(errorCode);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      ret = res;
-    }
-  }
-
-  return ret;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 /// @brief initializeCursor
-int UnsortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     return res;
   }
 
   _atDep = 0;
   _done = _dependencies.empty();
 
-  return TRI_ERROR_NO_ERROR;
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief hasMore: true if any position of _buffer hasMore and false
-/// otherwise.
-bool UnsortingGatherBlock::hasMore() {
+/// otherwise. TODO update this docu
+ExecutionState UnsortingGatherBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   if (_done || _dependencies.empty()) {
-    return false;
+    return ExecutionState::DONE;
   }
 
   for (auto* dependency : _dependencies) {
-    if (dependency->hasMore()) {
-      return true;
+    ExecutionState depState = dependency->hasMoreState();
+    switch (depState) {
+      case ExecutionState::WAITING:
+      case ExecutionState::HASMORE:
+        return depState;
+      case ExecutionState::DONE:
+        break;
     }
   }
 
   _done = true;
-  return false;
+  return ExecutionState::DONE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief getSome
-AqlItemBlock* UnsortingGatherBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> UnsortingGatherBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   _done = _dependencies.empty();
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
 
-  // the simple case . . .
-  auto* res = _dependencies[_atDep]->getSome(atMost);
+  // the simple case ...
+  auto res = _dependencies[_atDep]->getSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+    return res;
+  }
 
-  while (!res && _atDep < _dependencies.size() - 1) {
+  while (res.second == nullptr && _atDep < _dependencies.size() - 1) {
     _atDep++;
     res = _dependencies[_atDep]->getSome(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+      return res;
+    }
   }
 
-  _done = (nullptr == res);
+  _done = (nullptr == res.second);
 
-  traceGetSomeEnd(res);
-
-  return res;
+  traceGetSomeEnd(res.second.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res.second)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
-size_t UnsortingGatherBlock::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_done) {
-    return 0;
+    return {ExecutionState::DONE, 0};
   }
 
   // the simple case . . .
-  auto skipped = _dependencies[_atDep]->skipSome(atMost);
-
-  while (skipped == 0 && _atDep < _dependencies.size() - 1) {
-    _atDep++;
-    skipped = _dependencies[_atDep]->skipSome(atMost);
+  auto res = _dependencies[_atDep]->skipSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
   }
 
-  _done = (skipped == 0);
+  while (res.second == 0 && _atDep < _dependencies.size() - 1) {
+    _atDep++;
+    res = _dependencies[_atDep]->skipSome(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      return res;
+    }
+  }
 
-  return skipped;
+  _done = (res.second == 0);
+
+  return {getHasMoreState(), res.second};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1312,12 +1462,12 @@ SortingGatherBlock::SortingGatherBlock(
   TRI_ASSERT(!en.elements().empty());
 
   switch (en.sortMode()) {
-    case GatherNode::SortMode::MinElement:
+    case GatherNode::SortMode::Heap:
       _strategy = std::make_unique<HeapSorting>(
         _trx, _gatherBlockBuffer, _sortRegisters
       );
       break;
-    case GatherNode::SortMode::Heap:
+    case GatherNode::SortMode::MinElement:
       _strategy = std::make_unique<MinElementSorting>(
         _trx, _gatherBlockBuffer, _sortRegisters
       );
@@ -1338,45 +1488,13 @@ SortingGatherBlock::SortingGatherBlock(
   );
 }
 
-/// @brief shutdown: need our own method since our _buffer is different
-int SortingGatherBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  // don't call default shutdown method since it does the wrong thing to
-  // _gatherBlockBuffer
-  int ret = TRI_ERROR_NO_ERROR;
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->shutdown(errorCode);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      ret = res;
-    }
-  }
-
-  if (ret != TRI_ERROR_NO_ERROR) {
-    return ret;
-  }
-
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y : x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _gatherBlockBuffer.clear();
-  _gatherBlockPos.clear();
-
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 /// @brief initializeCursor
-int SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result>
+SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     return res;
   }
 
@@ -1398,7 +1516,8 @@ int SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _strategy->reset();
 
   _done = _dependencies.empty();
-  return TRI_ERROR_NO_ERROR;
+
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1406,30 +1525,100 @@ int SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
 /// @brief hasMore: true if any position of _buffer hasMore and false
 /// otherwise.
-bool SortingGatherBlock::hasMore() {
+ExecutionState SortingGatherBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   if (_done || _dependencies.empty()) {
-    return false;
+    return ExecutionState::DONE;
   }
 
   for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
     if (!_gatherBlockBuffer[i].empty()) {
-      return true;
-    } else if (getBlock(i, DefaultBatchSize())) {
+      return ExecutionState::HASMORE;
+    }
+
+    // We want to get rid of HASMORE in total
+    ExecutionState state;
+    bool blockAppended;
+    std::tie(state, blockAppended) = getBlocks(i, DefaultBatchSize());
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(!blockAppended);
+      return ExecutionState::WAITING;
+    }
+    if (blockAppended) {
       _gatherBlockPos[i] = std::make_pair(i, 0);
-      return true;
+      return ExecutionState::HASMORE;
     }
   }
 
   _done = true;
-  return false;
+  return ExecutionState::DONE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
+/**
+ * @brief Fills all _gatherBlockBuffer entries. Is repeatable during WAITING.
+ *
+ *
+ * @param atMost The amount of data requested per block.
+ * @param nonEmptyIndex an index of a non-empty GatherBlock buffer
+ *
+ * @return Will return {WAITING, 0} if it had to request new data from upstream.
+ *         If everything is in place: all buffers are either filled with at
+ *         least "atMost" rows, or the upstream block is DONE.
+ *         Will return {DONE, SUM(_gatherBlockBuffer)} on success.
+ */
+std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(
+    size_t atMost) {
+  size_t available = 0;
+
+  // In the future, we should request all blocks in parallel. But not everything
+  // is yet thread safe for that to work, so we have to return immediately on
+  // the first WAITING we encounter.
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    // reset position to 0 if we're going to fetch a new block.
+    // this doesn't hurt, even if we don't get one.
+    if (_gatherBlockBuffer[i].empty()) {
+      _gatherBlockPos[i] = std::make_pair(i, 0);
+    }
+    ExecutionState state;
+    bool blockAppended;
+    std::tie(state, blockAppended) = getBlocks(i, atMost);
+    if (state == ExecutionState::WAITING) {
+      return {ExecutionState::WAITING, 0};
+    }
+
+    available += availableRows(i);
+  }
+
+  return {ExecutionState::DONE, available};
+}
+
+/// @brief Returns the number of unprocessed rows in the buffer i.
+size_t SortingGatherBlock::availableRows(size_t i) const {
+  size_t available = 0;
+
+  auto const& blocks = _gatherBlockBuffer[i];
+  auto const& curRowIdx = _gatherBlockPos[i].second;
+
+  if (!blocks.empty()) {
+    TRI_ASSERT(blocks[0]->size() >= curRowIdx);
+    // the first block may already be partially processed
+    available += blocks[0]->size() - curRowIdx;
+  }
+
+  // add rows from all additional blocks
+  for (size_t j = 1; j < blocks.size(); ++j) {
+    available += blocks[j]->size();
+  }
+
+  return available;
+}
+
 /// @brief getSome
-AqlItemBlock* SortingGatherBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+SortingGatherBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
@@ -1438,42 +1627,32 @@ AqlItemBlock* SortingGatherBlock::getSome(size_t atMost) {
   }
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
 
   // the non-simple case . . .
-  size_t available = 0;  // nr of available rows
-  size_t index = 0;      // an index of a non-empty buffer
 
   // pull more blocks from dependencies . . .
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
-
-  for (size_t i = 0; i < _dependencies.size(); ++i) {
-    if (_gatherBlockBuffer[i].empty()) {
-      if (getBlock(i, atMost)) {
-        index = i;
-        _gatherBlockPos[i] = std::make_pair(i, 0);
-      }
-    } else {
-      index = i;
-    }
-
-    auto const& cur = _gatherBlockBuffer[i];
-    if (!cur.empty()) {
-      TRI_ASSERT(cur[0]->size() >= _gatherBlockPos[i].second);
-      available += cur[0]->size() - _gatherBlockPos[i].second;
-      for (size_t j = 1; j < cur.size(); ++j) {
-        available += cur[j]->size();
-      }
+  
+  size_t available = 0;
+  {
+    ExecutionState blockState;
+    std::tie(blockState, available) = fillBuffers(atMost);
+    if (blockState == ExecutionState::WAITING) {
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+      return {blockState, nullptr};
     }
   }
 
   if (available == 0) {
     _done = true;
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
 
   size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
@@ -1482,12 +1661,11 @@ AqlItemBlock* SortingGatherBlock::getSome(size_t atMost) {
   std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
   cache.resize(_gatherBlockBuffer.size());
 
-  TRI_ASSERT(!_gatherBlockBuffer.at(index).empty());
-  AqlItemBlock* example = _gatherBlockBuffer[index].front();
-  size_t nrRegs = example->getNrRegs();
+  size_t nrRegs = getNrInputRegisters();
 
   // automatically deleted if things go wrong
-  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
+  std::unique_ptr<AqlItemBlock> res(
+      requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
   _strategy->prepare(_gatherBlockPos);
 
@@ -1495,7 +1673,6 @@ AqlItemBlock* SortingGatherBlock::getSome(size_t atMost) {
     // get the next smallest row from the buffer . . .
     auto const val = _strategy->nextValue();
     auto& blocks = _gatherBlockBuffer[val.first];
-    auto& blocksPos = _gatherBlockPos[val.first];
 
     // copy the row in to the outgoing block . . .
     for (RegisterId col = 0; col < nrRegs; col++) {
@@ -1525,66 +1702,39 @@ AqlItemBlock* SortingGatherBlock::getSome(size_t atMost) {
       }
     }
 
-    // renew the _gatherBlockPos and clean up the buffer if necessary
-    if (++blocksPos.second == blocks.front()->size()) {
-      TRI_ASSERT(!blocks.empty());
-      AqlItemBlock* cur = blocks.front();
-      returnBlock(cur);
-      blocks.pop_front();
-      blocksPos.second = 0; // reset position within a dependency
-
-      if (blocks.empty()) {
-        // if we pulled everything from the buffer, we need to fetch
-        // more data for the shard for which we have no more local
-        // values.
-        getBlock(val.first, atMost);
-        cache[val.first].clear();
-        // note that if getBlock() returns false here, this is not
-        // a problem, because the sort function used takes care of
-        // this
-      }
-    }
+    nextRow(val.first);
   }
 
-  traceGetSomeEnd(res.get());
-  return res.release();
+  traceGetSomeEnd(res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
-size_t SortingGatherBlock::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_done) {
-    return 0;
+    return {ExecutionState::DONE, 0};
   }
 
   // the non-simple case . . .
-  size_t available = 0;  // nr of available rows
-  TRI_ASSERT(_dependencies.size() != 0);
+  TRI_ASSERT(!_dependencies.empty());
 
-  // pull more blocks from dependencies . . .
-  for (size_t i = 0; i < _dependencies.size(); i++) {
-    if (_gatherBlockBuffer[i].empty()) {
-      if (getBlock(i, atMost)) {
-        _gatherBlockPos[i] = std::make_pair(i, 0);
-      }
-    }
-
-    auto cur = _gatherBlockBuffer[i];
-    if (!cur.empty()) {
-      available += cur[0]->size() - _gatherBlockPos[i].second;
-      for (size_t j = 1; j < cur.size(); j++) {
-        available += cur[j]->size();
-      }
+  size_t available = 0;
+  {
+    ExecutionState blockState;
+    std::tie(blockState, available) = fillBuffers(atMost);
+    if (blockState == ExecutionState::WAITING) {
+      return {blockState, 0};
     }
   }
 
   if (available == 0) {
     _done = true;
-    return 0;
+    return {ExecutionState::DONE, 0};
   }
 
   size_t const skipped = (std::min)(available, atMost);  // nr rows in outgoing block
@@ -1594,39 +1744,68 @@ size_t SortingGatherBlock::skipSome(size_t atMost) {
   for (size_t i = 0; i < skipped; i++) {
     // get the next smallest row from the buffer . . .
     auto const val = _strategy->nextValue();
-    auto& blocks = _gatherBlockBuffer[val.first];
-    auto& blocksPos = _gatherBlockPos[val.first];
 
-    // renew the _gatherBlockPos and clean up the buffer if necessary
-    if (++blocksPos.second == blocks.front()->size()) {
-      TRI_ASSERT(!blocks.empty());
-      AqlItemBlock* cur = blocks.front();
-      returnBlock(cur);
-      blocks.pop_front();
-      blocksPos.second = 0; // reset position within a dependency
-    }
+    nextRow(val.first);
   }
 
-  return skipped;
+  // Maybe we can optimize here DONE/HASMORE
+  return {getHasMoreState(), skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
+/// @brief Step to the next row in line in the buffers of dependency i, i.e.,
+/// updates _gatherBlockBuffer and _gatherBlockPos. If necessary, steps to the
+/// next block and removes the previous one. Will not fetch more blocks.
+void SortingGatherBlock::nextRow(size_t i) {
+  auto& blocks = _gatherBlockBuffer[i];
+  auto& blocksPos = _gatherBlockPos[i];
+  if (++blocksPos.second == blocks.front()->size()) {
+    TRI_ASSERT(!blocks.empty());
+    AqlItemBlock* cur = blocks.front();
+    returnBlock(cur);
+    blocks.pop_front();
+    blocksPos.second = 0; // reset position within a dependency
+  }
+}
+
 /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
 /// non-simple case only
-bool SortingGatherBlock::getBlock(size_t i, size_t atMost) {
+/// Assures that either atMost rows are actually available in buffer i, or
+/// the dependency is DONE.
+std::pair<ExecutionState, bool> SortingGatherBlock::getBlocks(size_t i,
+                                                              size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(i < _dependencies.size());
 
-  std::unique_ptr<AqlItemBlock> docs(_dependencies[i]->getSome(atMost));
-  if (docs && docs->size() > 0) {
-    _gatherBlockBuffer[i].emplace_back(docs.get());
-    docs.release();
-    return true;
+  bool blockAppended = false;
+  size_t rowsAvailable = availableRows(i);
+  ExecutionState state = ExecutionState::HASMORE;
+
+  // repeat until either
+  // - enough rows are fetched
+  // - dep[i] is DONE
+  // - dep[i] is WAITING
+  while (state == ExecutionState::HASMORE && rowsAvailable < atMost) {
+    std::unique_ptr<AqlItemBlock> itemBlock;
+    std::tie(state, itemBlock) = _dependencies[i]->getSome(atMost);
+
+    // Assert that state == WAITING => itemBlock == nullptr
+    TRI_ASSERT(state != ExecutionState::WAITING || itemBlock == nullptr);
+
+    if (itemBlock && itemBlock->size() > 0) {
+      rowsAvailable += itemBlock->size();
+      _gatherBlockBuffer[i].emplace_back(itemBlock.get());
+      itemBlock.release();
+      blockAppended = true;
+    }
   }
 
-  return false;
+  TRI_ASSERT(state == ExecutionState::WAITING ||
+             state == ExecutionState::DONE || rowsAvailable >= atMost);
+
+  return {state, blockAppended};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
