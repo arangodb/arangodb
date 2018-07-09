@@ -33,7 +33,7 @@ ArangoDatabase.create() : Boolean
 
 Creates the database.
 
-Alternative for [ArangoDB.createDatabase](#ArangoDB.createDatabase).
+Alternative for [ArangoDB.createDatabase](#arangodbcreatedatabase).
 
 **Examples**
 

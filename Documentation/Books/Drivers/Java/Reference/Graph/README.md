@@ -66,7 +66,7 @@ GraphEntity graph = db.createGraph("some-graph", Arrays.asList(edgeDefinition), 
 
 Create a new graph in the graph module. The creation of a graph requires the name of the graph and a definition of its edges.
 
-Alternative for [ArangoDatabase.createGraph](#ArangoDatabase.createGraph).
+Alternative for [ArangoDatabase.createGraph](#arangodatabasecreategraph).
 
 **Arguments**
 
