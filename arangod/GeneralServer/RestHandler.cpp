@@ -483,15 +483,11 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = true;
 
-    try {
-      TRI_ASSERT(options.escapeUnicode);
-      if (_request != nullptr) {
-        _response->setContentType(_request->contentTypeResponse());
-      }
-      _response->setPayload(std::move(buffer), true, options);
-    } catch (...) {
-      // exception while generating error
+    TRI_ASSERT(options.escapeUnicode);
+    if (_request != nullptr) {
+      _response->setContentType(_request->contentTypeResponse());
     }
+    _response->setPayload(std::move(buffer), true, options);
   } catch (...) {
     // exception while generating error
   }
