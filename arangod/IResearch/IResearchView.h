@@ -140,11 +140,13 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief AsyncValue holding the view itself, modifiable by IResearchView
   ///////////////////////////////////////////////////////////////////////////////
-  class AsyncSelf: public AsyncValue<IResearchView*> {
-    friend IResearchView;
+  class AsyncSelf: public ResourceMutex {
    public:
     DECLARE_SPTR(AsyncSelf);
-    explicit AsyncSelf(IResearchView* value): AsyncValue(value) {}
+    explicit AsyncSelf(IResearchView* value): ResourceMutex(value) {}
+    IResearchView* get() const {
+      return static_cast<IResearchView*>(ResourceMutex::get());
+    }
   };
 
   ///////////////////////////////////////////////////////////////////////////////

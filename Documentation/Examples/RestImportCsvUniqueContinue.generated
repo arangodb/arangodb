@@ -1,7 +1,7 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&details=true &lt;&lt;EOF
-[ "_key", "value1", "value2" ]
-[ "abc", 25, "test" ]
-["abc", "bar", "baz" ]
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&details=true &amp;lt;&amp;lt;EOF
+[ <span class="hljs-string">"_key"</span>, <span class="hljs-string">"value1"</span>, <span class="hljs-string">"value2"</span> ]
+[ <span class="hljs-string">"abc"</span>, <span class="hljs-number">25</span>, <span class="hljs-string">"test"</span> ]
+[<span class="hljs-string">"abc"</span>, <span class="hljs-string">"bar"</span>, <span class="hljs-string">"baz"</span> ]
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created

@@ -1,13 +1,13 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/tasks/sampleTask &lt;&lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/tasks/sampleTask &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"SampleTask"</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"SampleTask"</span>, 
-  <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function(params) { require('@arangodb').print(params); })(params)"</span>, 
-  <span class="hljs-string">"params"</span> : { 
-    <span class="hljs-string">"foo"</span> : <span class="hljs-string">"bar"</span>, 
-    <span class="hljs-string">"bar"</span> : <span class="hljs-string">"foo"</span> 
+  "id" : "SampleTask", 
+  "name" : "SampleTask", 
+  "command" : "(function(params) { require('@arangodb').print(params); })(params)", 
+  "params" : { 
+    "foo" : "bar", 
+    "bar" : "foo" 
   }, 
-  <span class="hljs-string">"period"</span> : <span class="hljs-number">2</span> 
+  "period" : 2 
 }
 EOF
 
@@ -18,7 +18,7 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"sampleTask"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"SampleTask"</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1530046925.2992506</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1530713425.2462006</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
   <span class="hljs-string">"period"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"offset"</span> : <span class="hljs-number">0</span>, 
@@ -27,3 +27,4 @@ x-content-type-options: nosniff
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
+shell> curl -X DELETE --dump - http://localhost:8529/_api/tasks/sampleTask

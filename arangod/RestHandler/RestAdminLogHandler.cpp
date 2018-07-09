@@ -293,8 +293,7 @@ void RestAdminLogHandler::setLogLevel() {
     bool parseSuccess = false;
     VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      // error message generated in parseVPackBody
-      return;
+      return; // error message generated in parseVPackBody
     }
     
     if (slice.isString()) {

@@ -89,7 +89,7 @@ struct ProgressInfo {
       processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
-  ProgressInfo(Setter);
+  explicit ProgressInfo(Setter);
 
   /// @brief set the new message using the setter provided at construction
   // TODO worker safety
@@ -147,7 +147,7 @@ struct MasterInfo {
   TRI_voc_tick_t lastLogTick{0};
   bool active{false};
 
-  MasterInfo(ReplicationApplierConfiguration const& applierConfig);
+  explicit MasterInfo(ReplicationApplierConfiguration const& applierConfig);
 
   /// @brief get master state
   Result getState(Connection& connection, bool isChildSyncer);

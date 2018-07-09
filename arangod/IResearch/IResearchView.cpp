@@ -830,15 +830,11 @@ IResearchView::IResearchView(
 
 IResearchView::~IResearchView() {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-  _syncWorker->refresh(); // trigger reload of settings for async jobs
-  _syncWorker.reset(); // ensure destructor called if required
-
-  {
-    WriteMutex mutex(_asyncSelf->_mutex);
-    SCOPED_LOCK(mutex); // wait for all the view users to finish
-    _asyncSelf->_value.store(nullptr); // the view is being deallocated, its use is no longer valid
+  if (_syncWorker) {
+    _syncWorker->refresh(); // trigger reload of settings for async jobs
+    _syncWorker.reset(); // ensure destructor called if required
   }
-
+  _asyncSelf->reset(); // the view is being deallocated, its use is no longer valid (wait for all the view users to finish)
   _flushCallback.reset(); // unregister flush callback from flush thread
 
   {
@@ -951,12 +947,7 @@ arangodb::Result IResearchView::dropImpl() {
 
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
   _syncWorker->refresh(); // trigger reload of settings for async jobs
-
-  {
-    WriteMutex mutex(_asyncSelf->_mutex);
-    SCOPED_LOCK(mutex); // wait for all the view users to finish
-    _asyncSelf->_value.store(nullptr); // the view data-stores are being deallocated, view use is no longer valid
-  }
+  _asyncSelf->reset(); // the view data-stores are being deallocated, view use is no longer valid (wait for all the view users to finish)
 
   WriteMutex mutex(_mutex); // members can be asynchronously updated
   SCOPED_LOCK(mutex);

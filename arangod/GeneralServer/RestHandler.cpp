@@ -109,8 +109,6 @@ bool RestHandler::forwardRequest() {
 
   // TODO verify that async requests work correctly
 
-  // TODO verify that user-JWT works correctly
-
   uint32_t shortId = forwardingTarget();
   if (shortId == 0) {
     // no need to actually forward
@@ -250,6 +248,7 @@ bool RestHandler::forwardRequest() {
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
+  _response->setHeader(StaticStrings::RequestServedBy, serverId);
   return true;
 }
 

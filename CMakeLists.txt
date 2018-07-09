@@ -640,13 +640,7 @@ endif ()
 # NDEBUG
 # ------------------------------------------------------------------------------
 
-if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-                                 )
-   )
-   add_definitions(-DNDEBUG)
-endif ()
+add_definitions(-DNDEBUG)
 
 ################################################################################
 ## FLAGS

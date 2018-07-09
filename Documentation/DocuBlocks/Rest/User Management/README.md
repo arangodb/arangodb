@@ -166,7 +166,7 @@ var response = logCurlRequest('DELETE', url);
 
 assert(response.code === 202);
 
-logRawResponse(response);
+logJsonResponse(response);
 users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
@@ -285,7 +285,7 @@ var response = logCurlRequest('DELETE', url);
 
 assert(response.code === 202);
 
-logRawResponse(response);
+logJsonResponse(response);
 users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 

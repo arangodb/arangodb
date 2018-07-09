@@ -5,13 +5,13 @@ arangosh&gt; db.female.toArray()
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1ldRe--F"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUgPI---E"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1ldRe--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUgPI----"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   } 
 ]
@@ -20,51 +20,51 @@ arangosh&gt; db.male.toArray()
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1ldRe--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUgPI---A"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1ldRe--D"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUgPI---C"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   } 
 ]
 arangosh&gt; db.relation.toArray()
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37730"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/37730"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37876"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/37876"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1ldRe--H"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUgPIC--_"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span>, 
     <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37734"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/37734"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1ldRe--J"</span>, 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span>, 
-    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37737"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/37737"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37883"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/37883"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1ldRi--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUgPIC--D"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span>, 
     <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"charly"</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37740"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/37740"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37880"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/37880"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUgPIC--B"</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span>, 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"alice"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"37886"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/37886"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1ldRi--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUgPIG--_"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span>, 
     <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"bob"</span> 
   } 

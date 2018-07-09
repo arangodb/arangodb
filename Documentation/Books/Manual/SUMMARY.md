@@ -121,9 +121,8 @@
     * [Example Data](Graphs/Traversals/ExampleData.md)
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
-* [Views](Views/README.md)
-  * [ArangoSearch](Views/ArangoSearch.md)
-    * [Analyzers](Views/ArangoSearch/Analyzers.md)
+* [ArangoSearch Views](Views/ArangoSearch/README.md)
+  * [Analyzers](Views/ArangoSearch/Analyzers.md)
 
 ## ADVANCED TOPICS
 
@@ -297,6 +296,7 @@
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
 * [Security](Security/README.md)
+  * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption](Administration/Encryption/README.md)
   * [Auditing](Administration/Auditing/README.md)
     * [Configuration](Administration/Auditing/AuditConfiguration.md)

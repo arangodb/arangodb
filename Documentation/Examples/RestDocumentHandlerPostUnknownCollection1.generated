@@ -1,5 +1,5 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document/products &lt;&lt;EOF
-{ "Hello": "World" }
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document/products &amp;lt;&amp;lt;EOF
+{ <span class="hljs-string">"Hello"</span>: <span class="hljs-string">"World"</span> }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found

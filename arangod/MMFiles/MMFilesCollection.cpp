@@ -2276,8 +2276,9 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-
-  TRI_ASSERT(newIdx != nullptr);
+  if (!newIdx) {
+    return TRI_ERROR_ARANGO_INDEX_NOT_FOUND;
+  }
 
   TRI_UpdateTickServer(newIdx->id());
 

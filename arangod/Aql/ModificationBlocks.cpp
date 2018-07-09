@@ -188,6 +188,33 @@ int ModificationBlock::extractKey(AqlValue const& value,
   return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
 }
 
+int ModificationBlock::extractKeyAndRev(AqlValue const& value,
+                                         std::string& key,
+                                         std::string& rev) {
+  if (value.isObject()) {
+    bool mustDestroy;
+    AqlValue sub = value.get(_trx, StaticStrings::KeyString, mustDestroy, false);
+    AqlValueGuard guard(sub, mustDestroy);
+
+    if (sub.isString()) {
+      key.assign(sub.slice().copyString());
+
+      bool mustDestroyToo;
+      AqlValue subTwo = value.get(_trx, StaticStrings::RevString, mustDestroyToo, false);
+      AqlValueGuard guard(subTwo, mustDestroyToo);
+      if (subTwo.isString()) {
+        rev.assign(subTwo.slice().copyString());
+      }
+      return TRI_ERROR_NO_ERROR;
+    }
+  } else if (value.isString()) {
+    key.assign(value.slice().copyString());
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+}
+
 /// @brief process the result of a data-modification operation
 void ModificationBlock::handleResult(int code, bool ignoreErrors,
                                      std::string const* errorMessage) {
@@ -297,7 +324,7 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
   OperationOptions options;
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
-  options.ignoreRevs = true;
+  options.ignoreRevs = ep->getOptions().ignoreRevs;
   options.returnOld = producesOutput;
   options.isRestore = ep->getOptions().useIsRestore;
 
@@ -317,6 +344,7 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     }
 
     std::string key;
+    std::string rev;
     int errorCode = TRI_ERROR_NO_ERROR;
     // loop over the complete block
     // build the request block
@@ -331,9 +359,15 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
       if (!ep->_options.consultAqlWriteFilter ||
           !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
         if (a.isObject()) {
-          // value is an object. now extract the _key attribute
           key.clear();
-          errorCode = extractKey(a, key);
+          if (!options.ignoreRevs) {
+            rev.clear();
+            // value is an object. now extract the _key and _rev attribute
+            errorCode = extractKeyAndRev(a, key, rev);
+          } else {
+            // value is an object. now extract the _key attribute
+            errorCode = extractKey(a, key);
+          }
         } else if (a.isString()) {
           // value is a string
           key = a.slice().copyString();
@@ -346,6 +380,9 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
           // create a slice for the key
           _tempBuilder.openObject();
           _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
+          if (!options.ignoreRevs && !rev.empty()) {
+            _tempBuilder.add(StaticStrings::RevString, VPackValue(rev));
+          }
           _tempBuilder.close();
         } else {
           // We have an error, handle it
@@ -638,7 +675,7 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
-  options.ignoreRevs = true;
+  options.ignoreRevs = ep->getOptions().ignoreRevs;
   options.isRestore = ep->getOptions().useIsRestore;
 
   // loop over all blocks
@@ -845,7 +882,7 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
   options.mergeObjects = ep->_options.mergeObjects;
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnNew = producesOutput;
-  options.ignoreRevs = true;
+  options.ignoreRevs = ep->getOptions().ignoreRevs;
   options.isRestore = ep->getOptions().useIsRestore;
 
   VPackBuilder insertBuilder;
@@ -1104,7 +1141,7 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
-  options.ignoreRevs = true;
+  options.ignoreRevs = ep->getOptions().ignoreRevs;
   options.isRestore = ep->getOptions().useIsRestore;
 
   // loop over all blocks

@@ -678,71 +678,78 @@ bool Index::canUseConditionPart(
       */
     } else if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
-      if (!other->isConstant()) {
-        return false;
-      }
+      if (other->isConstant()) {
+        if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE &&
+            other->isNullValue()) {
+          // != null. now note that a certain attribute cannot become null
+          try {
+            nonNullAttributes.emplace(access->toString());
+          } catch (...) {
+          }
+        } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
+          // > anything. now note that a certain attribute cannot become null
+          try {
+            nonNullAttributes.emplace(access->toString());
+          } catch (...) {
+          }
+        } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
+                   !other->isNullValue()) {
+          // >= non-null. now note that a certain attribute cannot become null
+          try {
+            nonNullAttributes.emplace(access->toString());
+          } catch (...) {
+          }
+        }
 
-      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE &&
-          other->isNullValue()) {
-        // != null. now note that a certain attribute cannot become null
-        try {
-          nonNullAttributes.emplace(access->toString());
-        } catch (...) {
+        if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+            op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
+          // <  and  <= are not supported with sparse indexes as this may include
+          // null values
+          try {
+            // check if we've marked this attribute as being non-null already
+            if (nonNullAttributes.find(access->toString()) ==
+                nonNullAttributes.end()) {
+              return false;
+            }
+          } catch (...) {
+            return false;
+          }
         }
-      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
-        // > null. now note that a certain attribute cannot become null
-        try {
-          nonNullAttributes.emplace(access->toString());
-        } catch (...) {
-        }
-      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
-                 !other->isNullValue()) {
-        // >= non-null. now note that a certain attribute cannot become null
-        try {
-          nonNullAttributes.emplace(access->toString());
-        } catch (...) {
-        }
-      }
 
-      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
-          op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
-        // <  and  <= are not supported with sparse indexes as this may include
-        // null values
+        if (other->isNullValue() &&
+            (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+             op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
+          // ==  and  >= null are not supported with sparse indexes for the same
+          // reason
+          try {
+            // check if we've marked this attribute as being non-null already
+            if (nonNullAttributes.find(access->toString()) ==
+                nonNullAttributes.end()) {
+              return false;
+            }
+          } catch (...) {
+            return false;
+          }
+        }
+
+        if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+            other->type == arangodb::aql::NODE_TYPE_ARRAY) {
+          size_t const n = other->numMembers();
+
+          for (size_t i = 0; i < n; ++i) {
+            if (other->getMemberUnchecked(i)->isNullValue()) {
+              return false;
+            }
+          }
+        }
+      } else {
+        // !other->isConstant()
         try {
-          // check if we've marked this attribute as being non-null already
-          if (nonNullAttributes.find(access->toString()) ==
-              nonNullAttributes.end()) {
+          if (nonNullAttributes.find(access->toString()) == nonNullAttributes.end()) {
             return false;
           }
         } catch (...) {
           return false;
-        }
-      }
-
-      if (other->isNullValue() &&
-          (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-           op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
-        // ==  and  >= null are not supported with sparse indexes for the same
-        // reason
-        try {
-          // check if we've marked this attribute as being non-null already
-          if (nonNullAttributes.find(access->toString()) ==
-              nonNullAttributes.end()) {
-            return false;
-          }
-        } catch (...) {
-          return false;
-        }
-      }
-
-      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-          other->type == arangodb::aql::NODE_TYPE_ARRAY) {
-        size_t const n = other->numMembers();
-
-        for (size_t i = 0; i < n; ++i) {
-          if (other->getMemberUnchecked(i)->isNullValue()) {
-            return false;
-          }
         }
       }
     }
@@ -751,6 +758,15 @@ bool Index::canUseConditionPart(
   if (isExecution) {
     // in execution phase, we do not need to check the variable usage again
     return true;
+  }
+      
+  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
+    // none of the indexes can use !=, so we can exit here
+    // note that this function may have been called for operator !=. this is
+    // necessary to track the non-null attributes, e.g. attr != null, so we can
+    // note which attributes cannot be null and still use sparse indexes for
+    // these attributes
+    return false;
   }
 
   // test if the reference variable is contained on both side of the expression
