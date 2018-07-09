@@ -76,9 +76,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //             "done" (boolean) [3.4.0 and later] to indicate whether or not the cursor is exhausted.
   RestStatus useQuery(std::string const& operation, std::string const& idString);
 
-  // GET method for /_api/aql/<queryId>
-  RestStatus getInfoQuery(std::string const &operation, std::string const &idString);
-
  private:
 
   // POST method for /_api/aql/setup (internal)
