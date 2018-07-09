@@ -1,6 +1,9 @@
 devel
 -----
 
+* use sparse indexes in more cases now, when it is clear that the index attribute
+  value cannot be null
+
 * Added load balancer support and user-restriction to cursor API.
 
   If a cursor is accessed on a different coordinator than where it was created,

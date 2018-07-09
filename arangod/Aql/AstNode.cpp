@@ -871,7 +871,6 @@ void AstNode::dump(int level) const {
 
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
-/// note that the return value might be NULL in case of OOM
 VPackSlice AstNode::computeValue() const {
   TRI_ASSERT(isConstant());
 
@@ -882,6 +881,8 @@ VPackSlice AstNode::computeValue() const {
     computedValue = new uint8_t[builder.size()];
     memcpy(computedValue, builder.data(), builder.size());
   }
+  
+  TRI_ASSERT(computedValue != nullptr);
 
   return VPackSlice(computedValue);
 }

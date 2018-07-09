@@ -43,6 +43,53 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using CompareResult = ConditionPartCompareResult;
+    
+namespace {
+
+// sort comparisons so that > and >= come before < and <=, and that
+// != and > come before ==
+// we use this to some advantage when we check the conditions for a sparse
+// index later.
+// if a sparse index is asked whether it can supported a condition such as
+// `attr < value1`, this range would include `null`, which the sparse index 
+// cannot provide.
+// however, if we first check other conditions we may find a condition on 
+// the same attribute, e.g. `attr > value2`.
+// this other condition may exclude `null` so we then use the full range
+// `value2 < attr < value1` and do not have to discard sub-conditions anymore
+// we can also benefit from sorting != before == for hash indexes, if there
+// is a condition that excludes null (e.g. != null). if this is tracked first,
+// we are sure the index attribute value cannot be null and we can still use
+// the sparse index
+std::function<int(AstNode const*)> const operationWeight = [](AstNode const* node) {
+  switch (node->type) {
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+      // != before ==, e.g. attr != null && attr == FUNC(abc) for hash indexes 
+      return 1;
+    case NODE_TYPE_OPERATOR_BINARY_GT: 
+      // > before others <, e.g. attr > null && attr < abc
+      return 2;
+    case NODE_TYPE_OPERATOR_BINARY_GE: 
+      // >= before others <, e.g. attr >= null && attr < abc
+      return 3;
+    case NODE_TYPE_OPERATOR_BINARY_EQ: 
+      // != before ==, e.g. attr != null && attr == FUNC(abc) for hash indexes 
+      return 4;
+    case NODE_TYPE_OPERATOR_BINARY_IN: 
+      return 5;
+    case NODE_TYPE_OPERATOR_BINARY_NIN: 
+      return 6;
+    case NODE_TYPE_OPERATOR_BINARY_LT: 
+      // < after others, e.g. attr > null && attr < abc
+      return 7;
+    case NODE_TYPE_OPERATOR_BINARY_LE: 
+      // <= after others, e.g. attr >= null && attr <= abc
+      return 8;
+    default: 
+      // non-comparison types can come after comparisons
+      return 9;
+  }
+};
 
 struct PermutationState {
   PermutationState(arangodb::aql::AstNode const* value, size_t n)
@@ -63,6 +110,8 @@ struct PermutationState {
   size_t current;
   size_t const n;
 };
+
+} //namespace
 
 //        |         | a == y | a != y | a <  y | a <= y | a >= y | a > y
 // -------|------------------|--------|--------|--------|--------|--------
@@ -810,34 +859,30 @@ void Condition::optimize(ExecutionPlan* plan) {
 
     // sort AND parts of each sub-condition so > and >= come before < and <=
     // we use this to some advantage when we check the conditions for a sparse
-    // index
-    // later.
+    // index later.
     // if a sparse index is asked whether it can supported a condition such as
-    // `attr < value1`,
-    // this range would include `null`, which the sparse index cannot provide.
-    // however, if we
-    // first check other conditions we may find a condition on the same
-    // attribute, e.g. `attr > value2`.
+    // `attr < value1`, this range would include `null`, which the sparse index 
+    // cannot provide.
+    // however, if we first check other conditions we may find a condition on 
+    // the same attribute, e.g. `attr > value2`.
     // this other condition may exclude `null` so we then use the full range
     // `value2 < attr < value1`
     // and do not have to discard sub-conditions anymore
     andNode->sortMembers([](AstNode const* lhs, AstNode const* rhs) {
-      if ((lhs->type != NODE_TYPE_OPERATOR_BINARY_LT &&
-           lhs->type != NODE_TYPE_OPERATOR_BINARY_LE) &&
-          (rhs->type == NODE_TYPE_OPERATOR_BINARY_LT ||
-           rhs->type == NODE_TYPE_OPERATOR_BINARY_LE)) {
-        // sort < and <= after other comparison operators
-        return true;
+      // try to re-order comparison operators 
+      int l = ::operationWeight(lhs);
+      int r = ::operationWeight(rhs);
+      if (l != r) {
+        return l < r;
       }
-      if ((lhs->type == NODE_TYPE_OPERATOR_BINARY_LT ||
-           lhs->type == NODE_TYPE_OPERATOR_BINARY_LE) &&
-          (rhs->type != NODE_TYPE_OPERATOR_BINARY_LT &&
-           rhs->type != NODE_TYPE_OPERATOR_BINARY_LE)) {
-        // sort < and <= after other comparison operators
-        return false;
+      
+      // all equal, now check if original types are different
+      if (lhs->type != rhs->type) {
+        return lhs->type < rhs->type;
       }
-      // compare pointers as last resort
-      return (lhs->type < rhs->type);
+
+      // still all equal
+      return false;
     });
 
     if (inComparisons > 0) {
@@ -1335,26 +1380,39 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   // If there are 2 attribute accesses it does a
   // string compare of the access path and makes sure
   // the one that compares less ends up on the LHS
-
   if (node->type != NODE_TYPE_OPERATOR_BINARY_LE &&
       node->type != NODE_TYPE_OPERATOR_BINARY_LT &&
       node->type != NODE_TYPE_OPERATOR_BINARY_GE &&
-      node->type != NODE_TYPE_OPERATOR_BINARY_GT )
-  {
+      node->type != NODE_TYPE_OPERATOR_BINARY_GT &&
+      node->type != NODE_TYPE_OPERATOR_BINARY_NE) {
     // no binary compare in node
     return node;
   }
 
   auto first = node->getMemberUnchecked(0);
   auto second = node->getMemberUnchecked(1);
+  
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
+    if (first->isNullValue()) {
+      // convert  null != value  =>  value > null
+      // we do this so we have a range for an index access here.
+      return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, second, first);
+    } else if (second->isNullValue()) {
+      // convert  value != null  =>  value > null
+      // we do this so we have a range for an index access here.
+      return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, first, second);
+    }
+    // stop here
+    return node;
+  }
 
-  if (second->type == NODE_TYPE_ATTRIBUTE_ACCESS){
-    if (first->type != NODE_TYPE_ATTRIBUTE_ACCESS){
+  if (second->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (first->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
       return switchSidesInCompare(ast, node);
     }
 
-    //both are of type attribute access
-    if(first->toString() > second->toString()){
+    // both are of type attribute access
+    if (first->toString() > second->toString()){
       return switchSidesInCompare(ast, node);
     }
   }
@@ -1474,7 +1532,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
       //
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
-      std::vector<PermutationState> clauses;
+      std::vector<::PermutationState> clauses;
       clauses.reserve(n);
 
       for (size_t i = 0; i < n; ++i) {
