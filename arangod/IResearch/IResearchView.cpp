@@ -666,6 +666,7 @@ IResearchView::IResearchView(
     uint64_t planVersion
 ): DBServerLogicalView(vocbase, info, planVersion),
     FlushTransaction(toString(*this)),
+   _asyncFeature(nullptr),
    _asyncSelf(irs::memory::make_unique<AsyncSelf>(this)),
    _asyncTerminate(false),
    _meta(std::make_shared<AsyncMeta>()),
@@ -817,6 +818,7 @@ IResearchView::IResearchView(
       );
 
       iresearchFeature->async(self(), 0, std::move(task));
+      _asyncFeature = iresearchFeature;
     }
   }
 
@@ -1892,12 +1894,8 @@ arangodb::Result IResearchView::updateProperties(
 
   std::atomic_store(&_meta, meta);
 
-  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::iresearch::IResearchFeature
-  >();
-
-  if (feature) {
-    feature->asyncNotify();
+  if (_asyncFeature) {
+    _asyncFeature->asyncNotify();
   }
 
   return arangodb::Result();

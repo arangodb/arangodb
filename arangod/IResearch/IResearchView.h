@@ -77,6 +77,7 @@ namespace iresearch {
 /// --SECTION--                                            Forward declarations
 ///////////////////////////////////////////////////////////////////////////////
 
+class IResearchFeature; // forward declaratui
 struct IResearchLinkMeta;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -368,6 +369,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   //////////////////////////////////////////////////////////////////////////////
   void verifyKnownCollections();
 
+  IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncSelf::ptr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
