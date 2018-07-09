@@ -114,6 +114,7 @@ Result getLocalCollections(VPackBuilder& collections) {
   
 }
 
+#warning return type should be Result
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
@@ -144,8 +145,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   DatabaseGuard guard(*vocbase);
   VPackBuilder local;
-  Result glc = getLocalCollections(local);
-#warning can fail or be empty
+  Result glc;
+  try {
+    glc = getLocalCollections(local);
+  } catch (std::exception const& e) {
+    auto error = std::string("failed to collect local collection info") + e.what();
+    LOG_TOPIC(ERR, Logger::HEARTBEAT) << error;
+    return result;
+  }
 
   auto start = clock::now();
   try {
@@ -157,11 +164,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       << "Failed to handle plan change: " << e.what();
   }
   auto report = rb.slice();
-  
   result = DBServerAgencySyncResult(
     tmp.ok(),
-    report.get("Plan").get("Version").getNumber<uint64_t>(),
-    report.get("Current").get("Version").getNumber<uint64_t>());
+    report.hasKey("Plan") ? report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
+    report.hasKey("Current") ? report.get("Current").get("Version").getNumber<uint64_t>() : 0);
   
   auto took = duration<double>(clock::now()-start).count();
   if (took > 30.0) {

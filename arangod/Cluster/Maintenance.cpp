@@ -233,7 +233,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   
   arangodb::Result result;
   auto const& pdbs =
-    plan.get(std::vector<std::string>{"arango", "Plan", "Collections"});
+    plan.get(std::vector<std::string>{"Collections"});
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local collections are affected
@@ -257,7 +257,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     }
   }
   
-
   // Compare local to plan -----------------------------------------------------
   for (auto const& db : VPackObjectIterator(local)) {
     auto const& dbname = db.key.copyString();
@@ -271,7 +270,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));
     }
   }
-  
+
   return result;
   
 }
@@ -286,6 +285,7 @@ arangodb::Result arangodb::maintenance::executePlan (
   // build difference between plan and local
   std::vector<ActionDescription> actions;
   diffPlanLocal(plan, local, serverId, actions);
+  LOG_TOPIC(ERR, Logger::MAINTENANCE) << actions;
   
   // enact all
   for (auto const& action : actions) {
@@ -342,16 +342,22 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent (
 
 
 arangodb::Result arangodb::maintenance::handleChange(
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
   arangodb::Result result;
 
   VPackObjectBuilder o(&report);
-  report.add(VPackValue("phaseOne"));
-  result = phaseOne(plan, cur, local, serverId, feature, report);
-  if (result.fail()) {
-    report.add(VPackValue("phaseTwo"));
-    result = phaseTwo(plan, cur, local, report);
+  result = phaseOne(plan, current, local, serverId, feature, report);
+  if (result.ok()) {
+    report.add(VPackValue("Plan"));
+    { VPackObjectBuilder p(&report);
+      report.add("Version", plan.get("Version"));}
+    result = phaseTwo(plan, current, local, report);
+    if (result.ok()) {
+      report.add(VPackValue("Current"));
+      { VPackObjectBuilder p(&report);
+        report.add("Version", current.get("Version"));}
+    }
   }
   return result;
 }
@@ -362,6 +368,7 @@ arangodb::Result arangodb::maintenance::phaseOne (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   VPackBuilder& report) {
+  report.add(VPackValue("phaseOne"));
   VPackObjectBuilder por(&report);
   arangodb::Result result;
   // Execute database changes
@@ -375,9 +382,11 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   VPackBuilder& report) {
   arangodb::Result result;
+  report.add(VPackValue("phaseOne"));
+  VPackObjectBuilder por(&report);
 
   // Synchronise shards
-  result = synchroniseShards(plan, cur, local);
+  //result = synchroniseShards(plan, cur, local);
 
   return result;
 }
