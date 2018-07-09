@@ -379,12 +379,20 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       if(expr->isStringValue()){
         key = expr->getString();
       } else if (expr->isObject()){
+        bool foundKey = false;
         for(std::size_t i = 0 ; i < expr->numMembers(); i++){
           auto* anode = expr->getMemberUnchecked(i);
           if( anode->getString() == "_key"){
             key = anode->getMember(0)->getString();
+            foundKey = true;
+          }
+          if( anode->getString() == "_rev"){
+            foundKey = false; // decline if _ref is in the game
             break;
           }
+        }
+        if (!foundKey) {
+          continue;
         }
       } else {
         // write more code here if we

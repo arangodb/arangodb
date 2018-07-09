@@ -1950,6 +1950,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
     possibleWrites = 1;
   }
 
+  _done = true;
   // check operation result
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
@@ -1959,7 +1960,6 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
       {
         // document not there is not an error in this situation.
         // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
-        _done = true;
         return false;
       } else if (!nodeOps.ignoreErrors){ // TODO remove if
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
@@ -2027,7 +2027,6 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
     }
     aqlValueSet = true;
   }
-  traceGetSomeEnd(aqlres);
   throwIfKilled();  // check if we were aborted
 
   TRI_IF_FAILURE("SingleRemoteOperationBlock::moreDocuments") {
@@ -2040,13 +2039,13 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
 }
 
 /// @brief getSome
-AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return { ExecutionState::DONE, nullptr};
   }
 
   std::unique_ptr<AqlItemBlock> aqlres;
@@ -2058,10 +2057,18 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   int outputCounter = 0;
   if (_buffer.empty()) {
     size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-    if (!ExecutionBlock::getBlock(toFetch)) {
+    ExecutionState state = ExecutionState::HASMORE;
+    bool blockAppended = false;
+
+    std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+    if(state == ExecutionState::WAITING) {
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+      return {state, nullptr};
+    }
+    if (!blockAppended) {
       _done = true;
-      traceGetSomeEnd(nullptr);
-      return nullptr;
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
+      return { ExecutionState::DONE, nullptr};
     }
     _pos = 0;  // this is in the first block
   }
@@ -2081,31 +2088,25 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   returnBlock(cur);
   _pos = 0;
   if (outputCounter == 0) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return { ExecutionState::DONE, nullptr};
   }
   aqlres->shrink(outputCounter);
 
   // Clear out registers no longer needed later:
   clearRegisters(aqlres.get());
-  traceGetSomeEnd(nullptr);
-  return aqlres.release();
+  traceGetSomeEnd(aqlres.get(), ExecutionState::DONE);
+  return { ExecutionState::DONE, std::move(aqlres) };
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
-size_t SingleRemoteOperationBlock::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> SingleRemoteOperationBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  return 0;
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
 
-/// @brief hasMore
-bool SingleRemoteOperationBlock::hasMore() {
-  DEBUG_BEGIN_BLOCK();
-  return !_done;
+  TRI_ASSERT(false); // as soon as we need to support LIMIT change me.
+  return { ExecutionState::DONE, 0};
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }

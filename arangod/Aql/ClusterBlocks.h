@@ -451,13 +451,11 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
   static double const defaultTimeOut;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
 
   /// @brief skipSome
-  size_t skipSome(size_t atMost) override final;
-
-  /// @brief hasMore
-  bool hasMore() override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
 
