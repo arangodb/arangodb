@@ -5,6 +5,7 @@
 * [Java Driver](Java/README.md)
   * [Getting Started](Java/GettingStarted/README.md)
   * [Reference](Java/Reference/README.md)
+	* [Driver Setup](Java/Reference/Setup.md)
 	* [Database](Java/Reference/Database/README.md)
 	  * [Database Manipulation](Java/Reference/Database/DatabaseManipulation.md)
 	  * [Collection Access](Java/Reference/Database/CollectionAccess.md)
