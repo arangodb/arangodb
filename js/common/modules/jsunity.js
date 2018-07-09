@@ -40,6 +40,12 @@ var COMPLETE = {};
 
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
+var testFilter = "undefined";
+
+function setTestFilter(filter)
+{
+  testFilter = filter;
+}
 
 jsUnity.results.begin = function (total, suiteName) {
   print('Running ' + (suiteName || 'unnamed test suite'));
@@ -125,6 +131,10 @@ function Run (testsuite) {
   scope.tearDownAll = tearDownAll;
 
   for (var key in definition) {
+    if ((testFilter !== "undefined") && (key !== testFilter)) {
+      // print(`test "${key}" doesn't match "${testFilter}", skipping`);
+      continue
+    }
     if (key.indexOf('test') === 0) {
       var test = { name: key, fn: definition[key]};
 
@@ -132,6 +142,15 @@ function Run (testsuite) {
     } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll') {
       console.error('unknown function: %s', key);
     }
+  }
+  if (tests.length === 0) {
+    print(`There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything`);
+    return {
+      duration: 0,
+      status: true,
+      failed: 0,
+      total: 0,
+    };
   }
 
   suite = new jsUnity.TestSuite(suite.suiteName, scope);
@@ -187,13 +206,14 @@ function Done (suiteName) {
 // / @brief runs a JSUnity test file
 // //////////////////////////////////////////////////////////////////////////////
 
-function RunTest (path, outputReply) {
+function RunTest (path, outputReply, filter) {
   var content;
   var f;
 
   content = fs.read(path);
 
-  content = "(function(){require('jsunity').jsUnity.attachAssertions(); return (function() {" + content + '}());\n})';
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter("${filter}");  ${content} }());
+});`
   f = internal.executeScript(content, undefined, path);
 
   if (f === undefined) {
@@ -208,6 +228,7 @@ function RunTest (path, outputReply) {
   }
 }
 
+exports.setTestFilter = setTestFilter;
 exports.jsUnity = jsUnity;
 exports.run = Run;
 exports.done = Done;

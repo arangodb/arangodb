@@ -366,6 +366,10 @@ Testing a single test with the framework directly on a server:
 
     scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js
 
+You can also only execute a single test case in a jsunity testsuite (in this case `testTokens`:
+
+    scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js --testCase testTokens
+
 Testing a single test with the framework via arangosh:
 
     scripts/unittest single_client --test js/server/tests/aql/aql-escaping.js
@@ -389,6 +393,10 @@ arangod Emergency console
 -------------------------
 
     require("jsunity").runTest("js/server/tests/aql/aql-escaping.js");
+
+Filtering for one test case (in this case `testTokens`):
+
+    require("jsunity").runTest("js/server/tests/aql/aql-escaping.js", false, "testTokens");
 
 arangosh client
 ---------------
