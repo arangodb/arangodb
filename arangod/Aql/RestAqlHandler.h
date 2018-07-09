@@ -77,7 +77,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus useQuery(std::string const& operation, std::string const& idString);
 
   // GET method for /_api/aql/<queryId>
-  void getInfoQuery(std::string const& operation, std::string const& idString);
+  RestStatus getInfoQuery(std::string const &operation, std::string const &idString);
 
  private:
 

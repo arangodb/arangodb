@@ -87,24 +87,6 @@ class ExecutionEngine {
   /// @brief hasMore
   inline ExecutionState hasMoreState() const { return _root->hasMoreState(); }
 
-  /// @brief hasMore - synchronous (cannot return WAITING, but blocks the
-  /// thread)
-  inline bool hasMoreSync() const {
-    getQuery()->setContinueCallback([&]() { getQuery()->tempSignalAsyncResponse(); });
-    ExecutionState state = _root->hasMoreState();
-
-    while (state == ExecutionState::WAITING) {
-      getQuery()->tempWaitForAsyncResponse();
-      state = _root->hasMoreState();
-    }
-
-    if (state == ExecutionState::DONE) {
-      return false;
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
-    return true;
-  }
-
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const { return _initializeCursorCalled; }
 

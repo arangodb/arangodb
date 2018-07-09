@@ -549,11 +549,8 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 }
 
 // GET method for /_api/aql/<operation>/<queryId>, (internal)
-// this is using
-// the part of the cursor API without side effects. The operation must
-// be "hasMore" or "hasMoreState". "hasMore" is a synchronous operation and
-// only for backwards compatibility; new client code should only use
-// "hasMoreState".
+// this is using the part of the cursor API without side effects. The operation
+// must be "hasMore".
 //
 // The result is a Json
 // with, depending on the operation, the following attributes:
@@ -563,14 +560,14 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 //   for "hasMoreState":
 //     the result has the attributes "error" (set to false)
 //     and "hasMoreState" set to a string "DONE", "HASMORE" or "WAITING".
-void RestAqlHandler::getInfoQuery(std::string const& operation,
-                                  std::string const& idString) {
+RestStatus RestAqlHandler::getInfoQuery(std::string const& operation,
+                                        std::string const& idString) {
   bool found;
   std::string const& shardId = _request->header("shard-id", found);
 
   Query* query = nullptr;
   if (findQuery(idString, query)) {
-    return;
+    return RestStatus::DONE;
   }
 
   TRI_ASSERT(_qId > 0);
@@ -579,7 +576,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
   try {
     VPackObjectBuilder guard(&answerBody);
 
-    if (operation == "hasMoreState") {
+    if (operation == "hasMore") {
       // asynchronous API
       ExecutionState hasMoreState;
       if (shardId.empty()) {
@@ -593,43 +590,29 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
         }
         hasMoreState = block->getHasMoreStateForShard(shardId);
       }
-      switch (hasMoreState) {
-        case ExecutionState::DONE:
-          answerBody.add("hasMoreState", VPackValue("DONE"));
-          break;
-        case ExecutionState::HASMORE:
-          answerBody.add("hasMoreState", VPackValue("HASMORE"));
-          break;
-        case ExecutionState::WAITING:
-          answerBody.add("hasMoreState", VPackValue("WAITING"));
-          break;
-      }
-    } else if (operation == "hasMore") {
-      LOG_TOPIC(WARN, arangodb::Logger::AQL)
-          << "Deprecated blocking route 'hasMore' used in AQL. This should "
-             "only happen during a rolling upgrade (from <3.4 to ~3.4). "
-             "Otherwise, please report this error.";
-
-      // backwards compatible synchronous API
       bool hasMore;
-      if (shardId.empty()) {
-        hasMore = query->engine()->hasMoreSync();
-      } else {
-        auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
-        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "unexpected node type");
+      switch (hasMoreState) {
+        case ExecutionState::WAITING: {
+          auto self = shared_from_this();
+          query->setContinueHandler(
+              [this, self]() { continueHandlerExecution(); });
         }
-        hasMore = block->hasMoreForShard(shardId);
-      }
+          return RestStatus::WAITING;
 
+        case ExecutionState::DONE:
+          hasMore = false;
+          break;
+
+        case ExecutionState::HASMORE:
+          hasMore = true;
+          break;
+      }
       answerBody.add("hasMore", VPackValue(hasMore));
     } else {
       _queryRegistry->close(&_vocbase, _qId);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "referenced query not found";
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      return;
+      return RestStatus::DONE;
     }
 
     answerBody.add(StaticStrings::Error, VPackValue(false));
@@ -659,6 +642,8 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 
   sendResponse(rest::ResponseCode::OK, answerBody.slice(),
                query->trx()->transactionContext().get());
+
+  return RestStatus::DONE;
 }
 
 // executes the handler
@@ -704,7 +689,10 @@ RestStatus RestAqlHandler::execute() {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API";
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown GET API");
       } else {
-        getInfoQuery(suffixes[0], suffixes[1]);
+        auto status = getInfoQuery(suffixes[0], suffixes[1]);
+        if (status == RestStatus::WAITING) {
+          return status;
+        }
       }
       break;
     }
