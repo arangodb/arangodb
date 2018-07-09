@@ -84,9 +84,6 @@ class ExecutionEngine {
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
-  /// @brief hasMore
-  inline ExecutionState hasMoreState() const { return _root->hasMoreState(); }
-
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const { return _initializeCursorCalled; }
 

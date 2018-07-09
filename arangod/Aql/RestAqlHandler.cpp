@@ -576,39 +576,7 @@ RestStatus RestAqlHandler::getInfoQuery(std::string const& operation,
   try {
     VPackObjectBuilder guard(&answerBody);
 
-    if (operation == "hasMore") {
-      // asynchronous API
-      ExecutionState hasMoreState;
-      if (shardId.empty()) {
-        hasMoreState = query->engine()->hasMoreState();
-      } else {
-        auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
-        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-            "unexpected node type");
-        }
-        hasMoreState = block->getHasMoreStateForShard(shardId);
-      }
-      bool hasMore;
-      switch (hasMoreState) {
-        case ExecutionState::WAITING: {
-          auto self = shared_from_this();
-          query->setContinueHandler(
-              [this, self]() { continueHandlerExecution(); });
-        }
-          return RestStatus::WAITING;
-
-        case ExecutionState::DONE:
-          hasMore = false;
-          break;
-
-        case ExecutionState::HASMORE:
-          hasMore = true;
-          break;
-      }
-      answerBody.add("hasMore", VPackValue(hasMore));
-    } else {
+    if (true) {
       _queryRegistry->close(&_vocbase, _qId);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "referenced query not found";
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
