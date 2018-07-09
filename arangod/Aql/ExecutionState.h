@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,16 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionLockState.h"
+#ifndef ARANGOD_AQL_EXECUTION_STATE_H
+#define ARANGOD_AQL_EXECUTION_STATE_H 1
 
-using namespace arangodb;
+namespace arangodb {
+namespace aql {
 
-/// @brief if this pointer is set to an actual set, then for each request
-/// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
-/// header is generated.
-thread_local std::unordered_set<std::string>* CollectionLockState::_noLockHeaders =
-    nullptr;
-  
+enum class ExecutionState { 
+  // done with this block, definitely no more results
+  DONE, 
+  // (potentially) more results available. this may "lie" and
+  // report that there are more results when in fact there are
+  // none (background: to accurately determine that there are
+  // more results we may need to execute expensive operations
+  // on the preceeding blocks, which we want to avoid) 
+  HASMORE, 
+  // unclear if more results available or not. caller is asked
+  // to try again
+  WAITING 
+};
+
+} // aql
+} // arangodb
+#endif

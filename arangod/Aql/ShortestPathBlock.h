@@ -40,23 +40,28 @@ namespace aql {
 
 class ShortestPathNode;
 
-class ShortestPathBlock : public ExecutionBlock {
+class ShortestPathBlock final : public ExecutionBlock {
 
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
 
-  /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  Type getType() const override final {
+    return Type::SHORTEST_PATH;
+  }
 
-  int shutdown(int errorCode) override;
+  /// @brief initializeCursor
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
+
+  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
   // will only return less than atMost if there aren't atMost many
   // things to skip overall.
-  size_t skipSome(size_t atMost) override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
   
  private:
   /// @brief Compute the next shortest path

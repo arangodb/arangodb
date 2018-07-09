@@ -253,6 +253,7 @@ SET(ARANGOD_SOURCES
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
+  Aql/WakeupQueryCallback.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
   Auth/Common.cpp
@@ -287,7 +288,6 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
-  Cluster/CollectionLockState.cpp
   Cluster/CriticalThread.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
@@ -442,9 +442,7 @@ SET(ARANGOD_SOURCES
   RestServer/VocbaseContext.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
-  Scheduler/Job.cpp
   Scheduler/JobGuard.cpp
-  Scheduler/JobQueue.cpp
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
