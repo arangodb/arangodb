@@ -57,7 +57,7 @@ RestCursorHandler::RestCursorHandler(
 // returns the queue name
 size_t RestCursorHandler::queue() const { 
   if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::BACKGROUND_QUEUE; 
+    return JobQueue::AQL_QUEUE; // needs to be on background thread
   }
   return JobQueue::STANDARD_QUEUE; 
 }
@@ -83,13 +83,6 @@ RestStatus RestCursorHandler::execute() {
 bool RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
-}
-
-size_t RestCursorHandler::queue() const {
-  if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::AQL_QUEUE; // needs to be on background thread
-  }
-  return JobQueue::STANDARD_QUEUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

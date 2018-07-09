@@ -64,8 +64,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool cancel() override final;
 
-  size_t queue() const override final;
-
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief processes the query and returns the results/cursor

@@ -437,7 +437,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   } else if (handler->needsOwnThread()) {
     isPrio = true;
   } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
-             _loop.scheduler->shouldExecuteDirect()) {
+             _scheduler->shouldExecuteDirect()) {
     isDirect = true;
   }
 
