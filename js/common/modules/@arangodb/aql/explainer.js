@@ -359,6 +359,7 @@ function printFunctions (functions) {
   if (funcArray.length === 0) {
     return;
   }
+  stringBuilder.appendLine();
   stringBuilder.appendLine(section('Functions used:'));
 
   let maxNameLen = String('Name').length;

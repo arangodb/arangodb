@@ -39,11 +39,7 @@ struct Function {
   Function(std::string const& name,
            char const* arguments, bool isDeterministic,
            bool canThrow, bool canRunOnDBServer,
-           FunctionImplementation implementation = nullptr);
-
-  inline bool hasImplementation() const {
-    return implementation != nullptr;
-  }
+           FunctionImplementation const& implementation = nullptr);
 
   /// @brief checks if the function produces a result that can
   /// be cached by the AQL query result cache
@@ -90,8 +86,8 @@ struct Function {
   /// @brief maximum number of required arguments
   size_t maxRequiredArguments;
 
-  /// @brief C++ implementation of the function (maybe nullptr)
-  FunctionImplementation implementation;
+  /// @brief C++ implementation of the function
+  FunctionImplementation const implementation;
 
   /// @brief function argument conversion information
   std::vector<Conversion> conversions;

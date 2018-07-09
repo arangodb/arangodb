@@ -1,11 +1,11 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near &lt;&lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
-  <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
-  <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span>, 
-  <span class="hljs-string">"skip"</span> : <span class="hljs-number">1</span>, 
-  <span class="hljs-string">"limit"</span> : <span class="hljs-number">3</span>, 
-  <span class="hljs-string">"distance"</span> : <span class="hljs-string">"distance"</span> 
+  "collection" : "products", 
+  "latitude" : 0, 
+  "longitude" : 0, 
+  "skip" : 1, 
+  "limit" : 3, 
+  "distance" : "distance" 
 }
 EOF
 
@@ -16,37 +16,37 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13290"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13290"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWW6w---B"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13484"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13484"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfNTm--_"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 
         <span class="hljs-number">0</span> 
       ], 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span> 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.3898532891175</span> 
     }, 
     { 
-      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13296"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13296"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWW6wC--_"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13490"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13490"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfNTu--_"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
         <span class="hljs-number">0</span> 
       ], 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span> 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.3898532891175</span> 
     }, 
     { 
-      <span class="hljs-string">"distance"</span> : <span class="hljs-number">444.779706578235</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13287"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13287"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWW6w---_"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13493"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13493"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfNTy--_"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">-0.004</span>, 
+        <span class="hljs-number">0.004</span>, 
         <span class="hljs-number">0</span> 
       ], 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.004/"</span> 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.004/"</span>, 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">444.779706578235</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 

@@ -205,6 +205,110 @@ SECTION("construct") {
   CHECK(0 == nrItems);
 }
 
+SECTION("constructFromVPackSingleServer") {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  // create view
+  auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto logicalView = vocbase.createView(createJson->slice());
+  REQUIRE((false == !logicalView));
+
+  // dummy query
+  arangodb::aql::Query query(
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
+    nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+    arangodb::aql::PART_MAIN
+  );
+  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
+  arangodb::aql::Variable const outVariable("variable", 0);
+
+  // missing 'viewId'
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 } }"
+    );
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), // plan
+        json->slice()
+      );
+      CHECK(false);
+    } catch (arangodb::basics::Exception const& ex) {
+      CHECK(TRI_ERROR_BAD_PARAMETER == ex.code());
+    }
+  }
+
+  // invalid 'viewId' type (string expected)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"viewId\":123 }"
+    );
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), // plan
+        json->slice()
+      );
+      CHECK(false);
+    } catch (arangodb::basics::Exception const& ex) {
+      CHECK(TRI_ERROR_BAD_PARAMETER == ex.code());
+    }
+  }
+
+  // invalid 'viewId' specified
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"viewId\": \"foo\"}"
+    );
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), // plan
+        json->slice()
+      );
+      CHECK(false);
+    } catch (arangodb::basics::Exception const& ex) {
+      CHECK(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == ex.code());
+    }
+  }
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+    "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+  );
+
+  arangodb::iresearch::IResearchViewNode node(
+    *query.plan(), // plan
+    json->slice()
+  );
+
+  CHECK(node.empty()); // view has no links
+  CHECK(node.collections().empty()); // view has no links
+  CHECK(node.shards().empty());
+
+  CHECK(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
+  CHECK(outVariable.id == node.outVariable().id);
+  CHECK(outVariable.name == node.outVariable().name);
+  CHECK(query.plan() == node.plan());
+  CHECK(42 == node.id());
+  CHECK(logicalView == node.view());
+  CHECK(node.sortCondition().empty());
+  CHECK(!node.volatility().first); // filter volatility
+  CHECK(!node.volatility().second); // sort volatility
+  CHECK(node.getVariablesUsedHere().empty());
+  auto const setHere = node.getVariablesSetHere();
+  CHECK(1 == setHere.size());
+  CHECK(outVariable.id == setHere[0]->id);
+  CHECK(outVariable.name == setHere[0]->name);
+
+  size_t nrItems{};
+  CHECK(0. == node.estimateCost(nrItems)); // no dependencies
+  CHECK(0 == nrItems);
+}
+
+// FIXME TODO
+//SECTION("constructFromVPackCluster") {
+//}
+
 SECTION("clone") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view

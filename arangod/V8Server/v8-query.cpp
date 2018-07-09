@@ -224,7 +224,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
   }
 
-  OperationResult countResult = trx.count(collectionName, true);
+  OperationResult countResult = trx.count(collectionName, false);
 
   if (countResult.fail()) {
     TRI_V8_THROW_EXCEPTION(countResult.result);

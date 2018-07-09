@@ -217,12 +217,9 @@ void RestAqlHandler::setupClusterQuery() {
   collectionBuilder.close();
 
   // Now the query is ready to go, store it in the registry and return:
-  double ttl = 600.0;
-  bool found;
-  std::string const& ttlstring = _request->header("ttl", found);
-
-  if (found) {
-    ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
+  double ttl = _request->parsedValue<double>("ttl", _queryRegistry->defaultTTL());
+  if (ttl <= 0) {
+    ttl = _queryRegistry->defaultTTL();
   }
   
   // creates a StandaloneContext or a leasing context
@@ -456,13 +453,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   }
 
   // Now the query is ready to go, store it in the registry and return:
-  double ttl = QueryInsertTTL;
-  bool found;
-  std::string const& ttlstring = _request->header("ttl", found);
-
-  if (found) {
-    ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
-  }
+  double ttl = _request->parsedValue<double>("ttl", _queryRegistry->defaultTTL());
 
   _qId = TRI_NewTickServer();
   try {

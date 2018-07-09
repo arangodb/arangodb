@@ -159,7 +159,18 @@ int IResearchLink::drop() {
 
   _dropCollectionInDestructor = false; // will do drop now
 
-  return _view->drop(_collection->id());
+  auto res = _view->drop(_collection->id());
+
+  // FIXME TODO this workaround should be in ClusterInfo when moving 'Plan' to 'Current', i.e. IResearchViewDBServer::drop
+  if (arangodb::ServerState::instance()->isDBServer()) {
+    auto id = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+
+    _view = nullptr; // mark as unassociated
+    _viewLock.unlock(); // release read-lock on the IResearch View
+    _collection->vocbase().dropView(id, true); // cluster-view in ClusterInfo should already not have cid-view
+  }
+
+  return res;
 }
 
 bool IResearchLink::hasBatchInsert() const {

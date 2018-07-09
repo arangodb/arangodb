@@ -17,8 +17,6 @@
   * [Using a custom Visitor](Graph/CustomVisitorFromNodeJs.md)
   * [Example AQL Queries for Graphs](Graph/ExampleActorsAndMovies.md)
 * [Use Cases / Examples](UseCases/README.md)
-  * [Crawling Github with Promises](UseCases/CrawlingGithubPromises.md)
-  * [Using ArangoDB with Sails.js](UseCases/SailsJS.md)
   * [Populating a Textbox](UseCases/PopulatingAnAutocompleteTextbox.md)
   * [Exporting Data](UseCases/ExportingData.md)
   * [Accessing base documents with Java](UseCases/JavaDriverBaseDocument.md)

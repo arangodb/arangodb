@@ -1,7 +1,7 @@
 SmartGraphs
 ===========
 
-__This feature is only available in the Enterprise Edition.__
+**This feature is only available in the Enterprise Edition.**
 
 This chapter describes the [smart-graph](../README.md) module.
 It enables you to manage graphs at scale, it will give a vast performance benefit for all graphs sharded in an ArangoDB Cluster.

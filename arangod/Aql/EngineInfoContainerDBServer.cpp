@@ -31,11 +31,13 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/BaseOptions.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -49,14 +51,6 @@ using namespace arangodb::aql;
 namespace {
 
 const double SETUP_TIMEOUT = 25.0;
-
-void injectQueryOptions(
-    Query& query,
-    VPackBuilder& infoBuilder
-) {
-  // the toVelocyPack will open & close the "options" object
-  query.queryOptions().toVelocyPack(infoBuilder, true);
-}
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
@@ -559,7 +553,34 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   }
   infoBuilder.close();  // lockInfo
   infoBuilder.add(VPackValue("options"));
-  injectQueryOptions(query, infoBuilder);
+  
+  // toVelocyPack will open & close the "options" object
+#ifdef USE_ENTERPRISE
+  if (query.trx()->state()->options().skipInaccessibleCollections) {
+    
+    aql::QueryOptions opts = query.queryOptions();
+    TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
+    for (auto const& it : _engineInfos) {
+      TRI_ASSERT(it.first);
+      EngineInfo const& engine = *it.first;
+      std::vector<ShardID> const& shards = it.second;
+
+      if (engine.type() != ExecutionNode::ENUMERATE_IRESEARCH_VIEW &&
+          query.trx()->isInaccessibleCollectionId(engine.collection()->getPlanId())) {
+        for (ShardID sid : shards) {
+          opts.inaccessibleCollections.insert(sid);
+        }
+        opts.inaccessibleCollections.insert(std::to_string(engine.collection()->getPlanId()));
+      }
+    }
+    opts.toVelocyPack(infoBuilder, true);
+  } else {
+    query.queryOptions().toVelocyPack(infoBuilder, true);
+  }
+#else
+  query.queryOptions().toVelocyPack(infoBuilder, true);
+#endif
+  
   infoBuilder.add(VPackValue("variables"));
   // This will open and close an Object.
   query.ast()->variables()->toVelocyPack(infoBuilder);
@@ -568,12 +589,12 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
   for (auto const& it : _engineInfos) {
     TRI_ASSERT(it.first);
-    auto const& engine = *it.first;
-    auto const& shards = it.second;
+    EngineInfo const& engine = *it.first;
+    std::vector<ShardID> const& shards = it.second;
 
 #ifdef USE_IRESEARCH
     // serialize for the list of shards
-    if (it.first->type() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+    if (engine.type() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       engine.serializeSnippet(serverId, query, shards, infoBuilder);
 
       // register current DBServer for each scatter associated with the view
@@ -609,7 +630,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
   infoBuilder.openArray();
   for (auto const& it : _traverserEngineInfos) {
     GraphNode* en = it.first;
-    auto const& list = it.second;
+    TraverserEngineShardLists const& list = it.second;
     infoBuilder.openObject();
     {
       // Options
@@ -655,6 +676,17 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
       infoBuilder.close();
     }
     infoBuilder.close();  // edges
+    
+#ifdef USE_ENTERPRISE
+    if (!list.inaccessibleShards.empty()) {
+      infoBuilder.add(VPackValue("inaccessible"));
+      infoBuilder.openArray();
+      for (ShardID const& shard : list.inaccessibleShards) {
+        infoBuilder.add(VPackValue(shard));
+      }
+      infoBuilder.close(); // inaccessible
+    }
+#endif
     infoBuilder.close();  // shards
 
     en->enhanceEngineInfo(infoBuilder);
@@ -919,16 +951,22 @@ Result EngineInfoContainerDBServer::buildEngines(
   injectGraphNodesToMapping(dbServerMapping);
 
   auto cc = ClusterComm::instance();
-
   if (cc == nullptr) {
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
+  
+  double ttl = QueryRegistryFeature::DefaultQueryTTL;
+  if (QueryRegistryFeature::QUERY_REGISTRY != nullptr) {
+    ttl = QueryRegistryFeature::QUERY_REGISTRY->defaultTTL();
+  }
+  TRI_ASSERT(ttl > 0);
 
   std::string const url(
     "/_db/"
     + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name())
-    + "/_api/aql/setup"
+    + "/_api/aql/setup?ttl="
+    + std::to_string(ttl)
   );
   bool needCleanup = true;
   auto cleanup = [&]() {

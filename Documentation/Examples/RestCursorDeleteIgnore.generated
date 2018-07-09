@@ -1,6 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"query"</span> : <span class="hljs-string">"REMOVE 'bar' IN products OPTIONS { ignoreErrors: true }"</span> 
+  "query" : "REMOVE 'bar' IN products OPTIONS { ignoreErrors: true }" 
 }
 EOF
 
@@ -20,7 +20,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00007867813110351562</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0013775825500488281</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

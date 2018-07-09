@@ -51,9 +51,6 @@ using namespace arangodb::methods;
 
 TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   if (DatabaseFeature::DATABASE != nullptr) {
-    if (ServerState::instance()->isCoordinator()) {
-      return DatabaseFeature::DATABASE->lookupDatabaseCoordinator(dbname);
-    }
     return DatabaseFeature::DATABASE->lookupDatabase(dbname);
   }
   return nullptr;
@@ -77,23 +74,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
     }
   } else {
     // slow path for user case
-    if (ServerState::instance()->isCoordinator()) {
-      
-      AuthenticationFeature* af = AuthenticationFeature::instance();
-      auth::UserManager* um = af->userManager();
-      std::vector<std::string> names;
-      std::vector<std::string> dbs =
-          databaseFeature->getDatabaseNamesCoordinator();
-      for (std::string const& db : dbs) {
-        if (!af->isActive() || (um != nullptr &&
-            um->databaseAuthLevel(user, db) > auth::Level::NONE)) {
-          names.push_back(db);
-        }
-      }
-      return names;
-    } else {
-      return databaseFeature->getDatabaseNamesForUser(user);
-    }
+    return databaseFeature->getDatabaseNamesForUser(user);
   }
 }
 
@@ -147,7 +128,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
@@ -247,7 +228,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_vocbase_t* vocbase = nullptr;
     int tries = 0;
     while (++tries <= 6000) {
-      vocbase = databaseFeature->useDatabaseCoordinator(id);
+      vocbase = databaseFeature->useDatabase(id);
       if (vocbase != nullptr) {
         break;
       }
@@ -331,7 +312,7 @@ namespace  {
   int dropDBCoordinator(std::string const& dbName) {
     // Arguments are already checked, there is exactly one argument
     DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(dbName);
+    TRI_vocbase_t* vocbase = databaseFeature->useDatabase(dbName);
     if (vocbase == nullptr) {
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
@@ -351,7 +332,7 @@ namespace  {
     // now wait for heartbeat thread to drop the database object
     int tries = 0;
     while (++tries <= 6000) {
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(id);
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
       
       if (vocbase == nullptr) {
         // object has vanished
@@ -373,7 +354,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   if (exec != nullptr) {
     if (exec->systemAuthLevel() != auth::Level::RW) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }

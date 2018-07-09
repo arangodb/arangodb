@@ -299,10 +299,10 @@ void BootstrapFeature::start() {
   
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
-    ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
+    ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
   } else {
     // Start service properly:
-    ServerState::setServerMode(ServerState::Mode::DEFAULT);
+    ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
   }
   
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
@@ -320,23 +320,12 @@ void BootstrapFeature::unprepare() {
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
 
-  if (ServerState::instance()->isCoordinator()) {
-    for (auto& id : databaseFeature->getDatabaseIdsCoordinator(true)) {
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
-
-      if (vocbase != nullptr) {
-        vocbase->queryList()->killAll(true);
-        vocbase->release();
-      }
-    }
-  } else {
-    for (auto& name : databaseFeature->getDatabaseNames()) {
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
-
-      if (vocbase != nullptr) {
-        vocbase->queryList()->killAll(true);
-        vocbase->release();
-      }
+  for (auto& name : databaseFeature->getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
+    
+    if (vocbase != nullptr) {
+      vocbase->queryList()->killAll(true);
+      vocbase->release();
     }
   }
 }
