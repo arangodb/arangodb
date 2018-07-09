@@ -28,6 +28,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Scheduler/JobQueue.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -52,7 +53,12 @@ RestCursorHandler::RestCursorHandler(
       _isValidForFinalize(false) {}
 
 // returns the queue name
-size_t RestCursorHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
+size_t RestCursorHandler::queue() const { 
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::BACKGROUND_QUEUE; 
+  }
+  return JobQueue::STANDARD_QUEUE; 
+}
 
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
