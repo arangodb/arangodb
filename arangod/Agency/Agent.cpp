@@ -483,7 +483,7 @@ void Agent::sendAppendEntriesRPC() {
       // correct lastConfirmed to our first log index.
       bool raiseLastConfirmed = lastConfirmed < _state.firstIndex();
       if (raiseLastConfirmed) {
-        lastConfirmed = _state.firstIndex();
+        lastConfirmed = _state.firstIndex()-1;
       }
       LOG_TOPIC(TRACE, Logger::AGENCY)
         << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
