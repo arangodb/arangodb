@@ -351,11 +351,24 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
  - we force the logging not to happen asynchroneous
  - eventually you may still add temporary `console.log()` statements to tests you debug.
 
+Debugging AQL execution blocks
+------------------------------
+To debug AQL execution blocks, two steps are required:
+
+- turn on logging for queries using `--extraArgs:log.level queries=info`
+- send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
+
+you now will get log-entries with the contents being passed between the blocks.
+
 Running a single unittestsuite
 ------------------------------
 Testing a single test with the framework directly on a server:
 
     scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js
+
+You can also only execute a single test case in a jsunity testsuite (in this case `testTokens`:
+
+    scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js --testCase testTokens
 
 Testing a single test with the framework via arangosh:
 
@@ -380,6 +393,10 @@ arangod Emergency console
 -------------------------
 
     require("jsunity").runTest("js/server/tests/aql/aql-escaping.js");
+
+Filtering for one test case (in this case `testTokens`):
+
+    require("jsunity").runTest("js/server/tests/aql/aql-escaping.js", false, "testTokens");
 
 arangosh client
 ---------------
