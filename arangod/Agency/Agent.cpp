@@ -322,7 +322,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     MUTEX_LOCKER(guard, _tiLock);
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Resetting _earliestPackage to now for id " << slaveId;
-    _earliestPackage[slaveId] = steady_clock::now();
+    _earliestPackage[slaveId] = steady_clock::now() + seconds(1);
     _confirmed[slaveId] = 0;
   } else {
     // answer to sendAppendEntries to empty request, when follower's highest

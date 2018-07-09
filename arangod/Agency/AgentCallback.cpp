@@ -47,7 +47,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       try {
         success = body->slice().get("success").isTrue();
         otherTerm = body->slice().get("term").getNumber<term_t>();
-      } catch (std::exception const&) {
+      } catch (std::exception const& e) {
         LOG_TOPIC(WARN, Logger::AGENCY) 
           << "Bad callback message received: " << e.what();
         _agent->reportFailed(_slaveID, _toLog);
