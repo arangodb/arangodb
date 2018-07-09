@@ -40,6 +40,7 @@ bool PersistentIndexAttributeMatcher::accessFitsIndex(
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
         found,
     std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
+
   if (!idx->canUseConditionPart(access, other, op, reference, nonNullAttributes,
                                 isExecution)) {
     return false;
@@ -150,6 +151,7 @@ void PersistentIndexAttributeMatcher::matchAttributes(
     auto op = node->getMember(i);
 
     switch (op->type) {
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
