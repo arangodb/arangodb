@@ -24,11 +24,12 @@
 #ifndef ARANGOD_AQL_EXECUTION_ENGINE_H
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
+#include "Aql/Query.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -69,35 +70,40 @@ class ExecutionEngine {
   TEST_VIRTUAL Query* getQuery() const { return _query; }
 
   /// @brief initializeCursor, could be called multiple times
-  int initializeCursor(AqlItemBlock* items, size_t pos) {
-    _initializeCursorCalled = true;
-    return _root->initializeCursor(items, pos);
-  }
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
   
-  /// @brief shutdown, will be called exactly once for the whole query
-  int shutdown(int errorCode);
+  /// @brief shutdown, will be called exactly once for the whole query, blocking variant
+  Result shutdownSync(int errorCode) noexcept;
+
+  /// @brief shutdown, will be called exactly once for the whole query, may return waiting
+  std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) {
-    if (!_initializeCursorCalled) {
-      initializeCursor(nullptr, 0);
-    }
-    return _root->getSome(atMost);
-  }
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
 
   /// @brief skipSome
-  size_t skipSome(size_t atMost) {
-    if (!_initializeCursorCalled) {
-      initializeCursor(nullptr, 0);
-    }
-    return _root->skipSome(atMost);
-  }
-
-  /// @brief getOne
-  AqlItemBlock* getOne() { return _root->getSome(1); }
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   /// @brief hasMore
-  inline bool hasMore() const { return _root->hasMore(); }
+  inline ExecutionState hasMoreState() const { return _root->hasMoreState(); }
+
+  /// @brief hasMore - synchronous (cannot return WAITING, but blocks the
+  /// thread)
+  inline bool hasMoreSync() const {
+    getQuery()->setContinueCallback([&]() { getQuery()->tempSignalAsyncResponse(); });
+    ExecutionState state = _root->hasMoreState();
+
+    while (state == ExecutionState::WAITING) {
+      getQuery()->tempWaitForAsyncResponse();
+      state = _root->hasMoreState();
+    }
+
+    if (state == ExecutionState::DONE) {
+      return false;
+    }
+    TRI_ASSERT(state == ExecutionState::HASMORE);
+    return true;
+  }
 
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const { return _initializeCursorCalled; }
@@ -116,16 +122,6 @@ class ExecutionEngine {
 
   /// @brief get the register the final result of the query is stored in
   RegisterId resultRegister() const { return _resultRegister; }
-
-  /// @brief _lockedShards
-  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string>* lockedShards) {
-    _lockedShards = lockedShards;
-  }
-
-  /// @brief _lockedShards
-  std::unordered_set<std::string>* lockedShards() const {
-    return _lockedShards;
-  }
 
  public:
   /// @brief execution statistics for the query
@@ -153,13 +149,6 @@ class ExecutionEngine {
 
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
-  
-  /// @brief _previouslyLockedShards, this is read off at instanciating
-  /// time from a thread local variable
-  std::unordered_set<std::string>* _previouslyLockedShards;
-
-  /// @brief _lockedShards, these are the shards we have locked for our query
-  std::unordered_set<std::string>* _lockedShards;
 };
 }
 }

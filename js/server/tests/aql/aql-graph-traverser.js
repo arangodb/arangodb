@@ -156,7 +156,7 @@ function limitSuite () {
     },
 
     testLimits: function () {
-      var queries = [
+      const queries = [
         [ 'FOR v IN ' + gn + 'v FOR e IN 1..1 OUTBOUND v._id ' + gn + 'e LIMIT 0, 10000 RETURN e', 10000 ],
         [ 'FOR v IN ' + gn + 'v FOR e IN 1..1 OUTBOUND v._id ' + gn + 'e LIMIT 0, 1000 RETURN e', 1000 ],
         [ 'FOR v IN ' + gn + 'v FOR e IN 1..1 OUTBOUND v._id ' + gn + 'e LIMIT 0, 100 RETURN e', 100 ],
@@ -187,7 +187,7 @@ function limitSuite () {
       ];
 
       queries.forEach(function (query) {
-        assertEqual(query[1], AQL_EXECUTE(query[0]).json.length);
+        assertEqual(query[1], AQL_EXECUTE(query[0]).json.length, query);
       });
     },
 

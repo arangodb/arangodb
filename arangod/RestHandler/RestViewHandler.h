@@ -39,8 +39,9 @@ class RestViewHandler : public RestVocbaseBaseHandler {
   RestViewHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  virtual RestStatus execute() override;
   char const* name() const override final { return "RestViewHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  virtual RestStatus execute() override;
 
  protected:
   void createView();
