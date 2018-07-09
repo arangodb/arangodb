@@ -20,7 +20,7 @@
 	  * [Indexes](Java/Reference/Collection/Indexes.md)
 	  * [Bulk Import](Java/Reference/Collection/BulkImport.md)
 	* [Cursor](Java/Reference/Cursor.md)
-	  * [Graph](Java/Reference/Graph/README.md)
+	* [Graph](Java/Reference/Graph/README.md)
 	  * [Vertex Collection](Java/Reference/Graph/VertexCollection.md)
 	  * [Edge Collection](Java/Reference/Graph/EdgeCollection.md)
 	  * [Vertices Manipulation](Java/Reference/Graph/Vertices.md)
