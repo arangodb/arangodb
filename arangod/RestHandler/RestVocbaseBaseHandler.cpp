@@ -535,7 +535,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
       trx->setLockedShard(it);
     }
   }
-  return std::move(trx);
+  return trx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
