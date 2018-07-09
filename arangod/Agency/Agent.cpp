@@ -1755,14 +1755,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
-
-  std::unordered_map<std::string, std::string> incoming;
   for (auto const& pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           20004, "Gossip message pool must contain string parameters");
     }
-    incoming[pair.key.copyString()] = pair.value.copyString();
   }
 
   query_t out = std::make_shared<Builder>();
@@ -1780,14 +1777,10 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       }
     }
 
-    for (auto const& i : incoming) {
-
-      /// disagreement over pool membership: fatal!
-      if (!_config.addToPool(i)) {
-        LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
-        FATAL_ERROR_EXIT();
-      }
-
+    /// disagreement over pool membership: fatal!
+    if (!_config.upsertPool(pslice, id)) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
+      FATAL_ERROR_EXIT();
     }
 
     if (!isCallback) { // no gain in callback to a callback.
