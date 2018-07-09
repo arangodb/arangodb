@@ -44,7 +44,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const download = require('internal').download;
 
 const testPaths = {
-  'load_balancing': ['js/client/tests/load-balancing']
+  'load_balancing': 'js/client/tests/load-balancing'
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +65,7 @@ function loadBalancingClient (options) {
   print(CYAN + 'Load Balancing tests...' + RESET);
   const excludeAuth = (fn) => { return (fn.indexOf('-auth') === -1); };
   const excludeAsync = (fn) => { return (fn.indexOf('-async') === -1); };
-  let testCases = tu.scanTestPaths(testPaths.load_balancing)
+  let testCases = tu.scanTestPath(testPaths.load_balancing)
                     .filter(excludeAuth)
                     .filter(excludeAsync);
   options.cluster = true;
@@ -96,7 +96,7 @@ function loadBalancingAuthClient (options) {
   print(CYAN + 'Load Balancing with Authentication tests...' + RESET);
   const excludeNoAuth = (fn) => { return (fn.indexOf('-noauth') === -1); };
   const excludeAsync = (fn) => { return (fn.indexOf('-async') === -1); };
-  let testCases = tu.scanTestPaths(testPaths.load_balancing)
+  let testCases = tu.scanTestPath(testPaths.load_balancing)
                     .filter(excludeNoAuth)
                     .filter(excludeAsync);
   options.cluster = true;
@@ -112,8 +112,7 @@ function loadBalancingAuthClient (options) {
   });
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['load_balancing'] = loadBalancingClient;
   testFns['load_balancing_auth'] = loadBalancingAuthClient;
 
