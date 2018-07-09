@@ -22,7 +22,7 @@ By _Technology_:
 - [Kubernetes](Kubernetes/README.md)
 - [Mesos, DC/OS](DCOS/README.md)
 
-By _Cloud Provider_:
+In the _Cloud_:
 
 - [AWS](Cloud/AWS.md)
 - [Azure](Cloud/Azure.md)

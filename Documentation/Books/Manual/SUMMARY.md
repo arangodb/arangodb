@@ -251,7 +251,7 @@
       * [ArangoDB in Mesos](Deployment/DCOS/Mesosphere.md)
       * [DC/OS: Full example](Deployment/DCOS/DcosFullExample.md)
       * [DC/OS: Choosing Container engine](Deployment/DCOS/MesosContainers.md)
-    * [By Cloud Provider](Deployment/Cloud/README.md)
+    * [In the Cloud](Deployment/Cloud/README.md)
       * [AWS](Deployment/Cloud/AWS.md)
       * [Azure](Deployment/Cloud/Azure.md)
 * [Upgrading](Upgrading/README.md)
