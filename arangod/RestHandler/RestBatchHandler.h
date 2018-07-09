@@ -64,6 +64,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   size_t queue() const override;
   RestStatus execute() override;
   char const* name() const override final { return "RestBatchHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
   RestStatus executeHttp();

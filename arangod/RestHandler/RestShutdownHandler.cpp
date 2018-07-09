@@ -39,8 +39,6 @@ RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestShutdownHandler::isDirect() const { return true; }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_get_api_initiate
 ////////////////////////////////////////////////////////////////////////////////

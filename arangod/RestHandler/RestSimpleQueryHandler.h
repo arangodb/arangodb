@@ -40,11 +40,13 @@ class RestSimpleQueryHandler : public RestCursorHandler {
  public:
   size_t queue() const override;
   RestStatus execute() override final;
+  RestStatus continueExecute() override final;
+  char const* name() const override final { return "RestSimpleQueryHandler"; }
 
  private:
-  void allDocuments();
-  void allDocumentKeys();
-  void byExample();
+  RestStatus allDocuments();
+  RestStatus allDocumentKeys();
+  RestStatus byExample();
 };
 }
 

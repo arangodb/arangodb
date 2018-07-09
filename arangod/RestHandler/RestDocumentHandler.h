@@ -36,9 +36,10 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   size_t queue() const override;
   RestStatus execute() override final;
   char const* name() const override final { return "RestDocumentHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() override;
+  void shutdownExecute(bool isFinalized) noexcept override;
 #endif
 
  protected:

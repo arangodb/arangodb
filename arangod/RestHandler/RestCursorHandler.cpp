@@ -24,7 +24,6 @@
 #include "RestCursorHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Aql/QueryResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -47,36 +46,42 @@ RestCursorHandler::RestCursorHandler(
     GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
+      _query(nullptr),
+      _queryResult(),
       _queryRegistry(queryRegistry),
       _queryLock(),
-      _query(nullptr),
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false) {}
 
-// returns the queue name
-size_t RestCursorHandler::queue() const { 
-  if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::AQL_QUEUE; // needs to be on background thread
-  }
-  return JobQueue::STANDARD_QUEUE; 
-}
+RestCursorHandler::~RestCursorHandler() {}
 
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
+  
+  if (type == rest::RequestType::POST) {
+    return createQueryCursor();
+  } else if (type == rest::RequestType::PUT) {
+    return modifyQueryCursor();
+  } else if (type == rest::RequestType::DELETE_REQ) {
+    return deleteQueryCursor();
+  } 
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return RestStatus::DONE;
+}
+
+RestStatus RestCursorHandler::continueExecute() {
+  // extract the sub-request type
+  rest::RequestType const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    createQueryCursor();
-  } else if (type == rest::RequestType::PUT) {
-    modifyQueryCursor();
-  } else if (type == rest::RequestType::DELETE_REQ) {
-    deleteQueryCursor();
-  } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return processQuery();
   }
 
+  // Other parts of the query cannot be paused
+  TRI_ASSERT(false);
   return RestStatus::DONE;
 }
 
@@ -86,19 +91,25 @@ bool RestCursorHandler::cancel() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief processes the query and returns the results/cursor
+/// @brief register the query either as streaming cursor or in _query
+/// the query is not executed here.
 /// this method is also used by derived classes
+///
+/// return If true, we need to continue processing,
+///        If false we are done (error or stream)
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::processQuery(VPackSlice const& slice) {
+bool RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
+  TRI_ASSERT(_query == nullptr);
+
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    return;
+    return false;
   }
   VPackSlice const querySlice = slice.get("query");
   if (!querySlice.isString() || querySlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    return;
+    return false;
   }
 
   VPackSlice const bindVars = slice.get("bindVars");
@@ -106,7 +117,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     if (!bindVars.isObject() && !bindVars.isNull()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
-      return;
+      return false;
     }
   }
 
@@ -116,11 +127,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     bindVarsBuilder->add(bindVars);
   }
 
-  auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
-  VPackSlice opts = options->slice();
+  TRI_ASSERT(_options == nullptr);
+  buildOptions(slice);
+  TRI_ASSERT(_options != nullptr);
+  VPackSlice opts = _options->slice();
 
-  CursorRepository* cursors = _vocbase.cursorRepository();
-  TRI_ASSERT(cursors != nullptr);
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
   size_t batchSize =
@@ -132,46 +143,88 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER, "cannot use 'count' option for a streaming query"));
     } else {
+      CursorRepository* cursors = _vocbase.cursorRepository();
+      TRI_ASSERT(cursors != nullptr);
       Cursor* cursor = cursors->createQueryStream(
-          querySlice.copyString(), bindVarsBuilder, options, batchSize, ttl);
+          querySlice.copyString(), bindVarsBuilder, _options, batchSize, ttl);
       TRI_DEFER(cursors->release(cursor));
       generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }
-    return;  // done
+    return false;  // done
   }
 
   VPackValueLength l;
   char const* queryStr = querySlice.getString(l);
   TRI_ASSERT(l > 0);
 
-  aql::Query query(
+  auto query = std::make_unique<aql::Query>(
     false,
     _vocbase,
     arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
     bindVarsBuilder,
-    options,
+    _options,
     arangodb::aql::PART_MAIN
   );
 
-  registerQuery(&query);
-  aql::QueryResult queryResult = query.execute(_queryRegistry);
-  unregisterQuery();
+  auto self = shared_from_this();
+  auto continueHandler = [this, self]() {
+    continueHandlerExecution();
+  };
+  query->setContinueHandler(continueHandler);
+  registerQuery(std::move(query));
+  return true;
+}
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Process the query registered in _query.
+/// The function is repeatable, so whenever we need to WAIT
+/// in AQL we can post a handler calling this function again.
+//////////////////////////////////////////////////////////////////////////////
+
+RestStatus RestCursorHandler::processQuery() {
+  if (_query == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Illegal state in RestQueryHandler, query not found.");
+  }
+  try {
+    auto state = _query->execute(_queryRegistry, _queryResult);
+    if (state == aql::ExecutionState::WAITING) {
+      return RestStatus::WAITING;
+    }
+    TRI_ASSERT(state == aql::ExecutionState::DONE);
+  } catch (...) {
+    // In case something on the query is wrong, we need to clear it.
+    unregisterQuery();
+    throw;
+  }
+  // We cannot get into HASMORE here, or we would loose results.
+  unregisterQuery();
+  handleQueryResult();
+  return RestStatus::DONE;
+}
+
+void RestCursorHandler::handleQueryResult() {
+  if (_queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (_queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        (_queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(_queryResult.code, _queryResult.details);
   }
 
-  VPackSlice qResult = queryResult.result->slice();
+  VPackSlice qResult = _queryResult.result->slice();
   if (qResult.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   TRI_ASSERT(qResult.isArray());
+  TRI_ASSERT(_options != nullptr);
+  VPackSlice opts = _options->slice();
+
+  size_t batchSize =
+      VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
+  bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
   _response->setContentType(rest::ContentType::JSON);
   size_t const n = static_cast<size_t>(qResult.length());
@@ -207,14 +260,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       if (VelocyPackHelper::getBooleanValue(opts, "count", false)) {
         result.add("count", VPackValue(n));
       }
-      result.add("cached", VPackValue(queryResult.cached));
-      if (queryResult.cached || !queryResult.extra) {
+      result.add("cached", VPackValue(_queryResult.cached));
+      if (_queryResult.cached || !_queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
         // no warnings
         result.add("warnings", VPackSlice::emptyArraySlice());
         result.close();
       } else {
-        result.add("extra", queryResult.extra->slice());
+        result.add("extra", _queryResult.extra->slice());
       }
       result.add(StaticStrings::Error, VPackValue(false));
       result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));
@@ -222,12 +275,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     generateResult(rest::ResponseCode::CREATED, std::move(buffer),
-                   queryResult.context);
+                   _queryResult.context);
   } else {
+    CursorRepository* cursors = _vocbase.cursorRepository();
+    TRI_ASSERT(cursors != nullptr);
     // result is bigger than batchSize, and a cursor will be created
-    TRI_ASSERT(queryResult.result.get() != nullptr);
+    TRI_ASSERT(_queryResult.result.get() != nullptr);
     // steal the query result, cursor will take over the ownership
-    Cursor* cursor = cursors->createFromQueryResult(std::move(queryResult),
+    Cursor* cursor = cursors->createFromQueryResult(std::move(_queryResult),
                                                     batchSize, ttl, count);
 
     TRI_DEFER(cursors->release(cursor));
@@ -259,7 +314,7 @@ uint32_t RestCursorHandler::forwardingTarget() {
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
+void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> query) {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_queryKilled) {
@@ -267,7 +322,7 @@ void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
   }
 
   TRI_ASSERT(_query == nullptr);
-  _query = query;
+  _query = std::move(query);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,7 +331,7 @@ void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
 
 void RestCursorHandler::unregisterQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
-  _query = nullptr;
+  _query.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,9 +367,9 @@ bool RestCursorHandler::wasCanceled() {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
-  VPackBuilder options;
-  VPackObjectBuilder obj(&options);
+void RestCursorHandler::buildOptions(VPackSlice const& slice) {
+  _options = std::make_shared<VPackBuilder>();
+  VPackObjectBuilder obj(_options.get());
 
   bool hasCache = false;
   bool hasMemoryLimit = false;
@@ -335,16 +390,16 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
       } else if (keyName == "memoryLimit" && it.value.isNumber()) {
         hasMemoryLimit = true;
       }
-      options.add(keyName, it.value);
+      _options->add(keyName, it.value);
     }
   }
 
   if (!isStream) {  // ignore cache & count for streaming queries
     bool val = VelocyPackHelper::getBooleanValue(slice, "count", false);
-    options.add("count", VPackValue(val));
+    _options->add("count", VPackValue(val));
     if (!hasCache && slice.hasKey("cache")) {
       val = VelocyPackHelper::getBooleanValue(slice, "cache", false);
-      options.add("cache", VPackValue(val));
+      _options->add("cache", VPackValue(val));
     }
   }
 
@@ -355,22 +410,20 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
     }
-    options.add("batchSize", batchSize);
+    _options->add("batchSize", batchSize);
   } else {
-    options.add("batchSize", VPackValue(1000));
+    _options->add("batchSize", VPackValue(1000));
   }
 
   if (!hasMemoryLimit) {
     VPackSlice memoryLimit = slice.get("memoryLimit");
     if (memoryLimit.isNumber()) {
-      options.add("memoryLimit", memoryLimit);
+      _options->add("memoryLimit", memoryLimit);
     }
   }
 
   VPackSlice ttl = slice.get("ttl");
-  options.add("ttl", VPackValue(ttl.isNumber() ? ttl.getNumber<double>() : 30));
-
-  return options;
+  _options->add("ttl", VPackValue(ttl.isNumber() ? ttl.getNumber<double>() : 30));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -387,7 +440,7 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   result.openObject();
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-  Result r = cursor->dump(result);
+  Result r = cursor->dumpSync(result);
   result.close();
 
   if (r.ok()) {
@@ -402,10 +455,10 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 /// @brief was docuBlock JSF_post_api_cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::createQueryCursor() {
+RestStatus RestCursorHandler::createQueryCursor() {
   if (_request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return;
+    return RestStatus::DONE;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -413,40 +466,40 @@ void RestCursorHandler::createQueryCursor() {
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/cursor");
-    return;
+    return RestStatus::DONE;
   }
 
-  try {
-    bool parseSuccess = false;
-    VPackSlice body = this->parseVPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
-    if (!parseSuccess) {
-      // error message generated in parseVPackBody
-      return;
-    }
-
-    // tell RestCursorHandler::finalizeExecute that the request
-    // could be parsed successfully and that it may look at it
-    _isValidForFinalize = true;
-
-    processQuery(body);
-  } catch (...) {
-    unregisterQuery();
-    throw;
+  if (!parseSuccess) {
+    // error message generated in parseVPackBody
+    return RestStatus::DONE;
   }
+
+  // tell RestCursorHandler::finalizeExecute that the request
+  // could be parsed successfully and that it may look at it
+  _isValidForFinalize = true;
+
+  TRI_ASSERT(_query == nullptr);
+  if (registerQueryOrCursor(body)) {
+    // We are in the non-streaming case
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor_identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::modifyQueryCursor() {
+RestStatus RestCursorHandler::modifyQueryCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/cursor/<cursor-id>");
-    return;
+    return RestStatus::DONE;
   }
 
   std::string const& id = suffixes[0];
@@ -467,24 +520,25 @@ void RestCursorHandler::modifyQueryCursor() {
       generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
     }
-    return;
+    return RestStatus::DONE;
   }
 
   TRI_DEFER(cursors->release(cursor));
   generateCursorResult(rest::ResponseCode::OK, cursor);
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor_delete
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::deleteQueryCursor() {
+RestStatus RestCursorHandler::deleteQueryCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/cursor/<cursor-id>");
-    return;
+    return RestStatus::DONE;
   }
 
   std::string const& id = suffixes[0];
@@ -498,7 +552,7 @@ void RestCursorHandler::deleteQueryCursor() {
 
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
-    return;
+    return RestStatus::DONE;
   }
 
   VPackBuilder builder;
@@ -510,4 +564,5 @@ void RestCursorHandler::deleteQueryCursor() {
   builder.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, builder.slice());
+  return RestStatus::DONE;
 }

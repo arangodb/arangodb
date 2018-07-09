@@ -139,7 +139,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -267,7 +267,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -304,7 +304,8 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
@@ -813,8 +814,6 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
       application_features::ApplicationServer::getFeature<V8DealerFeature>(
           "V8Dealer");
 
-  auto threadCounters = SchedulerFeature::SCHEDULER->getCounters();
-
   builder.openObject();
   if (!_clusterId.empty()) {
     builder.add("clusterId", VPackValue(_clusterId));
@@ -907,13 +906,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   }
 
   builder.add("threads", VPackValue(VPackValueType::Object));
-  builder.add("running",
-              VPackValue(rest::Scheduler::numRunning(threadCounters)));
-  builder.add("working",
-              VPackValue(rest::Scheduler::numWorking(threadCounters)));
-  builder.add("blocked",
-              VPackValue(rest::Scheduler::numBlocked(threadCounters)));
-  builder.add("queued", VPackValue(SchedulerFeature::SCHEDULER->numQueued()));
+  SchedulerFeature::SCHEDULER->addQueueStatistics(builder);
   builder.close();
 
   builder.close();

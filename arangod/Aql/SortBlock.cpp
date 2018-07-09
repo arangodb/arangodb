@@ -89,31 +89,40 @@ SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
 
 SortBlock::~SortBlock() {}
 
-int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK(); 
-  int res = ExecutionBlock::initializeCursor(items, pos);
-  if (res != TRI_ERROR_NO_ERROR) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   _mustFetchAll = !_done;
   _pos = 0;
 
-  return TRI_ERROR_NO_ERROR;
+  return res; 
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
-int SortBlock::getOrSkipSome(size_t atMost, bool skipping,
-                             AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK(); 
-  
+std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();
+
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_mustFetchAll) {
+    ExecutionState res = ExecutionState::HASMORE;
     // suck all blocks into _buffer
-    while (getBlock(DefaultBatchSize())) {
+    while (res != ExecutionState::DONE) {
+      res = getBlock(DefaultBatchSize()).first;
+      if (res == ExecutionState::WAITING) {
+        return {res, TRI_ERROR_NO_ERROR};
+      }
     }
 
     _mustFetchAll = false;
@@ -123,9 +132,8 @@ int SortBlock::getOrSkipSome(size_t atMost, bool skipping,
   }
 
   return ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
-  
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 void SortBlock::doSorting() {

@@ -325,7 +325,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
       auto physical = static_cast<MMFilesCollection*>(context._collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
       bool const useDeadlockDetector = false;
-      int res = physical->lockRead(useDeadlockDetector, trx->tid(), 86400.0);
+      int res = physical->lockRead(useDeadlockDetector, trx->state(), 86400.0);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -336,7 +336,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         } catch (...) {
           ok = false;
         }
-        physical->unlockRead(useDeadlockDetector, trx->tid());
+        physical->unlockRead(useDeadlockDetector, trx->state());
       }
     }
 

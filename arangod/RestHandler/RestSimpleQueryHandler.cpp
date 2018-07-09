@@ -23,7 +23,6 @@
 
 #include "RestSimpleQueryHandler.h"
 
-#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -57,16 +56,13 @@ RestStatus RestSimpleQueryHandler::execute() {
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
-      allDocuments();
-      return RestStatus::DONE;
+      return allDocuments();
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
-      allDocumentKeys();
-      return RestStatus::DONE;
+      return allDocumentKeys();
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE) {
       // by-example query
-      byExample();
-      return RestStatus::DONE;
+      return byExample();
     }
   }
 
@@ -75,16 +71,30 @@ RestStatus RestSimpleQueryHandler::execute() {
   return RestStatus::DONE;
 }
 
+
+RestStatus RestSimpleQueryHandler::continueExecute() {
+  // extract the sub-request type
+  rest::RequestType const type = _request->requestType();
+
+  if (type == rest::RequestType::PUT) {
+    return processQuery();
+  }
+
+  // NOT YET IMPLEMENTED
+  TRI_ASSERT(false);
+  return RestStatus::DONE;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSA_put_api_simple_all
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleQueryHandler::allDocuments() {
+RestStatus RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
-    return;
+    return RestStatus::DONE;
   }
   
   std::string collectionName;
@@ -100,7 +110,7 @@ void RestSimpleQueryHandler::allDocuments() {
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    return;
+    return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(collectionName);
@@ -161,21 +171,23 @@ void RestSimpleQueryHandler::allDocuments() {
   }
   data.close();
 
-  VPackSlice s = data.slice();
   // now run the actual query and handle the result
-  processQuery(s);
+  if (registerQueryOrCursor(data.slice())) {
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return a cursor with all document keys from the collection
 //////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleQueryHandler::allDocumentKeys() {
+RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return;
+    return RestStatus::DONE;
   }
 
   std::string collectionName;
@@ -191,7 +203,7 @@ void RestSimpleQueryHandler::allDocumentKeys() {
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    return;
+    return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(collectionName);
@@ -230,9 +242,12 @@ void RestSimpleQueryHandler::allDocumentKeys() {
 
   data.close();
 
-  VPackSlice s = data.slice();
-  // now run the actual query and handle the result
-  processQuery(s);
+  if (registerQueryOrCursor(data.slice())) {
+    // We do not support streaming here!
+    // now run the actual query and handle the result
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
 
 static void buildExampleQuery(VPackBuilder& result,
@@ -268,18 +283,18 @@ static void buildExampleQuery(VPackBuilder& result,
 /// @brief return a cursor with all documents matching the example
 //////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleQueryHandler::byExample() {
+RestStatus RestSimpleQueryHandler::byExample() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return;
+    return RestStatus::DONE;
   }
 
   if (!body.isObject() || !body.hasKey("example") ||
       !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    return;
+    return RestStatus::DONE;
   }
 
   // velocypack will throw an exception for negative numbers
@@ -301,7 +316,7 @@ void RestSimpleQueryHandler::byExample() {
   if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    return;
+    return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(cname);
@@ -323,6 +338,8 @@ void RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  // now run the actual query and handle the result
-  processQuery(data.slice());
+  if (registerQueryOrCursor(data.slice())) {
+    return processQuery();
+  }
+  return RestStatus::DONE;
 }
