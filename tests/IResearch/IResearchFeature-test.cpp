@@ -119,7 +119,7 @@ SECTION("IResearch_version") {
   CHECK(IResearch_version == arangodb::rest::Version::getIResearchVersion());
   CHECK(IResearch_version == arangodb::rest::Version::Values["iresearch-version"]);
 }
-
+/*
 SECTION("test_async") {
   struct DestructFlag {
     bool* _flag;
@@ -318,7 +318,7 @@ SECTION("test_async") {
     CHECK((true == deallocated));
   }
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
