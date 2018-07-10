@@ -24,6 +24,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/ExecutionBlock.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
@@ -72,6 +73,7 @@ void AqlFeature::start() {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   TRI_ASSERT(_AQL == nullptr);
   _AQL = this;
+  aql::ExecutionBlock::init();
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature started";
 }
 
