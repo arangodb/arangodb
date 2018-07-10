@@ -459,8 +459,9 @@ void Agent::sendAppendEntriesRPC() {
         earliestPackage = _earliestPackage[followerId];
       }
 
-      if (
-        ((steady_clock::now() - earliestPackage).count() < 0)) {
+      if ((steady_clock::now() - earliestPackage).count() < 0 ||
+          _state.lastIndex() <= lastConfirmed) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
         continue;
       }
 
@@ -477,16 +478,20 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // If lastConfirmed is smaller than our first log entry's index, and
-      // given that our first log entry is either the 0-entry or an entry at
-      // index of a compacted state and that compactions are only performed up
-      // to a RAFT-wide committed index, and by that up to absolut truth we can
-      // correct lastConfirmed to our first log index.
-      bool raiseLastConfirmed = lastConfirmed < _state.firstIndex();
-      if (raiseLastConfirmed) {
-        lastConfirmed = _state.firstIndex();
+      // given that our first log entry is either the 0-entry or a compacted
+      // state and that compactions are only performed up to a RAFT-wide 
+      // committed index, and by that up to absolut truth we can correct
+      // lastConfirmed to one minus our first log index.
+      if (lastConfirmed < _state.firstIndex()) {
+        lastConfirmed = _state.firstIndex() - 1;
+        // Note that this can only ever happen if _state.firstIndex() is
+        // greater than 0, so there is no underflow.
       }
       LOG_TOPIC(TRACE, Logger::AGENCY)
         << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
+      // If lastConfirmed is one minus the first log entry, then this is
+      // corrected in _state::get and we only get from the beginning of the
+      // log.
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
          
       lockTime = steady_clock::now() - startTime;
@@ -505,13 +510,10 @@ void Agent::sendAppendEntriesRPC() {
         TRI_ASSERT(false);
       }
 
-      if (unconfirmed.size() == 1 && !raiseLastConfirmed) {
-        // Note that this case means that everything we have is already
-        // confirmed, since we always get everything from (and including!)
-        // the last confirmed entry.
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
-        continue;
-      }
+      // Note that if we get here we have at least two entries, otherwise
+      // we would have done continue earlier, since this can only happen
+      // if lastConfirmed is equal to the last index in our log, in which
+      // case there is nothing to replicate.
 
       duration<double> m = steady_clock::now() - _lastSent[followerId];
 
@@ -529,7 +531,8 @@ void Agent::sendAppendEntriesRPC() {
       Store snapshot(this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
-      if (lowest > lastConfirmed || raiseLastConfirmed) {
+      
+      if (lowest > lastConfirmed) {
         // Ooops, compaction has thrown away so many log entries that
         // we cannot actually update the follower. We need to send our
         // latest snapshot instead:
@@ -589,6 +592,12 @@ void Agent::sendAppendEntriesRPC() {
       for (size_t i = 0; i < unconfirmed.size(); ++i) {
         auto const& entry = unconfirmed.at(i);
         if (entry.index > lastConfirmed) {
+          // This condition is crucial, because usually we have one more
+          // entry than we need in unconfirmed, so we want to skip this. If,
+          // however, we have sent a snapshot, we need to send the log entry
+          // with the same index than the snapshot along to retain the
+          // invariant of our data structure that the _log in _state is
+          // non-empty.
           builder.add(VPackValue(VPackValueType::Object));
           builder.add("index", VPackValue(entry.index));
           builder.add("term", VPackValue(entry.term));
