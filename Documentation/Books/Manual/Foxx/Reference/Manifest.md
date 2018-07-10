@@ -1,7 +1,40 @@
 Manifest files
 ==============
 
-Every service comes with a `manifest.json` file providing metadata. The following fields are allowed in manifests:
+Every service comes with a `manifest.json` file providing metadata.
+
+Tooling integration
+-------------------
+
+If you are using an IDE or editor that supports JSON schema, you can use the public Foxx manifest schema [available at the third-party JSON Schema Store](http://json.schemastore.org/foxx-manifest) by adding the `$schema` field to your `manifest.json` file:
+
+```json
+{
+  "$schema": "http://json.schemastore.org/foxx-manifest"
+}
+```
+
+### Visual Studio Code
+
+In [Visual Studio Code](https://code.visualstudio.com) you can also enable the Foxx manifest schema for all `manifest.json` files (even without the `$schema` field) by adding the following to your [user or workspace settings](https://code.visualstudio.com/docs/getstarted/settings):
+
+```json
+{
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "manifest.json"
+      ],
+      "url": "http://json.schemastore.org/foxx-manifest"
+    }
+  ]
+}
+```
+
+Structure
+---------
+
+The following fields are allowed in manifests:
 
 - **configuration**: `Object` (optional)
 

@@ -1,7 +1,7 @@
 Foxx configuration
 ==================
 
-Foxx services can define configuration parameters to make them more re-usable.
+Foxx services can define configuration parameters [in the service manifest](Manifest.md) to make them more re-usable.
 
 The `configuration` object maps names to configuration parameters:
 
