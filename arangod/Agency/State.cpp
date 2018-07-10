@@ -343,8 +343,15 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
   LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
   try {
 
-    // If we've got a snapshot anything we might have is obsolete
-    index_t lastIndex = gotSnapshot ? 0 : _log.back().index;
+    // If we've got a snapshot anything we might have is obsolete, note that
+    // this happens if and only if we decided at the call site that we actually
+    // use the snapshot and we have erased our _log there (see
+    // storeLogFromSnapshot which was called above)!
+    if (_log.empty()) {
+      TRI_ASSERT(gotSnapshot);
+      return 1;
+    }
+    index_t lastIndex = _log.back().index;
 
     while (ndups < slices.length()) {
       VPackSlice slice = slices[ndups];
@@ -354,11 +361,11 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
           << idx << " > " << lastIndex << " break.";
         break;
       }
-      term_t trm = slice.get("term").getUInt();
       if (idx < _cur) { // already compacted, treat as equal
         ++ndups;
         continue;
       }
+      term_t trm = slice.get("term").getUInt();
       size_t pos = idx - _cur;  // position in _log
       TRI_ASSERT(pos < _log.size());
       if (idx == _log.at(pos).index && trm != _log.at(pos).term) {
