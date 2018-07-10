@@ -22,8 +22,8 @@ This query will delete **eve** with its adjacent edges:
     @startDocuBlockInline GRAPHTRAV_removeVertex1
     @EXAMPLE_AQL{GRAPHTRAV_removeVertex1}
     @DATASET{knows_graph}
-LET keys = (FOR v, e IN 1..1 ANY 'persons/eve' GRAPH 'knows_graph' RETURN e._key)
-LET r = (FOR key IN keys REMOVE key IN knows) 
+LET edgeKeys = (FOR v, e IN 1..1 ANY 'persons/eve' GRAPH 'knows_graph' RETURN e._key)
+LET r = (FOR key IN edgeKeys REMOVE key IN knows) 
 REMOVE 'eve' IN persons
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_removeVertex1
@@ -38,7 +38,7 @@ The following query shows a different design to achieve the same result:
     @startDocuBlockInline GRAPHTRAV_removeVertex2
     @EXAMPLE_AQL{GRAPHTRAV_removeVertex2}
     @DATASET{knows_graph}
-LET keys = (FOR v, e IN 1..1 ANY 'persons/eve' GRAPH 'knows_graph'
+LET edgeKeys = (FOR v, e IN 1..1 ANY 'persons/eve' GRAPH 'knows_graph'
             REMOVE e._key IN knows)
 REMOVE 'eve' IN persons
     @END_EXAMPLE_AQL
@@ -47,21 +47,21 @@ REMOVE 'eve' IN persons
 **Note**: The query has to be adjusted to match a graph with multiple vertex/edge collections.
 
 For example, the [city graph](../../Manual/Graphs/index.html#the-city-graph) 
-contains several vertex collections - `germanCity and frenchCity` and several 
+contains several vertex collections - `germanCity` and `frenchCity` and several 
 edge collections -  `french / german / international Highway`.
 
 ![Example Graph2](../../Manual/Graphs/cities_graph.png)
 
 To delete city **Berlin** all edge collections `french / german / international Highway` 
 have to be considered. The **REMOVE** operation has to be applied on all edge
-collections with `OPTIONS { ignoreErrors: true }`. Otherwise the query would
-stop once a key in a collection, where it does not exist, should be removed.
+collections with `OPTIONS { ignoreErrors: true }`. Not using this option will stop the query
+whenever a non existing key should be removed in a collection.
 
     @startDocuBlockInline GRAPHTRAV_removeVertex3
     @EXAMPLE_AQL{GRAPHTRAV_removeVertex3}
     @DATASET{routeplanner}
-LET keys = (FOR v, e IN 1..1 ANY 'germanCity/Berlin' GRAPH 'routeplanner' RETURN e._key)
-LET r = (FOR key IN keys REMOVE key IN internationalHighway
+LET edgeKeys = (FOR v, e IN 1..1 ANY 'germanCity/Berlin' GRAPH 'routeplanner' RETURN e._key)
+LET r = (FOR key IN edgeKeys REMOVE key IN internationalHighway
         OPTIONS { ignoreErrors: true } REMOVE key IN germanHighway
         OPTIONS { ignoreErrors: true } REMOVE key IN frenchHighway
         OPTIONS { ignoreErrors: true }) 
