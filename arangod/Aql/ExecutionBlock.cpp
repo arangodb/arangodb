@@ -56,6 +56,50 @@ static std::string const& stateToString(ExecutionState state) {
 
 } // namespace
 
+std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const NamesToBlockTypeMap = {
+  { "-undefined-",                 arangodb::aql::ExecutionBlock::Type::_UNDEFINED},
+  { "CalculationBlock",            arangodb::aql::ExecutionBlock::Type::CALCULATION},
+  { "CountCollectBlock",           arangodb::aql::ExecutionBlock::Type::COUNT_COLLECT},
+  { "DistinctCollectBlock",        arangodb::aql::ExecutionBlock::Type::DISTINCT_COLLECT},
+  { "EnumerateCollectionBlock",    arangodb::aql::ExecutionBlock::Type::ENUMERATE_COLLECTION},
+  { "EnumerateListBlock",          arangodb::aql::ExecutionBlock::Type::ENUMERATE_LIST},
+  { "FilterBlock",                 arangodb::aql::ExecutionBlock::Type::FILTER},
+  { "HashedCollectBlock",          arangodb::aql::ExecutionBlock::Type::HASHED_COLLECT},
+  { "IndexBlock",                  arangodb::aql::ExecutionBlock::Type::INDEX},
+  { "LimitBlock",                  arangodb::aql::ExecutionBlock::Type::LIMIT},
+  { "NoResultsBlock",              arangodb::aql::ExecutionBlock::Type::NO_RESULTS},
+  { "RemoteBlock",                 arangodb::aql::ExecutionBlock::Type::REMOTE},
+  { "ReturnBlock",                 arangodb::aql::ExecutionBlock::Type::RETURN},
+  { "ShortestPathBlock",           arangodb::aql::ExecutionBlock::Type::SHORTEST_PATH},
+  { "SingletonBlock",              arangodb::aql::ExecutionBlock::Type::SINGLETON},
+  { "SortBlock",                   arangodb::aql::ExecutionBlock::Type::SORT},
+  { "SortedCollectBlock",          arangodb::aql::ExecutionBlock::Type::SORTED_COLLECT},
+  { "SortingGatherBlock",          arangodb::aql::ExecutionBlock::Type::SORTING_GATHER},
+  { "SubqueryBlock",               arangodb::aql::ExecutionBlock::Type::SUBQUERY},
+  { "TraversalBlock",              arangodb::aql::ExecutionBlock::Type::TRAVERSAL},
+  { "UnsortingGatherBlock",        arangodb::aql::ExecutionBlock::Type::UNSORTING_GATHER},
+  { "RemoveBlock",                 arangodb::aql::ExecutionBlock::Type::REMOVE},
+  { "InsertBlock",                 arangodb::aql::ExecutionBlock::Type::INSERT},
+  { "UpdateBlock",                 arangodb::aql::ExecutionBlock::Type::UPDATE},
+  { "ReplaceBlock",                arangodb::aql::ExecutionBlock::Type::REPLACE},
+  { "UpsertBlock",                 arangodb::aql::ExecutionBlock::Type::UPSERT},
+  { "ScatterBlock",                arangodb::aql::ExecutionBlock::Type::SCATTER},
+  { "DistributeBlock",             arangodb::aql::ExecutionBlock::Type::DISTRIBUTE},
+  { "IResearchViewBlock",          arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW},
+  { "IResearchViewOrderedBlock",   arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_ORDERED},
+  { "IResearchViewUnorderedBlock", arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_UNORDERED}
+};
+std::unordered_map<arangodb::aql::ExecutionBlock::Type, std::string> blockTypeToNamesMap;
+
+void ExecutionBlock::init() {
+  blockTypeToNamesMap.reserve(NamesToBlockTypeMap.size());
+  std::for_each(NamesToBlockTypeMap.begin(),
+                NamesToBlockTypeMap.end(),
+                [](std::pair<std::string const&, arangodb::aql::ExecutionBlock::Type> const& p) {
+      blockTypeToNamesMap.insert(std::make_pair(p.second, p.first));
+  });
+}
+
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
@@ -634,170 +678,23 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
 }
 
 std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
-  switch (type) {
-    case Type::_UNDEFINED:
-      return "-undefined-";
-    case Type::CALCULATION:
-      return "CalculationBlock";
-    case Type::COUNT_COLLECT:
-      return "CountCollectBlock";
-    case Type::DISTINCT_COLLECT:
-      return "DistinctCollectBlock";
-    case Type::ENUMERATE_COLLECTION:
-      return "EnumerateCollectionBlock";
-    case Type::ENUMERATE_LIST:
-      return "EnumerateListBlock";
-    case Type::FILTER:
-      return "FilterBlock";
-    case Type::HASHED_COLLECT:
-      return "HashedCollectBlock";
-    case Type::INDEX:
-      return "IndexBlock";
-    case Type::LIMIT:
-      return "LimitBlock";
-    case Type::NO_RESULTS:
-      return "NoResultsBlock";
-    case Type::REMOTE:
-      return "RemoteBlock";
-    case Type::RETURN:
-      return "ReturnBlock";
-    case Type::SHORTEST_PATH:
-      return "ShortestPathBlock";
-    case Type::SINGLETON:
-      return "SingletonBlock";
-    case Type::SORT:
-      return "SortBlock";
-    case Type::SORTED_COLLECT:
-      return "SortedCollectBlock";
-    case Type::SORTING_GATHER:
-      return "SortingGatherBlock";
-    case Type::SUBQUERY:
-      return "SubqueryBlock";
-    case Type::TRAVERSAL:
-      return "TraversalBlock";
-    case Type::UNSORTING_GATHER:
-      return "UnsortingGatherBlock";
-    case Type::REMOVE:
-      return "RemoveBlock";
-    case Type::INSERT:
-      return "InsertBlock";
-    case Type::UPDATE:
-      return "UpdateBlock";
-    case Type::REPLACE:
-      return "ReplaceBlock";
-    case Type::UPSERT:
-      return "UpsertBlock";
-    case Type::SCATTER:
-      return "ScatterBlock";
-    case Type::DISTRIBUTE:
-      return "DistributeBlock";
-    case Type::IRESEARCH_VIEW:
-      return "IResearchViewBlock";
-    case Type::IRESEARCH_VIEW_ORDERED:
-      return "IResearchViewOrderedBlock";
-    case Type::IRESEARCH_VIEW_UNORDERED:
-      return "IResearchViewUnorderedBlock";
-  }
+  auto got = ::blockTypeToNamesMap.find(type);
+  if (got == ::blockTypeToNamesMap.end()) {
   // to please compiler in non-maintainer mode
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-      std::string("when converting ExecutionBlock::Type to string: got invalid type"));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                                   std::string("when converting ExecutionBlock::Type to string: got invalid type"));
+    return "";
+  }
+  return got->second;
 }
 
 ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
-  if (type == "-undefined-") {
-    return Type::_UNDEFINED;
+  auto got = ::NamesToBlockTypeMap.find(type);
+  if (got == ::NamesToBlockTypeMap.end()) {
+  // to please compiler in non-maintainer mode
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                                   std::string("when converting string to ExecutionBlock::Type: got invalid string '" + type + "'"));
+    return arangodb::aql::ExecutionBlock::Type::_UNDEFINED;
   }
-  if (type == "CalculationBlock") {
-    return Type::CALCULATION;
-  }
-  if (type == "CountCollectBlock") {
-    return Type::COUNT_COLLECT;
-  }
-  if (type == "DistinctCollectBlock") {
-    return Type::DISTINCT_COLLECT;
-  }
-  if (type == "EnumerateCollectionBlock") {
-    return Type::ENUMERATE_COLLECTION;
-  }
-  if (type == "EnumerateListBlock") {
-    return Type::ENUMERATE_LIST;
-  }
-  if (type == "FilterBlock") {
-    return Type::FILTER;
-  }
-  if (type == "HashedCollectBlock") {
-    return Type::HASHED_COLLECT;
-  }
-  if (type == "IndexBlock") {
-    return Type::INDEX;
-  }
-  if (type == "LimitBlock") {
-    return Type::LIMIT;
-  }
-  if (type == "NoResultsBlock") {
-    return Type::NO_RESULTS;
-  }
-  if (type == "RemoteBlock") {
-    return Type::REMOTE;
-  }
-  if (type == "ReturnBlock") {
-    return Type::RETURN;
-  }
-  if (type == "ShortestPathBlock") {
-    return Type::SHORTEST_PATH;
-  }
-  if (type == "SingletonBlock") {
-    return Type::SINGLETON;
-  }
-  if (type == "SortBlock") {
-    return Type::SORT;
-  }
-  if (type == "SortedCollectBlock") {
-    return Type::SORTED_COLLECT;
-  }
-  if (type == "SortingGatherBlock") {
-    return Type::SORTING_GATHER;
-  }
-  if (type == "SubqueryBlock") {
-    return Type::SUBQUERY;
-  }
-  if (type == "TraversalBlock") {
-    return Type::TRAVERSAL;
-  }
-  if (type == "UnsortingGatherBlock") {
-    return Type::UNSORTING_GATHER;
-  }
-  if (type == "RemoveBlock") {
-    return Type::REMOVE;
-  }
-  if (type == "InsertBlock") {
-    return Type::INSERT;
-  }
-  if (type == "UpdateBlock") {
-    return Type::UPDATE;
-  }
-  if (type == "ReplaceBlock") {
-    return Type::REPLACE;
-  }
-  if (type == "UpsertBlock") {
-    return Type::UPSERT;
-  }
-  if (type == "ScatterBlock") {
-    return Type::SCATTER;
-  }
-  if (type == "DistributeBlock") {
-    return Type::DISTRIBUTE;
-  }
-  if (type == "IResearchViewBlock") {
-    return Type::IRESEARCH_VIEW;
-  }
-  if (type == "IResearchViewOrderedBlock") {
-    return Type::IRESEARCH_VIEW_ORDERED;
-  }
-  if (type == "IResearchViewUnorderedBlock") {
-    return Type::IRESEARCH_VIEW_UNORDERED;
-  }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-      std::string("when converting string to ExecutionBlock::Type: got invalid string '" + type + "'"));
+  return got->second;
 }
