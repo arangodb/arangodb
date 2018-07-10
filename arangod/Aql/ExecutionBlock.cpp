@@ -686,6 +686,8 @@ std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
       return "ShortestPathBlock";
     case Type::SINGLETON:
       return "SingletonBlock";
+    case Type::SINGLEOPERATION:
+      return "SingleOperationBlock";
     case Type::SORT:
       return "SortBlock";
     case Type::SORTED_COLLECT:
@@ -767,6 +769,9 @@ ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
   }
   if (type == "SingletonBlock") {
     return Type::SINGLETON;
+  }
+  if (type == "SingleOperationBlock") {
+    return Type::SINGLEOPERATION;
   }
   if (type == "SortBlock") {
     return Type::SORT;
