@@ -515,7 +515,7 @@ void Agent::sendAppendEntriesRPC() {
       // Note that despite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
 
-      if (unconfirmed.empty() && !raiseLastConfirmed) {
+      if (unconfirmed.empty()) {
         LOG_TOPIC(ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
           << "lastConfirmed=" << lastConfirmed << " commitIndex="
           << commitIndex;
