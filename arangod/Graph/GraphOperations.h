@@ -69,69 +69,81 @@ class GraphOperations {
   /// returned as a pair.
   /// This is because in case of a precondition error during trx.document(),
   /// the OperationResult may still be needed.
-  OperationResult getVertex(
-          std::string const &collectionName, std::string const &key,
-          boost::optional<TRI_voc_rid_t> rev);
+  OperationResult getVertex(std::string const& collectionName,
+                            std::string const& key,
+                            boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief Get a single edge document from definitionName.
   /// Similar to getVertex().
-  OperationResult getEdge(
-          const std::string &definitionName, const std::string &key,
-          boost::optional<TRI_voc_rid_t> rev);
+  OperationResult getEdge(const std::string& definitionName,
+                          const std::string& key,
+                          boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief Remove a single edge document from definitionName.
-  OperationResult removeEdge(
-          const std::string &definitionName, const std::string &key,
-          boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
+  OperationResult removeEdge(const std::string& definitionName,
+                             const std::string& key,
+                             boost::optional<TRI_voc_rid_t> rev,
+                             bool waitForSync, bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
-  OperationResult removeVertex(
-          const std::string &collectionName, const std::string &key,
-          boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
+  OperationResult removeVertex(const std::string& collectionName,
+                               const std::string& key,
+                               boost::optional<TRI_voc_rid_t> rev,
+                               bool waitForSync, bool returnOld);
 
   /// @brief Remove a graph and optional all connected collections
-  OperationResult removeGraph(bool waitForSync,
-                              bool dropCollections);
+  OperationResult removeGraph(bool waitForSync, bool dropCollections);
 
-  OperationResult updateEdge(
-          const std::string &definitionName, const std::string &key,
-          VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-          bool returnOld, bool returnNew, bool keepNull);
+  OperationResult updateEdge(const std::string& definitionName,
+                             const std::string& key, VPackSlice document,
+                             boost::optional<TRI_voc_rid_t> rev,
+                             bool waitForSync, bool returnOld, bool returnNew,
+                             bool keepNull);
 
-  OperationResult replaceEdge(
-          const std::string &definitionName, const std::string &key,
-          VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-          bool returnOld, bool returnNew, bool keepNull);
+  OperationResult replaceEdge(const std::string& definitionName,
+                              const std::string& key, VPackSlice document,
+                              boost::optional<TRI_voc_rid_t> rev,
+                              bool waitForSync, bool returnOld, bool returnNew,
+                              bool keepNull);
 
-  OperationResult createEdge(
-          const std::string &definitionName, VPackSlice document, bool waitForSync,
-          bool returnNew);
+  OperationResult createEdge(const std::string& definitionName,
+                             VPackSlice document, bool waitForSync,
+                             bool returnNew);
 
-  OperationResult updateVertex(
-          const std::string &collectionName, const std::string &key,
-          VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-          bool returnOld, bool returnNew, bool keepNull);
+  OperationResult updateVertex(const std::string& collectionName,
+                               const std::string& key, VPackSlice document,
+                               boost::optional<TRI_voc_rid_t> rev,
+                               bool waitForSync, bool returnOld, bool returnNew,
+                               bool keepNull);
 
-  OperationResult replaceVertex(
-          const std::string &collectionName, const std::string &key,
-          VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-          bool returnOld, bool returnNew, bool keepNull);
+  OperationResult replaceVertex(const std::string& collectionName,
+                                const std::string& key, VPackSlice document,
+                                boost::optional<TRI_voc_rid_t> rev,
+                                bool waitForSync, bool returnOld,
+                                bool returnNew, bool keepNull);
 
-  OperationResult createVertex(
-          const std::string &collectionName, VPackSlice document, bool waitForSync,
-          bool returnNew);
+  OperationResult createVertex(const std::string& collectionName,
+                               VPackSlice document, bool waitForSync,
+                               bool returnNew);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult addOrphanCollection(
-      VPackSlice document, bool waitForSync);
+  OperationResult addOrphanCollection(VPackSlice document, bool waitForSync);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add an orphan to collection to an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
+  OperationResult addOrphanCollectionByGraph(
+      std::unordered_set<std::string> collections, Graph const& graph,
+      bool waitForSync, transaction::Methods* trx);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an orphan collection from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult eraseOrphanCollection(
-      bool waitForSync, std::string collectionName, bool dropCollection);
+  OperationResult eraseOrphanCollection(bool waitForSync,
+                                        std::string collectionName,
+                                        bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a new edge definition in an existing graph
@@ -142,15 +154,16 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an edge definition from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult eraseEdgeDefinition(
-      bool waitForSync, std::string edgeDefinitionName, bool dropCollection);
+  OperationResult eraseEdgeDefinition(bool waitForSync,
+                                      std::string edgeDefinitionName,
+                                      bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult editEdgeDefinition(
-      VPackSlice edgeDefinition, bool waitForSync,
-      const std::string& edgeDefinitionName);
+  OperationResult editEdgeDefinition(VPackSlice edgeDefinition,
+                                     bool waitForSync,
+                                     const std::string& edgeDefinitionName);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief change the edge definition for a specified graph
@@ -167,26 +180,31 @@ class GraphOperations {
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-  OperationResult getDocument(
-          std::string const &collectionName, const std::string &key,
-          boost::optional<TRI_voc_rid_t> rev);
+  OperationResult getDocument(std::string const& collectionName,
+                              const std::string& key,
+                              boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief creates a vpack { _key: key } or { _key: key, _rev: rev }
   /// (depending on whether rev is set)
   VPackBufferPtr _getSearchSlice(const std::string& key,
                                  boost::optional<TRI_voc_rid_t>& rev) const;
 
-  OperationResult modifyDocument(
-          const std::string &collectionName, const std::string &key,
-          VPackSlice document, bool isPatch, boost::optional<TRI_voc_rid_t> rev,
-          bool waitForSync, bool returnOld, bool returnNew, bool keepNull);
+  OperationResult modifyDocument(const std::string& collectionName,
+                                 const std::string& key, VPackSlice document,
+                                 bool isPatch,
+                                 boost::optional<TRI_voc_rid_t> rev,
+                                 bool waitForSync, bool returnOld,
+                                 bool returnNew, bool keepNull);
 
-  OperationResult createDocument(
-          transaction::Methods *trx, const std::string &collectionName,
-          VPackSlice document, bool waitForSync, bool returnNew);
+  OperationResult createDocument(transaction::Methods* trx,
+                                 const std::string& collectionName,
+                                 VPackSlice document, bool waitForSync,
+                                 bool returnNew);
 
-  OperationResult assertEdgeCollectionAvailability(std::string edgeDefinitionName);
-  OperationResult assertVertexCollectionAvailability(std::string VertexDefinitionName);
+  OperationResult assertEdgeCollectionAvailability(
+      std::string edgeDefinitionName);
+  OperationResult assertVertexCollectionAvailability(
+      std::string VertexDefinitionName);
 };
 }  // namespace graph
 }  // namespace arangodb

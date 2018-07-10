@@ -56,6 +56,40 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 using namespace arangodb::rest;
 
+static void JS_GetGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+    v8::HandleScope scope(isolate);
+
+    if (args.Length() < 1) {
+      TRI_V8_THROW_EXCEPTION_USAGE(
+              "_graph(graphName)");
+    } else if (!args[0]->IsString()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+    }
+    std::string graphName = TRI_ObjectToString(args[0]);
+    if (graphName.empty()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+    }
+
+    auto& vocbase = GetContextVocBase(isolate);
+    auto ctx = transaction::V8Context::Create(vocbase, false);
+
+    std::shared_ptr<Graph const> graph;
+    graph.reset(lookupGraphByName(ctx, graphName));
+
+    VPackBuilder result;
+    graph->graphToVpack(result);
+    VPackSlice resSlice = result.slice().get("graph");
+
+    if (!result.isEmpty()) {
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, resSlice));
+    }
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+
+    TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -209,6 +243,9 @@ void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(
       isolate, rt, TRI_V8_ASCII_STRING(isolate, "_listObjects"), JS_GetGraphs);
+
+  TRI_AddMethodVocbase(
+          isolate, rt, TRI_V8_ASCII_STRING(isolate, "_graph"), JS_GetGraph);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_create"),
                        JS_CreateGraph);

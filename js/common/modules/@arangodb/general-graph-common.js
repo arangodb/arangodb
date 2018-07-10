@@ -2015,6 +2015,13 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message;
     throw err;
   }
+
+  edgeDefinitions.forEach(
+    (eD, index) => {
+      edgeDefinitions[index] = _.clone(eD);
+    }
+  );
+
   // check, if a collection is already used in a different edgeDefinition
   let tmpCollections = [];
   let tmpEdgeDefinitions = {};

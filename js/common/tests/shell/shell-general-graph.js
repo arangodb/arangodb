@@ -733,23 +733,22 @@ function GeneralGraphCreationSuite() {
 
     test_editEdgeDefinitionFromExistingGraph2: function() {
 
-      var dr1 = graph._relation(ec1, [vc1, vc2], [vc3, vc4]),
-        dr2 = graph._relation(ec2, [vc1], [vc4]),
-        dr3 = graph._relation(ec1, [vc5], [vc5]),
-        g1 = graph._create(gN1, [dr1, dr2]),
-        g2 = graph._create(gN2, [dr1]);
+      var dr1 = graph._relation(ec1, _.cloneDeep([vc1, vc2]), _.cloneDeep([vc3, vc4])),
+        dr2 = graph._relation(ec2, _.cloneDeep([vc1]), _.cloneDeep([vc4])),
+        dr3 = graph._relation(ec1, _.cloneDeep([vc5]), _.cloneDeep([vc5])),
+        g1 = graph._create(gN1, _.cloneDeep([dr1, dr2])),
+        g2 = graph._create(gN2, _.cloneDeep([dr1]));
 
-      console.log("FIRST: ");
-      console.log(dr3);
-      console.log("SECOND: ");
-      console.log(typeof dr3);
-      g1._editEdgeDefinitions(dr3);
+      g1._editEdgeDefinitions(_.cloneDeep(dr3));
+
+      g1 = graph._graph(gN1);
+      g2 = graph._graph(gN2);
+
       assertEqual([dr3, dr2], g1.__edgeDefinitions);
       assertEqual([dr3], g2.__edgeDefinitions);
-      g2 = graph._graph(gN2);
+
       assertEqual(g1._orphanCollections().sort(), [vc2, vc3].sort());
       assertEqual(g2._orphanCollections().sort(), [vc1, vc2, vc3, vc4].sort());
-
     },
 
     /*test_editEdgeDefinitionFromExistingGraph3: function() {
