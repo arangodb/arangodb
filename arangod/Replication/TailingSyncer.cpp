@@ -231,7 +231,6 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   // the new wal access protocol contains database names
   VPackSlice const nameSlice = slice.get("db");
   if (!nameSlice.isString()) {
-    LOG_DEVEL << slice.toJson();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                    "create database marker did not contain name");
   }
@@ -244,7 +243,6 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
     if (!data.isObject()) {
-      LOG_DEVEL << slice.toJson();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                      "create database marker did not contain data");
     }

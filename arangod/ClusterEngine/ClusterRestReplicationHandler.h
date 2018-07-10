@@ -42,6 +42,8 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
     return "ClusterRestReplicationHandler";
   }
 
+  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
+
  private:
 
   /// @brief handle a follow command for the replication log

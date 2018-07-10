@@ -116,21 +116,21 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
     // send back original value of "Origin" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin,
-                                  _origin);
+                                 _origin);
 
     // send back "Access-Control-Allow-Credentials" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                  (_denyCredentials ? "false" : "true"));
+                                 (_denyCredentials ? "false" : "true"));
 
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
-                                  StaticStrings::ExposedCorsHeaders);
+                                 StaticStrings::ExposedCorsHeaders);
   }
 
   // use "IfNotSet"
   response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
-                                StaticStrings::NoSniff);
+                               StaticStrings::NoSniff);
 
   // set "connection" header, keep-alive is the default
   response.setConnectionType(_closeRequested
@@ -146,7 +146,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
   }
 
   // reserve a buffer with some spare capacity
-  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 128), stat);
+  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 220), stat);
 
   // write header
   response.writeHeader(buffer._buffer);

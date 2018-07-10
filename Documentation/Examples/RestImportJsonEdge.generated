@@ -1,6 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=documents &lt;&lt;EOF
-{ "_from": "products/123", "_to": "products/234" }
-{"_from": "products/332", "_to": "products/abc",   "name": "other name" }
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=documents &amp;lt;&amp;lt;EOF
+{ <span class="hljs-string">"_from"</span>: <span class="hljs-string">"products/123"</span>, <span class="hljs-string">"_to"</span>: <span class="hljs-string">"products/234"</span> }
+{<span class="hljs-string">"_from"</span>: <span class="hljs-string">"products/332"</span>, <span class="hljs-string">"_to"</span>: <span class="hljs-string">"products/abc"</span>,   <span class="hljs-string">"name"</span>: <span class="hljs-string">"other name"</span> }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created

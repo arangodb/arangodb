@@ -26,6 +26,7 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/fasthash.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
@@ -906,7 +907,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // - _isVolatile
   // ... probably a few others missing here ...
 
-  WRITE_LOCKER(writeLocker, _infoLock);
+  MUTEX_LOCKER(guard, _infoLock); // prevent simultanious updates
   
   size_t rf = _replicationFactor;
   VPackSlice rfSl = slice.get("replicationFactor");

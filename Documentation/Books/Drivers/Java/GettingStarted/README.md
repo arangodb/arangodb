@@ -5,8 +5,7 @@
 
 <table>
 <tr><th>arangodb-java-driver</th><th>ArangoDB</th><th>network protocol</th><th>Java version</th></tr>
-<tr><td>4.3.x</td><td>3.0.0+</td><td>VelocyStream, HTTP</td><td>1.6+</td></tr>
-<tr><td>4.2.x</td><td>3.0.0+</td><td>VelocyStream, HTTP</td><td>1.6+</td></tr>
+<tr><td>4.2.x+</td><td>3.0.0+</td><td>VelocyStream, HTTP</td><td>1.6+</td></tr>
 <tr><td>4.1.x</td><td>3.1.0+</td><td>VelocyStream</td><td>1.6+</td></tr>
 <tr><td>3.1.x</td><td>3.1.0+</td><td>HTTP</td><td>1.6+</td></tr>
 <tr><td>3.0.x</td><td>3.0.x</td><td>HTTP</td><td>1.6+</td></tr>
@@ -21,17 +20,18 @@ To add the driver to your project with maven, add the following code to your pom
 (please use a driver with a version number compatible to your ArangoDB server's version):
 
 ArangoDB 3.x.x
+
 ```XML
 <dependencies>
   <dependency>
     <groupId>com.arangodb</groupId>
     <artifactId>arangodb-java-driver</artifactId>
-    <version>4.3.0</version>
+    <version>4.6.0</version>
   </dependency>
 </dependencies>
 ```
 
-If you want to test with a snapshot version (e.g. 4.3.0-SNAPSHOT), add the staging repository of oss.sonatype.org to your pom.xml:
+If you want to test with a snapshot version (e.g. 4.6.0-SNAPSHOT), add the staging repository of oss.sonatype.org to your pom.xml:
 
 ```XML
 <repositories>

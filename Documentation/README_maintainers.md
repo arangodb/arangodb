@@ -272,8 +272,10 @@ sortable naming scheme so they're executed in sequence. Using `<modulename>_<seq
     * Send the HTTP-request: `var response = logCurlRequest('POST', url, body);`
     * check its response:    `assert(response.code === 200);`
     * output a JSON server Reply: `logJsonResponse(response);` (will fail if its not a valid json)
+    * output a JSONL server Reply: `logJsonLResponse(response);` (will fail if its not a valid json;
+      use if the server responds with one json document per line; Add a note to the user that this is `*(One JSON document per line)*` above the example)
     * output HTML to the user: `logHtmlResponse(response);` (i.e. redirects have HTML documents)
-    * output the plain text to dump to the user: `logRawResponse(response);`
+    * output the plain text to dump to the user: `logRawResponse(response);` (**don't use this if you expect a json reply**)
     * dump the reply to the errorlog for testing (will mark run as failed): `logErrorResponse(response);`
 
  - EXAMPLE_AQL is intended to contain AQL queries that can be pasted into arangosh or the webinterfaces query editor.

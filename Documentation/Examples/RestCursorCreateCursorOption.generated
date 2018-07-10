@@ -1,9 +1,9 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR i IN 1..1000 FILTER i &gt; 500 LIMIT 10 RETURN i"</span>, 
-  <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"options"</span> : { 
-    <span class="hljs-string">"fullCount"</span> : <span class="hljs-literal">true</span> 
+  "query" : "FOR i IN 1..1000 FILTER i > 500 LIMIT 10 RETURN i", 
+  "count" : true, 
+  "options" : { 
+    "fullCount" : true 
   } 
 }
 EOF
@@ -37,7 +37,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">500</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"fullCount"</span> : <span class="hljs-number">500</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.000308990478515625</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.003431558609008789</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

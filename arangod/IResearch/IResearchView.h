@@ -28,6 +28,7 @@
 #include "IResearchViewMeta.h"
 #include "Basics/Thread.h"
 #include "Transaction/Status.h"
+#include "Basics/Thread.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalView.h"

@@ -40,6 +40,7 @@ class RocksDBRestExportHandler : public RestCursorHandler {
 
  public:
   RestStatus execute() override;
+  RestStatus continueExecute() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -52,7 +53,7 @@ class RocksDBRestExportHandler : public RestCursorHandler {
   /// @brief create an export cursor and return the first results
   //////////////////////////////////////////////////////////////////////////////
 
-  void createCursor();
+  RestStatus createCursor();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
