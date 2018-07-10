@@ -1,12 +1,21 @@
-Manifest files
-==============
+Service manifest
+================
 
-Every service comes with a `manifest.json` file providing metadata.
+Every service comes with a `manifest.json` file providing metadata. Typically a manifest should at least specify the version of ArangoDB the service supports and the `main` JavaScript file which Foxx will use as the entrypoint to your service:
+
+```json
+{
+  "engines": {
+    "arangodb": "^3.4.0"
+  },
+  "main": "index.js"
+}
+```
 
 Tooling integration
 -------------------
 
-If you are using an IDE or editor that supports JSON schema, you can use the public Foxx manifest schema [available at the third-party JSON Schema Store](http://json.schemastore.org/foxx-manifest) by adding the `$schema` field to your `manifest.json` file:
+If you are using an IDE or editor that supports JSON schema for code intelligence or validation, you can use the public Foxx manifest schema [available at the third-party JSON Schema Store](http://json.schemastore.org/foxx-manifest) by adding a `$schema` field to your `manifest.json` file:
 
 ```json
 {
@@ -16,7 +25,7 @@ If you are using an IDE or editor that supports JSON schema, you can use the pub
 
 ### Visual Studio Code
 
-In [Visual Studio Code](https://code.visualstudio.com) you can also enable the Foxx manifest schema for all `manifest.json` files (even without the `$schema` field) by adding the following to your [user or workspace settings](https://code.visualstudio.com/docs/getstarted/settings):
+In [Visual Studio Code](https://code.visualstudio.com) you can also enable the Foxx manifest schema for all `manifest.json` files by adding the following to your [user or workspace settings](https://code.visualstudio.com/docs/getstarted/settings):
 
 ```json
 {
@@ -35,6 +44,10 @@ Structure
 ---------
 
 The following fields are allowed in manifests:
+
+- **$schema**: `"http://json.schemastore.org/foxx-manifest"` (optional)
+
+  The JSON schema. See above.
 
 - **configuration**: `Object` (optional)
 

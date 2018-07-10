@@ -47,7 +47,7 @@ The parameter definition can have the following properties:
 
   Whether the parameter is required.
 
-If the configuration has parameters that do not specify a default value, you need to configure the service before it becomes active. In the meantime a fallback servicelication will be mounted that responds to all requests with a HTTP 500 status code indicating a server-side error.
+If the configuration has parameters that do not specify a default value, you need to configure the service before it becomes active. In the meantime a fallback service will be mounted that responds to all requests with a HTTP 500 status code indicating a server-side error.
 
 The configuration parameters of a mounted service can be adjusted from the web interface by clicking the *Configuration* button in the service details.
 
