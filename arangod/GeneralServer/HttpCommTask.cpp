@@ -761,6 +761,11 @@ void HttpCommTask::resetState() {
 }
 
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
+  if (!_auth->isActive()) {
+    request->setAuthenticated(true);
+    return rest::ResponseCode::OK;
+  }
+
   bool found;
   std::string const& authStr = request->header(StaticStrings::Authorization, found);
   if (!found) {
@@ -789,13 +794,10 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
 
       if (authMethod != AuthenticationMethod::NONE) {
         request->setAuthenticationMethod(authMethod);
-        if (_auth->isActive()) {
-          auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
-          request->setAuthenticated(entry.authenticated());
-          request->setUser(std::move(entry._username));
-        } else {
-          request->setAuthenticated(true);
-        }
+        TRI_ASSERT(_auth->isActive());
+        auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
+        request->setAuthenticated(entry.authenticated());
+        request->setUser(std::move(entry._username));
 
         if (request->authenticated()) {
           events::Authenticated(request, authMethod);
