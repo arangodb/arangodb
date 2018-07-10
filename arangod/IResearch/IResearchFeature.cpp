@@ -516,8 +516,8 @@ void IResearchFeature::Async::Thread::run() {
       _tasks.pop_back();
       ++_next->_size;
       --_size;
-      _next->_cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
       _next->_wasNotified = true; // ensure the next thread checks task validity since task was supposed to be checked in this thread
+      _next->_cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
     }
 
     for (size_t i = 0, count = _tasks.size(); i < count;) {
@@ -625,8 +625,8 @@ void IResearchFeature::Async::notify() const {
   // notify all threads
   for (auto& thread: _pool) {
     SCOPED_LOCK(thread._mutex);
-    thread._cond.notify_all();
     thread._wasNotified = true;
+    thread._cond.notify_all();
   }
 }
 
