@@ -54,8 +54,6 @@ static std::string const& stateToString(ExecutionState state) {
   return unknownString;
 }
 
-} // namespace
-
 std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const NamesToBlockTypeMap = {
   { "-undefined-",                 arangodb::aql::ExecutionBlock::Type::_UNDEFINED},
   { "CalculationBlock",            arangodb::aql::ExecutionBlock::Type::CALCULATION},
@@ -90,6 +88,8 @@ std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const Names
   { "IResearchViewUnorderedBlock", arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_UNORDERED}
 };
 std::unordered_map<arangodb::aql::ExecutionBlock::Type, std::string> blockTypeToNamesMap;
+
+} // namespace
 
 void ExecutionBlock::init() {
   blockTypeToNamesMap.reserve(NamesToBlockTypeMap.size());

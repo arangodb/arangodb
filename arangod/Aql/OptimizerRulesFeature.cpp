@@ -23,7 +23,6 @@
 #include "OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRules.h"
-#include "Aql/ExecutionBlock.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -59,7 +58,6 @@ OptimizerRulesFeature::OptimizerRulesFeature(
 
 void OptimizerRulesFeature::prepare() {
   addRules();
-  ExecutionBlock::init();
 }
 
 void OptimizerRulesFeature::unprepare() {
