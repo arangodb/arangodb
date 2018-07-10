@@ -19,7 +19,6 @@ x-content-type-options: nosniff
     <span class="hljs-string">"commit"</span> : { 
       <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
       <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
-      <span class="hljs-string">"commitTimeoutMsec"</span> : <span class="hljs-number">5000</span>, 
       <span class="hljs-string">"consolidate"</span> : { 
         <span class="hljs-string">"bytes"</span> : { 
           <span class="hljs-string">"segmentThreshold"</span> : <span class="hljs-number">300</span>, 
