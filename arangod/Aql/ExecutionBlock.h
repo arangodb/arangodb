@@ -124,6 +124,7 @@ class ExecutionBlock {
 
   static std::string typeToString(Type type);
   static Type typeFromString(std::string const& type);
+  static void init();
 
  public:
   /// @brief batch size value
