@@ -26,6 +26,7 @@
 #include "Aql/Graphs.h"
 #include "Aql/Variable.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"

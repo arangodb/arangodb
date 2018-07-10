@@ -317,14 +317,14 @@ class Query {
 
   /// @brief setter for the continue callback:
   ///        We can either have a handler or a callback
-  void setContinueCallback(std::function<void()> cb) {
+  void setContinueCallback(std::function<void()> const& cb) {
     _continueCallback = cb;
     _hasHandler = false;
   }
 
   /// @brief setter for the continue handler:
   ///        We can either have a handler or a callback
-  void setContinueHandler(std::function<void()> handler) {
+  void setContinueHandler(std::function<void()> const& handler) {
     _continueCallback = handler;
     _hasHandler = true;
   }

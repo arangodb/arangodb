@@ -26,6 +26,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"

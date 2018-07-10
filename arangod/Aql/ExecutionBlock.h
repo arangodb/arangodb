@@ -193,11 +193,6 @@ class ExecutionBlock {
   /// elements skipped is returned.
   virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
-  // Used in aql rest handler hasMore
-  // Needs to be accurate
-  // TODO change the documentation of all hasMore implementations
-  virtual ExecutionState hasMoreState();
-  
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
   transaction::Methods* transaction() const { return _trx; }

@@ -139,6 +139,12 @@ const benchTodos = [{
   'complexity': '1',
   'transaction': true
 }, {
+  'requests': '1000',
+  'concurrency': '4',
+  'test-case': 'aqltrx',
+  'complexity': '1',
+  'transaction': true
+}, {
   'requests': '100',
   'concurrency': '3',
   'test-case': 'counttrx',

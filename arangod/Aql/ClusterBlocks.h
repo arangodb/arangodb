@@ -77,12 +77,6 @@ class BlockWithClients : public ExecutionBlock {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  /// @brief hasMore
-  ExecutionState hasMoreState() override final {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   /// @brief getSomeForShard
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
       size_t atMost, std::string const& shardId);
@@ -252,9 +246,6 @@ class RemoteBlock final : public ExecutionBlock {
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
-  /// @brief hasMore
-  ExecutionState hasMoreState() override final;
-
   /// @brief handleAsyncResult
   bool handleAsyncResult(ClusterCommResult* result) override;
 
@@ -323,10 +314,6 @@ class UnsortingGatherBlock final : public ExecutionBlock {
   /// @brief initializeCursor
   std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-  /// @brief hasMore: true if any position of _buffer hasMore and false
-  /// otherwise.
-  ExecutionState hasMoreState() override final;
-
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
       size_t atMost) override final;
@@ -377,10 +364,6 @@ class SortingGatherBlock final : public ExecutionBlock {
 
   /// @brief initializeCursor
   std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;
-
-  /// @brief hasMore: true if any position of _buffer hasMore and false
-  /// otherwise.
-  ExecutionState hasMoreState() override final;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(

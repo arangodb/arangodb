@@ -1383,28 +1383,13 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   if (node->type != NODE_TYPE_OPERATOR_BINARY_LE &&
       node->type != NODE_TYPE_OPERATOR_BINARY_LT &&
       node->type != NODE_TYPE_OPERATOR_BINARY_GE &&
-      node->type != NODE_TYPE_OPERATOR_BINARY_GT &&
-      node->type != NODE_TYPE_OPERATOR_BINARY_NE) {
+      node->type != NODE_TYPE_OPERATOR_BINARY_GT) {
     // no binary compare in node
     return node;
   }
 
   auto first = node->getMemberUnchecked(0);
   auto second = node->getMemberUnchecked(1);
-  
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
-    if (first->isNullValue()) {
-      // convert  null != value  =>  value > null
-      // we do this so we have a range for an index access here.
-      return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, second, first);
-    } else if (second->isNullValue()) {
-      // convert  value != null  =>  value > null
-      // we do this so we have a range for an index access here.
-      return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, first, second);
-    }
-    // stop here
-    return node;
-  }
 
   if (second->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     if (first->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -1483,9 +1468,7 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
   }
 
   // normalize any comparisons
-  auto newCompare = normalizeCompare(_ast, node);
-
-  return newCompare;
+  return normalizeCompare(_ast, node);
 }
 
 /// @brief converts from negation normal to disjunctive normal form

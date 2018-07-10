@@ -29,24 +29,32 @@
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
   
 namespace {
-  static std::string StateToString(ExecutionState state) {
-    switch (state) {
-      case ExecutionState::DONE:
-        return "DONE";
-      case ExecutionState::HASMORE:
-        return "HASMORE";
-      case ExecutionState::WAITING:
-        return "WAITING";
-    }
-    TRI_ASSERT(false);
-    return "unkown";
+
+std::string const doneString = "DONE";
+std::string const hasMoreString = "HASMORE";
+std::string const waitingString = "WAITING";
+std::string const unknownString = "UNKNOWN";
+
+static std::string const& stateToString(ExecutionState state) {
+  switch (state) {
+    case ExecutionState::DONE:
+      return doneString;
+    case ExecutionState::HASMORE:
+      return hasMoreString;
+    case ExecutionState::WAITING:
+      return waitingString;
   }
+  TRI_ASSERT(false);
+  return unknownString;
 }
+
+} // namespace
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
@@ -216,7 +224,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
       ExecutionNode const* node = getPlanNode();
       LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
       << node->getTypeString() << " this=" << (uintptr_t) this
-      << " id=" << node->id() << " state=" << StateToString(state);
+      << " id=" << node->id() << " state=" << ::stateToString(state);
       
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (result == nullptr) {
@@ -253,9 +261,6 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  if (_done) {
-    std::string blockType = typeToString(getType());
-  }
 
   traceGetSomeBegin(atMost);
     
@@ -435,28 +440,6 @@ std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
   return {res.first, skipped};
 }
 
-ExecutionState ExecutionBlock::hasMoreState() {
-  if (_done) {
-    return ExecutionState::DONE;
-  }
-  if (!_buffer.empty()) {
-    return ExecutionState::HASMORE;
-  }
-  ExecutionState state;
-  bool blockAppended;
-  std::tie(state, blockAppended) = getBlock(DefaultBatchSize());
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!blockAppended);
-    return ExecutionState::WAITING;
-  }
-  if (blockAppended) {
-    _pos = 0;
-    return ExecutionState::HASMORE;
-  }
-  _done = true;
-  return ExecutionState::DONE;
-}
-
 ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
   if (!_buffer.empty()) {
     return BufferState::HAS_BLOCKS;
@@ -512,10 +495,6 @@ AqlItemBlock* ExecutionBlock::advanceCursor(size_t numInputRowsConsumed,
 std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped_) {
   TRI_ASSERT(result == nullptr && skipped_ == 0);
-
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-    LOG_DEVEL << "ExecutionBlock::getOrSkipSome2 is registered";
-  }
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
 
@@ -721,7 +700,9 @@ std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
     case Type::IRESEARCH_VIEW_UNORDERED:
       return "IResearchViewUnorderedBlock";
   }
-  TRI_ASSERT(false);
+  // to please compiler in non-maintainer mode
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+      std::string("when converting ExecutionBlock::Type to string: got invalid type"));
 }
 
 ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
@@ -822,9 +803,6 @@ ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
     return Type::IRESEARCH_VIEW_UNORDERED;
   }
 
-  LOG_TOPIC(ERR, Logger::STATISTICS)
-      << "When converting string to ExecutionBlock::Type: Got invalid string '"
-      << type << "'";
-  TRI_ASSERT(false);
-  return Type::_UNDEFINED;
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+      std::string("when converting string to ExecutionBlock::Type: got invalid string '" + type + "'"));
 }
