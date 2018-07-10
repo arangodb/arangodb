@@ -24,7 +24,10 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/Variable.h"
 
 #include <deque>
@@ -57,6 +60,8 @@
 #endif
 
 namespace arangodb {
+struct ClusterCommResult;
+
 namespace transaction {
 class Methods;
 }
@@ -72,6 +77,54 @@ class ExecutionBlock {
 
   virtual ~ExecutionBlock();
 
+  ExecutionBlock(ExecutionBlock const&) = delete;
+  ExecutionBlock operator=(ExecutionBlock const&) = delete;
+
+  /// @brief type of the block. only the blocks actually instantiated are
+  // needed, so e.g. ModificationBlock or ExecutionBlock are omitted.
+  enum class Type {
+    _UNDEFINED,
+    CALCULATION,
+    COUNT_COLLECT,
+    DISTINCT_COLLECT,
+    ENUMERATE_COLLECTION,
+    ENUMERATE_LIST,
+    FILTER,
+    HASHED_COLLECT,
+    INDEX,
+    LIMIT,
+    NO_RESULTS,
+    REMOTE,
+    RETURN,
+    SHORTEST_PATH,
+    SINGLETON,
+    SORT,
+    SORTED_COLLECT,
+    SORTING_GATHER,
+    SUBQUERY,
+    TRAVERSAL,
+    UNSORTING_GATHER,
+    REMOVE,
+    INSERT,
+    UPDATE,
+    REPLACE,
+    UPSERT,
+    SCATTER,
+    DISTRIBUTE,
+    IRESEARCH_VIEW,
+    IRESEARCH_VIEW_ORDERED,
+    IRESEARCH_VIEW_UNORDERED,
+  };
+  // omitted in this list are (because):
+  // WaitingExecutionBlockMock (mock)
+  // ExecutionBlockMock (mock)
+  // ModificationBlock (insert, update, etc.)
+  // BlockWithClients (scatter, distribute)
+  // IResearchViewBlockBase (IResearchView*)
+
+  static std::string typeToString(Type type);
+  static Type typeFromString(std::string const& type);
+
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
@@ -80,9 +133,6 @@ class ExecutionBlock {
   /// will return ExecutionNode::MaxRegisterId for an unknown variable
   RegisterId getRegister(VariableId id) const;
   RegisterId getRegister(Variable const* variable) const;
-
-  /// @brief determine the number of rows in a vector of blocks
-  size_t countBlocksRows(std::vector<AqlItemBlock*> const&) const;
 
   /// @brief whether or not the query was killed
   bool isKilled() const;
@@ -94,6 +144,7 @@ class ExecutionBlock {
   TEST_VIRTUAL void addDependency(ExecutionBlock* ep) { 
     TRI_ASSERT(ep != nullptr);
     _dependencies.emplace_back(ep); 
+    _dependencyPos = _dependencies.end();
   }
 
   /// @brief get all dependencies
@@ -116,39 +167,55 @@ class ExecutionBlock {
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
-  virtual int initializeCursor(AqlItemBlock* items, size_t pos);
+  virtual std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
 
   /// @brief shutdown, will be called exactly once for the whole query
-  virtual int shutdown(int);
-
-  /// @brief getOne, gets one more item
-  virtual AqlItemBlock* getOne() { return getSome(1); }
+  virtual std::pair<ExecutionState, Result> shutdown(int);
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to
   /// return a block of at most atMost items, however, it may return
   /// less (for example if there are not enough items to come). However,
   /// if it returns an actual block, it must contain at least one item.
-  virtual AqlItemBlock* getSome(size_t atMost);
+  /// getSome() also takes care of tracing and clearing registers; don't do it
+  /// in getOrSkipSome() implementations.
+  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost);
 
   void traceGetSomeBegin(size_t atMost);
-  void traceGetSomeEnd(AqlItemBlock const*) const;
+  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state) const;
  
-  /// @brief getSome, skips some more items, semantic is as follows: not
+  /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
   /// skip a block of at most atMost items, however, it may skip
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
-  virtual size_t skipSome(size_t atMost);
+  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
-  virtual bool hasMore();
-  
-  // skip exactly atMost outputs
-  void skip(size_t atMost, size_t& numActuallySkipped);
+  // Used in aql rest handler hasMore
+  // Needs to be accurate
+  // TODO change the documentation of all hasMore implementations
+  virtual ExecutionState hasMoreState();
   
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
   transaction::Methods* transaction() const { return _trx; }
+
+  // @brief Will be called on the querywakeup callback with the
+  // result collected over the network. Needs to be implemented
+  // on all nodes that use this mechanism.
+  virtual bool handleAsyncResult(ClusterCommResult* result) { 
+    // This indicates that a node uses async functionality
+    // but does not react to the response.
+    TRI_ASSERT(false);
+    return true;
+  }
+
+  RegisterId getNrInputRegisters() const;
+
+  RegisterId getNrOutputRegisters() const;
+
+  virtual Type getType() const {return Type::_UNDEFINED;}
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager
@@ -156,6 +223,9 @@ class ExecutionBlock {
 
   /// @brief return an AqlItemBlock to the memory manager
   void returnBlock(AqlItemBlock*& block);
+
+  /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
+  void returnBlockUnlessNull(AqlItemBlock*& block);
 
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned
@@ -167,22 +237,54 @@ class ExecutionBlock {
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if
   /// the dependent node is exhausted.
-  bool getBlock(size_t atMost);
+  std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
   /// @brief getSomeWithoutRegisterClearout, same as above, however, this
   /// is the actual worker which does not clear out registers at the end
   /// the idea is that somebody who wants to call the generic functionality
   /// in a derived class but wants to modify the results before the register
   /// cleanup can use this method, internal use only
-  AqlItemBlock* getSomeWithoutRegisterClearout(size_t atMost);
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+  getSomeWithoutRegisterClearout(size_t atMost);
 
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
   
+
   /// @brief generic method to get or skip some
-  virtual int getOrSkipSome(size_t atMost, bool skipping,
-                            AqlItemBlock*& result, size_t& skipped);
+  /// Does neither do tracing (traceGetSomeBegin/~End), nor call
+  /// clearRegisters() - both is done in getSome(), which calls this via
+  /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
+  /// implementations.
+  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost,
+                                                          bool skipping,
+                                                          AqlItemBlock*& result,
+                                                          size_t& skipped);
+
+  /// @brief Returns the success return start of this block.
+  ///        Can either be HASMORE or DONE.
+  ///        Guarantee is that if DONE is returned every subsequent call
+  ///        to get/skipSome will NOT find mor documents.
+  ///        HASMORE is allowed to lie, so a next call to get/skipSome could return
+  ///        no more results.
+  virtual ExecutionState getHasMoreState();
+
+  /// @brief If the buffer is empty, calls getBlock(atMost). The return values
+  /// mean:
+  /// - NO_MORE_BLOCKS: the buffer is empty and the upstream is DONE
+  /// - HAS_BLOCKS: there is at least one block in the buffer
+  /// - HAS_NEW_BLOCK: the buffer was empty before and a new block was added
+  /// - WAITING: upstream returned WAITING, state is unchanged
+  enum class BufferState { NO_MORE_BLOCKS, HAS_BLOCKS, HAS_NEW_BLOCK, WAITING };
+  BufferState getBlockIfNeeded(size_t atMost);
+
+  /// @brief Updates _skipped and _pos; removes the first item from the
+  /// buffer if necessary. If a block was removed it is returned, and nullptr
+  /// otherwise. The caller then owns the block (and therefore is responsible
+  /// for calling returnBlock()).
+  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed,
+                              size_t numOutputRowsCreated);
 
  protected:
   /// @brief the execution engine
@@ -196,6 +298,15 @@ class ExecutionBlock {
 
   /// @brief our dependent nodes
   std::vector<ExecutionBlock*> _dependencies;
+
+  /// @brief position in the dependencies while iterating through them
+  ///        used in initializeCursor and shutdown.
+  ///        Needs to be set to .end() everytime we modify _dependencies
+  std::vector<ExecutionBlock*>::iterator _dependencyPos;
+
+  /// @brief the Result returned during the shutdown phase. Is kept for multiple
+  ///        waiting phases.
+  Result _shutdownResult;
 
   /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
   /// We keep the following invariant between this and the other two variables
@@ -219,6 +330,23 @@ class ExecutionBlock {
   
   /// @brief getSome begin point in time
   double _getSomeBegin;
+
+  /// @brief the execution state of the dependency
+  ///        used to determine HASMORE or DONE better
+  ExecutionState _upstreamState;
+
+  /// @brief The number of skipped/processed rows in getOrSkipSome, used to keep
+  /// track of it despite WAITING interruptions. As
+  /// ExecutionBlock::getOrSkipSome is called directly in some overriden
+  /// implementations of ::getOrSkipSome, these implementations need their own
+  /// _skipped counter.
+  size_t _skipped;
+
+  /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
+  /// be a member variable due to possible WAITING interruptions.
+  aql::BlockCollector _collector;
+
+
 };
 
 }  // namespace arangodb::aql

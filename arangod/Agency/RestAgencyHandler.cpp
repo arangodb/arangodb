@@ -48,8 +48,6 @@ RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
     : RestBaseHandler(request, response), _agent(agent) {}
 
-bool RestAgencyHandler::isDirect() const { return false; }
-
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";

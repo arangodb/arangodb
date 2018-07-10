@@ -48,7 +48,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id,
         DocumentProducingNode(outVariable),
         CollectionAccessingNode(collection),
         _indexes(indexes),
-        _condition(condition.release()),
+        _condition(std::move(condition)),
         _needsGatherNodeSort(false),
         _options(opts) {
   TRI_ASSERT(_condition != nullptr);
@@ -62,7 +62,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
       _indexes(),
-      _condition(nullptr),
       _needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)),
       _options() {
 
@@ -97,7 +96,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "\"condition\" attribute should be an object");
   }
 
-  _condition = Condition::fromVPack(plan, condition);
+  _condition.reset(Condition::fromVPack(plan, condition));
 
   TRI_ASSERT(_condition != nullptr);
 
@@ -226,7 +225,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief destroy the IndexNode
-IndexNode::~IndexNode() { delete _condition; }
+IndexNode::~IndexNode() {}
 
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency
