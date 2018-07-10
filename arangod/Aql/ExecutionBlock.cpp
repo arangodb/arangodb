@@ -513,10 +513,6 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped_) {
   TRI_ASSERT(result == nullptr && skipped_ == 0);
 
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-    LOG_DEVEL << "ExecutionBlock::getOrSkipSome2 is registered";
-  }
-
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
 
   auto processRows = [this](size_t atMost, bool skipping)

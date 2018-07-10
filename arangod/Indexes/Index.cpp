@@ -48,41 +48,90 @@
 using namespace arangodb;
 
 namespace {
-  bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
-    for (auto const& it : fields) {
-      if (TRI_AttributeNamesHaveExpansion(it)) {
-        return true;
-      }
+
+bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
+  for (auto const& it : fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
+      return true;
     }
-    return false;
+  }
+  return false;
+}
+
+/// @brief set fields from slice
+std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice const& fields,
+                                                                      bool allowExpansion) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> result;
+  if (!fields.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                    "invalid index description");
   }
   
-  /// @brief set fields from slice
-  std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice const& fields,
-                                                                        bool allowExpansion) {
-    std::vector<std::vector<arangodb::basics::AttributeName>> result;
-    if (!fields.isArray()) {
+  size_t const n = static_cast<size_t>(fields.length());
+  result.reserve(n);
+  
+  for (auto const& name : VPackArrayIterator(fields)) {
+    if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                     "invalid index description");
+                                      "invalid index description");
     }
     
-    size_t const n = static_cast<size_t>(fields.length());
-    result.reserve(n);
-    
-    for (auto const& name : VPackArrayIterator(fields)) {
-      if (!name.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                       "invalid index description");
-      }
-      
-      std::vector<arangodb::basics::AttributeName> parsedAttributes;
-      TRI_ParseAttributeString(name.copyString(), parsedAttributes,
-                               allowExpansion);
-      result.emplace_back(std::move(parsedAttributes));
+    std::vector<arangodb::basics::AttributeName> parsedAttributes;
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes,
+                              allowExpansion);
+    result.emplace_back(std::move(parsedAttributes));
+  }
+  return result;
+}
+
+bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* access,
+               std::unordered_set<std::string> const& nonNullAttributes) {
+  TRI_ASSERT(op != nullptr);
+  TRI_ASSERT(access != nullptr);
+
+  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+      op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE ||
+      op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (op->getExcludesNull()) {
+      // already proven that the attribute cannot become "null"
+      return false;
     }
-    return result;
+  }
+
+  try {
+    if (nonNullAttributes.find(access->toString()) != nonNullAttributes.end()) {
+      // found an attribute marked as non-null
+      return false;
+    }
+  } catch (...) {
+    // stringification may throw
+  }
+
+  // for everything else we are unusure
+  return true;
+}
+
+void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* access,
+                   std::unordered_set<std::string>& nonNullAttributes) {
+  TRI_ASSERT(op != nullptr);
+  TRI_ASSERT(access != nullptr);
+  
+  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+      op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE ||
+      op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // non-null marking currently only supported for these node types
+    const_cast<arangodb::aql::AstNode*>(op)->setExcludesNull(true);
+  }
+  // all other node types will be ignored here
+   
+  try { 
+    nonNullAttributes.emplace(access->toString());
+  } catch (...) {
+    // stringification may throw
   }
 }
+
+} // namespace
 
 // If the Index is on a coordinator instance the index may not access the
 // logical collection because it could be gone!
@@ -145,10 +194,7 @@ void Index::validateFields(VPackSlice const& slice) {
   auto fields = slice.get(arangodb::StaticStrings::IndexFields);
 
   if (!fields.isArray()) {
-// FIXME
     return;
-//    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-//                                   "invalid index description");
   }
 
   for (auto const& name : VPackArrayIterator(fields)) {
@@ -678,42 +724,32 @@ bool Index::canUseConditionPart(
       */
     } else if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
+
+      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
+        // > anything also excludes "null". now note that this attribute cannot become null
+        // range definitely exludes the "null" value
+        ::markAsNonNull(op, access, nonNullAttributes);
+      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+                 op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
+        // <  and  <= are not supported with sparse indexes as this may include
+        // null values
+        if (::canBeNull(op, access, nonNullAttributes)) {
+          return false;
+        }
+
+        // range definitely exludes the "null" value
+        ::markAsNonNull(op, access, nonNullAttributes);
+      }
+
       if (other->isConstant()) {
         if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE &&
             other->isNullValue()) {
           // != null. now note that a certain attribute cannot become null
-          try {
-            nonNullAttributes.emplace(access->toString());
-          } catch (...) {
-          }
-        } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
-          // > anything. now note that a certain attribute cannot become null
-          try {
-            nonNullAttributes.emplace(access->toString());
-          } catch (...) {
-          }
+          ::markAsNonNull(op, access, nonNullAttributes);
         } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
                    !other->isNullValue()) {
           // >= non-null. now note that a certain attribute cannot become null
-          try {
-            nonNullAttributes.emplace(access->toString());
-          } catch (...) {
-          }
-        }
-
-        if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
-            op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
-          // <  and  <= are not supported with sparse indexes as this may include
-          // null values
-          try {
-            // check if we've marked this attribute as being non-null already
-            if (nonNullAttributes.find(access->toString()) ==
-                nonNullAttributes.end()) {
-              return false;
-            }
-          } catch (...) {
-            return false;
-          }
+          ::markAsNonNull(op, access, nonNullAttributes);
         }
 
         if (other->isNullValue() &&
@@ -721,15 +757,10 @@ bool Index::canUseConditionPart(
              op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
           // ==  and  >= null are not supported with sparse indexes for the same
           // reason
-          try {
-            // check if we've marked this attribute as being non-null already
-            if (nonNullAttributes.find(access->toString()) ==
-                nonNullAttributes.end()) {
-              return false;
-            }
-          } catch (...) {
+          if (::canBeNull(op, access, nonNullAttributes)) {
             return false;
           }
+          ::markAsNonNull(op, access, nonNullAttributes);
         }
 
         if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
@@ -744,13 +775,12 @@ bool Index::canUseConditionPart(
         }
       } else {
         // !other->isConstant()
-        try {
-          if (nonNullAttributes.find(access->toString()) == nonNullAttributes.end()) {
-            return false;
-          }
-        } catch (...) {
+        if (::canBeNull(op, access, nonNullAttributes)) {
           return false;
         }
+        
+        // range definitely exludes the "null" value
+        ::markAsNonNull(op, access, nonNullAttributes);
       }
     }
   }
