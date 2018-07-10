@@ -62,6 +62,7 @@
   * [Joins](Examples/Join.md)
   * [Grouping](Examples/Grouping.md)
   * [Traversals](Examples/CombiningGraphTraversals.md)
+  * [Remove vertex](Examples/RemoveVertex.md)
   * [Multiple path search](Examples/MultiplePaths.md)
   * [Queries without collections](Examples/QueriesNoCollections.md)
 * [User Functions](Extending/README.md)
