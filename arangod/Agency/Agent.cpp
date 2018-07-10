@@ -459,6 +459,18 @@ void Agent::sendAppendEntriesRPC() {
         earliestPackage = _earliestPackage[followerId];
       }
 
+      // We essentially have to send some log entries from their lastConfirmed+1
+      // on. However, we have to take care of the case that their lastConfirmed
+      // is a value which is very outdated, such that we have in the meantime
+      // done a log compaction and do not actually have lastConfirmed+1 any
+      // more. In that case, we need to send our latest snapshot at index S
+      // (say), and then some log entries from (and including) S on. This is
+      // to ensure that the other side does not only have the snapshot, but
+      // also the log entry which produced that snapshot.
+      // Therefore, we will set lastConfirmed to one less than our latest
+      // snapshot in this special case, and we will always fetch enough
+      // entries from the log to fulfull our duties.
+
       if ((steady_clock::now() - earliestPackage).count() < 0 ||
           _state.lastIndex() <= lastConfirmed) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
