@@ -44,14 +44,6 @@ class SingletonBlock final : public ExecutionBlock {
   /// above
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  ExecutionState hasMoreState() override final {
-    if (_done) {
-      return ExecutionState::DONE;
-    } else {
-      return ExecutionState::HASMORE;
-    }
-  }
-
   Type getType() const override final {
     return Type::SINGLETON;
   }
@@ -196,8 +188,6 @@ class NoResultsBlock final : public ExecutionBlock {
   /// @brief initializeCursor, store a copy of the register values coming from
   /// above
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
-  ExecutionState hasMoreState() override final { return ExecutionState::DONE; }
 
   Type getType() const override final {
     return Type::NO_RESULTS;

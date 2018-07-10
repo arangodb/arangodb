@@ -548,119 +548,6 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   return RestStatus::DONE;
 }
 
-// GET method for /_api/aql/<operation>/<queryId>, (internal)
-// this is using
-// the part of the cursor API without side effects. The operation must
-// be "hasMore" or "hasMoreState". "hasMore" is a synchronous operation and
-// only for backwards compatibility; new client code should only use
-// "hasMoreState".
-//
-// The result is a Json
-// with, depending on the operation, the following attributes:
-//   for "hasMore":
-//     the result has the attributes "error" (set to false)
-//     and "hasMore" set to a boolean value.
-//   for "hasMoreState":
-//     the result has the attributes "error" (set to false)
-//     and "hasMoreState" set to a string "DONE", "HASMORE" or "WAITING".
-void RestAqlHandler::getInfoQuery(std::string const& operation,
-                                  std::string const& idString) {
-  bool found;
-  std::string const& shardId = _request->header("shard-id", found);
-
-  Query* query = nullptr;
-  if (findQuery(idString, query)) {
-    return;
-  }
-
-  TRI_ASSERT(_qId > 0);
-
-  VPackBuilder answerBody;
-  try {
-    VPackObjectBuilder guard(&answerBody);
-
-    if (operation == "hasMoreState") {
-      // asynchronous API
-      ExecutionState hasMoreState;
-      if (shardId.empty()) {
-        hasMoreState = query->engine()->hasMoreState();
-      } else {
-        auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
-        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-            "unexpected node type");
-        }
-        hasMoreState = block->getHasMoreStateForShard(shardId);
-      }
-      switch (hasMoreState) {
-        case ExecutionState::DONE:
-          answerBody.add("hasMoreState", VPackValue("DONE"));
-          break;
-        case ExecutionState::HASMORE:
-          answerBody.add("hasMoreState", VPackValue("HASMORE"));
-          break;
-        case ExecutionState::WAITING:
-          answerBody.add("hasMoreState", VPackValue("WAITING"));
-          break;
-      }
-    } else if (operation == "hasMore") {
-      LOG_TOPIC(WARN, arangodb::Logger::AQL)
-          << "Deprecated blocking route 'hasMore' used in AQL. This should "
-             "only happen during a rolling upgrade (from <3.4 to ~3.4). "
-             "Otherwise, please report this error.";
-
-      // backwards compatible synchronous API
-      bool hasMore;
-      if (shardId.empty()) {
-        hasMore = query->engine()->hasMoreSync();
-      } else {
-        auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
-        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "unexpected node type");
-        }
-        hasMore = block->hasMoreForShard(shardId);
-      }
-
-      answerBody.add("hasMore", VPackValue(hasMore));
-    } else {
-      _queryRegistry->close(&_vocbase, _qId);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "referenced query not found";
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      return;
-    }
-
-    answerBody.add(StaticStrings::Error, VPackValue(false));
-  } catch (arangodb::basics::Exception const& ex) {
-    _queryRegistry->close(&_vocbase, _qId);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: " << ex.message();
-    generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    _queryRegistry->close(&_vocbase, _qId);
-
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: "
-                                            << ex.what();
-
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                  ex.what());
-  } catch (...) {
-    _queryRegistry->close(&_vocbase, _qId);
-
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "failed during use of query: Unknown exception occurred";
-
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                  "an unknown exception occurred");
-  }
-
-  _queryRegistry->close(&_vocbase, _qId);
-
-  sendResponse(rest::ResponseCode::OK, answerBody.slice(),
-               query->trx()->transactionContext().get());
-}
-
 // executes the handler
 RestStatus RestAqlHandler::execute() {
   // std::cout << "GOT INCOMING REQUEST: " <<
@@ -700,12 +587,9 @@ RestStatus RestAqlHandler::execute() {
       break;
     }
     case rest::RequestType::GET: {
-      if (suffixes.size() != 2) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API";
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown GET API");
-      } else {
-        getInfoQuery(suffixes[0], suffixes[1]);
-      }
+      // Previously, the only GET API was /_api/aql/hasMore. Now, there is none.
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API";
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown GET API");
       break;
     }
     case rest::RequestType::DELETE_REQ:

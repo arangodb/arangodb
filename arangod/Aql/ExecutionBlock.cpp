@@ -435,28 +435,6 @@ std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
   return {res.first, skipped};
 }
 
-ExecutionState ExecutionBlock::hasMoreState() {
-  if (_done) {
-    return ExecutionState::DONE;
-  }
-  if (!_buffer.empty()) {
-    return ExecutionState::HASMORE;
-  }
-  ExecutionState state;
-  bool blockAppended;
-  std::tie(state, blockAppended) = getBlock(DefaultBatchSize());
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!blockAppended);
-    return ExecutionState::WAITING;
-  }
-  if (blockAppended) {
-    _pos = 0;
-    return ExecutionState::HASMORE;
-  }
-  _done = true;
-  return ExecutionState::DONE;
-}
-
 ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
   if (!_buffer.empty()) {
     return BufferState::HAS_BLOCKS;

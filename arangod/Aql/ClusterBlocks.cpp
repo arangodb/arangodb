@@ -1126,13 +1126,25 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
     }
   */
 
-  if (_lastResponse != nullptr || _lastError.fail()) {
-    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
+  if (_lastError.fail()) {
+    TRI_ASSERT(_lastResponse == nullptr);
+    Result res = _lastError;
+    _lastError.reset();
+    // we were called with an error need to throw it.
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  if (_lastResponse != nullptr) {
+    TRI_ASSERT(_lastError.ok());
 
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
+
+    // both must be reset before return or throw
+    TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
+
     VPackSlice slice = responseBodyBuilder->slice();
     if (slice.isObject()) {
-      if (slice.hasKey("stats")) { 
+      if (slice.hasKey("stats")) {
         ExecutionStats newStats(slice.get("stats"));
         _engine->_stats.add(newStats);
       }
@@ -1166,11 +1178,12 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
   bodyBuilder.add("code", VPackValue(errorCode));
   bodyBuilder.close();
 
-  auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());
+  auto bodyString =
+      std::make_shared<std::string const>(bodyBuilder.slice().toJson());
 
-  auto res = sendAsyncRequest(
-      rest::RequestType::PUT, "/_api/aql/shutdown/", bodyString);
- 
+  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
+                              bodyString);
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1188,21 +1201,23 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
   
   traceGetSomeBegin(atMost);
 
-  if (!_lastError.ok()) {
+  if (_lastError.fail()) {
+    TRI_ASSERT(_lastResponse == nullptr);
     Result res = _lastError;
     _lastError.reset();
     // we were called with an error need to throw it.
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  if (_lastResponse != nullptr || _lastError.fail()) {
+  if (_lastResponse != nullptr) {
+    TRI_ASSERT(_lastError.ok());
     // We do not have an error but a result, all is good
     // We have an open result still.
-
-    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
-
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
     // Result is the response which will be a serialized AqlItemBlock
+
+    // both must be reset before return or throw
+    TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
 
     VPackSlice responseBody = responseBodyBuilder->slice();
 
@@ -1211,14 +1226,15 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
       state = ExecutionState::DONE;
     }
     if (responseBody.hasKey("data")) {
-      auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
+      auto r = std::make_unique<AqlItemBlock>(
+          _engine->getQuery()->resourceMonitor(), responseBody);
       traceGetSomeEnd(r.get(), state);
       return {state, std::move(r)};
-    } 
+    }
     traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
-  
+
   // We need to send a request here
   VPackBuilder builder;
   builder.openObject();
@@ -1243,12 +1259,23 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
 std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
-  if (_lastResponse != nullptr || _lastError.fail()) {
-    TRI_DEFER(_lastResponse.reset(); _lastError.reset(););
+  if (_lastError.fail()) {
+    TRI_ASSERT(_lastResponse == nullptr);
+    Result res = _lastError;
+    _lastError.reset();
+    // we were called with an error need to throw it.
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  if (_lastResponse != nullptr) {
+    TRI_ASSERT(_lastError.ok());
 
     // We have an open result still.
     // Result is the response which will be a serialized AqlItemBlock
     std::shared_ptr<VPackBuilder> responseBodyBuilder = stealResultBody();
+
+    // both must be reset before return or throw
+    TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
 
     VPackSlice slice = responseBodyBuilder->slice();
 
@@ -1260,6 +1287,7 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
     if (slice.hasKey("skipped")) {
       skipped = slice.get("skipped").getNumericValue<size_t>();
     }
+
     // TODO Check if we can get better with HASMORE/DONE
     if (skipped == 0) {
       return {ExecutionState::DONE, skipped};
@@ -1290,47 +1318,6 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief hasMore
-ExecutionState RemoteBlock::hasMoreState() {
-  DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::GET, "/_api/aql/hasMoreState/", std::string());
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-
-  if (!slice.hasKey("hasMoreState") || !slice.get("hasMoreState").isString()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-  std::string hasMoreStateString = slice.get("hasMoreState").copyString();
-
-  ExecutionState hasMoreState;
-  if (hasMoreStateString == "HASMORE") {
-    hasMoreState = ExecutionState::HASMORE;
-  } else if (hasMoreStateString == "DONE") {
-    hasMoreState = ExecutionState::DONE;
-  } else if (hasMoreStateString == "WAITING") {
-    hasMoreState = ExecutionState::WAITING;
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-
-  return hasMoreState;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 // -----------------------------------------------------------------------------
 // -- SECTION --                                            UnsortingGatherBlock
 // -----------------------------------------------------------------------------
@@ -1348,32 +1335,6 @@ std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCurs
   _done = _dependencies.empty();
 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief hasMore: true if any position of _buffer hasMore and false
-/// otherwise. TODO update this docu
-ExecutionState UnsortingGatherBlock::hasMoreState() {
-  DEBUG_BEGIN_BLOCK();
-  if (_done || _dependencies.empty()) {
-    return ExecutionState::DONE;
-  }
-
-  for (auto* dependency : _dependencies) {
-    ExecutionState depState = dependency->hasMoreState();
-    switch (depState) {
-      case ExecutionState::WAITING:
-      case ExecutionState::HASMORE:
-        return depState;
-      case ExecutionState::DONE:
-        break;
-    }
-  }
-
-  _done = true;
-  return ExecutionState::DONE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1515,40 +1476,6 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _done = _dependencies.empty();
 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief hasMore: true if any position of _buffer hasMore and false
-/// otherwise.
-ExecutionState SortingGatherBlock::hasMoreState() {
-  DEBUG_BEGIN_BLOCK();
-  if (_done || _dependencies.empty()) {
-    return ExecutionState::DONE;
-  }
-
-  for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
-    if (!_gatherBlockBuffer[i].empty()) {
-      return ExecutionState::HASMORE;
-    }
-
-    // We want to get rid of HASMORE in total
-    ExecutionState state;
-    bool blockAppended;
-    std::tie(state, blockAppended) = getBlocks(i, DefaultBatchSize());
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!blockAppended);
-      return ExecutionState::WAITING;
-    }
-    if (blockAppended) {
-      _gatherBlockPos[i] = std::make_pair(i, 0);
-      return ExecutionState::HASMORE;
-    }
-  }
-
-  _done = true;
-  return ExecutionState::DONE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
