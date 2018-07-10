@@ -208,7 +208,7 @@ Scheduler::~Scheduler() {
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> const callback) {
+void Scheduler::post(std::function<void()> const& callback) {
   incQueued();
 
   try {
@@ -229,7 +229,7 @@ void Scheduler::post(std::function<void()> const callback) {
 
 // do not pass callback by reference, might get deleted before execution
 void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> const callback) {
+                     std::function<void()> const& callback) {
   incQueued();
 
   try {
@@ -341,7 +341,7 @@ bool Scheduler::pushToFifo(size_t fifo, std::function<void()> const& callback) {
   size_t p = fifo - 1;
   TRI_ASSERT(0 < fifo && p < NUMBER_FIFOS);
 
-  std::unique_ptr<FifoJob> job(new FifoJob(callback));
+  auto job = std::make_unique<FifoJob>(callback);
 
   try {
     if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {

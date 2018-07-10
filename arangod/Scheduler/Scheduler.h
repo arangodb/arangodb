@@ -91,9 +91,9 @@ class Scheduler {
     uint64_t _queued;
   };
 
-  void post(std::function<void()> const callback);
+  void post(std::function<void()> const& callback);
   void post(asio_ns::io_context::strand&,
-            std::function<void()> const callback);
+            std::function<void()> const& callback);
 
   bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();
@@ -175,7 +175,7 @@ class Scheduler {
   // queue is full
 
   struct FifoJob {
-    FifoJob(std::function<void()> const& callback) : _callback(callback) {}
+    explicit FifoJob(std::function<void()> const& callback) : _callback(callback) {}
     std::function<void()> _callback;
   };
 
