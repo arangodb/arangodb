@@ -303,9 +303,23 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
     }
   }
 
+  if (request->requestType() == RequestType::POST ||
+      request->requestType() == RequestType::PUT) {
+    // work around curl's Expect-100 Continue obsession
+    // by sending an empty "Expect:" header
+    // this tells curl to not send its "Expect: 100-continue" header
+    requestHeaders = curl_slist_append(requestHeaders, "Expect:");
+  }
+
+  std::string thisHeader;
   for (auto const& header : request->headers()) {
-    std::string thisHeader(header.first + ": " + header.second);
+    thisHeader.reserve(header.first.size() + header.second.size() + 2);
+    thisHeader.append(header.first);
+    thisHeader.append(": ", 2);
+    thisHeader.append(header.second);
     requestHeaders = curl_slist_append(requestHeaders, thisHeader.c_str());
+    
+    thisHeader.clear();
   }
 
   std::string url = createSafeDottedCurlUrl(newRequest._destination.url());
