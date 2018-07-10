@@ -113,7 +113,7 @@ class GeneralRequest {
   ///  to any specific resource
   bool authenticated() const { return _authenticated; }
   void setAuthenticated(bool a) { _authenticated = a; }
-  
+
   // @brief User sending this request
   TEST_VIRTUAL std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
@@ -127,7 +127,7 @@ class GeneralRequest {
   void setRequestContext(RequestContext*, bool);
 
   TEST_VIRTUAL RequestType requestType() const { return _type; }
-  
+
   void setRequestType(RequestType type) { _type = type; }
 
   std::string const& fullUrl() const { return _fullUrl; }
@@ -155,7 +155,7 @@ class GeneralRequest {
 
   // Returns the request path suffixes in non-URL-decoded form
   TEST_VIRTUAL std::vector<std::string> const& suffixes() const { return _suffixes; }
-  
+
   // Returns the request path suffixes in URL-decoded form. Note: this will
   // re-compute the suffix list on every call!
   std::vector<std::string> decodedSuffixes() const;
@@ -183,8 +183,8 @@ class GeneralRequest {
                                    bool& found) const = 0;
   template <typename T>
   T parsedValue(std::string const& key, T valueNotFound);
-  
-  virtual std::unordered_map<std::string, std::string> values() const = 0;
+
+  virtual std::unordered_map<std::string, std::string> const& values() const = 0;
   virtual std::unordered_map<std::string, std::vector<std::string>>
   arrayValues() const = 0;
 
@@ -196,7 +196,7 @@ class GeneralRequest {
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
     return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
   };
-  
+
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
     return std::make_shared<VPackBuilder>(payload());
   };

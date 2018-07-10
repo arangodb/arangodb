@@ -102,7 +102,7 @@ void RocksDBBackgroundThread::run() {
       // will not have a chance to reconnect to a restarted master in
       // time so the master may purge WAL files that replication slaves
       // would still like to peek into
-      if (TRI_microtime() >= startTime + 180.0) {
+      if (TRI_microtime() >= startTime + _engine->pruneWaitTimeInitial()) {
         // determine which WAL files can be pruned
         _engine->determinePrunableWalFiles(minTick);
         // and then prune them when they expired

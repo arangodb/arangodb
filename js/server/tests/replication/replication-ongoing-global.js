@@ -76,6 +76,12 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
   while (replication.globalApplier.state().state.running) {
     internal.wait(0.1, false);
   }
+  
+  applierConfiguration = applierConfiguration || {};
+  applierConfiguration.endpoint = masterEndpoint;
+  applierConfiguration.username = "root";
+  applierConfiguration.password = "";
+  applierConfiguration.includeSystem = false;
 
   var syncResult = replication.syncGlobal({
     endpoint: masterEndpoint,
@@ -83,7 +89,9 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
     password: "",
     verbose: true,
     includeSystem: false,
-    keepBarrier: false
+    keepBarrier: false,
+    restrictType: applierConfiguration.restrictType,
+    restrictCollections: applierConfiguration.restrictCollections
   });
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -93,12 +101,6 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
 
   // use lastLogTick as of now
   state.lastLogTick = replication.logger.state().state.lastLogTick;
-
-  applierConfiguration = applierConfiguration || {};
-  applierConfiguration.endpoint = masterEndpoint;
-  applierConfiguration.username = "root";
-  applierConfiguration.password = "";
-  applierConfiguration.includeSystem = false;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
@@ -160,6 +162,66 @@ function BaseTestConfig() {
   'use strict';
 
   return {
+    
+    testIncludeCollection: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+        },
+
+        function(state) {
+          db._create(cn);
+          db._create(cn + "2");
+          for (var i = 0; i < 100; ++i) {
+            db._collection(cn).save({ value: i });
+            db._collection(cn + "2").save({ value: i });
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertTrue(db._collection(cn).count() === 100);
+          assertNull(db._collection(cn + "2"));
+        },
+
+        { restrictType: "include", restrictCollections: [cn] }
+      );
+    },
+    
+    testExcludeCollection: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+        },
+
+        function(state) {
+          db._create(cn);
+          db._create(cn + "2");
+          for (var i = 0; i < 100; ++i) {
+            db._collection(cn).save({ value: i });
+            db._collection(cn + "2").save({ value: i });
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertTrue(db._collection(cn).count() === 100);
+          assertNull(db._collection(cn + "2"));
+        },
+
+        { restrictType: "exclude", restrictCollections: [cn + "2"] }
+      );
+    },
    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection creation

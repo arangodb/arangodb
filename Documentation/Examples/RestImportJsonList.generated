@@ -1,19 +1,19 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=list &lt;&lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=list &amp;lt;&amp;lt;EOF
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"abc"</span>, 
-    <span class="hljs-string">"value1"</span> : <span class="hljs-number">25</span>, 
-    <span class="hljs-string">"value2"</span> : <span class="hljs-string">"test"</span>, 
-    <span class="hljs-string">"allowed"</span> : <span class="hljs-literal">true</span> 
+    "_key" : "abc", 
+    "value1" : 25, 
+    "value2" : "test", 
+    "allowed" : true 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"foo"</span>, 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"baz"</span> 
+    "_key" : "foo", 
+    "name" : "baz" 
   }, 
   { 
-    <span class="hljs-string">"name"</span> : { 
-      <span class="hljs-string">"detailed"</span> : <span class="hljs-string">"detailed name"</span>, 
-      <span class="hljs-string">"short"</span> : <span class="hljs-string">"short name"</span> 
+    "name" : { 
+      "detailed" : "detailed name", 
+      "short" : "short name" 
     } 
   } 
 ]

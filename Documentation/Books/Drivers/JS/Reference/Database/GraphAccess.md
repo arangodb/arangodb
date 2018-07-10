@@ -2,7 +2,7 @@
 # Accessing graphs
 
 These functions implement the
-[HTTP API for accessing general graphs](https://docs.arangodb.com/latest/HTTP/Gharial/index.html).
+[HTTP API for accessing general graphs](../../../..//HTTP/Gharial/index.html).
 
 ## database.graph
 

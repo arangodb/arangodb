@@ -29,8 +29,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
   
-//static thread_local TRI_voc_tid_t CURRENT_TRX_ID;
-
 /// @brief create the context
 transaction::SmartContext::SmartContext(TRI_vocbase_t& vocbase)
   : Context(vocbase), _state(nullptr) {}

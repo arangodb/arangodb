@@ -132,7 +132,9 @@ class GeneralCommTask : public SocketTask {
   
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int code, std::string const&);
+                        uint64_t messageId, int errorNum, std::string const&);
+  void addErrorResponse(rest::ResponseCode, rest::ContentType,
+                        uint64_t messageId, int errorNum);
   
  protected:
   GeneralServer* const _server;

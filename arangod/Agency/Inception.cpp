@@ -403,7 +403,8 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 
 // @brief Thread main
 void Inception::run() {
-  while (ServerState::isMaintenance() &&
+  auto server = ServerState::instance();
+  while (server->isMaintenance() &&
          !this->isStopping() && !_agent->isStopping()) {
     std::this_thread::sleep_for(std::chrono::microseconds(1000000));
     LOG_TOPIC(DEBUG, Logger::AGENCY)

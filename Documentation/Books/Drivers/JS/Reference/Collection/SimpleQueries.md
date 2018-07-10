@@ -2,7 +2,7 @@
 # Simple queries
 
 These functions implement the
-[HTTP API for simple queries](https://docs.arangodb.com/latest/HTTP/SimpleQuery/index.html).
+[HTTP API for simple queries](../../../..//HTTP/SimpleQuery/index.html).
 
 ## collection.all
 
@@ -16,13 +16,51 @@ Performs a query to fetch all documents in the collection. Returns a
 * **opts**: `Object` (optional)
 
   For information on the possible options see
-  [the HTTP API for returning all documents](https://docs.arangodb.com/latest/HTTP/SimpleQuery/index.html#return-all-documents).
+  [the HTTP API for returning all documents](../../../..//HTTP/SimpleQuery/index.html#return-all-documents).
 
 ## collection.any
 
 `async collection.any(): Object`
 
 Fetches a document from the collection at random.
+
+## collection.first
+
+`async collection.first([opts]): Array<Object>`
+
+Performs a query to fetch the first documents in the collection. Returns an
+array of the matching documents.
+
+**Note**: This method is not available when using the driver with ArangoDB 3.0
+and higher as the corresponding API method has been removed.
+
+**Arguments**
+
+* **opts**: `Object` (optional)
+
+  For information on the possible options see
+  [the HTTP API for returning the first document of a collection](https://docs.arangodb.com/2.8/HttpSimpleQuery/#first-document-of-a-collection).
+
+  If _opts_ is a number it is treated as _opts.count_.
+
+## collection.last
+
+`async collection.last([opts]): Array<Object>`
+
+Performs a query to fetch the last documents in the collection. Returns an array
+of the matching documents.
+
+**Note**: This method is not available when using the driver with ArangoDB 3.0
+and higher as the corresponding API method has been removed.
+
+**Arguments**
+
+* **opts**: `Object` (optional)
+
+  For information on the possible options see
+  [the HTTP API for returning the last document of a collection](https://docs.arangodb.com/2.8/HttpSimpleQuery/#last-document-of-a-collection).
+
+  If _opts_ is a number it is treated as _opts.count_.
 
 ## collection.byExample
 
@@ -40,7 +78,7 @@ _example_. Returns a [new _Cursor_ instance](../Cursor.md) for the query results
 * **opts**: _Object_ (optional)
 
   For information on the possible options see
-  [the HTTP API for fetching documents by example](https://docs.arangodb.com/latest/HTTP/SimpleQuery/index.html#find-documents-matching-an-example).
+  [the HTTP API for fetching documents by example](../../../..//HTTP/SimpleQuery/index.html#find-documents-matching-an-example).
 
 ## collection.firstExample
 
@@ -69,7 +107,7 @@ Removes all documents in the collection matching the given _example_.
 * **opts**: _Object_ (optional)
 
   For information on the possible options see
-  [the HTTP API for removing documents by example](https://docs.arangodb.com/latest/HTTP/SimpleQuery/index.html#remove-documents-by-example).
+  [the HTTP API for removing documents by example](../../../..//HTTP/SimpleQuery/index.html#remove-documents-by-example).
 
 ## collection.replaceByExample
 
@@ -91,7 +129,7 @@ given _newValue_.
 * **opts**: _Object_ (optional)
 
   For information on the possible options see
-  [the HTTP API for replacing documents by example](https://docs.arangodb.com/latest/HTTP/SimpleQuery/index.html#replace-documents-by-example).
+  [the HTTP API for replacing documents by example](../../../..//HTTP/SimpleQuery/index.html#replace-documents-by-example).
 
 ## collection.updateByExample
 
@@ -113,7 +151,7 @@ with the given _newValue_.
 * **opts**: _Object_ (optional)
 
   For information on the possible options see
-  [the HTTP API for updating documents by example](https://docs.arangodb.com/latest/HTTP/SimpleQuery/index.html#update-documents-by-example).
+  [the HTTP API for updating documents by example](../../../..//HTTP/SimpleQuery/index.html#update-documents-by-example).
 
 ## collection.lookupByKeys
 
@@ -143,7 +181,7 @@ Deletes the documents with the given _keys_ from the collection.
 * **opts**: _Object_ (optional)
 
   For information on the possible options see
-  [the HTTP API for removing documents by keys](https://docs.arangodb.com/latest/HTTP/SimpleQuery/index.html#remove-documents-by-their-keys).
+  [the HTTP API for removing documents by keys](../../../..//HTTP/SimpleQuery/index.html#remove-documents-by-their-keys).
 
 ## collection.fulltext
 
@@ -164,4 +202,4 @@ Performs a fulltext query in the given _fieldName_ on the collection.
 * **opts**: _Object_ (optional)
 
   For information on the possible options see
-  [the HTTP API for fulltext queries](https://docs.arangodb.com/latest/HTTP/Indexes/Fulltext.html).
+  [the HTTP API for fulltext queries](../../../..//HTTP/Indexes/Fulltext.html).

@@ -36,7 +36,7 @@ Adds the given edge definition _definition_ to the graph.
 * **definition**: `Object`
 
   For more information on edge definitions see
-  [the HTTP API for managing graphs](https://docs.arangodb.com/latest/HTTP/Gharial/Management.html).
+  [the HTTP API for managing graphs](../../../..//HTTP/Gharial/Management.html).
 
 **Examples**
 
@@ -68,7 +68,7 @@ the given _definition_.
 * **definition**: `Object`
 
   For more information on edge definitions see
-  [the HTTP API for managing graphs](https://docs.arangodb.com/latest/HTTP/Gharial/Management.html).
+  [the HTTP API for managing graphs](../../../..//HTTP/Gharial/Management.html).
 
 **Examples**
 
@@ -135,7 +135,7 @@ contained in any of the edge collections of this graph.
 * **opts**: `Object`
 
   See
-  [the HTTP API documentation](https://docs.arangodb.com/latest/HTTP/Traversal/index.html)
+  [the HTTP API documentation](../../../..//HTTP/Traversal/index.html)
   for details on the additional arguments.
 
   Please note that while _opts.filter_, _opts.visitor_, _opts.init_,

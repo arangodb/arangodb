@@ -26,6 +26,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LogicalDataSource.h"
@@ -396,7 +397,7 @@ class LogicalCollection: public LogicalDataSource {
 
   mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
-  mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
+  mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
   std::unordered_map<std::string, double> _clusterEstimates;
   double _clusterEstimateTTL; //only valid if above vector is not empty

@@ -128,6 +128,25 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
   TRI_ASSERT(builder->isClosed());
 }
 
+static void InjectNoLockHeader(
+    arangodb::transaction::Methods const& trx, std::string const& shard,
+    std::unordered_map<std::string, std::string>* headers) {
+  if (trx.isLockedShard(shard)) {
+    headers->emplace(arangodb::StaticStrings::XArangoNoLock, shard);
+  }
+}
+
+static std::unique_ptr<std::unordered_map<std::string, std::string>>
+CreateNoLockHeader(arangodb::transaction::Methods const& trx,
+                   std::string const& shard) {
+  if (trx.isLockedShard(shard)) {
+    auto headers =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+    headers->emplace(arangodb::StaticStrings::XArangoNoLock, shard);
+    return headers;
+  }
+  return nullptr;
+}
 }
 
 namespace arangodb {
@@ -877,8 +896,8 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& cname,
-                       std::vector<std::pair<std::string, uint64_t>>& result,
-                       bool sendNoLockHeader) {
+                       transaction::Methods const& trx,
+                       std::vector<std::pair<std::string, uint64_t>>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -901,24 +920,12 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
   auto shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  if (sendNoLockHeader) {
-    for (auto const& p : *shards) {
-      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-      headers->emplace("x-arango-nolock", p.first);
-      requests.emplace_back(
-          "shard:" + p.first, arangodb::rest::RequestType::GET,
-          "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
-              StringUtils::urlEncode(p.first) + "/count",
-          body, std::move(headers));
-    }
-  } else {
-    for (auto const& p : *shards) {
-      requests.emplace_back("shard:" + p.first,
-                            arangodb::rest::RequestType::GET,
-                            "/_db/" + StringUtils::urlEncode(dbname) +
-                            "/_api/collection/" +
-                            StringUtils::urlEncode(p.first) + "/count", body);
-    }
+  for (auto const& p : *shards) {
+    requests.emplace_back(
+        "shard:" + p.first, arangodb::rest::RequestType::GET,
+        "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
+            StringUtils::urlEncode(p.first) + "/count",
+        body, ::CreateNoLockHeader(trx, p.first));
   }
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
@@ -1076,6 +1083,7 @@ int selectivityEstimatesOnCoordinator(
 
 Result createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    transaction::Methods const& trx,
     arangodb::OperationOptions const& options, VPackSlice const& slice,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
@@ -1176,7 +1184,8 @@ Result createDocumentOnCoordinator(
 
     requests.emplace_back(
         "shard:" + it.first, arangodb::rest::RequestType::POST,
-        baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
+        baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+        ::CreateNoLockHeader(trx, it.first));
   }
 
   // Perform the requests
@@ -1222,6 +1231,7 @@ Result createDocumentOnCoordinator(
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    arangodb::transaction::Methods const& trx,
     VPackSlice const slice, arangodb::OperationOptions const& options,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
@@ -1338,7 +1348,8 @@ int deleteDocumentOnCoordinator(
       requests.emplace_back(
           "shard:" + it.first,
           arangodb::rest::RequestType::DELETE_REQ,
-          baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
+          baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+          ::CreateNoLockHeader(trx, it.first));
     }
 
     // Perform the requests
@@ -1387,7 +1398,8 @@ int deleteDocumentOnCoordinator(
   for (auto const& shard : *shardList) {
     requests.emplace_back(
         "shard:" + shard, arangodb::rest::RequestType::DELETE_REQ,
-        baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body);
+        baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
+        ::CreateNoLockHeader(trx, shard));
   }
 
   // Perform the requests
@@ -1572,6 +1584,7 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
 
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    arangodb::transaction::Methods const& trx,
     VPackSlice slice, OperationOptions const& options,
     std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
@@ -1673,14 +1686,14 @@ int getDocumentOnCoordinator(
           keySlice = slice.get(StaticStrings::KeyString);
         }
 
+        ::InjectNoLockHeader(trx, it.first, headers.get());
         // We send to single endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + "/" +
                 StringUtils::urlEncode(keySlice.copyString()) +
-                optsUrlPart,
-            body);
-        requests[0].setHeaders(std::move(headers));
+                optsUrlPart, body,
+                std::move(headers));
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -1692,7 +1705,8 @@ int getDocumentOnCoordinator(
         // We send to Babies endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
-            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
+            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+            ::CreateNoLockHeader(trx, it.first));
       }
     }
 
@@ -1745,24 +1759,24 @@ int getDocumentOnCoordinator(
       if (slice.isObject()) {
         keySlice = slice.get(StaticStrings::KeyString);
       }
-      ClusterCommRequest req(
-          "shard:" + shard, reqType,
-          baseUrl + StringUtils::urlEncode(shard) + "/" +
-              StringUtils::urlEncode(keySlice.copyString()) +
-              optsUrlPart,
-          nullptr);
       auto headersCopy =
           std::make_unique<std::unordered_map<std::string, std::string>>(
               *headers);
-      req.setHeaders(std::move(headersCopy));
-      requests.emplace_back(std::move(req));
+      ::InjectNoLockHeader(trx, shard, headersCopy.get());
+      requests.emplace_back(
+          "shard:" + shard, reqType,
+          baseUrl + StringUtils::urlEncode(shard) + "/" +
+              StringUtils::urlEncode(keySlice.copyString()) +
+              optsUrlPart, nullptr,
+              std::move(headersCopy));
     }
   } else {
     auto body = std::make_shared<std::string>(slice.toJson());
     for (auto const& shard : *shardList) {
       requests.emplace_back(
           "shard:" + shard, reqType,
-          baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body);
+          baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
+          ::CreateNoLockHeader(trx, shard));
     }
   }
 
@@ -2136,6 +2150,7 @@ void fetchVerticesFromEngines(
 
 int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    arangodb::transaction::Methods const& trx,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     arangodb::rest::ResponseCode& responseCode,
     VPackBuilder& result) {
@@ -2180,7 +2195,8 @@ int getFilteredEdgesOnCoordinator(
   for (auto const& p : *shards) {
     requests.emplace_back(
         "shard:" + p.first, arangodb::rest::RequestType::GET,
-        baseUrl + StringUtils::urlEncode(p.first) + queryParameters, body);
+        baseUrl + StringUtils::urlEncode(p.first) + queryParameters, body,
+        ::CreateNoLockHeader(trx, p.first));
   }
 
   // Perform the requests
@@ -2258,6 +2274,7 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    arangodb::transaction::Methods const& trx,
     VPackSlice const& slice, arangodb::OperationOptions const& options,
     bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
@@ -2384,8 +2401,9 @@ int modifyDocumentOnCoordinator(
         requests.emplace_back(
             "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + "/" +
-                StringUtils::urlEncode(keyStr.data(), keyStr.length()) + optsUrlPart,
-            body);
+                StringUtils::urlEncode(keyStr.data(), keyStr.length()) +
+                optsUrlPart,
+            body, ::CreateNoLockHeader(trx, it.first));
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -2397,7 +2415,8 @@ int modifyDocumentOnCoordinator(
         // We send to Babies endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
-            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
+            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+            ::CreateNoLockHeader(trx, it.first));
       }
     }
 
@@ -2451,7 +2470,9 @@ int modifyDocumentOnCoordinator(
     for (auto const& shard : *shardList) {
       requests.emplace_back(
           "shard:" + shard, reqType,
-          baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body);
+          baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
+          ::CreateNoLockHeader(trx, shard));
+          
     }
   }
 

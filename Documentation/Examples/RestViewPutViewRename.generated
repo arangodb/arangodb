@@ -1,6 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/view/products1/rename &lt;&lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/view/products1/rename &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"viewNewName"</span> 
+  "name" : "viewNewName" 
 }
 EOF
 
@@ -9,11 +9,10 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"14935"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"15137"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"viewNewName"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
   <span class="hljs-string">"properties"</span> : { 
-    <span class="hljs-string">"collections"</span> : [ ], 
     <span class="hljs-string">"commit"</span> : { 
       <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
       <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
@@ -38,6 +37,7 @@ x-content-type-options: nosniff
       } 
     }, 
     <span class="hljs-string">"locale"</span> : <span class="hljs-string">"C"</span>, 
+    <span class="hljs-string">"collections"</span> : [ ], 
     <span class="hljs-string">"links"</span> : { 
     } 
   } 

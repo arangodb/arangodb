@@ -123,10 +123,7 @@ OperationResult AqlTransaction::count(std::string const& collectionName,
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    // If the collection is known to this transaction we do not need to lock on DBServers (locked already)
-    // If it is not known we need to lock
-    bool needsToLock = (_collections.find(collectionName) == _collections.end());
-    return countCoordinator(collectionName, aggregate, needsToLock);
+    return countCoordinator(collectionName, aggregate);
   }
 
   return countLocal(collectionName);
