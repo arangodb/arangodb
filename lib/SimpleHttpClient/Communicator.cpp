@@ -141,8 +141,6 @@ Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, "unable to initialize curl");
   }
   
-  curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, 20);
-  
 #ifdef _WIN32
   int err = dumb_socketpair(_socks, 0);
   if (err != 0) {
@@ -303,9 +301,23 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
     }
   }
 
+  if (request->requestType() == RequestType::POST ||
+      request->requestType() == RequestType::PUT) {
+    // work around curl's Expect-100 Continue obsession
+    // by sending an empty "Expect:" header
+    // this tells curl to not send its "Expect: 100-continue" header
+    requestHeaders = curl_slist_append(requestHeaders, "Expect:");
+  }
+
+  std::string thisHeader;
   for (auto const& header : request->headers()) {
-    std::string thisHeader(header.first + ": " + header.second);
+    thisHeader.reserve(header.first.size() + header.second.size() + 2);
+    thisHeader.append(header.first);
+    thisHeader.append(": ", 2);
+    thisHeader.append(header.second);
     requestHeaders = curl_slist_append(requestHeaders, thisHeader.c_str());
+    
+    thisHeader.clear();
   }
 
   std::string url = createSafeDottedCurlUrl(newRequest._destination.url());
