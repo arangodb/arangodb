@@ -1,7 +1,7 @@
 v3.3.12 (XXXX-XX-XX)
 --------------------
 
-* fixed issue #5727: Edge document with user provided key is inserted as many 
+* fixed issue #5727: Edge document with user provided key is inserted as many
   times as the number of shards, violating the primary index
 
 * fixed internal issue #2658: AQL modification queries did not allow `_rev`
@@ -9,7 +9,7 @@ v3.3.12 (XXXX-XX-XX)
   in order to force AQL modification queries to match revision ids before
   doing any modifications
 
-* fixed issue #5679: Replication applier restrictions will crash synchronisation 
+* fixed issue #5679: Replication applier restrictions will crash synchronisation
   after initial sync
 
 * fixed potential issue in RETURN DISTINCT CollectBlock implementation
@@ -18,6 +18,9 @@ v3.3.12 (XXXX-XX-XX)
 * changed communication tasks to use boost strands instead of locks,
   this fixes a race condition with parallel VST communication over
   SSL
+
+* fixed for agent coming back to agency with changed endpoint and
+  total data loss
 
 
 v3.3.11 (2018-06-26)
