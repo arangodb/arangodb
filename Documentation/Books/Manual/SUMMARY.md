@@ -137,18 +137,18 @@
     * [Authentication and sessions](Foxx/Guides/Auth.md)
     * [Using Node modules](Foxx/Guides/BundledNodeModules.md)
     * [Working with collections](Foxx/Guides/Collections.md)
+    * [Working with routers](Foxx/Guides/Routing.md)
     * [Working with files](Foxx/Guides/Files.md)
+    * [Writing queries](Foxx/Guides/Queries.md)
     * [Testing Foxx services](Foxx/Guides/Testing.md)
     * [Linking services together](Foxx/Guides/Dependencies.md)
-    * [🚧 MakingRequests.md](Foxx/Guides/MakingRequests.md)
-    * [🚧 ErrorHandling.md](Foxx/Guides/ErrorHandling.md)
-    * [🚧 Multipart.md](Foxx/Guides/Multipart.md)
-    * [🚧 Queries.md](Foxx/Guides/Queries.md)
-    * [🚧 Routing.md](Foxx/Guides/Routing.md)
+    * [🚧 Making requests](Foxx/Guides/MakingRequests.md)
+      <!-- * [Error handling](Foxx/Guides/ErrorHandling.md) -->
+      <!-- * [Multipart requests](Foxx/Guides/Multipart.md) -->
     * [Scripts and scheduling](Foxx/Guides/Scripts.md)
-    * [🚧 Troubleshooting.md](Foxx/Guides/Troubleshooting.md)
+      <!-- * [Troubleshooting](Foxx/Guides/Troubleshooting.md) -->
     * [Using Webpack with Foxx](Foxx/Guides/Webpack.md)
-    * [🚧 TypeScript.md](Foxx/Guides/TypeScript.md)
+      <!-- * [Using TypeScript with Foxx](Foxx/Guides/TypeScript.md) -->
     * [Access from the browser](Foxx/Guides/Browser.md)
     * [Working with 2.x services](Foxx/Guides/LegacyMode.md)
   * [Reference](Foxx/Reference/README.md)

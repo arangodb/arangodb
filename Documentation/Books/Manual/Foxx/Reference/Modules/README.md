@@ -21,7 +21,7 @@ The `@arangodb/locals` module
 
 This module provides a `context` object which is identical to the [service context](../Context.md) of whichever module requires it.
 
-There is no advantage to using this module over the `module.context` variable directly unless you're [using a tool like Webpack](../../Guides/Webpack.md) or [a compiler like TypeScript](../../Guides/TypeScript.md) to translate your code and can't use the `module` object Foxx provides directly.
+There is no advantage to using this module over the `module.context` variable directly unless you're [using a tool like Webpack](../../Guides/Webpack.md) to translate your code and can't use the `module` object Foxx provides directly.
 
 The `@arangodb/request` module
 ------------------------------
