@@ -25,7 +25,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/JobQueue.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
@@ -41,6 +43,14 @@ RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralR
   : RestVocbaseBaseHandler(request, response)
   , _v8Context(nullptr)
   , _lock() {}
+
+// returns the queue name
+size_t RestTransactionHandler::queue() const { 
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::BACKGROUND_QUEUE; 
+  }
+  return JobQueue::STANDARD_QUEUE; 
+}
 
 void RestTransactionHandler::returnContext() {
   WRITE_LOCKER(writeLock, _lock);

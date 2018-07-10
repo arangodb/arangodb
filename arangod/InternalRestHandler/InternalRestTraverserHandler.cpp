@@ -29,6 +29,7 @@
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Scheduler/JobQueue.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -39,6 +40,14 @@ InternalRestTraverserHandler::InternalRestTraverserHandler(
     TraverserEngineRegistry* engineRegistry)
     : RestVocbaseBaseHandler(request, response), _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);
+}
+
+// returns the queue name
+size_t InternalRestTraverserHandler::queue() const { 
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::BACKGROUND_QUEUE; 
+  }
+  return JobQueue::STANDARD_QUEUE; 
 }
 
 RestStatus InternalRestTraverserHandler::execute() {
