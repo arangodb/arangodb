@@ -444,7 +444,9 @@ class IResearchFeature::Async {
     Thread(std::string const& name)
       : arangodb::Thread(name), _wasNotified(false) {
     }
-    Thread(Thread&& other): arangodb::Thread(other.name()) {} // used in constructor before tasks are started
+    Thread(Thread&& other) // used in constructor before tasks are started
+      : arangodb::Thread(other.name()), _wasNotified(false) {
+    }
     virtual bool isSystem() override { return true; } // or start(...) will fail
     virtual void run() override;
   };

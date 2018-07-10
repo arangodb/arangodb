@@ -189,10 +189,12 @@ SECTION("test_async") {
     size_t count = 0;
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(nullptr, 0, [&cond, &mutex, flag, &count](size_t&, bool)->bool { ++count; SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    feature.async(nullptr, 0, [&cond, &mutex, flag, &count](size_t&, bool)->bool { ++count; SCOPED_LOCK(mutex); cond.notify_all(); return true; });
+    CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100)))); // first run invoked immediately
+    CHECK((false == deallocated));
     CHECK((std::cv_status::timeout == cond.wait_for(lock, std::chrono::milliseconds(100))));
     CHECK((false == deallocated)); // still scheduled
-    CHECK((0 == count));
+    CHECK((1 == count));
   }
 
   // single-run task
@@ -252,10 +254,13 @@ SECTION("test_async") {
     DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
+    size_t count = 0;
     auto last = std::chrono::system_clock::now();
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(resourceMutex, 1000, [&cond, &mutex, flag, &execVal](size_t&, bool exec)->bool { execVal = exec; SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    feature.async(resourceMutex, 1000, [&cond, &mutex, flag, &execVal, &count](size_t&, bool exec)->bool { execVal = exec; SCOPED_LOCK(mutex); cond.notify_all(); return ++count < 2; });
+    CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100)))); // first run invoked immediately
+    CHECK((false == deallocated));
     CHECK((std::cv_status::timeout == cond.wait_for(lock, std::chrono::milliseconds(100))));
     CHECK((false == deallocated));
     feature.asyncNotify();
@@ -277,10 +282,13 @@ SECTION("test_async") {
     DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
+    size_t count = 0;
     auto last = std::chrono::system_clock::now();
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(resourceMutex, 100, [&cond, &mutex, flag, &execVal](size_t&, bool exec)->bool { execVal = exec; SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    feature.async(resourceMutex, 100, [&cond, &mutex, flag, &execVal, &count](size_t&, bool exec)->bool { execVal = exec; SCOPED_LOCK(mutex); cond.notify_all(); return ++count < 2; });
+    CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100)))); // first run invoked immediately
+    CHECK((false == deallocated));
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(1000))));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
