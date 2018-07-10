@@ -1,6 +1,9 @@
 v3.3.12 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5727: Edge document with user provided key is inserted as many 
+  times as the number of shards, violating the primary index
+
 * fixed internal issue #2658: AQL modification queries did not allow `_rev`
   checking. There is now a new option `ignoreRevs` which can be set to `false`
   in order to force AQL modification queries to match revision ids before
