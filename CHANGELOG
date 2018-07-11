@@ -24,6 +24,8 @@ v3.3.12 (XXXX-XX-XX)
 * fixed for agent coming back to agency with changed endpoint and
   total data loss
 
+* more patient agency tests to allow for ASAN tests to successfully finish
+
 
 v3.3.11 (2018-06-26)
 --------------------
