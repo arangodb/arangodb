@@ -7,6 +7,8 @@ These guides provide solutions to common problems when building applications wit
 
 [Running Foxx in a cluster](Cluster.md) and how it is different from Foxx on a standalone server.
 
+[Using development mode](DevelopmentMode.md) and how it is different from production mode.
+
 [Using authentication and sessions](Auth.md) to restrict access to your API and keep track of your users.
 
 [Bundling Node modules](BundledNodeModules.md) to use third-party libraries in your service.
