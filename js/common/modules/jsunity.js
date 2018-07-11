@@ -144,13 +144,21 @@ function Run (testsuite) {
     }
   }
   if (tests.length === 0) {
-    print(`There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything`);
-    return {
+    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything`;
+    print(`${internal.COLORS.COLOR_RED}${err}${internal.COLORS.COLOR_RESET}`);
+    res = {
+      suiteName: suite.suiteName,
+      message: err,
       duration: 0,
-      status: true,
-      failed: 0,
-      total: 0,
+      passed: 0,
+      status: false,
+      failed: 1,
+      total: 1,
     };
+    TOTAL += 1;
+    FAILED += 2;
+    COMPLETE[suite.suiteName] = res;
+    return res;
   }
 
   suite = new jsUnity.TestSuite(suite.suiteName, scope);
@@ -172,7 +180,8 @@ function Run (testsuite) {
       COMPLETE[attrname] = RESULTS[attrname];
     }
   }
-
+  print(JSON.stringify(COMPLETE))
+  print(JSON.stringify(result))
   return result;
 }
 
