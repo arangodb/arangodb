@@ -36,6 +36,8 @@ const GeneralGraph = internal.ArangoGeneralGraph;
 
 // new c++ based
 exports._listObjects = GeneralGraph._listObjects;
+exports._list = GeneralGraph._list;
+exports._exists = GeneralGraph._exists;
 
 exports._create = function (name, edgeDefinition, orphans, options) {
   let g = GeneralGraph._create(name, edgeDefinition, orphans, options);
@@ -55,8 +57,6 @@ exports._graph = function (graphName) {
 exports._drop = GeneralGraph._drop;
 
 // old js based
-exports._exists = ggc._exists;
 exports._edgeDefinitions = ggc._edgeDefinitions;
 exports._extendEdgeDefinitions = ggc._extendEdgeDefinitions;
-exports._list = ggc._list;
 exports._relation = ggc._relation;

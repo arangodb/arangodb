@@ -67,13 +67,25 @@ class GraphManager {
       : _ctx(std::move(ctx_)) {}
 
   OperationResult readGraphs(velocypack::Builder& builder,
-                  arangodb::aql::QueryPart queryPart) const;
+                             arangodb::aql::QueryPart queryPart) const;
+
+  OperationResult readGraphKeys(velocypack::Builder& builder,
+                                arangodb::aql::QueryPart queryPart) const;
+
+  OperationResult readGraphByQuery(velocypack::Builder& builder,
+                                   arangodb::aql::QueryPart queryPart,
+                                   std::string queryStr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available
   ////////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<LogicalCollection> getCollectionByName(
       const TRI_vocbase_t& vocbase, std::string const& name);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks wheter a graph exists or not
+  ////////////////////////////////////////////////////////////////////////////////
+  bool graphExists(std::string graphName) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a graph

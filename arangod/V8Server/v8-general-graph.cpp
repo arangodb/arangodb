@@ -105,6 +105,34 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_GraphExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+    v8::HandleScope scope(isolate);
+
+    if (args.Length() < 1) {
+      TRI_V8_THROW_EXCEPTION_USAGE(
+              "_exists(graphName)");
+    } else if (!args[0]->IsString()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+    }
+    std::string graphName = TRI_ObjectToString(args[0]);
+    if (graphName.empty()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+    }
+
+    auto& vocbase = GetContextVocBase(isolate);
+    auto ctx = transaction::V8Context::Create(vocbase, false);
+
+    // check if graph already exists
+    GraphManager gmngr{ctx};
+    bool r = false;
+    r = gmngr.graphExists(graphName);
+
+    TRI_V8_RETURN(r);
+
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_GetGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::HandleScope scope(isolate);
@@ -155,10 +183,33 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!result.isEmpty()) {
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs")));
   }
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GetGraphKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+    v8::HandleScope scope(isolate);
+
+    auto& vocbase = GetContextVocBase(isolate);
+    auto ctx = transaction::V8Context::Create(vocbase, false);
+
+    GraphManager gmngr{ctx};
+    VPackBuilder result;
+    OperationResult r = gmngr.readGraphKeys(result, arangodb::aql::PART_DEPENDENT);
+
+    if (r.fail()) {
+      TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    }
+
+    if (!result.isEmpty()) {
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs")));
+    }
+
+    TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -294,7 +345,12 @@ void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
       isolate, rt, TRI_V8_ASCII_STRING(isolate, "_listObjects"), JS_GetGraphs);
 
   TRI_AddMethodVocbase(
+          isolate, rt, TRI_V8_ASCII_STRING(isolate, "_list"), JS_GetGraphKeys);
+
+  TRI_AddMethodVocbase(
           isolate, rt, TRI_V8_ASCII_STRING(isolate, "_graph"), JS_GetGraph);
+  TRI_AddMethodVocbase(
+          isolate, rt, TRI_V8_ASCII_STRING(isolate, "_exists"), JS_GraphExists);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_create"),
                        JS_CreateGraph);

@@ -235,6 +235,37 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
   return nameCol;
 }
 
+bool GraphManager::graphExists(std::string graphName) const {
+  VPackBuilder checkDocument;
+  {
+    VPackObjectBuilder guard(&checkDocument);
+    checkDocument.add(StaticStrings::KeyString, VPackValue(graphName));
+  }
+
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+                                  AccessMode::Type::READ);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return false;
+  }
+
+  OperationOptions options;
+  try {
+    OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
+                                            checkDocument.slice(), options);
+    if (checkDoc.fail()) {
+      trx.finish(checkDoc.result);
+      return false;
+    }
+    trx.finish(checkDoc.result);
+  } catch (...) {
+  }
+  return true;
+}
+
 OperationResult GraphManager::createGraph(VPackSlice document,
                                           bool waitForSync) {
   VPackSlice graphName = document.get("name");
@@ -485,6 +516,17 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                                          aql::QueryPart const queryPart) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
+  return readGraphByQuery(builder, queryPart, queryStr);
+}
+
+OperationResult GraphManager::readGraphKeys(velocypack::Builder& builder,
+                                         aql::QueryPart const queryPart) const {
+  std::string const queryStr{"FOR g IN _graphs RETURN g._key"};
+  return readGraphByQuery(builder, queryPart, queryStr);
+}
+
+OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
+                                         aql::QueryPart const queryPart, std::string queryStr) const {
   arangodb::aql::Query query(false, ctx()->vocbase(),
                              arangodb::aql::QueryString(queryStr), nullptr,
                              nullptr, queryPart);
