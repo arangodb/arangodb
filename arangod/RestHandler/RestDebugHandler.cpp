@@ -33,8 +33,6 @@ RestDebugHandler::RestDebugHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-bool RestDebugHandler::isDirect() const { return false; }
-
 RestStatus RestDebugHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

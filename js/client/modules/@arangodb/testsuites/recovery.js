@@ -68,6 +68,7 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
     let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
     args['server.threads'] = 1;
     args['wal.reserve-logfiles'] = 1;
+    args['rocksdb.wal-file-timeout-initial'] = 10;
     args['database.directory'] = instanceInfo.tmpDataDir + '/db';
 
     args = Object.assign(args, options.extraArgs);

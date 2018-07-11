@@ -173,6 +173,7 @@ class RocksDBEngine final : public StorageEngine {
   ) override;
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
                                           bool doSync) override;
+  // TODO worker-safety
   Result handleSyncKeys(
     DatabaseInitialSyncer& syncer,
     LogicalCollection& col,
@@ -262,13 +263,6 @@ class RocksDBEngine final : public StorageEngine {
     std::string const& oldName
   ) override;
 
-  void createIndex(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t collectionId,
-    TRI_idx_iid_t id,
-    arangodb::velocypack::Slice const& data
-  ) override;
-
   void unloadCollection(
     TRI_vocbase_t& vocbase,
     LogicalCollection& collection
@@ -322,9 +316,6 @@ class RocksDBEngine final : public StorageEngine {
 
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() override;
-
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules() override;
 
@@ -361,6 +352,8 @@ class RocksDBEngine final : public StorageEngine {
   std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
+
+  double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const override;
@@ -457,6 +450,10 @@ class RocksDBEngine final : public StorageEngine {
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
+  
+  // number of seconds to wait initially after server start before WAL file deletion
+  // kicks in
+  double _pruneWaitTimeInitial;
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;

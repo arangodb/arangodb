@@ -66,57 +66,81 @@ void SchedulerFeature::collectOptions(
   options->addSection("scheduler", "Configure the I/O scheduler");
 
   options->addOption("--server.threads", "number of threads",
-                     new UInt64Parameter(&_nrServerThreads));
+                     new UInt64Parameter(&_nrMaximalThreads));
+
+  options->addHiddenOption(
+      "--server.queue-size",
+      "number of simultaneously queues requests inside the scheduler",
+      new UInt64Parameter(&_queueSize));
+
+  options->addHiddenOption("--server.prio1-size", "size of the priority 1 fifo",
+                           new UInt64Parameter(&_fifo1Size));
+
+  options->addHiddenOption("--server.prio2-size", "size of the priority 2 fifo",
+                           new UInt64Parameter(&_fifo2Size));
 
   options->addHiddenOption("--server.minimal-threads",
                            "minimal number of threads",
                            new UInt64Parameter(&_nrMinimalThreads));
 
-  options->addHiddenOption("--server.maximal-threads",
-                           "maximal number of threads",
-                           new UInt64Parameter(&_nrMaximalThreads));
+  // obsolete options
+  options->addObsoleteOption("--server.maximal-threads",
+                             "maximal number of threads", true);
 
-  options->addOption(
-      "--server.maximal-queue-size",
-      "maximum queue length for pending operations (use 0 for unrestricted)",
-      new UInt64Parameter(&_queueSize));
-
+  // renamed options
   options->addOldOption("scheduler.threads", "server.threads");
+  options->addOldOption("server.maximal-queue-size", "server.queue-size");
 }
 
 void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  if (_nrServerThreads == 0) {
-    _nrServerThreads = TRI_numberProcessors();
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-        << "Detected number of processors: " << _nrServerThreads;
-  }
-
-  if (_nrMinimalThreads < 2) {
-    _nrMinimalThreads = 2;
-  }
-
-  if (_nrServerThreads <= _nrMinimalThreads) {
-    _nrServerThreads = _nrMinimalThreads;
-  }
-
   if (_nrMaximalThreads == 0) {
-    _nrMaximalThreads = 4 * _nrServerThreads;
-    if (_nrMaximalThreads < 64) {
-      _nrMaximalThreads = 64;
-    }
+    _nrMaximalThreads = TRI_numberProcessors();
   }
 
-  if (_nrMinimalThreads > _nrMaximalThreads) {
-    _nrMaximalThreads = _nrMinimalThreads;
+  if (_queueSize == 0) {
+    _queueSize = _nrMaximalThreads * 8;
   }
 
-  TRI_ASSERT(0 < _nrMinimalThreads);
-  TRI_ASSERT(_nrMinimalThreads <= _nrServerThreads);
-  TRI_ASSERT(_nrServerThreads <= _nrMaximalThreads);
+  if (_fifo1Size < 1) {
+    _fifo1Size = 1;
+  }
+
+  if (_fifo2Size < 1) {
+    _fifo2Size = 1;
+  }
 }
 
 void SchedulerFeature::start() {
+  auto const N = TRI_numberProcessors();
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::THREADS)
+      << "Detected number of processors: " << N;
+
+  if (_nrMaximalThreads > 2 * N) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+        << "--server.threads (" << _nrMaximalThreads
+        << ") is more than twice the number of cores (" << N
+        << "), this might overload the server";
+  }
+
+  if (_nrMinimalThreads < 2) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "--server.minimal-threads ("
+                                               << _nrMinimalThreads
+                                               << ") should be at least 2";
+    _nrMinimalThreads = 2;
+  }
+
+  if (_nrMinimalThreads >= _nrMaximalThreads) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+        << "--server.threads (" << _nrMaximalThreads << ") should be at least "
+        << (_nrMinimalThreads + 1) << ", raising it";
+    _nrMaximalThreads = _nrMinimalThreads + 1;
+  }
+
+  TRI_ASSERT(2 <= _nrMinimalThreads);
+  TRI_ASSERT(_nrMinimalThreads < _nrMaximalThreads);
+
   ArangoGlobalContext::CONTEXT->maskAllSignals();
   buildScheduler();
 
@@ -262,8 +286,8 @@ bool CtrlHandler(DWORD eventType) {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrServerThreads,
-                                           _nrMaximalThreads, _queueSize);
+  _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
+                                           _queueSize, _fifo1Size, _fifo2Size);
 
   SCHEDULER = _scheduler.get();
 }
@@ -290,9 +314,10 @@ void SchedulerFeature::buildControlCHandler() {
   sigemptyset(&all);
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
-  auto ioService = _scheduler->managerService();
-  _exitSignals = std::make_shared<asio_ns::signal_set>(*ioService, SIGINT,
-                                                       SIGTERM, SIGQUIT);
+  _exitSignals.reset(_scheduler->newSignalSet());
+  _exitSignals->add(SIGINT);
+  _exitSignals->add(SIGTERM);
+  _exitSignals->add(SIGQUIT);
 
   _signalHandler = [this](const asio_ns::error_code& error, int number) {
     if (error) {
@@ -326,9 +351,8 @@ void SchedulerFeature::buildControlCHandler() {
 
 void SchedulerFeature::buildHangupHandler() {
 #ifndef _WIN32
-  auto ioService = _scheduler->managerService();
-
-  _hangupSignals = std::make_shared<asio_ns::signal_set>(*ioService, SIGHUP);
+  _hangupSignals.reset(_scheduler->newSignalSet());
+  _hangupSignals->add(SIGHUP);
 
   _hangupHandler = [this](const asio_ns::error_code& error, int number) {
     if (error) {

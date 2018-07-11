@@ -47,6 +47,7 @@ class Methods; // forward declaration
 namespace arangodb {
 namespace iresearch {
 
+class AsyncMeta;
 class PrimaryKeyIndexReader;
 
 class IResearchViewDBServer final: public arangodb::LogicalView {
@@ -119,7 +120,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
 
  private:
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
-  arangodb::velocypack::Builder _meta; // the view definition
+  std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
 
   IResearchViewDBServer(

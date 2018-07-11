@@ -1,9 +1,9 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/range &lt;&lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/range &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
-  <span class="hljs-string">"attribute"</span> : <span class="hljs-string">"i"</span>, 
-  <span class="hljs-string">"left"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"right"</span> : <span class="hljs-number">4</span> 
+  "collection" : "products", 
+  "attribute" : "i", 
+  "left" : 2, 
+  "right" : 4 
 }
 EOF
 
@@ -14,15 +14,15 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13482"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13482"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lQKu--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13519"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13519"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfNge--_"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13485"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13485"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XB1lQKu--D"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13522"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13522"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfNgi--_"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">3</span> 
     } 
   ], 

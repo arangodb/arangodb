@@ -1,6 +1,6 @@
 # Encryption 
 
-__This feature is only available in the Enterprise Edition.__
+**This feature is only available in the Enterprise Edition.**
 
 When you store sensitive data in your ArangoDB database, you want 
 to protect that data under all circumstances. 

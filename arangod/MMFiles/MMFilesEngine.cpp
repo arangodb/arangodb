@@ -166,7 +166,8 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
       _isUpgrade(false),
       _maxTick(0),
       _walAccess(new MMFilesWalAccess()),
-      _releasedTick(0) {
+      _releasedTick(0),
+      _compactionDisabled(0) {
   startsAfter("MMFilesPersistentIndex"); // yes, intentional!
 
   server->addFeature(new MMFilesWalRecoveryFeature(server));
@@ -3184,10 +3185,6 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
   return res;
 }
 
-/// @brief Add engine-specific AQL functions.
-void MMFilesEngine::addAqlFunctions() {
-}
-
 /// @brief Add engine-specific optimizer rules
 void MMFilesEngine::addOptimizerRules() {
   MMFilesOptimizerRules::registerResources();
@@ -3658,6 +3655,21 @@ WalAccess const* MMFilesEngine::walAccess() const {
   return _walAccess.get();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+void MMFilesEngine::disableCompaction() {
+  uint64_t previous = _compactionDisabled.fetch_add(1, std::memory_order_acq_rel);
+  if (previous == 0) {
+    LOG_TOPIC(INFO, Logger::ENGINES) << "disabling MMFiles compaction and collection";
+  }
+}
+
+void MMFilesEngine::enableCompaction() {
+  uint64_t previous = _compactionDisabled.fetch_sub(1, std::memory_order_acq_rel);
+  TRI_ASSERT(previous > 0);
+  if (previous == 1) {
+    LOG_TOPIC(INFO, Logger::ENGINES) << "enabling MMFiles compaction and collection";
+  }
+}
+
+bool MMFilesEngine::isCompactionDisabled() const {
+  return _compactionDisabled.load() > 0;
+}

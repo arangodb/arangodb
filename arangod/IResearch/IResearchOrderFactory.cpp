@@ -31,6 +31,7 @@
 
 #include "AqlHelper.h"
 #include "IResearchAttributes.h"
+#include "IResearchFeature.h"
 #include "IResearchOrderFactory.h"
 #include "VelocyPackHelper.h"
 #include "Aql/AstNode.h"
@@ -163,7 +164,9 @@ bool nameFromFCall(
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
   auto* fn = static_cast<arangodb::aql::Function*>(node.getData());
 
-  if (!fn || 1 != node.numMembers()) {
+  if (!fn
+      || 1 != node.numMembers()
+      || !arangodb::iresearch::isScorer(*fn)) {
     return false; // no function
   }
 

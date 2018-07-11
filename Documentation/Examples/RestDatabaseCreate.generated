@@ -1,6 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/database &lt;&lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/database &amp;lt;&amp;lt;EOF
 { 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"example"</span> 
+  "name" : "example" 
 }
 EOF
 
