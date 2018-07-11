@@ -580,6 +580,7 @@ function GeneralGraphCreationSuite() {
 
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
       g1._deleteEdgeDefinition(ec1);
+      g1 = graph._graph(gN1);
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([vc1, vc2], g1._orphanCollections());
       assertTrue(db._collection(ec1) !== null);
@@ -605,7 +606,7 @@ function GeneralGraphCreationSuite() {
 
       g1._deleteEdgeDefinition(ec2, true);
       assertEqual([dr3], g1.__edgeDefinitions);
-      assertEqual([vc1, vc2, vc3], g1._orphanCollections());
+      assertEqual([vc1, vc2, vc3].sort(), g1._orphanCollections().sort());
       assertTrue(db._collection(ec2) === null);
     },
 

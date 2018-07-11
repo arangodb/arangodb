@@ -34,6 +34,11 @@ const ggc = require('@arangodb/general-graph-common');
 const GeneralGraph = internal.ArangoGeneralGraph;
 //const arangodb = require("@arangodb");
 
+// overwrite graph class functions
+ggc.__GraphClass._deleteEdgeDefinition = function (edgeDefinition, dropCollection) {
+  return GeneralGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
+};
+
 // new c++ based
 exports._listObjects = GeneralGraph._listObjects;
 exports._list = GeneralGraph._list;
@@ -45,6 +50,12 @@ exports._create = function (name, edgeDefinition, orphans, options) {
   graph._editEdgeDefinitions = function (edgeDefinitions) {
     let result = GeneralGraph._editEdgeDefinitions(name, edgeDefinitions);
     this.__edgeDefinitions = result.graph.edgeDefinitions;
+  };
+  graph._deleteEdgeDefinition = function (edgeDefinition, dropCollection) {
+    let result = GeneralGraph._deleteEdgeDefinition(name, edgeDefinition, dropCollection);
+    console.log(result.graph);
+    this.__edgeDefinitions = result.graph.edgeDefinitions;
+    this.__orphanCollections = result.graph.orphanCollections;
   };
   return graph;
 };

@@ -356,6 +356,60 @@ static void JS_EditEdgeDefinitions(
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
+
+}
+
+static void JS_DropEdgeDefinition(
+        v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+    v8::HandleScope scope(isolate);
+
+    if (args.Length() < 2) {
+      TRI_V8_THROW_EXCEPTION_USAGE("_deleteEdgeDefinitions(edgeCollection, dropCollection)");
+    }
+    if (!args[0]->IsString()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+    }
+    std::string graphName = TRI_ObjectToString(args[0]);
+    std::string edgeDefinitionName = TRI_ObjectToString(args[1]);
+
+    bool dropCollections = false;
+    if (args.Length() == 3) {
+      dropCollections = TRI_ObjectToBoolean(args[2]);
+    }
+
+    auto& vocbase = GetContextVocBase(isolate);
+    auto ctx = transaction::V8Context::Create(vocbase, false);
+
+    std::shared_ptr<Graph const> graph;
+    graph.reset(lookupGraphByName(ctx, graphName));
+
+    ctx = transaction::V8Context::Create(vocbase, false);
+    GraphOperations gops{*graph, ctx};
+    OperationResult r;
+
+    if (r.fail()) {
+      TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    }
+
+    r = gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
+
+    if (r.fail()) {
+      TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    }
+    ctx = transaction::V8Context::Create(vocbase, false);
+
+    // TODO: use cache?
+    graph.reset(lookupGraphByName(ctx, graphName));
+    VPackBuilder result;
+    graph->graphToVpack(result);
+
+    if (!result.isEmpty()) {
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+    }
+
+    TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
@@ -394,6 +448,10 @@ void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_editEdgeDefinitions"),
                        JS_EditEdgeDefinitions);
+
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_deleteEdgeDefinition"),
+                       JS_DropEdgeDefinition);
 
   v8g->GeneralGraphsTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoGeneralGraphCtor"));

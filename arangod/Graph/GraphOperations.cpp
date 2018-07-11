@@ -257,9 +257,10 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   for (auto const& orph : _graph.orphanCollections()) {
     newOrphColls.add(VPackValue(orph));
   }
+
   for (auto const& po : possibleOrphans) {
     if (std::find(usedVertexCollections.begin(), usedVertexCollections.end(),
-                  po) != usedVertexCollections.end()) {
+                  po) == usedVertexCollections.end()) {
       newOrphColls.add(VPackValue(po));
     } else {
       collectionsToMayBeRemoved.emplace(po);
@@ -297,6 +298,8 @@ OperationResult GraphOperations::eraseEdgeDefinition(
       pushCollectionIfMayBeDropped(col, _graph.name(), collectionsToBeRemoved);
     }
 
+    // add also the edge collection itself for removal
+    pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(), collectionsToBeRemoved);
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
