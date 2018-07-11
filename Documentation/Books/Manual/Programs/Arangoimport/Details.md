@@ -167,14 +167,14 @@ time for meta operations.
 
 Automatic pacing intentionally does not use the full throughput of a
 disk device.  An unlimited (really fast) disk device might not need
-pacing. Raising the number of threads via the "--threads X" command
-line to any value of X greater than 2 will increase the total
+pacing. Raising the number of threads via the `--threads X` command
+line to any value of `X` greater than 2 will increase the total
 throughput used.
 
 Automatic pacing frees the user from adjusting the throughput used to
 match available resources.  It is disabled by manually specifying any
-"--batch-size". 16777216 was the previous default for --batch-size.
-Having --batch-size too large can lead to transmitted data backing-up
+`--batch-size`. 16777216 was the previous default for *--batch-size*.
+Having *--batch-size* too large can lead to transmitted data backing-up
 on the server, resulting in a TimeoutError.
 
 The pacing algorithm works successfully with MMFiles with disks
