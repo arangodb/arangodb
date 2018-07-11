@@ -3,6 +3,8 @@ Guides
 
 These guides provide solutions to common problems when building applications with Foxx services:
 
+[Development mode](DevelopmentMode.md) for easy editing of code without bundling and re-uploading.
+
 [Running Foxx in a cluster](Cluster.md) and how it is different from Foxx on a standalone server.
 
 [Using authentication and sessions](Auth.md) to restrict access to your API and keep track of your users.

@@ -133,6 +133,7 @@
 * [Foxx services](Foxx/README.md)
   * [Getting started](Foxx/GettingStarted.md)
   * [Guides](Foxx/Guides/README.md)
+    * [Development mode](Foxx/Guides/DevelopmentMode.md)
     * [Foxx in a cluster](Foxx/Guides/Cluster.md)
     * [Authentication and sessions](Foxx/Guides/Auth.md)
     * [Using Node modules](Foxx/Guides/BundledNodeModules.md)
