@@ -3,7 +3,7 @@ ArangoDB Deployment Modes
 
 **WIP**
   
-- [Master/Slave](SingleInstance/README.md)
+- [SingleInstance](SingleInstance/README.md)
 - [Master/Slave](MasterSlave/README.md)
 - [Active Failover](ActiveFailover/README.md)
 - [Cluster](Cluster/README.md)
