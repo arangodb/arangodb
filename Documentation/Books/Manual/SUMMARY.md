@@ -132,7 +132,7 @@
   * [Write-ahead log](Architecture/WriteAheadLog.md)
 * [Foxx services](Foxx/README.md)
   * [Getting started](Foxx/GettingStarted.md)
-  * [🚧 Guides](Foxx/Guides/README.md)
+  * [Guides](Foxx/Guides/README.md)
     * [Foxx in a cluster](Foxx/Guides/Cluster.md)
     * [Authentication and sessions](Foxx/Guides/Auth.md)
     * [Using Node modules](Foxx/Guides/BundledNodeModules.md)
@@ -142,13 +142,9 @@
     * [Writing queries](Foxx/Guides/Queries.md)
     * [Testing Foxx services](Foxx/Guides/Testing.md)
     * [Linking services together](Foxx/Guides/Dependencies.md)
-    * [🚧 Making requests](Foxx/Guides/MakingRequests.md)
-      <!-- * [Error handling](Foxx/Guides/ErrorHandling.md) -->
-      <!-- * [Multipart requests](Foxx/Guides/Multipart.md) -->
+    * [Making requests](Foxx/Guides/MakingRequests.md)
     * [Scripts and scheduling](Foxx/Guides/Scripts.md)
-      <!-- * [Troubleshooting](Foxx/Guides/Troubleshooting.md) -->
     * [Using Webpack with Foxx](Foxx/Guides/Webpack.md)
-      <!-- * [Using TypeScript with Foxx](Foxx/Guides/TypeScript.md) -->
     * [Access from the browser](Foxx/Guides/Browser.md)
     * [Working with 2.x services](Foxx/Guides/LegacyMode.md)
   * [Reference](Foxx/Reference/README.md)
@@ -160,7 +156,6 @@
       * [Middleware](Foxx/Reference/Routers/Middleware.md)
       * [Request](Foxx/Reference/Routers/Request.md)
       * [Response](Foxx/Reference/Routers/Response.md)
-    * [Using GraphQL](Foxx/Reference/GraphQL.md)
     * [Sessions middleware](Foxx/Reference/Sessions/README.md)
       * [Session storages](Foxx/Reference/Sessions/Storages/README.md)
         * [Collection storage](Foxx/Reference/Sessions/Storages/Collection.md)
@@ -172,6 +167,7 @@
       * [Authentication](Foxx/Reference/Modules/Auth.md)
       * [OAuth 1.0a](Foxx/Reference/Modules/OAuth1.md)
       * [OAuth 2.0](Foxx/Reference/Modules/OAuth2.md)
+      * [GraphQL](Foxx/Reference/Modules/GraphQL.md)
       * [Queues](Foxx/Reference/Modules/Queues.md)
   * [Deployment](Foxx/Deployment.md)
   * [Migrating 2.x services](Foxx/Migrating2x/README.md)

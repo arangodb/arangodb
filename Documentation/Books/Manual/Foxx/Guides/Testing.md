@@ -191,14 +191,14 @@ const { baseUrl } = module.context;
 
 describe("this service", () => {
   it("should say 'Hello World!' at the index route", () => {
-    const res = request.get(baseUrl);
-    expect(res.status).to.equal(200);
-    expect(res.body).to.equal("Hello World!");
+    const response = request.get(baseUrl);
+    expect(response.status).to.equal(200);
+    expect(response.body).to.equal("Hello World!");
   });
   it("should greet us with name", () => {
-    const res = request.get(`${baseUrl}/Steve`);
-    expect(res.status).to.equal(200);
-    expect(res.body).to.equal("Hello Steve!");
+    const response = request.get(`${baseUrl}/Steve`);
+    expect(response.status).to.equal(200);
+    expect(response.body).to.equal("Hello Steve!");
   });
 });
 ```

@@ -1,5 +1,5 @@
-Using GraphQL in Foxx
-=====================
+GraphQL integration
+===================
 
 `const createGraphQLRouter = require('@arangodb/foxx/graphql');`
 
