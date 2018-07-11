@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #5736: Foxx HTTP API responds with 500 error when request body
+  is too short
+
 * changed the thread handling in the scheduler. `--server.threads` will be
   the maximum number of threads for the scheduler.
 
