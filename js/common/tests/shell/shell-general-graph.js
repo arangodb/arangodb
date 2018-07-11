@@ -1805,9 +1805,10 @@ function OrphanCollectionSuite() {
         g1._addVertexCollection(vC4, false);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
-        assertEqual(e.errorMessage, vC4 + ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
       }
       assertTrue(db._collection(vC4) === null);
+      g1 = graph._graph(gN1);
       assertEqual(g1._orphanCollections(), []);
     },
 
@@ -1844,10 +1845,11 @@ function OrphanCollectionSuite() {
     test_removeVertexCollection2: function() {
       g1._addVertexCollection(vC4, true);
       g1._addVertexCollection(vC5, true);
-      assertEqual(g1._orphanCollections(), [vC4, vC5]);
+      assertEqual(g1._orphanCollections().sort(), [vC4, vC5].sort());
       g1._removeVertexCollection(vC4, false);
       assertTrue(db._collection(vC4) !== null);
-      assertEqual(g1._orphanCollections(), [vC5]);
+      g1 = graph._graph(gN1);
+      assertEqual(g1._orphanCollections().sort(), [vC5].sort());
       try {
         g1._removeVertexCollection(vC4, true);
       } catch (e) {

@@ -505,7 +505,7 @@ OperationResult GraphOperations::addOrphanCollectionByGraph(
 }
 
 OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
-                                                     bool waitForSync) {
+                                                     bool waitForSync, bool createCollection) {
   GraphManager gmngr{ctx()};
   std::string collectionName = document.get("collection").copyString();
   std::shared_ptr<LogicalCollection> def;
@@ -517,26 +517,31 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
     return result;
   }
   def = gmngr.getCollectionByName(ctx()->vocbase(), collectionName);
-  if (def == nullptr) {
+  if (def == nullptr && createCollection) {
     result = gmngr.createVertexCollection(collectionName, waitForSync,
                                           collectionsOptions.slice());
     if (result.fail()) {
       return result;
     }
+  } else if (def == nullptr && !createCollection) {
+    return OperationResult(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST);
   } else {
     if (def->type() != 2) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
     }
   }
 
-  for (auto const& vertexCollection : _graph.vertexCollections()) {
-    if (collectionName == vertexCollection) {
-      return OperationResult(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF);
-    }
-  }
   for (auto const& orphanCollection : _graph.orphanCollections()) {
     if (collectionName == orphanCollection) {
       return OperationResult(TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS);
+    }
+  }
+  for (auto const& vertexCollection : _graph.vertexCollections()) {
+    if (std::find(_graph.orphanCollections().begin(), _graph.orphanCollections().end(),
+                  vertexCollection) == _graph.orphanCollections().end()) {
+      if (collectionName == vertexCollection) {
+        return OperationResult(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF);
+      }
     }
   }
 
@@ -545,7 +550,9 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
   builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
   for (auto const& orph : _graph.orphanCollections()) {
-    builder.add(VPackValue(orph));
+    if (orph != collectionName) {
+      builder.add(VPackValue(orph));
+    }
   }
   builder.add(VPackValue(collectionName));
   builder.close();  // array

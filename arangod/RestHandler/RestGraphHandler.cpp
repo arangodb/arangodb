@@ -825,7 +825,7 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
   OperationResult result;
 
   if (action == VertexDefinitionAction::CREATE) {
-    result = gops.addOrphanCollection(body, waitForSync);
+    result = gops.addOrphanCollection(body, waitForSync, true);
   } else if (action == VertexDefinitionAction::REMOVE) {
     result = gops.eraseOrphanCollection(
       waitForSync, vertexDefinitionName, dropCollections

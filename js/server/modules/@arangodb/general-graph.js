@@ -50,10 +50,18 @@ exports._create = function (name, edgeDefinition, orphans, options) {
   graph._editEdgeDefinitions = function (edgeDefinitions) {
     let result = GeneralGraph._editEdgeDefinitions(name, edgeDefinitions);
     this.__edgeDefinitions = result.graph.edgeDefinitions;
+    this.__orphanCollections = result.graph.orphanCollections;
   };
   graph._deleteEdgeDefinition = function (edgeDefinition, dropCollection) {
     let result = GeneralGraph._deleteEdgeDefinition(name, edgeDefinition, dropCollection);
-    console.log(result.graph);
+    this.__edgeDefinitions = result.graph.edgeDefinitions;
+    this.__orphanCollections = result.graph.orphanCollections;
+  };
+  graph._addVertexCollection = function (vertexName, createCollection) {
+    if (createCollection === undefined) {
+      createCollection = true;
+    }
+    let result = GeneralGraph._addVertexCollection(name, vertexName, createCollection);
     this.__edgeDefinitions = result.graph.edgeDefinitions;
     this.__orphanCollections = result.graph.orphanCollections;
   };

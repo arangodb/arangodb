@@ -129,7 +129,8 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult addOrphanCollection(VPackSlice document, bool waitForSync);
+  OperationResult addOrphanCollection(VPackSlice document, bool waitForSync,
+                                      bool createCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
