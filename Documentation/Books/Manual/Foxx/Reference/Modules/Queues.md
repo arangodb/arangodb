@@ -9,7 +9,7 @@ Foxx queue jobs can be any [script](../../Guides/Scripts.md) named in the [manif
 
 Please note that Foxx queues are database-specific. Queues and jobs are always relative to the database in which they are created or accessed.
 
-For disabling the Foxx queues feature or adjusting the polling interval see the [`foxx.queues` and `foxx.queues-poll-interval` options](../../Administration/Configuration/GeneralArangod.html#foxx-queues).
+For disabling the Foxx queues feature or adjusting the polling interval see the [`foxx.queues` and `foxx.queues-poll-interval` options](../../../Administration/Configuration/GeneralArangod.md#foxx-queues).
 
 For the low-level functionality see the chapter on the [task management module](../../../Appendix/JavaScriptModules/Tasks.md).
 

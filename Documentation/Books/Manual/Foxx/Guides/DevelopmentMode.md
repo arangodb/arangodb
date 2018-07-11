@@ -15,7 +15,7 @@ There are a number of caveats you should be aware of when using development mode
 
 - the setup script will likely be executed numerous times, although [using additional migration scripts](Scripts.md#migrations) may help avoiding some of the added overhead
 
-- if you are [serving static files](Files.md#Serving-files), keep in mind that requests to these files will still result in a re-deployment of the service
+- if you are [serving static files](Files.md#serving-files), keep in mind that requests to these files will still result in a re-deployment of the service
 
 - making HTTP requests to the service via `@arangodb/request` (e.g. [as part of an integration test](Testing.md)) also results in re-deployment, which can result in inconsistent behavior
 
