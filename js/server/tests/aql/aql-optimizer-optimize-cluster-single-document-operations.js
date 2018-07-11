@@ -171,6 +171,7 @@ function optimizerClusterSingleDocumentTestSuite () {
     testRuleFetch : function () {
       var queries = [
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s, 0],
+        [ "FOR d IN " + cn1 + " FILTER '1' == d._key RETURN d", 0, 0, true, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN 123", 2, 2, true, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' LIMIT 10, 1 RETURN d", 3, 3, false, s, 0],
@@ -265,6 +266,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, s, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 5, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '${notHereDoc}' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 5, 2, true, setupC1, 0],
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN { NEW: NEW, a: a }`, 6, 4, true, s, 0],
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 7, 2, true, setupC1, 0],
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 6, 4, true, s, 0],

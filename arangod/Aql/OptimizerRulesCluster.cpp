@@ -40,17 +40,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-// in plan below
-ExecutionNode* hasSingleParent(ExecutionNode* in){
-  auto parents = in->getParents();
-  if(parents.size() == 1){
-    return parents.front();
-  }
-  return nullptr;
-}
-
-ExecutionNode* hasSingleParent(ExecutionNode* in, EN::NodeType type){
-  auto* parent = hasSingleParent(in);
+ExecutionNode* hasSingleParent(ExecutionNode const* in, EN::NodeType type){
+  auto* parent = in->getFirstParent();
   if(parent) {
     if(parent->getType() == type){
       return parent;
@@ -59,8 +50,8 @@ ExecutionNode* hasSingleParent(ExecutionNode* in, EN::NodeType type){
   return nullptr;
 }
 
-ExecutionNode* hasSingleParent(ExecutionNode* in, std::vector<EN::NodeType> types){
-  auto* parent = hasSingleParent(in);
+ExecutionNode* hasSingleParent(ExecutionNode const* in, std::vector<EN::NodeType> types){
+  auto* parent = in->getFirstParent();
   if(parent) {
     for(auto const& type : types){
       if(parent->getType() == type){
@@ -72,7 +63,7 @@ ExecutionNode* hasSingleParent(ExecutionNode* in, std::vector<EN::NodeType> type
 }
 
 // in plan above
-ExecutionNode* hasSingleDep(ExecutionNode* in){
+ExecutionNode* hasSingleDep(ExecutionNode const* in){
   auto deps = in->getDependencies();
   if(deps.size() == 1){
     return deps.front();
@@ -80,7 +71,7 @@ ExecutionNode* hasSingleDep(ExecutionNode* in){
   return nullptr;
 }
 
-ExecutionNode* hasSingleDep(ExecutionNode* in, EN::NodeType type){
+ExecutionNode* hasSingleDep(ExecutionNode const* in, EN::NodeType const type){
   auto* dep = hasSingleDep(in);
   if(dep) {
     if(dep->getType() == type){
@@ -90,7 +81,7 @@ ExecutionNode* hasSingleDep(ExecutionNode* in, EN::NodeType type){
   return nullptr;
 }
 
-ExecutionNode* hasSingleDep(ExecutionNode* in, std::vector<EN::NodeType> types){
+ExecutionNode* hasSingleDep(ExecutionNode const* in, std::vector<EN::NodeType> const& types){
   auto* dep = hasSingleDep(in);
   if(dep) {
     for(auto const& type : types){
@@ -153,7 +144,7 @@ std::vector<AstNode const*> hasBinaryCompare(ExecutionNode* node){
   return result;
 }
 
-std::string getFirstKey(std::vector<AstNode const*> compares){
+std::string getFirstKey(std::vector<AstNode const*> const& compares){
   for(auto const* node : compares){
     AstNode const* keyNode = node->getMemberUnchecked(0);
     if(keyNode->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS && keyNode->stringEquals("_key")) {
@@ -177,7 +168,7 @@ bool depIsSingletonOrConstCalc(ExecutionNode* node){
       return false;
     }
 
-    if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
+    if(!node->getVariablesUsedHere().empty()){
       return false;
     }
   }

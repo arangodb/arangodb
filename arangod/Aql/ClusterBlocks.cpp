@@ -1808,11 +1808,11 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
     possibleWrites = 1;
   }
 
-  _done = true;
   // check operation result
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
         (( node->_mode == ExecutionNode::NodeType::INDEX) ||
+         ( node->_mode == ExecutionNode::NodeType::UPDATE && node->_replaceIndexNode) ||
          ( node->_mode == ExecutionNode::NodeType::REMOVE && node->_replaceIndexNode) ||
          ( node->_mode == ExecutionNode::NodeType::REPLACE && node->_replaceIndexNode) ))
       {
@@ -1837,7 +1837,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
 
   // Fill itemblock
   // create block that can hold a result with one entry and a number of variables
-  // corresponing to the amount of out variables
+  // corresponding to the amount of out variables
 
   // only copy 1st row of registers inherited from previous frame(s)
   TRI_ASSERT(result.ok());
@@ -1906,11 +1906,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SingleRemoteOperationBl
     return { ExecutionState::DONE, nullptr};
   }
 
-  std::unique_ptr<AqlItemBlock> aqlres;
-
-  RegisterId nrRegs =
-    getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-  aqlres.reset(requestBlock(atMost, nrRegs));
+  RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  std::unique_ptr<AqlItemBlock> aqlres(requestBlock(atMost, nrRegs));
 
   int outputCounter = 0;
   if (_buffer.empty()) {
@@ -1940,6 +1937,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SingleRemoteOperationBl
     if (getOne(aqlres.get(), outputCounter)) {
       outputCounter++;
     }
+    _done = true;
     _pos++;
   }
   _buffer.pop_front();  // does not throw
