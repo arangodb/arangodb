@@ -161,7 +161,7 @@ The `body` method works the same way as the `response` method except the schema 
 Creating collections
 --------------------
 
-The real power of Foxx comes from interacting with the database itself. In order to be able to use a collection from within our service, we should first make sure that the collection actually exists. The right place to create collections your service is going to use is in [a *setup* script](Reference/Scripts.md), which Foxx will execute for you when installing or updating the service.
+The real power of Foxx comes from interacting with the database itself. In order to be able to use a collection from within our service, we should first make sure that the collection actually exists. The right place to create collections your service is going to use is in [a *setup* script](Guides/Scripts.md), which Foxx will execute for you when installing or updating the service.
 
 First create a new folder called "scripts" in the service folder, which will be where our scripts are going to live. For simplicity's sake, our setup script will live in a file called `setup.js` inside that folder:
 
@@ -336,11 +336,15 @@ You now know how to create a Foxx service from scratch, how to handle user input
 
 * Concerned about security? You could add [authentication](Reference/Modules/Auth.md) to your service to protect access to the data before it even leaves the database.
 
-* Writing a single page app? You could [store some basic assets](Reference/Assets.md) right inside your Foxx service.
+* Writing a single page app? You could [store some basic assets](Guides/Files.md) right inside your Foxx service.
 
+<<<<<<< HEAD
 * Need to integrate external services? You can [make HTTP requests](Reference/Modules/README.md) from inside Foxx
   and use [queued jobs](Reference/Scripts.md) to perform that work in the background.
+=======
+* Need to integrate external services? You can [make HTTP requests](Reference/Modules/README.md) from inside Foxx and use [queued jobs](Guides/Scripts.md) to perform that work in the background.
+>>>>>>> Fix internal and cross links
 
-* Tired of reinventing the wheel? Learn about [dependencies](Reference/Dependencies.md).
+* Tired of reinventing the wheel? Learn about [dependencies](Guides/Dependencies.md).
 
-* Everything broken? You can [write tests](Reference/Testing.md) to make sure your logic remains sound.
+* Everything broken? You can [write tests](Guides/Testing.md) to make sure your logic remains sound.

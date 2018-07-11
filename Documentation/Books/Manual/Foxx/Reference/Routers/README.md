@@ -7,7 +7,7 @@ Routers let you define routes that extend ArangoDB's HTTP API with custom endpoi
 
 Routers need to be mounted using the `use` method of a [service context](../Context.md) to expose their HTTP routes at a service's mount path.
 
-You can pass routers between services mounted in the same database [as dependencies](../Dependencies.md). You can even nest routers within each other.
+You can pass routers between services mounted in the same database [as dependencies](../../Guides/Dependencies.md). You can even nest routers within each other.
 
 Creating a router
 -----------------

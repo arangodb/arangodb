@@ -10,7 +10,7 @@ As a rule of thumb you should always use `module.context.collection` to access c
 Low-level collection access
 ---------------------------
 
-ArangoDB provides [a low-level API for managing collections](../../DataModeling/Collections/DatabaseMethods.html) via [the `db` object](../../Appendix/References/DBObject.html). These APIs are not very useful for most application logic but are allow you to create and destroy collections in your [lifecycle scripts and migrations](Migrations.md).
+ArangoDB provides [a low-level API for managing collections](../../DataModeling/Collections/DatabaseMethods.md) via [the `db` object](../../Appendix/References/DBObject.md). These APIs are not very useful for most application logic but are allow you to create and destroy collections in your [lifecycle scripts](Scripts.md#lifecycle-scripts) and [migrations](Scripts.md#migrations).
 
 Using these methods requires you to work with fully qualified collection names. This means instead of using `module.context.collection` to get a _collection object_ you need to use `module.context.collectionName` to get the prefixed _collection name_ ArangoDB understands:
 

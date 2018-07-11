@@ -174,7 +174,7 @@ The following fields are allowed in manifests:
 
 - **scripts**: `Object` (optional)
 
-  An object defining [named scripts](Scripts.md) provided by this service, which can either be used directly or as queued jobs by other services.
+  An object defining [named scripts](../Guides/Scripts.md) provided by this service, which can either be used directly or as queued jobs by other services.
 
 - **tests**: `string` or `Array<string>` (optional)
 

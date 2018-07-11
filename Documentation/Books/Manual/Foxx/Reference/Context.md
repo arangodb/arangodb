@@ -40,7 +40,7 @@ The service context specifies the following properties:
 
 * **argv**: `any`
 
-  Any arguments passed in if the current file was executed as a [script or queued job](Scripts.md).
+  Any arguments passed in if the current file was executed as a [script or queued job](../Guides/Scripts.md).
 
 * **basePath**: `string`
 
@@ -60,7 +60,7 @@ The service context specifies the following properties:
 
 * **dependencies**: `Object`
 
-  Configured [dependencies](Dependencies.md) for the service.
+  Configured [dependencies](../Guides/Dependencies.md) for the service.
 
 * **isDevelopment**: `boolean`
 
