@@ -5,8 +5,6 @@ Authentication
 
 Authenticators allow implementing basic password mechanism using simple built-in hashing functions.
 
-For a full example of sessions with authentication and registration see the example in the [chapter on User Management](../Users.md).
-
 Creating an authenticator
 -------------------------
 

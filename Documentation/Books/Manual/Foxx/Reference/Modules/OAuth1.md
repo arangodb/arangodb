@@ -7,8 +7,6 @@ The OAuth1 module provides abstractions over OAuth 1.0a providers like Twitter, 
 
 **Examples**
 
-The following extends the [user management example](../Users.md):
-
 ```js
 const router = createRouter();
 const oauth1 = createOAuth1Client({
