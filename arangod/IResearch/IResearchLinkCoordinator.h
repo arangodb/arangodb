@@ -43,7 +43,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destructor
   ////////////////////////////////////////////////////////////////////////////////
-  virtual ~IResearchLinkCoordinator();
+  virtual ~IResearchLinkCoordinator() = default;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this IResearch Link reference the supplied view
@@ -74,7 +74,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
 
   virtual bool canBeDropped() const override { return true; }
 
-  virtual int drop() override;
+  virtual int drop() override { return TRI_ERROR_NO_ERROR; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view

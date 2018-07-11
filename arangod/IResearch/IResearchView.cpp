@@ -733,12 +733,13 @@ IResearchView::IResearchView(
   it->_next = _memoryNodes;
 
   auto* viewPtr = this;
-  auto* iresearchFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+
+  _asyncFeature = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::iresearch::IResearchFeature
   >();
 
   // add asynchronous commit tasks
-  if (iresearchFeature) {
+  if (_asyncFeature) {
     struct State: public IResearchViewMeta::CommitMeta {
       size_t _cleanupIntervalCount;
       std::chrono::system_clock::time_point _last;
@@ -817,8 +818,7 @@ IResearchView::IResearchView(
         state
       );
 
-      iresearchFeature->async(self(), 0, std::move(task));
-      _asyncFeature = iresearchFeature;
+      _asyncFeature->async(self(), 0, std::move(task));
     }
   }
 
