@@ -165,6 +165,10 @@ of the original data and potential follow up errors. The WAL recovery
 will still abort when encountering a collection with a corrupted datafile,
 at least if `--wal.ignore-recovery-errors` is not set to `true`.
 
+Setting the option to `true` will also automaticall repair potentially 
+corrupted VERSION files of databases on startup, so that the startup can
+proceed.
+
 The default value is *false*, so collections with corrupted datafiles will
 not be loaded at all, preventing partial loads and follow up errors. However,
 if such collection is required at server startup, during WAL recovery, the

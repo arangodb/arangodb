@@ -120,6 +120,28 @@ bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb, si
   return false;
 }
 
+bool RocksDBVPackUniqueIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+    
+  if (limit == 0 || _done) {
+    // already looked up something
+    return false;
+  }
+
+  _done = true;
+
+  auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
+  arangodb::Result r = mthds->Get(_index->columnFamily(), _key.ref(), value.buffer());
+
+  if (r.ok()) {
+    cb(LocalDocumentId(RocksDBValue::revisionId(*value.buffer())), RocksDBKey::indexedVPack(_key.ref()));
+  }
+
+  // there is at most one element, so we are done now
+  return false;
+}
+
 RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
@@ -187,6 +209,40 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t l
             ? RocksDBValue::revisionId(_iterator->value())
             : RocksDBKey::revisionId(_bounds.type(), _iterator->key()));
     cb(documentId);
+
+    --limit;
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  while (limit > 0) {
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+
+    LocalDocumentId const documentId(
+        _index->_unique
+            ? RocksDBValue::revisionId(_iterator->value())
+            : RocksDBKey::revisionId(_bounds.type(), _iterator->key()));
+    cb(documentId, RocksDBKey::indexedVPack(_iterator->key()));
 
     --limit;
     if (_reverse) {

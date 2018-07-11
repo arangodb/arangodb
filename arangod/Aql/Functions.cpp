@@ -2316,8 +2316,6 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-  VPackValueLength n = keys.length();
-
   AqlValueMaterializer keyMaterializer(trx);
   VPackSlice keysSlice = keyMaterializer.slice(keys, false);
   
@@ -2328,14 +2326,33 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
   builder->openObject();
 
   // Buffer will temporarily hold the keys
+  std::unordered_set<std::string> keysSeen;
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-  for (VPackValueLength i = 0; i < n; ++i) {
+ 
+  VPackArrayIterator keysIt(keysSlice);
+  VPackArrayIterator valuesIt(valuesSlice);
+
+  TRI_ASSERT(keysIt.size() == valuesIt.size());
+
+  while (keysIt.valid()) {
+    TRI_ASSERT(valuesIt.valid());
+
+    // stringify key
     buffer->reset();
-    Stringify(trx, adapter, keysSlice.at(i));
-    builder->add(buffer->c_str(), buffer->length(), valuesSlice.at(i));
+    Stringify(trx, adapter, keysIt.value());
+
+    if (keysSeen.emplace(buffer->c_str(), buffer->length()).second) {
+      // non-duplicate key
+      builder->add(buffer->c_str(), buffer->length(), valuesIt.value());
+    }
+
+    keysIt.next();
+    valuesIt.next();
   }
+
   builder->close();
+
   return AqlValue(builder.get());
 }
 

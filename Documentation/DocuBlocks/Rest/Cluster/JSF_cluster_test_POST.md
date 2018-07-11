@@ -9,5 +9,10 @@ The body can be any type and is simply forwarded.
 
 @RESTDESCRIPTION
 See GET method.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200} is returned when everything went well.
+
 @endDocuBlock
 

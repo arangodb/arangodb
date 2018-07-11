@@ -54,7 +54,8 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       _canceled(false),
       _request(request),
       _response(response),
-      _statistics(nullptr) {
+      _statistics(nullptr),
+      _state(HandlerState::PREPARE) {
   bool found;
   std::string const& startThread =
       _request->header(StaticStrings::StartThread, found);
@@ -62,9 +63,6 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
   if (found) {
     _needsOwnThread = StringUtils::boolean(startThread);
   }
-
-  _context =
-      std::make_shared<WorkContext>(_request->user(), _request->databaseName());
 }
 
 RestHandler::~RestHandler() {
@@ -79,27 +77,91 @@ RestHandler::~RestHandler() {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-int RestHandler::prepareEngine() {
-  RequestStatistics::SET_REQUEST_START(_statistics);
+uint64_t RestHandler::messageId() const {
+  uint64_t messageId = 0UL;
+  auto req = _request.get();
+  auto res = _response.get();
+  if (req) {
+    messageId = req->messageId();
+  } else if (res) {
+    messageId = res->messageId();
+  } else {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+        << "could not find corresponding request/response";
+  }
 
+  return messageId;
+}
+
+void RestHandler::setStatistics(RequestStatistics* stat) {
+  RequestStatistics* old = _statistics.exchange(stat);
+  if (old != nullptr) {
+    old->release();
+  }
+}
+
+void RestHandler::runHandlerStateMachine() {
+  TRI_ASSERT(_callback);
+  
+  while (true) {
+    switch (_state) {
+      case HandlerState::PREPARE:
+        this->prepareEngine();
+        break;
+        
+      case HandlerState::EXECUTE: {
+        int res = this->executeEngine();
+        if (res != TRI_ERROR_NO_ERROR) {
+          this->finalizeEngine();
+        }
+        if (_state == HandlerState::PAUSED) {
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
+          return; // stop state machine
+        }
+        break;
+      }
+        
+      case HandlerState::PAUSED:
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Resuming rest handler execution";
+        TRI_ASSERT(_response != nullptr);
+        _callback(this);
+        _state = HandlerState::FINALIZE;
+        break;
+        
+      case HandlerState::FINALIZE:
+        this->finalizeEngine();
+        break;
+        
+      case HandlerState::DONE:
+      case HandlerState::FAILED:
+        return;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+int RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
-  RequestStatistics::SET_REQUEST_END(_statistics);
+  RequestStatistics::SET_REQUEST_START_END(_statistics);
 
   if (_canceled) {
-    _engine.setState(RestEngine::State::DONE);
+    _state = HandlerState::DONE;
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
     handleError(err);
 
-    _storeResult(this);
+    _callback(this);
     return TRI_ERROR_REQUEST_CANCELED;
   }
 
   try {
     prepareExecute();
-    _engine.setState(RestEngine::State::EXECUTE);
+    _state = HandlerState::EXECUTE;
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -114,8 +176,8 @@ int RestHandler::prepareEngine() {
     handleError(err);
   }
 
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _state = HandlerState::FAILED;
+  _callback(this);
   return TRI_ERROR_INTERNAL;
 }
 
@@ -153,10 +215,10 @@ int RestHandler::finalizeEngine() {
   RequestStatistics::SET_REQUEST_END(_statistics);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    _engine.setState(RestEngine::State::DONE);
+    _state = HandlerState::DONE;
   } else {
-    _engine.setState(RestEngine::State::FAILED);
-    _storeResult(this);
+    _state = HandlerState::FAILED;
+    _callback(this);
   }
   
   return res;
@@ -169,22 +231,20 @@ int RestHandler::executeEngine() {
   try {
     RestStatus result = execute();
 
-    if (result.isLeaf()) {
-      if (_response == nullptr) {
-        Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
-                      __FILE__, __LINE__);
-
-        handleError(err);
-      }
-
-      _engine.setState(RestEngine::State::FINALIZE);
-      _storeResult(this);
+    if (result == RestStatus::FAIL) {
+      LOG_TOPIC(WARN, Logger::REQUESTS) << "Rest handler reported fail";
+    } else if (result == RestStatus::WAITING) {
+      _state = HandlerState::PAUSED; // wait for someone to continue the state machine
       return TRI_ERROR_NO_ERROR;
+    } else if (_response == nullptr) {
+      Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
+                    __FILE__, __LINE__);
+
+      handleError(err);
     }
 
-    _engine.setState(RestEngine::State::RUN);
-    _engine.appendRestStatus(result.element());
-
+    _state = HandlerState::FINALIZE;
+    _callback(this);
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -227,90 +287,8 @@ int RestHandler::executeEngine() {
     handleError(err);
   }
 
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
-  return TRI_ERROR_INTERNAL;
-}
-
-int RestHandler::runEngine(bool synchron) {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr);
-  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-  ExecContextScope scope(exec);
-  try {
-    while (_engine.hasSteps()) {
-      std::shared_ptr<RestStatusElement> result = _engine.popStep();
-
-      switch (result->state()) {
-        case RestStatusElement::State::DONE:
-          _engine.setState(RestEngine::State::FINALIZE);
-          _storeResult(this);
-          break;
-
-        case RestStatusElement::State::FAIL:
-          _engine.setState(RestEngine::State::FINALIZE);
-          _storeResult(this);
-          return TRI_ERROR_NO_ERROR;
-
-        case RestStatusElement::State::WAIT_FOR:
-          if (!synchron) {
-            _engine.setState(RestEngine::State::WAITING);
-
-            std::shared_ptr<RestHandler> self = shared_from_this();
-            result->callWaitFor([self, this]() {
-              _engine.setState(RestEngine::State::RUN);
-              _engine.asyncRun(self);
-            });
-
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          return TRI_ERROR_INTERNAL;
-
-        case RestStatusElement::State::QUEUED:
-          if (!synchron) {
-            std::shared_ptr<RestHandler> self = shared_from_this();
-            _engine.queue([self, this]() { _engine.asyncRun(self); });
-            return TRI_ERROR_NO_ERROR;
-          }
-          break;
-
-        case RestStatusElement::State::THEN: {
-          auto status = result->callThen();
-
-          if (status != nullptr) {
-            _engine.appendRestStatus(status->element());
-          }
-
-          break;
-        }
-      }
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  } catch (Exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    handleError(ex);
-  } catch (arangodb::velocypack::Exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
-                  __FILE__, __LINE__);
-    handleError(err);
-  } catch (std::bad_alloc const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
-    handleError(err);
-  } catch (std::exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
-    handleError(err);
-  } catch (...) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
-  }
-
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _state = HandlerState::FAILED;
+  _callback(this);
   return TRI_ERROR_INTERNAL;
 }
 

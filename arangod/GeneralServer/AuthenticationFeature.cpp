@@ -126,17 +126,24 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 void AuthenticationFeature::prepare() {
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(_userManager == nullptr);
+  
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
+  if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
-  if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
-          ->isEnabled()) {
-    _userManager =
-        new auth::UserManager(std::make_unique<LdapAuthenticationHandler>());
-  } else {
-    _userManager = new auth::UserManager();
-  }
+    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
+            ->isEnabled()) {
+      _userManager = new auth::UserManager(std::make_unique<LdapAuthenticationHandler>());
+    } else {
+      _userManager = new auth::UserManager();
+    }
 #else
-  _userManager = new auth::UserManager();
+    _userManager = new auth::UserManager();
 #endif
+  } else {
+    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
+  }
+  
   TRI_ASSERT(_authCache == nullptr);
   _authCache = new auth::TokenCache(_userManager, _authenticationTimeout);
 
@@ -162,10 +169,11 @@ void AuthenticationFeature::start() {
 
   out << "Authentication is turned " << (_active ? "on" : "off");
 
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  _userManager->setQueryRegistry(queryRegistryFeature->queryRegistry());
+  if (_userManager != nullptr) {
+    auto queryRegistryFeature =
+    application_features::ApplicationServer::getFeature<QueryRegistryFeature>("QueryRegistry");
+    _userManager->setQueryRegistry(queryRegistryFeature->queryRegistry());
+  }
 
   if (_active && _authenticationSystemOnly) {
     out << " (system only)";

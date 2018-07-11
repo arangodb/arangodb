@@ -248,6 +248,7 @@ class Ast {
                                      AstNode const*);
 
   /// @brief create an AST attribute access node
+  /// note that the caller must make sure that char* data remains valid!
   AstNode* createNodeAttributeAccess(AstNode const*, char const*, size_t);
 
   /// @brief create an AST attribute access node w/ bind parameter
@@ -392,13 +393,7 @@ class Ast {
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
   
-  static bool populateSingleAttributeAccess(AstNode const* node,
-                                            Variable const* variable,
-                                            std::vector<std::string>& attributeName);
-
-  static bool variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
-                                                       Variable const* variable,
-                                                       std::vector<std::string> const& attributeName);
+  static bool getReferencedAttributes(AstNode const*, Variable const*, std::unordered_set<std::string>&);
   
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node,

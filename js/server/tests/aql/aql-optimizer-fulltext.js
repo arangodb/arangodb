@@ -55,12 +55,15 @@ function optimizerRuleTestSuite() {
   var hasNoFilterNode = function (plan,query) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Has no FilterNode");
   };
+  var hasNoListNode = function (plan,query) {
+    assertEqual(findExecutionNodes(plan, "EnumerateListNode").length, 0);
+  };
   var hasNoIndexNode = function (plan,query) {
     assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, query + " Has IndexNode, but should not have one");
   };
   var hasIndexNode = function (plan,query) {
     var rn = findExecutionNodes(plan,"IndexNode");
-    assertEqual(rn.length, 1, query + " Has no IndexNode, but should have one");
+    assertTrue(rn.length > 0);
     assertEqual(rn[0].indexes.length, 1);
     var indexType = rn[0].indexes[0].type;
     assertTrue(indexType === "fulltext", indexType + " wrong type");
@@ -152,6 +155,14 @@ function optimizerRuleTestSuite() {
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) SORT d.id RETURN d.id", [ 2, 4 ]);
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) LIMIT 1 SORT d.id RETURN d.id", [ 2]);            
     }, // testRuleBasics
+
+    testMultipleCollections : function () {
+      let q = "FOR d1 IN FULLTEXT('" + colName + "', 't1', 'möchten,müller') FOR d2 IN FULLTEXT('" + colName + "', 't1', 'prefix:que') RETURN [d1.id, d2.id]";
+      let plan = AQL_EXPLAIN(q, {});
+      hasIndexNode(plan, q);
+      hasNoFilterNode(plan, q);
+      hasNoListNode(plan, q);
+    },
 
     testRuleStringCollection : function() {
       // collection is not known to query before optimizer rule is applied

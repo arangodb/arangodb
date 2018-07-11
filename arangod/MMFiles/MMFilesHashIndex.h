@@ -218,6 +218,7 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "hash-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -226,6 +227,7 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   MMFilesHashIndexLookupBuilder _lookups;
   std::vector<MMFilesHashIndexElement*> _buffer;
   size_t _posInBuffer;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 };
 
 class MMFilesHashIndexIteratorVPack final : public IndexIterator {

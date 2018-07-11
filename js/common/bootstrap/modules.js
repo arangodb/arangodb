@@ -92,6 +92,9 @@
     function require (path) {
       assert(path, 'missing path');
       assert(typeof path === 'string', 'path must be a string');
+      if (path === '@arangodb/locals') {
+        return {context: module.context};
+      }
       return Module._load(path, module);
     }
 
@@ -631,6 +634,9 @@
   Module.Module = Module;
 
   global.require = function (request) {
+    if (request === '@arangodb/locals') {
+      return {};
+    }
     return Module._load(request);
   };
 }());

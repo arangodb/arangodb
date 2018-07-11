@@ -11,6 +11,10 @@
   * [Accessing the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
 #
+* [Tutorials](Tutorials/README.md)
+  * [Kubernetes](Tutorials/Kubernetes/README.md)
+  * [Datacenter to datacenter Replication on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
+#  
 * [Highlights](Highlights.md)
 #
 * [Scalability](Scalability/README.md)
@@ -124,6 +128,21 @@
       * [Processes](Deployment/Distributed.md)
       * [Docker](Deployment/Docker.md)
   * [Multiple Datacenters](Deployment/DC2DC.md)
+  * [Kubernetes](Deployment/Kubernetes/README.md)
+    * [Using the Operator](Deployment/Kubernetes/Usage.md)
+    * [Deployment Resource Reference](Deployment/Kubernetes/DeploymentResource.md)
+    * [Driver Configuration](Deployment/Kubernetes/DriverConfiguration.md)
+    * [Authentication](Deployment/Kubernetes/Authentication.md)
+    * [Scaling](Deployment/Kubernetes/Scaling.md)
+    * [Upgrading](Deployment/Kubernetes/Upgrading.md)
+    * [ArangoDB Configuration & Secrets](Deployment/Kubernetes/ConfigAndSecrets.md)
+    * [Metrics](Deployment/Kubernetes/Metrics.md)
+    * [Services & Load balancer](Deployment/Kubernetes/ServicesAndLoadBalancer.md)
+    * [Deployment Replication Resource Reference](Deployment/Kubernetes/DeploymentReplicationResource.md)
+    * [Storage](Deployment/Kubernetes/Storage.md)
+    * [Storage Resource](Deployment/Kubernetes/StorageResource.md)
+    * [TLS](Deployment/Kubernetes/Tls.md)
+    * [Troubleshooting](Deployment/Kubernetes/Troubleshooting.md)
 #
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)
@@ -191,6 +210,7 @@
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
+  * [Arangoinspect](Troubleshooting/Arangoinspect.md)
   * [Datafile Debugger](Troubleshooting/DatafileDebugger.md)
   * [Arangobench](Troubleshooting/Arangobench.md)
 #

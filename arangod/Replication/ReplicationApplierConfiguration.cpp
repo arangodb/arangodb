@@ -110,7 +110,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
     hasUsernamePassword = true;
     builder.add("username", VPackValue(_username));
   }
-  if (includePassword) {
+  if (includePassword && !_password.empty()) {
     hasUsernamePassword = true;
     builder.add("password", VPackValue(_password));
   }
@@ -183,15 +183,14 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   // read username / password
   value = slice.get("username");
   bool hasUsernamePassword = false;
-  if (value.isString()) {
+  if (value.isString() && value.getStringLength() > 0) {
     hasUsernamePassword = true;
     configuration._username = value.copyString();
-  }
-
-  value = slice.get("password");
-  if (value.isString()) {
-    hasUsernamePassword = true;
-    configuration._password = value.copyString();
+    
+    value = slice.get("password");
+    if (value.isString()) {
+      configuration._password = value.copyString();
+    }
   }
 
   if (!hasUsernamePassword) {

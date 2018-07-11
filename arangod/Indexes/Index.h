@@ -217,6 +217,13 @@ class Index {
 
   virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
+ 
+  /// @brief whether or not the index provides an iterator that can extract
+  /// attribute values from the index data, without having to refer to the
+  /// actual document data
+  /// By default, indexes do not have this type of iterator, but they can
+  /// add it as a performance optimization
+  virtual bool hasCoveringIterator() const { return false; }
 
   /// @brief Checks if this index is identical to the given definition
   virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;

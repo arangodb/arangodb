@@ -428,10 +428,10 @@
 ///   performed successfully.
 /// - 1493: @LIT{conflicting replication factor with distributeShardsLike parameter assignment}
 ///   Will be raised if intended replication factor does not match that of the
-///   prototype shard given in ditributeShardsLike parameter.
+///   prototype shard given in distributeShardsLike parameter.
 /// - 1494: @LIT{conflicting shard number with distributeShardsLike parameter assignment}
 ///   Will be raised if intended number of shards does not match that of the
-///   prototype shard given in ditributeShardsLike parameter.
+///   prototype shard given in distributeShardsLike parameter.
 /// - 1495: @LIT{leadership challenge is ongoing}
 ///   Will be raised when servers are currently competing for leadership, and
 ///   the result is still unknown.
@@ -652,8 +652,6 @@
 ///   The collection is already used in an edge definition of the graph.
 /// - 1930: @LIT{edge collection not used in graph}
 ///   The edge collection is not used in any edge definition of the graph.
-/// - 1931: @LIT{ is not an ArangoCollection}
-///   The collection is not an ArangoCollection.
 /// - 1932: @LIT{collection _graphs does not exist}
 ///   collection _graphs does not exist.
 /// - 1933: @LIT{Invalid example type. Has to be String, Array or Object}
@@ -735,6 +733,42 @@
 /// - 4004: @LIT{attribute cannot be used as smart graph attribute}
 ///   The given smartGraph attribute is illegal and connot be used for
 ///   sharding. All system attributes are forbidden.
+/// - 5000: @LIT{error during cluster repairs}
+///   General error during cluster repairs
+/// - 5001: @LIT{not enough (healthy) db servers}
+///   Will be raised when, during repairDistributeShardsLike, there must be a
+///   free db server to move a shard, but there is no candidate or none is
+///   healthy.
+/// - 5002: @LIT{replication factor violated during cluster repairs}
+///   Will be raised on various inconsistencies regarding the replication factor
+/// - 5003: @LIT{no dbservers during cluster repairs}
+///   Will be raised if a collection that is fixed has some shard without DB
+///   Servers
+/// - 5004: @LIT{mismatching leaders during cluster repairs}
+///   Will be raised if a shard in collection and its prototype in the
+///   corresponding distributeShardsLike collection have mismatching leaders
+///   (when they should already have been fixed)
+/// - 5005: @LIT{mismatching followers during cluster repairs}
+///   Will be raised if a shard in collection and its prototype in the
+///   corresponding distributeShardsLike collection don't have the same
+///   followers (when they should already have been adjusted)
+/// - 5006: @LIT{inconsistent attributes during cluster repairs}
+///   Will be raised if a collection that is fixed does (not) have
+///   distributeShardsLike when it is expected, or does (not) have
+///   repairingDistributeShardsLike when it is expected
+/// - 5007: @LIT{mismatching shards during cluster repairs}
+///   Will be raised if in a collection and its distributeShardsLike prototype
+///   collection some shard and its prototype have an unequal number of DB
+///   Servers
+/// - 5008: @LIT{move shard job failed during cluster repairs}
+///   Will be raised if a move shard job in the agency failed during cluster
+///   repairs
+/// - 5009: @LIT{move shard job disappeared during cluster repairs}
+///   Will be raised if a move shard job in the agency cannot be found anymore
+///   before it finished
+/// - 5010: @LIT{agency transaction failed during cluster repairs}
+///   Will be raised if an agency transaction failed during either sending or
+///   executing it.
 /// - 20001: @LIT{Illegal inquiry syntax}
 ///   Inquiry handles a list of string clientIds: [<clientId>,...].
 /// - 20011: @LIT{Inform message must be an object.}
@@ -2533,7 +2567,7 @@ void TRI_InitializeErrorMessages ();
 /// assignment
 ///
 /// Will be raised if intended replication factor does not match that of the
-/// prototype shard given in ditributeShardsLike parameter.
+/// prototype shard given in distributeShardsLike parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR       (1493)
@@ -2544,7 +2578,7 @@ void TRI_InitializeErrorMessages ();
 /// conflicting shard number with distributeShardsLike parameter assignment
 ///
 /// Will be raised if intended number of shards does not match that of the
-/// prototype shard given in ditributeShardsLike parameter.
+/// prototype shard given in distributeShardsLike parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         (1494)
@@ -3516,16 +3550,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
-///
-///  is not an ArangoCollection
-///
-/// The collection is not an ArangoCollection.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          (1931)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
 ///
 /// collection _graphs does not exist
@@ -3917,6 +3941,129 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           (4004)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5000: ERROR_CLUSTER_REPAIRS_FAILED
+///
+/// error during cluster repairs
+///
+/// General error during cluster repairs
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_FAILED                                  (5000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5001: ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY
+///
+/// not enough (healthy) db servers
+///
+/// Will be raised when, during repairDistributeShardsLike, there must be a
+/// free db server to move a shard, but there is no candidate or none is
+/// healthy.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY                      (5001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5002: ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED
+///
+/// replication factor violated during cluster repairs
+///
+/// Will be raised on various inconsistencies regarding the replication factor
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED             (5002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5003: ERROR_CLUSTER_REPAIRS_NO_DBSERVERS
+///
+/// no dbservers during cluster repairs
+///
+/// Will be raised if a collection that is fixed has some shard without DB
+/// Servers
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS                            (5003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5004: ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS
+///
+/// mismatching leaders during cluster repairs
+///
+/// Will be raised if a shard in collection and its prototype in the
+/// corresponding distributeShardsLike collection have mismatching leaders
+/// (when they should already have been fixed)
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS                     (5004)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5005: ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS
+///
+/// mismatching followers during cluster repairs
+///
+/// Will be raised if a shard in collection and its prototype in the
+/// corresponding distributeShardsLike collection don't have the same followers
+/// (when they should already have been adjusted)
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS                   (5005)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5006: ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES
+///
+/// inconsistent attributes during cluster repairs
+///
+/// Will be raised if a collection that is fixed does (not) have
+/// distributeShardsLike when it is expected, or does (not) have
+/// repairingDistributeShardsLike when it is expected
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES                 (5006)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5007: ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS
+///
+/// mismatching shards during cluster repairs
+///
+/// Will be raised if in a collection and its distributeShardsLike prototype
+/// collection some shard and its prototype have an unequal number of DB Servers
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS                      (5007)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5008: ERROR_CLUSTER_REPAIRS_JOB_FAILED
+///
+/// move shard job failed during cluster repairs
+///
+/// Will be raised if a move shard job in the agency failed during cluster
+/// repairs
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED                              (5008)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5009: ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED
+///
+/// move shard job disappeared during cluster repairs
+///
+/// Will be raised if a move shard job in the agency cannot be found anymore
+/// before it finished
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         (5009)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5010: ERROR_CLUSTER_REPAIRS_OPERATION_FAILED
+///
+/// agency transaction failed during cluster repairs
+///
+/// Will be raised if an agency transaction failed during either sending or
+/// executing it.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        (5010)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20001: ERROR_AGENCY_INQUIRY_SYNTAX

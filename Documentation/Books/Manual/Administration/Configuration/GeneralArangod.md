@@ -357,6 +357,19 @@ directory as argument.
 /tmp/vocbase
 ```
 
+### Database directory state precondition
+
+`--database.require-directory-state state`
+  
+Using this option it is possible to require the database directory to be
+in a specific state on startup. the options for this value are:
+ 
+- non-existing: database directory must not exist
+- existing: database directory must exist
+- empty: database directory must exist but be empty
+- populated: database directory must exist and contain specific files already
+- any: any directory state allowed
+
 
 ### Journal size
 @startDocuBlock databaseMaximalJournalSize

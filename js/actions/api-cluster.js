@@ -33,6 +33,8 @@
 
 var actions = require('@arangodb/actions');
 var cluster = require('@arangodb/cluster');
+var wait = require("internal").wait;
+
 // var internal = require('internal');
 var _ = require('lodash');
 
@@ -215,6 +217,89 @@ actions.defineHttp({
     }
   }
 });
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_cluster_node_version_GET
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/maintenance',
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.PUT) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only GET and PUT requests are allowed');
+      return;
+    }
+
+    var body = JSON.parse(req.requestBody);
+    if (body === undefined) {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'empty body'
+      });
+      return;
+    }
+
+    let operations = {};
+    if (body === "on") {
+      operations['/arango/Supervision/Maintenance'] =
+        {"op":"set","new":true,"ttl":3600};
+    } else if (body === "off") {
+      operations['/arango/Supervision/Maintenance'] = {"op":"delete"};
+    } else {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'state string must be "on" or "off"'
+      });
+      return;
+    }
+    let preconditions = {};
+    try {
+      global.ArangoAgency.write([[operations, preconditions]]);
+    } catch (e) {
+      throw e;
+    }
+
+    // Wait 2 min for supervision to go to maintenance mode
+    var waitUntil = new Date().getTime() + 120.0*1000;
+    while (true) {
+      var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
+          arango.Supervision.State.Mode;
+      
+      if (body === "on" && mode === "Maintenance") {
+        res.body = JSON.stringify({
+          error: false,
+          warning: 'Cluster supervision deactivated. It will be reactivated automatically in 60 minutes unless this call is repeated until then.'});
+        break;
+      } else if (body === "off" && mode === "Normal") {
+        res.body = JSON.stringify({
+          error: false,
+          warning: 'Cluster supervision reactivated.'});
+        break;
+      }
+
+      wait(0.1);
+      
+      if (new Date().getTime() > waitUntil) {
+        res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
+        res.body = JSON.stringify({
+          'error': true,
+          'errorMessage':
+          'timed out while waiting for supervision to go into maintenance mode'
+        });
+        return;
+      }
+      
+    }
+
+    return ; 
+
+  }});
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_cluster_node_version_GET
@@ -934,6 +1019,83 @@ actions.defineHttp({
       return;
     }
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, {error: false, id: id});
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_getqueryAgencyJob
+// / (intentionally not in manual)
+// / @brief asks about progress on an agency job by id
+// /
+// / @ RESTHEADER{GET /_admin/cluster/queryAgencyJob, Ask about an agency job by its id.}
+// /
+// / @ RESTQUERYPARAMETERS `id` must be a string with the ID of the agency
+// / job being queried.
+// /
+// / @ RESTDESCRIPTION Returns information (if known) about the job with ID
+// / `id`. This can either be a cleanOurServer or a moveShard job at this
+// / stage.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{200} is returned when everything went well and the
+// / information about the job is returned. It might be that the job is
+// / not found.
+// /
+// / @ RESTRETURNCODE{400} id parameter is not given or not a string.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
+// /
+// / @ RESTRETURNCODE{503} the agency operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/queryAgencyJob',
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only coordinators can serve this request');
+      return;
+    }
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only the GET method is allowed');
+      return;
+    }
+
+    // Now get to work:
+    let id;
+    try {
+      if (req.parameters.id) {
+        id = req.parameters.id;
+      }
+    } catch(e) {
+    }
+
+    if (typeof id !== 'string' || id.length === 0) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'required parameter id was not given');
+      return;
+    }
+
+    var ok = true;
+    var job;
+    try {
+      job = require('@arangodb/cluster').queryAgencyJob(id);
+    } catch (e1) {
+      ok = false;
+    }
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+        {error: true, errorMsg: 'Cannot read from agency.'});
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_OK, job);
   }
 });
 

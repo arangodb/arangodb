@@ -52,7 +52,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 option(SKIP_PACKAGING "" OFF)
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "-static")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 endif()
 
 # be verbose about flags used
@@ -66,10 +66,15 @@ if (USE_ENTERPRISE)
   add_subdirectory(enterprise)
 endif ()
 
+# debug synchronous replication
 option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
+
 if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
+
+# do not use standalone boost asio
+add_definitions("-DARANGODB_STANDALONE_ASIO=0")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -78,7 +83,7 @@ endif ()
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")
 if (NOT DEFINED ARANGODB_VERSION_REVISION)
-  set(ARANGODB_VERSION_REVISION   "7")
+  set(ARANGODB_VERSION_REVISION   "11")
 endif()
 
 set(ARANGODB_PACKAGE_REVISION   "1")
@@ -170,12 +175,6 @@ endif()
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
   "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
-  NEWLINE_STYLE UNIX
-)
-
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js"
   NEWLINE_STYLE UNIX
 )
 
@@ -640,13 +639,7 @@ endif ()
 # NDEBUG
 # ------------------------------------------------------------------------------
 
-if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-                                 )
-   )
-   add_definitions(-DNDEBUG)
-endif ()
+add_definitions(-DNDEBUG)
 
 ################################################################################
 ## FLAGS

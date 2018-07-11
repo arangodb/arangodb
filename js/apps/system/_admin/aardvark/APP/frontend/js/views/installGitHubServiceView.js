@@ -24,7 +24,15 @@
     },
 
     events: {
-      'click #installGitHubService': 'installGitHubService'
+      'click #installGitHubService': 'installGitHubService',
+      'keydown input': 'checkValidators'
+    },
+
+    checkValidators: function () {
+      if (window.modalView._validators.length !== 1) {
+        window.modalView.clearValidators();
+        this.setGithubValidators();
+      }
     },
 
     render: function () {

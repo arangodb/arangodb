@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 
@@ -40,16 +41,18 @@ class JobQueueThread final
 
   ~JobQueueThread() { shutdown(); }
 
-  void beginShutdown() {
+  void beginShutdown() override {
     Thread::beginShutdown();
     _jobQueue->wakeup();
   }
 
  public:
-  void run() {
+  void run() override {
     int idleTries = 0;
 
     auto self = shared_from_this();
+
+    CONDITION_LOCKER(guard, _jobQueue->_queueCondition);
 
     // iterate until we are shutting down
     while (!isStopping()) {
@@ -59,9 +62,11 @@ class JobQueueThread final
           << "size of job queue: " << _jobQueue->queueSize();
 
       while (_scheduler->shouldQueueMore()) {
+        guard.unlock();
         Job* jobPtr = nullptr;
 
         if (!_jobQueue->pop(jobPtr)) {
+          guard.lock();
           break;
         }
 
@@ -82,14 +87,15 @@ class JobQueueThread final
             LOG_TOPIC(WARN, Logger::THREADS)
                 << "caught unknown exception while executing job callback";
           }
-
-          this->_jobQueue->wakeup();
         });
+
+        guard.lock();
       }
 
       if (idleTries >= 2) {
         LOG_TOPIC(TRACE, Logger::THREADS) << "queue manager going to sleep";
-        _jobQueue->waitForWork();
+        static uint64_t WAIT_TIME = 1000 * 1000;
+        guard.wait(WAIT_TIME);
       }
     }
 
@@ -133,11 +139,3 @@ void JobQueue::wakeup() {
   CONDITION_LOCKER(guard, _queueCondition);
   guard.signal();
 }
-
-void JobQueue::waitForWork() {
-  static uint64_t WAIT_TIME = 1000 * 1000;
-
-  CONDITION_LOCKER(guard, _queueCondition);
-  guard.wait(WAIT_TIME);
-}
-

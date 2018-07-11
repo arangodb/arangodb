@@ -28,9 +28,11 @@ arangosh&gt; stmt.explain();
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"doc"</span> 
         }, 
+        <span class="hljs-string">"projections"</span> : [ ], 
+        <span class="hljs-string">"producesResult"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"9"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"11"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"user"</span> 
@@ -71,7 +73,9 @@ arangosh&gt; stmt.explain();
             } 
           ] 
         }, 
-        <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span> 
+        <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"needsGatherNodeSort"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span> 
       }, 
       { 
         <span class="hljs-string">"type"</span> : <span class="hljs-string">"ReturnNode"</span>, 

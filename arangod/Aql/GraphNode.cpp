@@ -271,15 +271,14 @@ GraphNode::GraphNode(ExecutionPlan* plan,
     uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
     TRI_edge_direction_e d;
     switch (dir) {
-      case 0:
-        TRI_ASSERT(false);
-        break;
       case 1:
         d = TRI_EDGE_IN;
         break;
       case 2:
         d = TRI_EDGE_OUT;
         break;
+      case 0:
+        TRI_ASSERT(false);
       default:
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "Invalid direction value");

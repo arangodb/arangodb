@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/16130"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/16281"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16133"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16133"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WpTBAYO--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16284"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16284"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XBu2JMC--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16137"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16137"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WpTBAYS--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16288"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16288"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XBu2JMC--B"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16140"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16140"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WpTBAYS--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16291"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16291"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XBu2JMC--D"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16143"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16143"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WpTBAYS--D"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16294"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16294"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XBu2JMC--F"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16146"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16146"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WpTBAYS--F"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/16297"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16297"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XBu2JMG--_"</span> 
 }

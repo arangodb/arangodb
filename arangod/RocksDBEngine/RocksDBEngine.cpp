@@ -1704,8 +1704,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   auto rates = manager->globalHitRates();
   builder.add("cache.limit", VPackValue(manager->globalLimit()));
   builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
-  builder.add("cache.hit-rate-lifetime", VPackValue(rates.first));
-  builder.add("cache.hit-rate-recent", VPackValue(rates.second));
+  // handle NaN
+  builder.add("cache.hit-rate-lifetime", VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
+  builder.add("cache.hit-rate-recent", VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
 
   // print column family statistics
   builder.add("columnFamilies", VPackValue(VPackValueType::Object));
@@ -1763,8 +1764,11 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
       TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
       builder.add("time", VPackValue(buffer));
 
+      TRI_GetTimeStampReplication(std::get<2>(it), &buffer[0], sizeof(buffer));
+      builder.add("expires", VPackValue(buffer));
+
       builder.add("lastServedTick",
-                  VPackValue(std::to_string(std::get<2>(it))));
+                  VPackValue(std::to_string(std::get<3>(it))));
 
       builder.close();
     }

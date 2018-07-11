@@ -483,7 +483,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
                             _ast->variables()->variables(false), false, true);
 
   registerNode(reinterpret_cast<ExecutionNode*>(en));
-  en->aggregationMethod(CollectOptions::COLLECT_METHOD_DISTINCT);
+  en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
 
   return en;
@@ -516,6 +516,8 @@ ModificationOptions ExecutionPlan::createModificationOptions(
           options.nullMeansRemove = value->isFalse();
         } else if (name == "mergeObjects") {
           options.mergeObjects = value->isTrue();
+        } else if (name == "ignoreRevs") {
+          options.ignoreRevs = value->isTrue();
         }
       }
     }

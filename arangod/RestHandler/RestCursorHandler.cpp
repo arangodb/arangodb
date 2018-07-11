@@ -28,6 +28,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
+#include "Scheduler/JobQueue.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Transaction/Context.h"
@@ -49,6 +51,14 @@ RestCursorHandler::RestCursorHandler(
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false) {}
+
+// returns the queue name
+size_t RestCursorHandler::queue() const { 
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::BACKGROUND_QUEUE; 
+  }
+  return JobQueue::STANDARD_QUEUE; 
+}
 
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
@@ -333,6 +343,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
     options.add("cache", cache);
   }
 
+  bool hasTtl = false;
   VPackSlice opts = slice.get("options");
   if (opts.isObject()) {
     for (auto const& it : VPackObjectIterator(opts)) {
@@ -345,16 +356,21 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
         if (keyName == "cache" && hasCache) {
           continue;
         }
+        if (keyName == "ttl") {
+          hasTtl = true;
+        }
         options.add(keyName, it.value);
       }
     }
   }
 
-  VPackSlice ttl = slice.get("ttl");
-  if (ttl.isNumber()) {
-    options.add("ttl", ttl);
-  } else {
-    options.add("ttl", VPackValue(30));
+  if (!hasTtl) {
+    VPackSlice ttl = slice.get("ttl");
+    if (ttl.isNumber()) {
+      options.add("ttl", ttl);
+    } else {
+      options.add("ttl", VPackValue(30));
+    }
   }
   options.close();
 

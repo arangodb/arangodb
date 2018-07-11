@@ -434,15 +434,17 @@ static void ClientConnection_reconnect(
   std::string password;
 
   if (args.Length() < 4) {
-    ConsoleFeature* console =
-        ApplicationServer::getFeature<ConsoleFeature>("Console");
+    if (V8ClientConnection::jwtSecret().empty()) {
+      ConsoleFeature* console =
+          ApplicationServer::getFeature<ConsoleFeature>("Console");
 
-    if (console->isEnabled()) {
-      password = console->readPassword("Please specify a password: ");
-    } else {
-      std::cout << "Please specify a password: " << std::flush;
-      password = ConsoleFeature::readPassword();
-      std::cout << std::endl << std::flush;
+      if (console->isEnabled()) {
+        password = console->readPassword("Please specify a password: ");
+      } else {
+        std::cout << "Please specify a password: " << std::flush;
+        password = ConsoleFeature::readPassword();
+        std::cout << std::endl << std::flush;
+      }
     }
   } else {
     password = TRI_ObjectToString(isolate, args[3]);

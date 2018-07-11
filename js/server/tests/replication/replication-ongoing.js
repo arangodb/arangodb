@@ -34,6 +34,7 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 
 const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
 const console = require("console");
 const internal = require("internal");
 const masterEndpoint = arango.getEndpoint();
@@ -59,28 +60,6 @@ const collectionChecksum = function(name) {
 
 const collectionCount = function(name) {
   return db._collection(name).count();
-};
-
-const compareTicks = function(l, r) {
-  var i;
-  if (l === null) {
-    l = "0";
-  }
-  if (r === null) {
-    r = "0";
-  }
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
-  }
-
-  // length is equal
-  for (i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
-    }
-  }
-
-  return 0;
 };
 
 const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {

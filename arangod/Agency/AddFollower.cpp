@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -82,9 +82,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->openObject();
   }
 
-  std::string path = toDoPrefix + _jobId;
-
-  _jb->add(VPackValue(path));
+  _jb->add(VPackValue(toDoPrefix + _jobId));
   { VPackObjectBuilder guard(_jb.get());
     _jb->add("creator", VPackValue(_creator));
     _jb->add("type", VPackValue("addFollower"));
@@ -166,7 +164,7 @@ bool AddFollower::start() {
   // Remove those that are not in state "GOOD":
   auto it = available.begin();
   while (it != available.end()) {
-    if (checkServerGood(_snapshot, *it) != "GOOD") {
+    if (checkServerHealth(_snapshot, *it) != "GOOD") {
       it = available.erase(it);
     } else {
       ++it;
@@ -258,7 +256,7 @@ bool AddFollower::start() {
       addPreconditionUnchanged(trx, planPath, planned);
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
-        addPreconditionServerGood(trx, srv);
+        addPreconditionServerHealth(trx, srv, "GOOD");
       }
     }   // precondition done
   }  // array for transaction done
@@ -269,7 +267,7 @@ bool AddFollower::start() {
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
     LOG_TOPIC(INFO, Logger::SUPERVISION)
-      << "Pending: Addfollower(s) to shard " << _shard << " in collection "
+      << "Finished: Addfollower(s) to shard " << _shard << " in collection "
       << _collection;
     return true;
   }
@@ -307,4 +305,3 @@ arangodb::Result AddFollower::abort() {
   return result;
   
 }
-

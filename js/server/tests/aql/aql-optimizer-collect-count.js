@@ -187,10 +187,48 @@ function optimizerCountTestSuite () {
 /// @brief test count
 ////////////////////////////////////////////////////////////////////////////////
 
+    testCountTotal : function () {
+      var query = "FOR j IN " + c.name() + " COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(1000, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
     testCountTotalNested : function () {
       var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT WITH COUNT INTO count RETURN count";
 
-      var results = AQL_EXECUTE(query);
+      var results = AQL_EXECUTE(query, null, { optimizer: { rules: ["-interchange-adjacent-enumerations"] } });
+      assertEqual(1, results.json.length);
+      assertEqual(2000, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountTotalNested2 : function () {
+      var query = "FOR j IN " + c.name() + " FOR i IN 1..2 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query, null, { optimizer: { rules: ["-interchange-adjacent-enumerations"] } });
       assertEqual(1, results.json.length);
       assertEqual(2000, results.json[0]);
 
@@ -222,7 +260,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -246,7 +284,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -264,7 +302,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -296,7 +334,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -323,7 +361,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -339,7 +377,7 @@ function optimizerCountTestSuite () {
       assertEqual(1000, results.json.length);
       if (isCluster) {
         var plan = AQL_EXPLAIN(query).plan;
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     }
 

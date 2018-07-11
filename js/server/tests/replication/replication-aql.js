@@ -32,11 +32,12 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 
-var replication = require("@arangodb/replication");
-var console = require("console");
-var internal = require("internal");
-var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = ARGUMENTS[0];
+const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
+const console = require("console");
+const internal = require("internal");
+const masterEndpoint = arango.getEndpoint();
+const slaveEndpoint = ARGUMENTS[0];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -63,28 +64,6 @@ function ReplicationSuite() {
 
   var collectionCount = function(name) {
     return db._collection(name).count();
-  };
-
-  var compareTicks = function(l, r) {
-    var i;
-    if (l === null) {
-      l = "0";
-    }
-    if (r === null) {
-      r = "0";
-    }
-    if (l.length !== r.length) {
-      return l.length - r.length < 0 ? -1 : 1;
-    }
-
-    // length is equal
-    for (i = 0; i < l.length; ++i) {
-      if (l[i] !== r[i]) {
-        return l[i] < r[i] ? -1 : 1;
-      }
-    }
-
-    return 0;
   };
 
   var compare = function(masterFunc, masterFunc2, slaveFuncFinal) {

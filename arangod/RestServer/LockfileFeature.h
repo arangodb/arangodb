@@ -33,6 +33,7 @@ class LockfileFeature final : public application_features::ApplicationFeature {
  public:
   void start() override final;
   void unprepare() override final;
+  void beginShutdown() override final;
 
  private:
   std::string _lockFilename;

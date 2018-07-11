@@ -29,10 +29,15 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Scheduler/JobQueue.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -41,6 +46,9 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
     GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(request, response, queryRegistry) {}
+
+// returns the queue name
+size_t RestSimpleQueryHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestSimpleQueryHandler::execute() {
   // extract the sub-request type
@@ -56,6 +64,11 @@ RestStatus RestSimpleQueryHandler::execute() {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
       allDocumentKeys();
+      return RestStatus::DONE;
+    }
+    if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE) {
+      // by-example query
+      byExample();
       return RestStatus::DONE;
     }
   }
@@ -229,4 +242,100 @@ void RestSimpleQueryHandler::allDocumentKeys() {
   VPackSlice s = data.slice();
   // now run the actual query and handle the result
   processQuery(s);
+}
+
+static void buildExampleQuery(VPackBuilder& result,
+                              std::string const& cname,
+                              VPackSlice const& doc,
+                              size_t skip, size_t limit) {
+  TRI_ASSERT(doc.isObject());
+  std::string query = "FOR doc IN @@collection";
+  
+  result.add("bindVars", VPackValue(VPackValueType::Object));
+  result.add("@collection", VPackValue(cname));
+  size_t i = 0;
+  for (auto pair : VPackObjectIterator(doc, true)) {
+    std::string key = basics::StringUtils::replace(pair.key.copyString(), "`", "");
+    key = basics::StringUtils::join(basics::StringUtils::split(key, "."), "`.`");
+    std::string istr = std::to_string(i++);
+    query.append(" FILTER doc.`").append(key).append("` == @value").append(istr);
+    result.add(std::string("value") + istr, pair.value);
+  }
+  result.close();
+  
+  if (limit > 0 || skip > 0) {
+    query.append(" LIMIT ").append(std::to_string(skip))
+         .append(", ").append(limit > 0 ? std::to_string(limit) : "null")
+         .append(" ");
+  }
+  query.append(" RETURN doc");
+  
+  result.add("query", VPackValue(query));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a cursor with all documents matching the example
+//////////////////////////////////////////////////////////////////////////////
+
+void RestSimpleQueryHandler::byExample() {
+  bool parseSuccess = true;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(parseSuccess);
+
+  if (!parseSuccess) {
+    // error message generated in parseVPackBody
+    return;
+  }
+  
+  VPackSlice body = parsedBody.get()->slice();
+
+  if (!body.isObject() || !body.hasKey("example") ||
+      !body.get("example").isObject()) {
+    generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
+  // velocypack will throw an exception for negative numbers
+  size_t skip = basics::VelocyPackHelper::getNumericValue(body, "skip", 0);
+  size_t limit = basics::VelocyPackHelper::getNumericValue(body, "limit", 0);
+  size_t batchSize = basics::VelocyPackHelper::getNumericValue(body, "batchSize", 0);
+  VPackSlice example = body.get("example");
+
+  std::string cname;
+  if (body.hasKey("collection")) {
+    VPackSlice const value = body.get("collection");
+    if (value.isString()) {
+      cname = value.copyString();
+    }
+  } else {
+    cname = _request->value("collection");
+  }
+
+  if (cname.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                  "expecting string for <collection>");
+    return;
+  }
+
+  auto const* col = _vocbase->lookupCollection(cname);
+
+  if (col != nullptr && cname != col->name()) {
+    // user has probably passed in a numeric collection id.
+    // translate it into a "real" collection name
+    cname = col->name();
+  }
+
+  VPackBuilder data;
+  data.openObject();
+  buildExampleQuery(data, cname, example, skip, limit);
+
+  if (batchSize > 0) {
+    data.add("batchSize", VPackValue(batchSize));
+  }
+
+  data.add("count", VPackSlice::trueSlice());
+  data.close();
+
+  // now run the actual query and handle the result
+  processQuery(data.slice());
 }

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 500 */
-/* global assertEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+/* global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for index usage
@@ -125,6 +125,26 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(query[1], results.stats.scannedIndex);
       });
     },
+    
+    testFindFromNoDocuments: function () {
+      var queries = [
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from100" RETURN 1', 100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from200" RETURN 1', 200 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1000" RETURN 1', 1000 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1100" RETURN 1', 1100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1900" RETURN 1', 1900 ]
+      ];
+
+      queries.forEach(function (query) {
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length, query[0]);
+        assertEqual(0, results.stats.scannedFull);
+        assertEqual(query[1], results.stats.scannedIndex);
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, nodes.length);
+        assertFalse(nodes[0].producesResult);
+      });
+    },
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test index usage
@@ -144,6 +164,26 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(query[1], results.json.length, query[0]);
         assertEqual(0, results.stats.scannedFull);
         assertEqual(query[1], results.stats.scannedIndex);
+      });
+    },
+    
+    testFindToNoDocuments: function () {
+      var queries = [
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to100" RETURN 1', 100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to200" RETURN 1', 200 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to1000" RETURN 1', 1000 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to1100" RETURN 1', 1100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to1900" RETURN 1', 1900 ]
+      ];
+
+      queries.forEach(function (query) {
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length, query[0]);
+        assertEqual(0, results.stats.scannedFull);
+        assertEqual(query[1], results.stats.scannedIndex);
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, nodes.length);
+        assertFalse(nodes[0].producesResult);
       });
     },
 

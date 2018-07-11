@@ -268,6 +268,11 @@
     exports.getStateReplicationApplier = global.REPLICATION_APPLIER_STATE;
   }
 
+  if (global.REPLICATION_APPLIER_STATE_ALL) {
+    // TODO: remove this export from the internal module
+    exports.getStateReplicationApplierAll = global.REPLICATION_APPLIER_STATE_ALL;
+  }
+
   if (global.REPLICATION_APPLIER_FORGET) {
     // TODO: remove this export from the internal module
     exports.forgetStateReplicationApplier = global.REPLICATION_APPLIER_FORGET;
@@ -389,8 +394,8 @@
   // / @brief getCollectionShardDistrbiution
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION) {
-    exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION;
-    delete global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION;
+  if (global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION) {
+    exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
+    delete global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
   }
 }());

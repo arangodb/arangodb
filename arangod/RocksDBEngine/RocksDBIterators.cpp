@@ -120,7 +120,7 @@ bool RocksDBAllIndexIterator::nextDocument(
     IndexIterator::DocumentCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid()) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -138,7 +138,7 @@ bool RocksDBAllIndexIterator::nextDocument(
       _iterator->Next();
     }
 
-    if (!_iterator->Valid()) {
+    if (!_iterator->Valid() || outOfRange()) {
       return false;
     }
   }

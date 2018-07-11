@@ -12,14 +12,14 @@ Returns the exports of the script, if any.
 An arbitrary JSON value that will be parsed and passed to the
 script as its first argument.
 
-@RESTURLPARAMETERS
+@RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{name,string,required}
 Name of the script to run.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{mount,string,required}
+@RESTQUERYPARAM{mount,string,required}
 Mount path of the installed service.
 
 @RESTRETURNCODES

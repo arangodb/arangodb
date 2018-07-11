@@ -9,10 +9,14 @@ A JSON object containing an attribute *tests* which lists the files
 containing the test suites.
 
 @RESTDESCRIPTION
-
 Executes the specified tests on the server and returns an object with the
 test results. The object has an attribute "error" which states whether
 any error occurred. The object also has an attribute "passed" which
 indicates which tests passed and which did not.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200} is returned when everything went well.
+
 @endDocuBlock
 

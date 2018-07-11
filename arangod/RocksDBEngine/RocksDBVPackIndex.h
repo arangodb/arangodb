@@ -79,9 +79,15 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   /// @brief Get the next limit many element in the index
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
+  
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return true; }
 
  private:
   arangodb::RocksDBVPackIndex const* _index;
@@ -110,11 +116,17 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return "rocksdb-index-iterator";
   }
 
-  /// @brief Get the next limit many element in the index
+  /// @brief Get the next limit many elements in the index
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
+
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return true; }
 
  private:
   bool outOfRange() const;
@@ -150,6 +162,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   bool allowExpansion() const override { return true; }
 
   bool canBeDropped() const override { return true; }
+  
+  bool hasCoveringIterator() const override { return true; }
 
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }

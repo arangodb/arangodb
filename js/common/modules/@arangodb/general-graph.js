@@ -96,8 +96,8 @@ var findOrCreateCollectionByName = function (name, type, noCreate, options) {
     res = true;
   } else if (!(col instanceof ArangoCollection)) {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.code;
-    err.errorMessage = name + arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.message;
+    err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
+    err.errorMessage = name + arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
     throw err;
   } else if (type === ArangoCollection.TYPE_EDGE && col.type() !== type) {
     var err2 = new ArangoError();

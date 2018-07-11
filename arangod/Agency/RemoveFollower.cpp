@@ -169,7 +169,7 @@ bool RemoveFollower::start() {
   bool leaderBad = false;
   for (auto const& srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
-    if (checkServerGood(_snapshot, serverName) == "GOOD") {
+    if (checkServerHealth(_snapshot, serverName) == "GOOD") {
       overview.emplace(serverName, 0);
     } else {
       overview.emplace(serverName, -1);
@@ -357,7 +357,7 @@ bool RemoveFollower::start() {
       addPreconditionUnchanged(trx, planPath, planned);
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : kept) {
-        addPreconditionServerGood(trx, srv);
+        addPreconditionServerHealth(trx, srv, "GOOD");
       }
     }   // precondition done
   }  // array for transaction done

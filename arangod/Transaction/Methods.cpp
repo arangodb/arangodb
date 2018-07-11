@@ -1316,6 +1316,9 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return insertCoordinator(collectionName, value, optionsCopy);
   }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
+  }
 
   return insertLocal(collectionName, value, optionsCopy);
 }
@@ -1420,13 +1423,14 @@ OperationResult transaction::Methods::insertLocal(
       return res;
     }
 
-    TRI_ASSERT(!result.empty());
+    if (!options.silent || _state->isDBServer()) {
+      TRI_ASSERT(!result.empty());
+      StringRef keyString(transaction::helpers::extractKeyFromDocument(
+          VPackSlice(result.vpack())));
 
-    StringRef keyString(transaction::helpers::extractKeyFromDocument(
-        VPackSlice(result.vpack())));
-
-    buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
-                          0, nullptr, options.returnNew ? &result : nullptr);
+      buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
+                            0, nullptr, options.returnNew ? &result : nullptr);
+    }
 
     return TRI_ERROR_NO_ERROR;
   };
@@ -1594,6 +1598,9 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return updateCoordinator(collectionName, newValue, optionsCopy);
   }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
+  }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
                      TRI_VOC_DOCUMENT_OPERATION_UPDATE);
@@ -1643,6 +1650,9 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     return replaceCoordinator(collectionName, newValue, optionsCopy);
+  }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
   }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
@@ -1758,15 +1768,16 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
-    TRI_ASSERT(!result.empty());
-    TRI_ASSERT(!previous.empty());
-
-    StringRef key(newVal.get(StaticStrings::KeyString));
-    buildDocumentIdentity(collection, resultBuilder, cid, key,
-                          TRI_ExtractRevisionId(VPackSlice(result.vpack())),
-                          actualRevision,
-                          options.returnOld ? &previous : nullptr,
-                          options.returnNew ? &result : nullptr);
+    if (!options.silent || _state->isDBServer()) {
+      TRI_ASSERT(!previous.empty());
+      TRI_ASSERT(!result.empty());
+      StringRef key(newVal.get(StaticStrings::KeyString));
+      buildDocumentIdentity(collection, resultBuilder, cid, key,
+                            TRI_ExtractRevisionId(VPackSlice(result.vpack())),
+                            actualRevision,
+                            options.returnOld ? &previous : nullptr,
+                            options.returnNew ? &result : nullptr);
+    }
 
     return res;  // must be ok!
   };
@@ -1943,6 +1954,9 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
+  }
 
   return removeLocal(collectionName, value, optionsCopy);
 }
@@ -2048,8 +2062,10 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     TRI_ASSERT(!previous.empty());
-    buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
-                          0, options.returnOld ? &previous : nullptr, nullptr);
+    if (!options.silent || _state->isDBServer()) {
+      buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
+                            0, options.returnOld ? &previous : nullptr, nullptr);
+    }
 
     return Result(TRI_ERROR_NO_ERROR);
   };
@@ -2916,9 +2932,9 @@ transaction::Methods::indexesForCollectionCoordinator(
   std::shared_ptr<LogicalCollection> collection = clusterInfo->getCollection(databaseName(), name);
   std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
 
-  collection->clusterIndexEstimates(); // update estiamtes in logical collection
+  collection->clusterIndexEstimates(); // update estimates in logical collection
   // push updated values into indexes
-  for(auto i : indexes){
+  for (auto i : indexes) {
     i->updateClusterEstimate();
   }
 
@@ -3077,6 +3093,29 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   }
 
   if (cid == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  key = p + 1;
+  outLength = length - (key - handle);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result transaction::Methods::resolveId(char const* handle, size_t length,
+                                       std::shared_ptr<LogicalCollection>& collection, char const*& key,
+                                       size_t& outLength) {
+  char const* p = static_cast<char const*>(
+      memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
+
+  if (p == nullptr || *p == '\0') {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  std::string const name(handle, p - handle);
+  collection = resolver()->getCollectionStructCluster(name);
+
+  if (collection == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 

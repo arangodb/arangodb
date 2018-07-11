@@ -196,7 +196,7 @@ function checkManifest (filename, inputManifest, mount, complainAboutVersionMism
   }
 
   for (const key of Object.keys(inputManifest)) {
-    if (manifestSchema[key]) {
+    if (manifestSchema[key] || key === '$schema') {
       continue;
     }
     manifest[key] = inputManifest[key];
@@ -347,3 +347,4 @@ function validateManifestFile (filename, mount, complainAboutVersionMismatches) 
 
 exports.configTypes = configTypes;
 exports.validate = validateManifestFile;
+exports.validateJson = checkManifest;

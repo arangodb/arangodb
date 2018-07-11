@@ -53,20 +53,11 @@ extern std::string const planColPrefix;
 extern std::string const curColPrefix;
 extern std::string const blockedServersPrefix;
 extern std::string const blockedShardsPrefix;
-extern std::string const serverStatePrefix;
 extern std::string const planVersion;
 extern std::string const plannedServers;
 extern std::string const healthPrefix;
-
-struct JobResult {
-  JobResult() {}
-};
-
-struct JobCallback {
-  JobCallback() {}
-  virtual ~JobCallback(){};
-  virtual bool operator()(JobResult*) = 0;
-};
+extern std::string const asyncReplLeader;
+extern std::string const asyncReplTransientPrefix;
 
 struct Job {
 
@@ -135,8 +126,12 @@ struct Job {
   static std::string randomIdleGoodAvailableServer(
     Node const& snap, VPackSlice const& exclude);
   
+  /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(
     const arangodb::consensus::Node&);
+  
+  /// @brief Get servers from Supervision with health status GOOD
+  static std::vector<std::string> healthyServers(arangodb::consensus::Node const&);
 
   static std::vector<shard_t> clones(
     Node const& snap, std::string const& db, std::string const& col,
@@ -151,6 +146,7 @@ struct Job {
   AgentInterface* _agent;
   std::string _jobId;
   std::string _creator;
+  
   static std::string agencyPrefix;  // will be initialized in AgencyFeature
 
   std::shared_ptr<Builder> _jb;
@@ -177,13 +173,12 @@ struct Job {
   static void addReleaseServer(Builder& trx, std::string const& server);
   static void addReleaseShard(Builder& trx, std::string const& shard);
   static void addPreconditionServerNotBlocked(Builder& pre, std::string const& server);
-  static void addPreconditionServerGood(Builder& pre, std::string const& server);
+  static void addPreconditionServerHealth(Builder& pre, std::string const& server,
+                                          std::string const& health);
   static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
   static void addPreconditionUnchanged(Builder& pre,
     std::string const& key, Slice value);
-  static std::string checkServerGood(Node const& snapshot,
-                                     std::string const& server);
-
+  static std::string checkServerHealth(Node const& snapshot, std::string const& server);
 };
 
 inline arangodb::consensus::write_ret_t singleWriteTransaction(
@@ -199,13 +194,13 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(
       VPackArrayBuilder onePair(envelope.get());
       { VPackObjectBuilder mutationPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[0])) {
-          envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
       if (trx.length() > 1) {
         VPackObjectBuilder preconditionPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[1])) {
-          envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
     }
@@ -239,19 +234,19 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
           VPackArrayBuilder onePair(envelope.get());
           { VPackObjectBuilder mutationPart(envelope.get());
             for (auto const& pair : VPackObjectIterator(singleTrans[0])) {
-              envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+              envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
             }
           }
           if (singleTrans.length() > 1) {
             VPackObjectBuilder preconditionPart(envelope.get());
             for (auto const& pair : VPackObjectIterator(singleTrans[1])) {
-              envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+              envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
             }
           }
         } else if (singleTrans[0].isString()) {
           VPackArrayBuilder reads(envelope.get());
           for (auto const& path : VPackArrayIterator(singleTrans)) {
-            envelope->add(VPackValue(Job::agencyPrefix + path.copyString()));
+            envelope->add(VPackValue("/" + Job::agencyPrefix + path.copyString()));
           }
         }
       }
@@ -272,8 +267,7 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
 }
 
 inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
-                                                  Builder const& transaction,
-                                                  bool waitForCommit = true) {
+                                                  Builder const& transaction) {
   query_t envelope = std::make_shared<Builder>();
 
   Slice trx = transaction.slice();
@@ -282,13 +276,13 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
       VPackArrayBuilder onePair(envelope.get());
       { VPackObjectBuilder mutationPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[0])) {
-          envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
       if (trx.length() > 1) {
         VPackObjectBuilder preconditionPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[1])) {
-          envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
     }
@@ -297,7 +291,6 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
         << "Supervision failed to build transaction for transient: " << e.what();
   }
 
-  
   return _agent->transient(envelope);
 }
 

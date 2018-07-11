@@ -48,6 +48,7 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleMode();
   void handleId();
   void handleRole();
+  void handleAvailability();
   void writeModeResult(ServerState::Mode const&);
 };
 }

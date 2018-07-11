@@ -61,13 +61,15 @@ class AuthenticationFeature final
   /// Enable or disable standalone authentication
   bool localAuthentication() const noexcept { return _localAuthentication; }
 
-  auth::TokenCache* tokenCache() const noexcept {
+  /// @return Cache to deal with authentication tokens
+  inline auth::TokenCache* tokenCache() const noexcept {
     TRI_ASSERT(_authCache);
     return _authCache;
   }
   
-  auth::UserManager* userManager() const noexcept {
-    TRI_ASSERT(_userManager);
+  /// user manager may be null on DBServers and Agency
+  /// @return user manager singleton
+  inline auth::UserManager* userManager() const noexcept {
     return _userManager;
   }
       

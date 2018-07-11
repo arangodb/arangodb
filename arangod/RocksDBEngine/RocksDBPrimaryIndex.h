@@ -54,20 +54,28 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
                               transaction::Methods* trx,
                               ManagedDocumentResult* mmdr,
                               RocksDBPrimaryIndex* index,
-                              std::unique_ptr<VPackBuilder>& keys);
+                              std::unique_ptr<VPackBuilder>& keys,
+                              bool allowCoveringIndexOptimization);
 
   ~RocksDBPrimaryIndexIterator();
 
   char const* typeName() const override { return "primary-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
+  
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return _allowCoveringIndexOptimization; }
 
  private:
   RocksDBPrimaryIndex* _index;
   std::unique_ptr<VPackBuilder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
+  bool const _allowCoveringIndexOptimization;
 };
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
@@ -91,6 +99,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   bool allowExpansion() const override { return false; }
 
   bool canBeDropped() const override { return false; }
+
+  bool hasCoveringIterator() const override { return true; } 
 
   bool isSorted() const override { return false; }
 

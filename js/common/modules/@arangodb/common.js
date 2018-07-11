@@ -65,6 +65,10 @@ exports.aql = function(strings, ...args) {
   return {query, bindVars};
 };
 
+exports.aql.literal = function(value) {
+  return {toAQL: () => value};
+};
+
 exports.errors = internal.errors;
 
 exports.time = internal.time;
@@ -517,4 +521,8 @@ exports.checkAvailableVersions = function(version) {
       console.debug('cannot check for newer version: ', err.stack);
     }
   }
+};
+
+exports.query = function query (strings, ...args) {
+  return internal.db._query(exports.aql(strings, ...args));
 };

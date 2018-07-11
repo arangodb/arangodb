@@ -498,6 +498,10 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"%. +%\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"abc^def$g\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"%^%$g\")"));
+
+      assertEqual([ true ],  getQueryResults('RETURN "der\*hund"  LIKE "%*%"'));
+      assertEqual([ true ],  getQueryResults('RETURN "der*hund"  LIKE "%*%"'));
+      assertEqual([ false ], getQueryResults('RETURN "der*hund"  LIKE "*"'));
      
       // case-sensivity 
       assertEqual([ false ], getQueryResults("RETURN \"ABCD\" LIKE \"abcd\""));

@@ -278,12 +278,12 @@ bound is reached, no further warnings will be returned.
 
 
 ### Things to consider for optimizing queries
-While the optimizer can fix some things in queries, its not allowed to take some assumptions,
+While the optimizer can fix some things in queries, it is not allowed to take some assumptions,
 that you, the user, knowing what queries are intended to do can take. It may pull calculations
 to the front of the execution, but it may not cross certain borders.
 
 So in certain cases you may want to move calculations in your query, so they're cheaper.
-Even more expensive is if you have calculacions that are executed in javascript:
+Even more expensive is if you have calculacions that are executed in JavaScript:
 
     @startDocuBlockInline AQLEXP_11_explainjs
     @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_11_explainjs}
@@ -295,7 +295,7 @@ Even more expensive is if you have calculacions that are executed in javascript:
 You can see, that the optimizer found `1..10` is specified twice, but can be done first one time.
 
 While you may see time passing by during the execution of the query and its calls to `DATE_NOW()`
-this may not be the desired thing in first place. The queries V8 Expressions will however also use
+this may not be the desired thing in first place. The queries' V8 Expressions will however also use
 significant resources, since its executed 10 x 10 times => 100 times. Now if we don't care
 for the time ticking by during the query execution, we may fetch the time once at the startup
 of the query, which will then only give us one V8 expression at the very start of the query.
@@ -307,8 +307,7 @@ Next to bringing better performance, this also obeys the [DRY principle](https:/
 When you're running AQL in the cluster, the parsing of the query is done on the
 coordinator. The coordinator then chops the query into snipets, which are to
 remain on the coordinator, and others that are to be distributed over the network
-to the shards. The cutting sites are interconnected
-via *Scatter-*, *Gather-* and *RemoteNodes*.
+to the shards. The cutting sites are interconnected via *Scatter-*, *Gather-* and *RemoteNodes*.
 
 These nodes mark the network borders of the snippets. The optimizer strives to reduce the amount
 of data transfered via these network interfaces by pushing `FILTER`s out to the shards,
@@ -446,9 +445,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
   is specific for the MMFiles storage engine.
-* `reduce-extraction-to-projection`: will appear when an *EnumerationCollectionNode* that
-  would have extracted an entire document was modified to return only a projection of each
-  document. This optimizer rule is specific for the RocksDB storage engine.
+* `reduce-extraction-to-projection`: will appear when an *EnumerationCollectionNode* or
+  an *IndexNode* that would have extracted an entire document was modified to return 
+  only a projection of each document. Projections are limited to at most 5 different
+  document attributes. This optimizer rule is specific for the RocksDB storage engine.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
@@ -469,9 +469,9 @@ The following optimizer rules may appear in the `rules` attribute of cluster pla
 * `undistribute-remove-after-enum-coll`: will appear if a RemoveNode can be pushed into
   the same query part that enumerates over the documents of a collection. This saves
   inter-cluster roundtrips between the EnumerateCollectionNode and the RemoveNode.
-* `collect-in-cluster`: will appear when a collect node on a coordinator is accompanied
-  by extra collect nodes on the database servers, which will do the heavy processing and
-  allow the collect node on the coordinator to a light-weight aggregation only.
+* `collect-in-cluster`: will appear when a *CollectNode* on a coordinator is accompanied
+  by extra *CollectNode*s on the database servers, which will do the heavy processing and
+  allow the *CollectNode* on the coordinator to a light-weight aggregation only.
 * `restrict-to-single-shard`: will appear if a collection operation (IndexNode or a
   data-modification node) will only affect a single shard, and the operation can be
   restricted to the single shard and is not applied for all shards. This optimization
@@ -486,3 +486,34 @@ The following optimizer rules may appear in the `rules` attribute of cluster pla
 Note that some rules may appear multiple times in the list, with number suffixes.
 This is due to the same rule being applied multiple times, at different positions
 in the optimizer pipeline.
+
+### Additional optimizations applied
+
+If a query iterates over a collection (for filtering or counting) but does not need
+the actual document values later, the optimizer can apply a "scan-only" optimization 
+for *EnumerateCollectionNode*s and *IndexNode*s. In this case, it will not build up
+a result with the document data at all, which may reduce work significantly especially
+with the RocksDB storage engine. In case the document data is actually not needed
+later on, it may be sensible to remove it from query strings so the optimizer can
+apply the optimization.
+
+If the optimization is applied, it will show up as "scan only" in an AQL
+query's execution plan for an *EnumerateCollectionNode* or an *IndexNode*.
+  
+
+Additionally, the optimizer can apply an "index-only" optimization for AQL queries that 
+can satisfy the retrieval of all required document attributes directly from an index.
+
+This optimization will be triggered for the RocksDB engine if an index is used
+that covers all required attributes of the document used later on in the query.
+If applied, it will save retrieving the actual document data (which would require
+an extra lookup in RocksDB), but will instead build the document data solely 
+from the index values found. It will only be applied when using up to 5 attributes
+from the document, and only if the rest of the document data is not used later
+on in the query.
+
+The optimization is currently available for the RocksDB engine for the index types
+primary, edge, hash, skiplist and persistent.
+
+If the optimization is applied, it will show up as "index only" in an AQL
+query's execution plan for an *IndexNode*.

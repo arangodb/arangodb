@@ -249,6 +249,39 @@ bool MMFilesHashIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
   return true;
 }
 
+bool MMFilesHashIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
+
+  bool done = false;
+  while (limit > 0) {
+    if (_posInBuffer >= _buffer.size()) {
+      if (!_lookups.hasAndGetNext()) {
+        // we're at the end of the lookup values
+        done = true;
+        break;
+      }
+
+      // We have to refill the buffer
+      _buffer.clear();
+      _posInBuffer = 0;
+
+      _index->lookup(_trx, _lookups.lookup(), _buffer);
+    }
+
+    if (!_buffer.empty()) {
+      // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
+      _documentIds.emplace_back(std::make_pair(_buffer[_posInBuffer++]->localDocumentId(), nullptr));
+      --limit;
+    }
+  }
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
+}
+
 void MMFilesHashIndexIterator::reset() {
   _buffer.clear();
   _posInBuffer = 0;

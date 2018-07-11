@@ -146,7 +146,7 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
     } else {
       console.topic('heartbeat=debug', 'startReadLockOnLeader: Do not see read lock yet...');
     }
-    wait(0.5);
+    wait(0.5, false);
   }
   console.topic('heartbeat=error', 'startReadLockOnLeader: giving up');
   try {
@@ -394,7 +394,7 @@ function organiseLeaderResign (database, collId, shardName) {
 
 function lockSyncKeyspace () {
   while (!global.KEY_SET_CAS('shardSynchronization', 'lock', 1, null)) {
-    wait(0.001);
+    wait(0.001, false);
   }
 }
 
@@ -448,7 +448,7 @@ function tryLaunchJob () {
             if (!require('internal').isStopping()) {
               console.topic('heartbeat=debug', 'Could not registerTask for shard synchronization.',
                             err);
-              wait(1.0);
+              wait(1.0, false);
             } else {
               doCleanup = true;
               done = true;
@@ -530,7 +530,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     }
     console.topic('heartbeat=debug', 'synchronizeOneShard: waiting for leader, %s/%s, %s/%s',
       database, shard, database, planId);
-    wait(0.2);
+    wait(0.2, false);
   }
 
   // Once we get here, we know that the leader is ready for sync, so
@@ -828,6 +828,11 @@ function executePlanForCollections(plannedCollections) {
                 let save = {id: collectionInfo.id, name: collectionInfo.name};
                 delete collectionInfo.id;     // must not
                 delete collectionInfo.name;
+                if (collectionInfo.keyOptions && 
+                    (collectionInfo.shardKeys.length !== 1 || collectionInfo.shardKeys[0] !== '_key')) {
+                  // custom sharding... we must allow the coordinator to set a _key
+                  collectionInfo.keyOptions.allowUserKeys = true;
+                }
                 if (collectionInfo.hasOwnProperty('globallyUniqueId')) {
                   console.warn('unexpected globallyUniqueId in %s',
                     JSON.stringify(collectionInfo));
@@ -2105,7 +2110,7 @@ function waitForSyncReplOneCollection (dbName, collName) {
     if (ok) {
       return true;
     }
-    require('internal').wait(1);
+    require('internal').wait(1, false);
   }
   console.topic('heartbeat=warn', 'waitForSyncReplOneCollection:', dbName, collName, ': BAD');
   return false;
@@ -2149,6 +2154,22 @@ function endpoints() {
   }
 }
 
+function queryAgencyJob(id) {
+  let job = null;
+  let states = ["Finished", "Pending", "Failed", "ToDo"];
+  for (let s of states) {
+    try {
+      job = global.ArangoAgency.get('Target/' + s + '/' + id);
+      job = job.arango.Target[s];
+      if (Object.keys(job).length !== 0 && job.hasOwnProperty(id)) {
+        return {error: false, id, status: s, job: job[id]};
+      }
+    } catch (err) {
+    }
+  }
+  return {error: true, errorMsg: "Did not find job.", id, job: null};
+}
+
 exports.coordinatorId = coordinatorId;
 exports.handlePlanChange = handlePlanChange;
 exports.isCluster = isCluster;
@@ -2167,6 +2188,7 @@ exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
 exports.fetchKey = fetchKey;
+exports.queryAgencyJob = queryAgencyJob;
 
 exports.executePlanForDatabases = executePlanForDatabases;
 exports.executePlanForCollections = executePlanForCollections;

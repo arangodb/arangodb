@@ -70,6 +70,9 @@ class ReplicationFeature final
     return _enableActiveFailover;
   }
       
+  /// @brief set the x-arango-endpoint header
+  static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
+
   /// @brief fill a response object with correct response for a follower
   static void prepareFollowerResponse(GeneralResponse*,
                                       arangodb::ServerState::Mode);
