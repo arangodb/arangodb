@@ -73,7 +73,6 @@ void AqlFeature::start() {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   TRI_ASSERT(_AQL == nullptr);
   _AQL = this;
-  aql::ExecutionBlock::init();
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature started";
 }
 

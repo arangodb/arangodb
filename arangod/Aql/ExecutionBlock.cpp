@@ -33,7 +33,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-  
+
 namespace {
 
 std::string const doneString = "DONE";
@@ -55,8 +55,9 @@ static std::string const& stateToString(ExecutionState state) {
 }
 
 struct ExecutionBlockTypeHash {
-  size_t operator()(const ::arangodb::aql::ExecutionBlock::Type& value) const {
-    return size_t(value);
+  size_t operator()(ExecutionBlock::Type value) const noexcept {
+    typedef std::underlying_type<decltype(value)>::type UnderlyingType;
+    return std::hash<UnderlyingType>()(UnderlyingType(value));
   }
 };
 
@@ -89,22 +90,33 @@ std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const Names
   { "UpsertBlock",                 arangodb::aql::ExecutionBlock::Type::UPSERT},
   { "ScatterBlock",                arangodb::aql::ExecutionBlock::Type::SCATTER},
   { "DistributeBlock",             arangodb::aql::ExecutionBlock::Type::DISTRIBUTE},
+#ifdef USE_IRESEARCH
   { "IResearchViewBlock",          arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW},
   { "IResearchViewOrderedBlock",   arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_ORDERED},
   { "IResearchViewUnorderedBlock", arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_UNORDERED}
+#endif
 };
-std::unordered_map<arangodb::aql::ExecutionBlock::Type, std::string, ExecutionBlockTypeHash> blockTypeToNamesMap;
+
+std::unordered_map<
+  arangodb::aql::ExecutionBlock::Type,
+  std::reference_wrapper<const std::string>,
+  ExecutionBlockTypeHash
+> blockTypeToNamesMap;
+
+struct BlockTypeToNameMapInitializer {
+  BlockTypeToNameMapInitializer() {
+    blockTypeToNamesMap.reserve(NamesToBlockTypeMap.size());
+    std::for_each(NamesToBlockTypeMap.begin(),
+                  NamesToBlockTypeMap.end(),
+                  [](std::pair<std::string const&, arangodb::aql::ExecutionBlock::Type> const& p) {
+        blockTypeToNamesMap.emplace(p.second, p.first);
+    });
+  }
+
+
+} initializeBlockTypeToNameMap;
 
 } // namespace
-
-void ExecutionBlock::init() {
-  blockTypeToNamesMap.reserve(NamesToBlockTypeMap.size());
-  std::for_each(NamesToBlockTypeMap.begin(),
-                NamesToBlockTypeMap.end(),
-                [](std::pair<std::string const&, arangodb::aql::ExecutionBlock::Type> const& p) {
-      blockTypeToNamesMap.insert(std::make_pair(p.second, p.first));
-  });
-}
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
