@@ -15,4 +15,5 @@ are all valid options to deploy on Azure. Please refer to the corresponding chap
 information.
 
 **Important:** In order to deploy on Azure, general guidelines, like using a fast,
-local, SSD disk for the data directory of the ArangoDB processes apply.
+**direct-attached**, SSD disk for the data directory of the ArangoDB processes
+apply.

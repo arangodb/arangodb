@@ -16,4 +16,5 @@ are all valid options to deploy on AWS. Please refer to the corresponding chapte
 information.
 
 **Important:** In order to deploy on AWS, general guidelines, like using a fast,
-local, SSD disk for the data directory of the ArangoDB processes apply.
+**direct-attached**, SSD disk for the data directory of the ArangoDB processes
+apply.
