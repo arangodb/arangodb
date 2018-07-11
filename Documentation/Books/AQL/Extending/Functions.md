@@ -10,7 +10,7 @@ var aqlfunctions = require("@arangodb/aql/functions");
 
 To register a function, the fully qualified function name plus the
 function code must be specified. This can easily be done in
-[arangosh](../../Manual/GettingStarted/Arangosh.html). The
+[arangosh](../../Manual/Programs/Arangosh/index.html). The
 [HTTP Interface](../../HTTP/AqlUserFunctions/index.html) also offers
 User Functions management.
 
