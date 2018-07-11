@@ -54,6 +54,12 @@ static std::string const& stateToString(ExecutionState state) {
   return unknownString;
 }
 
+struct ExecutionBlockTypeHash {
+  size_t operator()(const ::arangodb::aql::ExecutionBlock::Type& value) const {
+    return size_t(value);
+  }
+};
+
 std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const NamesToBlockTypeMap = {
   { "-undefined-",                 arangodb::aql::ExecutionBlock::Type::_UNDEFINED},
   { "CalculationBlock",            arangodb::aql::ExecutionBlock::Type::CALCULATION},
@@ -87,7 +93,7 @@ std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const Names
   { "IResearchViewOrderedBlock",   arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_ORDERED},
   { "IResearchViewUnorderedBlock", arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_UNORDERED}
 };
-std::unordered_map<arangodb::aql::ExecutionBlock::Type, std::string> blockTypeToNamesMap;
+std::unordered_map<arangodb::aql::ExecutionBlock::Type, std::string, ExecutionBlockTypeHash> blockTypeToNamesMap;
 
 } // namespace
 
