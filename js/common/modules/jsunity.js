@@ -133,7 +133,7 @@ function Run (testsuite) {
   for (var key in definition) {
     if ((testFilter !== "undefined") && (key !== testFilter)) {
       // print(`test "${key}" doesn't match "${testFilter}", skipping`);
-      continue
+      continue;
     }
     if (key.indexOf('test') === 0) {
       var test = { name: key, fn: definition[key]};
@@ -213,7 +213,7 @@ function RunTest (path, outputReply, filter) {
   content = fs.read(path);
 
   content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter("${filter}");  ${content} }());
-});`
+});`;
   f = internal.executeScript(content, undefined, path);
 
   if (f === undefined) {
