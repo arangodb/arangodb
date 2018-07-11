@@ -363,13 +363,13 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     isPrio = true;
   } else if (handler->isDirect()) {
     isDirect = true;
-  } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
-             _loop.scheduler->shouldExecuteDirect()) {
-    isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
   } else if (handler->needsOwnThread()) {
     isPrio = true;
+  } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
+             _loop.scheduler->shouldExecuteDirect()) {
+    isDirect = true;
   }
 
   if (isDirect && !allowDirectHandling()) {

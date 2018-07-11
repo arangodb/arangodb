@@ -28,6 +28,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/JobQueue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -48,6 +49,9 @@ using namespace arangodb::rest;
 RestCollectionHandler::RestCollectionHandler(GeneralRequest* request,
                                              GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
+
+// returns the queue name
+size_t RestCollectionHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestCollectionHandler::execute() {
   switch (_request->requestType()) {

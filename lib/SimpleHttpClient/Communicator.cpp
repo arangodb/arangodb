@@ -292,6 +292,10 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
           curl_slist_append(requestHeaders, "Content-Type: text/plain");
       break;
   }
+
+  // work around curl's Expect-100 Continue obsession
+  requestHeaders = curl_slist_append(requestHeaders, "Expect:");
+
   for (auto const& header : request->headers()) {
     std::string thisHeader(header.first + ": " + header.second);
     requestHeaders = curl_slist_append(requestHeaders, thisHeader.c_str());

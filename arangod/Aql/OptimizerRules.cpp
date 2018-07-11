@@ -3082,13 +3082,6 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
 
-    if (node->getType() != EN::UPSERT &&
-        !node->isInInnerLoop() && 
-        !getSingleShardId(plan.get(), node, static_cast<ModificationNode const*>(node)->collection()).empty()) {
-      // no need to insert a DistributeNode for a single operation that is restricted to a single shard
-      continue;
-    }
-    
     ExecutionNode* originalParent = nullptr;
     if (node->hasParent()) {
       auto const& parents = node->getParents();
@@ -3946,6 +3939,8 @@ void arangodb::aql::restrictToSingleShardRule(
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
+  std::unordered_set<ExecutionNode*> toUnlink;
+
   for (auto& node : nodes) {
     TRI_ASSERT(node->getType() == ExecutionNode::REMOTE);
     ExecutionNode* current = node->getFirstDependency();
@@ -3953,15 +3948,6 @@ void arangodb::aql::restrictToSingleShardRule(
     while (current != nullptr) {
       auto const currentType = current->getType();
       
-      // don't do this if we are already distributing!
-      auto deps = current->getDependencies();
-      if (deps.size() &&
-          deps[0]->getType() == ExecutionNode::REMOTE &&
-          deps[0]->hasDependency() &&
-          deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
-        break;
-      }
-
       if (currentType == ExecutionNode::INSERT ||
           currentType == ExecutionNode::UPDATE ||
           currentType == ExecutionNode::REPLACE ||
@@ -3975,6 +3961,50 @@ void arangodb::aql::restrictToSingleShardRule(
           // we are on a single shard. we must not ignore not-found documents now
           auto* modNode = static_cast<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
+
+          auto deps = current->getDependencies();
+          if (deps.size() &&
+              deps[0]->getType() == ExecutionNode::REMOTE) {
+            // if we can apply the single-shard optimization, but still have a
+            // REMOTE node in front of us, we can probably move the remote parts
+            // of the query to our side. this is only the case if the remote part
+            // does not call any remote parts itself
+            std::unordered_set<ExecutionNode*> toRemove;
+
+            auto c = deps[0];
+            toRemove.emplace(c);
+            while (true) {
+              if (c->getType() == EN::SCATTER || c->getType() == EN::DISTRIBUTE) {
+                toRemove.emplace(c);
+              }
+              c = c->getFirstDependency();
+
+              if (c == nullptr) {
+                // reached the end
+                break;
+              }
+
+              if (c->getType() == EN::REMOTE) {
+                toRemove.clear();
+                break;
+              }
+
+              if (c->getType() == EN::CALCULATION) {
+                auto cn = static_cast<CalculationNode*>(c);
+                auto expr = cn->expression();
+                if (expr != nullptr && !expr->canRunOnDBServer()) {
+                  // found something that must not run on a DB server,
+                  // but that must run on a coordinator. stop optimization here!
+                  toRemove.clear();
+                  break;
+                }
+              }
+            }
+
+            for (auto const& it : toRemove) {
+              toUnlink.emplace(it);
+            }
+          }
         }
         break;
       } else if (currentType == ExecutionNode::INDEX) {
@@ -3997,6 +4027,11 @@ void arangodb::aql::restrictToSingleShardRule(
       
       current = current->getFirstDependency();
     }
+  }
+
+  if (!toUnlink.empty()) {
+    TRI_ASSERT(wasModified);
+    plan->unlinkNodes(toUnlink);
   }
 
   opt->addPlan(std::move(plan), rule, wasModified); 
