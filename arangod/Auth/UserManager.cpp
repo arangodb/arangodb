@@ -122,7 +122,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
-  auto queryResult = query.execute(queryRegistry);
+
+  aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||

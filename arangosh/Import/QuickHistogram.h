@@ -180,8 +180,8 @@ protected:
 
         // old age string buffering & formatting
         char buffer[133];
-        snprintf(buffer, sizeof(buffer), "%.3f,%.3f,%zd,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%s",
-                 fp_measuring, fp_interval, static_cast<ssize_t>(num),
+        snprintf(buffer, sizeof(buffer), "%.3f,%.3f,%llu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%s",
+                 fp_measuring, fp_interval, static_cast<unsigned long long>(num),
                  (0!=num) ? static_cast<long>(_readingLatencies->at(0).count()) : 0,
                  static_cast<long>(mean.count()),
                  static_cast<long>(median.count()),

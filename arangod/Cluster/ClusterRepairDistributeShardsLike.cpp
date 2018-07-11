@@ -450,7 +450,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     Slice const& planCollections, Slice const& supervisionHealth) {
   LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
-      << "Starting to collect neccessary repairs";
+      << "Starting to collect necessary repairs";
 
   // Needed to build agency transactions
   TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);

@@ -527,6 +527,17 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       setIntValue(Quantifier::FromString(slice.get("quantifier").copyString()));
       break;
     }
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE: {
+      bool excludesNull = false;
+      VPackSlice v = slice.get("excludesNull");
+      if (v.isBoolean()) {
+        excludesNull = v.getBoolean();
+      }
+      setExcludesNull(excludesNull);
+      break;
+    }
     case NODE_TYPE_OBJECT:
     case NODE_TYPE_ROOT:
     case NODE_TYPE_FOR:
@@ -555,10 +566,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
     case NODE_TYPE_OPERATOR_BINARY_DIV:
     case NODE_TYPE_OPERATOR_BINARY_MOD:
-    case NODE_TYPE_OPERATOR_BINARY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_NE:
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-    case NODE_TYPE_OPERATOR_BINARY_LE:
     case NODE_TYPE_OPERATOR_BINARY_GT:
     case NODE_TYPE_OPERATOR_BINARY_GE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -871,7 +879,6 @@ void AstNode::dump(int level) const {
 
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
-/// note that the return value might be NULL in case of OOM
 VPackSlice AstNode::computeValue() const {
   TRI_ASSERT(isConstant());
 
@@ -882,6 +889,8 @@ VPackSlice AstNode::computeValue() const {
     computedValue = new uint8_t[builder.size()];
     memcpy(computedValue, builder.data(), builder.size());
   }
+  
+  TRI_ASSERT(computedValue != nullptr);
 
   return VPackSlice(computedValue);
 }
@@ -1091,6 +1100,12 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
       builder.add("vType", VPackValue(getValueTypeString()));
       builder.add("vTypeID", VPackValue(static_cast<int>(value.type)));
     }
+  }
+  
+  if (type == NODE_TYPE_OPERATOR_BINARY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    builder.add("excludesNull", VPackValue(getExcludesNull()));
   }
 
   if (type == NODE_TYPE_OPERATOR_BINARY_IN ||

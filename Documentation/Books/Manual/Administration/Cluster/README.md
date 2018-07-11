@@ -6,6 +6,14 @@ This _Section_ includes information related to the administration of an ArangoDB
 For a general introduction to the ArangoDB Cluster, please refer to the
 Cluster [chapter](../../Scalability/Cluster/README.md).
 
+Please also check the following talks:
+
+| # | Date            | Title                                                                       | Who                                     | Link                                                                                                            |
+|---|-----------------|-----------------------------------------------------------------------------|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | 10th April 2018 | Fundamentals and Best Practices of ArangoDB Cluster Administration          | Kaveh Vahedipour, ArangoDB Cluster Team | [Online Meetup Page](https://www.meetup.com/online-ArangoDB-meetup/events/248996022/) & [Video](https://www.youtube.com/watch?v=RQ33fkgUg64) |
+| 2 | 29th May 2018   | Fundamentals and Best Practices of ArangoDB Cluster Administration: Part II | Kaveh Vahedipour, ArangoDB Cluster Team | [Online Meetup Page](https://www.meetup.com/online-ArangoDB-meetup/events/250869684/) & [Video](https://www.youtube.com/watch?v=jj7YpTaL3pI) |
+
+
 Enabling synchronous replication
 --------------------------------
 

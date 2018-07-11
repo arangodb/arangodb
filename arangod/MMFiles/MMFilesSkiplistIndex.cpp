@@ -1212,7 +1212,6 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
                                      !opts.ascending, builder.release());
 }
 
-
 bool MMFilesSkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -1221,7 +1220,6 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
                                                                 estimatedItems, estimatedCost);
 }
 
-
 bool MMFilesSkiplistIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -1229,7 +1227,6 @@ bool MMFilesSkiplistIndex::supportsSortCondition(
   return SkiplistIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
                                                         itemsInIndex, estimatedCost, coveredAttributes);
 }
-
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(

@@ -288,7 +288,7 @@ void MMFilesRestExportHandler::createCursor() {
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(false));
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(_response->responseCode())));
-  Result r = c->dump(builder);
+  Result r = c->dumpSync(builder);
   if (r.fail()) {
     generateError(r);
     return;
@@ -336,7 +336,7 @@ void MMFilesRestExportHandler::modifyCursor() {
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(false));
   builder.add(StaticStrings::Code, VPackValue((int)_response->responseCode()));
-  Result r = cursor->dump(builder);
+  Result r = cursor->dumpSync(builder);
   if (r.fail()) {
     generateError(r);
     return;

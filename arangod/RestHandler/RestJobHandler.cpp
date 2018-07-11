@@ -43,8 +43,6 @@ RestJobHandler::RestJobHandler(GeneralRequest* request,
   TRI_ASSERT(jobManager != nullptr);
 }
 
-bool RestJobHandler::isDirect() const { return true; }
-
 RestStatus RestJobHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

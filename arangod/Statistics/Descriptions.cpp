@@ -372,11 +372,8 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   
   b.add("threads", VPackValue(VPackValueType::Object, true));
   
-  auto countersRaw = SchedulerFeature::SCHEDULER->getCounters();
-  b.add("running", VPackValue(static_cast<int32_t>(rest::Scheduler::numRunning(countersRaw))));
-  b.add("working", VPackValue(static_cast<int32_t>(rest::Scheduler::numWorking(countersRaw))));
-  b.add("blocked", VPackValue(static_cast<int32_t>(rest::Scheduler::numBlocked(countersRaw))));
-  b.add("queued", VPackValue(static_cast<int32_t>(SchedulerFeature::SCHEDULER->numQueued())));
+  SchedulerFeature::SCHEDULER->addQueueStatistics(b);
+
   b.close();
 }
 
