@@ -1,7 +1,7 @@
 v3.2.16 (XXXX-XX-XX)
 --------------------
 
-* make edge cache initialization and invalidation more portable by avoiding memset 
+* make edge cache initialization and invalidation more portable by avoiding memset
   on non-POD types
 
 * fixed internal issue #2256: ui, document id not showing up when deleting a document
@@ -12,11 +12,12 @@ v3.2.16 (XXXX-XX-XX)
 
 * issue one HTTP call less per cluster AQL query
 
-* self heal during a Foxx service install, upgrade or replace no longer breaks 
+* self heal during a Foxx service install, upgrade or replace no longer breaks
   the respective operation
 
 * inception was ignoring leader's configuration
 
+* more patient agency tests to allow for ASAN tests to successfully finish
 
 v3.2.15 (2018-05-13)
 --------------------
