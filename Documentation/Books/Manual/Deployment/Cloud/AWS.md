@@ -6,7 +6,7 @@ provider is common choice and many of the most big ArangoDB installation are run
 on the cloud.
 
 Up to ArangoDB 3.2, official ArangoDB AMI were available in the [AWS marketplace](https://aws.amazon.com/marketplace/search/results/ref=dtl_navgno_search_box?page=1&searchTerms=arangodb).
-Such AMI is not being maintained anymore, though. However, deploying on AWS is
+Such AMI are not being maintained anymore, though. However, deploying on AWS is
 still possible, and again, a quite common scenario.
 
 After having initialized your preferred AWS instance, with one of the ArangoDB supported
