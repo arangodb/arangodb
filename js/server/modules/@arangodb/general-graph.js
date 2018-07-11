@@ -55,8 +55,11 @@ exports._graph = function (graphName) {
 };
 
 exports._drop = GeneralGraph._drop;
+exports._renameCollection = GeneralGraph._renameCollection;
 
-// old js based
+// js based helper functions
+exports.__GraphClass = ggc.__GraphClass;
 exports._edgeDefinitions = ggc._edgeDefinitions;
 exports._extendEdgeDefinitions = ggc._extendEdgeDefinitions;
 exports._relation = ggc._relation;
+exports._registerCompatibilityFunctions = ggc._registerCompatibilityFunctions;

@@ -126,6 +126,103 @@ Result GraphManager::assertFeasibleEdgeDefinitions(
   return checkForEdgeDefinitionConflicts(tmpEdgeDefinitions);
 }
 
+bool GraphManager::renameGraphCollection(std::string oldName, std::string newName) {
+  // todo: return a result, by now just used in the graph modules
+  VPackBuilder graphsBuilder;
+  readGraphs(graphsBuilder, aql::PART_DEPENDENT);
+  VPackSlice graphs = graphsBuilder.slice();
+
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+                                  AccessMode::Type::WRITE);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return false;
+  }
+  OperationOptions options;
+  OperationResult checkDoc;
+
+
+  for (auto graphSlice : VPackArrayIterator(graphs.get("graphs"))) {
+    VPackBuilder builder;
+
+    graphSlice = graphSlice.resolveExternals();
+    TRI_ASSERT(graphSlice.isObject() && graphSlice.hasKey(StaticStrings::KeyString));
+    if (!graphSlice.isObject() || !graphSlice.hasKey(StaticStrings::KeyString)) {
+      // return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+      return false;
+    }
+    std::unique_ptr<Graph> graph;
+    try {
+      graph = std::make_unique<Graph>(graphSlice.get(StaticStrings::KeyString).copyString(),
+                                      graphSlice);
+    } catch (basics::Exception& e) {
+      // return {e.message(), e.code()};
+      return false;
+    }
+
+    // rename not allowed in a smart collection
+    if (graph->isSmart()) {
+      continue;
+    }
+
+    builder.openObject();
+    builder.add(StaticStrings::KeyString, VPackValue(graphSlice.get(StaticStrings::KeyString).copyString()));
+
+    builder.add(StaticStrings::GraphEdgeDefinitions, VPackValue(VPackValueType::Array));
+    for (auto const& sGED : graph->edgeDefinitions()) {
+      builder.openObject();
+      std::string col = sGED.first;
+      std::unordered_set<std::string> froms = sGED.second.getFrom();
+      std::unordered_set<std::string> tos = sGED.second.getTo();
+
+      if (col != oldName) {
+        builder.add("collection", VPackValue(col));
+      } else {
+        builder.add("collection", VPackValue(newName));
+      }
+
+      builder.add("from", VPackValue(VPackValueType::Array));
+      for (auto const& from : froms) {
+        if (from != oldName) {
+          builder.add(VPackValue(from));
+        } else {
+          builder.add(VPackValue(newName));
+        }
+      }
+      builder.close(); // array
+
+      builder.add("to", VPackValue(VPackValueType::Array));
+      for (auto const& to : tos) {
+        if (to != oldName) {
+          builder.add(VPackValue(to));
+        } else {
+          builder.add(VPackValue(newName));
+        }
+      }
+      builder.close(); // array
+
+      builder.close(); // object
+    }
+    builder.close(); // array
+    builder.close(); // object
+
+    try {
+      checkDoc =
+          trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+      if (checkDoc.fail()) {
+        trx.finish(checkDoc.result);
+        return false;
+      }
+    } catch (...) {
+    }
+  }
+
+  trx.finish(checkDoc.result);
+  return true;
+}
+
 Result GraphManager::checkForEdgeDefinitionConflicts(
     std::unordered_map<std::string, EdgeDefinition> const& edgeDefinitions)
     const {

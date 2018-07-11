@@ -124,6 +124,9 @@ class GraphManager {
   Result assertFeasibleEdgeDefinition(std::string const& edgeDefinitionName,
                                       VPackSlice edgeDefinitionSlice);
 
+  /// @brief rename a collection used in an edge definition
+  bool renameGraphCollection(std::string oldName, std::string newName);
+
   /// @brief check if the edge definitions conflicts with one in an existing
   /// graph
   Result checkForEdgeDefinitionConflicts(
