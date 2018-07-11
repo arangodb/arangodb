@@ -264,16 +264,25 @@ void config_t::eraseFromGossipPeers(std::string const& endpoint) {
   }
 }
 
-bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
+bool config_t::upsertPool(
+  VPackSlice const& otherPool, std::string const& otherId) {
   WRITE_LOCKER(readLocker, _lock);
-  if (_pool.find(i.first) == _pool.end()) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Adding " << i.first << "(" << i.second << ") to agent pool";
-    _pool[i.first] = i.second;
-    ++_version;
-  } else {
-    if (_pool.at(i.first) != i.second) {  /// discrepancy!
-      return false;
+  for (auto const& entry : VPackObjectIterator(otherPool)) {
+    auto const id = entry.key.copyString();
+    auto const endpoint = entry.value.copyString();
+    if (_pool.find(id) == _pool.end()) {
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Adding " << id << "(" << endpoint << ") to agent pool";
+      _pool[id] = endpoint;
+      ++_version;
+    } else {
+      if (_pool.at(id) != endpoint) {   
+        if (id != otherId) {          /// discrepancy!
+          return false;
+        } else {                      /// we trust the other guy on his own endpoint
+          _pool.at(id) = endpoint;
+        }
+      }
     }
   }
   return true;
