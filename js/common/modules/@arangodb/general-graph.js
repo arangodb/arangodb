@@ -728,6 +728,11 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
   return result;
 };
 
+const edgeDefinitionsEqual = function (leftEdgeDef, rightEdgeDef) {
+  const stringify = obj => JSON.stringify(obj, Object.keys(obj).sort());
+  return stringify(leftEdgeDef) === stringify(rightEdgeDef);
+};
+
 // @brief Class Graph. Defines a graph in the Database.
 class Graph {
   constructor (info) {
@@ -1573,7 +1578,7 @@ class Graph {
           function (sGED) {
             var col = sGED.collection;
             if (col === eC) {
-              if (JSON.stringify(sGED) !== JSON.stringify(edgeDefinition)) {
+              if (!edgeDefinitionsEqual(sGED, edgeDefinition)) {
                 err = new ArangoError();
                 err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
                 err.errorMessage = col + ' ' +
@@ -2036,7 +2041,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
         (sGED) => {
           var col = sGED.collection;
           if (tmpCollections.indexOf(col) !== -1) {
-            if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
+            if (!edgeDefinitionsEqual(sGED, tmpEdgeDefinitions[col])) {
               let err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col + ' ' +
