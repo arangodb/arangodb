@@ -116,7 +116,7 @@ router.get('/hello/:name', function (req, res) {
 
 The first line imports the [`joi` module from npm](https://www.npmjs.com/package/joi) which comes bundled with ArangoDB. Joi is a validation library that is used throughout Foxx to define schemas and parameter types.
 
-**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see the section on [module dependencies in the chapter on dependencies](Reference/Dependencies.md#module-dependencies).
+**Note**: You can bundle your own modules from npm by installing them in your service folder and making sure the `node_modules` folder is included in your zip archive. For more information see the [Bundled Node modules](Guides/BundledNodeModules.md) chapter.
 
 The `pathParam` method allows us to specify parameters we are expecting in the path. The first argument corresponds to the parameter name in the path, the second argument is a joi schema the parameter is expected to match and the final argument serves to describe the parameter in the API documentation.
 
