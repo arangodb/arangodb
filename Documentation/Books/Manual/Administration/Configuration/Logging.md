@@ -44,12 +44,14 @@ Some relevant log topics available in ArangoDB 3 are:
 - `compactor`: information about the collection datafile compactor
 - `datafiles`: datafile-related operations
 - `mmap`: information about memory-mapping operations (including msync)
-- `performance`: performance-releated messages
+- `performance`: performance-related messages
 - `queries`: executed AQL queries, slow queries
 - `replication`: replication-related info
 - `requests`: HTTP requests
 - `startup`: information about server startup and shutdown
 - `threads`: information about threads
+
+See more [log levels](../../../HTTP/AdministrationAndMonitoring/index.html#modify-and-return-the-current-server-loglevel)
 
 ### Log outputs
 
@@ -128,7 +130,7 @@ an ordinal value less than hex 20 will not be printed in this mode but will
 be replaced with a space character (hex 20).
 
 A side effect of turning off the escaping is that it will reduce the CPU 
-overhead for the logging. However, this will only be noticable when logging
+overhead for the logging. However, this will only be noticeable when logging
 is set to a very verbose level (e.g. debug or trace).
 
 The default value for this option is `true`.
