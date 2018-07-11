@@ -500,8 +500,12 @@ function runThere (options, instanceInfo, file) {
     let testCode;
     let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
+      let testCase = JSON.stringify(options.testCase);
+      if (options.testCase === undefined) {
+        testCase = '"undefined"';
+      }
       testCode = 'const runTest = require("jsunity").runTest; ' +
-        'return runTest(' + JSON.stringify(file) + ', true, "' + options.testCase + '");';
+        'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');';
     } else {
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
