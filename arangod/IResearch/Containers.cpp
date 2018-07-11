@@ -30,7 +30,8 @@ NS_BEGIN(iresearch)
 
 void ResourceMutex::reset() {
   if (get()) {
-    SCOPED_LOCK(mutex());
+    irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
     _resource.store(nullptr);
   }
 }

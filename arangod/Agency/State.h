@@ -115,9 +115,11 @@ class State {
   /// after the return
   log_t lastLog() const;
 
-  /// @brief last log entry, copy entry because we do no longer have the lock
-  /// after the return
+  /// @brief index of last log entry
   index_t lastIndex() const;
+
+  /// @brief index of first log entry 
+  index_t firstIndex() const;
 
   /// @brief Set endpoint
   bool configure(Agent* agent);
@@ -150,6 +152,9 @@ class State {
   size_t removeConflicts(query_t const&, bool gotSnapshot);
 
  public:
+
+  bool ready() const;
+  
   /// @brief Persist active agency in pool, throws an exception in case of error
   void persistActiveAgents(query_t const& active, query_t const& pool);
 
@@ -235,6 +240,8 @@ class State {
 
   /// @brief Our vocbase
   TRI_vocbase_t* _vocbase;
+
+  std::atomic<bool> _ready;
 
   /**< @brief Mutex for modifying
      _log & _cur

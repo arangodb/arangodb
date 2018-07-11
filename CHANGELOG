@@ -340,6 +340,7 @@ devel
 * Foxx manifest.json files can now contain a $schema key with the value
   of "http://json.schemastore.org/foxx-manifest" to improve tooling support.
 
+* fixed agency restart from compaction without data
 
 v3.3.8 (XXXX-XX-XX)
 -------------------
