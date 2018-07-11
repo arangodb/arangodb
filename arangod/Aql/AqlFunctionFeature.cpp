@@ -203,6 +203,10 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"HASH", ".", true, false, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, &Functions::RandomToken});
   add({"FULLTEXT", ".h,.,.|." , false, true, false, &Functions::Fulltext});
+  add({"TO_BASE64", ".", true, false, true, &Functions::ToBase64});
+  add({"TO_HEX", ".", true, false, true, &Functions::ToHex});
+  add({"ENCODE_URI_COMPONENT", ".", true, false, true, &Functions::EncodeURIComponent});
+  add({"UUID", "", true, false, true, &Functions::UUID});
 }
 
 void AqlFunctionFeature::addNumericFunctions() {
