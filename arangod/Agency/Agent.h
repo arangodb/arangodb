@@ -365,7 +365,7 @@ class Agent : public arangodb::Thread,
   /// @brief _lastSent stores for each follower the time stamp of the time 
   /// when the main Agent thread has last sent a non-empty
   /// appendEntriesRPC to that follower.
-  std::unordered_map<std::string, TimePoint> _lastSent;
+  std::unordered_map<std::string, SteadyTimePoint> _lastSent;
 
   /// The following three members are protected by _tiLock:
 
@@ -374,12 +374,12 @@ class Agent : public arangodb::Thread,
   std::unordered_map<std::string, index_t> _confirmed;
 
   /// @brief _lastAcked: last time we received an answer to a sendAppendEntries
-  std::unordered_map<std::string, TimePoint> _lastAcked;
+  std::unordered_map<std::string, SteadyTimePoint> _lastAcked;
 
   /// @brief The earliest timepoint at which we will send new sendAppendEntries
   /// to a particular follower. This is a measure to avoid bombarding a
   /// follower, that has trouble keeping up.
-  std::unordered_map<std::string, TimePoint> _earliestPackage;
+  std::unordered_map<std::string, SteadyTimePoint> _earliestPackage;
 
   // @brief Lock for the above time data about other agents. This
   // protects _confirmed, _lastAcked and _earliestPackage:

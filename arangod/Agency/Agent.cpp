@@ -281,7 +281,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     MUTEX_LOCKER(tiLocker, _tiLock);
 
     // Update last acknowledged answer
-    auto t = system_clock::now();
+    auto t = steady_clock::now();
     std::chrono::duration<double> d = t - _lastAcked[peerId];
     auto secsSince = d.count();
     if (secsSince < 1.5e9 && peerId != id()
@@ -300,7 +300,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       _confirmed[peerId] = index;
       if (toLog > 0) { // We want to reset the wait time only if a package callback
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got call back of " << toLog << " logs";
-        _earliestPackage[peerId] = system_clock::now();
+        _earliestPackage[peerId] = steady_clock::now();
       }
       wakeupMainLoop();   // only necessary for non-empty callbacks
     }
@@ -448,8 +448,8 @@ void Agent::sendAppendEntriesRPC() {
       term_t t(0);
 
       index_t lastConfirmed;
-      auto startTime = system_clock::now();
-      time_point<system_clock> earliestPackage, lastAcked;
+      auto startTime = steady_clock::now();
+      time_point<steady_clock> earliestPackage, lastAcked;
       
       {
         t = this->term();
@@ -477,7 +477,7 @@ void Agent::sendAppendEntriesRPC() {
         continue;
       }
 
-      duration<double> lockTime = system_clock::now() - startTime;
+      duration<double> lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.1) {
         LOG_TOPIC(WARN, Logger::AGENCY)
           << "Reading lastConfirmed took too long: " << lockTime.count();
@@ -527,15 +527,15 @@ void Agent::sendAppendEntriesRPC() {
       // if lastConfirmed is equal to the last index in our log, in which
       // case there is nothing to replicate.
 
-      duration<double> m = system_clock::now() - _lastSent[followerId];
+      duration<double> m = steady_clock::now() - _lastSent[followerId];
 
       if (m.count() > _config.minPing() &&
           _lastSent[followerId].time_since_epoch().count() != 0) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Note: sent out last AppendEntriesRPC "
-          << "to follower " << followerId << " more than minPing ago: " 
-          << m.count() << " lastAcked: " << timepointToString(lastAcked)
-          << " lastSent: " << timepointToString(_lastSent[followerId]);
+          << "to follower " << followerId << " more than minPing ago: "
+          << m.count() << " lastAcked: "
+          << duration_cast<duration<double>>(lastAcked.time_since_epoch()).count();
       }
       index_t lowest = unconfirmed.front().index;
 
@@ -631,7 +631,7 @@ void Agent::sendAppendEntriesRPC() {
         }
       }
       
-      earliestPackage = system_clock::now() + std::chrono::seconds(3600);
+      earliestPackage = steady_clock::now() + std::chrono::seconds(3600);
       {
         MUTEX_LOCKER(tiLocker, _tiLock);
         _earliestPackage[followerId] = earliestPackage;
@@ -650,7 +650,7 @@ void Agent::sendAppendEntriesRPC() {
       // magic here, because all we could do would be to resend the same 
       // message if a timeout occurs.
 
-      _lastSent[followerId]    = system_clock::now();
+      _lastSent[followerId]    = steady_clock::now();
       // _constituent.notifyHeartbeatSent(followerId);
       // Do not notify constituent, because the AppendEntriesRPC here could
       // take a very long time, so this must not disturb the empty ones
@@ -663,7 +663,7 @@ void Agent::sendAppendEntriesRPC() {
         << " to follower " << followerId
         << ". Next real log contact to " << followerId<< " in: "
         <<  std::chrono::duration<double, std::milli>(
-          earliestPackage-system_clock::now()).count() << "ms";
+          earliestPackage-steady_clock::now()).count() << "ms";
     }
   }
 }
@@ -866,7 +866,7 @@ bool Agent::challengeLeadership() {
 
   for (auto const& i : _lastAcked) {
     if (i.first != myid) {  // do not count ourselves
-      duration<double> m = system_clock::now() - i.second;
+      duration<double> m = steady_clock::now() - i.second;
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: found "
         "_lastAcked[" << i.first << "] to be "
         << std::chrono::duration_cast<std::chrono::microseconds>(
@@ -1381,7 +1381,7 @@ bool Agent::prepareLead() {
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     for (auto const& i : _config.active()) {
-      _lastAcked[i] = system_clock::now();
+      _lastAcked[i] = steady_clock::now();
     }
   }
 
