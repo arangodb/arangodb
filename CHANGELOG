@@ -19,6 +19,8 @@ v3.3.12 (XXXX-XX-XX)
   this fixes a race condition with parallel VST communication over
   SSL
 
+* fixed agency restart from compaction without data
+
 * fixed for agent coming back to agency with changed endpoint and
   total data loss
 
