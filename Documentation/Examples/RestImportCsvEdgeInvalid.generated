@@ -1,7 +1,7 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&details=true &amp;lt;&amp;lt;EOF
-[ <span class="hljs-string">"name"</span> ]
-[ <span class="hljs-string">"some name"</span> ]
-[ <span class="hljs-string">"other name"</span> ]
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&details=true &lt;&lt;EOF
+[ "name" ]
+[ "some name" ]
+[ "other name" ]
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created

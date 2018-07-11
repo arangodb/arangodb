@@ -1,5 +1,5 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products &amp;lt;&amp;lt;EOF
-{ <span class="hljs-string">"_key"</span>: <span class="hljs-string">"foo"</span>, <span class="hljs-string">"value1"</span>: <span class="hljs-string">"bar"</span> }
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products &lt;&lt;EOF
+{ "_key": "foo", "value1": "bar" }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request

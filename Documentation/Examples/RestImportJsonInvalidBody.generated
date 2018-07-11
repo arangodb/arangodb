@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=list &amp;lt;&amp;lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=list &lt;&lt;EOF
 { }
 EOF
 

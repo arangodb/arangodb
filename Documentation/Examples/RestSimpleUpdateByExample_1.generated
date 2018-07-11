@@ -1,19 +1,19 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/update-by-example &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/update-by-example &lt;&lt;EOF
 { 
-  "collection" : "products", 
-  "example" : { 
-    "a" : { 
-      "j" : 1 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"example"</span> : { 
+    <span class="hljs-string">"a"</span> : { 
+      <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
     } 
   }, 
-  "newValue" : { 
-    "a" : { 
-      "j" : 22 
+  <span class="hljs-string">"newValue"</span> : { 
+    <span class="hljs-string">"a"</span> : { 
+      <span class="hljs-string">"j"</span> : <span class="hljs-number">22</span> 
     } 
   }, 
-  "options" : { 
-    "limit" : 3, 
-    "waitForSync" : true 
+  <span class="hljs-string">"options"</span> : { 
+    <span class="hljs-string">"limit"</span> : <span class="hljs-number">3</span>, 
+    <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span> 
   } 
 }
 EOF

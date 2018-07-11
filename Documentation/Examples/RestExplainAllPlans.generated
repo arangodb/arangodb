@@ -1,8 +1,8 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain &amp;lt;&amp;lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain &lt;&lt;EOF
 { 
-  "query" : "FOR p IN products FILTER p.id == 25 RETURN p", 
-  "options" : { 
-    "allPlans" : true 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products FILTER p.id == 25 RETURN p"</span>, 
+  <span class="hljs-string">"options"</span> : { 
+    <span class="hljs-string">"allPlans"</span> : <span class="hljs-literal">true</span> 
   } 
 }
 EOF
@@ -43,7 +43,7 @@ x-content-type-options: nosniff
           <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span>, 
           <span class="hljs-string">"indexes"</span> : [ 
             { 
-              <span class="hljs-string">"id"</span> : <span class="hljs-string">"12655"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-string">"12916"</span>, 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
               <span class="hljs-string">"fields"</span> : [ 
                 <span class="hljs-string">"id"</span> 
@@ -65,6 +65,7 @@ x-content-type-options: nosniff
                   { 
                     <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
                     <span class="hljs-string">"typeID"</span> : <span class="hljs-number">25</span>, 
+                    <span class="hljs-string">"excludesNull"</span> : <span class="hljs-literal">false</span>, 
                     <span class="hljs-string">"subNodes"</span> : [ 
                       { 
                         <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 

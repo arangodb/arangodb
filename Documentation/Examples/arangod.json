@@ -105,21 +105,6 @@
     "section" : "agency",
     "type" : "boolean"
   },
-  "audit.hostname" : {
-    "default" : "",
-    "description" : "hostname to use",
-    "hidden" : false,
-    "section" : "audit",
-    "type" : "string"
-  },
-  "audit.output" : {
-    "default" : [
-    ],
-    "description" : "audit destination(s)",
-    "hidden" : false,
-    "section" : "audit",
-    "type" : "string..."
-  },
   "cache.rebalancing-interval" : {
     "default" : 2000000,
     "description" : "microseconds between rebalancing attempts",
@@ -128,7 +113,7 @@
     "type" : "uint64"
   },
   "cache.size" : {
-    "default" : 4364869632,
+    "default" : 9452014387,
     "description" : "size of cache in bytes",
     "hidden" : false,
     "section" : "cache",
@@ -326,7 +311,7 @@
     "type" : "boolean"
   },
   "database.directory" : {
-    "default" : "",
+    "default" : "/var/lib/arangodb3",
     "description" : "path to the database directory",
     "hidden" : false,
     "section" : "database",
@@ -519,7 +504,7 @@
     "type" : "boolean"
   },
   "javascript.app-path" : {
-    "default" : "./js/apps",
+    "default" : "/var/lib/arangodb3-apps",
     "description" : "directory for Foxx applications",
     "hidden" : false,
     "section" : "javascript",
@@ -548,7 +533,6 @@
   },
   "javascript.module-directory" : {
     "default" : [
-      "./enterprise/js"
     ],
     "description" : "additional paths containing JavaScript modules",
     "hidden" : true,
@@ -572,7 +556,7 @@
     "type" : "string..."
   },
   "javascript.startup-directory" : {
-    "default" : "./js",
+    "default" : "/usr/share/arangodb3/js",
     "description" : "path to the directory containing JavaScript startup scripts",
     "hidden" : false,
     "section" : "javascript",
@@ -621,175 +605,6 @@
     "section" : "javascript",
     "type" : "string..."
   },
-  "ldap.basedn" : {
-    "default" : "",
-    "description" : "ldap basedn, eg. dc=example,dc=com",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.binddn" : {
-    "default" : "",
-    "description" : "ldap binddn, eg. cn=admin,dc=example,dc=com",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.bindpasswd" : {
-    "default" : "",
-    "description" : "ldap bindpassword, eg. admin",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.enabled" : {
-    "default" : false,
-    "description" : "enable LDAP",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.port" : {
-    "default" : 389,
-    "description" : "port to use",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "uint16"
-  },
-  "ldap.prefix" : {
-    "default" : "",
-    "description" : "ldap prefix, eg. uid= xor dn= xor cn=",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.refresh-rate" : {
-    "default" : 300,
-    "description" : "Refresh user settings after this time (in seconds)",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "double"
-  },
-  "ldap.roles-attribute-name" : {
-    "default" : "",
-    "description" : "ldap attributename where the role are located.",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.roles-exclude" : {
-    "default" : "",
-    "description" : "Regexp to exclude groups. Leave empty to exclude none.",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.roles-include" : {
-    "default" : "",
-    "description" : "Regexp to include groups. Leave empty to include all.",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.roles-search" : {
-    "default" : "",
-    "description" : "ldap search for roles; '{USER}' is replaced by the 'dn' of the user.",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.roles-transformation" : {
-    "default" : [
-    ],
-    "description" : "Regexp to normalizer role name, e.g. '/^ *(.*[^ ]])*/$2/'",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string..."
-  },
-  "ldap.search-attribute" : {
-    "default" : "uid",
-    "description" : "ldap search attribute, eg. uid",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.search-filter" : {
-    "default" : "objectClass=*",
-    "description" : "ldap search filter, eg. (objectClass=simpleSecurityObject)",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.search-scope" : {
-    "default" : "sub",
-    "description" : "ldap search scope, one of base, one, sub",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.server" : {
-    "default" : "",
-    "description" : "server to use",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.suffix" : {
-    "default" : "",
-    "description" : "ldap suffix, eg. ,dc=example,dc=com",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.superuser-role" : {
-    "default" : "",
-    "description" : "Role mapping to the super-users",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.tls" : {
-    "default" : false,
-    "description" : "enable TLS",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "boolean"
-  },
-  "ldap.tls-cacert-dir" : {
-    "default" : "",
-    "description" : "ldap tls cacert dir",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.tls-cacert-file" : {
-    "default" : "",
-    "description" : "ldap tls cacert file",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.tls-cert-check-strategy" : {
-    "default" : "hard",
-    "description" : "ldap tls cert check strategy, one of never, hard, demand, allow, try",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.tls-version" : {
-    "default" : "1.2",
-    "description" : "ldap tls version, one of 1.0, 1.1, 1.2",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
-  "ldap.url" : {
-    "default" : "",
-    "description" : "ldap url, eg. ldap://example.com:389/dc=example,dc=com?uid?sub",
-    "hidden" : false,
-    "section" : "ldap",
-    "type" : "string"
-  },
   "log" : {
     "default" : [
       "info",
@@ -815,7 +630,7 @@
     "type" : "boolean"
   },
   "log.file" : {
-    "default" : "",
+    "default" : "/var/log/arangodb3/arangod.log",
     "description" : "shortcut for '--log.output file://<filename>'",
     "hidden" : true,
     "section" : "log",
@@ -965,6 +780,13 @@
     "section" : "query",
     "type" : "uint64"
   },
+  "query.registry-ttl" : {
+    "default" : 600,
+    "description" : "Default time-to-live of query snippets (in seconds)",
+    "hidden" : true,
+    "section" : "query",
+    "type" : "double"
+  },
   "query.slow-threshold" : {
     "default" : 10,
     "description" : "threshold for slow AQL queries (in seconds)",
@@ -1023,7 +845,7 @@
     "type" : "int64"
   },
   "rocksdb.block-cache-size" : {
-    "default" : 4364869632,
+    "default" : 9452014387,
     "description" : "size of block cache in bytes",
     "hidden" : false,
     "section" : "rocksdb",
@@ -1063,20 +885,6 @@
     "hidden" : false,
     "section" : "rocksdb",
     "type" : "boolean"
-  },
-  "rocksdb.encryption-key-generator" : {
-    "default" : "",
-    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
-    "hidden" : false,
-    "section" : "rocksdb",
-    "type" : "string"
-  },
-  "rocksdb.encryption-keyfile" : {
-    "default" : "",
-    "description" : "file containing encryption key. If set, encryption will be enabled.",
-    "hidden" : false,
-    "section" : "rocksdb",
-    "type" : "string"
   },
   "rocksdb.intermediate-commit-count" : {
     "default" : 1000000,
@@ -1267,6 +1075,13 @@
     "section" : "rocksdb",
     "type" : "double"
   },
+  "rocksdb.wal-file-timeout-initial" : {
+    "default" : 180,
+    "description" : "initial timeout after which unused WAL files deletion kicks in after server start",
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "double"
+  },
   "rocksdb.wal-recovery-skip-corrupted" : {
     "default" : false,
     "description" : "skip corrupted records in WAL recovery",
@@ -1332,7 +1147,7 @@
   },
   "server.endpoint" : {
     "default" : [
-      "tcp://0.0.0.0:8529"
+      "tcp://127.0.0.1:8529"
     ],
     "description" : "endpoint for client requests (e.g. 'http+tcp://127.0.0.1:8529', or 'vst+ssl://192.168.1.1:8529')",
     "hidden" : false,
@@ -1367,23 +1182,30 @@
     "section" : "server",
     "type" : "boolean"
   },
-  "server.maximal-queue-size" : {
-    "default" : 0,
-    "description" : "maximum queue length for pending operations (use 0 for unrestricted)",
-    "hidden" : false,
-    "section" : "server",
-    "type" : "uint64"
-  },
-  "server.maximal-threads" : {
-    "default" : 0,
-    "description" : "maximal number of threads",
+  "server.minimal-threads" : {
+    "default" : 2,
+    "description" : "minimal number of threads",
     "hidden" : true,
     "section" : "server",
     "type" : "uint64"
   },
-  "server.minimal-threads" : {
-    "default" : 0,
-    "description" : "minimal number of threads",
+  "server.prio1-size" : {
+    "default" : 65536,
+    "description" : "size of the priority 1 fifo",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.prio2-size" : {
+    "default" : 4096,
+    "description" : "size of the priority 2 fifo",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.queue-size" : {
+    "default" : 128,
+    "description" : "number of simultaneously queues requests inside the scheduler",
     "hidden" : true,
     "section" : "server",
     "type" : "uint64"
@@ -1425,7 +1247,7 @@
     "type" : "uint64"
   },
   "server.uid" : {
-    "default" : "",
+    "default" : "arangodb",
     "description" : "switch to user-id after reading config files",
     "hidden" : true,
     "section" : "server",
@@ -1474,13 +1296,6 @@
     "type" : "uint64",
     "values" : "Possible values: 1, 2, 3, 4, 5"
   },
-  "ssl.require-peer-certificate" : {
-    "default" : false,
-    "description" : "require a peer certificate when connecting",
-    "hidden" : false,
-    "section" : "ssl",
-    "type" : "boolean"
-  },
   "ssl.session-cache" : {
     "default" : false,
     "description" : "enable the session cache for connections",
@@ -1517,7 +1332,7 @@
     "type" : "string"
   },
   "uid" : {
-    "default" : "",
+    "default" : "arangodb",
     "description" : "switch to user-id after reading config files",
     "hidden" : true,
     "section" : "",
