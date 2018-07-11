@@ -37,8 +37,7 @@ docker run -d --net=host -e ARANGO_NO_AUTH=1 --name=agency \
   --agency.supervision false \
   --agency.supervision-frequency 5 \
   --server.endpoint tcp://0.0.0.0:4001 \
-  --server.statistics false \
-  --server.threads 16
+  --server.statistics false 
 sleep 1
 
 start() {

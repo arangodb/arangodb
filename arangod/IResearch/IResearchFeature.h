@@ -51,7 +51,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @param mutex a mutex to check/prevent resource deallocation (nullptr == not required)
   /// @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until notification)
   /// @param fn the function to execute
-  ///           @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until previously set timeout)
+  ///           @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until previously set timeout or until notification if first run)
   ///           @param timeout the timeout has been reached (false == triggered by notification)
   ///           @return continue/reschedule
   //////////////////////////////////////////////////////////////////////////////

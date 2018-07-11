@@ -116,21 +116,21 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
     // send back original value of "Origin" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin,
-                                  _origin);
+                                 _origin);
 
     // send back "Access-Control-Allow-Credentials" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                  (_denyCredentials ? "false" : "true"));
+                                 (_denyCredentials ? "false" : "true"));
 
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
-                                  StaticStrings::ExposedCorsHeaders);
+                                 StaticStrings::ExposedCorsHeaders);
   }
 
   // use "IfNotSet"
   response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
-                                StaticStrings::NoSniff);
+                               StaticStrings::NoSniff);
 
   // set "connection" header, keep-alive is the default
   response.setConnectionType(_closeRequested
@@ -146,7 +146,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
   }
 
   // reserve a buffer with some spare capacity
-  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 128), stat);
+  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 220), stat);
 
   // write header
   response.writeHeader(buffer._buffer);
@@ -761,6 +761,11 @@ void HttpCommTask::resetState() {
 }
 
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
+  if (!_auth->isActive()) {
+    request->setAuthenticated(true);
+    return rest::ResponseCode::OK;
+  }
+
   bool found;
   std::string const& authStr = request->header(StaticStrings::Authorization, found);
   if (!found) {
@@ -789,13 +794,10 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
 
       if (authMethod != AuthenticationMethod::NONE) {
         request->setAuthenticationMethod(authMethod);
-        if (_auth->isActive()) {
-          auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
-          request->setAuthenticated(entry.authenticated());
-          request->setUser(std::move(entry._username));
-        } else {
-          request->setAuthenticated(true);
-        }
+        TRI_ASSERT(_auth->isActive());
+        auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
+        request->setAuthenticated(entry.authenticated());
+        request->setUser(std::move(entry._username));
 
         if (request->authenticated()) {
           events::Authenticated(request, authMethod);

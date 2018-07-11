@@ -40,8 +40,6 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestAdminLogHandler::isDirect() const { return true; }
-
 RestStatus RestAdminLogHandler::execute() {
   size_t const len = _request->suffixes().size();
 

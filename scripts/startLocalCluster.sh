@@ -145,7 +145,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$port \
         --server.statistics false \
-        --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \

@@ -442,16 +442,14 @@ void SocketTask::asyncReadSome() {
           return;
         }
 
-        _peer->post([self, this, transferred] {
-          _readBuffer.increaseLength(transferred);
+        _readBuffer.increaseLength(transferred);
 
-          if (processAll()) {
-            _peer->post([self, this]() {
-              asyncReadSome();
-            });
-          }
-          compactify();
-        });
+        if (processAll()) {
+          _peer->post([self, this]() {
+            asyncReadSome();
+          });
+        }
+        compactify();
       });
 }
 
@@ -525,22 +523,16 @@ void SocketTask::asyncWriteSome() {
           return;
         }
 
-        _peer->post([self, this, transferred] {
-          if (_abandoned.load(std::memory_order_acquire)) {
-            return;
-          }
+        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics,
+                                          transferred);
 
-          RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics,
-                                            transferred);
-
-          if (completedWriteBuffer()) {
-            _peer->post([self, this] {
-              if (!_abandoned.load(std::memory_order_acquire)) {
-                asyncWriteSome();
-              }
-            });
-          }
-        });
+        if (completedWriteBuffer()) {
+          _peer->post([self, this] {
+            if (!_abandoned.load(std::memory_order_acquire)) {
+              asyncWriteSome();
+            }
+          });
+        }
       });
 }
 

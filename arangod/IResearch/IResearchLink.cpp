@@ -145,7 +145,8 @@ int IResearchLink::drop() {
   }
 
   // if the collection is in the process of being removed then drop it from the view
-  if (_collection->deleted()) {
+  if (_collection->deleted()
+      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection->status()) {
     auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
 
     if (!result.ok()) {
@@ -521,7 +522,8 @@ int IResearchLink::unload() {
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
-  if (_collection->deleted()) {
+  if (_collection->deleted()
+      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection->status()) {
     auto res = drop();
 
     if (TRI_ERROR_NO_ERROR != res) {
