@@ -130,7 +130,7 @@
   * [Storage Engines](Architecture/StorageEngines.md)
   * [Replication](Architecture/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
-* [Foxx services](Foxx/README.md)
+* [Foxx Microservices](Foxx/README.md)
   * [Getting started](Foxx/GettingStarted.md)
   * [Guides](Foxx/Guides/README.md)
     * [Development mode](Foxx/Guides/DevelopmentMode.md)

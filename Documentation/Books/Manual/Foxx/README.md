@@ -1,4 +1,4 @@
-Foxx services
+Foxx Microservices
 =============
 
 Traditionally, server-side projects have been developed as standalone applications
