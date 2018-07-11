@@ -1,6 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/view/products1/rename &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/view/products1/rename &lt;&lt;EOF
 { 
-  "name" : "viewNewName" 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"viewNewName"</span> 
 }
 EOF
 
@@ -9,7 +9,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"15137"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"15405"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"viewNewName"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
   <span class="hljs-string">"properties"</span> : { 

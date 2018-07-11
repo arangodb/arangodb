@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/products/rotate &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/products/rotate &lt;&lt;EOF
 { 
 }
 EOF

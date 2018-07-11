@@ -1,14 +1,14 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice &lt;&lt;EOF
 { 
-  "name" : "Alice Cooper", 
-  "age" : 26 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice Cooper"</span>, 
+  <span class="hljs-string">"age"</span> : <span class="hljs-number">26</span> 
 }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _XEUeuuy--_
+etag: _XGh-m8C--_
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -16,7 +16,7 @@ etag: _XEUeuuy--_
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUeuuy--_"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XEUeutu--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XGh-m8C--_"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XGh-m7a--_"</span> 
   } 
 }
