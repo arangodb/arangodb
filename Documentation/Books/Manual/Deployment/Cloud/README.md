@@ -1,5 +1,5 @@
-ArangoDB Deploying Options by _Cloud Provider_
-==============================================
+ArangoDB Deploying Options in the _Cloud_
+=========================================
 
 - [AWS](AWS.md)
 - [Azure](Azure.md)
