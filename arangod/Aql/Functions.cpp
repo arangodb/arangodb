@@ -1443,8 +1443,6 @@ AqlValue Functions::ToBase64(arangodb::aql::Query*,
   
   std::string encoded = basics::StringUtils::encodeBase64(std::string(buffer->begin(), buffer->length()));
     
-  LOG_TOPIC(WARN, Logger::FIXME) << "the base64-encoded value is: " << encoded;
-    
   return AqlValue(encoded);
 }
 
@@ -1460,8 +1458,6 @@ AqlValue Functions::ToHex(arangodb::aql::Query*,
   ::appendAsString(trx, adapter, value);
     
     std::string encoded = basics::StringUtils::encodeHex(std::string(buffer->begin(), buffer->length()));
-    
-  LOG_TOPIC(WARN, Logger::FIXME) << "the hex-encoded value is: " << encoded;
     
   return AqlValue(encoded);
 }
@@ -1479,8 +1475,6 @@ AqlValue Functions::EncodeURIComponent(arangodb::aql::Query*,
     
     std::string encoded = basics::StringUtils::encodeURIComponent(std::string(buffer->begin(), buffer->length()));
     
-    LOG_TOPIC(WARN, Logger::FIXME) << "the uri-encoded value is: " << encoded;
-    
     return AqlValue(encoded);
 }
 
@@ -1494,11 +1488,24 @@ AqlValue Functions::UUID(arangodb::aql::Query*,
     
     std::string uuid = boost::uuids::to_string(boost::uuids::random_generator()());
     
-    LOG_TOPIC(WARN, Logger::FIXME) << "the uuid value is: " << uuid;
-    
     return AqlValue(uuid);
 }
 
+/// @brief function SOUNDEX
+AqlValue Functions::Soundex(arangodb::aql::Query*,
+                                       transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters) {
+    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+    ::appendAsString(trx, adapter, value);
+    
+    std::string encoded = basics::StringUtils::soundex(basics::StringUtils::tolower(std::string(buffer->begin(), buffer->length())));
+    
+    return AqlValue(encoded);
+}
 
 /// @brief function TO_BOOL
 AqlValue Functions::ToBool(arangodb::aql::Query*,

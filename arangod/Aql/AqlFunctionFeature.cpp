@@ -207,6 +207,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"TO_HEX", ".", true, false, true, &Functions::ToHex});
   add({"ENCODE_URI_COMPONENT", ".", true, false, true, &Functions::EncodeURIComponent});
   add({"UUID", "", true, false, true, &Functions::UUID});
+  add({"SOUNDEX", ".", true, false, true, &Functions::Soundex});
 }
 
 void AqlFunctionFeature::addNumericFunctions() {

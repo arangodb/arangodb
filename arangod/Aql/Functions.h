@@ -161,6 +161,8 @@ struct Functions {
                                        VPackFunctionParameters const&);
    static AqlValue UUID(arangodb::aql::Query*, transaction::Methods*,
                                        VPackFunctionParameters const&);
+   static AqlValue Soundex(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
    // Date
    static AqlValue DateFromParameters(arangodb::aql::Query* query,
                                       transaction::Methods* trx,

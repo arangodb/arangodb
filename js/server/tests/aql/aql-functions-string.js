@@ -102,16 +102,16 @@ function ahuacatlStringFunctionsTestSuite () {
         [ " ", "20" ],
         [ "The quick brown fox jumps over the lazy dog", "54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67"],
       ].forEach(function(test) {
-        assertEqual([ test[1] ], getQueryResults('RETURN TO_BASE64(' + JSON.stringify(test[0]) + ')'), test);
+        assertEqual([ test[1] ], getQueryResults('RETURN TO_HEX(' + JSON.stringify(test[0]) + ')'), test);
       });
     },
     
     
     testToHexInvalidNumberOfParameters: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64()');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo", "bar")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX("test", "meow", "foo", "bar")');
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -133,20 +133,20 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "The quick brown fox jumps over the lazy dog", "The quick brown fox jumps over the lazy dog"],
         [ "https://w3schools.com/my test.asp?name=ståle&car=saab", "https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab"],
       ].forEach(function(test) {
-        assertEqual([ test[1] ], getQueryResults('RETURN TO_BASE64(' + JSON.stringify(test[0]) + ')'), test);
+        assertEqual([ test[1] ], getQueryResults('RETURN ENCODE_URI_COMPONENT(' + JSON.stringify(test[0]) + ')'), test);
       });
     },
     
     
     testEncodeURIComponentInvalidNumberOfParameters: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64()');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo", "bar")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_ENCODE_URI_COMPONENT()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_ENCODE_URI_COMPONENT("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_ENCODE_URI_COMPONENT("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_ENCODE_URI_COMPONENT("test", "meow", "foo", "bar")');
     },
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test encodeURIcomponent
+// / @brief test UUID
 // //////////////////////////////////////////////////////////////////////////////
 
     testUUIDValues: function () {
@@ -154,10 +154,41 @@ function ahuacatlStringFunctionsTestSuite () {
     }
 
     testUUIDInvalidNumberOfParameters: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo", "bar")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow", "foo", "bar")');
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test Soundex
+// //////////////////////////////////////////////////////////////////////////////
+    testToSoundexValues: function () {
+      [ 
+        [ null, "N400" ],
+        [ "text", "T230" ],
+        [ "tixt", "T230"],
+        [ "Text", "T230" ],
+        [ "Tixt", "T230"],
+        [ "tExT", "T230" ],
+        [ "tIxT", "T230"],
+        [ true, "T600" ],
+        [ false, "F420" ],
+        [ "", "" ],
+        [ "foobar", "F160" ],
+        [ "SOUNDEX", "S532" ],
+        [ "SOUNTEKS", "S532" ],
+        [ "The quick brown fox jumps over the lazy dog", "T022"],
+      ].forEach(function(test) {
+        assertEqual([ test[1] ], getQueryResults('RETURN SOUNDEX(' + JSON.stringify(test[0]) + ')'), test);
+      });
+    },
+
+    testSoundexInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow", "foo", "bar")');
     },
 
 // //////////////////////////////////////////////////////////////////////////////
