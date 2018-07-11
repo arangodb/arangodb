@@ -56,6 +56,55 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 using namespace arangodb::rest;
 
+static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+    v8::HandleScope scope(isolate);
+
+    if (args.Length() < 1) {
+      TRI_V8_THROW_EXCEPTION_USAGE(
+              "_drop(graphName, dropCollections)");
+    } else if (!args[0]->IsString()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+    }
+    std::string graphName = TRI_ObjectToString(args[0]);
+    if (graphName.empty()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+    }
+    bool dropCollections = false;
+    if (args.Length() == 2) {
+      dropCollections = TRI_ObjectToBoolean(args[1]);
+    }
+
+    auto& vocbase = GetContextVocBase(isolate);
+    auto ctx = transaction::V8Context::Create(vocbase, false);
+
+    std::shared_ptr<Graph const> graph;
+    graph.reset(lookupGraphByName(ctx, graphName));
+
+    ctx = transaction::V8Context::Create(vocbase, false);
+    GraphOperations gops{*graph, ctx};
+    OperationResult result = gops.removeGraph(true, dropCollections);
+
+    VPackBuilder obj;
+    if (result.fail()) {
+      obj.add(VPackValue(VPackValueType::Object, true));
+      obj.add("removed", VelocyPackHelper::BooleanValue(false));
+      obj.close();
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, obj.slice()));
+    }
+
+    if (result.ok()) {
+      obj.add(VPackValue(VPackValueType::Object, true));
+      obj.add("removed", VelocyPackHelper::BooleanValue(true));
+      obj.close();
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, obj.slice()));
+    }
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+
+    TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_GetGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::HandleScope scope(isolate);
@@ -249,6 +298,8 @@ void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_create"),
                        JS_CreateGraph);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_drop"),
+                       JS_DropGraph);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_editEdgeDefinitions"),
                        JS_EditEdgeDefinitions);
 

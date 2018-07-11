@@ -117,6 +117,7 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
             builder.add("from", VPackValue(VPackValueType::Array));
             for (auto const& from : it.second.getFrom()) {
               builder.add(VPackValue(from));
+              graphCollections.emplace(from);
             }
             builder.close();  // from
           }
@@ -132,6 +133,7 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
             builder.add("to", VPackValue(VPackValueType::Array));
             for (auto const& to : it.second.getTo()) {
               builder.add(VPackValue(to));
+              graphCollections.emplace(to);
             }
             builder.close();  // to
           }
@@ -178,22 +180,20 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
   }
   for (auto const& gc : graphCollections) {
     auto search = potentialOrphanCollections.find(gc);
-    if (search != potentialOrphanCollections.end()) {
-      // found in an edge definition, no need to add to orphans
-    } else {
-      // add to orphans
+    if (search == potentialOrphanCollections.end()) {
+      // not found, add to orphans
       putToOrphan.emplace(gc);
     }
   }
+
   result =
-      addOrphanCollectionByGraph(putToOrphan, graphCurrent, waitForSync, &trx);
+      addOrphanCollectionByGraph(putToOrphan, graphCurrent, potentialOrphanCollections, waitForSync, &trx);
   if (result.fail()) {
     return result;
   }
 
   // now write to database
-  result =
-      trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+  result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 
   return result;
 }
@@ -455,7 +455,8 @@ OperationResult GraphOperations::editEdgeDefinition(
 
 OperationResult GraphOperations::addOrphanCollectionByGraph(
     std::unordered_set<std::string> collections, Graph const& graph,
-    bool waitForSync, transaction::Methods* trx) {
+    std::unordered_set<std::string> graphCollections, bool waitForSync,
+    transaction::Methods* trx) {
   GraphManager gmngr{ctx()};
   std::shared_ptr<LogicalCollection> def;
   OperationResult result;
@@ -471,7 +472,16 @@ OperationResult GraphOperations::addOrphanCollectionByGraph(
   builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
   builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
   for (auto const& orph : graph.orphanCollections()) {
-    builder.add(VPackValue(orph));
+    bool found = false;
+    // only add, if they are not within the new edge definition
+    for (auto const& gc : graphCollections) {
+      if (gc == orph) { // TODO FIX ME, do not add orphs which are not included in the new edge definition
+        found = true;
+      }
+    }
+    if (!found) {
+      builder.add(VPackValue(orph));
+    }
   }
   for (auto const& collectionName : collections) {
     builder.add(VPackValue(collectionName));
@@ -792,6 +802,7 @@ GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
 
 OperationResult GraphOperations::removeGraph(bool waitForSync,
                                              bool dropCollections) {
+
   std::vector<std::string> trxCollections;
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(StaticStrings::GraphCollection);
@@ -1209,8 +1220,8 @@ OperationResult GraphOperations::pushCollectionIfMayBeDropped(
   }
 
   VPackSlice graphs = graphsBuilder.slice();
-  bool collectionUnused = true;
 
+  bool collectionUnused = true;
   TRI_ASSERT(graphs.get("graphs").isArray());
 
   if (!graphs.get("graphs").isArray()) {
@@ -1221,26 +1232,36 @@ OperationResult GraphOperations::pushCollectionIfMayBeDropped(
     graph = graph.resolveExternals();
     if (!collectionUnused) {
       // Short circuit
-      break;
+      continue;
     }
     if (graph.get("_key").copyString() == graphName) {
-      break;
+      continue;
     }
 
     // check edge definitions
     VPackSlice edgeDefinitions = graph.get(StaticStrings::GraphEdgeDefinitions);
     if (edgeDefinitions.isArray()) {
       for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
-        std::string from =
-            edgeDefinition.get(StaticStrings::FromString).copyString();
-        std::string to =
-            edgeDefinition.get(StaticStrings::ToString).copyString();
+        //edge collection
         std::string collection = edgeDefinition.get("collection").copyString();
-
-        if (collection == colName || from.find(colName) || to.find(colName)) {
+        if (collection == colName) {
           collectionUnused = false;
         }
+        //from's
+        for (auto const& from : VPackArrayIterator(edgeDefinition.get(StaticStrings::GraphFrom))) {
+          if (from.copyString() == colName) {
+            collectionUnused = false;
+          }
+        }
+        //to's
+        for (auto const& to : VPackArrayIterator(edgeDefinition.get(StaticStrings::GraphTo))) {
+          if (to.copyString() == colName) {
+            collectionUnused = false;
+          }
+        }
       }
+    } else {
+      return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
     }
 
     // check orphan collections
@@ -1248,7 +1269,7 @@ OperationResult GraphOperations::pushCollectionIfMayBeDropped(
     if (orphanCollections.isArray()) {
       for (auto const& orphanCollection :
            VPackArrayIterator(orphanCollections)) {
-        if (orphanCollection.copyString().find(colName)) {
+        if (orphanCollection.copyString() == colName) {
           collectionUnused = false;
         }
       }

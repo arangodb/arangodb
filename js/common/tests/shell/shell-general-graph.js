@@ -751,22 +751,24 @@ function GeneralGraphCreationSuite() {
       assertEqual(g2._orphanCollections().sort(), [vc1, vc2, vc3, vc4].sort());
     },
 
-    /*test_editEdgeDefinitionFromExistingGraph3: function() {
+    test_editEdgeDefinitionFromExistingGraph3: function() {
 
-      var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
-        dr2 = graph._relation(ec1, [vc3], [vc4, vc5]),
-        dr3 = graph._relation(ec2, [vc2], [vc2, vc3]),
-        g1 = graph._create(gN1, [dr1, dr3]),
-        g2 = graph._create(gN2, [dr1]);
+      var dr1 = graph._relation(ec1, _.cloneDeep([vc1]), _.cloneDeep([vc1, vc2])),
+        dr2 = graph._relation(ec1, _.cloneDeep([vc3]), _.cloneDeep([vc4, vc5])),
+        dr3 = graph._relation(ec2, _.cloneDeep([vc2]), _.cloneDeep([vc2, vc3])),
+        g1 = graph._create(gN1, _.cloneDeep([dr1, dr3])),
+        g2 = graph._create(gN2, _.cloneDeep([dr1]));
 
       g1._addVertexCollection(vc4);
       g2._addVertexCollection(vc5);
       g2._addVertexCollection(vc6);
-      g1._editEdgeDefinitions(dr2, true);
+      g1._editEdgeDefinitions(dr2);
+
+      g2 = graph._graph(gN2);
+      g1 = graph._graph(gN1);
 
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([dr2], g2.__edgeDefinitions);
-      g2 = graph._graph(gN2);
       assertEqual([vc1], g1._orphanCollections());
       assertEqual(g2._orphanCollections().sort(), [vc1, vc2, vc6].sort());
 
@@ -779,7 +781,7 @@ function GeneralGraphCreationSuite() {
       } catch(ignore) {
       }
 
-    }*/
+    }
 
 
   };

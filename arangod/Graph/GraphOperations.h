@@ -136,7 +136,8 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult addOrphanCollectionByGraph(
       std::unordered_set<std::string> collections, Graph const& graph,
-      bool waitForSync, transaction::Methods* trx);
+      std::unordered_set<std::string> graphCollections, bool waitForSync,
+      transaction::Methods* trx);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an orphan collection from an existing graph

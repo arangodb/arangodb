@@ -46,13 +46,15 @@ exports._create = function (name, edgeDefinition, orphans, options) {
   };
   return graph;
 };
+
 exports._graph = function (graphName) {
   let g = GeneralGraph._graph(graphName);
   return new ggc.__GraphClass(g);
-}
+};
+
+exports._drop = GeneralGraph._drop;
 
 // old js based
-exports._drop = ggc._drop;
 exports._exists = ggc._exists;
 exports._edgeDefinitions = ggc._edgeDefinitions;
 exports._extendEdgeDefinitions = ggc._extendEdgeDefinitions;
