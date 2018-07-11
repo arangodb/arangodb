@@ -42,8 +42,7 @@ var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
 var testFilter = "undefined";
 
-function setTestFilter(filter)
-{
+function setTestFilter(filter) {
   testFilter = filter;
 }
 
@@ -180,8 +179,6 @@ function Run (testsuite) {
       COMPLETE[attrname] = RESULTS[attrname];
     }
   }
-  print(JSON.stringify(COMPLETE))
-  print(JSON.stringify(result))
   return result;
 }
 
@@ -221,7 +218,7 @@ function RunTest (path, outputReply, filter) {
 
   content = fs.read(path);
 
-  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter("${filter}");  ${content} }());
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)});  ${content} }());
 });`;
   f = internal.executeScript(content, undefined, path);
 
