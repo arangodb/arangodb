@@ -22,7 +22,6 @@
 
 #include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
@@ -104,12 +103,9 @@ bool ClusterTransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      return true;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    return true;
   }
   return (_lockType != AccessMode::Type::NONE);
 }
@@ -253,13 +249,10 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type,
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(!isLocked());
@@ -290,13 +283,10 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type,
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(isLocked());

@@ -37,7 +37,7 @@ function optimizerSparseTestSuite () {
   return {
     setUp : function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", { numberOfShards: 5 });
 
       for (let i = 0; i < 2000; ++i) {
         c.insert({ _key: "test" + i, value1: i });

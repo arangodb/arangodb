@@ -74,11 +74,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   auto engine = query->engine();
 
-  {
-    auto cpyLockedShards =
-        std::make_unique<std::unordered_set<std::string>>(lockedShards);
-    engine->setLockedShards(cpyLockedShards.release());
-  }
+  query->trx()->setLockedShards(lockedShards);
 
   auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
   if (!res.ok()) {

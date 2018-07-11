@@ -33,6 +33,7 @@ namespace arangodb {
   public:
     RestStatus execute() override;
     char const* name() const override {return "Pregel Rest Handler";}
+    RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   };
 }
 

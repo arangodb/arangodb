@@ -313,6 +313,20 @@ void TransactionState::setType(AccessMode::Type type) {
   // all right
   _type = type;
 }
+
+bool TransactionState::isLockedShard(std::string const& shard) const {
+    auto it = _lockedShards.find(shard);
+    return it != _lockedShards.end();
+}
+
+void TransactionState::setLockedShard(std::string const& shard) {
+  _lockedShards.emplace(shard);
+}
+
+void TransactionState::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
+  // Explicitly copy!
+  _lockedShards = lockedShards;
+}
    
 bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
   return ((numCollections() == 1) && (_collections[0]->accessType() == AccessMode::Type::EXCLUSIVE));

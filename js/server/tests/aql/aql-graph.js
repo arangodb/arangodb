@@ -997,6 +997,27 @@ function ahuacatlQueryShortestPathTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path with a limit, skipping a result
+/// Regression test for missing skipSome implementation
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraOutboundSkipFirst : function () {
+      const query = `WITH ${vn}
+        FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en}
+        LIMIT 1,4
+        RETURN v._id`;
+      const vertices = getQueryResults(query);
+
+      // vertex "A" should have been skipped
+      assertEqual([
+        vn + "/D",
+        vn + "/E",
+        vn + "/G",
+        vn + "/H"
+      ], vertices);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shortest path using dijkstra with includeData: true
 ////////////////////////////////////////////////////////////////////////////////
 

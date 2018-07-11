@@ -68,7 +68,6 @@ SECTION("test_defaults") {
   CHECK((true == metaState._collections.empty()));
   CHECK(true == (10 == meta._commit._cleanupIntervalStep));
   CHECK(true == (60 * 1000 == meta._commit._commitIntervalMsec));
-  CHECK(true == (5 * 1000 == meta._commit._commitTimeoutMsec));
 
   std::set<ConsolidationPolicy::Type> expectedItem = { ConsolidationPolicy::Type::BYTES, ConsolidationPolicy::Type::BYTES_ACCUM, ConsolidationPolicy::Type::COUNT, ConsolidationPolicy::Type::FILL };
 
@@ -94,7 +93,6 @@ SECTION("test_inheritDefaults") {
   defaultsState._collections.insert(42);
   defaults._commit._cleanupIntervalStep = 654;
   defaults._commit._commitIntervalMsec = 456;
-  defaults._commit._commitTimeoutMsec = 789;
   defaults._commit._consolidationPolicies.clear();
   defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES, 101, .11f);
   defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES_ACCUM, 151, .151f);
@@ -110,7 +108,6 @@ SECTION("test_inheritDefaults") {
     CHECK((42 == *(metaState._collections.begin())));
     CHECK(654 == meta._commit._cleanupIntervalStep);
     CHECK(456 == meta._commit._commitIntervalMsec);
-    CHECK(789 == meta._commit._commitTimeoutMsec);
 
     std::set<ConsolidationPolicy::Type> expectedItem = { ConsolidationPolicy::Type::BYTES, ConsolidationPolicy::Type::BYTES_ACCUM, ConsolidationPolicy::Type::COUNT, ConsolidationPolicy::Type::FILL };
 
@@ -159,7 +156,6 @@ SECTION("test_readDefaults") {
     CHECK((true == metaState._collections.empty()));
     CHECK(10 == meta._commit._cleanupIntervalStep);
     CHECK(60 * 1000 == meta._commit._commitIntervalMsec);
-    CHECK(5 * 1000 == meta._commit._commitTimeoutMsec);
 
     std::set<ConsolidationPolicy::Type> expectedItem = { ConsolidationPolicy::Type::BYTES, ConsolidationPolicy::Type::BYTES_ACCUM, ConsolidationPolicy::Type::COUNT, ConsolidationPolicy::Type::FILL };
 
@@ -293,7 +289,7 @@ SECTION("test_readCustomizedValues") {
   std::string errorField;
   auto json = arangodb::velocypack::Parser::fromJson("{ \
         \"collections\": [ 42 ], \
-        \"commit\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"commitTimeoutMsec\": 789, \"consolidate\": { \"bytes\": { \"segmentThreshold\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"segmentThreshold\": 1501, \"threshold\": 0.151 }, \"count\": { \"segmentThreshold\": 2001 }, \"fill\": {} } }, \
+        \"commit\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"consolidate\": { \"bytes\": { \"segmentThreshold\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"segmentThreshold\": 1501, \"threshold\": 0.151 }, \"count\": { \"segmentThreshold\": 2001 }, \"fill\": {} } }, \
         \"locale\": \"ru_RU.KOI8-R\" \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
@@ -308,7 +304,6 @@ SECTION("test_readCustomizedValues") {
   CHECK((42 == *(metaState._collections.begin())));
   CHECK(654 == meta._commit._cleanupIntervalStep);
   CHECK(456 == meta._commit._commitIntervalMsec);
-  CHECK(789 == meta._commit._commitTimeoutMsec);
 
   std::set<ConsolidationPolicy::Type> expectedItem = { ConsolidationPolicy::Type::BYTES, ConsolidationPolicy::Type::BYTES_ACCUM, ConsolidationPolicy::Type::COUNT, ConsolidationPolicy::Type::FILL };
 
@@ -367,13 +362,11 @@ SECTION("test_writeDefaults") {
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("commit");
-  CHECK((true == tmpSlice.isObject() && 4 == tmpSlice.length()));
+  CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("cleanupIntervalStep");
   CHECK((true == tmpSlice2.isNumber<size_t>() && 10 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("commitIntervalMsec");
   CHECK((true == tmpSlice2.isNumber<size_t>() && 60000 == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("commitTimeoutMsec");
-  CHECK((true == tmpSlice2.isNumber<size_t>() && 5000 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("consolidate");
   CHECK((true == tmpSlice2.isObject() && 4 == tmpSlice2.length()));
 
@@ -432,7 +425,6 @@ SECTION("test_writeCustomizedValues") {
   metaState._collections.insert(62);
   meta._commit._cleanupIntervalStep = 654;
   meta._commit._commitIntervalMsec = 456;
-  meta._commit._commitTimeoutMsec = 789;
   meta._commit._consolidationPolicies.clear();
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES, 101, .11f);
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES_ACCUM, 151, .151f);
@@ -469,13 +461,11 @@ SECTION("test_writeCustomizedValues") {
 
   CHECK(true == expectedCollections.empty());
   tmpSlice = slice.get("commit");
-  CHECK((true == tmpSlice.isObject() && 4 == tmpSlice.length()));
+  CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("cleanupIntervalStep");
   CHECK((true == tmpSlice2.isNumber<size_t>() && 654 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("commitIntervalMsec");
   CHECK((true == tmpSlice2.isNumber<size_t>() && 456 == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("commitTimeoutMsec");
-  CHECK((true == tmpSlice2.isNumber<size_t>() && 789 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("consolidate");
   CHECK((true == tmpSlice2.isObject() && 4 == tmpSlice2.length()));
 
@@ -558,7 +548,6 @@ SECTION("test_writeMaskAll") {
   tmpSlice = slice.get("commit");
   CHECK(true == tmpSlice.hasKey("cleanupIntervalStep"));
   CHECK(true == tmpSlice.hasKey("commitIntervalMsec"));
-  CHECK(true == tmpSlice.hasKey("commitTimeoutMsec"));
   CHECK(true == tmpSlice.hasKey("consolidate"));
   CHECK(true == slice.hasKey("locale"));
 }
