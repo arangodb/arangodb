@@ -65,7 +65,7 @@ class StandaloneContext final : public Context {
   bool isEmbeddable() const override { return false; }
 
   /// @brief create a context, returned in a shared ptr
-  static std::shared_ptr<transaction::StandaloneContext> Create(
+  static std::shared_ptr<transaction::Context> Create(
     TRI_vocbase_t& vocbase
   );
 };

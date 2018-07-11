@@ -172,14 +172,11 @@ the total number of V8 contexts we may spawn as configured by --javascript.v8-co
 @RESTSTRUCT{threads,server_statistics_struct,object,required,server_threads_struct}
 Statistics about the server worker threads (excluding V8 specific or jemalloc specific threads and system threads)
 
-@RESTSTRUCT{running,server_threads_struct,integer,required,}
+@RESTSTRUCT{scheduler-threads,server_threads_struct,integer,required,}
 The number of spawned worker threads
 
-@RESTSTRUCT{working,server_threads_struct,integer,required,}
+@RESTSTRUCT{in-progress,server_threads_struct,integer,required,}
 The number of currently busy worker threads
-
-@RESTSTRUCT{blocked,server_threads_struct,integer,required,}
-The number of worker threads waiting for the availability of resources (like Collection locks)
 
 @RESTSTRUCT{queued,server_threads_struct,integer,required,}
 The number of jobs queued up waiting for worker threads becomming available

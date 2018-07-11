@@ -32,16 +32,16 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {
+class ExecutionEngine;
 class Query;
-
-/*inline if 17*/
-const double QueryInsertTTL = 600.0;
 
 class QueryRegistry {
  public:
-  QueryRegistry() {}
+  explicit QueryRegistry(double defTTL) : _defaultTTL(defTTL) {}
 
   TEST_VIRTUAL ~QueryRegistry();
+  
+public:
 
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
@@ -84,6 +84,19 @@ class QueryRegistry {
 
   /// @brief for shutdown, we need to shut down all queries:
   void destroyAll();
+  
+  /// @brief return the default TTL value
+  TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
+
+ private:
+
+  /**
+   * @brief Set the thread-local _noLockHeaders variable
+   *
+   * @param engine The Query engine that contains the no-lock-header
+   *        information.
+   */
+  void setNoLockHeaders(ExecutionEngine* engine) const;
 
  private:
   /// @brief a struct for all information regarding one query in the registry
@@ -107,6 +120,9 @@ class QueryRegistry {
 
   /// @brief _lock, the read/write lock for access
   basics::ReadWriteLock _lock;
+  
+  /// @brief the default TTL value
+  double const _defaultTTL;
 };
 
 }  // namespace arangodb::aql

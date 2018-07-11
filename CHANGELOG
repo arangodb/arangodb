@@ -1,13 +1,57 @@
 devel
 -----
-* replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
-  new optimizer rule.
 
-  - The NEAR function now does not default to a limit of 100 documents any more.
-  - "fulltext-index-optimizer" optimizer rule has been removed.
+* changed the thread handling in the scheduler. `--server.threads` will be
+  the maximum number of threads for the scheduler.
 
+  The hidden option `--server.maximal-threads` is now obsolete.
 
-* PR 5552: add "--latency true" option to arangoimport.  Lists microsecond latency
+  The hidden options `--server.queue-size`, `--server.prioN-size` (N = 1 or 2)
+  control the size of the internal queues. The defaults are sensible, do not
+  change these settings.
+
+* use sparse indexes in more cases now, when it is clear that the index attribute
+  value cannot be null
+
+* Added load balancer support and user-restriction to cursor API.
+
+  If a cursor is accessed on a different coordinator than where it was created,
+  the requests will be forwarded to the correct coordinator. If a cursor is
+  accessed by a different user than the one who created it, the request will
+  be denied.
+
+* if authentication is turned on requests to databases by users with insufficient rights
+ will be answered with the HTTP forbidden (401) response.
+
+* upgraded bundled RocksDB library version to 5.14
+
+* added key generators `uuid` and `padded`
+
+  The `uuid` key generator generates universally unique 128 bit keys, which are
+  stored in hexadecimal human-readable format.
+  The `padded` key generator generates keys of a fixed length (16 bytes) in
+  ascending lexicographical sort order.
+
+* The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
+  field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
+  the inverted meaning.
+
+* added `COUNT_DISTINCT` AQL function
+
+* make AQL optimizer rule `collect-in-cluster` optimize aggregation functions
+  `AVERAGE`, `VARIANCE`, `STDDEV`, `UNIQUE`, `SORTED_UNIQUE` and `COUNT_DISTINCT`
+  in a cluster by pushing parts of the aggregation onto the DB servers and only
+  doing the total aggregation on the coordinator
+
+* replace JavaScript functions FULLTEXT, NEAR, WITHIN and WITHIN_RECTANGLE with
+  regular AQL subqueries via a new optimizer rule "replace-function-with-index".
+
+* the existing "fulltext-index-optimizer" optimizer rule has been removed because its
+  duty is now handled by the "replace-function-with-index" rule.
+
+* The `NEAR` AQL function now does not default to a limit of 100 documents any more.
+
+* added option "--latency true" option to arangoimport. Lists microsecond latency
   statistics on 10 second intervals.
 
 * fixed internal issue #2256: ui, document id not showing up when deleting a document
@@ -288,6 +332,7 @@ devel
 * Foxx manifest.json files can now contain a $schema key with the value
   of "http://json.schemastore.org/foxx-manifest" to improve tooling support.
 
+* fixed agency restart from compaction without data
 
 v3.3.8 (XXXX-XX-XX)
 -------------------

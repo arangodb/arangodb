@@ -157,7 +157,7 @@ DBServerLogicalView::~DBServerLogicalView() {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
 
-    engine->destroyView(vocbase(), this);
+    engine->destroyView(vocbase(), *this);
   }
 }
 
@@ -189,7 +189,7 @@ arangodb::Result DBServerLogicalView::appendVelocyPack(
       return TRI_ERROR_INTERNAL;
     }
 
-    engine->getViewProperties(vocbase(), this, builder);
+    engine->getViewProperties(vocbase(), *this, builder);
   }
 
   if (detailed) {
@@ -270,7 +270,7 @@ arangodb::Result DBServerLogicalView::drop() {
 
   if (res.ok()) {
     deleted(true);
-    engine->dropView(vocbase(), this);
+    engine->dropView(vocbase(), *this);
   }
 
   return res;

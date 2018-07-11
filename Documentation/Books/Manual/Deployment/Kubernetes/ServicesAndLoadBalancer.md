@@ -40,18 +40,18 @@ If you want to create external access services manually, follow the instructions
 ### Single server
 
 For a single server deployment, the operator creates a single
-`Service` named `<cluster-name>`. This service has a normal cluster IP
+`Service` named `<deployment-name>`. This service has a normal cluster IP
 address.
 
 ### Full cluster
 
 For a full cluster deployment, the operator creates two `Services`.
 
-- `<cluster-name>_servers` a headless `Service` intended to provide
+- `<deployment-name>-int` a headless `Service` intended to provide
   DNS names for all pods created by the operator.
   It selects all ArangoDB & ArangoSync servers in the cluster.
 
-- `<cluster-name>` a normal `Service` that selects only the coordinators
+- `<deployment-name>` a normal `Service` that selects only the coordinators
   of the cluster. This `Service` is configured with `ClientIP` session
   affinity. This is needed for cursor requests, since they are bound to
   a specific coordinator.
@@ -59,7 +59,7 @@ For a full cluster deployment, the operator creates two `Services`.
 When the coordinators are asked to provide endpoints of the cluster
 (e.g. when calling `client.SynchronizeEndpoints()` in the go driver)
 the DNS names of the individual `Pods` will be returned
-(`<pod>.<cluster-name>_servers.<namespace>.svc`)
+(`<pod>.<deployment-name>-int.<namespace>.svc`)
 
 ### Full cluster with DC2DC
 
@@ -67,23 +67,26 @@ For a full cluster with datacenter replication deployment,
 the same `Services` are created as for a Full cluster, with the following
 additions:
 
-- `<cluster-name>_sync` a normal `Service` that selects only the syncmasters
+- `<deployment-name>-sync` a normal `Service` that selects only the syncmasters
   of the cluster.
 
 ## Load balancer
 
-To reach the ArangoDB servers from outside the Kubernetes cluster, you
-have to deploy additional services.
+If you want full control of the `Services` needed to access the ArangoDB deployment
+from outside your Kubernetes cluster, set `spec.externalAccess.Type` of the `ArangoDeployment` to `None`
+and create a `Service` as specified below.
 
-You can use `LoadBalancer` or `NodePort` services, depending on your
+Create  a `Service` of type `LoadBalancer` or `NodePort`, depending on your
 Kubernetes deployment.
 
 This service should select:
 
-- `arangodb_cluster_name: <cluster-name>`
+- `arango_deployment: <deployment-name>`
 - `role: coordinator`
 
-For example:
+The following example yields a service of type `LoadBalancer` with a specific
+load balancer IP address.
+With this service, the ArangoDB cluster can now be reached on `https://1.2.3.4:8529`.
 
 ```yaml
 kind: Service
@@ -92,7 +95,27 @@ metadata:
   name: arangodb-cluster-exposed
 spec:
   selector:
-    arangodb_cluster_name: arangodb-cluster
+    arango_deployment: arangodb-cluster
+    role: coordinator
+  type: LoadBalancer
+  loadBalancerIP: 1.2.3.4
+  ports:
+  - protocol: TCP
+    port: 8529
+    targetPort: 8529
+```
+
+The following example yields a service of type `NodePort` with the ArangoDB
+cluster exposed on port 30529 of all nodes of the Kubernetes cluster.
+
+```yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: arangodb-cluster-exposed
+spec:
+  selector:
+    arango_deployment: arangodb-cluster
     role: coordinator
   type: NodePort
   ports:

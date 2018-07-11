@@ -377,7 +377,7 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCores, coreCheck = false) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -403,6 +403,14 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     cmd = options.valgrind;
   }
 
+  if (circumventCores) {
+    if (platform.substr(0, 3) !== 'win') {
+      // this shellscript will prevent cores from being writen on macos and linux.
+      args.unshift(cmd);
+      cmd = TOP_DIR + '/scripts/disable-cores.sh';
+    }
+  }
+  
   if (options.extremeVerbosity) {
     print('executeAndWait: cmd =', cmd, 'args =', args);
   }
@@ -1062,7 +1070,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
     if (!reply.error && reply.code === 200) {
       let res = JSON.parse(reply.body);
-      internal.print("Response ====> " + reply.body);
+      //internal.print("Response ====> " + reply.body);
       let leader = res[0].arango.Plan.AsyncReplication.Leader;
       if (!leader) {
         throw "Leader is not selected";

@@ -137,8 +137,7 @@ function AutoIncrementSuite () {
       try {
         c.save({ _key: "a1234" }); // invalid key
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
       }
     },

@@ -936,6 +936,83 @@ actions.defineHttp({
 });
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_getqueryAgencyJob
+// / (intentionally not in manual)
+// / @brief asks about progress on an agency job by id
+// /
+// / @ RESTHEADER{GET /_admin/cluster/queryAgencyJob, Ask about an agency job by its id.}
+// /
+// / @ RESTQUERYPARAMETERS `id` must be a string with the ID of the agency
+// / job being queried.
+// /
+// / @ RESTDESCRIPTION Returns information (if known) about the job with ID
+// / `id`. This can either be a cleanOurServer or a moveShard job at this
+// / stage.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{200} is returned when everything went well and the
+// / information about the job is returned. It might be that the job is
+// / not found.
+// /
+// / @ RESTRETURNCODE{400} id parameter is not given or not a string.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
+// /
+// / @ RESTRETURNCODE{503} the agency operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/queryAgencyJob',
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only coordinators can serve this request');
+      return;
+    }
+    if (req.requestType !== actions.GET) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only the GET method is allowed');
+      return;
+    }
+
+    // Now get to work:
+    let id;
+    try {
+      if (req.parameters.id) {
+        id = req.parameters.id;
+      }
+    } catch(e) {
+    }
+
+    if (typeof id !== 'string' || id.length === 0) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'required parameter id was not given');
+      return;
+    }
+
+    var ok = true;
+    var job;
+    try {
+      job = require('@arangodb/cluster').queryAgencyJob(id);
+    } catch (e1) {
+      ok = false;
+    }
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+        {error: true, errorMsg: 'Cannot read from agency.'});
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_OK, job);
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_postMoveShard
 // / (intentionally not in manual)
 // / @brief triggers activities to move a shard

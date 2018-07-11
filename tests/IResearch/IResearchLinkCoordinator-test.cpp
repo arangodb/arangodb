@@ -67,8 +67,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "velocypack/Iterator.h"
@@ -243,7 +241,7 @@ SECTION("test_create_drop") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -375,7 +373,7 @@ SECTION("test_create_drop") {
 
     // drop view
     CHECK(vocbase->dropView(logicalView->planId(), false).ok());
-    CHECK(nullptr == vocbase->lookupView(viewId));
+    CHECK(nullptr == ci->getView(vocbase->name(), viewId));
 
     // old index remains valid
     {

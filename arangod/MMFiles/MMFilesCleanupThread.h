@@ -50,9 +50,6 @@ class MMFilesCleanupThread final : public Thread {
   /// @brief how many cleanup iterations until query cursors are cleaned
   static constexpr uint64_t cleanupCursorIterations() { return 3; }
 
-  /// @brief clean up cursors
-  void cleanupCursors(bool force);
-
   /// @brief checks all datafiles of a collection
   void cleanupCollection(arangodb::LogicalCollection* collection);
 

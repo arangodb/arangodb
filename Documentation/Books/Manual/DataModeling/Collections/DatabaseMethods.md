@@ -94,7 +94,8 @@ to the [naming conventions](../NamingConventions/README.md).
   specified, then *keyOptions* should be a JSON object containing the
   following attributes (**note**: some of them are optional):
   - *type*: specifies the type of the key generator. The currently
-    available generators are *traditional* and *autoincrement*.
+    available generators are *traditional*, *autoincrement*, *uuid* and
+    *padded*.
     (**note**: *autoincrement* is currently only supported for non-sharded
     collections)
   - *allowUserKeys*: if set to *true*, then it is allowed to supply

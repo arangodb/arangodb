@@ -3,8 +3,14 @@
 
 This chapter introduces ArangoDB's _datacenter to datacenter replication_ (DC2DC).
 
-For further information about _datacenter to datacenter replication_, please refer
-to the following sections:
+**Sections:**
+
+- [Introduction](Introduction.md)
+- [Applicability](Applicability.md)
+- [Requirements](Requirements.md)
+- [Limitations](Limitations.md)
+
+For further information about _datacenter to datacenter replication_, please refer to the following sections included in other chapters of this Manual:
 
 - [Deployment](../../Deployment/DC2DC/README.md)
 - [Administration](../../Administration/DC2DC/README.md)

@@ -71,14 +71,17 @@ class ShapeContainer final {
   /// Parses a coordinate pair
   Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
 
-  void reset(std::unique_ptr<S2Region>&& ptr, Type tt) noexcept;
+  void reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept;
   void reset(S2Region* ptr, Type tt) noexcept;
   void resetCoordinates(double lat, double lon);
 
   Type type() const { return _type; }
   inline bool empty() const { return _type == Type::EMPTY; }
 
-  bool isAreaType() const noexcept { return _type == Type::S2_POLYGON; }
+  bool isAreaType() const noexcept {
+    return _type == Type::S2_POLYGON ||
+           _type == Type::S2_LATLNGRECT;
+  }
 
   /// @brief centroid of this shape
   S2Point centroid() const noexcept;
@@ -92,7 +95,7 @@ class ShapeContainer final {
   /// @brief may intersect the cell
   bool mayIntersect(S2CellId) const noexcept;
 
-  /// @brief update query parameters
+  /// @brief adjust query parameters (specifically max distance)
   void updateBounds(QueryParams& qp) const noexcept;
 
   /// contains this region the coordinate

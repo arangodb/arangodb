@@ -27,6 +27,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
+#include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
@@ -52,7 +53,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -117,10 +118,7 @@ namespace {
       // recursive locking of the same instance is not yet supported (create a new instance instead)
       TRI_ASSERT(_update != owned);
 
-      if (_locker.tryLock()) {
-        _owner.store(std::this_thread::get_id());
-        _update = owned;
-      } else if (std::this_thread::get_id() != _owner.load()) { // not recursive
+      if (std::this_thread::get_id() != _owner.load()) { // not recursive
         _locker.lock();
         _owner.store(std::this_thread::get_id());
         _update = owned;
@@ -128,7 +126,6 @@ namespace {
     }
 
     void unlock() {
-      _locker.unlock();
       _update(*this);
     }
 
@@ -141,6 +138,7 @@ namespace {
     static void owned(RecursiveWriteLocker& locker) {
       static std::thread::id unowned;
       locker._owner.store(unowned);
+      locker._locker.unlock();
       locker._update = noop;
     }
   };
@@ -224,7 +222,8 @@ bool TRI_vocbase_t::markAsDropped() {
 /// @brief signal the cleanup thread to wake up
 void TRI_vocbase_t::signalCleanup() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->signalCleanup(this);
+
+  engine->signalCleanup(*this);
 }
 
 void TRI_vocbase_t::checkCollectionInvariants() const {
@@ -429,7 +428,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 }
 
 /// @brief drops a collection
-bool TRI_vocbase_t::DropCollectionCallback(
+/*static */ bool TRI_vocbase_t::DropCollectionCallback(
     arangodb::LogicalCollection* collection) {
   std::string const name(collection->name());
 
@@ -775,8 +774,11 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
       if (!collection->deleted()) {
         collection->deleted(true);
+
         try {
-          engine->changeCollection(*this, collection->id(), collection, doSync);
+          engine->changeCollection(
+            *this, collection->id(), *collection, doSync
+          );
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(colName, ex.code());
@@ -796,7 +798,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       writeLocker.unlock();
 
       TRI_ASSERT(engine != nullptr);
-      engine->dropCollection(*this, collection);
+      engine->dropCollection(*this, *collection);
 
       DropCollectionCallback(collection);
       break;
@@ -828,7 +830,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       locker.unlock();
       writeLocker.unlock();
 
-      engine->dropCollection(*this, collection);
+      engine->dropCollection(*this, *collection);
       state = DROP_PERFORM;
       break;
     }
@@ -876,8 +878,8 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_COMPACTOR);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  // shutdownDatabase() stops all threads
-  engine->shutdownDatabase(this);
+
+  engine->shutdownDatabase(*this); // shutdownDatabase() stops all threads
 
   // this will signal the cleanup thread to do one last iteration
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
@@ -941,17 +943,20 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 void TRI_vocbase_t::inventory(
     VPackBuilder& result,
     TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
+  TRI_ASSERT(result.isOpenObject());
 
   // cycle on write-lock
   WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
+  std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> dataSourceById;
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   {
     RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
     collections = _collections;
+    dataSourceById = _dataSourceById;
   }
 
   if (collections.size() > 1) {
@@ -973,7 +978,7 @@ void TRI_vocbase_t::inventory(
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
-  result.openArray();
+  result.add("collections", VPackValue(VPackValueType::Array));
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
 
@@ -1007,7 +1012,7 @@ void TRI_vocbase_t::inventory(
       collection->getIndexesVPack(result, false, false, [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
         // at least the MMFiles engine will try to create it
-        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX && 
+        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
                 idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
@@ -1017,8 +1022,19 @@ void TRI_vocbase_t::inventory(
       result.close();
     }
   }
-
-  result.close();
+  result.close(); // </collection>
+  
+  result.add("views", VPackValue(VPackValueType::Array, true));
+  for (auto const& dataSource : dataSourceById) {
+    if (dataSource.second->category() != LogicalView::category()) {
+      continue;
+    }
+    LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
+    result.openObject();
+    view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+    result.close();
+  }
+  result.close(); // </views>
 }
 
 /// @brief looks up a collection by identifier
@@ -1193,7 +1209,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-  auto res2 = engine->persistCollection(*this, collection.get());
+  auto res2 = engine->persistCollection(*this, *collection);
   // API compatibility, we always return the collection, even if creation
   // failed.
 
@@ -1268,7 +1284,8 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
 
   // wake up the cleanup thread
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->unloadCollection(*this, collection);
+
+  engine->unloadCollection(*this, *collection);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1312,8 +1329,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
         DropCollectionCallback(collection);
       } else {
         collection->deferDropCollection(DropCollectionCallback);
-        // wake up the cleanup thread
-        engine->signalCleanup(&(collection->vocbase()));
+        engine->signalCleanup(collection->vocbase()); // wake up the cleanup thread
       }
 
       if (DatabaseFeature::DATABASE != nullptr &&
@@ -1512,9 +1528,10 @@ int TRI_vocbase_t::renameCollection(
 
   // Tell the engine.
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
   TRI_ASSERT(engine != nullptr);
-  arangodb::Result res2 =
-    engine->renameCollection(*this, collection, oldName);
+
+  auto res2 = engine->renameCollection(*this, *collection, oldName);
 
   return res2.errorNumber();
 }
@@ -1704,24 +1721,7 @@ arangodb::Result TRI_vocbase_t::dropView(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string errorMsg;
-
-    auto const res = ClusterInfo::instance()->dropViewCoordinator(
-      name(), StringUtils::itoa(view->id()), errorMsg
-    );
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "Could not drop view in agency, error: " << errorMsg
-      << ", errorCode: " << res;
-
-    return arangodb::Result(
-      res,
-      std::string("Could not drop view in agency, error: ") + errorMsg
-    );
+    return view->drop(); // will internally drop view from ClusterInfo
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1815,7 +1815,8 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->shutdownDatabase(this);
+
+  engine->shutdownDatabase(*this);
 
   // do a final cleanup of collections
   for (auto& it : _collections) {
@@ -1894,7 +1895,7 @@ void TRI_vocbase_t::addReplicationApplier() {
 /// this only updates the ttl
 void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl) {
   if (ttl <= 0.0) {
-    ttl = InitialSyncer::defaultBatchTimeout;
+    ttl = replutils::BatchInfo::DefaultTimeout;
   }
 
   double const timestamp = TRI_microtime();
@@ -1918,7 +1919,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
                                             TRI_voc_tick_t lastFetchedTick,
                                             double ttl) {
   if (ttl <= 0.0) {
-    ttl = InitialSyncer::defaultBatchTimeout;
+    ttl = replutils::BatchInfo::DefaultTimeout;
   }
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;

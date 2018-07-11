@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -87,10 +86,12 @@ void RestCollectionHandler::handleCommandGet() {
                     exec->canUseCollection(coll->name(), auth::Level::RO);
 
       if (canUse && (!excludeSystem || !coll->system())) {
-        collectionRepresentation(builder, coll,
+        // We do not need a transaction here
+        methods::Collections::Context ctxt(_vocbase, coll);
+        collectionRepresentation(builder, ctxt,
                                  /*showProperties*/ false,
                                  /*showFigures*/ false, /*showCount*/ false,
-                                 /*aggregateCount*/ false);
+                                 /*detailedCount*/ false);
       }
     });
     builder.close();
@@ -104,7 +105,7 @@ void RestCollectionHandler::handleCommandGet() {
     try {
       collectionRepresentation(builder, name, /*showProperties*/ false,
                                /*showFigures*/ false, /*showCount*/ false,
-                               /*aggregateCount*/ false);
+                               /*detailedCount*/ false);
       generateOk(rest::ResponseCode::OK, builder);
     } catch (basics::Exception const& ex) { // do not log not found exceptions
       generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
@@ -137,9 +138,11 @@ void RestCollectionHandler::handleCommandGet() {
             VPackObjectBuilder obj(&builder, true);
             obj->add("checksum", result.slice().get("checksum"));
             obj->add("revision", result.slice().get("revision"));
+            // We do not need a transaction here
+            methods::Collections::Context ctxt(_vocbase, coll);
             collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
-                                     /*aggregateCount*/ false);
+                                     /*detailedCount*/ true);
           } else {
             skipGenerate = true;
             this->generateError(result);
@@ -148,23 +151,25 @@ void RestCollectionHandler::handleCommandGet() {
           // /_api/collection/<identifier>/figures
           collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ true, /*showCount*/ true,
-                                   /*aggregateCount*/ true);
+                                   /*detailedCount*/ false);
         } else if (sub == "count") {
           // /_api/collection/<identifier>/count
           bool details = _request->parsedValue("details", false);
           collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ true,
-                                   /*aggregateCount*/ !details);
+                                   /*detailedCount*/ details);
         } else if (sub == "properties") {
           // /_api/collection/<identifier>/properties
           collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
-                                   /*aggregateCount*/ false);
+                                   /*detailedCount*/ true);
         } else if (sub == "revision") {
+
+          methods::Collections::Context ctxt(_vocbase, coll);
           // /_api/collection/<identifier>/revision
           TRI_voc_rid_t revisionId;
           auto res =
-            methods::Collections::revisionId(_vocbase, coll, revisionId);
+            methods::Collections::revisionId(ctxt, revisionId);
 
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
@@ -173,9 +178,9 @@ void RestCollectionHandler::handleCommandGet() {
           VPackObjectBuilder obj(&builder, true);
 
           obj->add("revision", VPackValue(StringUtils::itoa(revisionId)));
-          collectionRepresentation(builder, coll, /*showProperties*/ true,
+          collectionRepresentation(builder, ctxt, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
-                                   /*aggregateCount*/ false);
+                                   /*detailedCount*/ true);
 
         } else if (sub == "shards") {
           // /_api/collection/<identifier>/shards
@@ -188,7 +193,7 @@ void RestCollectionHandler::handleCommandGet() {
           VPackObjectBuilder obj(&builder, true);  // need to open object
           collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
-                                   /*aggregateCount*/ false);
+                                   /*detailedCount*/ true);
           auto shards =
             ClusterInfo::instance()->getShardList(std::to_string(coll->planId()));
           VPackArrayBuilder arr(&builder, "shards", true);
@@ -274,7 +279,7 @@ void RestCollectionHandler::handleCommandPost() {
       [&](LogicalCollection* coll) {
         collectionRepresentation(builder, coll->name(), /*showProperties*/ true,
                                  /*showFigures*/ false, /*showCount*/ false,
-                                 /*aggregateCount*/ false);
+                                 /*detailedCount*/ true);
       }
   );
 
@@ -318,7 +323,7 @@ void RestCollectionHandler::handleCommandPut() {
             bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
             collectionRepresentation(builder, name, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ cc,
-                                     /*aggregateCount*/ true);
+                                     /*detailedCount*/ false);
           }
         } else if (sub == "unload") {
           bool flush = _request->parsedValue("flush", false);
@@ -334,7 +339,7 @@ void RestCollectionHandler::handleCommandPut() {
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
-                                     /*aggregateCount*/ false);
+                                     /*detailedCount*/ true);
           }
         } else if (sub == "truncate") {
           OperationOptions opts;
@@ -345,7 +350,7 @@ void RestCollectionHandler::handleCommandPut() {
 
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(
-            ctx, coll->id(), AccessMode::Type::EXCLUSIVE
+            ctx, coll, AccessMode::Type::EXCLUSIVE
           );
 
           res = trx.begin();
@@ -363,7 +368,7 @@ void RestCollectionHandler::handleCommandPut() {
 
             collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
-                                     /*aggregateCount*/ false);
+                                     /*detailedCount*/ true);
           }
 
         } else if (sub == "properties") {
@@ -375,7 +380,7 @@ void RestCollectionHandler::handleCommandPut() {
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ true,
                                      /*showFigures*/ false, /*showCount*/ false,
-                                     /*aggregateCount*/ false);
+                                     /*detailedCount*/ true);
           }
 
         } else if (sub == "rename") {
@@ -390,13 +395,13 @@ void RestCollectionHandler::handleCommandPut() {
           if (res.ok()) {
             collectionRepresentation(builder, newName, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
-                                     /*aggregateCount*/ false);
+                                     /*detailedCount*/ true);
           }
 
         } else if (sub == "rotate") {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(
-            ctx, coll->id(), AccessMode::Type::WRITE
+            ctx, coll, AccessMode::Type::WRITE
           );
 
           res = trx.begin();
@@ -473,13 +478,13 @@ void RestCollectionHandler::handleCommandDelete() {
 /// object.
 void RestCollectionHandler::collectionRepresentation(
     VPackBuilder& builder, std::string const& name, bool showProperties,
-    bool showFigures, bool showCount, bool aggregateCount) {
+    bool showFigures, bool showCount, bool detailedCount) {
   Result r = methods::Collections::lookup(
     &_vocbase,
     name,
     [&](LogicalCollection* coll) {
-        collectionRepresentation(builder, coll, showProperties, showFigures,
-                                 showCount, aggregateCount);
+      collectionRepresentation(builder, coll, showProperties, showFigures,
+                               showCount, detailedCount);
     }
   );
 
@@ -490,11 +495,36 @@ void RestCollectionHandler::collectionRepresentation(
 
 void RestCollectionHandler::collectionRepresentation(
     VPackBuilder& builder, LogicalCollection* coll, bool showProperties,
-    bool showFigures, bool showCount, bool aggregateCount) {
+    bool showFigures, bool showCount, bool detailedCount) {
+  if (showProperties || showCount) {
+    // Here we need a transaction
+    auto trx = createTransaction(coll->name(), AccessMode::Type::READ);
+    Result res = trx->begin();
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    methods::Collections::Context ctxt(_vocbase, coll, trx.get());
+    collectionRepresentation(builder, ctxt, showProperties, showFigures,
+                             showCount, detailedCount);
+  } else {
+    // We do not need a transaction here
+    methods::Collections::Context ctxt(_vocbase, coll);
+    collectionRepresentation(builder, ctxt, showProperties, showFigures,
+                             showCount, detailedCount);
+  }
+}
+
+void RestCollectionHandler::collectionRepresentation(
+    VPackBuilder& builder, methods::Collections::Context& ctxt, bool showProperties,
+    bool showFigures, bool showCount, bool detailedCount) {
   bool wasOpen = builder.isOpenObject();
   if (!wasOpen) {
     builder.openObject();
   }
+
+  auto coll = ctxt.coll();
+  TRI_ASSERT(coll != nullptr);
 
   // `methods::Collections::properties` will filter these out
   builder.add("id", VPackValue(std::to_string(coll->id())));
@@ -506,8 +536,7 @@ void RestCollectionHandler::collectionRepresentation(
     builder.add("isSystem", VPackValue(coll->system()));
     builder.add("globallyUniqueId", VPackValue(coll->guid()));
   } else {
-    Result res = methods::Collections::properties(coll, builder);
-
+    Result res = methods::Collections::properties(ctxt, builder);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -519,19 +548,12 @@ void RestCollectionHandler::collectionRepresentation(
   }
 
   if (showCount) {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
-    Result res = trx.begin();
-
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    OperationResult opRes = trx.count(coll->name(), aggregateCount);
-
-    trx.finish(opRes.result);
+    auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+    TRI_ASSERT(trx != nullptr);
+    OperationResult opRes = trx->count(coll->name(), detailedCount);
 
     if (opRes.fail()) {
+      trx->finish(opRes.result);
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
 
@@ -541,4 +563,5 @@ void RestCollectionHandler::collectionRepresentation(
   if (!wasOpen) {
     builder.close();
   }
+
 }

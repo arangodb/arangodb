@@ -34,6 +34,8 @@
 #include "VocBase/AccessMode.h"
 
 #include <functional>
+#include <iterator>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -274,7 +276,12 @@ class Ast {
   AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string> const&);
   AstNode* createNodeAttributeAccess(AstNode const* node, std::vector<basics::AttributeName> const& attrs) {
     std::vector<std::string> vec; //change to std::string_view once available
-    std::transform(attrs.begin(), attrs.end(), std::back_inserter(vec), +[](basics::AttributeName const& a) { return a.name; });
+    std::transform(attrs.begin(),
+                   attrs.end(),
+                   std::back_inserter(vec),
+                   [](basics::AttributeName const& a) {
+                     return a.name;
+                   });
     return createNodeAttributeAccess(node,vec);
   }
 

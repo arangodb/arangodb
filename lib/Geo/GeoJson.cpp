@@ -38,6 +38,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/S2/S2MultiPointRegion.h"
 #include "Geo/S2/S2MultiPolyline.h"
+#include "Geo/GeoParams.h"
 #include "Geo/ShapeContainer.h"
 #include "Logger/Logger.h"
 
@@ -63,22 +64,18 @@ bool sameIgnoringCase(std::string const& s1, std::string const& s2) {
   return s1.size() == s2.size() &&
          std::equal(s1.begin(), s1.end(), s2.begin(), ::sameCharIgnoringCase);
 }
-}  // namespace
 
-namespace {
 arangodb::Result verifyClosedLoop(std::vector<S2Point> const& vertices) {
   using arangodb::Result;
 
   if (vertices.empty()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Empty loop");
+    return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
   } else if (vertices.front() != vertices.back()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Loop not closed");
   }
   return TRI_ERROR_NO_ERROR;
 }
-}  // namespace
 
-namespace {
 void removeAdjacentDuplicates(std::vector<S2Point>& vertices) {
   if (vertices.size() < 2) {
     return;
@@ -92,9 +89,7 @@ void removeAdjacentDuplicates(std::vector<S2Point>& vertices) {
   }
   TRI_ASSERT(!vertices.empty());
 }
-}  // namespace
 
-namespace {
 // parse geojson coordinates into s2 points
 arangodb::Result parsePoints(VPackSlice const& vpack, bool geoJson,
                              std::vector<S2Point>& vertices) {
@@ -200,7 +195,9 @@ Result parseRegion(VPackSlice const& vpack, ShapeContainer& region) {
     case Type::POLYGON: {
       return parsePolygon(vpack, region);
     }
-    case Type::MULTI_POLYGON:
+    case Type::MULTI_POLYGON: {
+      return parseMultiPolygon(vpack, region);
+    }
     case Type::GEOMETRY_COLLECTION:
       return Result(TRI_ERROR_NOT_IMPLEMENTED, "GeoJSON type is not supported");
     case Type::UNKNOWN: {
@@ -263,7 +260,7 @@ Result parseMultiPoint(VPackSlice const& vpack, ShapeContainer& region) {
 /// }
 Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
   if (Type::POLYGON != type(vpack)) {
-    return {TRI_ERROR_BAD_PARAMETER, "require type: 'Polygon'"};
+    return {TRI_ERROR_BAD_PARAMETER, "requires type: 'Polygon'"};
   }
   TRI_ASSERT(Type::POLYGON == type(vpack));
 
@@ -283,6 +280,11 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
   // - A linear ring is a closed LineString with four or more positions.
   // -  The first and last positions are equivalent, and they MUST contain
   //    identical values; their representation SHOULD also be identical.
+  // - A linear ring is the boundary of a surface or the boundary of a
+  //   hole in a surface.
+  // - A linear ring MUST follow the right-hand rule with respect to the
+  //   area it bounds, i.e., exterior rings are counterclockwise (CCW), and
+  //   holes are clockwise (CW).
   std::vector<std::unique_ptr<S2Loop>> loops;
   for (VPackSlice loopVertices : VPackArrayIterator(coordinates)) {
     std::vector<S2Point> vtx;
@@ -290,21 +292,26 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
     if (res.fail()) {
       return res;
     }
+    
+    // A linear ring is a closed LineString with four or more positions.
+    if (vtx.size() < 4) {  // last vertex must be same as first
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "Invalid loop in polygon, must have at least 4 vertices");
+    }
+    
     res = ::verifyClosedLoop(vtx);  // check last vertices are same
     if (res.fail()) {
       return res;
     }
-    ::removeAdjacentDuplicates(vtx);  // s2loop doesn't like duplicates
-
-    if (vtx.size() < 3 + 1) {  // last vertex must be same as first
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "Invalid loop in polygon, "
-                    "must have at least 3 distinct vertices");
+    ::removeAdjacentDuplicates(vtx); // s2loop doesn't like duplicates
+    if (vtx.size() >= 2 && vtx.front() == vtx.back()) {
+      vtx.resize(vtx.size() - 1);  // remove redundant last vertex
+    } else if (vtx.empty()) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
     }
-    vtx.resize(vtx.size() - 1);  // remove redundant last vertex
-
+    
     if (n == 1) {  // cheap rectangle detection
-      if (vtx.size() == 1) {
+      if (vtx.size() == 1) { // empty rectangle
         S2LatLng v0(vtx[0]);
         region.reset(std::make_unique<S2LatLngRect>(v0, v0),
                      ShapeContainer::Type::S2_LATLNGRECT);
@@ -316,23 +323,26 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
             (v1.lng() - v2.lng()).abs() < eps &&
             (v2.lat() - v3.lat()).abs() < eps &&
             (v3.lng() - v0.lng()).abs() < eps) {
-          /*auto rect = std::make_unique<S2LatLngRect>(v0, v2);
-          LOG_TOPIC(ERR, Logger::FIXME) << "LO: " << rect->lo() << " HI: " << rect->hi();*/
-          region.reset(std::make_unique<S2LatLngRect>(v0, v2),
+          R1Interval r1 = R1Interval::FromPointPair(v0.lat().radians(), v2.lat().radians());
+          S1Interval s1 = S1Interval::FromPointPair(v0.lng().radians(), v2.lng().radians());
+          region.reset(std::make_unique<S2LatLngRect>(r1.Expanded(geo::kRadEps),
+                                                      s1.Expanded(geo::kRadEps)),
                        ShapeContainer::Type::S2_LATLNGRECT);
           return TRI_ERROR_NO_ERROR;
         }
       }
     }
-
-    loops.push_back(std::make_unique<S2Loop>(vtx));
+    
+    loops.push_back(std::make_unique<S2Loop>(vtx, S2Debug::DISABLE));
     if (!loops.back()->IsValid()) {  // will check first and last for us
       return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
     }
     S2Loop* loop = loops.back().get();
+    // normalization ensures that point orientation does not matter for Polygon type
+    // the RFC recommends this for better compatibility
     loop->Normalize();
-
-    // Any subsequent loops must be holes within first loop
+    
+    // subsequent loops must be holes within first loop
     if (loops.size() > 1 && !loops.front()->Contains(loop)) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "Subsequent loop not a hole in polygon");
@@ -341,12 +351,111 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
 
   std::unique_ptr<S2Polygon> poly;
   if (loops.size() == 1) {
-    poly = std::make_unique<S2Polygon>(std::move(loops[0]));
+    poly = std::make_unique<S2Polygon>(std::move(loops[0]), S2Debug::DISABLE);
   } else if (loops.size() > 1) {
     poly = std::make_unique<S2Polygon>(std::move(loops));
+    poly->set_s2debug_override(S2Debug::DISABLE);
   }
   if (poly) {
-    TRI_ASSERT(poly->IsValid());
+    if (!poly->IsValid()) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Polygon is not valid");
+    }
+    region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
+    return TRI_ERROR_NO_ERROR;
+  }
+  return Result(TRI_ERROR_BAD_PARAMETER, "Empty polygons are not allowed");
+}
+  
+/// @brief parse GeoJson polygon or array of loops. Each loop consists of
+/// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...].
+/// The multipolygon contains an array of looops
+Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region) {
+  if (Type::MULTI_POLYGON != type(vpack)) {
+    return {TRI_ERROR_BAD_PARAMETER, "requires type: 'MultiPolygon'"};
+  }
+  TRI_ASSERT(Type::MULTI_POLYGON == type(vpack));
+  
+  VPackSlice coordinates = vpack;
+  if (vpack.isObject()) {
+    coordinates = vpack.get(Fields::kCoordinates);
+  }
+  if (!coordinates.isArray()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
+  }
+  
+  // Coordinates of a Polygon are an array of LinearRing coordinate arrays.
+  // The first element in the array represents the exterior ring. Any subsequent
+  // elements
+  // represent interior rings (or holes).
+  // - A linear ring is a closed LineString with four or more positions.
+  // -  The first and last positions are equivalent, and they MUST contain
+  //    identical values; their representation SHOULD also be identical.
+  // - A linear ring is the boundary of a surface or the boundary of a
+  //   hole in a surface.
+  // - A linear ring MUST follow the right-hand rule with respect to the
+  //   area it bounds, i.e., exterior rings are counterclockwise (CCW), and
+  //   holes are clockwise (CW).
+  std::vector<std::unique_ptr<S2Loop>> loops;
+  for (VPackSlice polygons : VPackArrayIterator(coordinates)) {
+    if (!polygons.isArray()) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "Multi-Polygon must consist of an array of Polygons coordinates");
+    }
+    
+    // the loop of the
+    size_t outerLoop = loops.size();
+    for (VPackSlice loopVertices : VPackArrayIterator(polygons)) {
+      std::vector<S2Point> vtx;
+      Result res = ::parsePoints(loopVertices, /*geoJson*/ true, vtx);
+      if (res.fail()) {
+        return res;
+      }
+      // A linear ring is a closed LineString with four or more positions.
+      if (vtx.size() < 4) {  // last vertex must be same as first
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Invalid loop in polygon, must have at least 4 vertices");
+      }
+      
+      res = ::verifyClosedLoop(vtx);  // check last vertices are same
+      if (res.fail()) {
+        return res;
+      }
+      ::removeAdjacentDuplicates(vtx); // s2loop doesn't like duplicates
+      if (vtx.size() >= 2 && vtx.front() == vtx.back()) {
+        vtx.resize(vtx.size() - 1);  // remove redundant last vertex
+      } else if (vtx.empty()) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
+      }
+      
+      loops.push_back(std::make_unique<S2Loop>(vtx, S2Debug::DISABLE));
+      if (!loops.back()->IsValid()) {  // will check first and last for us
+        return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
+      }
+      S2Loop* loop = loops.back().get();
+      // normalization ensures that CCW orientation does not matter for Polygon
+      // the RFC recommends this for better compatibility
+      loop->Normalize();
+      
+      // Any subsequent loop must be a hole within first loop
+      if (outerLoop + 1 < loops.size() && !loops[outerLoop]->Contains(loops.back().get())) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Subsequent loop not a hole in polygon");
+      }
+    }
+  }
+  
+  std::unique_ptr<S2Polygon> poly;
+  if (loops.size() == 1) {
+    poly = std::make_unique<S2Polygon>(std::move(loops[0]), S2Debug::DISABLE);
+  } else if (loops.size() > 1) {
+    poly = std::make_unique<S2Polygon>();
+    poly->set_s2debug_override(S2Debug::DISABLE);
+    poly->InitNested(std::move(loops));
+  }
+  if (poly) {
+    if (!poly->IsValid()) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Polygon is not valid");
+    }
     region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
     return TRI_ERROR_NO_ERROR;
   }

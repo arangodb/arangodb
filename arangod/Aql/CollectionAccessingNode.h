@@ -44,6 +44,9 @@ class CollectionAccessingNode {
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   
+  /// @brief dumps the primary index
+  void toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const;
+
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
 

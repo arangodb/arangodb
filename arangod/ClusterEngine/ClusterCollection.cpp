@@ -27,7 +27,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterMethods.h"
-#include "Cluster/CollectionLockState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
@@ -166,8 +165,6 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
     merge.add("journalSize", VPackValue(journalSize));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    LOG_DEVEL << "updateProperties rocksdb";
-
     bool def = Helper::readBooleanValue(_info.slice(), "cacheEnabled", false);
     merge.add("cacheEnabled",
               VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", def)));

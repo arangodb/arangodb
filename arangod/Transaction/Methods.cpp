@@ -73,23 +73,58 @@ using namespace arangodb::transaction::helpers;
 
 namespace {
 
+enum class ReplicationType {
+  NONE, LEADER, FOLLOWER
+};
+
 // wrap vector inside a static function to ensure proper initialization order
-std::vector<arangodb::transaction::Methods::StateRegistrationCallback>& getStateRegistrationCallbacks() {
-  static std::vector<arangodb::transaction::Methods::StateRegistrationCallback> callbacks;
+std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback>& getDataSourceRegistrationCallbacks() {
+  static std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback> callbacks;
 
   return callbacks;
+}
+
+/// @return the status change callbacks stored in state
+///         or nullptr if none and !create
+std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>* getStatusChangeCallbacks(
+    arangodb::TransactionState& state,
+    bool create = false
+) {
+  struct CookieType: public arangodb::TransactionState::Cookie {
+    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*> _callbacks;
+  };
+
+  static const int key = 0; // arbitrary location in memory, common for all
+
+  // TODO FIXME find a better way to look up a ViewState
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* cookie = dynamic_cast<CookieType*>(state.cookie(&key));
+  #else
+    auto* cookie = static_cast<CookieType*>(state.cookie(&key));
+  #endif
+
+  if (!cookie && create) {
+    auto ptr = std::make_unique<CookieType>();
+
+    cookie = ptr.get();
+    state.cookie(&key, std::move(ptr));
+  }
+
+  return cookie ? &(cookie->_callbacks) : nullptr;
 }
 
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
-arangodb::Result applyStateRegistrationCallbacks(
+arangodb::Result applyDataSourceRegistrationCallbacks(
     LogicalDataSource& dataSource,
-    arangodb::TransactionState& state
+    arangodb::transaction::Methods& trx
 ) {
-  for (auto& callback: getStateRegistrationCallbacks()) {
+  for (auto& callback: getDataSourceRegistrationCallbacks()) {
+    TRI_ASSERT(callback); // addDataSourceRegistrationCallback(...) ensures valid
+
     try {
-      auto res = callback(dataSource, state);
+      auto res = callback(dataSource, trx);
 
       if (!res.ok()) {
         return res;
@@ -100,6 +135,50 @@ arangodb::Result applyStateRegistrationCallbacks(
   }
 
   return arangodb::Result();
+}
+
+/// @brief notify callbacks of association of 'cid' with this TransactionState
+/// @note done separately from addCollection() to avoid creating a
+///       TransactionCollection instance for virtual entities, e.g. View
+void applyStatusChangeCallbacks(
+    arangodb::transaction::Methods& trx,
+    arangodb::transaction::Status status
+) noexcept {
+  TRI_ASSERT(
+    arangodb::transaction::Status::ABORTED == status
+    || arangodb::transaction::Status::COMMITTED == status
+    || arangodb::transaction::Status::RUNNING == status
+  );
+  TRI_ASSERT(
+    !trx.state() // for embeded transactions status is not always updated
+    || (trx.state()->isTopLevelTransaction() && trx.state()->status() == status)
+    || (!trx.state()->isTopLevelTransaction()
+        && arangodb::transaction::Status::RUNNING == trx.state()->status()
+       )
+  );
+
+  auto* state = trx.state();
+
+  if (!state) {
+    return; // nothing to apply
+  }
+
+  auto* callbacks = getStatusChangeCallbacks(*state);
+
+  if (!callbacks) {
+    return; // no callbacks to apply
+  }
+
+  // no need to lock since transactions are single-threaded
+  for (auto& callback: *callbacks) {
+    TRI_ASSERT(callback); // addStatusChangeCallback(...) ensures valid
+
+    try {
+      (*callback)(trx, status);
+    } catch (...) {
+      // we must not propagate exceptions from here
+    }
+  }
 }
 
 static void throwCollectionNotFound(char const* name) {
@@ -162,14 +241,37 @@ static OperationResult emptyResult(OperationOptions const& options) {
 }
 }  // namespace
 
-/*static*/ void transaction::Methods::addStateRegistrationCallback(
-    StateRegistrationCallback callback
+/*static*/ void transaction::Methods::addDataSourceRegistrationCallback(
+    DataSourceRegistrationCallback const& callback
 ) {
-  getStateRegistrationCallbacks().emplace_back(callback);
+  if (callback) {
+    getDataSourceRegistrationCallbacks().emplace_back(callback);
+  }
 }
 
-/*static*/ void transaction::Methods::clearStateRegistrationCallbacks() {
-  getStateRegistrationCallbacks().clear();
+bool transaction::Methods::addStatusChangeCallback(
+    StatusChangeCallback const* callback
+) {
+  if (!callback || !*callback) {
+    return true; // nothing to call back
+  }
+
+  if (!_state) {
+    return false; // nothing to add to
+  }
+
+  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, true);
+
+  TRI_ASSERT(nullptr != statusChangeCallbacks); // 'create' was specified
+
+  // no need to lock since transactions are single-threaded
+  statusChangeCallbacks->emplace_back(callback);
+
+  return true;
+}
+
+/*static*/ void transaction::Methods::clearDataSourceRegistrationCallbacks() {
+  getDataSourceRegistrationCallbacks().clear();
 }
 
 /// @brief Get the field names of the used index
@@ -593,11 +695,11 @@ bool transaction::Methods::findIndexHandleForAndNode(
 
 /// @brief Find out if any of the given requests has ended in a refusal
 
-static bool findRefusal(std::vector<ClusterCommRequest>& requests) {
-  for (size_t i = 0; i < requests.size(); ++i) {
-    if (requests[i].done &&
-        requests[i].result.status == CL_COMM_RECEIVED &&
-        requests[i].result.answer_code == rest::ResponseCode::NOT_ACCEPTABLE) {
+static bool findRefusal(std::vector<ClusterCommRequest> const& requests) {
+  for (auto const& it : requests) {
+    if (it.done &&
+        it.result.status == CL_COMM_RECEIVED &&
+        it.result.answer_code == rest::ResponseCode::NOT_ACCEPTABLE) {
       return true;
     }
   }
@@ -633,15 +735,36 @@ transaction::Methods::Methods(
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
     _state = engine->createTransactionState(
-       _transactionContextPtr->resolver(), options
+       _transactionContextPtr->vocbase(), options
     ).release();
     TRI_ASSERT(_state != nullptr);
-
+    TRI_ASSERT(_state->isTopLevelTransaction());
+    
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
   }
 
   TRI_ASSERT(_state != nullptr);
+}
+
+/// @brief create the transaction, used to be UserTransaction
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
+                              std::vector<std::string> const& readCollections,
+                              std::vector<std::string> const& writeCollections,
+                              std::vector<std::string> const& exclusiveCollections,
+                              transaction::Options const& options)
+    : transaction::Methods(ctx, options) {
+  addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+
+  for (auto const& it : exclusiveCollections) {
+    addCollection(it, AccessMode::Type::EXCLUSIVE);
+  }
+  for (auto const& it : writeCollections) {
+    addCollection(it, AccessMode::Type::WRITE);
+  }
+  for (auto const& it : readCollections) {
+    addCollection(it, AccessMode::Type::READ);
+  }
 }
 
 /// @brief destroy the transaction
@@ -778,10 +901,17 @@ Result transaction::Methods::begin() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
     }
-    return Result();
+  } else {
+    auto res = _state->beginTransaction(_localHints);
+
+    if (!res.ok()) {
+      return res;
+    }
   }
 
-  return _state->beginTransaction(_localHints);
+  applyStatusChangeCallbacks(*this, Status::RUNNING);
+
+  return Result();
 }
 
 /// @brief commit / finish the transaction
@@ -797,7 +927,7 @@ Result transaction::Methods::commit() {
 
   ExecContext const* exe = ExecContext::CURRENT;
   if (exe != nullptr && !_state->isReadOnlyTransaction()) {
-    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
     if (exe->isCanceled() || cancelRW) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
@@ -807,10 +937,17 @@ Result transaction::Methods::commit() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
     }
-    return Result();
+  } else {
+    auto res = _state->commitTransaction(this);
+
+    if (!res.ok()) {
+      return res;
+    }
   }
 
-  return _state->commitTransaction(this);
+  applyStatusChangeCallbacks(*this, Status::COMMITTED);
+
+  return Result();
 }
 
 /// @brief abort the transaction
@@ -824,11 +961,17 @@ Result transaction::Methods::abort() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::ABORTED);
     }
+  } else {
+    auto res = _state->abortTransaction(this);
 
-    return Result();
+    if (!res.ok()) {
+      return res;
+    }
   }
 
-  return _state->abortTransaction(this);
+  applyStatusChangeCallbacks(*this, Status::ABORTED);
+
+  return Result();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -920,18 +1063,18 @@ OperationResult transaction::Methods::anyLocal(
 }
 
 TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
-    TRI_voc_cid_t cid, std::string const& collectionName,
+    TRI_voc_cid_t cid, std::string const& cname,
     AccessMode::Type type) {
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
-    int res = _state->addCollection(cid, type, _state->nestingLevel(), true);
+    int res = _state->addCollection(cid, cname, type, _state->nestingLevel(), true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
         // special error message to indicate which collection was undeclared
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            res, std::string(TRI_errno_string(res)) + ": " + collectionName +
+            res, std::string(TRI_errno_string(res)) + ": " + cname +
                      " [" + AccessMode::typeString(type) + "]");
       }
       THROW_ARANGO_EXCEPTION(res);
@@ -943,7 +1086,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto result = applyStateRegistrationCallbacks(*dataSource, *_state);
+    auto result = applyDataSourceRegistrationCallbacks(*dataSource, *this);
 
     if (!result.ok()) {
       THROW_ARANGO_EXCEPTION(result.errorNumber());
@@ -953,7 +1096,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
     collection = trxCollection(cid);
 
     if (collection == nullptr) {
-      throwCollectionNotFound(collectionName.c_str());
+      throwCollectionNotFound(cname.c_str());
     }
   }
 
@@ -1294,6 +1437,7 @@ OperationResult transaction::Methods::documentCoordinator(
   int res = arangodb::getDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     value,
     options,
     std::move(headers),
@@ -1410,9 +1554,6 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return insertCoordinator(collectionName, value, optionsCopy);
   }
-  if (_state->isDBServer()) {
-    optionsCopy.silent = false;
-  }
 
   return insertLocal(collectionName, value, optionsCopy);
 }
@@ -1429,7 +1570,7 @@ OperationResult transaction::Methods::insertCoordinator(
   auto resultBody = std::make_shared<VPackBuilder>();
 
   Result res = arangodb::createDocumentOnCoordinator(
-      vocbase().name(), collectionName, options, value, responseCode,
+      vocbase().name(), collectionName, *this, options, value, responseCode,
       errorCounter, resultBody);
 
   if (res.ok()) {
@@ -1467,7 +1608,9 @@ OperationResult transaction::Methods::insertLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  bool isFollower = false;
+  std::shared_ptr<std::vector<ServerID> const> followers;
+
+  ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     std::string theLeader = collection->followers()->getLeader();
@@ -1475,8 +1618,16 @@ OperationResult transaction::Methods::insertLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
+      
+      auto const& followerInfo = collection->followers();
+      // fetch followers
+      followers = followerInfo->get();
+      if (followers->size() > 0) {
+        replicationType = ReplicationType::LEADER;
+        options.silent = false;
+      }
     } else {  // we are a follower following theLeader
-      isFollower = true;
+      replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
@@ -1486,7 +1637,7 @@ OperationResult transaction::Methods::insertLocal(
     }
   } // isDBServer - early block
 
-  if (options.returnNew) {
+  if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
 
@@ -1531,27 +1682,25 @@ OperationResult transaction::Methods::insertLocal(
       return res;
     }
 
-
-
-    if (!options.silent || _state->isDBServer()) {
+    if (!options.silent) {
       TRI_ASSERT(!documentResult.empty());
 
-        StringRef keyString(transaction::helpers::extractKeyFromDocument(
-        VPackSlice(documentResult.vpack())));
+      StringRef keyString(transaction::helpers::extractKeyFromDocument(
+      VPackSlice(documentResult.vpack())));
 
-        bool showReplaced = false;
-        if(options.returnOld && previousRevisionId){
-          showReplaced = true;
-        }
+      bool showReplaced = false;
+      if(options.returnOld && previousRevisionId){
+        showReplaced = true;
+      }
 
-        if(showReplaced){
-          TRI_ASSERT(!previousDocumentResult.empty());
-        }
+      if(showReplaced){
+        TRI_ASSERT(!previousDocumentResult.empty());
+      }
 
-        buildDocumentIdentity(collection, resultBuilder
-                             ,cid, keyString, revisionId ,previousRevisionId
-                             ,showReplaced ? &previousDocumentResult : nullptr
-                             ,options.returnNew ? &documentResult : nullptr);
+      buildDocumentIdentity(collection, resultBuilder
+                            ,cid, keyString, revisionId ,previousRevisionId
+                            ,showReplaced ? &previousDocumentResult : nullptr
+                            ,options.returnNew ? &documentResult : nullptr);
     }
     return Result();
   };
@@ -1573,120 +1722,119 @@ OperationResult transaction::Methods::insertLocal(
     res = workForOneDocument(value);
   }
 
-  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (res.ok() && options.waitForSync && maxTick > 0 &&
-      isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
-  }
+  if (res.ok() && replicationType == ReplicationType::LEADER) {
+    TRI_ASSERT(followers != nullptr);
 
-  if (res.ok() && _state->isDBServer()) {
     // Now replicate the same operation on all followers:
-    auto const& followerInfo = collection->followers();
-    std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    // Now see whether or not we have to do synchronous replication:
-    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
 
-    if (doingSynchronousReplication) {
-      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-      // get here, in the single document case, we do not try to replicate
-      // in case of an error.
+    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+    // get here, in the single document case, we do not try to replicate
+    // in case of an error.
 
-      // Now replicate the good operations on all followers:
-      std::string path =
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
-        "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId();
-        "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
+    // Now replicate the good operations on all followers:
+    std::string path =
+      "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
+      "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
+      "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId() +
+      "&" + StaticStrings::SilentString + "=true" + 
+      "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
 
-      VPackBuilder payload;
+    transaction::BuilderLeaser payload(this);
 
-      auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
-        VPackObjectBuilder guard(&payload);
-        VPackSlice s = result.get(StaticStrings::KeyString);
-        payload.add(StaticStrings::KeyString, s);
-        s = result.get(StaticStrings::RevString);
-        payload.add(StaticStrings::RevString, s);
-        TRI_SanitizeObject(doc, payload);
-      };
+    auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
+      VPackObjectBuilder guard(payload.get());
+      VPackSlice s = result.get(StaticStrings::KeyString);
+      payload->add(StaticStrings::KeyString, s);
+      s = result.get(StaticStrings::RevString);
+      payload->add(StaticStrings::RevString, s);
+      TRI_SanitizeObject(doc, *payload.get());
+    };
 
-      VPackSlice ourResult = resultBuilder.slice();
-      size_t count = 0;
-      if (value.isArray()) {
-        VPackArrayBuilder guard(&payload);
-        VPackArrayIterator itValue(value);
-        VPackArrayIterator itResult(ourResult);
-        while (itValue.valid() && itResult.valid()) {
-          TRI_ASSERT((*itResult).isObject());
-          if (!(*itResult).hasKey(StaticStrings::Error)) {
-            doOneDoc(itValue.value(), itResult.value());
-            count++;
-          }
-          itValue.next();
-          itResult.next();
+    VPackSlice ourResult = resultBuilder.slice();
+    size_t count = 0;
+    if (value.isArray()) {
+      VPackArrayBuilder guard(payload.get());
+      VPackArrayIterator itValue(value);
+      VPackArrayIterator itResult(ourResult);
+      while (itValue.valid() && itResult.valid()) {
+        TRI_ASSERT((*itResult).isObject());
+        if (!(*itResult).hasKey(StaticStrings::Error)) {
+          doOneDoc(itValue.value(), itResult.value());
+          count++;
         }
-      } else {
-        doOneDoc(value, ourResult);
-        count++;
+        itValue.next();
+        itResult.next();
       }
-      if (count > 0) {
-        auto body = std::make_shared<std::string>();
-        *body = payload.slice().toJson();
+    } else {
+      doOneDoc(value, ourResult);
+      count++;
+    }
+    if (count > 0) {
+      auto body = std::make_shared<std::string>();
+      *body = payload->slice().toJson();
 
-        // Now prepare the requests:
-        std::vector<ClusterCommRequest> requests;
-        for (auto const& f : *followers) {
-          requests.emplace_back("server:" + f, arangodb::rest::RequestType::POST,
-              path, body);
-        }
-        auto cc = arangodb::ClusterComm::instance();
-        if (cc != nullptr) {
-          // nullptr only happens on controlled shutdown
-          size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests,
-                                              chooseTimeout(count, body->size()*followers->size()),
-                                              nrDone, Logger::REPLICATION, false);
-          if (nrGood < followers->size()) {
-            // If any would-be-follower refused to follow there must be a
-            // new leader in the meantime, in this case we must not allow
-            // this operation to succeed, we simply return with a refusal
-            // error (note that we use the follower version, since we have
-            // lost leadership):
-            if (findRefusal(requests)) {
-              return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
+      // Now prepare the requests:
+      std::vector<ClusterCommRequest> requests;
+      requests.reserve(followers->size());
+      
+      for (auto const& f : *followers) {
+        requests.emplace_back("server:" + f, arangodb::rest::RequestType::POST,
+            path, body);
+      }
+      auto cc = arangodb::ClusterComm::instance();
+      if (cc != nullptr) {
+        // nullptr only happens on controlled shutdown
+        size_t nrDone = 0;
+        size_t nrGood = cc->performRequests(requests,
+                                            chooseTimeout(count, body->size()*followers->size()),
+                                            nrDone, Logger::REPLICATION, false);
+        if (nrGood < followers->size()) {
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
+          }
+
+          // Otherwise we drop all followers that were not successful:
+          for (size_t i = 0; i < followers->size(); ++i) {
+            bool replicationWorked =
+              requests[i].done &&
+              requests[i].result.status == CL_COMM_RECEIVED &&
+              (requests[i].result.answer_code ==
+                rest::ResponseCode::ACCEPTED ||
+                requests[i].result.answer_code == rest::ResponseCode::CREATED);
+            if (replicationWorked) {
+              bool found;
+              requests[i].result.answer->header(StaticStrings::ErrorCodes,
+                  found);
+              replicationWorked = !found;
             }
-
-            // Otherwise we drop all followers that were not successful:
-            for (size_t i = 0; i < followers->size(); ++i) {
-              bool replicationWorked =
-                requests[i].done &&
-                requests[i].result.status == CL_COMM_RECEIVED &&
-                (requests[i].result.answer_code ==
-                 rest::ResponseCode::ACCEPTED ||
-                 requests[i].result.answer_code == rest::ResponseCode::CREATED);
-              if (replicationWorked) {
-                bool found;
-                requests[i].result.answer->header(StaticStrings::ErrorCodes,
-                    found);
-                replicationWorked = !found;
-              }
-              if (!replicationWorked) {
-                auto const& followerInfo = collection->followers();
-                if (followerInfo->remove((*followers)[i])) {
-                  LOG_TOPIC(WARN, Logger::REPLICATION)
-                    << "insertLocal: dropping follower " << (*followers)[i]
-                    << " for shard " << collectionName;
-                } else {
-                  LOG_TOPIC(ERR, Logger::REPLICATION)
-                    << "insertLocal: could not drop follower "
-                    << (*followers)[i] << " for shard " << collectionName;
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-                }
+            if (!replicationWorked) {
+              auto const& followerInfo = collection->followers();
+              if (followerInfo->remove((*followers)[i])) {
+                LOG_TOPIC(WARN, Logger::REPLICATION)
+                  << "insertLocal: dropping follower " << (*followers)[i]
+                  << " for shard " << collectionName;
+              } else {
+                LOG_TOPIC(ERR, Logger::REPLICATION)
+                  << "insertLocal: could not drop follower "
+                  << (*followers)[i] << " for shard " << collectionName;
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
               }
             }
           }
         }
       }
     }
+  }
+  
+  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
+  if (res.ok() && options.waitForSync && maxTick > 0 &&
+      isSingleOperationTransaction()) {
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (options.silent) {
@@ -1718,9 +1866,6 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return updateCoordinator(collectionName, newValue, optionsCopy);
   }
-  if (_state->isDBServer()) {
-    optionsCopy.silent = false;
-  }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
                      TRI_VOC_DOCUMENT_OPERATION_UPDATE);
@@ -1741,6 +1886,7 @@ OperationResult transaction::Methods::updateCoordinator(
   int res = arangodb::modifyDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     newValue,
     options,
     true /* isPatch */,
@@ -1779,9 +1925,6 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return replaceCoordinator(collectionName, newValue, optionsCopy);
   }
-  if (_state->isDBServer()) {
-    optionsCopy.silent = false;
-  }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
                      TRI_VOC_DOCUMENT_OPERATION_REPLACE);
@@ -1802,6 +1945,7 @@ OperationResult transaction::Methods::replaceCoordinator(
   int res = arangodb::modifyDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     newValue,
     options,
     false /* isPatch */,
@@ -1828,7 +1972,9 @@ OperationResult transaction::Methods::modifyLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  bool isFollower = false;
+  std::shared_ptr<std::vector<ServerID> const> followers;
+
+  ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     std::string theLeader = collection->followers()->getLeader();
@@ -1836,8 +1982,16 @@ OperationResult transaction::Methods::modifyLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
+      
+      auto const& followerInfo = collection->followers();
+      // fetch followers
+      followers = followerInfo->get();
+      if (followers->size() > 0) {
+        replicationType = ReplicationType::LEADER;
+        options.silent = false;
+      }
     } else {  // we are a follower following theLeader
-      isFollower = true;
+      replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
       }
@@ -1845,7 +1999,7 @@ OperationResult transaction::Methods::modifyLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
-  }
+  } // isDBServer - early block
 
   if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
@@ -1904,7 +2058,7 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
-    if (!options.silent || _state->isDBServer()) {
+    if (!options.silent) {
       TRI_ASSERT(!previous.empty());
       TRI_ASSERT(!result.empty());
       StringRef key(newVal.get(StaticStrings::KeyString));
@@ -1940,126 +2094,125 @@ OperationResult transaction::Methods::modifyLocal(
     res = workForOneDocument(newValue, false);
   }
 
-  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (res.ok() && options.waitForSync && maxTick > 0 &&
-      isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
-  }
-
   // Now see whether or not we have to do synchronous replication:
-  if (res.ok() && _state->isDBServer()) {
+  if (res.ok() && replicationType == ReplicationType::LEADER) {
+    TRI_ASSERT(followers != nullptr);
+
     // Now replicate the same operation on all followers:
-    auto const& followerInfo = collection->followers();
-    std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
+      
+    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+    // get here, in the single document case, we do not try to replicate
+    // in case of an error.
 
-    if (doingSynchronousReplication) {
-      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-      // get here, in the single document case, we do not try to replicate
-      // in case of an error.
+    // Now replicate the good operations on all followers:
+    auto cc = arangodb::ClusterComm::instance();
+    if (cc != nullptr) {
+      // nullptr only happens on controlled shutdown
+      std::string path =
+        "/_db/" +
+        arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
+        "/_api/document/" +
+        arangodb::basics::StringUtils::urlEncode(collection->name()) +
+        "?isRestore=true&isSynchronousReplication=" +
+        ServerState::instance()->getId() + "&" + StaticStrings::SilentString + "=true";
 
-      // Now replicate the good operations on all followers:
-      auto cc = arangodb::ClusterComm::instance();
-      if (cc != nullptr) {
-        // nullptr only happens on controlled shutdown
-        std::string path =
-          "/_db/" +
-          arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
-          "/_api/document/" +
-          arangodb::basics::StringUtils::urlEncode(collection->name()) +
-          "?isRestore=true&isSynchronousReplication=" +
-          ServerState::instance()->getId();
+      transaction::BuilderLeaser payload(this);
 
-        VPackBuilder payload;
+      auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
+        VPackObjectBuilder guard(payload.get());
+        VPackSlice s = result.get(StaticStrings::KeyString);
+        payload->add(StaticStrings::KeyString, s);
+        s = result.get(StaticStrings::RevString);
+        payload->add(StaticStrings::RevString, s);
+        TRI_SanitizeObject(doc, *payload.get());
+      };
 
-        auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
-          VPackObjectBuilder guard(&payload);
-          VPackSlice s = result.get(StaticStrings::KeyString);
-          payload.add(StaticStrings::KeyString, s);
-          s = result.get(StaticStrings::RevString);
-          payload.add(StaticStrings::RevString, s);
-          TRI_SanitizeObject(doc, payload);
-        };
-
-        VPackSlice ourResult = resultBuilder.slice();
-        size_t count = 0;
-        if (multiCase) {
-          VPackArrayBuilder guard(&payload);
-          VPackArrayIterator itValue(newValue);
-          VPackArrayIterator itResult(ourResult);
-          while (itValue.valid() && itResult.valid()) {
-            TRI_ASSERT((*itResult).isObject());
-            if (!(*itResult).hasKey(StaticStrings::Error)) {
-              doOneDoc(itValue.value(), itResult.value());
-              count++;
-            }
-            itValue.next();
-            itResult.next();
+      VPackSlice ourResult = resultBuilder.slice();
+      size_t count = 0;
+      if (multiCase) {
+        VPackArrayBuilder guard(payload.get());
+        VPackArrayIterator itValue(newValue);
+        VPackArrayIterator itResult(ourResult);
+        while (itValue.valid() && itResult.valid()) {
+          TRI_ASSERT((*itResult).isObject());
+          if (!(*itResult).hasKey(StaticStrings::Error)) {
+            doOneDoc(itValue.value(), itResult.value());
+            count++;
           }
-        } else {
-          VPackArrayBuilder guard(&payload);
-          doOneDoc(newValue, ourResult);
-          count++;
+          itValue.next();
+          itResult.next();
         }
-        if (count > 0) {
-          auto body = std::make_shared<std::string>();
-          *body = payload.slice().toJson();
+      } else {
+        VPackArrayBuilder guard(payload.get());
+        doOneDoc(newValue, ourResult);
+        count++;
+      }
+      if (count > 0) {
+        auto body = std::make_shared<std::string>();
+        *body = payload->slice().toJson();
 
-          // Now prepare the requests:
-          std::vector<ClusterCommRequest> requests;
-          for (auto const& f : *followers) {
-            requests.emplace_back("server:" + f,
-                operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE
-                ? arangodb::rest::RequestType::PUT
-                : arangodb::rest::RequestType::PATCH,
-                path, body);
+        // Now prepare the requests:
+        std::vector<ClusterCommRequest> requests;
+        requests.reserve(followers->size());
+
+        for (auto const& f : *followers) {
+          requests.emplace_back("server:" + f,
+              operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE
+              ? arangodb::rest::RequestType::PUT
+              : arangodb::rest::RequestType::PATCH,
+              path, body);
+        }
+        size_t nrDone = 0;
+        size_t nrGood = cc->performRequests(requests,
+                                            chooseTimeout(count, body->size()*followers->size()),
+                                            nrDone, Logger::REPLICATION, false);
+        if (nrGood < followers->size()) {
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
           }
-          size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests,
-                                              chooseTimeout(count, body->size()*followers->size()),
-                                              nrDone, Logger::REPLICATION, false);
-          if (nrGood < followers->size()) {
-            // If any would-be-follower refused to follow there must be a
-            // new leader in the meantime, in this case we must not allow
-            // this operation to succeed, we simply return with a refusal
-            // error (note that we use the follower version, since we have
-            // lost leadership):
-            if (findRefusal(requests)) {
-              return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-            }
 
-            // Otherwise we drop all followers that were not successful:
-            for (size_t i = 0; i < followers->size(); ++i) {
-              bool replicationWorked =
-                requests[i].done &&
-                requests[i].result.status == CL_COMM_RECEIVED &&
-                (requests[i].result.answer_code ==
-                 rest::ResponseCode::ACCEPTED ||
-                 requests[i].result.answer_code == rest::ResponseCode::OK);
-              if (replicationWorked) {
-                bool found;
-                requests[i].result.answer->header(StaticStrings::ErrorCodes,
-                    found);
-                replicationWorked = !found;
-              }
-              if (!replicationWorked) {
-                auto const& followerInfo = collection->followers();
-                if (followerInfo->remove((*followers)[i])) {
-                  LOG_TOPIC(WARN, Logger::REPLICATION)
-                    << "modifyLocal: dropping follower " << (*followers)[i]
-                    << " for shard " << collectionName;
-                } else {
-                  LOG_TOPIC(ERR, Logger::REPLICATION)
-                    << "modifyLocal: could not drop follower "
-                    << (*followers)[i] << " for shard " << collectionName;
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-                }
+          // Otherwise we drop all followers that were not successful:
+          for (size_t i = 0; i < followers->size(); ++i) {
+            bool replicationWorked =
+              requests[i].done &&
+              requests[i].result.status == CL_COMM_RECEIVED &&
+              (requests[i].result.answer_code ==
+                rest::ResponseCode::ACCEPTED ||
+                requests[i].result.answer_code == rest::ResponseCode::OK);
+            if (replicationWorked) {
+              bool found;
+              requests[i].result.answer->header(StaticStrings::ErrorCodes,
+                  found);
+              replicationWorked = !found;
+            }
+            if (!replicationWorked) {
+              auto const& followerInfo = collection->followers();
+              if (followerInfo->remove((*followers)[i])) {
+                LOG_TOPIC(WARN, Logger::REPLICATION)
+                  << "modifyLocal: dropping follower " << (*followers)[i]
+                  << " for shard " << collectionName;
+              } else {
+                LOG_TOPIC(ERR, Logger::REPLICATION)
+                  << "modifyLocal: could not drop follower "
+                  << (*followers)[i] << " for shard " << collectionName;
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
               }
             }
           }
         }
       }
     }
+  }
+  
+  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
+  if (res.ok() && options.waitForSync && maxTick > 0 &&
+      isSingleOperationTransaction()) {
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (options.silent) {
@@ -2091,9 +2244,6 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
-  if (_state->isDBServer()) {
-    optionsCopy.silent = false;
-  }
 
   return removeLocal(collectionName, value, optionsCopy);
 }
@@ -2111,6 +2261,7 @@ OperationResult transaction::Methods::removeCoordinator(
   int res = arangodb::deleteDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     value,
     options,
     responseCode,
@@ -2134,8 +2285,10 @@ OperationResult transaction::Methods::removeLocal(
     OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
+      
+  std::shared_ptr<std::vector<ServerID> const> followers;
 
-  bool isFollower = false;
+  ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     std::string theLeader = collection->followers()->getLeader();
@@ -2143,8 +2296,16 @@ OperationResult transaction::Methods::removeLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
+  
+      auto const& followerInfo = collection->followers();
+      // fetch followers 
+      followers = followerInfo->get();
+      if (followers->size() > 0) {
+        replicationType = ReplicationType::LEADER;
+        options.silent = false;
+      }
     } else {  // we are a follower following theLeader
-      isFollower = true;
+      replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
       }
@@ -2152,7 +2313,7 @@ OperationResult transaction::Methods::removeLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
-  }
+  } // isDBServer - early block
 
   if (options.returnOld) {
     pinData(cid);  // will throw when it fails
@@ -2205,7 +2366,7 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     TRI_ASSERT(!previous.empty());
-    if (!options.silent || _state->isDBServer()) {
+    if (!options.silent) {
       buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
                             0, options.returnOld ? &previous : nullptr, nullptr);
     }
@@ -2230,124 +2391,123 @@ OperationResult transaction::Methods::removeLocal(
     res = workForOneDocument(value, false);
   }
 
-  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (res.ok() && options.waitForSync && maxTick > 0 &&
-      isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
-  }
-
   // Now see whether or not we have to do synchronous replication:
-  if (res.ok() && _state->isDBServer()) {
+  if (res.ok() && replicationType == ReplicationType::LEADER) {
+    TRI_ASSERT(followers != nullptr);
+
     // Now replicate the same operation on all followers:
-    auto const& followerInfo = collection->followers();
-    std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
 
-    if (doingSynchronousReplication) {
-      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-      // get here, in the single document case, we do not try to replicate
-      // in case of an error.
+    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+    // get here, in the single document case, we do not try to replicate
+    // in case of an error.
 
-      // Now replicate the good operations on all followers:
-      auto cc = arangodb::ClusterComm::instance();
-      if (cc != nullptr) {
-        // nullptr only happens on controled shutdown
+    // Now replicate the good operations on all followers:
+    auto cc = arangodb::ClusterComm::instance();
+    if (cc != nullptr) {
+      // nullptr only happens on controled shutdown
 
-        std::string path =
-          "/_db/" +
-          arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
-          "/_api/document/" +
-          arangodb::basics::StringUtils::urlEncode(collection->name()) +
-          "?isRestore=true&isSynchronousReplication=" +
-          ServerState::instance()->getId();
+      std::string path =
+        "/_db/" +
+        arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
+        "/_api/document/" +
+        arangodb::basics::StringUtils::urlEncode(collection->name()) +
+        "?isRestore=true&isSynchronousReplication=" +
+        ServerState::instance()->getId() + "&" + StaticStrings::SilentString + "=true";
 
-        VPackBuilder payload;
+      transaction::BuilderLeaser payload(this);
 
-        auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
-          VPackObjectBuilder guard(&payload);
-          VPackSlice s = result.get(StaticStrings::KeyString);
-          payload.add(StaticStrings::KeyString, s);
-          s = result.get(StaticStrings::RevString);
-          payload.add(StaticStrings::RevString, s);
-        };
+      auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
+        VPackObjectBuilder guard(payload.get());
+        VPackSlice s = result.get(StaticStrings::KeyString);
+        payload->add(StaticStrings::KeyString, s);
+        s = result.get(StaticStrings::RevString);
+        payload->add(StaticStrings::RevString, s);
+      };
 
-        VPackSlice ourResult = resultBuilder.slice();
-        size_t count = 0;
-        if (value.isArray()) {
-          VPackArrayBuilder guard(&payload);
-          VPackArrayIterator itValue(value);
-          VPackArrayIterator itResult(ourResult);
-          while (itValue.valid() && itResult.valid()) {
-            TRI_ASSERT((*itResult).isObject());
-            if (!(*itResult).hasKey(StaticStrings::Error)) {
-              doOneDoc(itValue.value(), itResult.value());
-              count++;
-            }
-            itValue.next();
-            itResult.next();
+      VPackSlice ourResult = resultBuilder.slice();
+      size_t count = 0;
+      if (value.isArray()) {
+        VPackArrayBuilder guard(payload.get());
+        VPackArrayIterator itValue(value);
+        VPackArrayIterator itResult(ourResult);
+        while (itValue.valid() && itResult.valid()) {
+          TRI_ASSERT((*itResult).isObject());
+          if (!(*itResult).hasKey(StaticStrings::Error)) {
+            doOneDoc(itValue.value(), itResult.value());
+            count++;
           }
-        } else {
-          VPackArrayBuilder guard(&payload);
-          doOneDoc(value, ourResult);
-          count++;
+          itValue.next();
+          itResult.next();
         }
-        if (count > 0) {
-          auto body = std::make_shared<std::string>();
-          *body = payload.slice().toJson();
+      } else {
+        VPackArrayBuilder guard(payload.get());
+        doOneDoc(value, ourResult);
+        count++;
+      }
+      if (count > 0) {
+        auto body = std::make_shared<std::string>();
+        *body = payload->slice().toJson();
 
-          // Now prepare the requests:
-          std::vector<ClusterCommRequest> requests;
-          for (auto const& f : *followers) {
-            requests.emplace_back("server:" + f,
-                arangodb::rest::RequestType::DELETE_REQ, path,
-                body);
+        // Now prepare the requests:
+        std::vector<ClusterCommRequest> requests;
+        requests.reserve(followers->size());
+
+        for (auto const& f : *followers) {
+          requests.emplace_back("server:" + f,
+              arangodb::rest::RequestType::DELETE_REQ, path,
+              body);
+        }
+        size_t nrDone = 0;
+        size_t nrGood = cc->performRequests(requests,
+                                            chooseTimeout(count, body->size()*followers->size()),
+                                            nrDone, Logger::REPLICATION, false);
+        if (nrGood < followers->size()) {
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
           }
-          size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests,
-                                              chooseTimeout(count, body->size()*followers->size()),
-                                              nrDone, Logger::REPLICATION, false);
-          if (nrGood < followers->size()) {
-            // If any would-be-follower refused to follow there must be a
-            // new leader in the meantime, in this case we must not allow
-            // this operation to succeed, we simply return with a refusal
-            // error (note that we use the follower version, since we have
-            // lost leadership):
-            if (findRefusal(requests)) {
-              return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-            }
 
-            // we drop all followers that were not successful:
-            for (size_t i = 0; i < followers->size(); ++i) {
-              bool replicationWorked =
-                requests[i].done &&
-                requests[i].result.status == CL_COMM_RECEIVED &&
-                (requests[i].result.answer_code ==
-                 rest::ResponseCode::ACCEPTED ||
-                 requests[i].result.answer_code == rest::ResponseCode::OK);
-              if (replicationWorked) {
-                bool found;
-                requests[i].result.answer->header(StaticStrings::ErrorCodes,
-                    found);
-                replicationWorked = !found;
-              }
-              if (!replicationWorked) {
-                auto const& followerInfo = collection->followers();
-                if (followerInfo->remove((*followers)[i])) {
-                  LOG_TOPIC(WARN, Logger::REPLICATION)
-                    << "removeLocal: dropping follower " << (*followers)[i]
-                    << " for shard " << collectionName;
-                } else {
-                  LOG_TOPIC(ERR, Logger::REPLICATION)
-                    << "removeLocal: could not drop follower "
-                    << (*followers)[i] << " for shard " << collectionName;
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-                }
+          // we drop all followers that were not successful:
+          for (size_t i = 0; i < followers->size(); ++i) {
+            bool replicationWorked =
+              requests[i].done &&
+              requests[i].result.status == CL_COMM_RECEIVED &&
+              (requests[i].result.answer_code ==
+                rest::ResponseCode::ACCEPTED ||
+                requests[i].result.answer_code == rest::ResponseCode::OK);
+            if (replicationWorked) {
+              bool found;
+              requests[i].result.answer->header(StaticStrings::ErrorCodes,
+                  found);
+              replicationWorked = !found;
+            }
+            if (!replicationWorked) {
+              auto const& followerInfo = collection->followers();
+              if (followerInfo->remove((*followers)[i])) {
+                LOG_TOPIC(WARN, Logger::REPLICATION)
+                  << "removeLocal: dropping follower " << (*followers)[i]
+                  << " for shard " << collectionName;
+              } else {
+                LOG_TOPIC(ERR, Logger::REPLICATION)
+                  << "removeLocal: could not drop follower "
+                  << (*followers)[i] << " for shard " << collectionName;
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
               }
             }
           }
         }
       }
     }
+  }
+  
+  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
+  if (res.ok() && options.waitForSync && maxTick > 0 &&
+      isSingleOperationTransaction()) {
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (options.silent) {
@@ -2457,7 +2617,9 @@ OperationResult transaction::Methods::truncateLocal(
 
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  bool isFollower = false;
+  std::shared_ptr<std::vector<ServerID> const> followers;
+
+  ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     std::string theLeader = collection->followers()->getLeader();
@@ -2465,8 +2627,16 @@ OperationResult transaction::Methods::truncateLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
+      
+      auto const& followerInfo = collection->followers();
+      // fetch followers 
+      followers = followerInfo->get();
+      if (followers->size() > 0) {
+        replicationType = ReplicationType::LEADER;
+        options.silent = false;
+      }
     } else {  // we are a follower following theLeader
-      isFollower = true;
+      replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
       }
@@ -2474,7 +2644,7 @@ OperationResult transaction::Methods::truncateLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
-  }
+  } // isDBServer - early block
 
   pinData(cid);  // will throw when it fails
 
@@ -2501,69 +2671,63 @@ OperationResult transaction::Methods::truncateLocal(
   }
 
   // Now see whether or not we have to do synchronous replication:
-  if (_state->isDBServer()) {
-    // Now replicate the same operation on all followers:
-    auto const& followerInfo = collection->followers();
-    std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
+  if (replicationType == ReplicationType::LEADER) {
+    TRI_ASSERT(followers != nullptr);
 
-    if (!isFollower && followers->size() > 0) {
-      // Now replicate the good operations on all followers:
-      auto cc = arangodb::ClusterComm::instance();
+    // Now replicate the good operations on all followers:
+    auto cc = arangodb::ClusterComm::instance();
 
-      if (cc != nullptr) {
-        // nullptr only happens on controlled shutdown
-        std::string path =
-            "/_db/" +
-            arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
-            "/_api/collection/" +
-            arangodb::basics::StringUtils::urlEncode(collectionName) +
-            "/truncate?isSynchronousReplication=" +
-            ServerState::instance()->getId();
-        auto body = std::make_shared<std::string>();
+    if (cc != nullptr) {
+      // nullptr only happens on controlled shutdown
+      std::string path =
+          "/_db/" +
+          arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
+          "/_api/collection/" +
+          arangodb::basics::StringUtils::urlEncode(collectionName) +
+          "/truncate?isSynchronousReplication=" +
+          ServerState::instance()->getId();
+      auto body = std::make_shared<std::string>();
 
-        // Now prepare the requests:
-        std::vector<ClusterCommRequest> requests;
+      // Now prepare the requests:
+      std::vector<ClusterCommRequest> requests;
+      requests.reserve(followers->size());
 
-        for (auto const& f : *followers) {
-          requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT,
-                                path, body);
+      for (auto const& f : *followers) {
+        requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT,
+                              path, body);
+      }
+
+      size_t nrDone = 0;
+      size_t nrGood = cc->performRequests(requests, 120.0,
+                                          nrDone, Logger::REPLICATION, false);
+      if (nrGood < followers->size()) {
+        // If any would-be-follower refused to follow there must be a
+        // new leader in the meantime, in this case we must not allow
+        // this operation to succeed, we simply return with a refusal
+        // error (note that we use the follower version, since we have
+        // lost leadership):
+        if (findRefusal(requests)) {
+          return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
         }
-
-        size_t nrDone = 0;
-        // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
-        // can be a much more expensive operation than a single document
-        // insert/update/remove...
-        size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
-                                            nrDone, Logger::REPLICATION, false);
-        if (nrGood < followers->size()) {
-          // If any would-be-follower refused to follow there must be a
-          // new leader in the meantime, in this case we must not allow
-          // this operation to succeed, we simply return with a refusal
-          // error (note that we use the follower version, since we have
-          // lost leadership):
-          if (findRefusal(requests)) {
-            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-          }
-          // we drop all followers that were not successful:
-          for (size_t i = 0; i < followers->size(); ++i) {
-            bool replicationWorked =
-                requests[i].done &&
-                requests[i].result.status == CL_COMM_RECEIVED &&
-                (requests[i].result.answer_code ==
-                     rest::ResponseCode::ACCEPTED ||
-                 requests[i].result.answer_code == rest::ResponseCode::OK);
-            if (!replicationWorked) {
-              auto const& followerInfo = collection->followers();
-              if (followerInfo->remove((*followers)[i])) {
-                LOG_TOPIC(WARN, Logger::REPLICATION)
-                    << "truncateLocal: dropping follower " << (*followers)[i]
-                    << " for shard " << collectionName;
-              } else {
-                LOG_TOPIC(ERR, Logger::REPLICATION)
-                    << "truncateLocal: could not drop follower "
-                    << (*followers)[i] << " for shard " << collectionName;
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-              }
+        // we drop all followers that were not successful:
+        for (size_t i = 0; i < followers->size(); ++i) {
+          bool replicationWorked =
+              requests[i].done &&
+              requests[i].result.status == CL_COMM_RECEIVED &&
+              (requests[i].result.answer_code ==
+                    rest::ResponseCode::ACCEPTED ||
+                requests[i].result.answer_code == rest::ResponseCode::OK);
+          if (!replicationWorked) {
+            auto const& followerInfo = collection->followers();
+            if (followerInfo->remove((*followers)[i])) {
+              LOG_TOPIC(WARN, Logger::REPLICATION)
+                  << "truncateLocal: dropping follower " << (*followers)[i]
+                  << " for shard " << collectionName;
+            } else {
+              LOG_TOPIC(ERR, Logger::REPLICATION)
+                  << "truncateLocal: could not drop follower "
+                  << (*followers)[i] << " for shard " << collectionName;
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
             }
           }
         }
@@ -2624,11 +2788,11 @@ OperationResult transaction::Methods::rotateActiveJournalLocal(
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::count(std::string const& collectionName,
-                                            bool aggregate) {
+                                            bool details) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, aggregate, true);
+    return countCoordinator(collectionName, details);
   }
 
   return countLocal(collectionName);
@@ -2637,16 +2801,16 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::countCoordinator(
-    std::string const& collectionName, bool aggregate, bool sendNoLockHeader) {
+    std::string const& collectionName, bool details) {
   std::vector<std::pair<std::string, uint64_t>> count;
   auto res = arangodb::countOnCoordinator(
-    vocbase().name(), collectionName, count, sendNoLockHeader
+    vocbase().name(), collectionName, *this, count 
   );
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
-  return buildCountResult(count, aggregate);
+  return buildCountResult(count, details);
 }
 #endif
 
@@ -2952,7 +3116,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
 }
 
 /// @brief add a collection by id, with the name supplied
-Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
+Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                                            AccessMode::Type type) {
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2969,51 +3133,60 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
         "cannot add collection to committed or aborted transaction");
   }
 
+  if (_state->isTopLevelTransaction()
+      && status != transaction::Status::CREATED) {
+    // transaction already started?
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_TRANSACTION_INTERNAL,
+      "cannot add collection to a previously started top-level transaction"
+    );
+  }
+
   if (cid == 0) {
     // invalid cid
-    throwCollectionNotFound(name);
+    throwCollectionNotFound(cname.c_str());
   }
+
+  auto addCollection = [this, &cname, type](TRI_voc_cid_t cid)->void {
+    auto res =
+      _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
+
+    if (TRI_ERROR_NO_ERROR == res) {
+      return;
+    }
+
+    if (TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION == res) {
+      // special error message to indicate which collection was undeclared
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        res,
+        std::string(TRI_errno_string(res)) + ": " + cname
+        + " [" + AccessMode::typeString(type) + "]"
+      );
+    }
+
+    if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == res) {
+      throwCollectionNotFound(cname.c_str());
+    }
+
+    THROW_ARANGO_EXCEPTION(res);
+  };
 
   Result res;
   bool visited = false;
-  auto visitor = _state->isEmbeddedTransaction()
-    ? std::function<bool(LogicalCollection&)>(
-        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
-          res = addCollectionEmbedded(col.id(), name, type);
+  std::function<bool(LogicalCollection&)> visitor(
+    [this, &addCollection, &res, cid, &visited](LogicalCollection& col)->bool {
+      addCollection(col.id()); // will throw on error
+      res = applyDataSourceRegistrationCallbacks(col, *this);
+      visited |= cid == col.id();
 
-          if (!res.ok()) {
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(col, *_state);
-          visited |= cid == col.id();
-
-          return res.ok(); // add the remaining collections (or break on error)
-        }
-      )
-    : std::function<bool(LogicalCollection&)>(
-        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
-          res = addCollectionToplevel(col.id(), name, type);
-
-          if (!res.ok()) {
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(col, *_state);
-          visited |= cid == col.id();
-
-          return res.ok(); // add the remaining collections (or break on error)
-        }
-      )
-    ;
+      return res.ok(); // add the remaining collections (or break on error)
+    }
+  );
 
   if (!resolver()->visitCollections(visitor, cid) || !res.ok()) {
     // trigger exception as per the original behaviour (tests depend on this)
     if (res.ok() && !visited) {
-      res = _state->isEmbeddedTransaction()
-          ? addCollectionEmbedded(cid, name, type)
-          : addCollectionToplevel(cid, name, type)
-          ;
+      addCollection(cid); // will throw on error
     }
 
     return res.ok() ? Result(TRI_ERROR_INTERNAL) : res; // return first error
@@ -3027,28 +3200,27 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
   auto dataSource = resolver()->getDataSource(cid);
 
   return dataSource
-    ? applyStateRegistrationCallbacks(*dataSource, *_state)
+    ? applyDataSourceRegistrationCallbacks(*dataSource, *this)
     : Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
     ;
-}
-
-/// @brief add a collection by id, with the name supplied
-Result transaction::Methods::addCollection(TRI_voc_cid_t cid,
-                                           std::string const& name,
-                                           AccessMode::Type type) {
-  return addCollection(cid, name.c_str(), type);
-}
-
-/// @brief add a collection by id
-Result transaction::Methods::addCollection(TRI_voc_cid_t cid,
-                                           AccessMode::Type type) {
-  return addCollection(cid, nullptr, type);
 }
 
 /// @brief add a collection by name
 Result transaction::Methods::addCollection(std::string const& name,
                                            AccessMode::Type type) {
-  return addCollection(resolver()->getCollectionId(name), name.c_str(), type);
+  return addCollection(resolver()->getCollectionId(name), name, type);
+}
+
+bool transaction::Methods::isLockedShard(std::string const& shardName) const {
+  return _state->isLockedShard(shardName);
+}
+
+void transaction::Methods::setLockedShard(std::string const& shardName) {
+  _state->setLockedShard(shardName);
+}
+
+void transaction::Methods::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
+  _state->setLockedShards(lockedShards);
 }
 
 /// @brief test if a collection is already locked
@@ -3205,61 +3377,6 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
 
   // We have successfully found an index with the requested id.
   return IndexHandle(idx);
-}
-
-/// @brief add a collection to an embedded transaction
-Result transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid,
-                                                   char const* name,
-                                                   AccessMode::Type type) {
-  TRI_ASSERT(_state != nullptr);
-
-  int res = _state->addCollection(cid, type, _state->nestingLevel(), false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-      // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res, std::string(TRI_errno_string(res)) + ": " +
-                   resolver()->getCollectionNameCluster(cid) + " [" +
-                   AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      throwCollectionNotFound(name);
-    }
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return res;
-}
-
-/// @brief add a collection to a top-level transaction
-Result transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid,
-                                                   char const* name,
-                                                   AccessMode::Type type) {
-  TRI_ASSERT(_state != nullptr);
-
-  int res;
-
-  if (_state->status() != transaction::Status::CREATED) {
-    // transaction already started?
-    res = TRI_ERROR_TRANSACTION_INTERNAL;
-  } else {
-    res = _state->addCollection(cid, type, _state->nestingLevel(), false);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-      // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res, std::string(TRI_errno_string(res)) + ": " +
-                   resolver()->getCollectionNameCluster(cid) + " [" +
-                   AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      throwCollectionNotFound(name);
-    }
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return res;
 }
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,

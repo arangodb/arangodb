@@ -89,6 +89,9 @@ const ansiAppender = (text) => {
 const jsonAppender = function(text) {
   output += highlight("js", text);
 };
+const jsonLAppender = function(text) {
+  output += highlight("js", text) + "&#x21A9;\n" ;
+};
 const htmlAppender = function(text) {
   output += highlight("html", text);
 };
@@ -133,6 +136,7 @@ var curlRequest = function () {
   return rc
 };
 var logJsonResponse = internal.appendJsonResponse(rawAppender, jsonAppender);
+var logJsonLResponse = internal.appendJsonLResponse(rawAppender, jsonLAppender);
 var logHtmlResponse = internal.appendRawResponse(rawAppender, htmlAppender);
 var logRawResponse = internal.appendRawResponse(rawAppender, rawAppender);
 var logErrorResponse = function (response) {

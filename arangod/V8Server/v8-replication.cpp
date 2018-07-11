@@ -152,7 +152,7 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
   auto transactionContext = transaction::V8Context::Create(vocbase, false);
   auto builderSPtr = std::make_shared<VPackBuilder>();
   Result res = EngineSelectorFeature::ENGINE->lastLogger(
-    &vocbase, transactionContext, tickStart, tickEnd, builderSPtr
+    vocbase, transactionContext, tickStart, tickEnd, builderSPtr
   );
   v8::Handle<v8::Value> result;
 

@@ -32,8 +32,9 @@
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
+#include "Utils/CollectionNameResolver.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -224,7 +225,7 @@ namespace iresearch {
     }
 
     static std::vector<std::string> const EMPTY;
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY, // readCollections
       EMPTY, // writeCollections

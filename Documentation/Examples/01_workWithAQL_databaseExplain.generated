@@ -1,5 +1,5 @@
 arangosh&gt; db._explain("LET s = SLEEP(0.25) LET t = SLEEP(0.5) RETURN 1", {}, {colors: false});
-Query string:
+Query String:
  LET s = SLEEP(0.25) LET t = SLEEP(0.5) RETURN 1
 
 Execution plan:
@@ -12,6 +12,10 @@ Execution plan:
 
 Indexes used:
  none
+
+Functions used:
+ Name    Deterministic   Uses V8
+ SLEEP   false           false  
 
 Optimization rules applied:
  Id   RuleName

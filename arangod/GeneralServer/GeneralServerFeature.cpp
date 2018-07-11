@@ -189,7 +189,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void GeneralServerFeature::prepare() {
-  ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
+  ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
   GENERAL_SERVER = this;
 }
 
@@ -486,7 +486,7 @@ void GeneralServerFeature::defineHandlers() {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler(
-      "/_admin/debug", RestHandlerCreator<RestDebugHandler>::createNoData);
+      "/_admin/debug", RestHandlerCreator<arangodb::RestDebugHandler>::createNoData);
 #endif
 
   _handlerFactory->addPrefixHandler(
@@ -529,5 +529,5 @@ void GeneralServerFeature::defineHandlers() {
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addRestHandlers(_handlerFactory.get());
+  engine->addRestHandlers(*_handlerFactory);
 }

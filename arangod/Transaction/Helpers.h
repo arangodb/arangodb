@@ -90,7 +90,7 @@ namespace helpers {
   VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
 
-  OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate);
+  OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool details);
   
   /// @brief creates an id string from a custom _id value and the _key string
   std::string makeIdFromCustom(CollectionNameResolver const* resolver,

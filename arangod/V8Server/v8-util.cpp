@@ -77,7 +77,7 @@ static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg,
   }
 
   // document key only
-  if (TraditionalKeyGenerator::validateKey(*str, str.length())) {
+  if (KeyGenerator::validateKey(*str, str.length())) {
     auto const length = str.length();
     auto buffer = new char[length + 1];
     memcpy(buffer, *str, length);

@@ -1,35 +1,35 @@
-shell> curl -X POST --header 'Content-Type: multipart/form-data; boundary=SomeBoundaryValue' --data-binary @- --dump - http://localhost:8529/_api/batch &lt;&lt;EOF
+shell> curl -X POST --header 'Content-Type: multipart/form-data; boundary=SomeBoundaryValue' --data-binary @- --dump - http://localhost:8529/_api/batch &amp;lt;&amp;lt;EOF
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: myId1
 
-GET /_api/version HTTP/1.1
+GET /_api/version HTTP/<span class="hljs-number">1.1</span>
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: myId2
 
-DELETE /_api/collection/products HTTP/1.1
+DELETE /_api/collection/products HTTP/<span class="hljs-number">1.1</span>
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: someId
 
-POST /_api/collection/products HTTP/1.1
+POST /_api/collection/products HTTP/<span class="hljs-number">1.1</span>
 
-{"name": "products" }
+{<span class="hljs-string">"name"</span>: <span class="hljs-string">"products"</span> }
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: nextId
 
-GET /_api/collection/products/figures HTTP/1.1
+GET /_api/collection/products/figures HTTP/<span class="hljs-number">1.1</span>
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: otherId
 
-DELETE /_api/collection/products HTTP/1.1
+DELETE /_api/collection/products HTTP/<span class="hljs-number">1.1</span>
 --SomeBoundaryValue--
 
 EOF
@@ -39,4 +39,4 @@ x-content-type-options: nosniff
 content-type: multipart/form-data; boundary=SomeBoundaryValue
 x-arango-errors: 1
 
-"--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId1\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 63\r\n\r\n{\"server\":\"arango\",\"version\":\"3.4.devel\",\"license\":\"community\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId2\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 87\r\n\r\n{\"error\":true,\"errorMessage\":\"collection or view not found\",\"code\":404,\"errorNum\":1203}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: someId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 326\r\n\r\n{\"error\":false,\"code\":200,\"status\":3,\"statusString\":\"loaded\",\"name\":\"products\",\"keyOptions\":{\"type\":\"traditional\",\"allowUserKeys\":true,\"lastValue\":0},\"type\":2,\"indexBuckets\":8,\"globallyUniqueId\":\"h1AA24B099AC2/11458\",\"doCompact\":true,\"waitForSync\":false,\"id\":\"11458\",\"isSystem\":false,\"journalSize\":33554432,\"isVolatile\":false}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: nextId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nLocation: /_api/collection/products/figures\r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 833\r\n\r\n{\"error\":false,\"code\":200,\"statusString\":\"loaded\",\"name\":\"products\",\"keyOptions\":{\"type\":\"traditional\",\"allowUserKeys\":true,\"lastValue\":0},\"journalSize\":33554432,\"isVolatile\":false,\"isSystem\":false,\"status\":3,\"count\":0,\"figures\":{\"indexes\":{\"count\":1,\"size\":32128},\"documentReferences\":0,\"waitingFor\":\"-\",\"alive\":{\"count\":0,\"size\":0},\"dead\":{\"count\":0,\"size\":0,\"deletion\":0},\"compactionStatus\":{\"message\":\"compaction not yet started\",\"time\":\"2018-04-05T13:57:10Z\",\"count\":0,\"filesCombined\":0,\"bytesRead\":0,\"bytesWritten\":0},\"datafiles\":{\"count\":0,\"fileSize\":0},\"journals\":{\"count\":0,\"fileSize\":0},\"compactors\":{\"count\":0,\"fileSize\":0},\"revisions\":{\"count\":0,\"size\":48192},\"lastTick\":0,\"uncollectedLogfileEntries\":0},\"doCompact\":true,\"globallyUniqueId\":\"h1AA24B099AC2/11458\",\"type\":2,\"indexBuckets\":8,\"waitForSync\":false,\"id\":\"11458\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: otherId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 39\r\n\r\n{\"error\":false,\"code\":200,\"id\":\"11458\"}\r\n--SomeBoundaryValue--"
+"--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId1\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 64\r\n\r\n{\"server\":\"arango\",\"version\":\"3.4.devel\",\"license\":\"enterprise\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId2\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 87\r\n\r\n{\"error\":true,\"errorMessage\":\"collection or view not found\",\"code\":404,\"errorNum\":1203}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: someId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 325\r\n\r\n{\"error\":false,\"code\":200,\"status\":3,\"statusString\":\"loaded\",\"name\":\"products\",\"keyOptions\":{\"type\":\"traditional\",\"allowUserKeys\":true,\"lastValue\":0},\"type\":2,\"indexBuckets\":8,\"globallyUniqueId\":\"hD71802E03B2/11612\",\"doCompact\":true,\"waitForSync\":false,\"id\":\"11612\",\"isSystem\":false,\"journalSize\":33554432,\"isVolatile\":false}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: nextId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nLocation: /_api/collection/products/figures\r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 832\r\n\r\n{\"error\":false,\"code\":200,\"statusString\":\"loaded\",\"name\":\"products\",\"keyOptions\":{\"type\":\"traditional\",\"allowUserKeys\":true,\"lastValue\":0},\"journalSize\":33554432,\"isVolatile\":false,\"isSystem\":false,\"status\":3,\"count\":0,\"figures\":{\"indexes\":{\"count\":1,\"size\":32128},\"documentReferences\":0,\"waitingFor\":\"-\",\"alive\":{\"count\":0,\"size\":0},\"dead\":{\"count\":0,\"size\":0,\"deletion\":0},\"compactionStatus\":{\"message\":\"compaction not yet started\",\"time\":\"2018-07-04T14:09:54Z\",\"count\":0,\"filesCombined\":0,\"bytesRead\":0,\"bytesWritten\":0},\"datafiles\":{\"count\":0,\"fileSize\":0},\"journals\":{\"count\":0,\"fileSize\":0},\"compactors\":{\"count\":0,\"fileSize\":0},\"revisions\":{\"count\":0,\"size\":48192},\"lastTick\":0,\"uncollectedLogfileEntries\":0},\"doCompact\":true,\"globallyUniqueId\":\"hD71802E03B2/11612\",\"type\":2,\"indexBuckets\":8,\"waitForSync\":false,\"id\":\"11612\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: otherId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 39\r\n\r\n{\"error\":false,\"code\":200,\"id\":\"11612\"}\r\n--SomeBoundaryValue--"

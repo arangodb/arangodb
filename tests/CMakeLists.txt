@@ -75,6 +75,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
@@ -127,6 +128,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
+  RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
@@ -151,6 +153,7 @@ SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAS
 target_link_libraries(
   arangodbtests
   arangoserver
+  rocksdb
 )
 
 target_include_directories(arangodbtests PRIVATE
