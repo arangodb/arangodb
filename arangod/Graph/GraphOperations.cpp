@@ -292,7 +292,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 
   if (dropCollection) {
-    std::vector<std::string> collectionsToBeRemoved;
+    std::unordered_set<std::string> collectionsToBeRemoved;
     for (auto const& col : collectionsToMayBeRemoved) {
       pushCollectionIfMayBeDropped(col, _graph.name(), collectionsToBeRemoved);
     }
@@ -618,7 +618,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   res = trx.finish(result.result);
 
   if (dropCollection) {
-    std::vector<std::string> collectionsToBeRemoved;
+    std::unordered_set<std::string> collectionsToBeRemoved;
     pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
 
     for (auto const& collection : collectionsToBeRemoved) {
@@ -803,11 +803,10 @@ GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
 OperationResult GraphOperations::removeGraph(bool waitForSync,
                                              bool dropCollections) {
 
-  std::vector<std::string> trxCollections;
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(StaticStrings::GraphCollection);
 
-  std::vector<std::string> collectionsToBeRemoved;
+  std::unordered_set<std::string> collectionsToBeRemoved;
   if (dropCollections) {
     for (auto const& vertexCollection : _graph.vertexCollections()) {
       pushCollectionIfMayBeDropped(vertexCollection, _graph.name(),
@@ -861,9 +860,8 @@ OperationResult GraphOperations::removeGraph(bool waitForSync,
                                                -1.0);
           });
 
-      if (found.fail()) {
-        return OperationResult(res);
-      } else if (resIn.fail()) {
+      // ignore found, if not found should just be skipped and continue to remove further graphs
+      if (resIn.fail()) {
         return OperationResult(res);
       }
     }
@@ -1210,7 +1208,7 @@ OperationResult GraphOperations::removeVertex(
 
 OperationResult GraphOperations::pushCollectionIfMayBeDropped(
     const std::string& colName, const std::string& graphName,
-    std::vector<std::string>& toBeRemoved) {
+    std::unordered_set<std::string>& toBeRemoved) {
   GraphManager gmngr{ctx()};
   VPackBuilder graphsBuilder;
   OperationResult result =
@@ -1277,7 +1275,7 @@ OperationResult GraphOperations::pushCollectionIfMayBeDropped(
   }
 
   if (collectionUnused) {
-    toBeRemoved.emplace_back(colName);
+    toBeRemoved.emplace(colName);
   }
 
   return OperationResult(TRI_ERROR_NO_ERROR);
