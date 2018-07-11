@@ -1,4 +1,4 @@
-Cluster Deployments in Apache Mesos
+Cluster Deployments in Mesos, DC/OS
 ===================================
 
 ArangoDB has a sophisticated and yet easy way to use cluster mode. To leverage the
