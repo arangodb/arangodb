@@ -1,5 +1,5 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all &amp;lt;&amp;lt;EOF
-{ <span class="hljs-string">"collection"</span>: <span class="hljs-string">"products"</span>, <span class="hljs-string">"skip"</span>: <span class="hljs-number">2</span>, <span class="hljs-string">"limit"</span> : <span class="hljs-number">2</span> }
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all &lt;&lt;EOF
+{ "collection": "products", "skip": 2, "limit" : 2 }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
@@ -9,16 +9,16 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13230"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13230"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfLtm--_"</span>, 
-      <span class="hljs-string">"Hello4"</span> : <span class="hljs-string">"World4"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13488"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13488"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XGh_Eo2--_"</span>, 
+      <span class="hljs-string">"Hello3"</span> : <span class="hljs-string">"World3"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13224"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13224"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfLte--_"</span>, 
-      <span class="hljs-string">"Hello2"</span> : <span class="hljs-string">"World2"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13491"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13491"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XGh_Eo6--_"</span>, 
+      <span class="hljs-string">"Hello4"</span> : <span class="hljs-string">"World4"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
@@ -32,7 +32,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0013239383697509766</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0011267662048339844</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

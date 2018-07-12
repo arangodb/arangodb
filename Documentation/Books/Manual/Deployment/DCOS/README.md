@@ -1,5 +1,4 @@
-Deploying ArangoDB in Apache Mesos
+Deploying ArangoDB in Mesos, DC/OS
 ==================================
 
-- [Cluster](../Cluster/Mesos.md)
-
+- [Cluster Deployments in Mesos, DC/OS](ClusterMesos.md)

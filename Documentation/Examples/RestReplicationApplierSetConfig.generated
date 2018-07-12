@@ -1,11 +1,11 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/replication/applier-config &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/replication/applier-config &lt;&lt;EOF
 { 
-  "endpoint" : "tcp://127.0.0.1:8529", 
-  "username" : "replicationApplier", 
-  "password" : "applier1234@foxx", 
-  "chunkSize" : 4194304, 
-  "autoStart" : false, 
-  "adaptivePolling" : true 
+  <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
+  <span class="hljs-string">"username"</span> : <span class="hljs-string">"replicationApplier"</span>, 
+  <span class="hljs-string">"password"</span> : <span class="hljs-string">"applier1234@foxx"</span>, 
+  <span class="hljs-string">"chunkSize"</span> : <span class="hljs-number">4194304</span>, 
+  <span class="hljs-string">"autoStart"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"adaptivePolling"</span> : <span class="hljs-literal">true</span> 
 }
 EOF
 
@@ -38,6 +38,5 @@ x-content-type-options: nosniff
   <span class="hljs-string">"connectionRetryWaitTime"</span> : <span class="hljs-number">15</span>, 
   <span class="hljs-string">"initialSyncMaxWaitTime"</span> : <span class="hljs-number">300</span>, 
   <span class="hljs-string">"idleMinWaitTime"</span> : <span class="hljs-number">1</span>, 
-  <span class="hljs-string">"idleMaxWaitTime"</span> : <span class="hljs-number">2.5</span>, 
-  <span class="hljs-string">"force32mode"</span> : <span class="hljs-literal">false</span> 
+  <span class="hljs-string">"idleMaxWaitTime"</span> : <span class="hljs-number">2.5</span> 
 }

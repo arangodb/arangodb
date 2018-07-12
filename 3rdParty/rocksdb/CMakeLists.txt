@@ -38,6 +38,7 @@ if (MSVC)
   set(SNAPPY_LIB_DEBUG "${CMAKE_BINARY_DIR}/bin/Debug/snappystatic.lib")
   set(SNAPPY_LIB_RELEASE "${CMAKE_BINARY_DIR}/bin/RelWithDebInfo/snappystatic.lib")
 endif ()
+set(USE_RTTI ON CACHE BOOL "enable RTTI")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION} EXCLUDE_FROM_ALL)
 
 target_link_libraries(rocksdb)

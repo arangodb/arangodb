@@ -304,7 +304,7 @@
     "type" : "string"
   },
   "server.authentication" : {
-    "default" : false,
+    "default" : true,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
     "hidden" : false,
     "section" : "server",
@@ -325,7 +325,7 @@
     "type" : "string"
   },
   "server.endpoint" : {
-    "default" : "http+tcp://127.0.0.1:8529",
+    "default" : "tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
     "hidden" : false,
     "section" : "server",

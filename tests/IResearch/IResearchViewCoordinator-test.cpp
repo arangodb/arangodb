@@ -40,6 +40,7 @@
 #include "Agency/Store.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
+#include "VocBase/Methods/Indexes.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -258,15 +259,12 @@ SECTION("test_rename") {
 }
 
 SECTION("visit_collections") {
-  auto json = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"properties\": { \"collections\": [1,2,3] } }");
-
+  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
-
-  auto view = arangodb::LogicalView::create(vocbase, json->slice(), false); // false == do not persist
+  auto logicalView = arangodb::LogicalView::create(vocbase, json->slice(), false); // false == do not persist
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchViewCoordinator*>(logicalView.get());
 
   CHECK(nullptr != view);
-  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   CHECK(0 == view->planVersion());
   CHECK("testView" == view->name());
   CHECK(false == view->deleted());
@@ -274,6 +272,10 @@ SECTION("visit_collections") {
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(&vocbase == &view->vocbase());
+
+  CHECK((true == view->emplace(1, "1", arangodb::velocypack::Slice::emptyObjectSlice())));
+  CHECK((true == view->emplace(2, "2", arangodb::velocypack::Slice::emptyObjectSlice())));
+  CHECK((true == view->emplace(3, "3", arangodb::velocypack::Slice::emptyObjectSlice())));
 
   // visit view
   TRI_voc_cid_t expectedCollections[] = {1,2,3};
@@ -355,8 +357,8 @@ SECTION("test_defaults") {
     CHECK(!slice.hasKey("deleted"));
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((3 == slice.length()));
-    CHECK((!slice.hasKey("links")));
+    CHECK((4 == slice.length()));
+    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
     CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
   }
@@ -629,7 +631,7 @@ SECTION("test_update_properties") {
 
     // update properties - full update
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42, \"commitTimeoutMsec\": 50 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 } }");
       CHECK(view->updateProperties(props->slice(), false, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -655,8 +657,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
-        expected._commit._commitIntervalMsec = 42;
-        expected._commit._commitTimeoutMsec = 50;
+        expected._commit._cleanupIntervalStep = 42;
+        expected._commit._commitIntervalMsec = 50;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice().get("properties"), error));
         CHECK(error.empty());
@@ -680,7 +682,7 @@ SECTION("test_update_properties") {
 
     // partially update properties
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitTimeoutMsec\": 42 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42 } }");
       CHECK(fullyUpdatedView->updateProperties(props->slice(), true, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -706,8 +708,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
+        expected._commit._cleanupIntervalStep = 42;
         expected._commit._commitIntervalMsec = 42;
-        expected._commit._commitTimeoutMsec = 42;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice().get("properties"), error));
         CHECK(error.empty());
@@ -901,7 +903,7 @@ SECTION("test_update_links_partial_remove") {
 
     // testCollection2
     {
-      auto const value = linksSlice.get(std::to_string(logicalCollection2->id()));
+      auto const value = linksSlice.get(logicalCollection2->name());
       CHECK(value.isObject());
 
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -1633,7 +1635,7 @@ SECTION("test_update_links_partial_add") {
 
     // testCollection2
     {
-      auto const value = linksSlice.get(std::to_string(logicalCollection2->id()));
+      auto const value = linksSlice.get(logicalCollection2->name());
       CHECK(value.isObject());
 
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -2194,7 +2196,7 @@ SECTION("test_update_links_replace") {
 
     // testCollection2
     {
-      auto const value = linksSlice.get(std::to_string(logicalCollection2->id()));
+      auto const value = linksSlice.get(logicalCollection2->name());
       CHECK(value.isObject());
 
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -2523,7 +2525,7 @@ SECTION("test_update_links_clear") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"locale\": \"en\", \"links\" : {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
@@ -2590,7 +2592,7 @@ SECTION("test_update_links_clear") {
 
     // testCollection2
     {
-      auto const value = linksSlice.get(std::to_string(logicalCollection2->id()));
+      auto const value = linksSlice.get(logicalCollection2->name());
       CHECK(value.isObject());
 
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -2773,7 +2775,7 @@ SECTION("test_update_links_clear") {
     CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
   }
 
-  auto const updateJson = arangodb::velocypack::Parser::fromJson("{}");
+  auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": {}}");
   CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -2805,7 +2807,10 @@ SECTION("test_update_links_clear") {
     info.close();
 
     auto const properties = info.slice().get("properties");
-    CHECK(!properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
+    CHECK((properties.hasKey(arangodb::iresearch::StaticStrings::LinksField)));
+    auto links = properties.get(arangodb::iresearch::StaticStrings::LinksField);
+    CHECK((links.isObject()));
+    CHECK((0 == links.length()));
   }
 
   // test index in testCollection1
@@ -2901,7 +2906,6 @@ SECTION("test_drop_link") {
     REQUIRE(view);
     auto const viewId = std::to_string(view->planId());
     CHECK("42" == viewId);
-    CHECK(TRI_ERROR_BAD_PARAMETER == view->drop(logicalCollection->id()).errorNumber()); // unable to drop nonexistent link
 
     // simulate heartbeat thread (create index in current)
     {
@@ -2967,6 +2971,8 @@ SECTION("test_drop_link") {
       CHECK(expectedMeta == actualMeta);
     }
 
+    TRI_idx_iid_t linkId;
+
     // check indexes
     {
       // get new version from plan
@@ -2974,6 +2980,7 @@ SECTION("test_drop_link") {
       REQUIRE(updatedCollection);
       auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
       CHECK(link);
+      linkId = link->id();
 
       auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
       REQUIRE((false == !index));
@@ -3023,7 +3030,7 @@ SECTION("test_drop_link") {
     }
 
     // drop link
-    CHECK(view->drop(logicalCollection->id()).ok());
+    CHECK((arangodb::methods::Indexes::drop(logicalCollection.get(), arangodb::velocypack::Parser::fromJson(std::to_string(linkId))->slice()).ok()));
     CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion();
     oldView = view;
@@ -3052,7 +3059,10 @@ SECTION("test_drop_link") {
       info.close();
 
       auto const properties = info.slice().get("properties");
-      CHECK(!properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
+      CHECK((properties.hasKey(arangodb::iresearch::StaticStrings::LinksField)));
+      auto links = properties.get(arangodb::iresearch::StaticStrings::LinksField);
+      CHECK((links.isObject()));
+      CHECK((0 == links.length()));
     }
 
     // check indexes

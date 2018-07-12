@@ -1,8 +1,8 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &amp;lt;&amp;lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
 { 
-  "query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", 
-  "count" : true, 
-  "batchSize" : 2 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR u IN unknowncoll LIMIT 2 RETURN u"</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">2</span> 
 }
 EOF
 

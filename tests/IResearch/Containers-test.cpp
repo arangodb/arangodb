@@ -101,9 +101,10 @@ TEST_CASE("ContainersTest", "[iresearch][iresearch-containers]") {
       auto result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
       lock.unlock();
       auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
+      cond_lock.unlock();
       thread.join();
-      CHECK((std::cv_status::no_timeout == result0)); // check only after joining with thread to avoid early exit
-      CHECK((std::cv_status::no_timeout != result1)); // check only after joining with thread to avoid early exit
+      CHECK((std::cv_status::timeout == result0)); // check only after joining with thread to avoid early exit
+      CHECK((std::cv_status::timeout != result1)); // check only after joining with thread to avoid early exit
     }
   }
 

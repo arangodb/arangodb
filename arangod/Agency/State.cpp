@@ -61,6 +61,7 @@ using namespace arangodb::rest;
 State::State()
     : _agent(nullptr),
       _vocbase(nullptr),
+      _ready(false),
       _collectionsChecked(false),
       _collectionsLoaded(false),
       _nextCompactionAfter(0),
@@ -241,6 +242,11 @@ index_t State::logFollower(query_t const& transactions) {
   VPackSlice slices = transactions->slice();
   size_t nqs = slices.length();
 
+  while(!_ready && !_agent->isStopping()) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for state to get ready ...";
+    std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
+  }
+
   MUTEX_LOCKER(logLock, _logLock);
 
   // Check whether we have got a snapshot in the first position:
@@ -340,7 +346,14 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
   LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
   try {
 
-    // _log is never empty, but for now, we leave this Vorsichtsmassnahme:
+    // If we've got a snapshot anything we might have is obsolete, note that
+    // this happens if and only if we decided at the call site that we actually
+    // use the snapshot and we have erased our _log there (see
+    // storeLogFromSnapshot which was called above)!
+    if (_log.empty()) {
+      TRI_ASSERT(gotSnapshot);
+      return 1;
+    }
     index_t lastIndex = _log.back().index;
 
     while (ndups < slices.length()) {
@@ -351,11 +364,11 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
           << idx << " > " << lastIndex << " break.";
         break;
       }
-      term_t trm = slice.get("term").getUInt();
       if (idx < _cur) { // already compacted, treat as equal
         ++ndups;
         continue;
       }
+      term_t trm = slice.get("term").getUInt();
       size_t pos = idx - _cur;  // position in _log
       TRI_ASSERT(pos < _log.size());
       if (idx == _log.at(pos).index && trm != _log.at(pos).term) {
@@ -477,7 +490,7 @@ log_t State::atNoLock(index_t index) const {
     std::string excMessage = 
       std::string(
         "Access beyond the end of the log deque: (last, requested): (") +
-      std::to_string(_cur+_log.size()) + ", " + std::to_string(index);
+      std::to_string(_cur+_log.size()) + ", " + std::to_string(index) + ")";
     LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
     throw std::out_of_range(excMessage);
   }
@@ -494,6 +507,11 @@ int State::checkLog(index_t index, term_t term) const {
 
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
+  // If index above highest entry
+  if (_log.size() > 0 && index > _log.back().index) {
+    return -1;
+  }
+  
   // Catch exceptions and avoid overflow:
   if (index < _cur || index - _cur > _log.size()) {
     return 0;
@@ -580,6 +598,7 @@ log_t State::lastLog() const {
   return _log.back();  
 }
   
+  
 /// Configure with agent
 bool State::configure(Agent* agent) {
   _agent = agent;
@@ -632,6 +651,11 @@ bool State::createCollection(std::string const& name) {
   return true;
 }
 
+
+// Are we ready for action?
+bool State::ready() const { return _ready; }
+
+
 /// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase,
                             QueryRegistry* queryRegistry, bool waitForSync) {
@@ -655,6 +679,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
         log_t(index_t(0), term_t(0), buf, std::string()));
       persist(0, 0, value, std::string());
     }
+    _ready = true;
     return true;
   }
 
@@ -1376,6 +1401,13 @@ index_t State::lastIndex() const {
   MUTEX_LOCKER(mutexLocker, _logLock);
   TRI_ASSERT(!_log.empty());
   return _log.back().index;
+}
+
+// Index of last log entry
+index_t State::firstIndex() const {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  TRI_ASSERT(!_log.empty());
+  return _cur;
 }
 
 /// @brief this method is intended for manual recovery only. It only looks

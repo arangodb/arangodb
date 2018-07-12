@@ -65,7 +65,8 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   bool runString(std::vector<std::string> const& files,
                  std::vector<std::string> const&);
   bool runUnitTests(std::vector<std::string> const& files,
-                    std::vector<std::string> const&);
+                    std::vector<std::string> const& positionals,
+                    std::string const& testFilter);
   bool jslint(std::vector<std::string> const& files);
 
  private:

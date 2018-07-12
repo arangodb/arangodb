@@ -1,11 +1,11 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/lookup-by-keys &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/lookup-by-keys &lt;&lt;EOF
 { 
-  "keys" : [ 
-    "foo", 
-    "bar", 
-    "baz" 
+  <span class="hljs-string">"keys"</span> : [ 
+    <span class="hljs-string">"foo"</span>, 
+    <span class="hljs-string">"bar"</span>, 
+    <span class="hljs-string">"baz"</span> 
   ], 
-  "collection" : "test" 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"test"</span> 
 }
 EOF
 
