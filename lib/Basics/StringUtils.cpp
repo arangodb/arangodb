@@ -1332,9 +1332,6 @@ std::string encodeURIComponent(char const* src, size_t const len){
 }
     
 std::string soundex(std::string const& str){
-    if (str == ""){
-        return "0000";
-    }
     return soundex(str.c_str(), str.size());
 }
     
@@ -1362,13 +1359,20 @@ std::string soundex(char const* src, size_t const len){
     std::string result;
     char previousCode = '\0';
     
+    if (len == 0) {
+        return "0000";
+    }
+    
     result.push_back(::toupper(*src));
     src++;
     
     while (src < end) {
         char currentCode = soundexCode(*src);
-        if (currentCode != '\0' && currentCode != previousCode && result.length() < 4) {
+        if (currentCode != '\0' && currentCode != previousCode) {
             result.push_back(currentCode);
+            if (result.length() >= 4) {
+                break;
+            }
         }
         previousCode = currentCode;
         src++;
