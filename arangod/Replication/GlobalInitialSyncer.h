@@ -42,22 +42,24 @@ class GlobalInitialSyncer final : public InitialSyncer {
   
   /// @brief fetch the server's inventory, public method
   Result inventory(arangodb::velocypack::Builder& builder);
-  
+
  private:
 
+ private:
   /// @brief run method, performs a full synchronization
   /// internal method, may throw exceptions
   arangodb::Result runInternal(bool incremental);
-  
+
   /// @brief check whether the initial synchronization should be aborted
   bool checkAborted();
 
   /// @brief fetch the server's inventory
   Result fetchInventory(arangodb::velocypack::Builder& builder);
-  
-  /// @brief add or remove databases such that the local inventory mirrors the masters
+
+  /// @brief add or remove databases such that the local inventory mirrors the
+  /// masters
   Result updateServerInventory(velocypack::Slice const& masterDatabases);
 };
-}
+}  // namespace arangodb
 
 #endif

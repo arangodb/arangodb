@@ -24,6 +24,7 @@
 #ifndef ARANGOD_UTILS_CURSOR_H
 #define ARANGOD_UTILS_CURSOR_H 1
 
+#include "Aql/ExecutionState.h"
 #include "Basics/Common.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
@@ -31,6 +32,7 @@
 #include <velocypack/Iterator.h>
 
 namespace arangodb {
+
 namespace transaction {
 class Context;
 }
@@ -96,7 +98,26 @@ class Cursor {
 
   virtual std::shared_ptr<transaction::Context> context() const = 0;
 
-  virtual Result dump(velocypack::Builder&) = 0;
+  /**
+   * @brief Dump the cursor result, async version. The caller needs to be contiueable
+   *
+   * @param result The Builder to write the result to
+   * @param continueHandler The function that is posted on scheduler to contiue this execution.
+   *
+   * @return First: ExecutionState either DONE or WAITING. On Waiting we need to free this thread on DONE we have a result.
+   *         Second: Result If State==DONE this contains Error information or NO_ERROR. On NO_ERROR result is filled.
+   */
+  virtual std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result, std::function<void()>& continueHandler) = 0;
+
+  /**
+   * @brief Dump the cursor result. This is guaranteed to return the result in this thread.
+   *
+   * @param result the Builder to write the result to
+   *
+   * @return ErrorResult, if something goes wrong
+   */
+  virtual Result dumpSync(velocypack::Builder& result) = 0;
 
  protected:
   CursorId const _id;

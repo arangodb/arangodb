@@ -40,14 +40,12 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
   if (!idx->canUseConditionPart(access, other, op, reference,
-                                 nonNullAttributes, isExecution)) {
+                                nonNullAttributes, isExecution)) {
     return false;
   }
   
   arangodb::aql::AstNode const* what = access;
-  std::pair<arangodb::aql::Variable const*,
-  std::vector<arangodb::basics::AttributeName>>
-  attributeData;
+  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
   
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     if (!what->isAttributeAccessForVariable(attributeData) ||
@@ -55,8 +53,7 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
       // this access is not referencing this collection
       return false;
     }
-    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
-                                                          attributeData.second)) {
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
     }
@@ -72,8 +69,7 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
     
     if (what->isAttributeAccessForVariable(attributeData) &&
         attributeData.first == reference &&
-        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
-                                                           attributeData.second) &&
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
         idx->attributeMatches(attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
@@ -94,8 +90,7 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
     }
   }
   
-  std::vector<arangodb::basics::AttributeName> const& fieldNames =
-  attributeData.second;
+  std::vector<arangodb::basics::AttributeName> const& fieldNames = attributeData.second;
   
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     if (idx->fields()[i].size() != fieldNames.size()) {
@@ -143,6 +138,7 @@ void SkiplistIndexAttributeMatcher::matchAttributes(
     auto op = node->getMember(i);
     
     switch (op->type) {
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
@@ -182,7 +178,7 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
   matchAttributes(idx, node, reference, found, values, nonNullAttributes, false);
-  
+ 
   bool lastContainsEquality = true;
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;

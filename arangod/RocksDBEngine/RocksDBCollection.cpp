@@ -33,7 +33,6 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
-#include "Cluster/CollectionLockState.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -453,9 +452,11 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-
+  if (!newIdx) {
+    return TRI_ERROR_ARANGO_INDEX_NOT_FOUND;
+  }
+  
   TRI_ASSERT(newIdx != nullptr);
-
   auto const id = newIdx->id();
 
   TRI_UpdateTickServer(id);

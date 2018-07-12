@@ -41,9 +41,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Scheduler/Job.h"
 #include "Scheduler/JobGuard.h"
-#include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Socket.h"
@@ -71,8 +69,8 @@ GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
                                  ConnectionInfo&& info, double keepAliveTimeout,
                                  bool skipSocketInit)
     : Task(scheduler, "GeneralCommTask"),
-      SocketTask(scheduler, std::move(socket), std::move(info), keepAliveTimeout,
-                 skipSocketInit),
+      SocketTask(scheduler, std::move(socket), std::move(info),
+                 keepAliveTimeout, skipSocketInit),
       _server(server),
       _auth(nullptr) {
   _auth = application_features::ApplicationServer::getFeature<
@@ -136,16 +134,21 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     GeneralRequest& req) {
-  if (!::resolveRequestContext(req)) {
+  if (!::resolveRequestContext(req)) { // false if db not found
     if (_auth->isActive()) {
-      // prevent guessing of database names (issue #5030)
-      addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
-                       req.contentTypeResponse(), req.messageId(),
-                       TRI_ERROR_FORBIDDEN);
-    } else {
-      addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                       req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      // prevent guessing database names (issue #5030)
+      auth::Level lvl = auth::Level::NONE;
+      if (req.authenticated()) {
+        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+      }
+      if (lvl == auth::Level::NONE) {
+        addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                         req.messageId(), TRI_ERROR_FORBIDDEN);
+        return RequestFlow::Abort;
+      }
     }
+    addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return RequestFlow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
@@ -417,59 +420,16 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  int const queuePrio = handler->queue();
-  bool isDirect = false;
-  bool isPrio = false;
-
-  // Strand implementations may cause everything to halt
-  // if we handle AQL snippets directly on the network thread
-  if (queuePrio == JobQueue::AQL_QUEUE) {
-    isPrio = true;
-  } else if (handler->isDirect()) {
-    isDirect = true;
-  } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
-             _scheduler->shouldExecuteDirect()) {
-    isDirect = true;
-  } else if (ServerState::instance()->isDBServer()) {
-    isPrio = true;
-  } else if (handler->needsOwnThread()) {
-    isPrio = true;
-  }
-
-  if (isDirect && !allowDirectHandling()) {
-    isDirect = false;
-    isPrio = true;
-  }
-
-  if (isDirect) {
-    TRI_ASSERT(handler->queue() !=
-               JobQueue::AQL_QUEUE);  // not allowed with strands
-    handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
-                          std::move(handler));
-    return true;
-  }
-
+  auto const lane = handler->lane();
   auto self = shared_from_this();
 
-  if (isPrio) {
-    _scheduler->post([self, this, handler]() {
-      handleRequestDirectly(basics::ConditionalLocking::DoLock,
-                            std::move(handler));
-    });
-    return true;
-  }
+  bool ok = SchedulerFeature::SCHEDULER->queue(PriorityRequestLane(lane), [self, this, handler]() {
+    handleRequestDirectly(basics::ConditionalLocking::DoLock,
+                          std::move(handler));
+  });
 
-  // ok, we need to queue the request
-  LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
-  auto job = std::make_unique<Job>(
-      _server, std::move(handler),
-      [self, this](std::shared_ptr<RestHandler> h) {
-        handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
-      });
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
@@ -484,18 +444,18 @@ void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
-  handler->runHandler([this, doLock](rest::RestHandler* handler) {
+  auto self = shared_from_this();
+  handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
-    if (doLock) {
-      auto self = shared_from_this();
+    if (doLock || !_peer->runningInThisThread()) {
+      // Note that the latter is for the case that a handler was put to sleep
+      // and woke up in a different thread.
       auto h = handler->shared_from_this();
 
-      _peer->post([self, this, stat, h]() {
-        addResponse(*(h->response()), stat);
-      });
+      _peer->post(
+          [self, this, stat, h]() { addResponse(*(h->response()), stat); });
     } else {
-      TRI_ASSERT(_peer->runningInThisThread());
       addResponse(*handler->response(), stat);
     }
   });
@@ -505,25 +465,23 @@ void GeneralCommTask::handleRequestDirectly(
 bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                          uint64_t* jobId) {
   auto self = shared_from_this();
+
   if (jobId != nullptr) {
-    // use the handler id as identifier
     *jobId = handler->handlerId();
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
+
     // callback will persist the response with the AsyncJobManager
-    auto job = std::make_unique<Job>(
-        _server, std::move(handler), [self](std::shared_ptr<RestHandler> h) {
-          h->runHandler([self](RestHandler* h) {
+    return SchedulerFeature::SCHEDULER->queue(
+        PriorityRequestLane(handler->lane()), [self, handler] {
+          handler->runHandler([](RestHandler* h) {
             GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
           });
         });
-    return SchedulerFeature::SCHEDULER->queue(std::move(job));
   } else {
     // here the response will just be ignored
-    auto job = std::make_unique<Job>(_server, std::move(handler),
-                                     [self](std::shared_ptr<RestHandler> h) {
-                                       h->runHandler([](RestHandler* h) {});
-                                     });
-    return SchedulerFeature::SCHEDULER->queue(std::move(job));
+    return SchedulerFeature::SCHEDULER->queue(
+      PriorityRequestLane(handler->lane()),
+        [self, handler] { handler->runHandler([](RestHandler*) {}); });
   }
 }
 

@@ -10,7 +10,7 @@ New and eager to try out ArangoDB? Start right away with our beginner's guide:
 
 **Structure**
 
-The documentation is organized in four handbooks:
+The documentation is organized in five handbooks:
 
 - This manual describes ArangoDB and its features in detail for you as a user,
   developer and administrator.
@@ -21,6 +21,9 @@ The documentation is organized in four handbooks:
   the language of your choice, you can skip this handbook.
 - Our [Cookbook](../Cookbook/index.html) with recipes for specific problems and
   solutions.
+- The [Driver handbook](../Drivers/index.html) includes the documentation of the
+  available official ArangoDB drivers and integrations, and an overview of the community
+  drivers.
 
 Features are illustrated with interactive usage examples; you can cut'n'paste them
 into [arangosh](Programs/Arangosh/README.md) to try them out. The HTTP
