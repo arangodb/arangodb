@@ -77,6 +77,7 @@ std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const Names
   { "ReturnBlock",                 arangodb::aql::ExecutionBlock::Type::RETURN},
   { "ShortestPathBlock",           arangodb::aql::ExecutionBlock::Type::SHORTEST_PATH},
   { "SingletonBlock",              arangodb::aql::ExecutionBlock::Type::SINGLETON},
+  { "SingleOperationBlock",        arangodb::aql::ExecutionBlock::Type::SINGLEOPERATION},
   { "SortBlock",                   arangodb::aql::ExecutionBlock::Type::SORT},
   { "SortedCollectBlock",          arangodb::aql::ExecutionBlock::Type::SORTED_COLLECT},
   { "SortingGatherBlock",          arangodb::aql::ExecutionBlock::Type::SORTING_GATHER},

@@ -1,6 +1,9 @@
 devel
 -----
 
+* PR5857: rocksdb engine would frequently request a new DelayToken.  This caused
+  excessive write delay on the next Put() call.  Alternate approach taken.
+
 * changed the thread handling in the scheduler. `--server.threads` will be
   the maximum number of threads for the scheduler.
 
@@ -12,6 +15,14 @@ devel
 
 * use sparse indexes in more cases now, when it is clear that the index attribute
   value cannot be null
+
+* introduce SingleRemoteOperationNode via "optimize-cluster-single-document-operations"
+  optimizer rule, which triggers single document operations directly from the coordinator 
+  instead of using a full-featured AQL setup. This saves cluster roundtrips.
+
+  Queries directly referencing the document key benefit from this:
+
+	    UPDATE {_key: '1'} WITH {foo: 'bar'} IN collection RETURN OLD
 
 * Added load balancer support and user-restriction to cursor API.
 

@@ -46,6 +46,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -376,7 +379,7 @@ bool ScatterBlock::hasMoreForClientId(size_t clientId) {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  
+
   return hasMoreForClientId(getClientId(shardId));
 
   // cppcheck-suppress style
@@ -587,7 +590,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
     }
     return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
   }
-  
+
   BlockCollector collector(&_engine->_itemBlockManager);
   std::vector<size_t> chosen;
 
@@ -951,9 +954,9 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
   if (!_ownName.empty()) {
     headers.emplace("Shard-Id", _ownName);
   }
-    
+
   std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
@@ -975,12 +978,12 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
     // do nothing...
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-  
+
   if (items == nullptr) {
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  } 
+  }
 
   if (_lastResponse != nullptr || _lastError.fail()) {
     // We have an open result still.
@@ -1000,7 +1003,7 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
 
   VPackBuilder builder(&options);
   builder.openObject();
- 
+
   // Backwards Compatibility 3.3
   builder.add("exhausted", VPackValue(false));
   // Used in 3.4.0 onwards
@@ -1011,7 +1014,7 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
   builder.openObject();
   items->toVelocyPack(_engine->getQuery()->trx(), builder);
   builder.close();
-  
+
   builder.close();
 
   auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
@@ -1123,7 +1126,7 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  
+
   traceGetSomeBegin(atMost);
 
   if (_lastError.fail()) {
@@ -1656,6 +1659,307 @@ std::pair<ExecutionState, bool> SortingGatherBlock::getBlocks(size_t i,
 
   return {state, blockAppended};
 
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief timeout
+double const SingleRemoteOperationBlock::defaultTimeOut = 3600.0;
+
+/// @brief creates a remote block
+SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
+                                                       SingleRemoteOperationNode const* en
+                                                       )
+    : ExecutionBlock(engine, static_cast<ExecutionNode const*>(en)),
+      _collection(en->collection()),
+      _key(en->key())
+{
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+}
+
+namespace {
+std::unique_ptr<VPackBuilder>
+merge(VPackSlice document, std::string const& key, TRI_voc_rid_t revision){
+  auto builder = std::make_unique<VPackBuilder>() ;
+  {
+    VPackObjectBuilder guard(builder.get());
+    TRI_SanitizeObject(document, *builder);
+    VPackSlice keyInBody = document.get(StaticStrings::KeyString);
+
+    if (keyInBody.isNone() ||
+        keyInBody.isNull() ||
+        (keyInBody.isString() && keyInBody.copyString() != key) ||
+        ((revision != 0) && (TRI_ExtractRevisionId(document) != revision))
+        ) {
+      // We need to rewrite the document with the given revision and key:
+      builder->add(StaticStrings::KeyString, VPackValue(key));
+      if (revision != 0) {
+        builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
+      }
+    }
+  }
+  return builder;
+}
+}
+
+bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
+                                        size_t outputCounter) {
+  int possibleWrites = 0; // TODO - get real statistic values!
+  auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
+  auto out = node->_outVariable;
+  auto in = node->_inVariable;
+  auto OLD = node->_outVariableOld;
+  auto NEW = node->_outVariableNew;
+
+
+  RegisterId inRegId  = ExecutionNode::MaxRegisterId;
+  RegisterId outRegId = ExecutionNode::MaxRegisterId;
+  RegisterId oldRegId = ExecutionNode::MaxRegisterId;
+  RegisterId newRegId = ExecutionNode::MaxRegisterId;
+
+  if(in != nullptr) {
+    auto itIn = node->getRegisterPlan()->varInfo.find(in->id);
+    TRI_ASSERT(itIn != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+    inRegId = (*itIn).second.registerId;
+  }
+
+  if(_key.empty() && (in == nullptr)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "missing document reference");
+  }
+
+  if(out != nullptr) {
+    auto itOut = node->getRegisterPlan()->varInfo.find(out->id);
+    TRI_ASSERT(itOut != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+    outRegId = (*itOut).second.registerId;
+  }
+
+  if(OLD != nullptr) {
+    auto itOld = node->getRegisterPlan()->varInfo.find(OLD->id);
+    TRI_ASSERT(itOld != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itOld).second.registerId < ExecutionNode::MaxRegisterId);
+    oldRegId = (*itOld).second.registerId;
+  }
+
+  if(NEW != nullptr) {
+    auto itNew = node->getRegisterPlan()->varInfo.find(NEW->id);
+    TRI_ASSERT(itNew != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itNew).second.registerId < ExecutionNode::MaxRegisterId);
+    newRegId = (*itNew).second.registerId;
+  }
+
+  VPackBuilder inBuilder;
+  VPackSlice inSlice = VPackSlice::emptyObjectSlice();
+  if(in) {// IF NOT REMOVE OR SELECT
+    if (_buffer.size() < 1) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "missing document reference in Register");
+    }
+    AqlValue const& inDocument = _buffer.front()->getValueReference(_pos, inRegId);
+    inBuilder.add(inDocument.slice());
+    inSlice = inBuilder.slice();
+  }
+
+  auto const& nodeOps = node->_options;
+
+  OperationOptions opOptions;
+  opOptions.ignoreRevs = nodeOps.ignoreRevs;
+  opOptions.keepNull = !nodeOps.nullMeansRemove;
+  opOptions.mergeObjects = nodeOps.mergeObjects;
+  opOptions.returnNew = !!NEW;
+  opOptions.returnOld = !!OLD;
+  opOptions.waitForSync = nodeOps.waitForSync;
+  opOptions.silent = false;
+  opOptions.overwrite = nodeOps.overwrite;
+
+  std::unique_ptr<VPackBuilder> mergedBuilder;
+  if(!_key.empty()){
+    mergedBuilder = merge(inSlice, _key, 0);
+    inSlice = mergedBuilder->slice();
+  }
+
+  OperationResult result;
+  if(node->_mode == ExecutionNode::NodeType::INDEX) {
+    result = _trx->document(_collection->name(), inSlice, opOptions);
+  } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
+    if(opOptions.returnOld && !opOptions.overwrite){
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
+                                     "OLD is only available when using INSERT with the overwrite option");
+    }
+    result = _trx->insert(_collection->name(), inSlice, opOptions);
+    possibleWrites = 1;
+  } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
+    result = _trx->remove(_collection->name(), inSlice , opOptions);
+    possibleWrites = 1;
+  } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
+    if (node->_replaceIndexNode && (in == nullptr)) {
+      // we have a FOR .. IN FILTER doc._key == ... REPLACE - no WITH.
+      // in this case replace needs to behave as if it was UPDATE.
+      result = _trx->update(_collection->name(), inSlice, opOptions);
+    } else {
+      result = _trx->replace(_collection->name(), inSlice, opOptions);
+    }
+    possibleWrites = 1;
+  } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
+    result = _trx->update(_collection->name(), inSlice, opOptions);
+    possibleWrites = 1;
+  }
+
+  // check operation result
+  if (!result.ok()) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+        (( node->_mode == ExecutionNode::NodeType::INDEX) ||
+         ( node->_mode == ExecutionNode::NodeType::UPDATE && node->_replaceIndexNode) ||
+         ( node->_mode == ExecutionNode::NodeType::REMOVE && node->_replaceIndexNode) ||
+         ( node->_mode == ExecutionNode::NodeType::REPLACE && node->_replaceIndexNode) ))
+      {
+        // document not there is not an error in this situation.
+        // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
+        return false;
+      } else if (!nodeOps.ignoreErrors){ // TODO remove if
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+    }
+
+    if (node->_mode == ExecutionNode::NodeType::INDEX) {
+      return false;
+    }
+  }
+
+  _engine->_stats.writesExecuted += possibleWrites;
+  _engine->_stats.scannedIndex++;
+
+  if (!(out || OLD || NEW)) {
+    return node->hasParent();
+  }
+
+  // Fill itemblock
+  // create block that can hold a result with one entry and a number of variables
+  // corresponding to the amount of out variables
+
+  // only copy 1st row of registers inherited from previous frame(s)
+  TRI_ASSERT(result.ok());
+  VPackSlice outDocument = VPackSlice::noneSlice();
+  if(result.buffer){
+    outDocument = result.slice().resolveExternal();
+  }
+
+  VPackSlice oldDocument = VPackSlice::noneSlice();
+  VPackSlice newDocument = VPackSlice::noneSlice();
+  if(outDocument.isObject()) {
+    if(outDocument.hasKey("old")){
+      oldDocument = outDocument.get("old");
+    }
+    if(outDocument.hasKey("new")){
+      newDocument = outDocument.get("new");
+    }
+  }
+
+  // place documents as in the outi variable slots of the result
+  bool aqlValueSet = false;
+  if(out) {
+    if(!outDocument.isNone()){
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+    } else {
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
+    }
+    aqlValueSet = true;
+  }
+  if(OLD) {
+    TRI_ASSERT(opOptions.returnOld);
+    if(!oldDocument.isNone()){
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
+    } else {
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
+    }
+    aqlValueSet = true;
+  }
+  if(NEW) {
+    TRI_ASSERT(opOptions.returnNew);
+    if(!newDocument.isNone()){
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
+    } else {
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
+    }
+    aqlValueSet = true;
+  }
+  throwIfKilled();  // check if we were aborted
+
+  TRI_IF_FAILURE("SingleRemoteOperationBlock::moreDocuments") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  if(!aqlValueSet) {
+    return false;
+  }
+  return true;
+}
+
+/// @brief getSome
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SingleRemoteOperationBlock::getSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin(atMost);
+
+  if (_done) {
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return { ExecutionState::DONE, nullptr};
+  }
+
+  RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  std::unique_ptr<AqlItemBlock> aqlres(requestBlock(atMost, nrRegs));
+
+  int outputCounter = 0;
+  if (_buffer.empty()) {
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+    ExecutionState state = ExecutionState::HASMORE;
+    bool blockAppended = false;
+
+    std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+    if(state == ExecutionState::WAITING) {
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+      return {state, nullptr};
+    }
+    if (!blockAppended) {
+      _done = true;
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
+      return { ExecutionState::DONE, nullptr};
+    }
+    _pos = 0;  // this is in the first block
+  }
+
+  // If we get here, we do have _buffer.front()
+  arangodb::aql::AqlItemBlock* cur = _buffer.front();
+  TRI_ASSERT(cur != nullptr);
+  size_t n = cur->size();
+  for (size_t i = 0; i < n; i++) {
+    inheritRegisters(cur, aqlres.get(), _pos);
+    if (getOne(aqlres.get(), outputCounter)) {
+      outputCounter++;
+    }
+    _done = true;
+    _pos++;
+  }
+  _buffer.pop_front();  // does not throw
+  returnBlock(cur);
+  _pos = 0;
+  if (outputCounter == 0) {
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return { ExecutionState::DONE, nullptr};
+  }
+  aqlres->shrink(outputCounter);
+
+  // Clear out registers no longer needed later:
+  clearRegisters(aqlres.get());
+  traceGetSomeEnd(aqlres.get(), ExecutionState::DONE);
+  return { ExecutionState::DONE, std::move(aqlres) };
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief skipSome
+std::pair<ExecutionState, size_t> SingleRemoteOperationBlock::skipSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+
+  TRI_ASSERT(false); // as soon as we need to support LIMIT change me.
+  return { ExecutionState::DONE, 0};
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
