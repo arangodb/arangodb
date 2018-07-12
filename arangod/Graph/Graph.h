@@ -42,13 +42,13 @@ namespace graph {
 class EdgeDefinition {
  public:
   EdgeDefinition(std::string edgeCollection_,
-                 std::unordered_set<std::string>&& from_,
-                 std::unordered_set<std::string>&& to_)
+                 std::set<std::string>&& from_,
+                 std::set<std::string>&& to_)
       : _edgeCollection(std::move(edgeCollection_)), _from(from_), _to(to_) {}
 
   std::string const& getName() const { return _edgeCollection; }
-  std::unordered_set<std::string> const& getFrom() const { return _from; }
-  std::unordered_set<std::string> const& getTo() const { return _to; }
+  std::set<std::string> const& getFrom() const { return _from; }
+  std::set<std::string> const& getTo() const { return _to; }
 
   // TODO implement these
   bool isFrom(std::string const& vertexCollection) const;
@@ -69,8 +69,8 @@ class EdgeDefinition {
 
  private:
   std::string _edgeCollection;
-  std::unordered_set<std::string> _from;
-  std::unordered_set<std::string> _to;
+  std::set<std::string> _from;
+  std::set<std::string> _to;
 };
 
 class Graph {
@@ -90,7 +90,7 @@ class Graph {
   std::unordered_set<std::string> _vertexColls;
 
   /// @brief the cids of all orphanCollections
-  std::unordered_set<std::string> _orphanColls;
+  std::set<std::string> _orphanColls;
 
   /// @brief the cids of all edgeCollections
   std::unordered_set<std::string> _edgeColls;
@@ -99,7 +99,7 @@ class Graph {
   std::vector<std::string> _edgeDefsNames;
 
   /// @brief edge definitions of this graph
-  std::unordered_map<std::string, EdgeDefinition> _edgeDefs;
+  std::map<std::string, EdgeDefinition> _edgeDefs;
 
   /// @brief state if smart graph enabled
   bool _isSmart;
@@ -134,13 +134,13 @@ class Graph {
   std::unordered_set<std::string> const& vertexCollections() const;
 
   /// @brief get the cids of all orphanCollections
-  std::unordered_set<std::string> const& orphanCollections() const;
+	const std::set<std::string> & orphanCollections() const;
 
   /// @brief get the cids of all edgeCollections
   std::unordered_set<std::string> const& edgeCollections() const;
 
   /// @brief get the cids of all edgeCollections
-  std::unordered_map<std::string, EdgeDefinition> const& edgeDefinitions()
+  std::map<std::string, EdgeDefinition> const& edgeDefinitions()
       const;
 
   /// @brief get the cids of all edgeCollections

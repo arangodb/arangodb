@@ -174,8 +174,8 @@ bool GraphManager::renameGraphCollection(std::string oldName, std::string newNam
     for (auto const& sGED : graph->edgeDefinitions()) {
       builder.openObject();
       std::string col = sGED.first;
-      std::unordered_set<std::string> froms = sGED.second.getFrom();
-      std::unordered_set<std::string> tos = sGED.second.getTo();
+      std::set<std::string> froms = sGED.second.getFrom();
+      std::set<std::string> tos = sGED.second.getTo();
 
       if (col != oldName) {
         builder.add("collection", VPackValue(col));

@@ -78,7 +78,7 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
   Graph graphCurrent = arangodb::graph::Graph(
       graph.get(StaticStrings::KeyString).copyString(), graph);
 
-  std::unordered_map<std::string, EdgeDefinition> edgeDefs =
+  std::map<std::string, EdgeDefinition> edgeDefs =
       graphCurrent.edgeDefinitions();
 
   // replace edgeDefinition
@@ -208,7 +208,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
 
   std::unordered_set<std::string> possibleOrphans;
   std::unordered_set<std::string> usedVertexCollections;
-  std::unordered_map<std::string, EdgeDefinition> edgeDefs =
+  std::map<std::string, EdgeDefinition> edgeDefs =
       _graph.edgeDefinitions();
 
   VPackBuilder newEdgeDefs;
@@ -395,13 +395,13 @@ OperationResult GraphOperations::editEdgeDefinition(
     return OperationResult(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
   }
 
-  std::unordered_map<std::string, EdgeDefinition> edgeDefs =
+  std::map<std::string, EdgeDefinition> edgeDefs =
       _graph.edgeDefinitions();
   EdgeDefinition const& currentEdgeDefinition =
       edgeDefs.at(currentEdgeDefinitionName);
 
-  std::unordered_set<std::string> currentCollections;
-  std::unordered_set<std::string> newCollections;
+  std::set<std::string> currentCollections;
+  std::set<std::string> newCollections;
   for (auto const& from : currentEdgeDefinition.getFrom()) {
     currentCollections.emplace(from);
   }
@@ -582,7 +582,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
 OperationResult GraphOperations::eraseOrphanCollection(
     bool waitForSync, std::string collectionName, bool dropCollection) {
   // check if collection exists within the orphan collections
-  std::unordered_set<std::string> orphanCollections =
+  std::set<std::string> orphanCollections =
           _graph.orphanCollections();
 
   bool found = false;
@@ -656,8 +656,13 @@ OperationResult GraphOperations::eraseOrphanCollection(
 
 OperationResult GraphOperations::addEdgeDefinition(
     VPackSlice edgeDefinitionSlice, bool waitForSync) {
+	std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
+					EdgeDefinition::sortEdgeDefinition(edgeDefinitionSlice);
+	edgeDefinitionSlice = velocypack::Slice(buffer->data());
+
   auto edgeDefOrError = ResultT<EdgeDefinition>{
       EdgeDefinition::createFromVelocypack(edgeDefinitionSlice)};
+
 
   if (edgeDefOrError.fail()) {
     return OperationResult{edgeDefOrError.copy_result()};
@@ -694,8 +699,9 @@ OperationResult GraphOperations::addEdgeDefinition(
   if (result.fail()) {
     return result;
   }
+  std::unordered_set<std::string> usedVertices;
 
-  std::unordered_map<std::string, EdgeDefinition> edgeDefs =
+  std::map<std::string, EdgeDefinition> edgeDefs =
       _graph.edgeDefinitions();
   // build the updated document, reuse the builder
   builder.clear();
@@ -709,12 +715,14 @@ OperationResult GraphOperations::addEdgeDefinition(
     // from
     builder.add("from", VPackValue(VPackValueType::Array));
     for (auto const& from : it.second.getFrom()) {
+      usedVertices.emplace(from);
       builder.add(VPackValue(from));
     }
     builder.close();  // from
     // to
     builder.add("to", VPackValue(VPackValueType::Array));
     for (auto const& to : it.second.getTo()) {
+      usedVertices.emplace(to);
       builder.add(VPackValue(to));
     }
     builder.close();  // to
@@ -722,6 +730,17 @@ OperationResult GraphOperations::addEdgeDefinition(
   }
   builder.add(edgeDefinitionSlice);
   builder.close();  // array
+
+  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
+  for (auto const& orphan : _graph.orphanCollections()) {
+    auto it = usedVertices.find(orphan);
+    if (it != usedVertices.end()) {
+      // not found, so use in orphans
+      builder.add(VPackValue(orphan));
+    }
+  }
+  builder.close();  // array
+
   builder.close();  // object
 
   Result res;

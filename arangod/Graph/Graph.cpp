@@ -71,7 +71,7 @@ std::unordered_set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;
 }
 
-std::unordered_set<std::string> const& Graph::orphanCollections() const {
+const std::set<std::string> & Graph::orphanCollections() const {
   return _orphanColls;
 }
 
@@ -83,7 +83,7 @@ std::vector<std::string> const& Graph::edgeDefinitionNames() const {
   return _edgeDefsNames;
 }
 
-std::unordered_map<std::string, EdgeDefinition> const& Graph::edgeDefinitions()
+std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions()
     const {
   return _edgeDefs;
 }
@@ -297,8 +297,8 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(
   VPackSlice from = edgeDefinition.get(StaticStrings::GraphFrom);
   VPackSlice to = edgeDefinition.get(StaticStrings::GraphTo);
 
-  std::unordered_set<std::string> fromSet;
-  std::unordered_set<std::string> toSet;
+  std::set<std::string> fromSet;
+  std::set<std::string> toSet;
 
   // duplicates in from and to shouldn't occur, but are safely ignored here
   for (auto const& it : VPackArrayIterator(from)) {
@@ -442,6 +442,7 @@ void Graph::graphToVpack(VPackBuilder& builder) const {
 
   builder.close();  // object
   builder.close();  // object
+
 }
 
 void Graph::edgesToVpack(VPackBuilder& builder) const {
