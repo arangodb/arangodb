@@ -429,28 +429,27 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 
 /// @brief drops a collection
 /*static */ bool TRI_vocbase_t::DropCollectionCallback(
-    arangodb::LogicalCollection* collection) {
-  std::string const name(collection->name());
-
+    arangodb::LogicalCollection& collection
+) {
   {
-    WRITE_LOCKER_EVENTUAL(statusLock, collection->_lock);
+    WRITE_LOCKER_EVENTUAL(statusLock, collection._lock);
 
-    if (collection->status() != TRI_VOC_COL_STATUS_DELETED) {
+    if (TRI_VOC_COL_STATUS_DELETED != collection.status()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "someone resurrected the collection '" << name << "'";
+          << "someone resurrected the collection '" << collection.name() << "'";
       return false;
     }
   }  // release status lock
 
   // remove from list of collections
-  auto& vocbase = collection->vocbase();
+  auto& vocbase = collection.vocbase();
 
   {
     RECURSIVE_WRITE_LOCKER(vocbase._dataSourceLock, vocbase._dataSourceLockWriteOwner);
     auto it = vocbase._collections.begin();
 
     for (auto end = vocbase._collections.end(); it != end; ++it) {
-      if (it->get() == collection) {
+      if (it->get() == &collection) {
         break;
       }
     }
@@ -468,7 +467,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
     }
   }
 
-  collection->drop();
+  collection.drop();
 
   return true;
 }
@@ -800,7 +799,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       TRI_ASSERT(engine != nullptr);
       engine->dropCollection(*this, *collection);
 
-      DropCollectionCallback(collection);
+      DropCollectionCallback(*collection);
       break;
     }
     case TRI_VOC_COL_STATUS_LOADED:
@@ -1326,7 +1325,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
 
     if (state == DROP_PERFORM) {
       if (engine->inRecovery()) {
-        DropCollectionCallback(collection);
+        DropCollectionCallback(*collection);
       } else {
         collection->deferDropCollection(DropCollectionCallback);
         engine->signalCleanup(collection->vocbase()); // wake up the cleanup thread
