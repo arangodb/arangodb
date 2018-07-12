@@ -24,12 +24,12 @@ After creating the `RECOVERY` file, start the _Starter_ using all the normal com
 line arguments.
 
 The _Starter_ will now:
-1) Talk to the remaining _Starters_ to find the ID of the _Starter_ it replaces and
+1. Talk to the remaining _Starters_ to find the ID of the _Starter_ it replaces and
    use that ID to join the remaining _Starters_.
-1) Talk to the remaining _Agents_ to find the ID of the _Agent_ it replaces and
+1. Talk to the remaining _Agents_ to find the ID of the _Agent_ it replaces and
    adjust the command-line arguments of the _Agent_ (it will start) to use that ID.
    This is skipped if the _Starter_ was not running an _Agent_.
-1) Remove the `RECOVERY` file from the data directory.
+1. Remove the `RECOVERY` file from the data directory.
 
 The cluster will now recover automatically. It will however have one more _Coordinators_ 
 and _DBServers_ than expected. Exactly one _Coordinator_ and one _DBServer_ will
