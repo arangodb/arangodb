@@ -1,6 +1,9 @@
 v3.3.12 (XXXX-XX-XX)
 --------------------
 
+* fixed graph creation under some circumstances failing with 'edge collection
+  already used in edge def' despite the edge definitions being identical
+
 * fixed issue #5727: Edge document with user provided key is inserted as many
   times as the number of shards, violating the primary index
 
