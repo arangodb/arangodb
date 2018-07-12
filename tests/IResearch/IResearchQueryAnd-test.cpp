@@ -355,7 +355,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.same == 'xyz' AND PHRASE(d['duplicated'], 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER d.same == 'xyz' AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -402,7 +402,54 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER NOT PHRASE(d['duplicated'], 'z', 'test_analyzer') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER NOT ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // not phrase and field
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(),
+      insertedDocs[9].slice(),
+      insertedDocs[10].slice(),
+      insertedDocs[11].slice(),
+      insertedDocs[12].slice(),
+      insertedDocs[14].slice(),
+      insertedDocs[15].slice(),
+      insertedDocs[16].slice(),
+      insertedDocs[17].slice(),
+      insertedDocs[18].slice(),
+      insertedDocs[20].slice(),
+      insertedDocs[21].slice(),
+      insertedDocs[23].slice(),
+      insertedDocs[25].slice(),
+      insertedDocs[26].slice(),
+      insertedDocs[27].slice(),
+      insertedDocs[28].slice(),
+      insertedDocs[30].slice(),
+      insertedDocs[31].slice(),
+      insertedDocs[32].slice(),
+      insertedDocs[33].slice(),
+      insertedDocs[34].slice(),
+      insertedDocs[35].slice(),
+      insertedDocs[36].slice(),
+      insertedDocs[37].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(NOT PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -577,7 +624,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', 'test_analyzer') AND NOT (d.same == 'abc') AND EXISTS(d['prefix']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND EXISTS(d['prefix']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -649,7 +696,30 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER EXISTS(d.name) AND NOT STARTS_WITH(d['prefix'], 'abc') AND PHRASE(d['duplicated'], 'z', 'test_analyzer') AND NOT (d.same == 'abc') AND d.seq >= 23 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER EXISTS(d.name) AND NOT STARTS_WITH(d['prefix'], 'abc') AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND d.seq >= 23 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // exists and not prefix and phrase and not field and range
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[29].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER EXISTS(d.name) AND NOT STARTS_WITH(d['prefix'], 'abc') AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND d.seq >= 23 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();

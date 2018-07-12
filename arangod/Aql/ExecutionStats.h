@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_EXECUTION_STATS_H 1
 
 #include "Basics/Common.h"
+#include "ExecutionBlock.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -46,7 +47,10 @@ struct ExecutionStats {
     size_t calls = 0;
     size_t items = 0;
     double runtime = 0;
+    ExecutionBlock::Type type = ExecutionBlock::Type::_UNDEFINED;
     ExecutionStats::Node& operator+=(ExecutionStats::Node const& other) {
+      // both operands should be the same block type
+      TRI_ASSERT(type == other.type);
       calls += other.calls;
       items += other.items;
       runtime += other.runtime;

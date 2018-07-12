@@ -150,7 +150,7 @@ No log events available
     logRawResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
-A few log events
+A few log events *(One JSON document per line)*
 
 @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowSome}
     var re = require("@arangodb/replication");
@@ -171,7 +171,7 @@ A few log events
 
     assert(response.code === 200);
 
-    logRawResponse(response);
+    logJsonLResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
 More events than would fit into the response
@@ -195,7 +195,7 @@ More events than would fit into the response
 
     assert(response.code === 200);
 
-    logRawResponse(response);
+    logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

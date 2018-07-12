@@ -704,10 +704,8 @@ AstNode* Ast::createNodeAccess(Variable const* variable,
                                std::vector<basics::AttributeName> const& field) {
   TRI_ASSERT(!field.empty());
   AstNode* node = createNodeReference(variable);
-  for (size_t i = field.size(); i != 0; i--) {
-    //if (field[i-1].shouldExpand) TODO not supported probably
-    node = createNodeAttributeAccess(node, field[i-1].name.c_str(),
-                                     field[i-1].name.length());
+  for (auto const& it : field) {
+    node = createNodeAttributeAccess(node, it.name.data(), it.name.size());
   }
   return node;
 }
@@ -787,7 +785,9 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
   node->addMember(lhs);
   node->addMember(rhs);
 
-  // initialize sortedness information (currently used for the IN operator only)
+  // initialize sortedness information (currently used for the IN/NOT IN operators only)
+  // for nodes of type ==, < or <=, the bool means if the range definitely excludes the "null" value
+  // the default value for this is false.
   node->setBoolValue(false);
 
   return node;
@@ -2408,6 +2408,11 @@ AstNode* Ast::clone(AstNode const* node) {
     copy->setIntValue(node->getIntValue(true));
   } else if (type == NODE_TYPE_QUANTIFIER) {
     copy->setIntValue(node->getIntValue(true));
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LE ||
+             type == NODE_TYPE_OPERATOR_BINARY_LT ||
+             type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // copy "definitely is not null" information
+    copy->setExcludesNull(node->getExcludesNull());
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
              type == NODE_TYPE_OPERATOR_BINARY_NIN ||
              type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||

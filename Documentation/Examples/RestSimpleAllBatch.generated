@@ -1,5 +1,5 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all &lt;&lt;EOF
-{ "collection": "products", "batchSize" : 3 }
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all &amp;lt;&amp;lt;EOF
+{ <span class="hljs-string">"collection"</span>: <span class="hljs-string">"products"</span>, <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">3</span> }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
@@ -11,26 +11,26 @@ x-content-type-options: nosniff
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13011"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13011"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWW6iq--B"</span>, 
-      <span class="hljs-string">"Hello3"</span> : <span class="hljs-string">"World3"</span> 
-    }, 
-    { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13008"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13008"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWW6iq--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13202"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13202"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfLlG--_"</span>, 
       <span class="hljs-string">"Hello2"</span> : <span class="hljs-string">"World2"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13004"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13004"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWW6im--_"</span>, 
-      <span class="hljs-string">"Hello1"</span> : <span class="hljs-string">"World1"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13211"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13211"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfLlS--_"</span>, 
+      <span class="hljs-string">"Hello5"</span> : <span class="hljs-string">"World5"</span> 
+    }, 
+    { 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13205"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13205"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfLlK--_"</span>, 
+      <span class="hljs-string">"Hello3"</span> : <span class="hljs-string">"World3"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"13020"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"13214"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -40,7 +40,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00016355514526367188</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0012404918670654297</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

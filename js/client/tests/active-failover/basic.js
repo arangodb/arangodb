@@ -445,7 +445,6 @@ function ActiveFailoverSuite() {
       });
 
       // await failover and check that follower get in sync
-      let oldLead = currentLead;
       currentLead = checkForFailover(currentLead);
       assertTrue(currentLead === firstLeader, "Did not fail to original leader");
 

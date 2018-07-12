@@ -69,7 +69,7 @@ RestStatus RestUploadHandler::execute() {
       errorMessage = "could not generate temp file: " + errorMessage;
       generateError(rest::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_INTERNAL, errorMessage);
-      return RestStatus::FAIL;
+      return RestStatus::DONE;
     }
   }
 
@@ -102,7 +102,7 @@ RestStatus RestUploadHandler::execute() {
       if (!parseMultiPart(body, bodySize)) {
         generateError(rest::ResponseCode::SERVER_ERROR,
                       TRI_ERROR_INTERNAL, "invalid multipart request");
-        return RestStatus::FAIL;
+        return RestStatus::DONE;
       }
     }
   }
@@ -112,7 +112,7 @@ RestStatus RestUploadHandler::execute() {
   } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "could not save file");
-    return RestStatus::FAIL;
+    return RestStatus::DONE;
   }
 
   std::string fullName = basics::FileUtils::buildFilename("uploads", relativeString);

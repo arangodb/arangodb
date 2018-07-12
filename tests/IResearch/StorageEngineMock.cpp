@@ -1054,15 +1054,6 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
   return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, cname);
 }
 
-void StorageEngineMock::createIndex(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t collectionId,
-    TRI_idx_iid_t id,
-    arangodb::velocypack::Slice const& data
-) {
-  TRI_ASSERT(false);
-}
-
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);

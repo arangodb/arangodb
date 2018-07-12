@@ -37,8 +37,6 @@ RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
     _agencyCallbackRegistry(agencyCallbackRegistry) {
 }
 
-bool RestAgencyCallbacksHandler::isDirect() const { return false; }
-
 RestStatus RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 

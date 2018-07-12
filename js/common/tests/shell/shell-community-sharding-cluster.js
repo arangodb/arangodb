@@ -462,8 +462,6 @@ function EdgeShardingSuite() {
         keys.push(c2.insert({ value: i, _from: "v/test" + i, _to: "v/test" + i })._key);
       }
       
-      assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c2.count(true)).sort());
-
       keys.forEach(function(k, i) {
         assertEqual(i, c2.document(k).value);
       });

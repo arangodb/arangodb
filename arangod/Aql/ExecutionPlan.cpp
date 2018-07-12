@@ -406,6 +406,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
   builder.add("estimatedNrItems", VPackValue(nrItems));
   builder.add("initialize", VPackValue(_isResponsibleForInitialize));
+  builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
 
   builder.close();
 }
@@ -699,6 +700,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           options.exclusive = value->isTrue();
         } else if (name == "overwrite") {
           options.overwrite = value->isTrue();
+        } else if (name == "ignoreRevs") {
+          options.ignoreRevs = value->isTrue();
         }
       }
     }
@@ -1333,13 +1336,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
         // operand is a variable
         auto e = static_cast<Variable*>(arg->getData());
         aggregateVariables.emplace_back(
-            std::make_pair(v, std::make_pair(e, func->name)));
+            std::make_pair(v, std::make_pair(e, Aggregator::translateAlias(func->name))));
       } else {
         auto calc = createTemporaryCalculation(arg, previous);
         previous = calc;
 
         aggregateVariables.emplace_back(std::make_pair(
-            v, std::make_pair(getOutVariable(calc), func->name)));
+            v, std::make_pair(getOutVariable(calc), Aggregator::translateAlias(func->name))));
       }
     }
   }
