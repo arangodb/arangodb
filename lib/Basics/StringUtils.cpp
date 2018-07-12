@@ -1300,6 +1300,33 @@ std::string urlEncode(char const* src, size_t const len) {
 
   return result;
 }
+    
+std::string encodeURIComponent(std::string const& str) {
+  return encodeURIComponent(str.c_str(), str.size());
+}
+    
+std::string encodeURIComponent(char const* src, size_t const len){
+  char const* end = src + len;
+    
+  if (len >= (SIZE_MAX - 1) / 3) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+    
+  std::string result;
+  result.reserve(3 * len);
+    
+  for(; src < end; ++src){
+    if (*src == '-' || *src == '_' || *src == '.' || *src == '!' || *src == '~' || *src == '*' || *src == '(' || *src == ')' || *src == ' '|| (*src >= 'a' && *src <= 'z') || (*src >= 'A' && *src <= 'Z') || (*src >= '0' && *src <= '9')) {
+      result.push_back(*src);
+    }
+    else{
+      std::string encoded = "%" + encodeHex(src, 1);
+      result = result + encoded;
+    }
+  }
+    
+  return result;
+}
 
 // .............................................................................
 // CONVERT TO STRING
