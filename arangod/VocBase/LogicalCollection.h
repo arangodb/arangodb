@@ -183,6 +183,9 @@ class LogicalCollection: public LogicalDataSource {
                           bool& usesDefaultShardKeys,
                           std::string const& key = "");
 
+  /// @briefs creates a new document key, the input slice is ignored here
+  /// this method is overriden in derived classes
+  virtual std::string createKey(arangodb::velocypack::Slice input);
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 

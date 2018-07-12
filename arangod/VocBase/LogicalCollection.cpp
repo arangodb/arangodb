@@ -332,6 +332,11 @@ int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
   return _sharding->getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys, key);
 }
 
+/// @briefs creates a new document key, the input slice is ignored here
+std::string LogicalCollection::createKey(VPackSlice) {
+  return keyGenerator()->generate();
+}
+
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
 

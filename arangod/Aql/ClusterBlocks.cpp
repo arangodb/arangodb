@@ -787,13 +787,10 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief create a new document key, argument is unused here
-#ifndef USE_ENTERPRISE
-std::string DistributeBlock::createKey(VPackSlice) const {
-  auto collInfo = _collection->getCollection();
-  return collInfo->keyGenerator()->generate();
+/// @brief create a new document key
+std::string DistributeBlock::createKey(VPackSlice input) const {
+  return _collection->getCollection()->createKey(input);
 }
-#endif
 
 arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
   DEBUG_BEGIN_BLOCK();
