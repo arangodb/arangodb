@@ -61,6 +61,7 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBThrottle.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
@@ -136,6 +137,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(180.0),
       _releasedTick(0),
+      _syncInterval(100),
       _useThrottle(true) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
@@ -149,34 +151,54 @@ RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
 void RocksDBEngine::shutdownRocksDBInstance() noexcept {
-  if (_db) {
-    // turn off RocksDBThrottle, and release our pointers to it
-    if (nullptr != _listener.get()) {
-      _listener->StopThread();
-    }  // if
-
-    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
-      _db->DestroyColumnFamilyHandle(h);
-    }
-
-    // now prune all obsolete WAL files
-    try {
-      determinePrunableWalFiles(0);
-      pruneWalFiles();
-    } catch (...) {
-      // this is allowed to go wrong on shutdown
-      // we must not throw an exception from here
-    }
-
-    delete _db;
-    _db = nullptr;
+  if (_db == nullptr) {
+    return;
   }
+
+  // turn off RocksDBThrottle, and release our pointers to it
+  if (nullptr != _listener.get()) {
+    _listener->StopThread();
+  }  // if
+
+  for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
+    _db->DestroyColumnFamilyHandle(h);
+  }
+
+  // now prune all obsolete WAL files
+  try {
+    determinePrunableWalFiles(0);
+    pruneWalFiles();
+  } catch (...) {
+    // this is allowed to go wrong on shutdown
+    // we must not throw an exception from here
+  }
+
+  try {
+    // do a final WAL sync here before shutting down
+    Result res = RocksDBSyncThread::sync(_db->GetBaseDB());
+    if (res.fail()) {
+      LOG_TOPIC(WARN, Logger::ROCKSDB) << "could not sync RocksDB WAL: " << res.errorMessage();
+    }
+
+    rocksdb::Status status = _db->Close();
+
+    if (!status.ok()) {
+      Result res = rocksutils::convertStatus(status);
+      LOG_TOPIC(ERR, Logger::ROCKSDB) << "could not shutdown RocksDB: " << res.errorMessage();
+    }
+  } catch (...) {
+    // this is allowed to go wrong on shutdown
+    // we must not throw an exception from here
+  }
+
+  delete _db;
+  _db = nullptr;
 }
 
 // inherited from ApplicationFeature
 // ---------------------------------
 
-// add the storage engine's specifc options to the global list of options
+// add the storage engine's specific options to the global list of options
 void RocksDBEngine::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("rocksdb", "RocksDB engine specific configuration");
@@ -197,6 +219,10 @@ void RocksDBEngine::collectOptions(
                      "when this number of "
                      "operations is reached in a transaction",
                      new UInt64Parameter(&_intermediateCommitCount));
+  
+  options->addOption("--rocksdb.sync-interval",
+                     "interval for automatic, non-requested disk syncs (in milliseconds)",
+                     new UInt64Parameter(&_syncInterval));
 
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
@@ -223,6 +249,16 @@ void RocksDBEngine::validateOptions(
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+  
+  if (_syncInterval < minSyncInterval) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --rocksdb.sync-interval. Please use a value "
+                  "of at least " << minSyncInterval;
+    FATAL_ERROR_EXIT();
+  }
+
+  // sync interval is specified in milliseconds by the user, but internally
+  // we use microseconds
+  _syncInterval = _syncInterval * 1000;
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -563,6 +599,13 @@ void RocksDBEngine::start() {
 
   // only enable logger after RocksDB start
   logger->enable();
+  
+  _syncThread.reset(
+      new RocksDBSyncThread(this, _syncInterval));
+  if (!_syncThread->start()) {
+    LOG_TOPIC(FATAL, Logger::ENGINES) << "could not start rocksdb sync thread";
+    FATAL_ERROR_EXIT();
+  }
 
   TRI_ASSERT(_db != nullptr);
   _settingsManager.reset(new RocksDBSettingsManager(_db));
@@ -618,6 +661,16 @@ void RocksDBEngine::stop() {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     _backgroundThread.reset();
+  }
+  
+  if (_syncThread) {
+    _syncThread->beginShutdown();
+
+    // wait until sync thread stops
+    while (_syncThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    _syncThread.reset();
   }
 }
 
@@ -1473,26 +1526,22 @@ RocksDBEngine::IndexTriple RocksDBEngine::mapObjectToIndex(
 
 Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
                                bool /*writeShutdownFile*/) {
-  rocksdb::Status status;
-#ifndef _WIN32
-  // SyncWAL always reports "not implemented" on Windows
-  status = _db->GetBaseDB()->SyncWAL();
-  if (!status.ok()) {
-    return rocksutils::convertStatus(status);
+  if (_syncThread) {
+    _syncThread->syncWal();
   }
-#endif
+  
   if (waitForCollector) {
     rocksdb::FlushOptions flushOptions;
     flushOptions.wait = waitForSync;
 
     for (auto cf : RocksDBColumnFamily::_allHandles) {
-      status = _db->GetBaseDB()->Flush(flushOptions, cf);
+      rocksdb::Status status = _db->GetBaseDB()->Flush(flushOptions, cf);
       if (!status.ok()) {
         return rocksutils::convertStatus(status);
       }
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 void RocksDBEngine::waitForEstimatorSync(

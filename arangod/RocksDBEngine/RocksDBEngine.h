@@ -55,6 +55,7 @@ class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
+class RocksDBSyncThread;
 class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
@@ -83,7 +84,7 @@ class RocksDBEngine final : public StorageEngine {
   // inherited from ApplicationFeature
   // ---------------------------------
 
-  // add the storage engine's specifc options to the global list of options
+  // add the storage engine's specific options to the global list of options
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   // validate the storage engine's specific options
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -391,6 +392,10 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+  
+  rocksdb::Options const& rocksDBOptions() const {
+    return _options;
+  }
 
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
@@ -402,6 +407,12 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBReplicationManager* replicationManager() const {
     TRI_ASSERT(_replicationManager);
     return _replicationManager.get();
+  }
+  
+  /// @brief returns a pointer to the sync thread
+  RocksDBSyncThread* syncThread() const {
+    TRI_ASSERT(_syncThread);
+    return _syncThread.get();
   }
 
   static arangodb::Result registerRecoveryHelper(
@@ -457,6 +468,12 @@ class RocksDBEngine final : public StorageEngine {
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
+  
+  /// Background thread handling WAL syncing
+  std::unique_ptr<RocksDBSyncThread> _syncThread;
+
+  // WAL sync interval, specified in milliseconds by end user, but uses microseconds internally
+  uint64_t _syncInterval;
 
   // use write-throttling
   bool _useThrottle;
@@ -465,6 +482,9 @@ class RocksDBEngine final : public StorageEngine {
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
+
+  // minimum value for --rocksdb.sync-interval (in ms)
+  static constexpr uint64_t minSyncInterval = 5;
 };
 
 }  // namespace arangodb

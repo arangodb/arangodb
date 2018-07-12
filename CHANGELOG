@@ -1,6 +1,17 @@
 devel
 -----
 
+* added configuration option `--rocksdb.sync-interval`
+
+  This option specifies interval (in milliseconds) that ArangoDB will use to 
+  automatically synchronize data in RocksDB's write-ahead log (WAL) files to 
+  disk. Automatic syncs will only be performed for not-yet synchronized data, 
+  and only for operations that have been executed without the *waitForSync* 
+  attribute.
+
+  Automatic synchronization is performed by a background thread. The default
+  sync interval is 100 milliseconds.
+
 * changed the thread handling in the scheduler. `--server.threads` will be
   the maximum number of threads for the scheduler.
 
