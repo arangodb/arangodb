@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_COLLECTION_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "VocBase/Methods/Collections.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -35,7 +36,7 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestCollectionHandler"; }
-  bool isDirect() const override { return false; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
  private:
@@ -46,7 +47,12 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   void collectionRepresentation(VPackBuilder& builder, std::string const& name,
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool detailedCount);
+
   void collectionRepresentation(VPackBuilder& builder, LogicalCollection* coll,
+                                bool showProperties, bool showFigures,
+                                bool showCount, bool detailedCount);
+  void collectionRepresentation(VPackBuilder& builder,
+                                methods::Collections::Context& ctxt,
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool detailedCount);
 };

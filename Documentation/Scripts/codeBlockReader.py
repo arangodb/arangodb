@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import inspect
+import urllib
 import io
 
 validExtensions = (".cpp", ".h", ".js", ".md")
@@ -77,7 +78,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   first = True
   aqlResult = False
   lastline = None
-  longText = ""
+  longText = u""
   longLines = 0
   short = ""
   shortLines = 0
@@ -182,19 +183,26 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
 
   if longLines - shortLines < 5:
     shortable = False
+  # python3: urllib.parse.quote_plus
 
   # write example
   fh.write(unicode("\n"))
-  fh.write(unicode("<div id=\"%s_container\">\n" % tag))
+
+  utag = urllib.quote_plus(tag) + '_container'
+  ustr = u"\uE9CB"
+  anchor = u"<a class=\"anchorjs-link \" href=\"#"+ utag + "\" aria-label=\"Anchor\" data-anchorjs-icon=\"" + ustr + "\"></a>"
 
   longTag = "%s_long" % tag
   shortTag = "%s_short" % tag
-
-  longToggle = ""
   shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
+  longToggle = "$('#%s').hide(); $('#%s').show(); window.location.hash='%s';" % (longTag, shortTag, utag)
+
+  fh.write(unicode("<div class=\"example-container\" id=\"%s\">\n" % utag))
+  fh.write(unicode(anchor))
+
 
   if shortable:
-    fh.write(unicode("<div id=\"%s\" onclick=\"%s\" style=\"Display: none;\">\n" % (longTag, longToggle)))
+    fh.write(unicode("<div id=\"%s\" style=\"Display: none;\">\n" % longTag))
   else:
     fh.write(unicode("<div id=\"%s\">\n" % longTag))
 
@@ -202,9 +210,24 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
     fh.write(unicode("<pre>\n"))
   fh.write(unicode("%s" % longText))
   fh.write(unicode("</pre>\n"))
-  fh.write(unicode("</div>\n"))
-  
   if shortable:
+    hideText=""
+    if blockType == "arangosh":
+      hideText = u"hide execution results"
+    elif blockType == "curl":
+      hideText = u"hide response body"
+    elif blockType == "AQL":
+      hideText = u"hide query result"
+    else:
+      hideText = u"hide"
+    fh.write(unicode('<div id="%s_collapse" onclick="%s" class="example_show_button">%s</div>' % (
+      utag,
+      longToggle,
+      hideText
+      )))
+  fh.write(unicode("</div>\n"))
+    
+  if shortable:    
     fh.write(unicode("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle)))
     if blockType != "AQL":
       fh.write(unicode("<pre>\n"))

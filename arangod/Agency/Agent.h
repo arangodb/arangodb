@@ -178,7 +178,7 @@ class Agent final : public arangodb::Thread,
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Report a failed append entry call from AgentCallback
-  void reportFailed(std::string const& slaveId, size_t toLog);
+  void reportFailed(std::string const& slaveId, size_t toLog, bool sent = false);
 
   /// @brief Wait for slaves to confirm appended entries
   AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;

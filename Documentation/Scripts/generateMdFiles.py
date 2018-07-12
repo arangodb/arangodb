@@ -717,6 +717,7 @@ def loadProgramOptionBlocks():
                 optionsRaw = json.load(fp)
             except ValueError as err:
                 # invalid JSON
+                print >>sys.stderr, ERR_COLOR + "Failed to parse program options json: '" + programOptionsDump + "' - to be used as: '" + program + "' - " + err.message + RESET
                 raise err
 
         # Group and sort by section name, global section first
