@@ -1,6 +1,9 @@
 devel
 -----
 
+* PR5857: rocksdb engine would frequently request a new DelayToken.  This caused
+  excessive write delay on the next Put() call.  Alternate approach taken.
+
 * changed the thread handling in the scheduler. `--server.threads` will be
   the maximum number of threads for the scheduler.
 
