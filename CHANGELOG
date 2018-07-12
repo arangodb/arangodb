@@ -1,4 +1,4 @@
-v3.2.16 (XXXX-XX-XX)
+v3.2.16 (2018-07-12)
 --------------------
 
 * make edge cache initialization and invalidation more portable by avoiding memset
@@ -19,6 +19,8 @@ v3.2.16 (XXXX-XX-XX)
 
 * fixed for agent coming back to agency with changed endpoint and
   total data loss
+
+* fixed agency restart from compaction without data
 
 
 v3.2.15 (2018-05-13)
