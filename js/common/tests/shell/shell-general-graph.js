@@ -684,7 +684,7 @@ function GeneralGraphCreationSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          ec2 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
 
@@ -741,7 +741,7 @@ function GeneralGraphCreationSuite() {
         g1 = graph._create(gN1, [dr1]);
 
       g1._extendEdgeDefinitions(dr2);
-      assertEqual([dr1, dr2], g1.__edgeDefinitions);
+      assertEqual([dr1, dr2], g1.__edgeDefinitions); // TODO FIX ME <-- first param is not sorted!!!
       var edgeDefinition = _.find(g1.__edgeDefinitions, {collection: ec2});
       assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
       assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
