@@ -112,9 +112,11 @@ class ExecutionBlock {
     UPSERT,
     SCATTER,
     DISTRIBUTE,
+#ifdef USE_IRESEARCH
     IRESEARCH_VIEW,
     IRESEARCH_VIEW_ORDERED,
     IRESEARCH_VIEW_UNORDERED,
+#endif
   };
   // omitted in this list are (because):
   // WaitingExecutionBlockMock (mock)
@@ -125,7 +127,6 @@ class ExecutionBlock {
 
   static std::string typeToString(Type type);
   static Type typeFromString(std::string const& type);
-  static void init();
 
  public:
   /// @brief batch size value

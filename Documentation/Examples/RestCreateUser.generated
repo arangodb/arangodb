@@ -1,7 +1,7 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/user &amp;lt;&amp;lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/user &lt;&lt;EOF
 { 
-  "user" : "admin@example", 
-  "passwd" : "secure" 
+  <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@example"</span>, 
+  <span class="hljs-string">"passwd"</span> : <span class="hljs-string">"secure"</span> 
 }
 EOF
 

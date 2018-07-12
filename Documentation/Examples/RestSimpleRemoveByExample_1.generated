@@ -1,13 +1,13 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-example &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-example &lt;&lt;EOF
 { 
-  "collection" : "products", 
-  "example" : { 
-    "a" : { 
-      "j" : 1 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"example"</span> : { 
+    <span class="hljs-string">"a"</span> : { 
+      <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
     } 
   }, 
-  "waitForSync" : true, 
-  "limit" : 2 
+  <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"limit"</span> : <span class="hljs-number">2</span> 
 }
 EOF
 

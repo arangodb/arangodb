@@ -110,23 +110,22 @@ function IResearchFeatureDDLTestSuite () {
       }
     },
 
-//FIXME
-//    testRemoveLinkViaCollection : function() {
-//      db._drop("TestCollection0");
-//      db._dropView("TestView");
-//
-//      var view = db._createView("TestView", "arangosearch", {});
-//      db._create("TestCollection0");
-//      var addLink = { links: { "TestCollection0": {} } };
-//      view.properties(addLink, true); // partial update
-//      properties = view.properties();
-//      assertTrue(Array === properties.collections.constructor);
-//      assertEqual(1, properties.collections.length);
-//      db._drop("TestCollection0");
-//      properties = view.properties();
-//      assertTrue(Array === properties.collections.constructor);
-//      assertEqual(0, properties.collections.length);
-//    },
+    testRemoveLinkViaCollection : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+
+      var view = db._createView("TestView", "arangosearch", {});
+      db._create("TestCollection0");
+      var addLink = { links: { "TestCollection0": {} } };
+      view.properties(addLink, true); // partial update
+      properties = view.properties();
+      assertTrue(Array === properties.collections.constructor);
+      assertEqual(1, properties.collections.length);
+      db._drop("TestCollection0");
+      properties = view.properties();
+      assertTrue(Array === properties.collections.constructor);
+      assertEqual(0, properties.collections.length);
+    },
 
     testViewDDL: function() {
       // collections

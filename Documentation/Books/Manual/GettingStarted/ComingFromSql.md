@@ -17,8 +17,7 @@ It will also help you to translate SQL queries to AQL when migrating to ArangoDB
 
 {% hint 'info' %}
 You may also be interested in the white paper
-[**Switching from Relational Databases to ArangoDB**
-](https://www.arangodb.com/white-paper-switching-relational-database/)
+[**Switching from Relational Databases to ArangoDB**](https://www.arangodb.com/white-paper-switching-relational-database/)
 on our website!
 {% endhint %}
 

@@ -1,6 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection &amp;lt;&amp;lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection &lt;&lt;EOF
 { 
-  "name" : "testCollectionBasics" 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionBasics"</span> 
 }
 EOF
 
@@ -21,18 +21,18 @@ x-content-type-options: nosniff
   }, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD71802E03B2/11618"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hF19302E5DB1C/11880"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11618"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11880"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span> 
 }
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection &amp;lt;&amp;lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection &lt;&lt;EOF
 { 
-  "name" : "testCollectionEdges", 
-  "type" : 3 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionEdges"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-number">3</span> 
 }
 EOF
 
@@ -53,10 +53,10 @@ x-content-type-options: nosniff
   }, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD71802E03B2/11621"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hF19302E5DB1C/11883"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11621"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11883"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span> 

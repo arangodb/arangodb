@@ -1,7 +1,7 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all-keys &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all-keys &lt;&lt;EOF
 { 
-  "collection" : "products", 
-  "type" : "id" 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"id"</span> 
 }
 EOF
 
@@ -11,9 +11,9 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
-    <span class="hljs-string">"products/12502"</span>, 
-    <span class="hljs-string">"products/12505"</span>, 
-    <span class="hljs-string">"products/12498"</span> 
+    <span class="hljs-string">"products/12766"</span>, 
+    <span class="hljs-string">"products/12763"</span>, 
+    <span class="hljs-string">"products/12759"</span> 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span>, 
@@ -25,7 +25,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0016095638275146484</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0015478134155273438</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

@@ -1,6 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp/database/_system/reports &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp/database/_system/reports &lt;&lt;EOF
 { 
-  "grant" : "rw" 
+  <span class="hljs-string">"grant"</span> : <span class="hljs-string">"rw"</span> 
 }
 EOF
 
