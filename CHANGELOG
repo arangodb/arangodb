@@ -1,4 +1,4 @@
-v3.2.16 (XXXX-XX-XX)
+v3.2.16 (2018-07-12)
 --------------------
 
 * make edge cache initialization and invalidation more portable by avoiding memset 
