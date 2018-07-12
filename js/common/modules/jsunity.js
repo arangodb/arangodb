@@ -145,7 +145,7 @@ function Run (testsuite) {
   if (tests.length === 0) {
     let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything`;
     print(`${internal.COLORS.COLOR_RED}${err}${internal.COLORS.COLOR_RESET}`);
-    res = {
+    let res = {
       suiteName: suite.suiteName,
       message: err,
       duration: 0,
