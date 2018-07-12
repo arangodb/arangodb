@@ -23,38 +23,25 @@
 
 #include "OptimizerRules.h"
 #include "Aql/ClusterNodes.h"
-
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
-
-#include "Aql/ExecutionPlan.h"
-#include "Aql/Condition.h"
-
 #include "Aql/Optimizer.h"
-
-#include <boost/optional.hpp>
-#include <tuple>
+#include "Basics/StaticStrings.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-ExecutionNode* hasSingleParent(ExecutionNode const* in, EN::NodeType type){
-  auto* parent = in->getFirstParent();
-  if(parent) {
-    if(parent->getType() == type){
-      return parent;
-    }
-  }
-  return nullptr;
-}
+namespace {
 
-ExecutionNode* hasSingleParent(ExecutionNode const* in, std::vector<EN::NodeType> types){
+ExecutionNode* hasSingleParent(ExecutionNode const* in, std::vector<EN::NodeType> const& types) {
   auto* parent = in->getFirstParent();
-  if(parent) {
-    for(auto const& type : types){
-      if(parent->getType() == type){
+  if (parent) {
+    for (auto const& type : types) {
+      if (parent->getType() == type) {
         return parent;
       }
     }
@@ -62,60 +49,37 @@ ExecutionNode* hasSingleParent(ExecutionNode const* in, std::vector<EN::NodeType
   return nullptr;
 }
 
-// in plan above
-ExecutionNode* hasSingleDep(ExecutionNode const* in){
-  auto deps = in->getDependencies();
-  if(deps.size() == 1){
-    return deps.front();
+ExecutionNode* hasSingleDep(ExecutionNode const* in, EN::NodeType const type) {
+  auto* dep = in->getFirstDependency();
+  if (dep && dep->getType() == type) {
+    return dep;
   }
   return nullptr;
 }
 
-ExecutionNode* hasSingleDep(ExecutionNode const* in, EN::NodeType const type){
-  auto* dep = hasSingleDep(in);
-  if(dep) {
-    if(dep->getType() == type){
-      return dep;
-    }
-  }
-  return nullptr;
-}
-
-ExecutionNode* hasSingleDep(ExecutionNode const* in, std::vector<EN::NodeType> const& types){
-  auto* dep = hasSingleDep(in);
-  if(dep) {
-    for(auto const& type : types){
-      if(dep->getType() == type){
-        return dep;
-      }
-    }
-  }
-  return nullptr;
-}
-
-Index* hasSingleIndexHandle(ExecutionNode* node){
+Index* hasSingleIndexHandle(ExecutionNode const* node) {
   TRI_ASSERT(node->getType() == EN::INDEX);
-  IndexNode* indexNode = static_cast<IndexNode*>(node);
+  IndexNode const* indexNode = static_cast<IndexNode const*>(node);
   auto indexHandleVec = indexNode->getIndexes();
-  if (indexHandleVec.size() == 1){
+  if (indexHandleVec.size() == 1) {
     return indexHandleVec.front().getIndex().get();
   }
   return nullptr;
 }
 
-Index* hasSingleIndexHandle(ExecutionNode* node, Index::IndexType type){
-  auto* idx = hasSingleIndexHandle(node);
-  if (idx && idx->type() == type ){
+Index* hasSingleIndexHandle(ExecutionNode const* node, Index::IndexType type) {
+  auto* idx = ::hasSingleIndexHandle(node);
+  if (idx && idx->type() == type) {
     return idx;
   }
   return nullptr;
 }
 
-std::vector<AstNode const*> hasBinaryCompare(ExecutionNode* node){
+std::vector<AstNode const*> hasBinaryCompare(ExecutionNode const* node) {
   // returns any AstNode in the expression that is
   // a binary comparison.
   TRI_ASSERT(node->getType() == EN::INDEX);
-  IndexNode* indexNode = static_cast<IndexNode*>(node);
+  IndexNode const* indexNode = static_cast<IndexNode const*>(node);
   AstNode const* cond = indexNode->condition()->root();
   std::vector<AstNode const*> result;
 
@@ -144,10 +108,11 @@ std::vector<AstNode const*> hasBinaryCompare(ExecutionNode* node){
   return result;
 }
 
-std::string getFirstKey(std::vector<AstNode const*> const& compares){
+std::string getFirstKey(std::vector<AstNode const*> const& compares) {
   for(auto const* node : compares){
     AstNode const* keyNode = node->getMemberUnchecked(0);
-    if(keyNode->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS && keyNode->stringEquals("_key")) {
+    if (keyNode->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS && 
+        keyNode->stringEquals(StaticStrings::KeyString)) {
       keyNode = node->getMemberUnchecked(1);
     }
     if (keyNode->isStringValue()){
@@ -157,31 +122,31 @@ std::string getFirstKey(std::vector<AstNode const*> const& compares){
   return "";
 }
 
-bool depIsSingletonOrConstCalc(ExecutionNode* node){
+bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
   while (node){
     node = node->getFirstDependency();
-    if(node->getType() == EN::SINGLETON){
+    if(node->getType() == EN::SINGLETON) {
       return true;
     }
 
-    if(node->getType() != EN::CALCULATION){
+    if (node->getType() != EN::CALCULATION) {
       return false;
     }
 
-    if(!node->getVariablesUsedHere().empty()){
+    if (!node->getVariablesUsedHere().empty()) {
       return false;
     }
   }
   return false;
 }
 
-bool parentIsReturnOrConstCalc(ExecutionNode* node){
+bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
   node = node->getFirstParent();
-  while (node){
+  while (node) {
     auto type = node->getType();
     // we do not need to check the order because
     // we expect a valid plan
-    if(type != EN::CALCULATION && type != EN::RETURN){
+    if(type != EN::CALCULATION && type != EN::RETURN) {
       return false;
     }
     node = node->getFirstParent();
@@ -189,7 +154,7 @@ bool parentIsReturnOrConstCalc(ExecutionNode* node){
   return true;
 }
 
-void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode){
+void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode) {
   if(oldNode == plan->root()) {
     for(auto* dep : oldNode->getDependencies()) {
       newNode->addDependency(dep);
@@ -222,20 +187,20 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
 
   for(auto* node : nodes){
 
-    if(!depIsSingletonOrConstCalc(node)){
+    if (!::depIsSingletonOrConstCalc(node)) {
       continue;
     }
 
-    Index* index = hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
+    Index* index = ::hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     if (index){
       IndexNode* indexNode = static_cast<IndexNode*>(node);
-      auto binaryCompares = hasBinaryCompare(node);
-      std::string key = getFirstKey(binaryCompares);
-      if(key.empty()){
+      auto binaryCompares = ::hasBinaryCompare(node);
+      std::string key = ::getFirstKey(binaryCompares);
+      if (key.empty()) {
         continue;
       }
 
-      auto* parentModification = hasSingleParent(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
+      auto* parentModification = ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
 
       if (parentModification){
         auto mod = static_cast<ModificationNode*>(parentModification);
@@ -282,20 +247,20 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           )
         );
 
-        if(!parentIsReturnOrConstCalc(mod)){
+        if (!::parentIsReturnOrConstCalc(mod)) {
           continue;
         }
 
-        replaceNode(plan, mod, singleOperationNode);
+        ::replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
         modified = true;
-      } else if(parentIsReturnOrConstCalc(node)){
+      } else if (::parentIsReturnOrConstCalc(node)) {
         ExecutionNode* singleOperationNode = plan->registerNode(
             new SingleRemoteOperationNode(plan, plan->nextId()
                                           ,EN::INDEX, true, key, indexNode->collection(), ModificationOptions{}
                                           , nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
-        replaceNode(plan, indexNode, singleOperationNode);
+        ::replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
 
       }
@@ -312,18 +277,18 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, false);
 
-  if(nodes.size() != 1){
+  if (nodes.size() != 1) {
     return modified;
   }
 
-  for(auto* node : nodes){
+  for (auto* node : nodes) {
     auto mod = static_cast<ModificationNode*>(node);
 
-    if(!depIsSingletonOrConstCalc(node)){
+    if (!::depIsSingletonOrConstCalc(node)) {
       continue;
     }
 
-    if(!parentIsReturnOrConstCalc (node)){
+    if (!::parentIsReturnOrConstCalc (node)) {
       continue;
     }
 
@@ -348,37 +313,37 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
     ExecutionNode* cursor = node;
     CalculationNode* calc = nullptr;
 
-    if(keyVar){
+    if (keyVar) {
       std::unordered_set<Variable const*> keySet;
       keySet.emplace(keyVar);
 
-      while(cursor){
-        cursor = hasSingleDep(cursor, EN::CALCULATION);
-        if(cursor){
+      while (cursor) {
+        cursor = ::hasSingleDep(cursor, EN::CALCULATION);
+        if (cursor) {
           CalculationNode* c = static_cast<CalculationNode*>(cursor);
-          if(c->setsVariable(keySet)){
+          if (c->setsVariable(keySet)) {
            calc = c;
            break;
           }
         }
       }
 
-      if(!calc){
+      if (!calc) {
         continue;
       }
       AstNode const* expr = calc->expression()->node();
-      if(expr->isStringValue()){
+      if (expr->isStringValue()) {
         key = expr->getString();
-      } else if (expr->isObject()){
+      } else if (expr->isObject()) {
         bool foundKey = false;
-        for(std::size_t i = 0 ; i < expr->numMembers(); i++){
+        for (std::size_t i = 0 ; i < expr->numMembers(); i++) {
           auto* anode = expr->getMemberUnchecked(i);
-          if( anode->getString() == "_key"){
+          if (anode->getString() == StaticStrings::KeyString) {
             key = anode->getMember(0)->getString();
             foundKey = true;
           }
-          if( anode->getString() == "_rev"){
-            foundKey = false; // decline if _ref is in the game
+          if (anode->getString() == StaticStrings::RevString) {
+            foundKey = false; // decline if _rev is in the game
             break;
           }
         }
@@ -392,12 +357,12 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
         // DOCUMENT("foo/bar")
       }
 
-      if(key.empty()){
+      if (key.empty()) {
         continue;
       }
     }
 
-    if(!depIsSingletonOrConstCalc(cursor)){
+    if (!::depIsSingletonOrConstCalc(cursor)) {
       continue;
     }
 
@@ -414,9 +379,9 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       )
     );
 
-    replaceNode(plan, mod, singleOperationNode);
+    ::replaceNode(plan, mod, singleOperationNode);
 
-    if(calc){
+    if (calc) {
       plan->unlinkNode(calc);
     }
     modified = true;
@@ -425,17 +390,21 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
   return modified;
 }
 
+} // namespace
+
 void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                                                               std::unique_ptr<ExecutionPlan> plan,
                                                               OptimizerRule const* rule) {
   bool modified = false;
 
-  for(auto const& fun : { &substituteClusterSingleDocumentOperationsIndex
-                        , &substituteClusterSingleDocumentOperationsNoIndex
-                        }
-  ){
+  for (auto const& fun : { &::substituteClusterSingleDocumentOperationsIndex
+                         , &::substituteClusterSingleDocumentOperationsNoIndex
+                        }) {
     modified = fun(opt, plan.get(), rule);
-    if(modified){ break; }
+    if (modified) {  
+      break; 
+    }
   }
+
   opt->addPlan(std::move(plan), rule, modified);
 }
