@@ -621,7 +621,7 @@ function GeneralGraphCreationSuite() {
 
       g1._deleteEdgeDefinition(ec2);
       assertEqual([dr3], g1.__edgeDefinitions);
-      assertEqual([vc1, vc2, vc3], g1._orphanCollections());
+      assertEqual([vc1, vc2, vc3].sort(), g1._orphanCollections().sort());
       assertTrue(db._collection(ec2) !== null);
     },
 
@@ -1837,8 +1837,8 @@ function OrphanCollectionSuite() {
       try {
         g1._removeVertexCollection(name);
       } catch (e) {
-        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
-        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.message);
       }
     },
 

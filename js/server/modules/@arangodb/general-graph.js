@@ -34,43 +34,53 @@ const ggc = require('@arangodb/general-graph-common');
 const GeneralGraph = internal.ArangoGeneralGraph;
 //const arangodb = require("@arangodb");
 
-// overwrite graph class functions
-ggc.__GraphClass._deleteEdgeDefinition = function (edgeDefinition, dropCollection) {
-  return GeneralGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
-};
+// inherited graph class
+let CommonGraph = ggc.__GraphClass;
 
 // new c++ based
+CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
+	this.__edgeDefinitions = edgeDefs;
+	this.__orphanCollections = orphans;
+};
+
+CommonGraph.prototype._deleteEdgeDefinition = function (edgeDefinition, dropCollection) {
+	let result = GeneralGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
+	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
+CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinitions) {
+	let result = GeneralGraph._editEdgeDefinitions(this.__name, edgeDefinitions);
+	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
+CommonGraph.prototype._addVertexCollection = function (vertexName, createCollection) {
+	if (createCollection === undefined) {
+		createCollection = true;
+	}
+	let result = GeneralGraph._addVertexCollection(this.__name, vertexName, createCollection);
+	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
+CommonGraph.prototype._removeVertexCollection = function (vertexName, dropCollection) {
+	if (dropCollection === undefined) {
+		dropCollection = false;
+	}
+	let result = GeneralGraph._removeVertexCollection(this.__name, vertexName, dropCollection);
+	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
 exports._listObjects = GeneralGraph._listObjects;
 exports._list = GeneralGraph._list;
 exports._exists = GeneralGraph._exists;
 
 exports._create = function (name, edgeDefinition, orphans, options) {
   let g = GeneralGraph._create(name, edgeDefinition, orphans, options);
-  let graph = new ggc.__GraphClass(g.graph);
-  graph._editEdgeDefinitions = function (edgeDefinitions) {
-    let result = GeneralGraph._editEdgeDefinitions(name, edgeDefinitions);
-    this.__edgeDefinitions = result.graph.edgeDefinitions;
-    this.__orphanCollections = result.graph.orphanCollections;
-  };
-  graph._deleteEdgeDefinition = function (edgeDefinition, dropCollection) {
-    let result = GeneralGraph._deleteEdgeDefinition(name, edgeDefinition, dropCollection);
-    this.__edgeDefinitions = result.graph.edgeDefinitions;
-    this.__orphanCollections = result.graph.orphanCollections;
-  };
-  graph._addVertexCollection = function (vertexName, createCollection) {
-    if (createCollection === undefined) {
-      createCollection = true;
-    }
-    let result = GeneralGraph._addVertexCollection(name, vertexName, createCollection);
-    this.__edgeDefinitions = result.graph.edgeDefinitions;
-    this.__orphanCollections = result.graph.orphanCollections;
-  };
-  return graph;
+  return new CommonGraph(g.graph);
 };
 
 exports._graph = function (graphName) {
   let g = GeneralGraph._graph(graphName);
-  return new ggc.__GraphClass(g);
+  return new CommonGraph(g);
 };
 
 exports._drop = GeneralGraph._drop;

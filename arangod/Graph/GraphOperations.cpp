@@ -581,14 +581,9 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
 
 OperationResult GraphOperations::eraseOrphanCollection(
     bool waitForSync, std::string collectionName, bool dropCollection) {
-  // check if collection exists
-  OperationResult result = assertVertexCollectionAvailability(collectionName);
-  if (result.fail()) {
-    return result;
-  }
-
+  // check if collection exists within the orphan collections
   std::unordered_set<std::string> orphanCollections =
-      _graph.orphanCollections();
+          _graph.orphanCollections();
 
   bool found = false;
   for (auto const& oName : _graph.orphanCollections()) {
@@ -598,6 +593,12 @@ OperationResult GraphOperations::eraseOrphanCollection(
   }
   if (!found) {
     return OperationResult(TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION);
+  }
+
+  // check if collection exists in the database
+  OperationResult result = assertVertexCollectionAvailability(collectionName);
+  if (result.fail()) {
+    return result;
   }
 
   VPackBuilder builder;
