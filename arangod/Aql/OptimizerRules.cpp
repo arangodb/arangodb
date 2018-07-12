@@ -3206,13 +3206,6 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
 
-    if (node->getType() != EN::UPSERT &&
-        !node->isInInnerLoop() &&
-        !getSingleShardId(plan.get(), node, ExecutionNode::castTo<ModificationNode const*>(node)->collection()).empty()) {
-      // no need to insert a DistributeNode for a single operation that is restricted to a single shard
-      continue;
-    }
-
     ExecutionNode* originalParent = nullptr;
     if (node->hasParent()) {
       auto const& parents = node->getParents();
@@ -3421,7 +3414,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
-  
+
   std::unordered_set<Variable const*> allUsed;
 
   for (auto& node : nodes) {
@@ -3440,7 +3433,17 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
     while (current != nullptr) {
       bool eligible = true;
-      
+
+      // check if any of the nodes we pass use a variable that will not be
+      // available after we insert a new COLLECT on top of it (note: COLLECT
+      // will eliminate all variables from the scope but its own)
+      for (auto const& it : current->getVariablesUsedHere()) {
+        if (current->getType() != EN::GATHER) {
+          // Gather nodes are taken care of separately below
+          allUsed.emplace(it);
+        }
+      }
+
       // check if any of the nodes we pass use a variable that will not be
       // available after we insert a new COLLECT on top of it (note: COLLECT
       // will eliminate all variables from the scope but its own)
@@ -3475,6 +3478,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
           target = previous;
           previous = previous->getFirstDependency();
         }
+
+        TRI_ASSERT(eligible);
 
         if (previous != nullptr) {
           for (auto const& otherVariable : allUsed) {
@@ -4110,22 +4115,14 @@ void arangodb::aql::restrictToSingleShardRule(
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
+  std::unordered_set<ExecutionNode*> toUnlink;
+
   for (auto& node : nodes) {
     TRI_ASSERT(node->getType() == ExecutionNode::REMOTE);
     ExecutionNode* current = node->getFirstDependency();
 
     while (current != nullptr) {
       auto const currentType = current->getType();
-
-      // don't do this if we are already distributing!
-      auto deps = current->getDependencies();
-      if (deps.size() &&
-          deps[0]->getType() == ExecutionNode::REMOTE &&
-          deps[0]->hasDependency() &&
-          deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
-        break;
-      }
-
       if (currentType == ExecutionNode::INSERT ||
           currentType == ExecutionNode::UPDATE ||
           currentType == ExecutionNode::REPLACE ||
@@ -4139,6 +4136,39 @@ void arangodb::aql::restrictToSingleShardRule(
           auto* modNode = ExecutionNode::castTo<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
           modNode->restrictToShard(shardId);
+
+          auto deps = current->getDependencies();
+          if (deps.size() &&
+              deps[0]->getType() == ExecutionNode::REMOTE) {
+            // if we can apply the single-shard optimization, but still have a
+            // REMOTE node in front of us, we can probably move the remote parts
+            // of the query to our side. this is only the case if the remote part
+            // does not call any remote parts itself
+            std::unordered_set<ExecutionNode*> toRemove;
+
+            auto c = deps[0];
+            toRemove.emplace(c);
+            while (true) {
+              if (c->getType() == EN::SCATTER || c->getType() == EN::DISTRIBUTE) {
+                toRemove.emplace(c);
+              }
+              c = c->getFirstDependency();
+
+              if (c == nullptr) {
+                // reached the end
+                break;
+              }
+
+              if (c->getType() == EN::REMOTE) {
+                toRemove.clear();
+                break;
+              }
+            }
+
+            for (auto const& it : toRemove) {
+              toUnlink.emplace(it);
+            }
+          }
         }
         break;
       } else if (currentType == ExecutionNode::INDEX) {
@@ -4161,6 +4191,10 @@ void arangodb::aql::restrictToSingleShardRule(
 
       current = current->getFirstDependency();
     }
+  }
+
+  if (!toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
   }
 
   opt->addPlan(std::move(plan), rule, wasModified);
@@ -5394,6 +5428,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
     Variable const* out = subqueryNode->outVariable();
     TRI_ASSERT(out != nullptr);
+    // the subquery outvariable and all its aliases
+    std::unordered_set<Variable const*> subqueryVars;
+    subqueryVars.emplace(out);
+
+    // the potential calculation nodes that produce the aliases
+    std::vector<ExecutionNode*> aliasNodesToRemoveLater;
 
     std::unordered_set<Variable const*> varsUsed;
 
@@ -5411,21 +5451,30 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
         auto listNode = ExecutionNode::castTo<EnumerateListNode*>(current);
 
         // ...that use our subquery as its input
-        if (listNode->inVariable() == out) {
+        if (subqueryVars.find(listNode->inVariable()) != subqueryVars.end()) {
           // bingo!
           auto queryVariables = plan->getAst()->variables();
           std::vector<ExecutionNode*> subNodes(
               subqueryNode->getSubquery()->getDependencyChain(true));
 
-          // check if the subquery result variable is used after the FOR loop as
-          // well
+          // check if the subquery result variable or any of the aliases are used after the FOR loop
+          bool mustAbort = false;
           std::unordered_set<Variable const*> varsUsedLater(
               listNode->getVarsUsedLater());
-          if (varsUsedLater.find(listNode->inVariable()) !=
-              varsUsedLater.end()) {
-            // exit the loop
-            current = nullptr;
+          for (auto const& itSub : subqueryVars) {
+            if (varsUsedLater.find(itSub) != varsUsedLater.end()) {
+              // exit the loop
+              current = nullptr;
+              mustAbort = true;
+              break;
+            }
+          }
+          if (mustAbort) {
             break;
+          }
+
+          for (auto const& toRemove : aliasNodesToRemoveLater) {
+            plan->unlinkNode(toRemove, false);
           }
 
           TRI_ASSERT(!subNodes.empty());
@@ -5491,6 +5540,18 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           // abort optimization
           current = nullptr;
         }
+      } else if (current->getType() == EN::CALCULATION) {
+        auto rootNode = ExecutionNode::castTo<CalculationNode*>(current)->expression()->node();
+        if (rootNode->type == NODE_TYPE_REFERENCE) {
+          if (subqueryVars.find(static_cast<Variable const*>(rootNode->getData())) != subqueryVars.end()) {
+            // found an alias for the subquery variable
+            subqueryVars.emplace(ExecutionNode::castTo<CalculationNode*>(current)->outVariable());
+            aliasNodesToRemoveLater.emplace_back(current);
+            current = current->getFirstParent();
+
+            continue;
+          }
+        }
       }
 
       if (current == nullptr) {
@@ -5499,9 +5560,17 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
       varsUsed.clear();
       current->getVariablesUsedHere(varsUsed);
-      if (varsUsed.find(out) != varsUsed.end()) {
-        // we found another node that uses the subquery variable
-        // we need to stop the optimization attempts here
+
+      bool mustAbort = false;
+      for (auto const& itSub : subqueryVars) {
+        if (varsUsed.find(itSub) != varsUsed.end()) {
+          // we found another node that uses the subquery variable
+          // we need to stop the optimization attempts here
+          mustAbort = true;
+          break;
+        }
+      }
+      if (mustAbort) {
         break;
       }
 
@@ -5514,10 +5583,6 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
 static bool isValueOrReference(AstNode const* node) {
   return node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_REFERENCE;
-}
-
-static bool isValueTypeCollection(AstNode const* node) {
-  return node->type == NODE_TYPE_COLLECTION || node->isStringValue();
 }
 
 /// Essentially mirrors the geo::QueryParams struct, but with
@@ -5564,9 +5629,6 @@ struct GeoIndexInfo {
   geo::FilterType filterMode = geo::FilterType::NONE;
   /// variable using the filter mask
   AstNode const* filterExpr = nullptr;
-
-  // ============ Limit Info ============
-  size_t actualLimit = SIZE_MAX;
 
   // ============ Accessed Fields ============
   AstNode const* locationVar = nullptr;// access to location field
@@ -5785,98 +5847,6 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
   return false;
 }
 
-// support legacy functions without added distance field
-static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, GeoIndexInfo& info) {
-  if (funcNode->type != NODE_TYPE_FCALL || funcNode->numMembers() != 1) {
-    return false;
-  }
-  AstNode* fargs = funcNode->getMemberUnchecked(0);
-  Function const* func = static_cast<Function const*>(funcNode->getData());
-  const size_t nArgs = fargs->numMembers();
-  // WITHIN(coll, latitude, longitude, radius)
-  // NEAR(coll, latitude, longitude, limit)
-  if (!(func->name == "WITHIN" && nArgs == 4) &&
-       !(func->name == "NEAR" && (nArgs == 3 || nArgs == 4))) {
-    return false;
-  }
-  TRI_ASSERT(info.collection == nullptr);
-
-  AstNode const* collArg = fargs->getMemberUnchecked(0);
-  AstNode const* latArg = fargs->getMemberUnchecked(1);
-  AstNode const* lngArg = fargs->getMemberUnchecked(2);
-  AstNode const* rArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
-  if (!isValueTypeCollection(collArg) || !latArg->isNumericValue() ||
-      !lngArg->isNumericValue()) {
-    return false;
-  }
-  Query* query = plan->getAst()->query();
-  std::string cname = collArg->getString();
-
-  // NEAR and WITHIN just use the first geoindex found
-  // we should not access the LogicalCollection directly
-  for (auto const& idx : query->trx()->indexesForCollection(cname)) {
-    if (Index::isGeoIndex(idx->type())) {
-        if (info.index != nullptr && info.index != idx) {
-          return false;
-        }
-      info.index = idx;
-      break;
-    }
-  }
-
-  if (info.index && info.distCenterExpr == nullptr) {
-    info.collection = addCollectionToQuery(query, cname);
-    info.sorted = true; // legacy functions are alwasy sorted
-    info.ascending = true; // always ascending
-    info.distCenterLatExpr = latArg;
-    info.distCenterLngExpr = lngArg;
-    if (func->name == "NEAR" && rArg != nullptr) {
-      info.actualLimit = rArg->isNumericValue() ? rArg->getIntValue() : 100;
-    } else if (func->name == "WITHIN") {
-      TRI_ASSERT(rArg != nullptr);
-      info.maxDistanceExpr = rArg;
-      info.maxInclusive = true;
-      info.fullRange = true;
-    }
-    return true;
-  }
-  return false;
-}
-
-static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, GeoIndexInfo& info) {
-  std::vector<Variable const*> varsUsedHere = el->getVariablesUsedHere();
-  TRI_ASSERT(varsUsedHere.size() == 1);
-  // now check who introduced our variable
-  ExecutionNode* node = plan->getVarSetBy(varsUsedHere[0]->id);
-  if (node == nullptr || node->getType() != EN::CALCULATION) {
-    return false;
-  }
-
-  CalculationNode* calcNode = ExecutionNode::castTo<CalculationNode*>(node);
-  Expression* expr = calcNode->expression();
-  // the expression must exist and it must have an astNode
-  if (expr == nullptr || expr->node() == nullptr) {
-    return false; // not the right type of node
-  }
-
-  if (checkLegacyGeoFunc(plan, expr->node(), info)) {
-    info.collectionNodeToReplace = el;
-    info.collectionNodeOutVar = el->outVariable();
-    TRI_ASSERT(info.index && info.index->fields().size() <= 2);
-    Ast* ast = plan->getAst(); // we need to create this ourselves
-    auto const& fields = info.index->fields();
-    if (fields.size() == 1) {
-      info.locationVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
-    } else {
-      info.latitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
-      info.longitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[1]);
-    }
-    calcNode->canRemoveIfThrows(true);
-    return true;
-  }
-  return false;
-}
-
 // contains the AstNode* a supported function?
 static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
                                    GeoIndexInfo& info) {
@@ -5985,8 +5955,13 @@ static bool optimizeSortNode(ExecutionPlan* plan,
   if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
     info.sorted = true;// do not parse another SORT
     info.ascending = elements[0].ascending;
-    info.exesToModify.emplace(sort, expr);
-    info.nodesToRemove.emplace(expr->node());
+    if (!ServerState::instance()->isCoordinator()) {
+      // we must not remove a sort in the cluster... the results from each
+      // shard will be sorted by using the index, however we still need to
+      // establish a cross-shard sortedness by distance.
+      info.exesToModify.emplace(sort, expr);
+      info.nodesToRemove.emplace(expr->node());
+    }
     calc->canRemoveIfThrows(true);
     return true;
   }
@@ -6148,11 +6123,17 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
     return false;
   }
 
+  size_t limit = 0;
+  if (ln != nullptr) {
+    limit = ln->offset() + ln->limit();
+    TRI_ASSERT(limit != SIZE_MAX);
+  }
+
   IndexIteratorOptions opts;
   opts.sorted = info.sorted;
   opts.ascending = info.ascending;
   //opts.fullRange = info.fullRange;
-  opts.limit = (info.actualLimit < SIZE_MAX) ? info.actualLimit : 0;
+  opts.limit = limit;
   opts.evaluateFCalls = false; // workaround to avoid evaluating "doc.geo"
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
   auto inode = new IndexNode(
@@ -6207,19 +6188,6 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
     }
   }
 
-  if (info.actualLimit < SIZE_MAX) { // add or modify LIMIT
-    if (ln == nullptr) {
-      ln = new LimitNode(plan, plan->nextId(), 0, info.actualLimit);
-      plan->registerNode(ln);
-      plan->insertAfter(inode, ln);
-    } else if (info.actualLimit < ln->limit()) {
-      // LIMIT cannot be modified safely if there is a SORT node
-      // inbetween the enumerate-list / collection node
-      TRI_ASSERT(ln->getFirstDependency()->getType() != EN::SORT);
-      ln->setLimit(info.actualLimit);
-    }
-  }
-
   // signal that plan has been changed
   return true;
 }
@@ -6230,193 +6198,46 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   bool mod = false;
-  // inspect each return node and work upwards to SingletonNode
-  plan->findEndNodes(nodes, true);
 
+  plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
   for (ExecutionNode* node : nodes) {
+    TRI_ASSERT(node->getType() == EN::ENUMERATE_COLLECTION);
+
     GeoIndexInfo info;
-    ExecutionNode* current = node;
+    ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
 
     while (current) {
-      switch (current->getType()) {
-        case EN::SORT:
-          if (!optimizeSortNode(plan.get(), ExecutionNode::castTo<SortNode*>(current), info)) {
-            // 1. EnumerateCollectionNode x
-            // 2. SortNode x.abc ASC
-            // 3. LimitNode n,m  <-- cannot reuse LIMIT node here
-            limit = nullptr;
-          }
-          break;
-        case EN::FILTER:
-          optimizeFilterNode(plan.get(), ExecutionNode::castTo<FilterNode*>(current), info);
-          break;
-        case EN::LIMIT: // collect this so we can use it
-          limit = ExecutionNode::castTo<LimitNode*>(current);
-          break;
-        case EN::INDEX:
-        case EN::COLLECT:
-          info.invalidate(); // TODO reset info to original state instead
-          break;
-        case EN::ENUMERATE_LIST:
-          checkEnumerateListNode(plan.get(), ExecutionNode::castTo<EnumerateListNode*>(current), info);
-          // intentionally falls through
-        case EN::ENUMERATE_COLLECTION: {
-          if (info && info.collectionNodeToReplace == current) {
-            mod = mod || applyGeoOptimization(plan.get(), limit, info);
-          }
-          break;
+      if (current->getType() == EN::SORT) {
+        if (!optimizeSortNode(plan.get(), ExecutionNode::castTo<SortNode*>(current), info)) {
+          // 1. EnumerateCollectionNode x
+          // 2. SortNode x.abc ASC
+          // 3. LimitNode n,m  <-- cannot reuse LIMIT node here
+          //limit = nullptr;
+          break; // stop parsing on non-optimizable SORT
         }
-        default:
-          break;// skip
+      } else if (current->getType() == EN::FILTER) {
+        optimizeFilterNode(plan.get(), ExecutionNode::castTo<FilterNode*>(current), info);
+      } else if (current->getType() == EN::LIMIT) {
+        limit = ExecutionNode::castTo<LimitNode*>(current);
+        break; // stop parsing after first LIMIT
+      } else if (current->getType() == EN::RETURN) {
+        break; // stop parsing on return
+      } else if (current->getType() == EN::INDEX ||
+                 current->getType() == EN::COLLECT) {
+        info.invalidate();
+        break; // unsupported
       }
-      current = current->getFirstDependency();  // inspect next node
+      current = current->getFirstParent();  // inspect next node
+    }
+
+    // if info is valid we try to optimize ENUMERATE_COLLECTION
+    if (info && info.collectionNodeToReplace == node) {
+      mod = mod || applyGeoOptimization(plan.get(), limit, info);
     }
   }
 
   opt->addPlan(std::move(plan), rule, mod);
-}
-
-/// @brief replace WITHIN_RECTANGLE, NEAR, WITHIN (under certain conditions)
-/// deactivated right now, doesn't work in all cases
-void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
-                                                  std::unique_ptr<ExecutionPlan> plan,
-                                                  OptimizerRule const* rule) {
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
-  bool modified = false;
-  // inspect all calculation nodes
-  plan->findNodesOfType(nodes, EN::CALCULATION, true);
-
-  Ast* ast = plan->getAst();
-  for (ExecutionNode* en : nodes) {
-    TRI_ASSERT(en->getType() == EN::CALCULATION);
-    CalculationNode* originalCN = ExecutionNode::castTo<CalculationNode*>(en);
-    AstNode* root = originalCN->expression()->nodeForModification();
-
-    auto visitor = [&](AstNode* node) -> AstNode* {
-      if (node->type == NODE_TYPE_FCALL) {
-        Function* func = static_cast<Function*>(node->getData());
-        AstNode* fargs = node->getMemberUnchecked(0);
-        if (func->name != "WITHIN_RECTANGLE" || fargs->numMembers() != 5) {
-          return node; // skip
-        }
-
-        AstNode const* coll = fargs->getMemberUnchecked(0);
-        AstNode const* lat1 = fargs->getMemberUnchecked(1);
-        AstNode const* lng1 = fargs->getMemberUnchecked(2);
-        AstNode const* lat2 = fargs->getMemberUnchecked(3);
-        AstNode const* lng2 = fargs->getMemberUnchecked(4);
-        if (!isValueTypeCollection(coll) || !lat1->isNumericValue() ||
-            !lng1->isNumericValue() || !lat2->isNumericValue() || !
-            lng2->isNumericValue()) {
-          return node; // skip, invalid arguments
-        }
-
-        // check for suitable indexes
-        std::string cname = coll->getString();
-        std::shared_ptr<arangodb::Index> index;
-        // we should not access the LogicalCollection directly
-        for (auto& idx : ast->query()->trx()->indexesForCollection(cname)) {
-          if (Index::isGeoIndex(idx->type())) {
-            index = idx;
-            break;
-          }
-        }
-        if (!index) { // no index found
-          return node;
-        }
-
-        if (coll->type != NODE_TYPE_COLLECTION) { // TODO does this work?
-          addCollectionToQuery(ast->query(), cname);
-          coll = ast->createNodeCollection(coll->getStringValue(),
-                                           AccessMode::Type::READ);
-        }
-
-        // create an on-the-fly subquery for a full collection access
-        AstNode* rootNode = ast->createNodeSubquery();
-
-        // FOR part
-        Variable* collVar = ast->variables()->createTemporaryVariable();
-        AstNode* forNode = ast->createNodeFor(collVar, coll);
-
-        // Create GET_CONTAINS function
-        AstNode* loop = ast->createNodeArray(5);
-        auto fn = [&](AstNode const* lat, AstNode const* lon) {
-          AstNode* arr = ast->createNodeArray(2);
-          arr->addMember(lon);
-          arr->addMember(lat);
-          loop->addMember(arr);
-        };
-        fn(lat1, lng1); fn(lat1, lng2); fn(lat2, lng2); fn(lat2, lng1);
-        fn(lat1, lng1);
-        AstNode* polygon = ast->createNodeObject();
-        polygon->addMember(ast->createNodeObjectElement("type", 4, ast->createNodeValueString("Polygon", 7)));
-        AstNode* coords = ast->createNodeArray(1);
-        coords->addMember(loop);
-        polygon->addMember(ast->createNodeObjectElement("coordinates", 11,  coords));
-
-        fargs = ast->createNodeArray(2);
-        fargs->addMember(polygon);
-
-        // GEO_CONTAINS, needs GeoJson [Lon, Lat] ordering
-        if (index->fields().size() == 2) {
-          AstNode* arr = ast->createNodeArray(2);
-          arr->addMember(ast->createNodeAccess(collVar, index->fields()[1]));
-          arr->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
-          fargs->addMember(arr);
-        } else {
-          VPackBuilder builder;
-          index->toVelocyPack(builder,true,false);
-          bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
-          if (geoJson) {
-            fargs->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
-          } else { // combined [lat, lon] field
-            AstNode* arr = ast->createNodeArray(2);
-            AstNode* access = ast->createNodeAccess(collVar, index->fields()[0]);
-            arr->addMember(ast->createNodeIndexedAccess(access, ast->createNodeValueInt(1)));
-            arr->addMember(ast->createNodeIndexedAccess(access, ast->createNodeValueInt(0)));
-            fargs->addMember(arr);
-          }
-        }
-        AstNode* fcall = ast->createNodeFunctionCall("GEO_CONTAINS", fargs);
-
-        // FILTER part
-        AstNode* filterNode = ast->createNodeFilter(fcall);
-
-        // RETURN part
-        AstNode* returnNode = ast->createNodeReturn(ast->createNodeReference(collVar));
-
-        // add both nodes to subquery
-        rootNode->addMember(forNode);
-        rootNode->addMember(filterNode);
-        rootNode->addMember(returnNode);
-
-        // produce the proper ExecutionNodes from the subquery AST
-        ExecutionNode* subquery = plan->fromNode(rootNode);
-        if (subquery == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-
-        // and register a reference to the subquery result in the expression
-        Variable* v = ast->variables()->createTemporaryVariable();
-        SubqueryNode* sqn = plan->registerSubquery(
-                new SubqueryNode(plan.get(), plan->nextId(), subquery, v));
-        plan->insertDependency(originalCN, sqn);
-
-        modified = true;
-        return ast->createNodeReference(v);
-      }
-      return node;
-    };
-
-    AstNode* newNode = Ast::traverseAndModify(root, visitor);
-    if (newNode != root) {
-      originalCN->expression()->replaceNode(newNode);
-    }
-  }
-
-  opt->addPlan(std::move(plan), rule, modified);
 }
 
 void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,

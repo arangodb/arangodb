@@ -7095,18 +7095,8 @@ AqlValue Functions::DateFormat(arangodb::aql::Query* query,
   return AqlValue(::executeDateFormatRegex(formatString, tp));
 }
 
-AqlValue Functions::Near(arangodb::aql::Query* query, transaction::Methods*,
-              VPackFunctionParameters const& params){
-    ::registerError(query,"NEAR",TRI_ERROR_NOT_IMPLEMENTED);
-    return AqlValue(AqlValueHintNull());
-}
-AqlValue Functions::Within(arangodb::aql::Query* query, transaction::Methods*,
-              VPackFunctionParameters const& params){
-    ::registerError(query,"WITHIN",TRI_ERROR_NOT_IMPLEMENTED);
-    return AqlValue(AqlValueHintNull());
-}
-AqlValue Functions::Fulltext(arangodb::aql::Query* query, transaction::Methods*,
-                     VPackFunctionParameters const& params){
-    ::registerError(query,"FULLTEXT",TRI_ERROR_NOT_IMPLEMENTED);
-    return AqlValue(AqlValueHintNull());
+AqlValue Functions::NotImplemented(arangodb::aql::Query* query, transaction::Methods*,
+                                   VPackFunctionParameters const& params){
+  ::registerError(query, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
+  return AqlValue(AqlValueHintNull());
 }

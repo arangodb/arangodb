@@ -30,7 +30,7 @@ using namespace arangodb::aql;
 Function::Function(std::string const& name,
                    char const* arguments,
                    bool isDeterministic, bool canThrow, bool canRunOnDBServer,
-                   FunctionImplementation implementation)
+                   FunctionImplementation const& implementation)
     : name(name),
       arguments(arguments),
       isDeterministic(isDeterministic),
@@ -40,10 +40,8 @@ Function::Function(std::string const& name,
       conversions() {
   initializeArguments();
 
-
-  //TRI_ASSERT(implementation != nullptr);
-  //There are rules like WITHIN_RECTANGLE that do not have an implementation
-
+  // almost all AQL functions have a cxx implementation
+  // only function V8() plus the ArangoSearch functions do not
   LOG_TOPIC(TRACE, Logger::FIXME) << "registered AQL function '" << name <<
                                      "'. cacheable: " << isCacheable() <<
                                      ", deterministic: " << isDeterministic <<

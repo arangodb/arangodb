@@ -277,7 +277,7 @@ function CursorSyncAuthSuite () {
       assertEqual(result.code, 202);
     },
 
-  }
+  };
 }
 
 jsunity.run(CursorSyncAuthSuite);

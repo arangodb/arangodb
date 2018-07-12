@@ -53,7 +53,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -428,7 +428,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 }
 
 /// @brief drops a collection
-bool TRI_vocbase_t::DropCollectionCallback(
+/*static */ bool TRI_vocbase_t::DropCollectionCallback(
     arangodb::LogicalCollection* collection) {
   std::string const name(collection->name());
 
@@ -943,17 +943,20 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 void TRI_vocbase_t::inventory(
     VPackBuilder& result,
     TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
+  TRI_ASSERT(result.isOpenObject());
 
   // cycle on write-lock
   WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
+  std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> dataSourceById;
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   {
     RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
     collections = _collections;
+    dataSourceById = _dataSourceById;
   }
 
   if (collections.size() > 1) {
@@ -975,7 +978,7 @@ void TRI_vocbase_t::inventory(
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
-  result.openArray();
+  result.add("collections", VPackValue(VPackValueType::Array));
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
 
@@ -1009,7 +1012,7 @@ void TRI_vocbase_t::inventory(
       collection->getIndexesVPack(result, false, false, [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
         // at least the MMFiles engine will try to create it
-        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX && 
+        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
                 idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
@@ -1019,8 +1022,19 @@ void TRI_vocbase_t::inventory(
       result.close();
     }
   }
-
-  result.close();
+  result.close(); // </collection>
+  
+  result.add("views", VPackValue(VPackValueType::Array, true));
+  for (auto const& dataSource : dataSourceById) {
+    if (dataSource.second->category() != LogicalView::category()) {
+      continue;
+    }
+    LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
+    result.openObject();
+    view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+    result.close();
+  }
+  result.close(); // </views>
 }
 
 /// @brief looks up a collection by identifier
@@ -1881,7 +1895,7 @@ void TRI_vocbase_t::addReplicationApplier() {
 /// this only updates the ttl
 void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl) {
   if (ttl <= 0.0) {
-    ttl = InitialSyncer::defaultBatchTimeout;
+    ttl = replutils::BatchInfo::DefaultTimeout;
   }
 
   double const timestamp = TRI_microtime();
@@ -1905,7 +1919,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
                                             TRI_voc_tick_t lastFetchedTick,
                                             double ttl) {
   if (ttl <= 0.0) {
-    ttl = InitialSyncer::defaultBatchTimeout;
+    ttl = replutils::BatchInfo::DefaultTimeout;
   }
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;

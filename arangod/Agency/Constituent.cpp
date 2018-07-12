@@ -615,7 +615,8 @@ void Constituent::run() {
       nullptr,
       arangodb::aql::PART_MAIN
     );
-    auto queryResult = query.execute(_queryRegistry);
+
+    aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);

@@ -353,6 +353,8 @@ using regular expression matching.
 - **search** (string): a regular expression search pattern
 - returns **bool** (bool): *true* if the pattern is contained in *text*,
   and *false* otherwise
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
@@ -422,6 +424,8 @@ Replace the pattern *search* with the string *replacement* in the string
 - returns **string** (string): the string *text* with the *search* regex
   pattern replaced with the *replacement* string wherever the pattern exists
   in *text*
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 For more details about the rules for characters and sequences refer
 [REGEX_TEST()](#regextest).

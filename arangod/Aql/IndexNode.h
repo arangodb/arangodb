@@ -66,7 +66,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   NodeType getType() const override final { return INDEX; }
 
   /// @brief return the condition for the node
-  Condition* condition() const { return _condition; }
+  Condition* condition() const { return _condition.get(); }
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions options() const { return _options; }
@@ -122,7 +122,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   std::vector<transaction::Methods::IndexHandle> _indexes;
 
   /// @brief the index(es) condition
-  Condition* _condition;
+  std::unique_ptr<Condition> _condition;
 
   /// @brief the index sort order - this is the same order for all indexes
   bool _needsGatherNodeSort;
