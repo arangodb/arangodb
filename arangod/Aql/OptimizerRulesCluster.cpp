@@ -123,9 +123,13 @@ std::string getFirstKey(std::vector<AstNode const*> const& compares) {
 }
 
 bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
-  while (node){
+  while (node) {
     node = node->getFirstDependency();
-    if(node->getType() == EN::SINGLETON) {
+    if (node == nullptr) {
+      return false;
+    }
+
+    if (node->getType() == EN::SINGLETON) {
       return true;
     }
 

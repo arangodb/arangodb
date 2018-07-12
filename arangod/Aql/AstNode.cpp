@@ -1078,6 +1078,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
       type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_VIEW ||
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
+    TRI_ASSERT(getStringValue() != nullptr);
     builder.add("name", VPackValuePair(getStringValue(), getStringLength(),
                                         VPackValueType::String));
   }
