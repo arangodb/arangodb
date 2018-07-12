@@ -50,7 +50,7 @@ ExecutionNode* hasSingleParent(ExecutionNode const* in, EN::NodeType type){
   return nullptr;
 }
 
-ExecutionNode* hasSingleParent(ExecutionNode const* in, std::vector<EN::NodeType> types){
+ExecutionNode* hasSingleParent(ExecutionNode const* in, std::vector<EN::NodeType> const& types){
   auto* parent = in->getFirstParent();
   if(parent) {
     for(auto const& type : types){
