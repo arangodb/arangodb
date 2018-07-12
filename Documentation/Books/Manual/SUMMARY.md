@@ -297,17 +297,19 @@
     * [Syncing Collections](Administration/MasterSlave/SyncingCollections.md)
   * [Active Failover](Administration/ActiveFailover/README.md)
   * [Cluster](Administration/Cluster/README.md)
-#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
+# https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  * [ArangoDB Starter Recovery Procedure](Administration/Starter/README.md)    
 * [Security](Security/README.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption](Administration/Encryption/README.md)
   * [Auditing](Administration/Auditing/README.md)
     * [Configuration](Administration/Auditing/AuditConfiguration.md)
     * [Events](Administration/Auditing/AuditEvents.md)
-  # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+# https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [Securing Starter Deployments](Security/Starter/README.md)
-  # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
