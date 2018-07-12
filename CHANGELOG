@@ -17,6 +17,8 @@ v3.2.16 (2018-07-12)
 
 * inception was ignoring leader's configuration
 
+* fixed agency restart from compaction without data
+
 
 v3.2.15 (2018-05-13)
 --------------------
