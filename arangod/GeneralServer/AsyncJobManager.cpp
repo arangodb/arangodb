@@ -190,14 +190,14 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
 Result AsyncJobManager::clearAllJobs() {
   Result rv;
   WRITE_LOCKER(writeLocker, _lock);
-  
+
   for (auto const& it : _jobs) {
     bool ok = true;
     RestHandler* handler = it.second._handler;
     if (handler != nullptr) {
       ok = handler->cancel();
     }
-    
+
     if(!ok){
       // if you end up here you might need to implement the cancel method on your handler
       rv.reset(TRI_ERROR_INTERNAL,"could not cancel job (" +
@@ -205,7 +205,7 @@ Result AsyncJobManager::clearAllJobs() {
     }
   }
   _jobs.clear();
-  
+
   return rv;
 }
 
@@ -258,6 +258,7 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::initAsyncJob(RestHandler* handler) {
+  handler->assignHandlerId();
   AsyncJobResult::IdType jobId = handler->handlerId();
 
   AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, handler);
