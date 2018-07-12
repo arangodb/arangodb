@@ -1692,8 +1692,11 @@ merge(VPackSlice document, std::string const& key, TRI_voc_rid_t revision){
     TRI_SanitizeObject(document, *builder);
     VPackSlice keyInBody = document.get(StaticStrings::KeyString);
 
-    if ((revision != 0 && TRI_ExtractRevisionId(document) != revision) ||
-      keyInBody.isNone() || keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
+    if (keyInBody.isNone() ||
+        keyInBody.isNull() ||
+        (keyInBody.isString() && keyInBody.copyString() != key) ||
+        ((revision != 0) && (TRI_ExtractRevisionId(document) != revision))
+        ) {
       // We need to rewrite the document with the given revision and key:
       builder->add(StaticStrings::KeyString, VPackValue(key));
       if (revision != 0) {
