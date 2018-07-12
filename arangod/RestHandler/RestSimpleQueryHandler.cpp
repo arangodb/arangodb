@@ -29,6 +29,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Scheduler/JobQueue.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/CollectionNameResolver.h"
@@ -45,6 +46,9 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
     GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(request, response, queryRegistry) {}
+
+// returns the queue name
+size_t RestSimpleQueryHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestSimpleQueryHandler::execute() {
   // extract the sub-request type

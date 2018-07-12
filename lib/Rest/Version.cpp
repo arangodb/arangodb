@@ -101,6 +101,11 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
+#ifdef NDEBUG
+  Values["ndebug"] = "true";
+#else
+  Values["ndebug"] = "false";
+#endif
 #if defined(ARCHITECTURE_OPTIMIZATIONS)
   Values["optimisation flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif

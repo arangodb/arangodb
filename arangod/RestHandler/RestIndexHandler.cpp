@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/JobQueue.h"
 #include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Builder.h>
@@ -40,6 +41,9 @@ using namespace arangodb::rest;
 RestIndexHandler::RestIndexHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
+
+// returns the queue name
+size_t RestIndexHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestIndexHandler::execute() {
   // extract the request type
