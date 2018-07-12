@@ -16,7 +16,7 @@ view in ArangoDB.
 
 
 Streaming AQL Cursors
-------------------
+---------------------
 
 It is now possible to create AQL query cursors with the new *stream* option.
 Specify *true* and the query will be executed in a **streaming** fashion. The query result is
@@ -30,6 +30,15 @@ Please note that the query options `cache`, `count` and `fullCount` will not wor
 queries. Additionally query statistics, warnings and profiling data will only be available
 after the query is finished. 
 The default value is *false*
+
+
+Single document operations
+--------------------------
+
+When you now have AQL queries that `INSERT`, `UPDATE`, `REMOVE`, `REPLACE` or fetch a single document
+in a cluster by e.g. using `FILTER _key == '123'`, the coordinator node will now directly
+carry out the change on the DBServer instead of instanciating respective AQL-snippets
+on the DBServer. This reduces the amount of cluster roundtrips and thus improves the performance.
 
 Miscellaneous features
 ----------------------

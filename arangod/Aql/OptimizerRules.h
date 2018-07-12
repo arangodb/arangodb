@@ -114,6 +114,12 @@ void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void interchangeAdjacentEnumerationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const*);
 
+
+/// @brief replace single document operations in cluster by special handling
+void substituteClusterSingleDocumentOperations(Optimizer* opt,
+                                               std::unique_ptr<ExecutionPlan> plan,
+                                               OptimizerRule const* rule);
+
 /// @brief optimize queries in the cluster so that the entire query gets pushed to a single server
 void optimizeClusterSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 

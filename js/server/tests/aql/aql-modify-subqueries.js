@@ -35,7 +35,18 @@ var helper = require("@arangodb/aql-helper");
 var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 var assertQueryError = helper.assertQueryError;
 const isCluster = require('@arangodb/cluster').isCluster();
-const disableRestrictToSingleShard = { optimizer : { rules : ["-restrict-to-single-shard"] } };
+const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations" ] } };
+const disableRestrictToSingleShard = { optimizer : { rules : [ "-restrict-to-single-shard" ] } };
+
+const disableSingleDocOpRestrictToSingleShard = {
+  optimizer : {
+    rules : [
+      "-restrict-to-single-shard",
+      "-optimize-cluster-single-document-operations"
+    ]
+  }
+};
+
 var sanitizeStats = function (stats) {
   // remove these members from the stats because they don't matter
   // for the comparisons
@@ -93,9 +104,10 @@ function ahuacatlModifySuite () {
 
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
-        let plan = AQL_EXPLAIN(query, {}, disableRestrictToSingleShard).plan;
+        let plan = AQL_EXPLAIN(query, {}, disableSingleDocOpRestrictToSingleShard).plan;
+
         //assertTrue(hasDistributeNode(plan.nodes)); // the distribute node is not required here
         assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'UpdateNode', c));
         assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -111,9 +123,10 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
-      let actual = getModifyQueryResultsRaw(query);
+      let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
-      let plan = AQL_EXPLAIN(query).plan;
+      let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
+
       assertFalse(hasDistributeNode(plan.nodes));
       assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'UpdateNode', c));
       assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -144,9 +157,9 @@ function ahuacatlModifySuite () {
 
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { id: 'test', value: 2 } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
-        let plan = AQL_EXPLAIN(query, {}, disableRestrictToSingleShard).plan;
+        let plan = AQL_EXPLAIN(query, {}, disableSingleDocOpRestrictToSingleShard).plan;
         assertTrue(hasDistributeNode(plan.nodes));
         assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
         assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -158,9 +171,9 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { id: 'test', value: 2 } IN " + cn;
-      let actual = getModifyQueryResultsRaw(query);
+      let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
-      let plan = AQL_EXPLAIN(query).plan;
+      let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
       assertFalse(hasDistributeNode(plan.nodes));
       assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
       assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -188,10 +201,10 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", id: 'test" + i + "' } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query, {}, disableRestrictToSingleShard).plan;
+          let plan = AQL_EXPLAIN(query, {}, disableSingleDocOpRestrictToSingleShard).plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -206,10 +219,10 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", id: 'test" + i + "' } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
           assertFalse(hasDistributeNode(plan.nodes));
           assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -218,7 +231,6 @@ function ahuacatlModifySuite () {
         assertEqual(expected, sanitizeStats(actual.stats));
       }
       assertEqual(30, c.count());
-
 
       for (let i = 0; i < 30; ++i) {
         let r = db._query("FOR doc IN " + cn + " FILTER doc.id == 'test" + i + "' RETURN doc").toArray();
@@ -234,10 +246,10 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", a: { b: 'test" + i + "' } } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -252,10 +264,10 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", a: { b: 'test" + i + "' } } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -278,10 +290,10 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", _key: 'test" + i + "' } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query, {}, disableRestrictToSingleShard).plan;
+          let plan = AQL_EXPLAIN(query, {}, disableSingleDocOpRestrictToSingleShard).plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -308,10 +320,10 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", _key: 'test" + i + "' } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
           assertFalse(hasDistributeNode(plan.nodes));
           assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -340,10 +352,10 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", _key: NOOPT(CONCAT('test', '" + i + "')) } IN " + cn;
-        let actual = getModifyQueryResultsRaw(query);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -515,9 +527,9 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " FILTER d._key == 'test93' REMOVE d IN " + cn;
-      let actual = getModifyQueryResultsRaw(query);
+      let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
       if (isCluster) {
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -537,9 +549,9 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " FILTER d._key == 'test93' REMOVE d IN " + cn + " RETURN OLD";
-      let actual = getModifyQueryResultsRaw(query);
+      let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
       if (isCluster) {
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
