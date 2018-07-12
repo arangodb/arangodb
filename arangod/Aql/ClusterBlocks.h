@@ -439,9 +439,10 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
 
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
-  Type getType() const {return Type::SINGLEOPERATION; }
- private:
 
+  Type getType() const override {return Type::SINGLEOPERATION; }
+
+ private:
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
 
