@@ -353,7 +353,7 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
 
 Debugging AQL execution blocks
 ------------------------------
-To debug AQL execution blocks, two steps are required: 
+To debug AQL execution blocks, two steps are required:
 
 - turn on logging for queries using `--extraArgs:log.level queries=info`
 - send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
