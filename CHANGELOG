@@ -17,6 +17,8 @@ v3.2.16 (2018-07-12)
 
 * inception was ignoring leader's configuration
 
+* more patient agency tests to allow for ASAN tests to successfully finish
+
 * fixed for agent coming back to agency with changed endpoint and
   total data loss
 
