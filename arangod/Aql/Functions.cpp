@@ -1434,6 +1434,7 @@ AqlValue Functions::ToString(arangodb::aql::Query*,
 AqlValue Functions::ToBase64(arangodb::aql::Query*,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TO_BASE64", 1, 1);
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   transaction::StringBufferLeaser buffer(trx);
@@ -1450,6 +1451,7 @@ AqlValue Functions::ToBase64(arangodb::aql::Query*,
 AqlValue Functions::ToHex(arangodb::aql::Query*,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TO_HEX", 1, 1);
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
     
   transaction::StringBufferLeaser buffer(trx);
@@ -1466,6 +1468,7 @@ AqlValue Functions::ToHex(arangodb::aql::Query*,
 AqlValue Functions::EncodeURIComponent(arangodb::aql::Query*,
                           transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
+    ValidateParameters(parameters, "ENCODE_URI_COMPONENT", 1, 1);
     AqlValue value = ExtractFunctionParameterValue(parameters, 0);
     
     transaction::StringBufferLeaser buffer(trx);
@@ -1495,6 +1498,7 @@ AqlValue Functions::UUID(arangodb::aql::Query*,
 AqlValue Functions::Soundex(arangodb::aql::Query*,
                                        transaction::Methods* trx,
                                        VPackFunctionParameters const& parameters) {
+    ValidateParameters(parameters, "SOUNDEX", 1, 1);
     AqlValue value = ExtractFunctionParameterValue(parameters, 0);
     
     transaction::StringBufferLeaser buffer(trx);
@@ -1502,7 +1506,7 @@ AqlValue Functions::Soundex(arangodb::aql::Query*,
     
     ::appendAsString(trx, adapter, value);
     
-    std::string encoded = basics::StringUtils::soundex(basics::StringUtils::tolower(std::string(buffer->begin(), buffer->length())));
+    std::string encoded = basics::StringUtils::soundex(basics::StringUtils::trim(basics::StringUtils::tolower(std::string(buffer->begin(), buffer->length()))));
     
     return AqlValue(encoded);
 }

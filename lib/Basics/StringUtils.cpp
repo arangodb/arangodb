@@ -1319,12 +1319,12 @@ std::string encodeURIComponent(char const* src, size_t const len){
   result.reserve(3 * len);
     
   for(; src < end; ++src){
-    if (*src == '-' || *src == '_' || *src == '.' || *src == '!' || *src == '~' || *src == '*' || *src == '(' || *src == ')' || *src == ' '|| (*src >= 'a' && *src <= 'z') || (*src >= 'A' && *src <= 'Z') || (*src >= '0' && *src <= '9')) {
+    if (*src == '-' || *src == '_' || *src == '.' || *src == '!' || *src == '~' || *src == '*' || *src == '(' || *src == ')' || *src == '\''|| (*src >= 'a' && *src <= 'z') || (*src >= 'A' && *src <= 'Z') || (*src >= '0' && *src <= '9')) {
       result.push_back(*src);
     }
     else{
-      std::string encoded = "%" + encodeHex(src, 1);
-      result = result + encoded;
+      result.push_back('%');
+      result = result + encodeHex(src, 1);
     }
   }
     
@@ -1332,52 +1332,52 @@ std::string encodeURIComponent(char const* src, size_t const len){
 }
     
 std::string soundex(std::string const& str){
+    if (str == ""){
+        return "0000";
+    }
     return soundex(str.c_str(), str.size());
 }
     
-std::string soundexCode(const char& c){
+char soundexCode(const char& c){
     switch (c) {
         case 'b': case 'f': case 'p': case 'v':
-            return "1";
+            return '1';
         case 'c': case 'g': case 'j': case 'k': case 'q': case 's': case 'x': case 'z':
-            return "2";
+            return '2';
         case 'd': case 't':
-            return "3";
+            return '3';
         case 'l':
-            return "4";
+            return '4';
         case 'm': case 'n':
-            return "5";
+            return '5';
         case 'r':
-            return "6";
+            return '6';
         default:
-            return "";
+            return '\0';
     }
 }
     
 std::string soundex(char const* src, size_t const len){
     char const* end = src + len;
     std::string result;
-    std::string previousCode = "";
+    char previousCode = '\0';
     
     result.push_back(::toupper(*src));
     src++;
     
-    for(; src < end; ++src){
-        std::string currentCode = soundexCode(*src);
-        if (currentCode != "" && currentCode != previousCode) {
-            result.append(currentCode);
+    while (src < end) {
+        char currentCode = soundexCode(*src);
+        if (currentCode != '\0' && currentCode != previousCode && result.length() < 4) {
+            result.push_back(currentCode);
         }
         previousCode = currentCode;
+        src++;
     }
     
-    if (result.length() > 4){
-        result = result.substr(0, 4);
+    while (result.length() < 4) {
+        result.push_back('0');
     }
-    else{
-        while (result.length() < 4) {
-            result.push_back('0');
-        }
-    }
+    
     return result;
 }
     

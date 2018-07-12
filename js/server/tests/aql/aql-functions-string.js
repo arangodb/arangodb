@@ -165,7 +165,7 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
     testToSoundexValues: function () {
       [ 
-        [ null, "N400" ],
+        [ null, "" ],
         [ "text", "T230" ],
         [ "tixt", "T230"],
         [ "Text", "T230" ],
@@ -175,20 +175,21 @@ function ahuacatlStringFunctionsTestSuite () {
         [ true, "T600" ],
         [ false, "F420" ],
         [ "", "" ],
+        [ " ", ""],
         [ "foobar", "F160" ],
         [ "SOUNDEX", "S532" ],
         [ "SOUNTEKS", "S532" ],
-        [ "The quick brown fox jumps over the lazy dog", "T022"],
+        [ "The quick brown fox jumps over the lazy dog", "T221"],
       ].forEach(function(test) {
         assertEqual([ test[1] ], getQueryResults('RETURN SOUNDEX(' + JSON.stringify(test[0]) + ')'), test);
       });
     },
 
     testSoundexInvalidNumberOfParameters: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow", "foo")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow", "foo", "bar")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow", "foo", "bar")');
     },
 
 // //////////////////////////////////////////////////////////////////////////////
