@@ -118,7 +118,7 @@ function IResearchFeatureDDLTestSuite () {
       db._create("TestCollection0");
       var addLink = { links: { "TestCollection0": {} } };
       view.properties(addLink, true); // partial update
-      properties = view.properties();
+      let properties = view.properties();
       assertTrue(Array === properties.collections.constructor);
       assertEqual(1, properties.collections.length);
       db._drop("TestCollection0");
