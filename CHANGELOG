@@ -1,4 +1,4 @@
-v3.3.12 (XXXX-XX-XX)
+v3.3.12 (2018-07-12)
 --------------------
 
 * fixed graph creation under some circumstances failing with 'edge collection
