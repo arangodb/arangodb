@@ -15,11 +15,11 @@
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
   * [Next Steps](GettingStarted/NextSteps.md)
 * [Tutorials](Tutorials/README.md)
-  # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+#   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](Tutorials/Starter/README.md)
-  # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
+#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
   * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
-  # https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
+#   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
   * [Kubernetes](Tutorials/Kubernetes/README.md)
   * [Datacenter to datacenter Replication on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
 * [Programs & Tools](Programs/README.md)
@@ -39,7 +39,7 @@
     * [Examples](Programs/Arangosh/Examples.md)
     * [Details](Programs/Arangosh/Details.md)
     * [Options](Programs/Arangosh/Options.md)
-  # https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/Options.md)
     * [Security](Programs/Starter/Security.md)
@@ -66,7 +66,7 @@
     * [Options](Programs/Arangoinspect/Options.md)
   * [Datafile Debugger](Programs/Arango-dfdb/README.md)
     * [Examples](Programs/Arango-dfdb/Examples.md)
-  # https://@github.com/arangodb/foxx-cli.git;foxx-cli;docs/Manual;;/
+#   https://@github.com/arangodb/foxx-cli.git;foxx-cli;docs/Manual;;/
   * [Foxx CLI](Programs/FoxxCLI/README.md)
     * [Details](Programs/FoxxCLI/Details.md)
 
@@ -187,7 +187,7 @@
     * [Architecture](Scalability/Cluster/Architecture.md)
     * [Data models](Scalability/Cluster/DataModels.md)
     * [Limitations](Scalability/Cluster/Limitations.md)
-  # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
     * [Introduction](Scalability/DC2DC/Introduction.md)
     * [Applicability](Scalability/DC2DC/Applicability.md)
@@ -297,10 +297,8 @@
     * [Syncing Collections](Administration/MasterSlave/SyncingCollections.md)
   * [Active Failover](Administration/ActiveFailover/README.md)
   * [Cluster](Administration/Cluster/README.md)
-  # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
-  # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter Recovery Procedure](Administration/Starter/README.md)  
 * [Security](Security/README.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption](Administration/Encryption/README.md)
@@ -312,14 +310,14 @@
   # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
-  # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
   * [Cluster](Troubleshooting/Cluster/README.md)
     * [Agency Dump](Troubleshooting/Cluster/AgencyDump.md) 
-  # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)  
 
 ---
