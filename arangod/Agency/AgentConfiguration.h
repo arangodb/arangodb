@@ -127,8 +127,20 @@ struct config_t {
   /// @brief wait for sync requested
   bool waitForSync() const;
 
-  /// @brief add pool member
-  bool addToPool(std::pair<std::string, std::string> const& i);
+  /**
+   * @brief           Verify other agent's pool against our own:
+   *                  - We only get here, if our pool is not complete yet or the
+   *                    id is member of this agency
+   *                  - We match their pool to ours and allow only for an update
+   *                    of it's own endpoint
+   * 
+   * @param otherPool Other agent's pool
+   * @param otherId   Other agent's id
+   *
+   * @return          Success
+   */
+  bool upsertPool(
+    VPackSlice const& otherPool, std::string const& otherId);
 
   /// @brief active agency size
   void activate();
