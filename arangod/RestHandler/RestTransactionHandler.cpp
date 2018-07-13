@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"

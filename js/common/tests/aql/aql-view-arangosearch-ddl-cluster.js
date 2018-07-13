@@ -110,23 +110,22 @@ function IResearchFeatureDDLTestSuite () {
       }
     },
 
-//FIXME
-//    testRemoveLinkViaCollection : function() {
-//      db._drop("TestCollection0");
-//      db._dropView("TestView");
-//
-//      var view = db._createView("TestView", "arangosearch", {});
-//      db._create("TestCollection0");
-//      var addLink = { links: { "TestCollection0": {} } };
-//      view.properties(addLink, true); // partial update
-//      properties = view.properties();
-//      assertTrue(Array === properties.collections.constructor);
-//      assertEqual(1, properties.collections.length);
-//      db._drop("TestCollection0");
-//      properties = view.properties();
-//      assertTrue(Array === properties.collections.constructor);
-//      assertEqual(0, properties.collections.length);
-//    },
+    testRemoveLinkViaCollection : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+
+      var view = db._createView("TestView", "arangosearch", {});
+      db._create("TestCollection0");
+      var addLink = { links: { "TestCollection0": {} } };
+      view.properties(addLink, true); // partial update
+      let properties = view.properties();
+      assertTrue(Array === properties.collections.constructor);
+      assertEqual(1, properties.collections.length);
+      db._drop("TestCollection0");
+      properties = view.properties();
+      assertTrue(Array === properties.collections.constructor);
+      assertEqual(0, properties.collections.length);
+    },
 
     testViewDDL: function() {
       // collections
@@ -170,7 +169,6 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.commit.constructor);
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(60000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(4, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.bytes.constructor);
@@ -199,7 +197,6 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.commit.constructor);
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.bytes.constructor);
@@ -221,7 +218,6 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.commit.constructor);
       assertEqual(20, properties.commit.cleanupIntervalStep);
       assertEqual(60000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(1, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.count.constructor);
@@ -507,7 +503,6 @@ function IResearchFeatureDDLTestSuite () {
       var properties = view.properties();
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
@@ -558,7 +553,6 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
@@ -609,7 +603,6 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
@@ -663,7 +656,6 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));

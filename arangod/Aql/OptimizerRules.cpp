@@ -3206,13 +3206,6 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
 
-    if (node->getType() != EN::UPSERT &&
-        !node->isInInnerLoop() &&
-        !getSingleShardId(plan.get(), node, ExecutionNode::castTo<ModificationNode const*>(node)->collection()).empty()) {
-      // no need to insert a DistributeNode for a single operation that is restricted to a single shard
-      continue;
-    }
-
     ExecutionNode* originalParent = nullptr;
     if (node->hasParent()) {
       auto const& parents = node->getParents();
@@ -3421,7 +3414,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
-  
+
   std::unordered_set<Variable const*> allUsed;
 
   for (auto& node : nodes) {
@@ -3440,7 +3433,17 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
     while (current != nullptr) {
       bool eligible = true;
-      
+
+      // check if any of the nodes we pass use a variable that will not be
+      // available after we insert a new COLLECT on top of it (note: COLLECT
+      // will eliminate all variables from the scope but its own)
+      for (auto const& it : current->getVariablesUsedHere()) {
+        if (current->getType() != EN::GATHER) {
+          // Gather nodes are taken care of separately below
+          allUsed.emplace(it);
+        }
+      }
+
       // check if any of the nodes we pass use a variable that will not be
       // available after we insert a new COLLECT on top of it (note: COLLECT
       // will eliminate all variables from the scope but its own)
@@ -3475,6 +3478,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
           target = previous;
           previous = previous->getFirstDependency();
         }
+
+        TRI_ASSERT(eligible);
 
         if (previous != nullptr) {
           for (auto const& otherVariable : allUsed) {
@@ -3887,6 +3892,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::INDEX:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
+        case EN::REMOTESINGLE:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
@@ -4110,22 +4116,14 @@ void arangodb::aql::restrictToSingleShardRule(
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
+  std::unordered_set<ExecutionNode*> toUnlink;
+
   for (auto& node : nodes) {
     TRI_ASSERT(node->getType() == ExecutionNode::REMOTE);
     ExecutionNode* current = node->getFirstDependency();
 
     while (current != nullptr) {
       auto const currentType = current->getType();
-
-      // don't do this if we are already distributing!
-      auto deps = current->getDependencies();
-      if (deps.size() &&
-          deps[0]->getType() == ExecutionNode::REMOTE &&
-          deps[0]->hasDependency() &&
-          deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
-        break;
-      }
-
       if (currentType == ExecutionNode::INSERT ||
           currentType == ExecutionNode::UPDATE ||
           currentType == ExecutionNode::REPLACE ||
@@ -4139,6 +4137,39 @@ void arangodb::aql::restrictToSingleShardRule(
           auto* modNode = ExecutionNode::castTo<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
           modNode->restrictToShard(shardId);
+
+          auto deps = current->getDependencies();
+          if (deps.size() &&
+              deps[0]->getType() == ExecutionNode::REMOTE) {
+            // if we can apply the single-shard optimization, but still have a
+            // REMOTE node in front of us, we can probably move the remote parts
+            // of the query to our side. this is only the case if the remote part
+            // does not call any remote parts itself
+            std::unordered_set<ExecutionNode*> toRemove;
+
+            auto c = deps[0];
+            toRemove.emplace(c);
+            while (true) {
+              if (c->getType() == EN::SCATTER || c->getType() == EN::DISTRIBUTE) {
+                toRemove.emplace(c);
+              }
+              c = c->getFirstDependency();
+
+              if (c == nullptr) {
+                // reached the end
+                break;
+              }
+
+              if (c->getType() == EN::REMOTE) {
+                toRemove.clear();
+                break;
+              }
+            }
+
+            for (auto const& it : toRemove) {
+              toUnlink.emplace(it);
+            }
+          }
         }
         break;
       } else if (currentType == ExecutionNode::INDEX) {
@@ -4161,6 +4192,10 @@ void arangodb::aql::restrictToSingleShardRule(
 
       current = current->getFirstDependency();
     }
+  }
+
+  if (!toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
   }
 
   opt->addPlan(std::move(plan), rule, wasModified);
@@ -5438,7 +5473,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           if (mustAbort) {
             break;
           }
-          
+
           for (auto const& toRemove : aliasNodesToRemoveLater) {
             plan->unlinkNode(toRemove, false);
           }
@@ -6088,7 +6123,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
       !checkVars(info.distCenterLngExpr) || !checkVars(info.filterExpr)) {
     return false;
   }
-  
+
   size_t limit = 0;
   if (ln != nullptr) {
     limit = ln->offset() + ln->limit();
@@ -6168,11 +6203,11 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
   for (ExecutionNode* node : nodes) {
     TRI_ASSERT(node->getType() == EN::ENUMERATE_COLLECTION);
-    
+
     GeoIndexInfo info;
     ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
-    
+
     while (current) {
       if (current->getType() == EN::SORT) {
         if (!optimizeSortNode(plan.get(), ExecutionNode::castTo<SortNode*>(current), info)) {
@@ -6196,7 +6231,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
       }
       current = current->getFirstParent();  // inspect next node
     }
-  
+
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
       mod = mod || applyGeoOptimization(plan.get(), limit, info);

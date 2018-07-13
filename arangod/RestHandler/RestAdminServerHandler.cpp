@@ -196,14 +196,11 @@ void RestAdminServerHandler::handleMode() {
       return;
     }
     
-    if (!res.ok()) {
+    if (res.fail()) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SERVER_ERROR, "couldn't set requested mode");
-      LOG_TOPIC(ERR, Logger::FIXME) << "Couldn't set requested mode: " <<
-      res.errorMessage();
-    } else {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "cannot set requested mode");
+      LOG_TOPIC(ERR, Logger::FIXME) << "Couldn't set requested mode: " << res.errorMessage();
+      return;
     }
     writeModeResult(ServerState::readOnly());
     

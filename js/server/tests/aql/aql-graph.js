@@ -997,6 +997,27 @@ function ahuacatlQueryShortestPathTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path with a limit, skipping a result
+/// Regression test for missing skipSome implementation
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraOutboundSkipFirst : function () {
+      const query = `WITH ${vn}
+        FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en}
+        LIMIT 1,4
+        RETURN v._id`;
+      const vertices = getQueryResults(query);
+
+      // vertex "A" should have been skipped
+      assertEqual([
+        vn + "/D",
+        vn + "/E",
+        vn + "/G",
+        vn + "/H"
+      ], vertices);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shortest path using dijkstra with includeData: true
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1077,95 +1098,6 @@ function ahuacatlQueryShortestPathTestSuite () {
       assertEqual([ ], actual);
     }
 
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for Neighbors with intentional failures
-////////////////////////////////////////////////////////////////////////////////
-
-function ahuacatlQueryNeighborsErrorsSuite () {
-  var vn = "UnitTestsTraversalVertices";
-  var en = "UnitTestsTraversalEdges";
-  var vertexCollection;
-  var edgeCollection;
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUpAll : function () {
-      db._drop(vn);
-      db._drop(en);
-      internal.debugClearFailAt();
-
-      vertexCollection = db._create(vn, {numberOfShards: 4});
-      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
-
-      [ "A", "B", "C", "D" ].forEach(function (item) {
-        vertexCollection.save({ _key: item, name: item });
-      });
-
-      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "C" ], [ "C", "A" ] ].forEach(function (item) {
-        var l = item[0];
-        var r = item[1];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
-      });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDownAll : function () {
-      db._drop(vn);
-      db._drop(en);
-      internal.debugClearFailAt();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks error handling for neighbors
-////////////////////////////////////////////////////////////////////////////////
-
-/* CodePath does not exist any more
-    testNeighborsDitchesOOM : function () {
-      var v1 = vn + "/A";
-      var v2 = vn + "/B";
-      var v3 = vn + "/D";
-
-      var queryStart = `FOR n IN OUTBOUND "`;
-      var queryEnd = `" ${en} SORT n._id RETURN n._id`;
-
-      var actual = getQueryResults(queryStart + v1 + queryEnd);
-      // Positive Check
-      assertEqual(actual, [ v2, v3 ]);
-
-      internal.debugClearFailAt();
-      internal.debugSetFailAt("EdgeCollectionInfoOOM1");
-
-      // Negative Check
-      try {
-        actual = getQueryResults(queryStart + v1 + queryEnd);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
-      }
-
-      internal.debugClearFailAt();
-      internal.debugSetFailAt("EdgeCollectionInfoOOM2");
-
-      // Negative Check
-      try {
-        actual = getQueryResults(queryStart + v1 + queryEnd);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
-      }
-      internal.debugClearFailAt();
-    }
-*/
   };
 }
 
@@ -1269,7 +1201,6 @@ jsunity.run(ahuacatlQueryNeighborsTestSuite);
 jsunity.run(ahuacatlQueryBreadthFirstTestSuite);
 jsunity.run(ahuacatlQueryShortestPathTestSuite);
 if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
-  jsunity.run(ahuacatlQueryNeighborsErrorsSuite);
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 return jsunity.done();

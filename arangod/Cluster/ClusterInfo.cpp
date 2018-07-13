@@ -1076,6 +1076,10 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
     DatabaseID const& databaseID,
     ViewID const& viewID
 ) {
+  if (viewID.empty()) {
+    return nullptr;
+  }
+
   auto lookupView = [](
       AllViews const& dbs,
       DatabaseID const& databaseID,
@@ -1137,6 +1141,10 @@ std::shared_ptr<LogicalView> ClusterInfo::getViewCurrent(
     DatabaseID const& databaseID,
     ViewID const& viewID
 ) {
+  if (viewID.empty()) {
+    return nullptr;
+  }
+
   static const auto lookupView = [](
       AllViews const& dbs,
       DatabaseID const& databaseID,
@@ -1160,11 +1168,11 @@ std::shared_ptr<LogicalView> ClusterInfo::getViewCurrent(
     return lookupView(_plannedViews, databaseID, viewID);
   }
 
-  size_t planReoads = 0;
+  size_t planReloads = 0;
 
   if (!_planProt.isValid) {
     loadPlan(); // current Views are actually in Plan instead of Current
-    ++planReoads;
+    ++planReloads;
   }
 
   for(;;) {
@@ -1177,12 +1185,12 @@ std::shared_ptr<LogicalView> ClusterInfo::getViewCurrent(
       }
     }
 
-    if (planReoads >= 2) {
+    if (planReloads >= 2) {
       break;
     }
 
     loadPlan(); // current Views are actually in Plan instead of Current (must load plan outside the lock)
-    ++planReoads;
+    ++planReloads;
   }
 
   LOG_TOPIC(INFO, Logger::CLUSTER)
