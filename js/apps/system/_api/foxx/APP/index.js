@@ -88,6 +88,7 @@ router.use((req, res, next) => {
   } catch (e) {
     if (e.isArangoError) {
       const status = actions.arangoErrorToHttpCode(e.errorNum);
+      console.errorStack(e);
       res.throw(status, e.errorMessage, {
         errorNum: e.errorNum,
         cause: e
