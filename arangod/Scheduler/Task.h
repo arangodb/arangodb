@@ -30,11 +30,11 @@
 #include "Scheduler/EventLoop.h"
 
 namespace arangodb {
-class TaskData;
-
 namespace velocypack {
 class Builder;
 }
+
+class TaskData;
 
 namespace rest {
 class Task : public std::enable_shared_from_this<Task> {

@@ -53,7 +53,6 @@
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
-#include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
@@ -79,7 +78,6 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
-#include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -192,53 +190,6 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 }
 
-static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
-  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-
-  // get database name from request
-  std::string const& dbName = request->databaseName();
-
-  if (dbName.empty()) {
-    // if no databases was specified in the request, use system database name
-    // as a fallback
-    request->setDatabaseName(StaticStrings::SystemDatabase);
-    if (ServerState::instance()->isCoordinator()) {
-      return databaseFeature->useDatabaseCoordinator(
-          StaticStrings::SystemDatabase);
-    }
-    return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    return databaseFeature->useDatabaseCoordinator(dbName);
-  }
-  return databaseFeature->useDatabase(dbName);
-}
-
-static bool SetRequestContext(GeneralRequest* request, void* data) {
-  TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
-
-  // invalid database name specified, database not found etc.
-  if (vocbase == nullptr) {
-    return false;
-  }
-
-  TRI_ASSERT(!vocbase->isDangling());
-
-  // database needs upgrade
-  if (vocbase->state() == TRI_vocbase_t::State::FAILED_VERSION) {
-    request->setRequestPath("/_msg/please-upgrade");
-    vocbase->release();
-    return false;
-  }
-  
-  // the vocbase context is now responsible for releasing the vocbase
-  request->setRequestContext(VocbaseContext::create(request, vocbase), true);
-
-  // the "true" means the request is the owner of the context
-  return true;
-}
-
 void GeneralServerFeature::prepare() {
   ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
   GENERAL_SERVER = this;
@@ -249,7 +200,7 @@ void GeneralServerFeature::start() {
 
   JOB_MANAGER = _jobManager.get();
 
-  _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext, nullptr));
+  _handlerFactory.reset(new RestHandlerFactory());
 
   HANDLER_FACTORY = _handlerFactory.get();
 
@@ -495,11 +446,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler(
       "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _handlerFactory->addHandler(
-      "/_admin/demo-engine", RestHandlerCreator<RestDemoHandler>::createNoData);
-#endif
-
   // ...........................................................................
   // /_admin
   // ...........................................................................
@@ -523,10 +469,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/routing",
       RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
   _handlerFactory->addHandler(
       "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);

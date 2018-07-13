@@ -32,9 +32,10 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
+#include "Scheduler/JobQueue.h"
+#include "Transaction/Context.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -54,6 +55,9 @@ RestSimpleHandler::RestSimpleHandler(
       _queryLock(),
       _query(nullptr),
       _queryKilled(false) {}
+
+// returns the queue name
+size_t RestSimpleHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 RestStatus RestSimpleHandler::execute() {
   // extract the request type

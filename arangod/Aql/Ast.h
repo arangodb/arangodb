@@ -248,6 +248,7 @@ class Ast {
                                      AstNode const*);
 
   /// @brief create an AST attribute access node
+  /// note that the caller must make sure that char* data remains valid!
   AstNode* createNodeAttributeAccess(AstNode const*, char const*, size_t);
 
   /// @brief create an AST attribute access node w/ bind parameter

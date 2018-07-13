@@ -55,6 +55,7 @@
             "frontend/js/lib/typeahead.bundle.min.js",
             "frontend/js/lib/numeral.min.js",
             "frontend/js/lib/moment.min.js",
+            "frontend/js/lib/randomColor.js",
             "frontend/js/lib/tippy.js",
             // START SIGMA LIBRARIES
             "frontend/js/lib/sigma.min.js",

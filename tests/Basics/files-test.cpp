@@ -65,7 +65,7 @@ struct CFilesSetup {
 
   ~CFilesSetup () {
     // let's be sure we delete the right stuff
-    assert(_directory.length() > 10);
+    TRI_ASSERT(_directory.length() > 10);
 
     TRI_RemoveDirectory(_directory.c_str());
   }

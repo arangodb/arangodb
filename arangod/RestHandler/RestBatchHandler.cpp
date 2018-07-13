@@ -30,6 +30,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/JobQueue.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -41,6 +42,9 @@ RestBatchHandler::RestBatchHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 RestBatchHandler::~RestBatchHandler() {}
+
+// returns the queue name
+size_t RestBatchHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_batch_processing
@@ -213,7 +217,7 @@ RestStatus RestBatchHandler::executeHttp() {
       // ignore any errors here, will be handled later by inspecting the response
       try {
         ExecContextScope scope(nullptr);// workaround because of assertions
-        handler->syncRunEngine();
+        handler->runHandler([](RestHandler*) {});
       } catch (...) {
       }
 

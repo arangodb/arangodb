@@ -56,6 +56,8 @@ RestStatus RestStatusHandler::execute() {
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
+  result.add("pid", VPackValue(Thread::currentProcessId()));
+
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
 #else

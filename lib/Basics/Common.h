@@ -46,7 +46,6 @@
 #include "Basics/application-exit.h"
 #undef TRI_WITHIN_COMMON
 
-#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>

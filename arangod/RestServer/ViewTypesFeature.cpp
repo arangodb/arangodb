@@ -38,7 +38,6 @@ ViewTypesFeature::ViewTypesFeature(ApplicationServer* server)
     : ApplicationFeature(server, "ViewTypes") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("WorkMonitor");
 }
 
 void ViewTypesFeature::prepare() {

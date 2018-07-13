@@ -93,8 +93,9 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
     protocolType = ProtocolType::HTTP;
   }
 
-  std::unique_ptr<ListenTask> task(new GeneralListenTask(
-      SchedulerFeature::SCHEDULER->eventLoop(), this, endpoint, protocolType));
+  std::unique_ptr<ListenTask> task;
+  task.reset(new GeneralListenTask(SchedulerFeature::SCHEDULER->eventLoop(),
+                                   this, endpoint, protocolType));
   if (!task->start()) {
     return false;
   }

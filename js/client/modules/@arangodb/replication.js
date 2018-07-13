@@ -144,6 +144,26 @@ applier.state = function () { return applierState(false); };
 globalApplier.state = function () { return applierState(true); };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief return all replication applier states
+// //////////////////////////////////////////////////////////////////////////////
+
+function applierStateAll(global) {
+  var url;
+  if (global) {
+    url = '/_db/_system/_api/replication/applier-state-all?global=true';
+  } else {
+    url = '/_api/replication/applier-state-all';
+  }
+
+  var requestResult = internal.db._connection.GET(url);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
+applier.stateAll= function () { return applierStateAll(false); };
+globalApplier.stateAll = function () { return applierStateAll(true); };
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief stop the replication applier state and "forget" all state
 // //////////////////////////////////////////////////////////////////////////////
 

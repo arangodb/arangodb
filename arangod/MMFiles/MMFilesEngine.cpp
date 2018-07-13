@@ -3461,8 +3461,11 @@ Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
       TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
       builder.add("time", VPackValue(buffer));
 
+      TRI_GetTimeStampReplication(std::get<2>(it), &buffer[0], sizeof(buffer));
+      builder.add("expires", VPackValue(buffer));
+
       builder.add("lastServedTick",
-                  VPackValue(std::to_string(std::get<2>(it))));
+                  VPackValue(std::to_string(std::get<3>(it))));
 
       builder.close();
     }

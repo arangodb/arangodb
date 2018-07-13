@@ -26,8 +26,6 @@
 #define ARANGODB_BASICS_THREAD_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/WorkDescription.h"
 #include "Basics/threads.h"
 
 namespace arangodb {
@@ -66,13 +64,6 @@ class Thread {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief current work description as thread local variable
-  //////////////////////////////////////////////////////////////////////////////
-
-  static thread_local Thread* CURRENT_THREAD;
-
- public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the process id
   //////////////////////////////////////////////////////////////////////////////
 
@@ -105,41 +96,9 @@ class Thread {
 
   static TRI_tid_t currentThreadId();
 
-  // returns the current thread
-  static Thread* current() { return CURRENT_THREAD; }
-
-  // returns the current work description or nullptr
-  static WorkDescription* currentWorkDescription() {
-    return CURRENT_THREAD == nullptr ? nullptr
-                                     : CURRENT_THREAD->workDescription();
-  }
-
-  // returns the current work context or nullptr
-  static WorkContext* currentWorkContext() {
-    if (CURRENT_THREAD == nullptr) {
-      return nullptr;
-    }
-
-    auto description = CURRENT_THREAD->workDescription();
-
-    if (description == nullptr) {
-      return nullptr;
-    }
-
-    return description->_context.get();
-  }
-
   // checks if work has been canceled
   static bool isCanceled() {
-    Thread* thread = CURRENT_THREAD;
-
-    if (thread == nullptr) {
-      return false;
-    }
-
-    WorkDescription* desc = thread->workDescription();
-
-    return desc == nullptr ? false : desc->_data._thread._canceled.load();
+    return false;
   }
 
  public:
@@ -223,24 +182,6 @@ class Thread {
   void setProcessorAffinity(size_t c);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the current work description
-  //////////////////////////////////////////////////////////////////////////////
-
-  WorkDescription* workDescription() const { return _workDescription.load(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the current work description
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setWorkDescription(WorkDescription*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the previous work description
-  //////////////////////////////////////////////////////////////////////////////
-
-  WorkDescription* setPrevWorkDescription();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a description of the thread
   //////////////////////////////////////////////////////////////////////////////
 
@@ -282,8 +223,6 @@ class Thread {
 
   // processor affinity
   int _affinity;
-
-  std::atomic<WorkDescription*> _workDescription;
 };
 }
 

@@ -1,11 +1,100 @@
-v3.3.10 (XXXX-XX-XX)
+v3.3.12 (2018-07-12)
 --------------------
+
+* PR5854: rocksdb engine would frequently request a new DelayToken.  This caused
+  excessive write delay on the next Put() call.  Alternate approach taken.
+
+* fixed graph creation under some circumstances failing with 'edge collection
+  already used in edge def' despite the edge definitions being identical
+
+* fixed issue #5727: Edge document with user provided key is inserted as many
+  times as the number of shards, violating the primary index
+
+* fixed internal issue #2658: AQL modification queries did not allow `_rev`
+  checking. There is now a new option `ignoreRevs` which can be set to `false`
+  in order to force AQL modification queries to match revision ids before
+  doing any modifications
+
+* fixed issue #5679: Replication applier restrictions will crash synchronisation
+  after initial sync
+
+* fixed potential issue in RETURN DISTINCT CollectBlock implementation
+  that led to the block producing an empty result
+
+* changed communication tasks to use boost strands instead of locks,
+  this fixes a race condition with parallel VST communication over
+  SSL
+
+* fixed agency restart from compaction without data
+
+* fixed for agent coming back to agency with changed endpoint and
+  total data loss
+
+* more patient agency tests to allow for ASAN tests to successfully finish
+
+
+v3.3.11 (2018-06-26)
+--------------------
+
+* upgraded arangosync version to 0.5.3
+
+* upgraded arangodb starter version to 0.12.0
+
+* fixed internal issue #2559: "unexpected document key" error when custom
+  shard keys are used and the "allowUserKeys" key generator option is set
+  to false
+
+* fixed AQL DOCUMENT lookup function for documents for sharded collections with
+  more than a single shard and using a custom shard key (i.e. some shard
+  key attribute other than `_key`).
+  The previous implementation of DOCUMENT restricted to lookup to a single
+  shard in all cases, though this restriction was invalid. That lead to
+  `DOCUMENT` not finding documents in cases the wrong shard was contacted. The
+  fixed implementation in 3.3.11 will reach out to all shards to find the
+  document, meaning it will produce the correct result, but will cause more
+  cluster-internal traffic. This increase in traffic may be high if the number
+  of shards is also high, because each invocation of `DOCUMENT` will have to
+  contact all shards.
+  There will be no performance difference for non-sharded collections or
+  collections that are sharded by `_key` or that only have a single shard.
+
+* reimplemented replication view in web UI
+
+* fixed internal issue #2256: ui, document id not showing up when deleting a document
+
+* fixed internal issue #2163: wrong labels within foxx validation of service
+  input parameters
+
+* fixed internal issue #2160: fixed misplaced tooltips in indices view
+
+* added new arangoinspect client tool, to help users and customers easily collect
+  information of any ArangoDB server setup, and facilitate troubleshooting for the
+  ArangoDB Support Team
+
+
+v3.3.10 (2018-06-04)
+--------------------
+
+* make optimizer rule "remove-filter-covered-by-index" not stop after removing
+  a sub-condition from a FILTER statement, but pass the optimized FILTER
+  statement again into the optimizer rule for further optimizations.
+  This allows optimizing away some more FILTER conditions than before.
+
+* allow accessing /_admin/status URL on followers too in active failover setup
+
+* fix cluster COLLECT optimization for attributes that were in "sorted" variant of
+  COLLECT and that were provided by a sorted index on the collected attribute
+
+* apply fulltext index optimization rule for multiple fulltext searches in
+  the same query
+
+  this fixes https://stackoverflow.com/questions/50496274/two-fulltext-searches-on-arangodb-cluster-v8-is-involved
 
 * validate `_from` and `_to` values of edges on updates consistently
 
 * fixed issue #5400: Unexpected AQL Result
 
-* fixe dissue #5429: Frequent 'updated local foxx repository' messages
+* fixed issue #5429: Frequent 'updated local foxx repository' messages
 
 * fixed issue #5252: Empty result if FULLTEXT() is used together with LIMIT offset
 
@@ -154,7 +243,7 @@ v3.3.9 (2018-05-17)
   `COLLECT ...` (no options)                 => create a plan using sorted, and another plan using hash method
 
 * added bulk document lookups for MMFiles engine, which will improve the performance
-  of document lookups from an inside an index in case the index lookup produces many 
+  of document lookups from an inside an index in case the index lookup produces many
   documents
 
 

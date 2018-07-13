@@ -142,7 +142,13 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// in rocksdb for a constant view of the data
   double batchUpdateTime() const { return _batchUpdateTime; }
   
+  /// @brief fetch the server's inventory, public method
+  Result inventory(arangodb::velocypack::Builder& builder);
+  
  private:
+  
+  /// @brief fetch the server's inventory
+  Result fetchInventory(arangodb::velocypack::Builder& builder);
   
   /// @brief set a progress message
   void setProgress(std::string const& msg) override;
@@ -175,9 +181,6 @@ class DatabaseInitialSyncer : public InitialSyncer {
                           arangodb::velocypack::Slice const&, bool incremental,
                           sync_phase_e);
   
-  /// @brief fetch the server's inventory
-  Result fetchInventory(arangodb::velocypack::Builder& builder);
-
   /// @brief handle the inventory response of the master
   Result handleLeaderCollections(arangodb::velocypack::Slice const&, bool);
 

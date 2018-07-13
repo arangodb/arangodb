@@ -122,9 +122,6 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   std::chrono::microseconds _offset;
   std::chrono::microseconds _interval;
   bool _periodic = false;
-
-  Mutex _queueMutex;
-  bool _queued; 
 };
 
 Mutex V8Task::_tasksLock;
@@ -245,8 +242,7 @@ V8Task::V8Task(std::string const& id, std::string const& name,
       _command(command),
       _allowUseDatabase(allowUseDatabase),
       _offset(0),
-      _interval(0),
-      _queued(false) {}
+      _interval(0) {}
 
 V8Task::~V8Task() { unqueue(); }
 
@@ -335,7 +331,7 @@ void V8Task::start() {
              ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
   
-  auto ioService = SchedulerFeature::SCHEDULER->ioService();
+  auto ioService = SchedulerFeature::SCHEDULER->ioContext();
   _timer.reset(new boost::asio::steady_timer(*ioService));
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
@@ -346,32 +342,11 @@ void V8Task::start() {
 }
 
 void V8Task::queue(std::chrono::microseconds offset) {
-  {
-    MUTEX_LOCKER(locker, _queueMutex);
-    TRI_ASSERT(!_queued);
-    _queued = true; 
-  }
-
-  SchedulerFeature::SCHEDULER->queueJob();
-
   _timer->expires_from_now(offset);
   _timer->async_wait(callbackFunction());
 }
 
 void V8Task::unqueue() noexcept {
-  bool wasQueued;
-
-  {
-    MUTEX_LOCKER(locker, _queueMutex);
-    wasQueued = _queued;
-    if (wasQueued) {
-      _queued = false;
-    }
-  }
-    
-  if (wasQueued && SchedulerFeature::SCHEDULER != nullptr) {
-    SchedulerFeature::SCHEDULER->unqueueJob();
-  }
 }
 
 void V8Task::cancel() {

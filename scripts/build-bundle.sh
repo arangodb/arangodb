@@ -19,6 +19,7 @@ done
     --buildDir build-${EP}bundle \
     --targetDir /var/tmp/ \
     --downloadStarter \
+    --prefix "/opt/arangodb" \
     --clang \
     --staticOpenSSL \
     $@

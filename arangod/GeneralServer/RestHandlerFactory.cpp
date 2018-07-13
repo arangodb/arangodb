@@ -64,22 +64,6 @@ class MaintenanceHandler : public RestBaseHandler {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new handler factory
-////////////////////////////////////////////////////////////////////////////////
-
-RestHandlerFactory::RestHandlerFactory(context_fptr setContext,
-                                       void* contextData)
-    : _setContext(setContext), _contextData(contextData), _notFound(nullptr) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set request context, wrapper method
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestHandlerFactory::setRequestContext(GeneralRequest* request) {
-  return _setContext(request, _contextData);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,6 +96,9 @@ RestHandler* RestHandlerFactory::createHandler(
       if (path.find("/_admin/shutdown") == std::string::npos &&
           path.find("/_admin/cluster/health") == std::string::npos &&
           path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_admin/status") == std::string::npos &&
+          path.find("/_admin/statistics") == std::string::npos &&
+          path.find("/_admin/log") == std::string::npos &&
           path.find("/_admin/server/availability") == std::string::npos &&
           path.find("/_api/agency/agency-callbacks") == std::string::npos &&
           path.find("/_api/cluster/") == std::string::npos &&
@@ -142,15 +129,13 @@ RestHandler* RestHandlerFactory::createHandler(
 
     // find longest match
     size_t const pathLength = path.size();
-
+    // prefixes are sorted by length descending,
     for (auto const& p : _prefixes) {
       size_t const pSize = p.size();
-
       if (path.compare(0, pSize, p) == 0) {
         if (pSize < pathLength && path[pSize] == '/') {
-          if (prefix.size() < pSize) {
-            prefix = p;
-          }
+          prefix = p;
+          break; // first match is longest match
         }
       }
     }
@@ -234,6 +219,9 @@ void RestHandlerFactory::addPrefixHandler(std::string const& path,
                                           create_fptr func, void* data) {
   _constructors[path] = std::make_pair(func, data);
   _prefixes.emplace_back(path);
+  std::sort(_prefixes.begin(), _prefixes.end(), [](std::string const& a, std::string const& b) {
+    return a.size() > b.size();
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -2297,6 +2297,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
   std::unordered_set<ExecutionNode*> toUnlink;
   bool modified = false;
+  // this rule may modify the plan in place, but the new plan
+  // may not yet be optimal. so we may pass it into this same
+  // rule again. the default is to continue with the next rule
+  // however
+  int newLevel = 0;
 
   for (auto const& node : nodes) {
     auto fn = static_cast<FilterNode const*>(node);
@@ -2367,6 +2372,8 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               plan->replaceNode(setter, cn);
               modified = true;
               handled = true;
+              // pass the new plan into this rule again, to optimize even further
+              newLevel = static_cast<int>(rule->level - 1);
             }
           }
         }
@@ -2389,7 +2396,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     plan->unlinkNodes(toUnlink);
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
+  opt->addPlan(std::move(plan), rule, modified, newLevel);
 }
 
 /// @brief helper to compute lots of permutation tuples
@@ -2971,7 +2978,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     plan->registerNode(remoteNode);
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
-
+    
     // insert a gather node
     GatherNode* gatherNode =
         new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
@@ -3075,13 +3082,6 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
 
-    if (node->getType() != EN::UPSERT &&
-        !node->isInInnerLoop() && 
-        !getSingleShardId(plan.get(), node, static_cast<ModificationNode const*>(node)->collection()).empty()) {
-      // no need to insert a DistributeNode for a single operation that is restricted to a single shard
-      continue;
-    }
-    
     ExecutionNode* originalParent = nullptr;
     if (node->hasParent()) {
       auto const& parents = node->getParents();
@@ -3264,8 +3264,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
+  
+  std::unordered_set<Variable const*> allUsed;
 
   for (auto& node : nodes) {
+    allUsed.clear();
     auto used = node->getVariablesUsedHere();
 
     // found a node we need to replace in the plan
@@ -3282,6 +3285,16 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
         
     while (current != nullptr) {
       bool eligible = true;
+      
+      // check if any of the nodes we pass use a variable that will not be
+      // available after we insert a new COLLECT on top of it (note: COLLECT
+      // will eliminate all variables from the scope but its own)
+      for (auto const& it : current->getVariablesUsedHere()) {
+        if (current->getType() != EN::GATHER) {
+          // Gather nodes are taken care of separately below
+          allUsed.emplace(it);
+        }
+      }
 
       for (auto const& it : current->getVariablesSetHere()) {
         if (std::find(used.begin(), used.end(), it) != used.end()) {
@@ -3309,6 +3322,18 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
         }
 
         if (previous != nullptr) {
+          for (auto const& otherVariable : allUsed) {
+            auto const setHere = collectNode->getVariablesSetHere();
+            if (std::find(setHere.begin(), setHere.end(), otherVariable) == setHere.end()) {
+              eligible = false;
+              break;
+            }
+          }
+
+          if (!eligible) {
+            break;
+          }
+
           bool removeGatherNodeSort = false;
 
           if (collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT) {
@@ -3455,14 +3480,52 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             // in case we need to keep the sortedness of the GatherNode,
             // we may need to replace some variable references in it due
             // to the changes we made to the COLLECT node
-            SortElementVector& elements = gatherNode->elements();
-            if (!removeGatherNodeSort && gatherNode != nullptr && !replacements.empty() && !elements.empty()) {
-              TRI_ASSERT(elements.size() >= replacements.size());
-              auto r = replacements.begin();
-              for (auto& it : elements) {
-                it.var = (*r).second;
-                it.attributePath.clear();
-                ++r;
+            if (gatherNode != nullptr) {
+              SortElementVector& elements = gatherNode->elements();
+              if (!removeGatherNodeSort && !replacements.empty() && !elements.empty()) {
+                std::string cmp;
+                std::string other;
+                basics::StringBuffer buffer(128, false);
+
+                // look for all sort elements in the GatherNode and replace them if they
+                // match what we have changed
+                for (auto& it : elements) {
+                  // replace variables
+                  auto it2 = replacements.find(it.var);
+
+                  if (it2 != replacements.end()) {
+                    // match with our replacement table
+                    it.var = (*it2).second;
+                    it.attributePath.clear();
+                  } else {
+                    // no match. now check all our replacements and compare how their
+                    // sources are actually calculated (e.g. #2 may mean "foo.bar")
+                    cmp = it.toString();
+                    for (auto const& it3 : replacements) {
+                      auto setter = plan->getVarSetBy(it3.first->id);
+                      if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+                        continue;
+                      }
+                      auto* expr = static_cast<CalculationNode const*>(setter)->expression();
+                      if (expr == nullptr) {
+                        continue;
+                      }
+                      other.clear();
+                      try {
+                        buffer.clear();
+                        expr->stringify(&buffer);
+                        other = std::string(buffer.c_str(), buffer.size());
+                      } catch (...) {
+                      }
+                      if (other == cmp) {
+                        // finally a match!
+                        it.var = it3.second;
+                        it.attributePath.clear();
+                        break;
+                      }
+                    }
+                  }
+                }
               }
             }
           } else {
@@ -3876,6 +3939,8 @@ void arangodb::aql::restrictToSingleShardRule(
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
+  std::unordered_set<ExecutionNode*> toUnlink;
+
   for (auto& node : nodes) {
     TRI_ASSERT(node->getType() == ExecutionNode::REMOTE);
     ExecutionNode* current = node->getFirstDependency();
@@ -3883,15 +3948,6 @@ void arangodb::aql::restrictToSingleShardRule(
     while (current != nullptr) {
       auto const currentType = current->getType();
       
-      // don't do this if we are already distributing!
-      auto deps = current->getDependencies();
-      if (deps.size() &&
-          deps[0]->getType() == ExecutionNode::REMOTE &&
-          deps[0]->hasDependency() &&
-          deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
-        break;
-      }
-
       if (currentType == ExecutionNode::INSERT ||
           currentType == ExecutionNode::UPDATE ||
           currentType == ExecutionNode::REPLACE ||
@@ -3905,6 +3961,50 @@ void arangodb::aql::restrictToSingleShardRule(
           // we are on a single shard. we must not ignore not-found documents now
           auto* modNode = static_cast<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
+
+          auto deps = current->getDependencies();
+          if (deps.size() &&
+              deps[0]->getType() == ExecutionNode::REMOTE) {
+            // if we can apply the single-shard optimization, but still have a
+            // REMOTE node in front of us, we can probably move the remote parts
+            // of the query to our side. this is only the case if the remote part
+            // does not call any remote parts itself
+            std::unordered_set<ExecutionNode*> toRemove;
+
+            auto c = deps[0];
+            toRemove.emplace(c);
+            while (true) {
+              if (c->getType() == EN::SCATTER || c->getType() == EN::DISTRIBUTE) {
+                toRemove.emplace(c);
+              }
+              c = c->getFirstDependency();
+
+              if (c == nullptr) {
+                // reached the end
+                break;
+              }
+
+              if (c->getType() == EN::REMOTE) {
+                toRemove.clear();
+                break;
+              }
+
+              if (c->getType() == EN::CALCULATION) {
+                auto cn = static_cast<CalculationNode*>(c);
+                auto expr = cn->expression();
+                if (expr != nullptr && !expr->canRunOnDBServer()) {
+                  // found something that must not run on a DB server,
+                  // but that must run on a coordinator. stop optimization here!
+                  toRemove.clear();
+                  break;
+                }
+              }
+            }
+
+            for (auto const& it : toRemove) {
+              toUnlink.emplace(it);
+            }
+          }
         }
         break;
       } else if (currentType == ExecutionNode::INDEX) {
@@ -3927,6 +4027,11 @@ void arangodb::aql::restrictToSingleShardRule(
       
       current = current->getFirstDependency();
     }
+  }
+
+  if (!toUnlink.empty()) {
+    TRI_ASSERT(wasModified);
+    plan->unlinkNodes(toUnlink);
   }
 
   opt->addPlan(std::move(plan), rule, wasModified); 
@@ -5280,25 +5385,25 @@ static bool isValueTypeNumber(AstNode* node) {
                                             node->value.type == VALUE_TYPE_DOUBLE));
 }
 
-static bool applyFulltextOptimization(EnumerateListNode* elnode,
-                                      LimitNode* limitNode, ExecutionPlan* plan) {
+static ExecutionNode* applyFulltextOptimization(EnumerateListNode* elnode,
+                                                LimitNode* limitNode, ExecutionPlan* plan) {
   std::vector<Variable const*> varsUsedHere = elnode->getVariablesUsedHere();
   TRI_ASSERT(varsUsedHere.size() == 1);
   // now check who introduced our variable
   ExecutionNode* node = plan->getVarSetBy(varsUsedHere[0]->id);
   if (node->getType() != EN::CALCULATION) {
-    return false;
+    return nullptr;
   }
   
   CalculationNode* calcNode = static_cast<CalculationNode*>(node);
   Expression* expr = calcNode->expression();
   // the expression must exist and it must have an astNode
   if (expr->node() == nullptr) {
-    return false;// not the right type of node
+    return nullptr;// not the right type of node
   }
   AstNode* flltxtNode = expr->nodeForModification();
   if (flltxtNode->type != NODE_TYPE_FCALL) {
-    return false;
+    return nullptr;
   }
   
   // get the ast node of the expression
@@ -5306,11 +5411,11 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   // we're looking for "FULLTEXT()", which is a function call
   // with a parameters array with collection, attribute, query, limit
   if (func->name != "FULLTEXT" || flltxtNode->numMembers() != 1) {
-    return false;
+    return nullptr;
   }
   AstNode* fargs = flltxtNode->getMember(0);
   if (fargs->numMembers() != 3 && fargs->numMembers() != 4) {
-    return false;
+    return nullptr;
   }
   
   AstNode* collArg = fargs->getMember(0);
@@ -5320,7 +5425,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (!isValueTypeCollection(collArg) || !isValueTypeString(attrArg) ||
       !isValueTypeString(queryArg) || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
-    return false;
+    return nullptr;
   }
   
   std::string name = collArg->getString();
@@ -5328,7 +5433,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
   if (field.empty()) {
-    return false;
+    return nullptr;
   }
   
   // check for suitable indexes
@@ -5345,7 +5450,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     }
   });
   if (!index) { // no index found
-    return false;
+    return nullptr;
   }
   
   Ast* ast = plan->getAst();  
@@ -5401,7 +5506,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     limitNode->addDependency(indexNode);
   }
   
-  return true;
+  return indexNode;
 }
 
 void arangodb::aql::fulltextIndexRule(Optimizer* opt,
@@ -5419,8 +5524,12 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
     while (current) {
       if (current->getType() == EN::ENUMERATE_LIST) {
         EnumerateListNode* elnode = static_cast<EnumerateListNode*>(current);
-        modified = modified || applyFulltextOptimization(elnode, limit, plan.get());
-        break;
+        auto indexNode = applyFulltextOptimization(elnode, limit, plan.get());
+        if (indexNode != nullptr) {
+          modified = true;
+          limit = nullptr;
+          current = indexNode; // resume iteration at new node
+        }
       } else if (current->getType() == EN::LIMIT) {
         limit = static_cast<LimitNode*>(current);
       }

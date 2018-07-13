@@ -154,7 +154,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Utf8Helper.cpp
   Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
-  Basics/WorkMonitor.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
   Basics/conversions.cpp

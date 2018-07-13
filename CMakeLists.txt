@@ -66,10 +66,15 @@ if (USE_ENTERPRISE)
   add_subdirectory(enterprise)
 endif ()
 
+# debug synchronous replication
 option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
+
 if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
+
+# do not use standalone boost asio
+add_definitions("-DARANGODB_STANDALONE_ASIO=0")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -78,7 +83,7 @@ endif ()
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")
 if (NOT DEFINED ARANGODB_VERSION_REVISION)
-  set(ARANGODB_VERSION_REVISION   "9")
+  set(ARANGODB_VERSION_REVISION   "12")
 endif()
 
 set(ARANGODB_PACKAGE_REVISION   "1")
@@ -634,13 +639,7 @@ endif ()
 # NDEBUG
 # ------------------------------------------------------------------------------
 
-if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-                                 )
-   )
-   add_definitions(-DNDEBUG)
-endif ()
+add_definitions(-DNDEBUG)
 
 ################################################################################
 ## FLAGS
