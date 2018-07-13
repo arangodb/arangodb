@@ -280,7 +280,7 @@ void AsyncJobManager::initAsyncJob(RestHandler* handler) {
   AsyncJobResult::IdType jobId = handler->handlerId();
 
   AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, handler);
-  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
+  std::string user = handler->request()->user();
 
   WRITE_LOCKER(writeLocker, _lock);
 
