@@ -1379,6 +1379,21 @@ SortingGatherBlock::SortingGatherBlock(
     _sortRegisters
   );
 }
+  
+SortingGatherBlock::~SortingGatherBlock() {
+  clearBuffers();
+}
+
+void SortingGatherBlock::clearBuffers() noexcept {
+  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
+    for (AqlItemBlock* y : x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _gatherBlockBuffer.clear();
+  _gatherBlockPos.clear();
+}
 
 /// @brief initializeCursor
 std::pair<ExecutionState, arangodb::Result>
@@ -1390,14 +1405,7 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     return res;
   }
 
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y : x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _gatherBlockBuffer.clear();
-  _gatherBlockPos.clear();
+  clearBuffers();
   _gatherBlockBuffer.reserve(_dependencies.size());
   _gatherBlockPos.reserve(_dependencies.size());
   for (size_t i = 0; i < _dependencies.size(); i++) {
