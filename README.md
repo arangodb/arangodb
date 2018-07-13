@@ -6,7 +6,7 @@ ArangoDB
 Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
 ArangoDB is a multi-model, open-source database with flexible data models for
-documents, graphs, and key-values. Build high performance applications using a
+documents, graphs, and key-values. Build high-performance applications using a
 convenient SQL-like query language or JavaScript extensions. Use ACID
 transactions if you require them. Scale horizontally with a few mouse clicks.
 
@@ -72,8 +72,8 @@ Other features of ArangoDB include:
   durability or more performance
 - **Schema-free schemata** let you combine the space efficiency of MySQL with the
   performance power of NoSQL
-- Free **index choice**: use the correct index for your problem, be it a skiplist 
-  or a fulltext search
+- Free **index choice**: use the correct index for your problem, be it a skip list 
+  or a full-text search
 - ArangoDB is **multi-threaded** - exploit the power of all your cores
 - It is **open source** (Apache License 2.0)
 
