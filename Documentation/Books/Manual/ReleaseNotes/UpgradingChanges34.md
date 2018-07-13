@@ -69,6 +69,31 @@ HTTP API
     "deletedCount": 10
   }
   ```
+- `POST /_admin/echo` - previously was a `GET` route, now is `POST` - expects an
+  arbitrary JSON object to send back next to other informations
+
+- `GET /_admin/server/mode` can now be used to detect whether the remote is: 
+  - a Single server instance
+  - a DBServer
+  - a Coordinator
+  - an Agency node
+
+- `POST /_api/document/{collection}` now supports upsert, 
+  this can be achieved by using the new parameter `overwrite=true`. 
+  If you overwrite you can choose to get the old version of the document by specifying
+  `returnOld=true`
+
+- `GET /_api/replication/inventory` GET - 
+  new parameters:
+  - global - if its a database wide replication
+  - batchId - 
+
+- `_api/view` - the new Views API, several new routes for manipulating views.
+
+- `GET /_admin/test` was completely removed
+- `GET /_admin/clusterCheckPort` was completely removed
+- `GET /_admin/cluster-test` was completely removed
+
 
 Miscellaneous
 -------------
