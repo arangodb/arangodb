@@ -42,7 +42,8 @@ arguments:
 - *--dump-data <bool>*: set to *true* to include documents in the dump. Set to *false* 
   to exclude documents. The default value is *true*.
 - *--include-system-collections <bool>*: whether or not to include system collections
-  in the dump. The default value is *false*.
+  in the dump. The default value is *false*. **Set to _true_ if you are using named
+  graphs that you are interested in restoring.**
   
 For example, to only dump structural information of all collections (including system
 collections), use:
