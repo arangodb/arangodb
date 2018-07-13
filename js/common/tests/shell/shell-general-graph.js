@@ -397,7 +397,6 @@ function GeneralGraphCreationSuite() {
       ]);
     },
 
-
     test_create : function () {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
@@ -651,7 +650,7 @@ function GeneralGraphCreationSuite() {
       assertEqual([vc1, vc2, vc3].sort(), g1._orphanCollections().sort());
       assertTrue(db._collection(ec2) === null);
     },
-
+    
     test_extendEdgeDefinitionFromExistingGraph1: function() {
 
       try {
@@ -665,10 +664,11 @@ function GeneralGraphCreationSuite() {
 
       try {
         g1._extendEdgeDefinitions(dr2);
+        fail();
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message
+          ec1 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message
         );
       }
 
@@ -692,7 +692,7 @@ function GeneralGraphCreationSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          ec2 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
 
@@ -731,7 +731,6 @@ function GeneralGraphCreationSuite() {
       assertEqual([], g1._orphanCollections());
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr3, dr2], g1.__edgeDefinitions);
-
     },
 
     test_extendEdgeDefinitionFromExistingGraph4: function() {
@@ -755,8 +754,6 @@ function GeneralGraphCreationSuite() {
       var edgeDefinition = _.find(g1.__edgeDefinitions, {collection: ec2});
       assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
       assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
-
-
     },
 
     
@@ -970,14 +967,17 @@ function EdgesAndVerticesSuite() {
       var myGraphName = unitTestGraphName + "2";
       var myEdgeColName = "unitTestEdgeCollection4711";
       var myVertexColName = vc1;
+
       graph._create(
         myGraphName,
         graph._edgeDefinitions(
           graph._relation(myEdgeColName, myVertexColName, myVertexColName)
         )
       );
+
       graph._drop(myGraphName, true);
       assertFalse(graph._exists(myGraphName));
+      db._flushCache();
       assertTrue(db._collection(myVertexColName) !== null);
       assertTrue(db._collection(myEdgeColName) === null);
     },
@@ -1041,7 +1041,7 @@ function EdgesAndVerticesSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          ec1 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
       assertFalse(graph._exists(myGraphName));
@@ -1064,10 +1064,11 @@ function EdgesAndVerticesSuite() {
             graph._relation(myED, myVD2, myVD2)
           )
         );
+        fail();
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message
+          myED + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message
         );
       }
       assertFalse(graph._exists(myGraphName));
@@ -1815,7 +1816,7 @@ function OrphanCollectionSuite() {
         g1._addVertexCollection(vC4, false);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
-        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
+        assertEqual(e.errorMessage, vC4 + " " + ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
       }
       assertTrue(db._collection(vC4) === null);
       g1 = graph._graph(gN1);
@@ -1838,7 +1839,7 @@ function OrphanCollectionSuite() {
         g1._addVertexCollection(vC1);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code);
-        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message);
+        assertEqual(e.errorMessage, vC1 + " " + ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message);
       }
     },
 

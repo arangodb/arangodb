@@ -349,7 +349,11 @@ OperationResult GraphOperations::assertVertexCollectionAvailability(
   std::shared_ptr<LogicalCollection> def =
       gmngr.getCollectionByName(ctx()->vocbase(), vertexDefinitionName);
   if (def == nullptr) {
-    OperationResult(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST);
+    return OperationResult(
+            Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+                   vertexDefinitionName + " " +
+                   std::string{TRI_errno_string(
+                           TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
   }
 
   return OperationResult(TRI_ERROR_NO_ERROR);
@@ -524,7 +528,11 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
       return result;
     }
   } else if (def == nullptr && !createCollection) {
-    return OperationResult(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST);
+    return OperationResult(
+            Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+                   collectionName + " " +
+                   std::string{TRI_errno_string(
+                           TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
   } else {
     if (def->type() != 2) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
@@ -540,7 +548,11 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
     if (std::find(_graph.orphanCollections().begin(), _graph.orphanCollections().end(),
                   vertexCollection) == _graph.orphanCollections().end()) {
       if (collectionName == vertexCollection) {
-        return OperationResult(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF);
+        return OperationResult(
+            Result(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,
+                   collectionName + " " +
+                       std::string{TRI_errno_string(
+                           TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF)}));
       }
     }
   }
@@ -663,7 +675,6 @@ OperationResult GraphOperations::addEdgeDefinition(
   auto edgeDefOrError = ResultT<EdgeDefinition>{
       EdgeDefinition::createFromVelocypack(edgeDefinitionSlice)};
 
-
   if (edgeDefOrError.fail()) {
     return OperationResult{edgeDefOrError.copy_result()};
   }
@@ -675,13 +686,17 @@ OperationResult GraphOperations::addEdgeDefinition(
 
   std::string const& edgeCollection = edgeDefinition.getName();
   if (_graph.hasEdgeCollection(edgeCollection)) {
-    return OperationResult{TRI_ERROR_GRAPH_COLLECTION_MULTI_USE};
+    return OperationResult(Result(
+        TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
+        edgeCollection + " " +
+            std::string{
+                TRI_errno_string(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)}));
   }
 
   // ... in different graph
   GraphManager gmngr{ctx()};
 
-  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(edgeDefinition)};
+  OperationResult result = OperationResult{gmngr.checkForEdgeDefinitionConflicts(edgeDefinition)};
   if (result.fail()) {
     return result;
   }
@@ -889,7 +904,6 @@ OperationResult GraphOperations::removeGraph(bool waitForSync,
             resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
                                                -1.0);
           });
-
       // ignore found, if not found should just be skipped and continue to remove further graphs
       if (resIn.fail()) {
         return OperationResult(res);

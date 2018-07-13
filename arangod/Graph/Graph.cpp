@@ -230,8 +230,7 @@ void Graph::enhanceEngineInfo(VPackBuilder&) const {}
 Result EdgeDefinition::validateEdgeDefinition(
     VPackSlice const& edgeDefinition) {
   if (!edgeDefinition.isObject()) {
-    return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,
-                  "edge definition is not an object!");
+    return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
   }
 
   for (auto const& key : std::array<std::string, 3>{

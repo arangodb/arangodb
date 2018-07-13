@@ -28,29 +28,128 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const db = internal.db;
 const arangosh = require('@arangodb/arangosh');
 const ggc = require('@arangodb/general-graph-common');
 
-const GRAPH_PREFIX = '/api/gharial/';
+const GRAPH_PREFIX = '_api/gharial/';
 
-let graph = {};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the replication logger state
-// //////////////////////////////////////////////////////////////////////////////
-/*graph._list = function () {
-  var requestResult = internal.db._connection.GET(GRAPH_PREFIX + 'graphs');
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};*/
-
-exports._create = ggc._create;
-exports._drop = ggc._drop;
-exports._exists = ggc._exists;
-exports._graph = ggc._graph;
-exports._edgeDefinitions = ggc._edgeDefinitions;
-exports._extendEdgeDefinitions = ggc._extendEdgeDefinitions;
+// remove me later
 exports._listObjects = ggc._listObjects;
 exports._list = ggc._list;
+exports._exists = ggc._exists;
+
+// inherited graph class
+let CommonGraph = ggc.__GraphClass;
+
+CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
+  this.__edgeDefinitions = edgeDefs;
+  this.__orphanCollections = orphans;
+};
+
+CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition) {
+  var data = {};
+  if (edgeDefinition) {
+    data = edgeDefinition;
+  }
+  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge";
+  var requestResult = db._connection.POST(uri, JSON.stringify(data));
+  try {
+    this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+  } catch (ignore) {
+  }
+
+  return arangosh.checkRequestResult(requestResult);
+};
+
+CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinition) {
+  var data = {};
+  if (edgeDefinition) {
+    data = edgeDefinition;
+  }
+  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + edgeDefinition.collection;
+  var requestResult = db._connection.PUT(uri, JSON.stringify(data));
+  try {
+    this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+  } catch (ignore) {
+  }
+};
+
+CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
+  var data = {};
+  if (name) {
+    data.collection = name;
+  }
+  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex";
+  if (createCollection) {
+    uri += "?createCollection=true";
+  } else {
+    uri += "?createCollection=false";
+  }
+  var requestResult = db._connection.POST(uri, JSON.stringify(data));
+
+  this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+};
+
+/*
+CommonGraph.prototype._addVertexCollection = function (name) {
+  var data = {};
+  if (name) {
+    data.collection = name;
+  }
+  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex";
+  print(data);
+  print(uri);
+  var requestResult = db._connection.DELETE(uri, JSON.stringify(data));
+  return arangosh.checkRequestResult(requestResult);
+};*/
+
+/*
+exports._exists = function (graphName) {
+  var uri = GRAPH_PREFIX + encodeURIComponent(graphName);
+  var requestResult = db._connection.GET(uri);
+  return arangosh.checkRequestResult(requestResult).graph;
+};*/
+
+exports._graph = function (graphName) {
+  var uri = GRAPH_PREFIX + encodeURIComponent(graphName);
+  var requestResult = db._connection.GET(uri);
+  return new CommonGraph(arangosh.checkRequestResult(requestResult).graph);
+};
+
+exports._create = function (name, edgeDefinitions, orphans, options) {
+  var data = {};
+  if (name) {
+    data.name = name;
+  }
+  if (edgeDefinitions) {
+    data.edgeDefinitions = edgeDefinitions;
+  }
+  if (orphans) {
+    data.orphans = orphans;
+  }
+  if (options) {
+    data.options = options;
+  }
+
+  var uri = GRAPH_PREFIX;
+  var requestResult = db._connection.POST(uri, JSON.stringify(data));
+  return new CommonGraph(arangosh.checkRequestResult(requestResult).graph);
+};
+
+exports._drop = function (graphName, dropCollections) {
+
+  var uri = GRAPH_PREFIX + encodeURIComponent(graphName);
+  if (dropCollections) {
+    uri += "?dropCollections=true";
+  }
+  var requestResult = db._connection.DELETE(uri);
+  return arangosh.checkRequestResult(requestResult).result;
+};
+
+// js based helper functions
+exports.__GraphClass = CommonGraph;
+exports._edgeDefinitions = ggc._edgeDefinitions;
+exports._extendEdgeDefinitions = ggc._extendEdgeDefinitions;
 exports._relation = ggc._relation;
+exports._registerCompatibilityFunctions = ggc._registerCompatibilityFunctions;

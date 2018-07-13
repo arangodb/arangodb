@@ -119,7 +119,10 @@ Result GraphManager::assertFeasibleEdgeDefinitions(
         tmpEdgeDefinitions.emplace(def.getName(), std::move(def));
 
     if (!inserted) {
-      return {TRI_ERROR_GRAPH_COLLECTION_MULTI_USE};
+      return Result(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
+                 def.getName() + " " +
+                     std::string{TRI_errno_string(
+                         TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)});
     }
   }
 
@@ -257,7 +260,10 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
       if (it != edgeDefinitions.end()) {
         if (sGED.second != it->second) {
           // found an incompatible edge definition for the same collection
-          return {TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS};
+          return Result(TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,
+                 sGED.first + " " +
+                     std::string{TRI_errno_string(
+                         TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS)});
         }
       }
     }
@@ -379,7 +385,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   }
 
   if (!edgeDefinitions.isArray()) {
-    return OperationResult(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
+    return OperationResult();
   }
 
   VPackBuilder sortedEdgeDefinitions;

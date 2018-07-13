@@ -206,7 +206,7 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
   OperationResult r = gmngr.readGraphs(result, arangodb::aql::PART_DEPENDENT);
 
   if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
   if (!result.isEmpty()) {
@@ -230,7 +230,7 @@ static void JS_GetGraphKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
       gmngr.readGraphKeys(result, arangodb::aql::PART_DEPENDENT);
 
   if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
   if (!result.isEmpty()) {
@@ -285,7 +285,7 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   OperationResult r = gmngr.createGraph(builder.slice(), false);
 
   if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
   ctx = transaction::V8Context::Create(vocbase, false);
@@ -335,7 +335,7 @@ static void JS_AddEdgeDefinitions(
   r = gops.addEdgeDefinition(edgeDefinition.slice(), false);
 
   if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
   ctx = transaction::V8Context::Create(vocbase, false);
 
@@ -385,7 +385,7 @@ static void JS_EditEdgeDefinitions(
       edgeDefinition.slice().get("collection").copyString());
 
   if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
   ctx = transaction::V8Context::Create(vocbase, false);
 
@@ -439,7 +439,7 @@ static void JS_RemoveVertexCollection(
   r = gops.eraseOrphanCollection(false, vertexName, dropCollection);
 
   if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
   ctx = transaction::V8Context::Create(vocbase, false);
 
@@ -493,7 +493,7 @@ static void JS_AddVertexCollection(
   r = gops.addOrphanCollection(builder.slice(), false, createCollection);
 
   if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
   ctx = transaction::V8Context::Create(vocbase, false);
 
@@ -543,7 +543,7 @@ static void JS_DropEdgeDefinition(
   r = gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
 
   if (r.fail()) {
-    TRI_V8_THROW_EXCEPTION(r.errorNumber());
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
   ctx = transaction::V8Context::Create(vocbase, false);
 

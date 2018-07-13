@@ -92,7 +92,7 @@ exports._drop = GeneralGraph._drop;
 exports._renameCollection = GeneralGraph._renameCollection;
 
 // js based helper functions
-exports.__GraphClass = ggc.__GraphClass;
+exports.__GraphClass = CommonGraph;
 exports._edgeDefinitions = ggc._edgeDefinitions;
 exports._extendEdgeDefinitions = ggc._extendEdgeDefinitions;
 exports._relation = ggc._relation;
