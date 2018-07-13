@@ -77,7 +77,9 @@ endif ()
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "2")
-set(ARANGODB_VERSION_REVISION   "15")
+if (NOT DEFINED ARANGODB_VERSION_REVISION)
+  set(ARANGODB_VERSION_REVISION   "16")
+endif()
 set(ARANGODB_PACKAGE_REVISION   "1")
 # version for the windows rc file needs to be numeric:
 if (ARANGODB_VERSION_REVISION GREATER -1)

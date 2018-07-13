@@ -1,5 +1,10 @@
-v3.2.16 (XXXX-XX-XX)
+v3.2.16 (2018-07-12)
 --------------------
+
+* make edge cache initialization and invalidation more portable by avoiding memset
+  on non-POD types
+
+* fixed internal issue #2256: ui, document id not showing up when deleting a document
 
 * fixed issue #5400: Unexpected AQL Result
 
@@ -7,13 +12,20 @@ v3.2.16 (XXXX-XX-XX)
 
 * issue one HTTP call less per cluster AQL query
 
-* self heal during a Foxx service install, upgrade or replace no longer breaks 
+* self heal during a Foxx service install, upgrade or replace no longer breaks
   the respective operation
 
 * inception was ignoring leader's configuration
 
 * inception could get caught in a trap, where agent configuration
   version and timeout multiplier lead to incapacitated agency
+
+* more patient agency tests to allow for ASAN tests to successfully finish
+
+* fixed for agent coming back to agency with changed endpoint and
+  total data loss
+
+* fixed agency restart from compaction without data
 
 
 v3.2.15 (2018-05-13)
