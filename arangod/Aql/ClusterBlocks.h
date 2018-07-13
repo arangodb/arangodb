@@ -362,6 +362,8 @@ class SortingGatherBlock final : public ExecutionBlock {
     GatherNode const& en
   );
 
+  ~SortingGatherBlock();
+
   /// @brief initializeCursor
   std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
@@ -377,6 +379,8 @@ class SortingGatherBlock final : public ExecutionBlock {
   }
 
  private:
+  
+  void clearBuffers() noexcept;
 
   /**
    * @brief Fills all _gatherBlockBuffer entries. Is repeatable during WAITING.

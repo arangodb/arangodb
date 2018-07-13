@@ -378,6 +378,10 @@ Testing a single rspec test:
 
     scripts/unittest http_server --test api-users-spec.rb
 
+Running a test against a ready started server (in contrast to starting one by itself):
+
+    scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
+
 **scripts/unittest** is mostly only a wrapper; The backend functionality lives in:
 **js/client/modules/@arangodb/testing.js**
 
