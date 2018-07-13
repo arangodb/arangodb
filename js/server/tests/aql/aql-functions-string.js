@@ -120,7 +120,7 @@ function ahuacatlStringFunctionsTestSuite () {
 
     testEncodeURIComponentValues: function () {
       [ 
-        [ null, "null" ],
+        [ null, "" ],
         [ -13, "-13" ],
         [ 10, "10"],
         [ true, "true" ],
@@ -130,7 +130,7 @@ function ahuacatlStringFunctionsTestSuite () {
         [ " ", "%20" ],
         [ "?x=шеллы", "%3Fx%3D%D1%88%D0%B5%D0%BB%D0%BB%D1%8B"],
         [ "?x=test", "%3Fx%3Dtest"],
-        [ "The quick brown fox jumps over the lazy dog", "The quick brown fox jumps over the lazy dog"],
+        [ "The quick brown fox jumps over the lazy dog", "The%20quick%20brown%20fox%20jumps%20over%20the%20lazy%20dog"],
         [ "https://w3schools.com/my test.asp?name=ståle&car=saab", "https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab"],
       ].forEach(function(test) {
         assertEqual([ test[1] ], getQueryResults('RETURN ENCODE_URI_COMPONENT(' + JSON.stringify(test[0]) + ')'), test);
@@ -139,10 +139,10 @@ function ahuacatlStringFunctionsTestSuite () {
     
     
     testEncodeURIComponentInvalidNumberOfParameters: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_ENCODE_URI_COMPONENT()');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_ENCODE_URI_COMPONENT("test", "meow")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_ENCODE_URI_COMPONENT("test", "meow", "foo")');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_ENCODE_URI_COMPONENT("test", "meow", "foo", "bar")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT("test", "meow", "foo", "bar")');
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -166,6 +166,8 @@ function ahuacatlStringFunctionsTestSuite () {
     testToSoundexValues: function () {
       [ 
         [ null, "" ],
+        [ "a", "A000" ],
+        [ "ab", "A100" ],
         [ "text", "T230" ],
         [ "tixt", "T230"],
         [ "Text", "T230" ],
@@ -176,9 +178,17 @@ function ahuacatlStringFunctionsTestSuite () {
         [ false, "F420" ],
         [ "", "" ],
         [ " ", ""],
+        [ "\n", ""],
+        [ "         ", "" ],
+        [ "    foobar", "F160" ],
+        [ "foobar      ", "F160" ],
+        [ "      foobar      ", "F160" ],
         [ "foobar", "F160" ],
         [ "SOUNDEX", "S532" ],
         [ "SOUNTEKS", "S532" ],
+        [ "mötör", "M360" ],
+        [ "2m2ö2t2ö2r2", "M360" ],
+        [ "Öööööö", "" ],
         [ "The quick brown fox jumps over the lazy dog", "T221"],
       ].forEach(function(test) {
         assertEqual([ test[1] ], getQueryResults('RETURN SOUNDEX(' + JSON.stringify(test[0]) + ')'), test);
@@ -186,7 +196,7 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
     testSoundexInvalidNumberOfParameters: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow")');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow", "foo")');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow", "foo", "bar")');
