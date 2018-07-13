@@ -282,14 +282,10 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   auto viewSelf = view->self();
 
-      _viewLock = std::unique_lock<ReadMutex>(viewSelf->mutex()); // acquire read-lock before checking view
-
   if (!viewSelf) {
-    _viewLock.unlock();
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "error read-locking view: '" << viewId
       << "' for link '" << _id << "'";
-
 
     return false;
   }
