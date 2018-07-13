@@ -308,14 +308,12 @@ SECTION("test_defaults") {
   // +system, +properties
   {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     arangodb::velocypack::Builder builder;
     builder.openObject();
     view->toVelocyPack(builder, true, true);
     builder.close();
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(8 == slice.length());
@@ -328,23 +326,20 @@ SECTION("test_defaults") {
     CHECK(false == slice.get("deleted").getBool());
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((3 == slice.length()));
+    CHECK((2U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
   }
 
   // -system, +properties
   {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     arangodb::velocypack::Builder builder;
     builder.openObject();
     view->toVelocyPack(builder, true, false);
     builder.close();
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
     CHECK(4 == slice.length());
@@ -355,10 +350,9 @@ SECTION("test_defaults") {
     CHECK(!slice.hasKey("deleted"));
     slice = slice.get("properties");
     CHECK(slice.isObject());
-    CHECK((4 == slice.length()));
+    CHECK((3U == slice.length()));
     CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
   }
 
   // -system, -properties
