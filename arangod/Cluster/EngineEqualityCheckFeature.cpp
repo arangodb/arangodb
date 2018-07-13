@@ -22,9 +22,9 @@
 
 #include "EngineEqualityCheckFeature.h"
 #include "Logger/Logger.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -95,6 +95,6 @@ bool equalStorageEngines(){
 
 void EngineEqualityCheckFeature::start() {
   if (ServerState::instance()->isCoordinator() && !equalStorageEngines()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "the usage of different storage engines is not allowed in the cluster";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "the usage of different storage engines in the cluster is unsupported and may cause issues";
   }
- }
+}
