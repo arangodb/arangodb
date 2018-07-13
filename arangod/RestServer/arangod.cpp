@@ -150,12 +150,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     // Adding the Phases
     server.addFeature(new application_features::AgencyFeaturePhase(&server));
     server.addFeature(new application_features::AQLFeaturePhase(&server));
-    server.addFeature(new application_features::BasicFeaturePhase(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(&server, false));
     server.addFeature(new application_features::ClusterFeaturePhase(&server));
     server.addFeature(new application_features::DatabaseFeaturePhase(&server));
     server.addFeature(new application_features::FinalFeaturePhase(&server));
     server.addFeature(new application_features::FoxxFeaturePhase(&server));
-    server.addFeature(new application_features::GreetingsFeaturePhase(&server));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server, false));
     server.addFeature(new application_features::ServerFeaturePhase(&server));
     server.addFeature(new application_features::V8FeaturePhase(&server));
 

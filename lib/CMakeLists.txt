@@ -124,6 +124,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/GreetingsPhase.cpp
   ApplicationFeatures/ServerPhase.cpp
   ApplicationFeatures/V8Phase.cpp
+  ApplicationFeatures/V8ShellPhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/EngineEqualityCheckFeature.cpp

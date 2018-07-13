@@ -25,24 +25,34 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server)
+BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server, bool isClient)
     : ApplicationFeaturePhase(server, "BasicsPhase") {
   setOptional(false);
   startsAfter("GreetingsPhase");
 
-  startsAfter("Audit");
-  startsAfter("Daemon");
-  startsAfter("DatabasePath");
-  startsAfter("Environment");
-  startsAfter("FileDescriptors");
-  startsAfter("Language");
-  startsAfter("MaxMapCount");
-  startsAfter("Nonce");
-  startsAfter("PageSize");
-  startsAfter("Privilege");
-  startsAfter("Scheduler");
+#ifdef USE_ENTERPRISE
+  startsAfter("Encryption");
+#endif
   startsAfter("Ssl");
-  startsAfter("Supervisor");
-  startsAfter("Temp");
-  startsAfter("WindowsService");
+
+  if (isClient) {
+    startsAfter("Client");
+  }
+
+  if (!isClient) {
+    startsAfter("Audit");
+    startsAfter("Daemon");
+    startsAfter("DatabasePath");
+    startsAfter("Environment");
+    startsAfter("FileDescriptors");
+    startsAfter("Language");
+    startsAfter("MaxMapCount");
+    startsAfter("Nonce");
+    startsAfter("PageSize");
+    startsAfter("Privilege");
+    startsAfter("Scheduler");
+    startsAfter("Supervisor");
+    startsAfter("Temp");
+    startsAfter("WindowsService");
+  }
 }

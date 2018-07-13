@@ -20,38 +20,18 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatabasePhase.h"
+#include "V8ShellPhase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer* server)
-    : ApplicationFeaturePhase(server, "DatabasePhase") {
+V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer* server)
+    : ApplicationFeaturePhase(server, "V8ShellPhase") {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter("GreetingsPhase");
 
-  startsAfter("Authentication");
-  startsAfter("CacheManager");
-  startsAfter("CheckVersion");
-  startsAfter("Database");
-  startsAfter("EngineSelector");
-  startsAfter("Flush");
-  startsAfter("InitDatabase");
-#ifdef USE_ENTERPRISE
-  startsAfter("Ldap");
-#endif
-  startsAfter("Lockfile");
-  startsAfter("MMFilesCompaction");
-  startsAfter("MMFilesEngine");
-  startsAfter("MMFilesLogfileManager");
-  startsAfter("MMFilesPersistentIndex");
-  startsAfter("MMFilesWalRecovery");
-  startsAfter("Replication");
-  startsAfter("RocksDBEngine");
-  startsAfter("RocksDBOption");
-  startsAfter("RocksDBRecoveryManager");
-  startsAfter("ServerId");
-  startsAfter("StorageEngine");
-  startsAfter("TransactionManager");
-  startsAfter("ViewTypes");
+  startsAfter("V8Shell");
+  startsAfter("V8Platform");
+  startsAfter("Console");
 }
+

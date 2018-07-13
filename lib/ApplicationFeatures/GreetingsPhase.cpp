@@ -25,17 +25,21 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer* server)
+GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer* server, bool isClient)
     : ApplicationFeaturePhase(server, "GreetingsPhase") {
   setOptional(false);
 
   startsAfter("Config");
-  startsAfter("Greetings");
-  startsAfter("Jemalloc");
   startsAfter("Logger");
-  startsAfter("LoggerBuffer");
-  startsAfter("ShellColors");
   startsAfter("Random");
+  startsAfter("ShellColors");
   startsAfter("Version");
   startsAfter("WorkMonitor");
+
+  if (!isClient) {
+    // These are server only features
+    startsAfter("Greetings");
+    startsAfter("Jemalloc");
+    startsAfter("LoggerBuffer");
+  }
 }

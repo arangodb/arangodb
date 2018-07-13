@@ -69,7 +69,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
   requiresElevatedPrivileges(false);
   setOptional(false);
 
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
   startsAfter("Console");
   startsAfter("V8Platform");
 }

@@ -40,10 +40,7 @@ ShellFeature::ShellFeature(application_features::ApplicationServer* server,
       _runMode(RunMode::INTERACTIVE) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Config");
-  startsAfter("Language");
-  startsAfter("Logger");
-  startsAfter("V8Shell");
+  startsAfter("V8ShellPhase");
 }
 
 void ShellFeature::collectOptions(
