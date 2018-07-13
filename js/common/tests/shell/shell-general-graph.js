@@ -78,6 +78,14 @@ function GeneralGraphCreationSuite() {
     vc5 = "UnitTestEdgeDefDeleteVertexCol5",
     vc6 = "UnitTestEdgeDefDeleteVertexCol6";
 
+  var sortEdgeDefinition = function(edgeDefinition) {
+    return {
+      collection: edgeDefinition.collection,
+      from: edgeDefinition.from.sort(),
+      to: edgeDefinition.to.sort()
+    }
+  };
+
   return {
 
     setUp: function() {
@@ -741,6 +749,8 @@ function GeneralGraphCreationSuite() {
         g1 = graph._create(gN1, [dr1]);
 
       g1._extendEdgeDefinitions(dr2);
+      dr1 = sortEdgeDefinition(dr1);
+      dr2 = sortEdgeDefinition(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions); // TODO FIX ME <-- first param is not sorted!!!
       var edgeDefinition = _.find(g1.__edgeDefinitions, {collection: ec2});
       assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
