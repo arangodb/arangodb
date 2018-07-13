@@ -125,15 +125,13 @@ function agencyTestSuite () {
     // response:
     var res;
     while (true) {
-
-      var payload = {url: agencyLeader + "/_api/agency/" + api,
-                     method: method, followRedirect: false,
+      res = request({url: agencyLeader + "/_api/agency/" + api,
+                     method: "POST", followRedirect: false,
+                     body: JSON.stringify(list),
                      headers: {"Content-Type": "application/json"},
                      timeout: timeout  /* essentially for the huge trx package
                                           running under ASAN in the CI */ });
-
       if(res.statusCode === 307) {
-        require('console').topic("agency=info", '307 from ' + agencyLeader);
         agencyLeader = res.headers.location;
         var l = 0;
         for (var i = 0; i < 3; ++i) {
@@ -201,7 +199,6 @@ function agencyTestSuite () {
       assertEqual(correct, res.bodyParsed[i]);
     }
   }
-
 
   function evalComp() {
 

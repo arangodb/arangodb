@@ -489,18 +489,13 @@ void Agent::sendAppendEntriesRPC() {
         commitIndex = _commitIndex;
       }
 
-      // If lastConfirmed is smaller than our first log entry's index, and
-      // given that our first log entry is either the 0-entry or a compacted
-      // state and that compactions are only performed up to a RAFT-wide 
-      // committed index, and by that up to absolut truth we can correct
-      // lastConfirmed to one minus our first log index.
-      auto tmp = std::max(_state.firstIndex(), _state.lastCompactionAt());
-      bool raisedLastConfirmed = lastConfirmed < tmp;
-      if (raisedLastConfirmed) {
-        lastConfirmed = tmp - 1;
-        // Note that this can only ever happen if _state.firstIndex() is
-        // greater than 0, so there is no underflow.
-      }
+      // If the follower is behind our first log entry send last snapshot and
+      // following logs. Else try to have the follower catch up in regular order. 
+      bool needSnapshot = lastConfirmed < _state.firstIndex();
+      if (needSnapshot) {
+        lastConfirmed = _state.lastCompactionAt() - 1;
+      } 
+
       LOG_TOPIC(TRACE, Logger::AGENCY)
         << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
       // If lastConfirmed is one minus the first log entry, then this is
@@ -541,16 +536,14 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      bool needSnapshot = false;
       Store snapshot(this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
 
-      if (lowest > lastConfirmed || raisedLastConfirmed) {
+      if (lowest > lastConfirmed || needSnapshot) {
         // Ooops, compaction has thrown away so many log entries that
         // we cannot actually update the follower. We need to send our
         // latest snapshot instead:
-        needSnapshot = true;
         bool success = false;
         try {
           success = _state.loadLastCompactedSnapshot(snapshot,
