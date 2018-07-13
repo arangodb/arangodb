@@ -125,6 +125,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     bool deallocated = false;
     std::condition_variable cond;
     std::mutex mutex;
@@ -143,6 +144,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
     bool deallocated = false;
     std::condition_variable cond;
@@ -162,6 +164,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     std::condition_variable cond;
     std::mutex mutex;
@@ -176,6 +179,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     bool deallocated = false;
     std::condition_variable cond;
     std::mutex mutex;
@@ -197,6 +201,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
     std::condition_variable cond;
@@ -216,6 +221,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
     std::condition_variable cond;
@@ -248,6 +254,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
     bool execVal = true;
@@ -278,6 +285,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
     bool execVal = false;
@@ -313,6 +321,7 @@ SECTION("test_async") {
 
     {
       arangodb::iresearch::IResearchFeature feature(&server);
+      feature.initializeAsync();
     }
   }
 
@@ -327,6 +336,7 @@ SECTION("test_async") {
 
     {
       arangodb::iresearch::IResearchFeature feature(&server);
+      feature.initializeAsync();
       std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
 
       feature.async(resourceMutex, [&cond, &mutex, flag](size_t& timeoutMsec, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); timeoutMsec = 100; return true; });
@@ -340,6 +350,7 @@ SECTION("test_async") {
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(&server);
+    feature.initializeAsync();
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated0 = false;
     bool deallocated1 = false;

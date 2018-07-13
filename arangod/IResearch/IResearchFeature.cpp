@@ -633,7 +633,6 @@ void IResearchFeature::Async::notify() const {
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
-    _async(std::make_unique<Async>()),
     _running(false) {
   setOptional(true);
   startsAfter("ViewTypes");
@@ -655,10 +654,12 @@ void IResearchFeature::async(
     std::shared_ptr<ResourceMutex> const& mutex,
     Async::Fn &&fn
 ) {
+  TRI_ASSERT(_async);
   _async->emplace(mutex, std::move(fn));
 }
 
 void IResearchFeature::asyncNotify() const {
+  TRI_ASSERT(_async);
   _async->notify();
 }
 
@@ -678,7 +679,19 @@ void IResearchFeature::collectOptions(
   return FEATURE_NAME;
 }
 
+void IResearchFeature::initializeAsync() {
+  if (!_async) {
+    _async = std::make_unique<Async>();
+  }
+}
+
 void IResearchFeature::prepare() {
+  if (!isEnabled()) {
+    return;
+  }
+  
+  initializeAsync(); 
+
   _running = false;
   ApplicationFeature::prepare();
 
@@ -701,6 +714,10 @@ void IResearchFeature::prepare() {
 }
 
 void IResearchFeature::start() {
+  if (!isEnabled()) {
+    return;
+  }
+
   ApplicationFeature::start();
 
   // register IResearchView filters
@@ -724,11 +741,17 @@ void IResearchFeature::start() {
 }
 
 void IResearchFeature::stop() {
+  if (!isEnabled()) {
+    return;
+  }
   _running = false;
   ApplicationFeature::stop();
 }
 
 void IResearchFeature::unprepare() {
+  if (!isEnabled()) {
+    return;
+  }
   _running = false;
   ApplicationFeature::unprepare();
 }
