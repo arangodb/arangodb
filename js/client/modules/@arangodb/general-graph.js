@@ -23,21 +23,38 @@
 // /
 // / Copyright holder is triAGENS GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// / @author Heiko Kernbach
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
 const db = internal.db;
 const arangosh = require('@arangodb/arangosh');
 const ggc = require('@arangodb/general-graph-common');
+const _ = require('lodash');
 
 const GRAPH_PREFIX = '_api/gharial/';
 
 // remove me later
-exports._listObjects = ggc._listObjects;
-exports._list = ggc._list;
 exports._exists = ggc._exists;
+
+exports._listObjects = function () {
+  var uri = GRAPH_PREFIX;
+  var requestResult = db._connection.GET(uri);
+  return arangosh.checkRequestResult(requestResult).graphs;
+};
+
+exports._list = function () {
+  var uri = GRAPH_PREFIX;
+  var requestResult = db._connection.GET(uri);
+  arangosh.checkRequestResult(requestResult).graphs;
+
+  var result = [];
+  _.each(requestResult.graphs, function (graph) {
+    result.push(graph._key);
+  });
+  return result;
+};
 
 // inherited graph class
 let CommonGraph = ggc.__GraphClass;
@@ -112,14 +129,6 @@ CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) 
   } catch (ignore) {
   }
 };
-
-
-/*
-exports._exists = function (graphName) {
-  var uri = GRAPH_PREFIX + encodeURIComponent(graphName);
-  var requestResult = db._connection.GET(uri);
-  return arangosh.checkRequestResult(requestResult).graph;
-};*/
 
 exports._graph = function (graphName) {
   var uri = GRAPH_PREFIX + encodeURIComponent(graphName);
