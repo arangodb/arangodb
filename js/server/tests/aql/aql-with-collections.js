@@ -58,7 +58,7 @@ function queryWithCollectionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test with at invalid position
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testWithInvalidPos1 : function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 WITH UnitTestsCollection1 RETURN 1");
     },
@@ -330,7 +330,6 @@ function queryWithCollectionsTestSuite () {
       var collections = AQL_PARSE(query).collections; 
       assertEqual([ "_users" ], collections);
     }
-
   };
 }
 
@@ -341,8 +340,3 @@ function queryWithCollectionsTestSuite () {
 jsunity.run(queryWithCollectionsTestSuite);
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

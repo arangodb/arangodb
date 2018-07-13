@@ -810,6 +810,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
     uint64_t v = pair.getSize();
     reserve(9 + v);
     appendUInt(v, 0xbf);
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
     advance(v);
     return _start + oldPos;
@@ -825,6 +826,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
       reserve(1 + size);
       appendByteUnchecked(static_cast<uint8_t>(0x40 + size));
     }
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
     advance(size);
     return _start + oldPos;

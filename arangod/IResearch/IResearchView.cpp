@@ -818,7 +818,7 @@ IResearchView::IResearchView(
         state
       );
 
-      _asyncFeature->async(self(), 0, std::move(task));
+      _asyncFeature->async(self(), std::move(task));
     }
   }
 
