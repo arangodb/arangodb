@@ -482,9 +482,6 @@ class RocksDBEngine final : public StorageEngine {
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
-
-  // minimum value for --rocksdb.sync-interval (in ms)
-  static constexpr uint64_t minSyncInterval = 5;
 };
 
 }  // namespace arangodb

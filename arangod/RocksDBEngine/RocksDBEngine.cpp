@@ -112,6 +112,9 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
+// minimum value for --rocksdb.sync-interval (in ms)
+static constexpr uint64_t minSyncInterval = 5;
+
 static constexpr uint64_t databaseIdForGlobalApplier = 0;
 
 // handles for recovery helpers
@@ -255,10 +258,6 @@ void RocksDBEngine::validateOptions(
                   "of at least " << minSyncInterval;
     FATAL_ERROR_EXIT();
   }
-
-  // sync interval is specified in milliseconds by the user, but internally
-  // we use microseconds
-  _syncInterval = _syncInterval * 1000;
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -601,7 +600,7 @@ void RocksDBEngine::start() {
   logger->enable();
   
   _syncThread.reset(
-      new RocksDBSyncThread(this, _syncInterval));
+      new RocksDBSyncThread(this, std::chrono::milliseconds(_syncInterval)));
   if (!_syncThread->start()) {
     LOG_TOPIC(FATAL, Logger::ENGINES) << "could not start rocksdb sync thread";
     FATAL_ERROR_EXIT();
@@ -658,7 +657,7 @@ void RocksDBEngine::stop() {
 
     // wait until background thread stops
     while (_backgroundThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::yield();
     }
     _backgroundThread.reset();
   }
@@ -668,7 +667,7 @@ void RocksDBEngine::stop() {
 
     // wait until sync thread stops
     while (_syncThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::yield();
     }
     _syncThread.reset();
   }

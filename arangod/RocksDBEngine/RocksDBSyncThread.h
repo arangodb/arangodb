@@ -42,7 +42,7 @@ class RocksDBEngine;
 
 class RocksDBSyncThread final : public Thread {
  public:
-  RocksDBSyncThread(RocksDBEngine* engine, uint64_t interval);
+  RocksDBSyncThread(RocksDBEngine* engine, std::chrono::milliseconds interval);
 
   ~RocksDBSyncThread();
 
@@ -62,8 +62,8 @@ class RocksDBSyncThread final : public Thread {
  private:
   RocksDBEngine* _engine;
 
-  /// @brief the sync interval, specified in microseconds
-  uint64_t const _interval;
+  /// @brief the sync interval
+  std::chrono::milliseconds const _interval;
 
   /// @brief last time we synced the RocksDB WAL
   std::chrono::time_point<std::chrono::steady_clock> _lastSyncTime;

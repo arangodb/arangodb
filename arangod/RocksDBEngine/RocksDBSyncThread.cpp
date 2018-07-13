@@ -31,7 +31,7 @@
 
 using namespace arangodb;
 
-RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine* engine, uint64_t interval)
+RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine* engine, std::chrono::milliseconds interval)
     : Thread("RocksDBSync"), 
       _engine(engine), 
       _interval(interval),
@@ -91,7 +91,7 @@ void RocksDBSyncThread::run() {
   TRI_ASSERT(_engine != nullptr);
   auto db = _engine->db()->GetBaseDB();
         
-  LOG_TOPIC(TRACE, Logger::ROCKSDB) << "starting RocksDB sync thread with interval " << _interval << " microseconds";
+  LOG_TOPIC(TRACE, Logger::ROCKSDB) << "starting RocksDB sync thread with interval " << _interval.count() << " milliseconds";
 
   while (!isStopping()) {
     try {
@@ -103,7 +103,7 @@ void RocksDBSyncThread::run() {
 
         auto const previousLastSequenceNumber = _lastSequenceNumber;
         auto const previousLastSyncTime = _lastSyncTime;
-        auto const end = _lastSyncTime + std::chrono::microseconds(_interval);
+        auto const end = _lastSyncTime + _interval;
         if (end > now) {
           guard.wait(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(end - now)));
         }
