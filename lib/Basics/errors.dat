@@ -230,6 +230,7 @@ ERROR_QUERY_PARSE,1501,"%s","Will be raised when query is parsed and is found to
 ERROR_QUERY_EMPTY,1502,"query is empty","Will be raised when an empty query is specified."
 ERROR_QUERY_SCRIPT,1503,"runtime error '%s'","Will be raised when a runtime error is caused by the query."
 ERROR_QUERY_NUMBER_OUT_OF_RANGE,1504,"number out of range","Will be raised when a number is outside the expected range."
+ERROR_QUERY_INVALID_GEO_VALUE,1505,"invalid geo coordinate value","Will be raised when a geo index coordinate is invalid or out of range."
 ERROR_QUERY_VARIABLE_NAME_INVALID,1510,"variable name '%s' has an invalid format","Will be raised when an invalid variable name is used."
 ERROR_QUERY_VARIABLE_REDECLARED,1511,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
 ERROR_QUERY_VARIABLE_NAME_UNKNOWN,1512,"unknown variable '%s'","Will be raised when an unknown variable is used or the variable is undefined the context it is used."
