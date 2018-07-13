@@ -64,16 +64,15 @@ Document data for a collection will be saved in files with name pattern
 *<collection-name>.data.json*. Each line in a data file is a document insertion/update or
 deletion marker, alongside with some meta data.
 
+Cluster Backup
+--------------
+
 Starting with Version 2.1 of ArangoDB, the *arangodump* tool also
 supports sharding. Simply point it to one of the coordinators and it
 will behave exactly as described above, working on sharded collections
 in the cluster.
 
-However, as opposed to the single instance situation, this operation 
-does not guarantee to dump a consistent snapshot if write operations 
-happen during the dump operation. It is therefore recommended not to 
-perform any data-modification operations on the cluster whilst *arangodump* 
-is running.
+Please see the [Limitations](Limitations.md).
 
 As above, the output will be one structure description file and one data
 file per sharded collection. Note that the data in the data file is
@@ -84,8 +83,7 @@ and the shard keys.
 Note that the version of the arangodump client tool needs to match the 
 version of the ArangoDB server it connects to.
 
-Advanced cluster options
-------------------------
+### Advanced Cluster Options
 
 Starting with version 3.1.17, collections may be created with shard
 distribution identical to an existing prototypical collection;
