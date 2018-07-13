@@ -38,6 +38,9 @@ const GRAPH_PREFIX = '_api/gharial/';
 // remove me later
 exports._exists = ggc._exists;
 
+// missing
+// _deleteEdgeDefinition
+
 exports._listObjects = function () {
   var uri = GRAPH_PREFIX;
   var requestResult = db._connection.GET(uri);
