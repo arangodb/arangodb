@@ -10,6 +10,10 @@ Infer the content-type of a request.
 
 ### Install
 
+This is a [Node.js](https://nodejs.org/en/) module available through the
+[npm registry](https://www.npmjs.com/). Installation is done using the
+[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
+
 ```sh
 $ npm install type-is
 ```
@@ -18,30 +22,32 @@ $ npm install type-is
 
 ```js
 var http = require('http')
-var is   = require('type-is')
+var typeis = require('type-is')
 
 http.createServer(function (req, res) {
-  var istext = is(req, ['text/*'])
+  var istext = typeis(req, ['text/*'])
   res.end('you ' + (istext ? 'sent' : 'did not send') + ' me text')
 })
 ```
 
-### type = is(request, types)
+### type = typeis(request, types)
 
 `request` is the node HTTP request. `types` is an array of types.
+
+<!-- eslint-disable no-undef -->
 
 ```js
 // req.headers.content-type = 'application/json'
 
-is(req, ['json'])             // 'json'
-is(req, ['html', 'json'])     // 'json'
-is(req, ['application/*'])    // 'application/json'
-is(req, ['application/json']) // 'application/json'
+typeis(req, ['json'])             // 'json'
+typeis(req, ['html', 'json'])     // 'json'
+typeis(req, ['application/*'])    // 'application/json'
+typeis(req, ['application/json']) // 'application/json'
 
-is(req, ['html']) // false
+typeis(req, ['html']) // false
 ```
 
-### is.hasBody(request)
+### typeis.hasBody(request)
 
 Returns a Boolean if the given `request` has a body, regardless of the
 `Content-Type` header.
@@ -50,8 +56,10 @@ Having a body has no relation to how large the body is (it may be 0 bytes).
 This is similar to how file existence works. If a body does exist, then this
 indicates that there is data to read from the Node.js request stream.
 
+<!-- eslint-disable no-undef -->
+
 ```js
-if (is.hasBody(req)) {
+if (typeis.hasBody(req)) {
   // read the body, since there is one
 
   req.on('data', function (chunk) {
@@ -60,19 +68,21 @@ if (is.hasBody(req)) {
 }
 ```
 
-### type = is.is(mediaType, types)
+### type = typeis.is(mediaType, types)
 
 `mediaType` is the [media type](https://tools.ietf.org/html/rfc6838) string. `types` is an array of types.
+
+<!-- eslint-disable no-undef -->
 
 ```js
 var mediaType = 'application/json'
 
-is.is(mediaType, ['json'])             // 'json'
-is.is(mediaType, ['html', 'json'])     // 'json'
-is.is(mediaType, ['application/*'])    // 'application/json'
-is.is(mediaType, ['application/json']) // 'application/json'
+typeis.is(mediaType, ['json'])             // 'json'
+typeis.is(mediaType, ['html', 'json'])     // 'json'
+typeis.is(mediaType, ['application/*'])    // 'application/json'
+typeis.is(mediaType, ['application/json']) // 'application/json'
 
-is.is(mediaType, ['html']) // false
+typeis.is(mediaType, ['html']) // false
 ```
 
 ### Each type can be:
@@ -88,36 +98,36 @@ is.is(mediaType, ['html']) // false
 
 ## Examples
 
-#### Example body parser
+### Example body parser
 
 ```js
-var is = require('type-is');
+var express = require('express')
+var typeis = require('type-is')
 
-function bodyParser(req, res, next) {
-  if (!is.hasBody(req)) {
+var app = express()
+
+app.use(function bodyParser (req, res, next) {
+  if (!typeis.hasBody(req)) {
     return next()
   }
 
-  switch (is(req, ['urlencoded', 'json', 'multipart'])) {
+  switch (typeis(req, ['urlencoded', 'json', 'multipart'])) {
     case 'urlencoded':
       // parse urlencoded body
       throw new Error('implement urlencoded body parsing')
-      break
     case 'json':
       // parse json body
       throw new Error('implement json body parsing')
-      break
     case 'multipart':
       // parse multipart body
       throw new Error('implement multipart body parsing')
-      break
     default:
       // 415 error code
       res.statusCode = 415
       res.end()
-      return
+      break
   }
-}
+})
 ```
 
 ## License

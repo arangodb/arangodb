@@ -353,7 +353,7 @@ struct TRI_vocbase_t {
   );
 
   /// @brief callback for collection dropping
-  static bool DropCollectionCallback(arangodb::LogicalCollection* collection);
+  static bool DropCollectionCallback(arangodb::LogicalCollection& collection);
 
   /// @brief unloads a collection
   int unloadCollection(arangodb::LogicalCollection* collection, bool force);

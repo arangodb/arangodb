@@ -47,7 +47,7 @@ this task should run each `period` seconds
 time offset in seconds from the created timestamp
 
 @RESTREPLYBODY{command,string,required,}
-the javascript function for this dask
+the javascript function for this task
 
 @RESTREPLYBODY{database,string,required,}
 the database this task belongs to

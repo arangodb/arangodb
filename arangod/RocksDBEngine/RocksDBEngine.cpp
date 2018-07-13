@@ -682,7 +682,7 @@ std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     velocypack::Slice const& info
 ) {
   return std::unique_ptr<PhysicalCollection>(
-    new RocksDBCollection(&collection, info)
+    new RocksDBCollection(collection, info)
   );
 }
 

@@ -172,7 +172,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
     VPackSlice const& info
 ) {
   return std::unique_ptr<PhysicalCollection>(
-    new ClusterCollection(&collection, engineType(), info)
+    new ClusterCollection(collection, engineType(), info)
   );
 }
 
