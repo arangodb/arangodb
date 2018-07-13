@@ -852,8 +852,8 @@ IResearchView::IResearchView(
 
     try {
       {
-        SCOPED_LOCK(mutex); // for '_meta._commit._commitIntervalMsec'
- 
+        SCOPED_LOCK(mutex);
+
         // transfer filters first since they only apply to pre-merge data
         // transactions are single-threaded so no mutex is required for '_removals'
         for (auto& filter: cookie->_removals) {
@@ -862,9 +862,6 @@ IResearchView::IResearchView(
           // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
           viewPtr->_memoryNode->_store._writer->remove(filter);
           viewPtr->_toFlush->_store._writer->remove(filter);
- 
-        if (_asyncTerminate.load()) {
-          return; // termination requested
         }
 
         // transfer filters to persisted store as well otherwise query resuts will be incorrect
@@ -1713,11 +1710,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
       << "failed to sync while creating snapshot for IResearch view '" << name() << "', previous snapshot will be used instead";
   }
 
-<<<<<<< HEAD
-  auto cookiePtr = irs::memory::make_unique<ViewState>(_asyncSelf->mutex()); // will acquire read-lock to prevent data-store deallocation
-=======
-  auto cookiePtr = irs::memory::make_unique<ViewStateRead>(_asyncSelf->mutex()); // will aquire read-lock to prevent data-store deallocation
->>>>>>> 2d795c1f8a6db1fc8a92a0b5624f542799a6782c
+  auto cookiePtr = irs::memory::make_unique<ViewStateRead>(_asyncSelf->mutex()); // will acquire read-lock to prevent data-store deallocation
   auto& reader = cookiePtr->_snapshot;
 
   if (!_asyncSelf->get()) {
