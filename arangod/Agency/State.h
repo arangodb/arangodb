@@ -168,6 +168,9 @@ class State {
   /// `index` to 0 if there is no compacted snapshot.
   bool loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term);
 
+  /// @brief lastCompactedAt
+  index_t lastCompactionAt() const;
+
   /// @brief nextCompactionAfter
   index_t nextCompactionAfter() const {
     return _nextCompactionAfter;
@@ -254,8 +257,9 @@ class State {
   bool _collectionsLoaded;
   std::multimap<std::string,arangodb::consensus::index_t> _clientIdLookupTable;
 
-  /// @brief Next compaction after
+  /// @brief compaction indexes
   std::atomic<index_t> _nextCompactionAfter;
+  std::atomic<index_t> _lastCompactionAt;
 
   /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;

@@ -65,6 +65,7 @@ State::State()
       _collectionsChecked(false),
       _collectionsLoaded(false),
       _nextCompactionAfter(0),
+      _lastCompactionAt(0),
       _queryRegistry(nullptr),
       _cur(0) {}
 
@@ -781,6 +782,7 @@ bool State::loadCompacted() {
       _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();   // will be filled in loadRemaining
       // Schedule next compaction:
+      _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
@@ -997,6 +999,12 @@ bool State::find(index_t prevIndex, term_t prevTerm) {
   return _log.at(prevIndex).term == prevTerm;
 }
 
+
+index_t State::lastCompactionAt() const {
+  return _lastCompactionAt;
+}
+
+
 /// Log compaction
 bool State::compact(index_t cind, index_t keep) {
   // We need to compute the state at index cind and use:
@@ -1173,6 +1181,10 @@ bool State::persistCompactionSnapshot(index_t cind,
 
     auto result = trx.insert("compact", store.slice(), _options);
     res = trx.finish(result.result);
+
+    if (res.ok()) {
+      _lastCompactionAt = cind;
+    }
 
     return res.ok();
   }

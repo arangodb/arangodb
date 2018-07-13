@@ -494,8 +494,10 @@ void Agent::sendAppendEntriesRPC() {
       // state and that compactions are only performed up to a RAFT-wide 
       // committed index, and by that up to absolut truth we can correct
       // lastConfirmed to one minus our first log index.
-      if (lastConfirmed < _state.firstIndex()) {
-        lastConfirmed = _state.firstIndex() - 1;
+      auto tmp = std::max(_state.firstIndex(), _state.lastCompactionAt());
+      bool raisedLastConfirmed = lastConfirmed < tmp;
+      if (raisedLastConfirmed) {
+        lastConfirmed = tmp - 1;
         // Note that this can only ever happen if _state.firstIndex() is
         // greater than 0, so there is no underflow.
       }
@@ -543,8 +545,8 @@ void Agent::sendAppendEntriesRPC() {
       Store snapshot(this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
-      
-      if (lowest > lastConfirmed) {
+
+      if (lowest > lastConfirmed || raisedLastConfirmed) {
         // Ooops, compaction has thrown away so many log entries that
         // we cannot actually update the follower. We need to send our
         // latest snapshot instead:
@@ -1580,7 +1582,6 @@ void Agent::rebuildDBs() {
 
   _commitIndex = lastCompactionIndex;
   _waitForCV.broadcast();
-
 
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC(DEBUG, Logger::AGENCY)
