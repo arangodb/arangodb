@@ -72,12 +72,8 @@ HTTP API
 - `POST /_admin/echo` - previously was a `GET` route, now is `POST` - expects an
   arbitrary JSON object to send back next to other informations
 
-- `GET /_admin/server/mode` can now be used to detect whether the remote is: 
-  - a Single server instance
-  - a DBServer
-  - a Coordinator
-  - an Agency node
-
+- `GET /_admin/server/mode` can now be used to detect whether the remote is in read-only mode or not
+  
 - `POST /_api/document/{collection}` now supports upsert, 
   this can be achieved by using the new parameter `overwrite=true`. 
   If you overwrite you can choose to get the old version of the document by specifying
