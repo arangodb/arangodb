@@ -37,7 +37,8 @@ ShellFeature::ShellFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
-      _runMode(RunMode::INTERACTIVE) {
+      _runMode(RunMode::INTERACTIVE),
+      _unitTestFilter("") {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Config");
@@ -68,6 +69,10 @@ void ShellFeature::collectOptions(
   options->addOption("--javascript.unit-tests",
                      "do not start as shell, run unit tests instead",
                      new VectorParameter<StringParameter>(&_unitTests));
+
+  options->addOption("--javascript.unit-test-filter",
+                     "filter testcases in suite",
+                     new StringParameter(&_unitTestFilter));
 }
 
 void ShellFeature::validateOptions(
@@ -157,7 +162,7 @@ void ShellFeature::start() {
         break;
 
       case RunMode::UNIT_TESTS:
-        ok = shell->runUnitTests(_unitTests, _positionals);
+        ok = shell->runUnitTests(_unitTests, _positionals, _unitTestFilter);
         break;
 
       case RunMode::JSLINT:

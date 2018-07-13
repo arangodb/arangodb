@@ -393,11 +393,7 @@ class IResearchFeature::Async {
   Async();
   ~Async();
 
-  void emplace(
-    std::shared_ptr<ResourceMutex> const& mutex,
-    size_t timeoutMsec,
-    Fn &&fn
-  ); // add an asynchronous tasks
+  void emplace(std::shared_ptr<ResourceMutex> const& mutex, Fn &&fn); // add an asynchronous task
   void notify() const; // notify all tasks
 
  private:
@@ -406,17 +402,10 @@ class IResearchFeature::Async {
     std::shared_ptr<ResourceMutex> _mutex; // mutex for the task resources
     std::chrono::system_clock::time_point _timeout; // when the task should be notified (std::chrono::milliseconds::max() == disabled)
 
-    Pending(
-        std::shared_ptr<ResourceMutex> const& mutex,
-        size_t timeoutMsec,
-        Fn &&fn
-    ): _fn(std::move(fn)),
-       _mutex(mutex),
-       _timeout(
-         timeoutMsec
-         ? (std::chrono::system_clock::now() + std::chrono::milliseconds(timeoutMsec))
-         : std::chrono::system_clock::time_point::max()
-       ) {
+    Pending(std::shared_ptr<ResourceMutex> const& mutex,Fn &&fn)
+      : _fn(std::move(fn)),
+        _mutex(mutex),
+        _timeout(std::chrono::system_clock::time_point::max()) {
     }
   };
 
@@ -461,6 +450,9 @@ void IResearchFeature::Async::Thread::run() {
   bool timeoutSet = false;
 
   for (;;) {
+    bool onlyPending;
+    auto pendingStart = _tasks.size();
+
     {
       SCOPED_LOCK_NAMED(_mutex, lock); // aquire before '_terminate' check so that don't miss notify()
 
@@ -476,21 +468,14 @@ void IResearchFeature::Async::Thread::run() {
 
         if (task._mutex && !*(task._mutex)) {
           _tasks.pop_back(); // resource no longer valid
-          continue;
-        }
-
-        if (std::chrono::system_clock::time_point::max() != task._timeout) {
-          timeout =
-            timeoutSet ? std::min(timeout, task._timeout) : task._timeout;
-          timeoutSet = true;
         }
       }
 
       _pending.clear();
       _size.store(_tasks.size());
 
-      // do not sleep if a notification was raised
-      if (_wasNotified) {
+      // do not sleep if a notification was raised or pending tasks were added
+      if (_wasNotified || pendingStart < _tasks.size()) {
         timeout = std::chrono::system_clock::now();
         timeoutSet = true;
       }
@@ -502,7 +487,8 @@ void IResearchFeature::Async::Thread::run() {
         _cond.wait_until(lock, timeout); // wait for timeout or notify
       }
 
-      _wasNotified = !_pending.empty(); // ignore notification since woke up
+      onlyPending = !_wasNotified && pendingStart < _tasks.size(); // process all tasks if a notification was raised
+      _wasNotified = false; // ignore notification since woke up
 
       if (_terminate->load()) { // check again after sleep
         return; // termination requested
@@ -522,7 +508,9 @@ void IResearchFeature::Async::Thread::run() {
       _next->_wasNotified = true; // ensure the next thread checks task validity since task was supposed to be checked in this thread
     }
 
-    for (size_t i = 0, count = _tasks.size(); i < count;) {
+    for (size_t i = onlyPending ? pendingStart : 0, count = _tasks.size(); // optimization to skip previously run tasks if a notificationw as not raised
+         i < count;
+        ) {
       auto& task = _tasks[i];
       auto exec = std::chrono::system_clock::now() >= task._timeout;
       size_t timeoutMsec;
@@ -601,7 +589,6 @@ IResearchFeature::Async::~Async() {
 
 void IResearchFeature::Async::emplace(
     std::shared_ptr<ResourceMutex> const& mutex,
-    size_t timeoutMsec,
     Fn &&fn
 ) {
   if (!fn) {
@@ -610,17 +597,9 @@ void IResearchFeature::Async::emplace(
 
   auto& thread = _pool[0];
   SCOPED_LOCK(thread._mutex);
-  thread._pending.emplace_back(mutex, timeoutMsec, std::move(fn));
+  thread._pending.emplace_back(mutex, std::move(fn));
   ++thread._size;
   thread._cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
-  thread._wasNotified = true; // FIXME TODO remove this workaround for scenario:
-  // T0: task scheduled with '0' timeout
-  // T0: internally terminated
-  // T0: notified
-  // T1: woken up to process _pending
-  // T1: resourceMutex read-locked
-  // T1: sleep indefinite
-  // T0: resourceMutex write-locked
 }
 
 void IResearchFeature::Async::notify() const {
@@ -654,10 +633,9 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
 
 void IResearchFeature::async(
     std::shared_ptr<ResourceMutex> const& mutex,
-    size_t timeoutMsec,
     Async::Fn &&fn
 ) {
-  _async->emplace(mutex, timeoutMsec, std::move(fn));
+  _async->emplace(mutex, std::move(fn));
 }
 
 void IResearchFeature::asyncNotify() const {
