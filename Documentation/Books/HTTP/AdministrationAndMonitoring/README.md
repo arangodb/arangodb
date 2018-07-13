@@ -31,11 +31,11 @@ Cluster
 
 <!-- js/actions/api-system.js -->
 
-@startDocuBlock get_admin_server_role
-
-<!-- js/actions/api-system.js -->
+@startDocuBlock get_admin_server_mode
 
 @startDocuBlock get_admin_server_id
+
+@startDocuBlock get_admin_server_role
 
 @startDocuBlock get_admin_server_availability
 

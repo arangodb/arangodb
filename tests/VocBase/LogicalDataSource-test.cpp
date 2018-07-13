@@ -107,7 +107,6 @@ SECTION("test_category") {
       virtual arangodb::Result drop() override { return arangodb::Result(); }
       virtual void open() override {}
       virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
-      virtual void toVelocyPack(arangodb::velocypack::Builder& result, bool includeProperties, bool includeSystem) const override {}
       virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
@@ -117,6 +116,79 @@ SECTION("test_category") {
     LogicalViewImpl instance(vocbase, json->slice());
 
     CHECK((arangodb::LogicalView::category() == instance.category()));
+  }
+}
+
+SECTION("test_construct") {
+  // LogicalCollection
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": \"testCollection\" }");
+    arangodb::LogicalCollection instance(vocbase, json->slice(), true);
+
+    CHECK((1 == instance.id()));
+    CHECK((2 == instance.planId()));
+    CHECK((std::string("abc") == instance.guid()));
+  }
+
+  // LogicalView
+  {
+    class LogicalViewImpl: public arangodb::LogicalView {
+     public:
+      LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+        : LogicalView(vocbase, definition, 0) {
+      }
+      virtual arangodb::Result drop() override { return arangodb::Result(); }
+      virtual void open() override {}
+      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
+      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+    };
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": \"testView\" }");
+    LogicalViewImpl instance(vocbase, json->slice());
+
+    CHECK((1 == instance.id()));
+    CHECK((2 == instance.planId()));
+    CHECK((std::string("abc") == instance.guid()));
+  }
+}
+
+SECTION("test_defaults") {
+  // LogicalCollection
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    arangodb::LogicalCollection instance(vocbase, json->slice(), true);
+
+    CHECK((0 != instance.id()));
+    CHECK((0 != instance.planId()));
+    CHECK((false == instance.guid().empty()));
+  }
+
+  // LogicalView
+  {
+    class LogicalViewImpl: public arangodb::LogicalView {
+     public:
+      LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+        : LogicalView(vocbase, definition, 0) {
+      }
+      virtual arangodb::Result drop() override { return arangodb::Result(); }
+      virtual void open() override {}
+      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
+      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+    };
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    LogicalViewImpl instance(vocbase, json->slice());
+
+    CHECK((0 != instance.id()));
+    CHECK((0 != instance.planId()));
+    CHECK((instance.id() == instance.planId()));
+    CHECK((false == instance.guid().empty()));
   }
 }
 

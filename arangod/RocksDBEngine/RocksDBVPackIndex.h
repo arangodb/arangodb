@@ -149,15 +149,12 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   bool needToPersistEstimate() const override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
-
-  bool allowExpansion() const override { return true; }
 
   bool canBeDropped() const override { return true; }
   
@@ -189,14 +186,15 @@ class RocksDBVPackIndex : public RocksDBIndex {
                              arangodb::aql::Variable const*, size_t, double&,
                              size_t&) const override;
 
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
+  
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
   rocksdb::SequenceNumber serializeEstimate(
       std::string& output, rocksdb::SequenceNumber seq) const override;
@@ -222,22 +220,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
-
- private:
-  bool isDuplicateOperator(arangodb::aql::AstNode const*,
-                           std::unordered_set<int> const&) const;
-
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes, bool) const;
-
-  void matchAttributes(
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-      bool) const;
 
  private:
   /// @brief return the number of paths
@@ -284,9 +266,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief whether or not array indexes will de-duplicate their input values
   bool _deduplicate;
-
-  /// @brief whether or not at least one attribute is expanded
-  bool _useExpansion;
 
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;

@@ -516,7 +516,6 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::SHORTEST_PATH:
 #ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
-    case EN::SCATTER_IRESEARCH_VIEW:
 #endif
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
@@ -537,7 +536,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::CALCULATION: {
-      auto calcNode = static_cast<CalculationNode const*>(en);
+      auto calcNode = ExecutionNode::castTo<CalculationNode const*>(en);
       Variable const* outVar = calcNode->outVariable();
       if (_filterVariables.find(outVar->id) != _filterVariables.end()) {
         // This calculationNode is directly part of a filter condition
@@ -551,7 +550,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::TRAVERSAL: {
-      auto node = static_cast<TraversalNode*>(en);
+      auto node = ExecutionNode::castTo<TraversalNode*>(en);
       if (_condition->isEmpty()) {
         // No condition, no optimize
         break;
@@ -712,6 +711,11 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         *_planAltered = true;
       }
       break;
+    }
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
     }
   }
   return false;

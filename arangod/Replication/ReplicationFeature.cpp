@@ -45,9 +45,8 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false) {
 
-  setOptional(false);
+  setOptional(true);
   startsAfter("BasicsPhase");
-
   startsAfter("Database");
   startsAfter("StorageEngine");
 }
@@ -82,6 +81,11 @@ void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions
 }
 
 void ReplicationFeature::prepare() {
+  if (ServerState::instance()->isCoordinator()) {
+    setEnabled(false);
+    return;
+  }
+  
   INSTANCE = this;
 }
 
@@ -190,22 +194,28 @@ static void writeError(int code, GeneralResponse* response) {
   response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
 }
 
+/// @brief set the x-arango-endpoint header
+void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
+                                           arangodb::ServerState::Mode mode) {
+  std::string endpoint;
+  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+  if (replication != nullptr && replication->isActiveFailoverEnabled()) {
+    GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+    if (applier != nullptr) {
+      endpoint = applier->endpoint();
+      // replace tcp:// with http://, and ssl:// with https://
+      endpoint = FixEndpointProto(endpoint);
+    }
+  }
+  res->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
+}
+
 /// @brief fill a response object with correct response for a follower
 void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
                                                  arangodb::ServerState::Mode mode) {
   switch (mode) {
     case ServerState::Mode::REDIRECT: {
-      std::string endpoint;
-      ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-      if (replication != nullptr && replication->isActiveFailoverEnabled()) {
-        GlobalReplicationApplier* applier = replication->globalReplicationApplier();
-        if (applier != nullptr) {
-          endpoint = applier->endpoint();
-          // replace tcp:// with http://, and ssl:// with https://
-          endpoint = FixEndpointProto(endpoint);
-        }
-      }
-      response->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
+      setEndpointHeader(response, mode);
       writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
       // return the endpoint of the actual leader
     }

@@ -602,21 +602,17 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
 /// @brief parses a json file to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder VelocyPackHelper::velocyPackFromFile(
-    std::string const& path) {
+VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   size_t length;
   char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
+    auto guard = scopeGuard([&content]() {
+      TRI_Free(content);
+    });
     // The Parser might throw;
     VPackBuilder builder;
-    try {
-      VPackParser parser(builder);
-      parser.parse(reinterpret_cast<uint8_t const*>(content), length);
-      TRI_Free(content);
-    } catch (...) {
-      TRI_Free(content);
-      throw;
-    }
+    VPackParser parser(builder);
+    parser.parse(reinterpret_cast<uint8_t const*>(content), length);
     return builder;
   }
   THROW_ARANGO_EXCEPTION(TRI_errno());
@@ -1067,56 +1063,44 @@ bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, 
   return false;
 }
 
+
 void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
                                               VPackSlice base,
                                               VPackBuilder& output,
                                               VPackOptions const* options,
                                               bool sanitizeExternals,
-                                              bool sanitizeCustom) {
+                                              bool sanitizeCustom,
+                                              bool allowUnindexed) {
   if (sanitizeExternals && input.isExternal()) {
     // recursively resolve externals
-    sanitizeNonClientTypes(input.resolveExternal(), base, output, options, sanitizeExternals, sanitizeCustom);
+    sanitizeNonClientTypes(input.resolveExternal(), base, output, options,
+                           sanitizeExternals, sanitizeCustom, allowUnindexed);
   } else if (sanitizeCustom && input.isCustom()) {
     if (options == nullptr || options->customTypeHandler == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot sanitize vpack without custom type handler"); 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot sanitize vpack without custom type handler");
     }
     std::string custom = options->customTypeHandler->toString(input, options, base);
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
-    output.openObject();
-    for (auto const& it : VPackObjectIterator(input)) {
+    output.openObject(allowUnindexed);
+    for (auto const& it : VPackObjectIterator(input, true)) {
       VPackValueLength l;
       char const* p = it.key.getString(l);
       output.add(VPackValuePair(p, l, VPackValueType::String));
-      sanitizeNonClientTypes(it.value, input, output, options, sanitizeExternals, sanitizeCustom);
+      sanitizeNonClientTypes(it.value, input, output, options,
+                             sanitizeExternals, sanitizeCustom, allowUnindexed);
     }
     output.close();
   } else if (input.isArray()) {
-    output.openArray();
+    output.openArray(allowUnindexed);
     for (auto const& it : VPackArrayIterator(input)) {
-      sanitizeNonClientTypes(it, input, output, options, sanitizeExternals, sanitizeCustom);
+      sanitizeNonClientTypes(it, input, output, options,
+                             sanitizeExternals, sanitizeCustom, allowUnindexed);
     }
     output.close();
   } else {
     output.add(input);
   }
-}
-
-VPackBuffer<uint8_t> VelocyPackHelper::sanitizeNonClientTypesChecked(
-    VPackSlice input, VPackOptions const* options, bool sanitizeExternals, bool sanitizeCustom) {
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer, options);
-  bool resolveExt = true;
-  if (sanitizeExternals) {
-    resolveExt = hasNonClientTypes(input, sanitizeExternals, sanitizeCustom);
-  }
-  if (resolveExt) {  // resolve
-    buffer.reserve(input.byteSize()); // reserve space already
-    sanitizeNonClientTypes(input, VPackSlice::noneSlice(), builder, options, sanitizeExternals, sanitizeCustom);
-  } else {
-    builder.add(input);
-  }
-  return buffer;  // elided
 }
 
 /// @brief extract the collection id from VelocyPack

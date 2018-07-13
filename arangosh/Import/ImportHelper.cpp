@@ -156,6 +156,7 @@ ImportHelper::ImportHelper(ClientFeature const* client,
       _periodByteCount(0),
       _autoUploadSize(autoUploadSize),
       _threadCount(threadCount),
+      _tempBuffer(false),
       _separator(","),
       _quote("\""),
       _createCollectionType("document"),
@@ -226,6 +227,13 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _lineBuffer.clear();
   _errorMessages.clear();
   _hasError = false;
+  
+  if (!checkCreateCollection()) {
+    return false;
+  }
+  if (!collectionExists()) {
+    return false;
+  }
 
   // read and convert
   int fd;
@@ -336,6 +344,13 @@ bool ImportHelper::importJson(std::string const& collectionName,
   _outputBuffer.clear();
   _errorMessages.clear();
   _hasError = false;
+  
+  if (!checkCreateCollection()) {
+    return false;
+  }
+  if (!collectionExists()) {
+    return false;
+  }
 
   // read and convert
   int fd;
@@ -707,6 +722,41 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   }
 }
 
+bool ImportHelper::collectionExists() {
+  std::string const url("/_api/collection/" + StringUtils::urlEncode(_collectionName));
+  std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
+      rest::RequestType::GET, url, nullptr, 0));
+
+  if (result == nullptr) {
+    return false;
+  }
+
+  auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
+  if (code == rest::ResponseCode::OK ||
+      code == rest::ResponseCode::CREATED ||
+      code == rest::ResponseCode::ACCEPTED) {
+    // collection already exists or was created successfully
+    return true;
+  }
+
+  std::shared_ptr<velocypack::Builder> bodyBuilder(result->getBodyVelocyPack());
+  velocypack::Slice error = bodyBuilder->slice();
+  if (!error.isNone()) {
+    auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
+    auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unable to access collection '" << _collectionName
+        << "', server returned status code: " << static_cast<int>(code)
+        << "; error [" << errorNum << "] " << errorMsg;
+  } else {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unable to accesss collection '" << _collectionName
+        << "', server returned status code: " << static_cast<int>(code)
+        << "; server returned message: " << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
+  }
+  return false;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if we must create the target collection, and create it if
 /// required
@@ -717,20 +767,21 @@ bool ImportHelper::checkCreateCollection() {
     return true;
   }
 
-  if (!_firstChunk) {
-    return true;
-  }
-
   std::string const url("/_api/collection");
-
   VPackBuilder builder;
+
   builder.openObject();
-  builder.add("name", VPackValue(_collectionName));
-  builder.add("type", VPackValue(_createCollectionType == "edge" ? 3 : 2));
+  builder.add(
+    arangodb::StaticStrings::DataSourceName,
+    arangodb::velocypack::Value(_collectionName)
+  );
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(_createCollectionType == "edge" ? 3 : 2)
+  );
   builder.close();
 
   std::string data = builder.slice().toJson();
-
   std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
       rest::RequestType::POST, url, data.c_str(), data.size()));
 
@@ -800,10 +851,6 @@ void ImportHelper::sendCsvBuffer() {
     return;
   }
 
-  if (!checkCreateCollection()) {
-    return;
-  }
-
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
                   StringUtils::urlEncode(_onDuplicateAction) + "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
@@ -836,10 +883,6 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     return;
   }
 
-  if (!checkCreateCollection()) {
-    return;
-  }
-
   // build target url
   std::string url("/_api/import?" + getCollectionUrlPart() +
                   "&details=true&onDuplicate=" +
@@ -864,19 +907,16 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
-    StringBuffer buff(len, false);
-    buff.appendText(str, len);
-    uint64_t tmp_length = buff.length();
-    t->sendData(url, &buff);
-    addPeriodByteCount(tmp_length + url.length());
+    _tempBuffer.reset();
+    _tempBuffer.appendText(str, len);
+    t->sendData(url, &_tempBuffer);
+    addPeriodByteCount(len + url.length());
   }
 }
-
 
 /// Should return an idle sender, collect all errors
 /// and return nullptr, if there was an error
 SenderThread* ImportHelper::findIdleSender() {
-
   if (_autoUploadSize) {
     _autoTuneThread->paceSends();
   } // if

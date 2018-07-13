@@ -29,7 +29,6 @@
 #include "utils/utf8_path.hpp"
 #include "utils/log.hpp"
 
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/AstNode.h"
@@ -68,8 +67,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "velocypack/Iterator.h"
@@ -111,7 +108,7 @@ struct IResearchLinkCoordinatorSetup {
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
     indexFactory.emplaceFactory(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles
+      arangodb::iresearch::IResearchLinkCoordinator::make
     );
     indexFactory.emplaceNormalizer(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
@@ -139,7 +136,6 @@ struct IResearchLinkCoordinatorSetup {
     features.emplace_back(auth = new arangodb::AuthenticationFeature(&server), false);
     features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
@@ -245,7 +241,7 @@ SECTION("test_create_drop") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -280,7 +276,7 @@ SECTION("test_create_drop") {
   // no view specified
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles(
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
       logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
@@ -289,7 +285,7 @@ SECTION("test_create_drop") {
   // no view can be found
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles(
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
       logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
@@ -327,7 +323,6 @@ SECTION("test_create_drop") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -378,7 +373,7 @@ SECTION("test_create_drop") {
 
     // drop view
     CHECK(vocbase->dropView(logicalView->planId(), false).ok());
-    CHECK(nullptr == vocbase->lookupView(viewId));
+    CHECK(nullptr == ci->getView(vocbase->name(), viewId));
 
     // old index remains valid
     {
@@ -434,7 +429,6 @@ SECTION("test_create_drop") {
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -490,4 +484,12 @@ SECTION("test_create_drop") {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate tests
+////////////////////////////////////////////////////////////////////////////////
+
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

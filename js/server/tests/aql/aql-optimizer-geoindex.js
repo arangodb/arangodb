@@ -198,7 +198,10 @@ function legacyOptimizerRuleTestSuite() {
           if (query.sort) {
             hasSortNode(result,query);
           } else {
-            hasNoSortNode(result,query);
+            let cluster = require('@arangodb/cluster');
+            if (!cluster.isCoordinator()) {
+              hasNoSortNode(result,query);
+            }
           }
 
           //filter nodes
@@ -523,7 +526,10 @@ function optimizerRuleTestSuite() {
           if (query.sort) {
             hasSortNode(result, query);
           } else {
-            hasNoSortNode(result, query);
+            let cluster = require('@arangodb/cluster');
+            if (!cluster.isCoordinator()) {
+              hasNoSortNode(result, query);
+            }
           }
 
           //filter nodes
@@ -852,7 +858,10 @@ function optimizerRuleTestSuite() {
 
       var result = AQL_EXPLAIN(query.string, query.bindVars);
       hasIndexNode(result, query);
-      hasNoSortNode(result, query);
+      let cluster = require('@arangodb/cluster');
+      if (!cluster.isCoordinator()) {
+        hasNoSortNode(result, query);
+      }
     },
 
     testSortContains: function () {

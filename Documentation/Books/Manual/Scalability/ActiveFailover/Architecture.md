@@ -11,7 +11,7 @@ An _Active Failover_ is defined as:
 _follower_ is currently officially supported. This limitation may be removed in
 future releases.
 
-![Simple Leader / Follower setup, with a single node agency](leader-follower.png)
+![ArangoDB Active Failover](leader-follower.png)
 
 The advantage of the _Active Failover_ compared to a traditional _Master-Slave_
 setup is that there is an active third party, the _Agency_ which observes and supervises

@@ -183,8 +183,14 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   // hard-coded
-  builder.add("unique", VPackValue(true));
-  builder.add("sparse", VPackValue(false));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(true)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 
@@ -192,8 +198,8 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                                arangodb::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
-  auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
-    
+  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
+
   bool lockTimeout = false;
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
@@ -253,7 +259,11 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(documentId);
+
+
+
+  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
+  auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
   if (mthd->Exists(_cf, key.ref())) {
     std::string existingId(slice.get(StaticStrings::KeyString).copyString());
@@ -283,7 +293,9 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId);
+
+  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
+  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
 
   TRI_ASSERT(mthd->Exists(_cf, key.ref()));
   blackListKey(key->string().data(),
@@ -401,7 +413,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
 
 /// @brief create the iterator, for a single attribute, EQ operator
 IndexIterator* RocksDBPrimaryIndex::createEqIterator(
-    transaction::Methods* trx, 
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) {
   // _key or _id?
@@ -462,13 +474,13 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
         }
 
-        if (_collection->planId() != c->getLocalCid() && 
-            _collection->planId() != c->getFromCid() && 
+        if (_collection->planId() != c->getLocalCid() &&
+            _collection->planId() != c->getFromCid() &&
             _collection->planId() != c->getToCid()) {
           // invalid planId
           return;
         }
-      } else 
+      } else
 #endif
       if (collection->planId() != _collection->planId()) {
         // only continue lookup if the id value is syntactically correct and

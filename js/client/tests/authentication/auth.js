@@ -35,6 +35,7 @@ const users = require("@arangodb/users");
 const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
+const ERRORS = require('internal').errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -46,8 +47,10 @@ function AuthSuite() {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
 
+  // hardcoded in testsuite
   const jwtSecret = 'haxxmann';
-
+  const user = 'hackers@arangodb.com';
+  
   return {
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +61,7 @@ function AuthSuite() {
       arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
 
       try {
-        users.remove("hackers@arangodb.com");
+        users.remove(user);
       }
       catch (err) {
       }
@@ -70,7 +73,7 @@ function AuthSuite() {
 
     tearDown: function () {
       try {
-        users.remove("hackers@arangodb.com");
+        users.remove(user);
       }
       catch (err) {
       }
@@ -81,21 +84,22 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testNewUser: function () {
-      users.save("hackers@arangodb.com", "foobar");
-      users.grantDatabase('hackers@arangodb.com', db._name());
-      users.grantCollection('hackers@arangodb.com', db._name(), "*");
+      let expectUser = user;
+      users.save(user, "foobar");
+      users.grantDatabase(user, db._name());
+      users.grantCollection(user, db._name(), "*");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
+      arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
+      assertTrue(db._query(`RETURN CURRENT_USER()`).toArray()[0] === expectUser);
 
       // double check with wrong passwords
-      let isBroken;
-      isBroken = true;
+      let isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar2");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar2");
       }
       catch (err1) {
         isBroken = false;
@@ -103,7 +107,7 @@ function AuthSuite() {
 
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "");
       }
       catch (err2) {
         isBroken = false;
@@ -115,12 +119,12 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testEmptyPassword: function () {
-      users.save("hackers@arangodb.com", "");
-      users.grantDatabase('hackers@arangodb.com', db._name());
-      users.grantCollection('hackers@arangodb.com', db._name(), "*");
+      users.save(user, "");
+      users.grantDatabase(user, db._name());
+      users.grantCollection(user, db._name(), "*");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      arango.reconnect(arango.getEndpoint(), db._name(), user, "");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
@@ -129,7 +133,7 @@ function AuthSuite() {
       let isBroken;
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar");
       }
       catch (err1) {
         isBroken = false;
@@ -137,21 +141,21 @@ function AuthSuite() {
     },
 
     testPasswordChange: function () {
-      users.save("hackers@arangodb.com", "");
-      users.grantDatabase('hackers@arangodb.com', db._name());
-      users.grantCollection('hackers@arangodb.com', db._name(), "*");
+      users.save(user, "");
+      users.grantDatabase(user, db._name());
+      users.grantCollection(user, db._name(), "*");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      arango.reconnect(arango.getEndpoint(), db._name(), user, "");
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
 
       arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
-      users.replace("hackers@arangodb.com", "foo"); // replace deletes grants
-      users.grantDatabase('hackers@arangodb.com', db._name());
-      users.grantCollection('hackers@arangodb.com', db._name(), "*");
+      users.replace(user, "foo"); // replace deletes grants
+      users.grantDatabase(user, db._name());
+      users.grantCollection(user, db._name(), "*");
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foo");
+      arango.reconnect(arango.getEndpoint(), db._name(), user, "foo");
       assertTrue(db._collections().length > 0);
     },
 
@@ -160,12 +164,12 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testPasswordCase: function () {
-      users.save("hackers@arangodb.com", "FooBar");
-      users.grantDatabase('hackers@arangodb.com', db._name());
-      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
+      users.save(user, "FooBar");
+      users.grantDatabase(user, db._name());
+      users.grantCollection(user, db._name(), "*", "ro");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FooBar");
+      arango.reconnect(arango.getEndpoint(), db._name(), user, "FooBar");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
@@ -174,7 +178,7 @@ function AuthSuite() {
       let isBroken;
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "Foobar");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "Foobar");
         assertTrue(db._collections().length > 0);
       }
       catch (err1) {
@@ -186,7 +190,7 @@ function AuthSuite() {
 
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar");
       }
       catch (err2) {
         isBroken = false;
@@ -197,7 +201,7 @@ function AuthSuite() {
 
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FOOBAR");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "FOOBAR");
       }
       catch (err3) {
         isBroken = false;
@@ -212,12 +216,12 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testColon: function () {
-      users.save("hackers@arangodb.com", "fuxx::bar");
-      users.grantDatabase('hackers@arangodb.com', db._name());
-      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
+      users.save(user, "fuxx::bar");
+      users.grantDatabase(user, db._name());
+      users.grantCollection(user, db._name(), "*", "ro");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx::bar");
+      arango.reconnect(arango.getEndpoint(), db._name(), user, "fuxx::bar");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
@@ -226,7 +230,7 @@ function AuthSuite() {
       let isBroken;
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "fuxx");
       }
       catch (err1) {
         isBroken = false;
@@ -237,7 +241,7 @@ function AuthSuite() {
 
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "bar");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "bar");
       }
       catch (err2) {
         isBroken = false;
@@ -248,7 +252,7 @@ function AuthSuite() {
 
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "");
       }
       catch (err3) {
         isBroken = false;
@@ -263,12 +267,12 @@ function AuthSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testSpecialChars: function () {
-      users.save("hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
-      users.grantDatabase('hackers@arangodb.com', db._name());
-      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
+      users.save(user, ":\\abc'def:foobar@04. x-a");
+      users.grantDatabase(user, db._name());
+      users.grantCollection(user, db._name(), "*", "ro");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
+      arango.reconnect(arango.getEndpoint(), db._name(), user, ":\\abc'def:foobar@04. x-a");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
@@ -277,7 +281,7 @@ function AuthSuite() {
       let isBroken;
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar");
       }
       catch (err1) {
         isBroken = false;
@@ -288,7 +292,7 @@ function AuthSuite() {
 
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "\\abc'def: x-a");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "\\abc'def: x-a");
       }
       catch (err2) {
         isBroken = false;
@@ -299,7 +303,7 @@ function AuthSuite() {
 
       isBroken = true;
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+        arango.reconnect(arango.getEndpoint(), db._name(), user, "");
       }
       catch (err3) {
         isBroken = false;
@@ -332,12 +336,12 @@ function AuthSuite() {
     },
 
     testAuthNewUser: function () {
-      users.save("hackers@arangodb.com", "foobar");
+      users.save(user, "foobar");
       users.reload();
 
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "username": "hackers@arangodb.com", "password": "foobar" })
+        body: JSON.stringify({ "username": user, "password": "foobar" })
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
@@ -349,12 +353,12 @@ function AuthSuite() {
     },
 
     testAuthNewWrongPassword: function () {
-      users.save("hackers@arangodb.com", "foobarJAJA");
+      users.save(user, "foobarJAJA");
       users.reload();
 
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "username": "hackers@arangodb.com", "password": "foobar" })
+        body: JSON.stringify({ "username": user, "password": "foobar" })
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
@@ -363,7 +367,7 @@ function AuthSuite() {
     testAuthNoPassword: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "username": "hackers@arangodb.com", "passwordaa": "foobar" }),
+        body: JSON.stringify({ "username": user, "passwordaa": "foobar" }),
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 400);
@@ -372,7 +376,7 @@ function AuthSuite() {
     testAuthNoUsername: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "usern": "hackers@arangodb.com", "password": "foobar" }),
+        body: JSON.stringify({ "usern": user, "password": "foobar" }),
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 400);
@@ -485,6 +489,67 @@ function AuthSuite() {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
+
+    testDatabaseGuessing: function() {
+      let jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
+      // should respond with not-found because we are root
+      var res = request.get({
+        url: baseUrl() + "/_db/nonexisting/_api/version",
+        auth: {
+          bearer: jwt,
+        }
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 404);
+
+      // should prevent name guessing by unauthorized users
+      res = request.get({
+        url: baseUrl() + "/_db/nonexisting/_api/version"
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    testDatabaseListNonSystem: function() {
+      let jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
+      // supported
+      var res = request.get({
+        url: baseUrl() + "/_api/database",
+        auth: {
+          bearer: jwt,
+        }
+      });
+
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+      expect(res).to.have.property('json');
+      expect(res.json).to.have.property('result');
+      expect(res.json.result).to.be.an('array');
+      expect(res.json.result).to.include("_system");
+
+      try {
+        db._createDatabase("other");
+        // not supported on non _system
+        res = request.get({
+          url: baseUrl() + "/_db/other/_api/database",
+          auth: {
+            bearer: jwt,
+          }
+        });
+        expect(res).to.be.an.instanceof(request.Response);
+        expect(res).to.have.property('statusCode', ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code);
+      } catch(e) {
+
+      } finally {
+        db._dropDatabase("other");
+      }
+    }
   };
 }
 

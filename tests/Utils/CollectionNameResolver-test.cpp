@@ -24,7 +24,6 @@
 #include "catch.hpp"
 #include "../IResearch/common.h"
 #include "../IResearch/StorageEngineMock.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -113,7 +112,9 @@ struct CollectionNameResolverSetup {
     }
 
     // register view factory
-    arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>()->emplace(
+    arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::ViewTypesFeature
+    >()->emplace(
       arangodb::LogicalDataSource::Type::emplace(
         arangodb::velocypack::StringRef("testViewType")
       ),
@@ -154,7 +155,7 @@ SECTION("test_getDataSource") {
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"globallyUniqueId\": \"testCollectionGUID\", \"id\": 100, \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" }"); // any arbitrary view type
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::CollectionNameResolver resolver(&vocbase);
+  arangodb::CollectionNameResolver resolver(vocbase);
 
   // not present collection (no datasource)
   {

@@ -217,6 +217,7 @@ struct MMFilesDatafile {
 
   /// @brief sync the data of a datafile
   int sync(char const* begin, char const* end);
+  int sync();
 
   /// @brief seals a datafile, writes a footer, sets it to read-only
   int seal();
@@ -232,10 +233,10 @@ struct MMFilesDatafile {
 
   /// @brief writes a marker to the datafile
   /// this function will write the marker as-is, without any CRC or tick updates
-  int writeElement(void* position, MMFilesMarker const* marker, bool sync);
+  int writeElement(void* position, MMFilesMarker const* marker);
 
   /// @brief checksums and writes a marker to the datafile
-  int writeCrcElement(void* position, MMFilesMarker* marker, bool sync);
+  int writeCrcElement(void* position, MMFilesMarker* marker);
 
   /// @brief reserves room for an element, advances the pointer
   int reserveElement(uint32_t size, MMFilesMarker** position,
@@ -270,6 +271,7 @@ struct MMFilesDatafile {
     char* old = _next;
 
     _next += size;
+    _written = _next;
     _currentSize += static_cast<uint32_t>(size);
 
     return old;

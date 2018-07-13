@@ -83,10 +83,40 @@ int EndpointMock::port() const {
   return 0;
 }
 
-GeneralClientConnectionMock::GeneralClientConnectionMock()
-  : GeneralClientConnection(&endpoint, 0, 0, 0),
-    nil(file_open((file_path_t)nullptr, "rw")) {
+#ifndef _WIN32
+  GeneralClientConnectionMock::GeneralClientConnectionMock()
+    : GeneralClientConnection(&endpoint, 0, 0, 0),
+      nil(file_open((const file_path_t)nullptr, "rw")) {
   _socket.fileDescriptor = file_no(nil.get()); // must be a readable/writable descriptor
+  }
+#else
+  GeneralClientConnectionMock::GeneralClientConnectionMock()
+    : GeneralClientConnection(&endpoint, 0, 0, 0) {
+    struct sockaddr_in addr;
+    auto size = (int)sizeof(addr);
+    auto sock = socket(AF_INET, SOCK_DGRAM, 0); // should not return INVALID_SOCKET
+
+    addr.sin_family = AF_INET;
+    inet_pton(addr.sin_family, "127.0.0.1", &addr.sin_addr);
+    addr.sin_port = 0;
+    sock = socket(AF_INET, SOCK_DGRAM, 0); // should not return INVALID_SOCKET
+    bind(sock, (const struct sockaddr*)&addr, size); // should return 0
+    memset(&addr, 0, size);
+    getsockname(sock, (struct sockaddr*)&addr, &size); // should return 0
+
+    // make sure something in the socket
+    sendto(sock, "", 0, 0, (const struct sockaddr*)&addr, size); // should not return SOCKET_ERROR
+
+    _socket.fileHandle = sock; // must be a readable/writable descriptor
+  }
+#endif
+
+GeneralClientConnectionMock::~GeneralClientConnectionMock() {
+  #ifdef _WIN32
+    if (INVALID_SOCKET != _socket.fileHandle) {
+      closesocket(_socket.fileHandle);
+    }
+  #endif
 }
 
 bool GeneralClientConnectionMock::connectSocket() {

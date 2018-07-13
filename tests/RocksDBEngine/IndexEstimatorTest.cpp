@@ -39,7 +39,7 @@ using namespace arangodb;
 
 // @brief setup
 
-TEST_CASE("IndexEstimator", "[indexestimator]") {
+TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
   // @brief Test insert unique correctness
 
   SECTION("test_unique_values") {

@@ -24,6 +24,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/ExecutionBlock.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"

@@ -44,12 +44,15 @@ struct MMFilesDatafile;
 struct MMFilesMarker;
 
 namespace arangodb {
+
+
 class LogicalCollection;
 class ManagedDocumentResult;
 struct MMFilesDocumentOperation;
 class MMFilesPrimaryIndex;
 class MMFilesWalMarker;
 class Result;
+class TransactionState;
 
 class MMFilesCollection final : public PhysicalCollection {
   friend class MMFilesCompactorThread;
@@ -86,7 +89,6 @@ class MMFilesCollection final : public PhysicalCollection {
     uint64_t _documents;
     uint64_t _operations;
     int64_t _initialCount;
-    bool const _trackKeys;
 
     OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx)
         : _collection(collection),
@@ -103,8 +105,7 @@ class MMFilesCollection final : public PhysicalCollection {
           _deletions(0),
           _documents(0),
           _operations(0),
-          _initialCount(-1),
-          _trackKeys(collection->keyGenerator()->trackKeys()) {
+          _initialCount(-1) {
       TRI_ASSERT(collection != nullptr);
       TRI_ASSERT(trx != nullptr);
     }
@@ -159,8 +160,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-  /// @brief used for updating properties
-  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   // datafile management
   bool applyForTickRange(
@@ -315,13 +314,13 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Locking --
   ///////////////////////////////////
 
-  int lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
+  int lockRead(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
 
-  int lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
+  int lockWrite(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
 
-  int unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid);
+  int unlockRead(bool useDeadlockDetector, TransactionState const* state);
 
-  int unlockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid);
+  int unlockWrite(bool useDeadlockDetector, TransactionState const* state);
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -374,9 +373,7 @@ class MMFilesCollection final : public PhysicalCollection {
                  arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 arangodb::velocypack::Slice const fromSlice,
-                 arangodb::velocypack::Slice const toSlice) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
 
   Result remove(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const slice,
@@ -415,7 +412,6 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
  private:
-  void createInitialIndexes();
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
   bool openIndex(VPackSlice const& description, transaction::Methods* trx);
@@ -492,15 +488,14 @@ class MMFilesCollection final : public PhysicalCollection {
                                                 bool excludeWal) const;
   void batchLookupRevisionVPack(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const;
 
+  void createInitialIndexes();
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexLocal(std::shared_ptr<arangodb::Index> idx);
-  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
 
   bool removeIndex(TRI_idx_iid_t iid);
 
   /// @brief return engine-specific figures
-  void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
 
   // SECTION: Index storage
 

@@ -23,11 +23,8 @@
 #ifndef ARANGODB_BASICS_DATETIME_H
 #define ARANGODB_BASICS_DATETIME_H 1
 
-#include <boost/algorithm/string.hpp>
 #include <chrono>
-
 #include <regex>
-
 
 namespace arangodb {
 
@@ -37,7 +34,7 @@ namespace basics {
 bool parse_dateTime(std::string const& dateTime,
                     tp_sys_clock_ms& date_tp);
 
-bool regex_isoDuration(std::string const& isoDuration, std::smatch& duration_parts);
+bool regex_isoDuration(std::string const& isoDuration, std::smatch& durationParts);
 }
 }  // namespace arangodb
 

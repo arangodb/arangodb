@@ -67,8 +67,6 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }
@@ -91,14 +89,6 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
-
-  /// @brief looks up all points within a given radius
-  void withinQuery(transaction::Methods*, double, double,
-                              double, std::string const&, VPackBuilder&) const;
-
-  /// @brief looks up the nearest points
-  void nearQuery(transaction::Methods*, double, double,
-                            size_t, std::string const&, VPackBuilder&) const;
 
  private:
   std::string const _typeName;

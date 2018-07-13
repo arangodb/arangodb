@@ -55,8 +55,7 @@ class ExecutionNodeMock final : public arangodb::aql::ExecutionNode {
   
   virtual std::unique_ptr<arangodb::aql::ExecutionBlock> createBlock(
     arangodb::aql::ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, arangodb::aql::ExecutionBlock*> const& cache,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<ExecutionNode*, arangodb::aql::ExecutionBlock*> const& cache
   ) const override;
 
   /// @brief clone execution Node recursively, this makes the class abstract
@@ -75,7 +74,7 @@ class ExecutionNodeMock final : public arangodb::aql::ExecutionNode {
   /// @brief toVelocyPack
   virtual void toVelocyPackHelper(
     arangodb::velocypack::Builder& nodes,
-    bool verbose
+    unsigned flags
   ) const override;
 }; // ExecutionNodeMock
 
@@ -87,26 +86,30 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
     arangodb::aql::ExecutionNode const& node
   );
 
-  // here we release our docs from this collection
-  int initializeCursor(
-    arangodb::aql::AqlItemBlock* items,
-    size_t pos
-  ) override;
+  Type getType() const override final {
+    return Type::_UNDEFINED;
+  }
 
-  arangodb::aql::AqlItemBlock* getSome(
-    size_t atMost
-  ) override;
+  // here we release our docs from this collection
+  std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
+      arangodb::aql::AqlItemBlock* items, size_t pos) override;
+
+  std::pair<arangodb::aql::ExecutionState,
+            std::unique_ptr<arangodb::aql::AqlItemBlock>>
+  getSome(size_t atMost) override;
 
   // skip between atLeast and atMost returns the number actually skipped . . .
   // will only return less than atLeast if there aren't atLeast many
   // things to skip overall.
-  size_t skipSome(
+  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(
     size_t atMost
   ) override;
 
  private:
   arangodb::aql::AqlItemBlock const* _data;
   size_t _pos_in_data{};
+  size_t _inflight;
+
 }; // ExecutionBlockMock
 
 #endif // ARANGODB_IRESEARCH__IRESEARCH_EXECUTION_BLOCK_MOCK_H

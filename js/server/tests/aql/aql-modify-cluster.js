@@ -43,6 +43,7 @@ var sanitizeStats = function (stats) {
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;
+  delete stats.fullCount;
   return stats;
 };
 
@@ -982,7 +983,7 @@ function ahuacatlInsertSuite () {
 
       assertEqual(expected, sanitizeStats(actual.stats));
       assertEqual(50, edge.count());
-      
+
       actual.json = actual.json.sort(function(l, r) {
         return l.value[0] - r.value[0];
       });
@@ -1007,9 +1008,63 @@ function ahuacatlInsertSuite () {
       }
 
       db._drop("UnitTestsAhuacatlEdge");
-    }
+    },
 
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertOverwrite : function () {
+      c1.truncate();
+      assertEqual(0, c1.count());
+
+      var rv1 = db._query(" INSERT { _key: '123', name: 'ulf' } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
+      assertEqual(1, c1.count());
+      var doc1 = rv1.toArray()[0];
+      assertEqual(doc1._key, '123');
+      assertEqual(doc1.name, 'ulf');
+
+      var rv2 = db._query(" INSERT { _key: '123', name: 'ulfine' } IN @@cn OPTIONS { overwrite: true } RETURN {old: OLD, new: NEW}", { "@cn": cn1 });
+      assertEqual(1, c1.count());
+      var doc2 = rv2.toArray()[0];
+      assertEqual(doc2.new._key, '123');
+      assertEqual(doc2.new.name, 'ulfine');
+      assertEqual(doc2.old._rev, doc1._rev);
+      assertEqual(doc2.old._key, doc1._key);
+      assertEqual(doc2.old.name, doc1.name);
+
+      var rv3 = db._query(`
+          LET x = (
+            FOR a IN 3..5
+              INSERT { _key: CONCAT('12',a), name: a }
+            IN @@cn
+              OPTIONS { overwrite: true }
+              RETURN {old: OLD, new: NEW}
+          )
+
+          FOR d IN x SORT d.new._key
+            RETURN d
+        `, { "@cn": cn1 });
+
+      var resultArray3 = rv3.toArray();
+      assertEqual(3, c1.count());
+
+      var doc3a = resultArray3[0];
+      var doc3b = resultArray3[1];
+      var doc3c = resultArray3[2];
+
+      assertEqual(doc3a.old._rev, doc2.new._rev);
+      assertEqual(doc3a.old._key, doc2.new._key);
+      assertEqual(doc3a.old.name, "ulfine");
+      assertEqual(doc3a.new.name, 3);
+      assertEqual(doc3b.old, null);
+      assertEqual(doc3b.new.name, 4);
+      assertEqual(doc3c.old, null);
+      assertEqual(doc3c.new.name, 5);
+
+    },
+
+  }; // end insert tests
 }
 
 ////////////////////////////////////////////////////////////////////////////////

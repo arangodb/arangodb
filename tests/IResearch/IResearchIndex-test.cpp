@@ -33,7 +33,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -45,7 +44,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -182,7 +180,9 @@ struct IResearchIndexSetup {
       }
     }
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("test_A", "TestInsertAnalyzer", "X"); // cache analyzer
     analyzers->emplace("test_B", "TestInsertAnalyzer", "Y"); // cache analyzer
@@ -242,8 +242,8 @@ SECTION("test_analyzer") {
     auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"seq\": 1, \"X\": \"abc\", \"Y\": \"def\" }");
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{ collection0->name(), collection1->name() };
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       collections,
       EMPTY,
@@ -275,7 +275,55 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.X, 'abc', 'test_A'), 'test_B') SORT d.seq RETURN d",
+      nullptr,
+      true
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected { 0, 1 };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.X, 'abc', 'test_A') SORT d.seq RETURN d",
+      nullptr,
+      true
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected { 0, 1 };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+    // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.X, 'abc'), 'test_A') SORT d.seq RETURN d",
       nullptr,
       true
     );
@@ -317,11 +365,99 @@ SECTION("test_analyzer") {
     CHECK((i == expected.size()));
   }
 
+  // docs match from collection0 (2 analyzers used)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d.X, 'abc'), 'test_B') SORT d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected { 0 };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
   // docs match from collection1 (1 analyzer used)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected { 1 };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from collection1 (1 analyzer used)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.Y, 'def', 'test_A'), 'test_B') SORT d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected { 1 };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from collection1 (1 analyzer used)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected { 1 };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from collection1 (1 analyzer used)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.Y, 'def'), 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -394,8 +530,8 @@ SECTION("test_async_index") {
       if (!resThread0) return;
 
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&(collection0->vocbase())),
-        collection0->id(),
+        arangodb::transaction::StandaloneContext::Create(collection0->vocbase()),
+        collection0,
         arangodb::AccessMode::Type::WRITE
       );
       resThread0 = trx.begin().ok();
@@ -432,8 +568,8 @@ SECTION("test_async_index") {
       if (!resThread1) return;
 
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&(collection1->vocbase())),
-        collection1->id(),
+        arangodb::transaction::StandaloneContext::Create(collection1->vocbase()),
+        collection1,
         arangodb::AccessMode::Type::WRITE
       );
       resThread1 = trx.begin().ok();
@@ -462,6 +598,35 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.same, 'xyz', 'test_A'), 'test_B') SORT d.seq RETURN d",
+      nullptr,
+      true
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected {
+      0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
+      10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19,
+      20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29,
+      30, 30, 31, 31, 40, 50
+    };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.same, 'xyz', 'test_A') SORT d.seq RETURN d",
       nullptr,
       true
@@ -474,6 +639,62 @@ SECTION("test_async_index") {
       10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19,
       20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29,
       30, 30, 31, 31, 40, 50
+    };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.same, 'xyz'), 'test_A') SORT d.seq RETURN d",
+      nullptr,
+      true
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected {
+      0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
+      10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19,
+      20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29,
+      30, 30, 31, 31, 40, 50
+    };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from collection0 (2 analyzers used)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.same, 'xyz', 'test_B'), 'identity') SORT d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected {
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+      10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+      20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+      30, 31, 40
     };
     size_t i = 0;
 
@@ -514,11 +735,86 @@ SECTION("test_async_index") {
     CHECK((i == expected.size()));
   }
 
+  // docs match from collection0 (2 analyzers used)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.same, 'xyz'), 'test_B') SORT d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected {
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+      10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+      20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+      30, 31, 40
+    };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from collection1 (1 analyzer used)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, 'abcd', 'test_A'), 'test_B') SORT d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected {
+      0, 4, 10, 20, 26, 30, 50
+    };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
   // docs match from collection1 (1 analyzer used)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'abcd', 'test_A') SORT d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    std::vector<size_t> expected {
+      0, 4, 10, 20, 26, 30, 50
+    };
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      auto key = resolved.get("seq");
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == key.getNumber<size_t>()));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // docs match from collection1 (1 analyzer used)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, 'abcd'), 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -558,8 +854,8 @@ SECTION("test_fields") {
     auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"seq\": 1, \"X\": \"abc\", \"Y\": \"def\" }");
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{ collection0->name(), collection1->name() };
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       collections,
       EMPTY,

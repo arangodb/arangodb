@@ -249,68 +249,44 @@ bool MMFilesHashIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
   return true;
 }
 
-void MMFilesHashIndexIterator::reset() {
-  _buffer.clear();
-  _posInBuffer = 0;
-  _lookups.reset();
-  _index->lookup(_trx, _lookups.lookup(), _buffer);
-}
+bool MMFilesHashIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
 
-MMFilesHashIndexIteratorVPack::MMFilesHashIndexIteratorVPack(
-    LogicalCollection* collection, transaction::Methods* trx,
-    MMFilesHashIndex const* index,
-    std::unique_ptr<arangodb::velocypack::Builder> searchValues)
-    : IndexIterator(collection, trx, index),
-      _index(index),
-      _searchValues(std::move(searchValues)),
-      _iterator(_searchValues->slice()),
-      _buffer(),
-      _posInBuffer(0) {
-}
-
-MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {
-  if (_searchValues != nullptr) {
-    // return the VPackBuilder to the transaction context
-    _trx->transactionContextPtr()->returnBuilder(_searchValues.release());
-  }
-}
-
-bool MMFilesHashIndexIteratorVPack::next(LocalDocumentIdCallback const& cb,
-                                         size_t limit) {
+  bool done = false;
   while (limit > 0) {
     if (_posInBuffer >= _buffer.size()) {
-      if (!_iterator.valid()) {
+      if (!_lookups.hasAndGetNext()) {
         // we're at the end of the lookup values
-        return false;
+        done = true;
+        break;
       }
 
       // We have to refill the buffer
       _buffer.clear();
       _posInBuffer = 0;
 
-      int res = TRI_ERROR_NO_ERROR;
-      _index->lookup(_trx, _iterator.value(), _buffer);
-      _iterator.next();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      _index->lookup(_trx, _lookups.lookup(), _buffer);
     }
 
     if (!_buffer.empty()) {
       // found something
       TRI_ASSERT(_posInBuffer < _buffer.size());
-      cb(_buffer[_posInBuffer++]->localDocumentId());
+      _documentIds.emplace_back(std::make_pair(_buffer[_posInBuffer++]->localDocumentId(), nullptr));
       --limit;
     }
   }
-  return true;
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
 }
 
-void MMFilesHashIndexIteratorVPack::reset() {
+void MMFilesHashIndexIterator::reset() {
   _buffer.clear();
   _posInBuffer = 0;
-  _iterator.reset();
+  _lookups.reset();
+  _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
 /// @brief create the unique array
@@ -377,7 +353,11 @@ MMFilesHashIndex::~MMFilesHashIndex() {
 }
 
 /// @brief returns a selectivity estimate for the index
-double MMFilesHashIndex::selectivityEstimateLocal(StringRef const*) const {
+double MMFilesHashIndex::selectivityEstimate(StringRef const*) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_unique) {
+    return 1.0;
+  }
   if (_multiArray == nullptr) {
     return 0.1;
   }
@@ -410,12 +390,13 @@ void MMFilesHashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
@@ -427,7 +408,8 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
     return idRef == std::to_string(_iid);
   }
 
-  value = info.get("fields");
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }
@@ -436,12 +418,18 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
+
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                 )
+     ) {
     return false;
   }
+
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", false)) {
+                   info, arangodb::StaticStrings::IndexSparse.c_str(), false
+                 )
+     ) {
     return false;
   }
 

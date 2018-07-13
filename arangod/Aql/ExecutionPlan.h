@@ -37,7 +37,7 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 }
-  
+
 namespace aql {
 class Ast;
 struct AstNode;
@@ -65,7 +65,10 @@ class ExecutionPlan {
   /// @brief create an execution plan from VelocyPack
   static ExecutionPlan* instantiateFromVelocyPack(
       Ast* ast, arangodb::velocypack::Slice const);
-  
+
+  /// @brief whether or not the exclusive flag is set in the write options
+  static bool hasExclusiveAccessOption(AstNode const* node);
+
   ExecutionPlan* clone(Ast*);
 
   /// @brief clone the plan by recursively cloning starting from the root
@@ -74,15 +77,15 @@ class ExecutionPlan {
   /// @brief create an execution plan identical to this one
   ///   keep the memory of the plan on the query object specified.
   ExecutionPlan* clone(Query const&);
-  
+
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;
-  
+
   void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
-  
+
   bool isResponsibleForInitialize() const { return _isResponsibleForInitialize; }
 
   /// @brief note that an optimizer rule was applied
@@ -140,7 +143,7 @@ class ExecutionPlan {
   void excludeFromScatterGather(ExecutionNode const* node) {
     _excludeFromScatterGather.emplace(node);
   }
-  
+
   bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
     return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
   }
@@ -189,11 +192,11 @@ class ExecutionPlan {
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
-  void unlinkNode(ExecutionNode*, bool = false);
+  void unlinkNode(ExecutionNode*, bool allowUnlinkingRoot = false);
 
   /// @brief register a node with the plan
   ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>);
-  
+
   /// @brief add a node to the plan, will delete node if addition
   /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
@@ -212,21 +215,24 @@ class ExecutionPlan {
   /// <oldNode>).
   /// <newNode> must be registered with the plan before this method is called.
   void insertDependency(ExecutionNode* oldNode, ExecutionNode* newNode);
-  
-  /// @brief insert note directly after previous
+
+  /// @brief insert node directly after previous
   /// will remove previous as a dependency from its parents and
   /// add newNode as a dependency. <newNode> must be registered with the plan
   void insertAfter(ExecutionNode* previous, ExecutionNode* newNode);
+
+  /// @brief insert node directly before current
+  void insertBefore(ExecutionNode* current, ExecutionNode* newNode);
 
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
 
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
-  
+
   /// @brief create an execution plan from an abstract syntax tree node
   ExecutionNode* fromNode(AstNode const*);
-  
+
   /// @brief create an execution plan from VPack
   ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
@@ -235,7 +241,7 @@ class ExecutionPlan {
 
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
-  
+
  private:
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*,
@@ -251,9 +257,15 @@ class ExecutionPlan {
   /// @brief creates an anonymous COLLECT node (for a DISTINCT)
   CollectNode* createAnonymousCollect(CalculationNode const*);
 
-  /// @brief create modification options from an AST node
+  /// @brief create modification options by parsing an AST node
+  /// and adding plan specific options.
   ModificationOptions createModificationOptions(AstNode const*);
 
+public:
+  /// @brief parses modification options form an AST node
+  static ModificationOptions parseModificationOptions(AstNode const*);
+
+private:
   /// @brief create COLLECT options from an AST node
   CollectOptions createCollectOptions(AstNode const*);
 
@@ -330,24 +342,26 @@ class ExecutionPlan {
 
   bool _isResponsibleForInitialize;
 
+  /// @brief current nesting level while building the plan
+  int _nestingLevel;
+
   /// @brief auto-increment sequence for node ids
   size_t _nextId;
 
   /// @brief the ast
   Ast* _ast;
 
-  /// @brief whether or not the next LIMIT node will get its fullCount attribute
-  /// set
+  /// @brief which top-level LIMIT node will get its fullCount attribute set
   ExecutionNode* _lastLimitNode;
 
   /// @brief a lookup map for all subqueries created
   std::unordered_map<VariableId, ExecutionNode*> _subqueries;
-    
+
   /// @brief these nodes will be excluded from building scatter/gather "diamonds" later
   std::unordered_set<ExecutionNode const*> _excludeFromScatterGather;
 
   /// @brief number of nodes used in the plan, by type
-  std::array<uint32_t, ExecutionNode::MaxNodeTypeValue + 1> _typeCounts;
+  std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
 };
 }
 }

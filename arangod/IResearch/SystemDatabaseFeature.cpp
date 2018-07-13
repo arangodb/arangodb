@@ -21,7 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationServerHelper.h"
 #include "IResearchCommon.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -55,7 +54,9 @@ SystemDatabaseFeature::SystemDatabaseFeature(
 }
 
 void SystemDatabaseFeature::start() {
-  auto* databases = getFeature<arangodb::DatabaseFeature>("Database");
+  auto* databases = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
 
   if (databases) {
     _vocbase.store(databases->systemDatabase());

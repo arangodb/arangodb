@@ -6,6 +6,10 @@
 
 cmake_minimum_required(VERSION 3.2)
 
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif ()
+
 if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
@@ -37,12 +41,6 @@ if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 endif ()
 
-if (WIN32)
-  project(arangodb3 CXX C)
-else ()
-  project(arangodb3 CXX C ASM)
-endif ()
-
 # required for clang completion in editors
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -50,27 +48,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
-option(STATIC_EXECUTABLES "produce static executables" OFF)
-if (STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-endif()
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
-# enable enterprise features
-set(ENTERPRISE_INCLUDE_DIR "enterprise")
-option(USE_ENTERPRISE "enable enterprise build" OFF)
-
-if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  add_subdirectory(enterprise)
-endif ()
-
-option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
-if (DEBUG_SYNC_REPLICATION)
-  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
-endif ()
+# use standalone boost asio
+add_definitions("-DARANGODB_STANDALONE_ASIO=1")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -92,6 +75,37 @@ endif()
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
+if (WIN32)
+  # path containing the OpenSSL find-module and libraries
+  set(WIN_FIND_OPENSSL_PATH "C:/OpenSSL-ArangoDB")
+  if (EXISTS "${WIN_FIND_OPENSSL_PATH}")
+	list(APPEND CMAKE_MODULE_PATH ${WIN_FIND_OPENSSL_PATH})
+  endif()
+  project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
+else ()
+  project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
+endif ()
+
+# Static executables:
+option(STATIC_EXECUTABLES "produce static executables" OFF)
+if (STATIC_EXECUTABLES)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+endif()
+
+# enable enterprise features
+set(ENTERPRISE_INCLUDE_DIR "enterprise")
+option(USE_ENTERPRISE "enable enterprise build" OFF)
+
+if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
+  add_subdirectory(enterprise)
+endif ()
+
+option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
+if (DEBUG_SYNC_REPLICATION)
+  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
+endif ()
+
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
@@ -112,7 +126,7 @@ set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 
 # libraries
 set(LIB_ARANGO        arango)
-set(LIB_ARANGO_GEO     arango_geo)
+set(LIB_ARANGO_GEO    arango_geo)
 set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
@@ -356,8 +370,8 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
     message(FATAL_ERROR "ArangoDB requires g++ 5.4 or newer.")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "7.9.9")
-    message(FATAL_ERROR "ArangoDB doesn't support g++ 8.0 yet.")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "8.9.9")
+    message(FATAL_ERROR "ArangoDB doesn't support g++ 9.0 yet.")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
@@ -432,14 +446,6 @@ endif ()
 ## INCLUDE DIRECTORIES
 ################################################################################
 
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/552f562/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
-
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
 
@@ -493,7 +499,6 @@ endif ()
 
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
-
 ################################################################################
 ## BACKTRACE
 ################################################################################
@@ -505,7 +510,9 @@ option(USE_BACKTRACE
 
 # iresearch uses backtrace anyway, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
-find_package(Backtrace)
+if (NOT MSVC)
+  find_package(Backtrace)
+endif()
 
 if (USE_BACKTRACE)
   if (MSVC)
@@ -633,13 +640,7 @@ endif ()
 # NDEBUG
 # ------------------------------------------------------------------------------
 
-if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-                                 )
-   )
-   add_definitions(-DNDEBUG)
-endif ()
+add_definitions(-DNDEBUG)
 
 ################################################################################
 ## FLAGS
@@ -695,13 +696,13 @@ elseif (MSVC)
   endif ()
 
   set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
 
   set(CMAKE_CXX_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
@@ -765,6 +766,52 @@ if(ARANGODB_DEBUG_CMAKE)
   message( STATUS "DirDefs: ${DirDefs}" )
 endif()
 
+
+################################################################################
+## OPENSSL
+################################################################################
+
+# Some special stuff for Mac OSX and homebrew as a preparation for the 
+# generic FindOpenSSL script:
+if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
+  message("searching openssl with brew (${BREW})")
+  # if we have a brew openssl, prefer it over the elderly system one.
+  execute_process(OUTPUT_VARIABLE BREW_ROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND ${BREW} --prefix)
+  set(OPENSSL_ROOT_DIR "${BREW_ROOT}/opt/openssl")
+  message("auto-set OPENSSL_ROOT_DIR to: ${OPENSSL_ROOT_DIR}")
+endif ()
+
+find_package(OpenSSL REQUIRED)
+
+include_directories(${OPENSSL_INCLUDE_DIR})
+add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
+add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
+add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
+
+if (OPENSSL_VERSION)
+  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
+  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
+  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
+
+  if ("${OPENSSL_VERSION_MAJOR}" GREATER 0 AND "${OPENSSL_VERSION_MINOR}" GREATER 0)
+    option(USE_OPENSSL_NO_SSL2
+      "do not use OPENSSL_NO_SSL2"
+      ON
+    )
+  else ()
+    option(USE_OPENSSL_NO_SSL2
+      "do not use OPENSSL_NO_SSL2"
+      OFF
+    )
+  endif ()
+endif ()
+
+if (USE_OPENSSL_NO_SSL2)
+  add_definitions(-DOPENSSL_NO_SSL2)
+endif ()
+
 ################################################################################
 ## 3RD PARTY
 ################################################################################
@@ -799,11 +846,23 @@ add_subdirectory(3rdParty)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
+
+################################################################################
+## 3rd Party INCLUDE DIRECTORIES
+################################################################################
+
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;snappystatic)
@@ -813,6 +872,8 @@ add_dependencies(rocksdb snappystatic)
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
 endif ()
+
+include_directories(SYSTEM ${ASIO_INCLUDES})
 
 ################################################################################
 ## VELOCYPACK
@@ -829,40 +890,7 @@ endforeach()
 ## ICU
 ################################################################################
 
-include_directories(${ICU_INCLUDE_DIR})
-
-################################################################################
-## OPENSSL
-################################################################################
-
-find_package(OpenSSL REQUIRED)
-
-include_directories(${OPENSSL_INCLUDE_DIR})
-add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
-add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
-add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
-
-if (OPENSSL_VERSION)
-  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
-  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
-  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
-
-  if ("${OPENSSL_VERSION_MAJOR}" GREATER 0 AND "${OPENSSL_VERSION_MINOR}" GREATER 0)
-    option(USE_OPENSSL_NO_SSL2
-      "do not use OPENSSL_NO_SSL2"
-      ON
-    )
-  else ()
-    option(USE_OPENSSL_NO_SSL2
-      "do not use OPENSSL_NO_SSL2"
-      OFF
-    )
-  endif ()
-endif ()
-
-if (USE_OPENSSL_NO_SSL2)
-  add_definitions(-DOPENSSL_NO_SSL2)
-endif ()
+include_directories(SYSTEM ${ICU_INCLUDE_DIR})
 
 ################################################################################
 ## V8
@@ -881,12 +909,10 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 ################################################################################
 ## cURL
 ################################################################################
-
-# This does not belong here! it should be handled in 3rdParty!
 add_definitions(-DCURL_STATICLIB=1)
 include_directories(SYSTEM
-  ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.57.0/include/
-  ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.57.0/include/curl/
+  ${CURL_SRC_DIR}/include/
+  ${CURL_BIN_DIR}/include/curl/
 )
 
 ################################################################################

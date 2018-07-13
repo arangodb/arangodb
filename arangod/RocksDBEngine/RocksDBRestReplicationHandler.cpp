@@ -27,7 +27,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -267,7 +267,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     cid = c->id();
   }
 
-  auto trxContext = transaction::StandaloneContext::Create(&_vocbase);
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder builder(trxContext->getVPackOptions());
 
   builder.openArray();
@@ -352,7 +352,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _vocbase.updateReplicationClient(
     serverId,
     tickStart == 0 ? 0 : tickStart - 1,
-    InitialSyncer::defaultBatchTimeout
+    replutils::BatchInfo::DefaultTimeout
   );
 }
 
@@ -396,32 +396,28 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   bool isGlobal = false;
   getApplier(isGlobal);
 
-  VPackBuilder inventoryBuilder;
-  Result res =
-    ctx->getInventory(&_vocbase, includeSystem, isGlobal, inventoryBuilder);
+  VPackBuilder builder;
+  builder.openObject();
 
+  // add collections and views
+  Result res;
+  if (isGlobal) {
+    builder.add(VPackValue("databases"));
+    res = ctx->getInventory(&_vocbase, includeSystem, true, builder);
+  } else {
+    res = ctx->getInventory(&_vocbase, includeSystem, false, builder);
+    TRI_ASSERT(builder.hasKey("collections") &&
+               builder.hasKey("views"));
+  }
+  
   if (res.fail()) {
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   "inventory could not be created");
     return;
   }
 
-  VPackBuilder builder;
-  builder.openObject();
-
-  VPackSlice const inventory = inventoryBuilder.slice();
-  if (isGlobal) {
-    TRI_ASSERT(inventory.isObject());
-    builder.add("databases", inventory);
-  } else {
-    // add collections data
-    TRI_ASSERT(inventory.isArray());
-    builder.add("collections", inventory);
-  }
-
-  // "state"
+  // <state>
   builder.add("state", VPackValue(VPackValueType::Object));
-
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));
   builder.add(
@@ -430,7 +426,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.add("totalEvents",
               VPackValue(ctx->lastTick()));  // s.numEvents + s.numEventsSync
   builder.add("time", VPackValue(utilities::timeString()));
-  builder.close();  // state
+  builder.close();  // </state>
 
   std::string const tickString(std::to_string(tick));
   builder.add("tick", VPackValue(tickString));
@@ -473,7 +469,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   //}
 
   // bind collection to context - will initialize iterator
-  int res = ctx->bindCollection(_vocbase, collection);
+  int res = ctx->bindCollectionIncremental(_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -621,20 +617,21 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
-  std::shared_ptr<transaction::Context> transactionContext =
-    transaction::StandaloneContext::Create(&_vocbase);
+  auto transactionContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, transactionContext->getVPackOptions());
 
   if (keys) {
     Result rv = ctx->dumpKeys(builder, chunk, static_cast<size_t>(chunkSize), lowKey);
+
     if (rv.fail()) {
       generateError(rv);
       return;
     }
-  } else {    
+  } else {
     bool success = false;
     VPackSlice const parsedIds = this->parseVPackBody(success);
+
     if (!success) {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
@@ -642,6 +639,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
 
     Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk,
                                    maxChunkSize, lowKey, parsedIds);
+
     if (rv.fail()) {
       generateError(rv);
       return;
@@ -683,8 +681,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // VPackSlice options = _request->payload();
 
   // get collection Name
-  std::string const& collection = _request->value("collection");
-  if (collection.empty()) {
+  std::string const& cname = _request->value("collection");
+  if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
@@ -702,17 +700,17 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   // acquire context
   bool isBusy = false;
-  RocksDBReplicationContext* context = _manager->find(contextId, isBusy, false);
-  RocksDBReplicationContextGuard guard(_manager, context);
+  RocksDBReplicationContext* ctx = _manager->find(contextId, isBusy, false);
+  RocksDBReplicationContextGuard guard(_manager, ctx);
 
-  if (context == nullptr) {
+  if (ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - unable to find context (it could be expired)");
     return;
   }
 
   if (!isBusy) {
-    int res = context->chooseDatabase(_vocbase);
+    int res = ctx->chooseDatabase(_vocbase);
 
     isBusy = (TRI_ERROR_CURSOR_BUSY == res);
   }
@@ -726,62 +724,86 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // print request
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "requested collection dump for collection '" << collection
-      << "' using contextId '" << context->id() << "'";
+      << "' using contextId '" << ctx->id() << "'";
 
-
-  // TODO needs to generalized || velocypacks needs to support multiple slices
-  // per response!
-  auto response = dynamic_cast<HttpResponse*>(_response.get());
-  StringBuffer dump(8192, false);
-
-  if (response == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
-  }
+  grantTemporaryRights();
 
   ExecContext const* exec = ExecContext::CURRENT;
-
   if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase.name(), collection, auth::Level::RO)) {
+      !exec->canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN,
                   TRI_ERROR_FORBIDDEN);
     return;
   }
 
-  // do the work!
-  auto result =
-    context->dump(&_vocbase, collection, dump, determineChunkSize());
+  uint64_t chunkSize = determineChunkSize();
+  size_t reserve = std::max<size_t>(chunkSize, 8192);
 
-  if (result.fail()) {
-    if (result.is(TRI_ERROR_BAD_PARAMETER)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "replication dump - " + result.errorMessage());
+  if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
+
+    VPackBuffer<uint8_t> buffer;
+    buffer.reserve(reserve); // avoid reallocs
+
+    auto res = ctx->dumpVPack(&_vocbase, cname, buffer, chunkSize);
+    // generate the result
+    if (res.fail()) {
+      generateError(res);
+    } else if (buffer.byteSize() == 0) {
+      resetResponse(rest::ResponseCode::NO_CONTENT);
+    } else {
+      resetResponse(rest::ResponseCode::OK);
+      _response->setContentType(rest::ContentType::VPACK);
+      _response->setPayload(std::move(buffer), true, VPackOptions::Options::Defaults,
+                            /*resolveExternals*/ false);
+    }
+
+    // set headers
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
+                           (ctx->moreForDump(cname) ? "true" : "false"));
+
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
+                           StringUtils::itoa(buffer.empty() ? 0 : res.maxTick()));
+
+  } else {
+    auto response = dynamic_cast<HttpResponse*>(_response.get());
+    StringBuffer dump(reserve, false);
+    if (response == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+    }
+
+    // do the work!
+    auto res = ctx->dumpJson(&_vocbase, cname, dump, determineChunkSize());
+
+    if (res.fail()) {
+      if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "replication dump - " + res.errorMessage());
+        return;
+      }
+
+      generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
+                    "replication dump - " + res.errorMessage());
       return;
     }
 
-    generateError(rest::ResponseCode::SERVER_ERROR, result.errorNumber(),
-                  "replication dump - " + result.errorMessage());
-    return;
+    // generate the result
+    if (dump.length() == 0) {
+      resetResponse(rest::ResponseCode::NO_CONTENT);
+    } else {
+      resetResponse(rest::ResponseCode::OK);
+    }
+
+    response->setContentType(rest::ContentType::DUMP);
+    // set headers
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
+                           (ctx->moreForDump(cname) ? "true" : "false"));
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
+                           StringUtils::itoa((dump.length() == 0) ? 0 : res.maxTick()));
+
+    // transfer ownership of the buffer contents
+    response->body().set(dump.stringBuffer());
+
+    // avoid double freeing
+    TRI_StealStringBuffer(dump.stringBuffer());
   }
-
-  // generate the result
-  if (dump.length() == 0) {
-    resetResponse(rest::ResponseCode::NO_CONTENT);
-  } else {
-    resetResponse(rest::ResponseCode::OK);
-  }
-
-  response->setContentType(rest::ContentType::DUMP);
-  // set headers
-  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
-                         (context->more(collection) ? "true" : "false"));
-
-  _response->setHeaderNC(
-      StaticStrings::ReplicationHeaderLastIncluded,
-      StringUtils::itoa((dump.length() == 0) ? 0 : result.maxTick()));
-
-  // transfer ownership of the buffer contents
-  response->body().set(dump.stringBuffer());
-
-  // avoid double freeing
-  TRI_StealStringBuffer(dump.stringBuffer());
 }

@@ -150,7 +150,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
-      return 0;
+      return nullptr;
     }
   }
 };
@@ -577,7 +577,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
-      return 0;
+      return nullptr;
     }
   }
 };
@@ -686,7 +686,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
       return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
-      return 0;
+      return nullptr;
     }
   }
 };
@@ -769,7 +769,7 @@ struct SkiplistTest : public BenchmarkOperation {
       return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
-      return 0;
+      return nullptr;
     }
   }
 };
@@ -852,13 +852,13 @@ struct HashTest : public BenchmarkOperation {
       return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
-      return 0;
+      return nullptr;
     }
   }
 };
 
 struct DocumentImportTest : public BenchmarkOperation {
-  DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(0) {
+  DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(nullptr) {
     _url = "/_api/import?collection=" + ARANGOBENCH->collection() +
            "&type=documents";
 
@@ -911,7 +911,7 @@ struct DocumentImportTest : public BenchmarkOperation {
 };
 
 struct DocumentCreationTest : public BenchmarkOperation {
-  DocumentCreationTest() : BenchmarkOperation(), _url(), _buffer(0) {
+  DocumentCreationTest() : BenchmarkOperation(), _url(), _buffer(nullptr) {
     _url = "/_api/document?collection=" + ARANGOBENCH->collection();
 
     uint64_t const n = ARANGOBENCH->complexity();
@@ -995,8 +995,8 @@ struct CollectionCreationTest : public BenchmarkOperation {
     char* data;
 
     buffer = TRI_CreateSizedStringBuffer(64);
-    if (buffer == 0) {
-      return 0;
+    if (buffer == nullptr) {
+      return nullptr;
     }
     TRI_AppendStringStringBuffer(buffer, "{\"name\":\"");
     TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());

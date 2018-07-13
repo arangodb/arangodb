@@ -678,8 +678,6 @@ function ahuacatlOperatorsTestSuite () {
         assertEqual(v.ex, db._query(q).next(), q);
         q = `RETURN NOOPT(TO_STRING(${v.val}))`;
         assertEqual(v.ex, db._query(q).next(), q);
-        q = `RETURN NOOPT(V8(TO_STRING(${v.val})))`;
-        assertEqual(v.ex, db._query(q).next(), q);
       });
     },
 

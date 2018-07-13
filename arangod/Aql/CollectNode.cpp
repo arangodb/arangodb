@@ -56,9 +56,9 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() {}
 
 /// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // group variables
   nodes.add(VPackValue("groups"));
@@ -124,8 +124,7 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::HASH:
@@ -182,8 +181,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
   }
 
-  auto c =
-      new CollectNode(plan, _id, _options, groupVariables, aggregateVariables,
+  auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables, aggregateVariables,
                       expressionVariable, outVariable, _keepVariables,
                       _variableMap, _count, _isDistinctCommand);
 
@@ -192,9 +190,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specialized();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief helper struct for finding variables

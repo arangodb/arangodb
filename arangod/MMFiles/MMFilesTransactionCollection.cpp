@@ -23,7 +23,6 @@
 
 #include "MMFilesTransactionCollection.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -102,12 +101,9 @@ bool MMFilesTransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      return true;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    return true;
   }
   return (_lockType != AccessMode::Type::NONE);
 }
@@ -209,11 +205,12 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
+
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _collection = _transaction->vocbase()->useCollection(_cid, status);
+      _collection = _transaction->vocbase().useCollection(_cid, status);
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase()->lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -299,14 +296,14 @@ void MMFilesTransactionCollection::unuse(int nestingLevel) {
     _lockType = AccessMode::Type::NONE;
   }
 }
-    
+
 void MMFilesTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
-    _transaction->vocbase()->releaseCollection(_collection);
+    _transaction->vocbase().releaseCollection(_collection);
     _collection = nullptr;
   }
 }
@@ -323,13 +320,9 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (_transaction->isLockedShard(_collection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(!isLocked());
@@ -352,10 +345,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   int res;
   if (!AccessMode::isWriteOrExclusive(type)) {
     LOG_TRX(_transaction, nestingLevel) << "read-locking collection " << _cid;
-    res = physical->lockRead(useDeadlockDetector, _transaction->id(), timeout);
+    res = physical->lockRead(useDeadlockDetector, _transaction, timeout);
   } else { // WRITE or EXCLUSIVE
     LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
-    res = physical->lockWrite(useDeadlockDetector, _transaction->id(), timeout);
+    res = physical->lockWrite(useDeadlockDetector, _transaction, timeout);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -382,15 +375,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "UnlockCollection blocked: " << collName << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(isLocked());
@@ -423,10 +411,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   if (!AccessMode::isWriteOrExclusive(_lockType)) {
     LOG_TRX(_transaction, nestingLevel) << "read-unlocking collection " << _cid;
-    physical->unlockRead(useDeadlockDetector, _transaction->id());
+    physical->unlockRead(useDeadlockDetector, _transaction);
   } else { // WRITE or EXCLUSIVE
     LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
-    physical->unlockWrite(useDeadlockDetector, _transaction->id());
+    physical->unlockWrite(useDeadlockDetector, _transaction);
   }
 
   _lockType = AccessMode::Type::NONE;

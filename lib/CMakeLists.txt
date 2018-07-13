@@ -128,7 +128,6 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/EngineEqualityCheckFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
-  ApplicationFeatures/JemallocFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
@@ -166,7 +165,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Utf8Helper.cpp
   Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
-  Basics/WorkMonitor.cpp
   Basics/application-exit.cpp
   Basics/conversions.cpp
   Basics/csv.cpp

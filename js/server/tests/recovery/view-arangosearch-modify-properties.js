@@ -56,9 +56,7 @@ function runSetup () {
         count: {}
       }
     },
-    locale: "de_DE.UTF-16",
-    threadsMaxIdle: 42,
-    threadsMaxTotal: 1
+    locale: "de_DE.UTF-16"
   };
   view.properties(meta, true); // partial update
 
@@ -97,7 +95,6 @@ function recoverySuite () {
       var properties = v.properties();
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
@@ -106,8 +103,6 @@ function recoverySuite () {
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-8", properties.locale);
-      assertEqual(42, properties.threadsMaxIdle);
-      assertEqual(1, properties.threadsMaxTotal);
     }
 
   };

@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
-#include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 
 #include <openssl/err.h>
-#include <boost/asio/ssl.hpp>
+
+#include "Basics/Exceptions.h"
+#include "Basics/asio_ns.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -38,19 +39,14 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::asio::ssl::context arangodb::sslContext(
+asio::ssl::context arangodb::sslContext(
     SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
-  using boost::asio::ssl::context;
+  using asio::ssl::context;
   context::method meth;
 
   switch (protocol) {
-#ifndef OPENSSL_NO_SSL2
-    case SSL_V2:
-      meth = context::method::sslv2;
-      break;
-#endif
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
       meth = context::method::sslv3;
@@ -72,7 +68,7 @@ boost::asio::ssl::context arangodb::sslContext(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown SSL protocol method");
   }
 
-  boost::asio::ssl::context sslctx(meth);
+  asio::ssl::context sslctx(meth);
 
   if (sslctx.native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
@@ -107,9 +103,6 @@ boost::asio::ssl::context arangodb::sslContext(
 
 std::string arangodb::protocolName(SslProtocol protocol) {
   switch (protocol) {
-    case SSL_V2:
-      return "SSLv2";
-
     case SSL_V23:
       return "SSLv23";
 

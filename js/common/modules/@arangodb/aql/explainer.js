@@ -3,6 +3,7 @@
 
 var db = require('@arangodb').db,
   internal = require('internal'),
+  _ = require('lodash'),
   systemColors = internal.COLORS,
   print = internal.print,
   colors = { };
@@ -162,10 +163,10 @@ function printQuery (query) {
   // very long query strings
   var maxLength = 4096;
   if (query.length > maxLength) {
-    stringBuilder.appendLine(section('Query string (truncated):'));
+    stringBuilder.appendLine(section('Query String (truncated):'));
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
   } else {
-    stringBuilder.appendLine(section('Query string:'));
+    stringBuilder.appendLine(section('Query String:'));
   }
   stringBuilder.appendLine(' ' + value(wrap(query, 100).replace(/\n+/g, '\n ', query)));
   stringBuilder.appendLine();
@@ -194,6 +195,7 @@ function printModificationFlags (flags) {
 /* print optimizer rules */
 function printRules (rules) {
   'use strict';
+
   stringBuilder.appendLine(section('Optimization rules applied:'));
   if (rules.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
@@ -343,6 +345,48 @@ function printIndexes (indexes) {
 
       stringBuilder.appendLine(line);
     }
+  }
+}
+
+function printFunctions (functions) {
+  'use strict';
+
+  let funcArray = [];
+  Object.keys(functions).forEach(function(f) {
+    funcArray.push(functions[f]);
+  });
+
+  if (funcArray.length === 0) {
+    return;
+  }
+  stringBuilder.appendLine();
+  stringBuilder.appendLine(section('Functions used:'));
+
+  let maxNameLen = String('Name').length;
+  let maxDeterministicLen = String('Deterministic').length;
+  let maxV8Len = String('Uses V8').length;
+  funcArray.forEach(function (f) {
+    let l = String(f.name).length;
+    if (l > maxNameLen) {
+      maxNameLen = l;
+    }
+  });
+  let line = ' ' + 
+    header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
+    header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
+    header('Uses V8') + pad(1 + maxV8Len - 'Uses V8'.length);
+
+  stringBuilder.appendLine(line);
+
+  for (var i = 0; i < funcArray.length; ++i) {
+    let deterministic = String(funcArray[i].isDeterministic);
+    let usesV8 = String(funcArray[i].usesV8);
+    line = ' ' +
+      variable(funcArray[i].name) + pad(1 + maxNameLen - funcArray[i].name.length) + '   ' +
+      value(deterministic) + pad(1 + maxDeterministicLen - deterministic.length) + '   ' +
+      value(usesV8) + pad(1 + maxV8Len - usesV8.length);
+
+    stringBuilder.appendLine(line);
   }
 }
 
@@ -580,15 +624,22 @@ function processQuery (query, explain) {
     }
   }
 
-  var recursiveWalk = function (n, level) {
+  var recursiveWalk = function (partNodes, level, site) {
+    let n = _.clone(partNodes);
+    n.reverse();
     n.forEach(function (node) {
+      // set location of execution node in cluster
+      node.site = site;
+
       nodes[node.id] = node;
       if (level === 0 && node.dependencies.length === 0) {
         rootNode = node.id;
       }
       if (node.type === 'SubqueryNode') {
         // enter subquery
-        recursiveWalk(node.subquery.nodes, level + 1);
+        recursiveWalk(node.subquery.nodes, level + 1, site);
+      } else if (node.type === 'RemoteNode') {
+        site = (site === 'COOR' ? 'DBS' : 'COOR');
       }
       node.dependencies.forEach(function (d) {
         if (!parents.hasOwnProperty(d)) {
@@ -612,20 +663,8 @@ function processQuery (query, explain) {
         }
       }
     });
-
-    var count = n.length, site = 'COOR';
-    while (count > 0) {
-      --count;
-      var node = n[count];
-      // get location of execution node in cluster
-      node.site = site;
-
-      if (node.type === 'RemoteNode') {
-        site = (site === 'COOR' ? 'DBS' : 'COOR');
-      }
-    }
   };
-  recursiveWalk(plan.nodes, 0);
+  recursiveWalk(plan.nodes, 0, 'COOR');
 
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
@@ -663,6 +702,7 @@ function processQuery (query, explain) {
     indexes = [],
     traversalDetails = [],
     shortestPathDetails = [],
+    functions = [],
     modificationFlags,
     isConst = true,
     currentNode = null;
@@ -948,13 +988,35 @@ function processQuery (query, explain) {
   const restriction = function (node) {
     if (node.restrictedTo) {
       return `, shard: ${node.restrictedTo}`;
+    } else if (node.numberOfShards) {
+      return `, ${node.numberOfShards} shard(s)`;
     }
     return '';
+  };
+  
+  var iterateIndexes = function (idx, i, node, types, variable) {
+    var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
+    if (types.length === 0 || what !== types[types.length - 1]) {
+      types.push(what);
+    }
+    idx.collection = node.collection;
+    idx.node = node.id;
+    if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
+      idx.condition = buildExpression(node.condition.subNodes[i]);
+    } else {
+      if (variable !== false) {
+        idx.condition = variable;
+      } else {
+        idx.condition = '*'; // empty condition. this is likely an index used for sorting only
+      }
+    }
+    indexes.push(idx);
   };
 
   var label = function (node) {
     var rc, v, e, edgeCols;
     var parts = [];
+    var types = [];
     switch (node.type) {
       case 'SingletonNode':
         return keyword('ROOT');
@@ -962,38 +1024,16 @@ function processQuery (query, explain) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`);
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        var types = [];
-        node.indexes.forEach(function (idx, i) {
-          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
-          if (types.length === 0 || what !== types[types.length - 1]) {
-            types.push(what);
-          }
-          idx.collection = node.collection;
-          idx.node = node.id;
-          if (node.condition.type && node.condition.type === 'n-ary or') {
-            idx.condition = buildExpression(node.condition.subNodes[i]);
-          } else {
-            idx.condition = '*'; // empty condition. this is likely an index used for sorting only
-          }
-          indexes.push(idx);
-        });
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
-      case 'IndexRangeNode':
-        collectionVariables[node.outVariable.id] = node.collection;
-        var index = node.index;
-        index.ranges = node.ranges.map(buildRanges).join(' || ');
-        index.collection = node.collection;
-        index.node = node.id;
-        indexes.push(index);
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + (node.reverse ? 'reverse ' : '') + node.index.type + ' index scan */');
-
+        //`
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1186,6 +1226,9 @@ function processQuery (query, explain) {
         }
         return rc;
       case 'CalculationNode':
+        (node.functions || []).forEach(function(f) {
+          functions[f.name] = f;
+        });
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
       case 'FilterNode':
         return keyword('FILTER') + ' ' + variableName(node.inVariable);
@@ -1240,33 +1283,41 @@ function processQuery (query, explain) {
       case 'UpdateNode': {
         modificationFlags = node.modificationFlags;
         let inputExplain = '';
+        let indexRef = '';
         if (node.hasOwnProperty('inKeyVariable')) {
+          indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `variableName(node.inDocVariable)`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
         }
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('UPDATE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'ReplaceNode': {
         modificationFlags = node.modificationFlags;
         let inputExplain = '';
+        let indexRef = '';
         if (node.hasOwnProperty('inKeyVariable')) {
+          indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
           } else {
-          inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `variableName(node.inDocVariable)`;
           }
         let restrictString = '';
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
           }
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REPLACE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'UpsertNode':
         modificationFlags = node.modificationFlags;
+        let indexRef = `${variableName(node.inDocVariable)}`;
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return keyword('UPSERT') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('INSERT') + ' ' + variableName(node.insertVariable) + ' ' + keyword(node.isReplace ? 'REPLACE' : 'UPDATE') + ' ' + variableName(node.updateVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
       case 'RemoveNode': {
         modificationFlags = node.modificationFlags;
@@ -1274,6 +1325,8 @@ function processQuery (query, explain) {
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
           }
+        let indexRef = `${variableName(node.inVariable)}`;
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'RemoteNode':
@@ -1375,6 +1428,7 @@ function processQuery (query, explain) {
   };
 
   printQuery(query);
+
   stringBuilder.appendLine(section('Execution plan:'));
 
   var line = ' ' +
@@ -1413,9 +1467,11 @@ function processQuery (query, explain) {
 
   stringBuilder.appendLine();
   printIndexes(indexes);
+  printFunctions(functions);
   printTraversalDetails(traversalDetails);
   printShortestPathDetails(shortestPathDetails);
   stringBuilder.appendLine();
+
   printRules(plan.rules);
   printModificationFlags(modificationFlags);
   printWarnings(explain.warnings);
@@ -1439,13 +1495,14 @@ function explain(data, options, shouldPrint) {
     options = data.options;
   }
   options = options || { };
+  options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let result = stmt.explain(options); // TODO why is this there ?
   processQuery(data.query, result);
-  
+
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
   } else {
@@ -1496,6 +1553,7 @@ function debug(query, bindVars, options) {
   let result = {
     engine: db._engine(),
     version: db._version(true),
+    database: db._name(),
     query: input,
     collections: {}
   };
@@ -1505,8 +1563,51 @@ function debug(query, bindVars, options) {
   let stmt = db._createStatement(input);
   result.explain = stmt.explain(input.options);
 
+  let graphs = {};
+  let collections = result.explain.plan.collections;
+  let map = {};
+  collections.forEach(function(c) {
+    map[c.name] = true;
+  });
+
+  // export graphs
+  let findGraphs = function(nodes) {
+    nodes.forEach(function(node) {
+      if (node.type === 'TraversalNode') {
+        if (node.graph) {
+          try {
+            graphs[node.graph] = db._graphs.document(node.graph);
+          } catch (err) {}
+        }
+        if (node.graphDefinition) {
+          try {
+            node.graphDefinition.vertexCollectionNames.forEach(function(c) {
+              if (!map.hasOwnProperty(c)) {
+                map[c] = true;
+                collections.push({ name: c });
+              }
+            });
+          } catch (err) {}
+          try {
+            node.graphDefinition.edgeCollectionNames.forEach(function(c) {
+              if (!map.hasOwnProperty(c)) {
+                map[c] = true;
+                collections.push({ name: c });
+              }
+            });
+          } catch (err) {}
+        }
+      } else if (node.type === 'SubqueryNode') {
+        // recurse into subqueries
+        findGraphs(node.subquery.nodes);
+      }
+    });
+  };
+  // mangle with graphs used in query
+  findGraphs(result.explain.plan.nodes);
+
   // add collection information
-  result.explain.plan.collections.forEach(function(collection) {
+  collections.forEach(function(collection) {
     let c = db._collection(collection.name);
     let examples;
     if (input.options.examples) {
@@ -1526,7 +1627,7 @@ function debug(query, bindVars, options) {
       }
     }
     result.collections[collection.name] = { 
-      type: c.type() === 2,
+      type: c.type(),
       properties: c.properties(),
       indexes: c.getIndexes(true),
       count: c.count(),
@@ -1534,6 +1635,8 @@ function debug(query, bindVars, options) {
       examples
     };
   });
+  
+  result.graphs = graphs;
   return result;
 }
 
@@ -1545,16 +1648,29 @@ function debugDump(filename, query, bindVars, options) {
 
 function inspectDump(filename) {
   let data = JSON.parse(require("fs").read(filename));
+  if (data.database) {
+    print("/* original data gathered from database '" + data.database + "' */");
+  }
   if (db._engine().name !== data.engine.name) {
     print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
   }
+  print();
+
+  print("/* graphs */");
+  let graphs = data.graphs || {};
+  Object.keys(graphs).forEach(function(graph) {
+    let details = graphs[graph];
+    print("try { db._graphs.remove(" + JSON.stringify(graph) + "); } catch (err) {}");
+    print("db._graphs.insert(" + JSON.stringify(details) + ");");
+  });
+  print();
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
   Object.keys(data.collections).forEach(function(collection) {
     let details = data.collections[collection];
     print("db._drop(" + JSON.stringify(collection) + ");");
-    if (details.type === 3) {
+    if (details.type === false || details.type === 3) {
       print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
     } else {
       print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");

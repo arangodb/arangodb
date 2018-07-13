@@ -86,7 +86,7 @@ void PrivilegeFeature::extractPrivileges() {
 #ifdef ARANGODB_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
-      if (g == 0) {
+      if (g == nullptr) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown numeric gid '" << _gid << "'";
         FATAL_ERROR_EXIT();
       }
@@ -96,7 +96,7 @@ void PrivilegeFeature::extractPrivileges() {
       std::string name = _gid;
       group* g = getgrnam(name.c_str());
 
-      if (g != 0) {
+      if (g != nullptr) {
         gidNumber = g->gr_gid;
       } else {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot convert groupname '" << _gid
@@ -123,7 +123,7 @@ void PrivilegeFeature::extractPrivileges() {
 #ifdef ARANGODB_HAVE_GETPWUID
       passwd* p = getpwuid(uidNumber);
 
-      if (p == 0) {
+      if (p == nullptr) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown numeric uid '" << _uid << "'";
         FATAL_ERROR_EXIT();
       }
@@ -133,7 +133,7 @@ void PrivilegeFeature::extractPrivileges() {
       std::string name = _uid;
       passwd* p = getpwnam(name.c_str());
 
-      if (p != 0) {
+      if (p != nullptr) {
         uidNumber = p->pw_uid;
       } else {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot convert username '" << _uid << "' to numeric uid";

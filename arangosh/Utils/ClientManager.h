@@ -58,12 +58,13 @@ class ClientManager {
    * @param  httpclient Output pointer will be set on success
    * @param  force      If true, an incompatible version will not result in an
    *                    error result
-   * @param  verbose    If true, output the server version to logs
+   * @param  logServerVersion     If true, output the server version to logs
+   * @param  logDatabaseNotFound  If true, log errors when database was not found
    * @return            Status code and possible error message
    */
   Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>&
-                                httpClient, bool force = false,
-                            bool verbose = false);
+                                httpClient, bool force, bool logServerVersion,
+                                bool logDatabaseNotFound);
 
   /**
    * @brief Initializes a client, connects to server, and verifies version
@@ -74,11 +75,12 @@ class ClientManager {
    *
    * @param  force   If true, an incompatible version will not result in a fatal
    *                 error exit condition
-   * @param  verbose If true, output the server version to logs
+   * @param  logServerVersion     If true, output the server version to logs
+   * @param  logDatabaseNotFound  If true, log errors when database was not found
    * @return         A connected `SimpleHttpClient`
    */
   std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(
-      bool force = false, bool verbose = false);
+      bool force, bool logServerVersion, bool logDatabaseNotFound);
 
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path

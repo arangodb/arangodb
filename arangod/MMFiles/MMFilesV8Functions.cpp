@@ -62,8 +62,8 @@ static void JS_RotateVocbaseCol(
   }
 
   SingleCollectionTransaction trx(
-    transaction::V8Context::Create(&(collection->vocbase()), true),
-    collection->id(),
+    transaction::V8Context::Create(collection->vocbase(), true),
+    collection,
     AccessMode::Type::WRITE
   );
   Result res = trx.begin();
@@ -461,11 +461,7 @@ static void JS_WaitCollectorWal(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -473,7 +469,7 @@ static void JS_WaitCollectorWal(
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
-  auto col = vocbase->lookupCollection(name);
+  auto col = vocbase.lookupCollection(name);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);

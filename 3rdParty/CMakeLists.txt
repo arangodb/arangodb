@@ -9,6 +9,13 @@ include(ExternalProject)
 remove_definitions("-DUSE_ENTERPRISE=1")
 
 ################################################################################
+## ZLIB
+################################################################################
+
+set(SKIP_INSTALL_ALL ON)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
+
+################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -82,11 +89,23 @@ if (USE_PRECOMPILED_V8)
     FORCE
   )
 else ()
+  # meaningless IResearch circus that makes the windows build fail
+  #if (MSVC AND USE_IRESEARCH)
+  #  set(V8_TARGET_ARCHS "Debug;Release") # need to build both ICU for IResearch otherwise no library to link with
+  #endif ()
+
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
   set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
   set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 endif ()
+
+################################################################################
+## Google S2
+################################################################################
+
+add_subdirectory(s2geometry)
+set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## IResearch
@@ -197,16 +216,11 @@ if (USE_IRESEARCH)
   endif()
 endif()
 
-################################################################################
-## ZLIB
-################################################################################
-
-set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 
 ################################################################################
 ## cURL
 ################################################################################
+add_definitions(-DCURL_STATICLIB=1)
 
 set(ENABLE_MANUAL OFF CACHE type BOOL)
 set(BUILD_CURL_EXE OFF CACHE type BOOL)
@@ -217,20 +231,24 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
+set(CURL_VERSION "7.57.0")
+set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
+add_subdirectory(${CURL_SRC_DIR})
+
+set(CURL_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/curl/curl-${CURL_VERSION}")
+set(CURL_BIN_DIR "${CURL_BIN_DIR}" PARENT_SCOPE)
+set(CURL_SRC_DIR "${CURL_SRC_DIR}" PARENT_SCOPE)
+
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
-
-################################################################################
-## Google S2
-################################################################################
-
-add_subdirectory(s2geometry)
 
 ################################################################################
 ## SNAPPY
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
+set(SNAPPY_VERSION "d53de18")
+set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-${SNAPPY_VERSION}")
+set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/google-snappy-${SNAPPY_VERSION}")
+add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## JEMALLOC
@@ -256,6 +274,13 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 include_directories(${ROCKSDB_INCLUDE_DIR})
+set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
+
+################################################################################
+## ASIO
+################################################################################
+
+set(ASIO_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/asio/1.12/include" PARENT_SCOPE)
 
 ################################################################################
 ## LINK_DIRECTORIES

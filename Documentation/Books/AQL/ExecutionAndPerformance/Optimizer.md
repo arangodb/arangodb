@@ -423,7 +423,9 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a`
   would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a`
 * `geo-index-optimizer`: will appear when a geo index is utilized.
-* `fulltext-index-optimizer`: will appear when the fulltext index is used
+* `replace-function-with-index`: will appear when a deprecated index function such as
+   `FULLTEXT`, `NEAR`, `WITHIN` or `WITHIN_RECTANGLE` is replaced with a regular
+   subquery.
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
   is specific for the MMFiles storage engine.
@@ -431,6 +433,12 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   an *IndexNode* that would have extracted an entire document was modified to return 
   only a projection of each document. Projections are limited to at most 5 different
   document attributes. This optimizer rule is specific for the RocksDB storage engine.
+* `optimize-subqueries`: will appear when optimizations are applied to a subquery. The
+  optimizer rule will add a *LIMIT* statement to qualifying subqueries to make them 
+  return less data. Another optimization performed by this rule is to modify the result 
+  value of subqueries in case only the number of subquery results is checked later. 
+  This saves copying the document data from the subquery to the outer scope and may
+  enable follow-up optimizations.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 

@@ -278,7 +278,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
 }
 
 /// @brief get the _key attribute from an object/document
-AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getKeyAttribute(transaction::Methods* /*trx*/,
                                    bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -361,7 +361,7 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
 }
 
 /// @brief get the _from attribute from an object/document
-AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getFromAttribute(transaction::Methods* /*trx*/,
                                     bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -400,7 +400,7 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
 }
 
 /// @brief get the _to attribute from an object/document
-AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getToAttribute(transaction::Methods* /*trx*/,
                                   bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -949,17 +949,10 @@ AqlValue AqlValue::clone() const {
       return AqlValue(VPackSlice(_data.buffer->data()));
     }
     case DOCVEC: {
-      auto c = std::make_unique<std::vector<AqlItemBlock*>>();
+      auto c = std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
       c->reserve(docvecSize());
-      try {
-        for (auto const& it : *_data.docvec) {
-          c->emplace_back(it->slice(0, it->size()));
-        }
-      } catch (...) {
-        for (auto& it : *c) {
-          delete it;
-        }
-        throw;
+      for (auto const& it : *_data.docvec) {
+        c->emplace_back(it->slice(0, it->size()));
       }
       return AqlValue(c.release());
     }
@@ -990,9 +983,7 @@ void AqlValue::destroy() noexcept {
       break;
     }
     case DOCVEC: {
-      for (auto& it : *_data.docvec) {
-        delete it;
-      }
+      // Will delete all ItemBlocks
       delete _data.docvec;
       break;
     }

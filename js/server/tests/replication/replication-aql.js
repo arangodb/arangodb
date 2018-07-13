@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused: false */
-/*global assertEqual, assertTrue, arango, ARGUMENTS */
+/*global assertEqual, assertTrue, assertFalse, arango, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -459,6 +459,72 @@ function ReplicationSuite() {
             assertEqual("test/x" + i, docs[0]._from);
             assertEqual("test/y" + i, docs[0]._to);
           }
+        }
+      );
+    },
+    
+    testAqlReplace: function() {
+      db._useDatabase(cn);
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn); 
+          for (let i = 0; i < 100; ++i) {
+            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+          }
+        },
+
+        function(state) {
+          for (let i = 0; i < 100; ++i) {
+            db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " REPLACE doc WITH { value3: doc.value1 + 1 } IN " + cn);
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+        },
+
+        function(state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+          
+          for (let i = 0; i < 100; ++i) {
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._key == 'test" + i + "' RETURN doc").toArray(); 
+            assertEqual(1, docs.length);
+            assertEqual("test" + i, docs[0]._key);
+            assertFalse(docs[0].hasOwnProperty('value1'));
+            assertFalse(docs[0].hasOwnProperty('value2'));
+            assertEqual(i + 1, docs[0].value3);
+          }
+        }
+      );
+    },
+    
+    testAqlReplaceMulti: function() {
+      db._useDatabase(cn);
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn); 
+          for (let i = 0; i < 5000; ++i) {
+            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+          }
+          c.ensureIndex({ type: "hash", fields: ["value2"] });
+        },
+
+        function(state) {
+          for (let i = 0; i < 100; ++i) {
+            db._query("FOR doc IN " + cn + " FILTER doc.value2 == " + i + " REPLACE doc WITH { value3: doc.value1 + 1 } IN " + cn);
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+        },
+
+        function(state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
         }
       );
     },

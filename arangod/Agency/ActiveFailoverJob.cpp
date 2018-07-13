@@ -247,17 +247,20 @@ arangodb::Result ActiveFailoverJob::abort() {
 typedef std::pair<std::string, TRI_voc_tick_t> ServerTick;
 /// Try to select the follower most in-sync with failed leader
 std::string ActiveFailoverJob::findBestFollower() {
-  std::vector<std::string> as = healthyServers(_snapshot);
+  std::vector<std::string> healthy = healthyServers(_snapshot);
+  // the failed leader should never appear as healthy
+  TRI_ASSERT(std::find(healthy.begin(), healthy.end(), _server) == healthy.end());
   
   // blocked; (not sure if this can even happen)
   try {
     for (auto const& srv : _snapshot(blockedServersPrefix).children()) {
-      as.erase(std::remove(as.begin(), as.end(), srv.first), as.end());
+      healthy.erase(std::remove(healthy.begin(), healthy.end(), srv.first), healthy.end());
     }
   } catch (...) {}
   
   std::vector<ServerTick> ticks;
-  try { // collect tick values from transient state
+  try {
+    // collect tick values from transient state
     query_t trx = std::make_unique<VPackBuilder>();
     {
       VPackArrayBuilder transactions(trx.get());
@@ -274,13 +277,15 @@ std::string ActiveFailoverJob::findBestFollower() {
       VPackSlice obj = resp.at(0).get({ Job::agencyPrefix, "AsyncReplication"});
       for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(obj)) {
         std::string srvUUID = pair.key.copyString();
-        if (std::find(as.begin(), as.end(), srvUUID) == as.end()) {
+        bool isAvailable = std::find(healthy.begin(), healthy.end(), srvUUID) != healthy.end();
+        if (!isAvailable) {
           continue; // skip inaccessible servers
         }
+        TRI_ASSERT(srvUUID != _server);
         
         VPackSlice leader = pair.value.get("leader"); // broken leader
         VPackSlice lastTick = pair.value.get("lastTick");
-        if (leader.isString() && leader.compareString(_server) == 0 &&
+        if (leader.isString() && leader.isEqualString(_server) &&
             lastTick.isNumber()) {
           ticks.emplace_back(std::move(srvUUID), lastTick.getUInt());
         }
@@ -293,6 +298,7 @@ std::string ActiveFailoverJob::findBestFollower() {
     return a.second > b.second;
   });
   if (!ticks.empty()) {
+    TRI_ASSERT(ticks.size() == 1 || ticks[0].second >= ticks[1].second);
     return ticks[0].first;
   }
   return ""; // fallback to any available server

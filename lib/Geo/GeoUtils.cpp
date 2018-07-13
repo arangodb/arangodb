@@ -45,13 +45,12 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
 
   VPackSlice lat = data.at(isGeoJson ? 1 : 0);
   VPackSlice lon = data.at(isGeoJson ? 0 : 1);
-  if (!lat.isNumber() || !lat.isNumber()) {
+  if (!lat.isNumber() || !lon.isNumber()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
   S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
                                       lon.getNumericValue<double>());
   if (!ll.is_valid()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "Invalid lat lng pair";
     return TRI_ERROR_BAD_PARAMETER;
   }
   centroid = ll.ToPoint();
@@ -124,8 +123,8 @@ void GeoUtils::scanIntervals(QueryParams const& params,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //  constexpr size_t diff = 64;
   for (size_t i = 0; i < sortedIntervals.size() - 1; i++) {
-    TRI_ASSERT(sortedIntervals[i].min <= sortedIntervals[i].max);
-    TRI_ASSERT(sortedIntervals[i].max < sortedIntervals[i + 1].min);
+    TRI_ASSERT(sortedIntervals[i].range_min <= sortedIntervals[i].range_max);
+    TRI_ASSERT(sortedIntervals[i].range_max < sortedIntervals[i + 1].range_min);
     /*
     if (std::abs((sortedIntervals[i].max.id() -
                   sortedIntervals[i + 1].min.id())) < diff) {
@@ -133,6 +132,6 @@ void GeoUtils::scanIntervals(QueryParams const& params,
     }*/
   }
   TRI_ASSERT(!sortedIntervals.empty());
-  TRI_ASSERT(sortedIntervals[0].min < sortedIntervals.back().max);
+  TRI_ASSERT(sortedIntervals[0].range_min < sortedIntervals.back().range_max);
 #endif
 }

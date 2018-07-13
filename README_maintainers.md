@@ -155,6 +155,22 @@ Dependencies
   `cd UnitTests/HttpInterface; bundler`
 * catch (compile time, shipped in the 3rdParty directory)
 
+Invoking
+--------
+Since several testing technoligies are utilized, and different arangodb startup options may be required 
+(even different compilation options may be required) the framework is split into testsuites. 
+Get a list of the available testsuites and options by invoking: 
+
+    ./scripts/unittest
+
+To locate the suite(s) associated with a specific test file use: 
+
+    ./scripts/unittest find --test js/common/tests/shell/shell-aqlfunctions.js
+
+or to run all of them: 
+
+    ./scripts/unittest auto --test js/common/tests/shell/shell-aqlfunctions.js
+
 
 Filename conventions
 ====================

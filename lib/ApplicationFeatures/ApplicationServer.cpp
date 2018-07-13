@@ -367,7 +367,9 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   
   if (_dumpOptions) {
     auto builder = _options->toVPack(false, true, std::unordered_set<std::string>());
-    std::cout << builder.slice().toJson() << std::endl;
+    arangodb::velocypack::Options options;
+    options.prettyPrint = true;
+    std::cout << builder.slice().toJson(&options) << std::endl;
     exit(EXIT_SUCCESS);
   }
 }
@@ -386,7 +388,7 @@ void ApplicationServer::validateOptions() {
   }
 
   // inform about obsolete options  
-  _options->walk([](Section const& section, Option const& option) {
+  _options->walk([](Section const&, Option const& option) {
     if (option.obsolete) {
       LOG_TOPIC(WARN, Logger::STARTUP) << "obsolete option '" << option.displayName() << "' used in configuration. "
                                        << "setting this option will not have any effect.";

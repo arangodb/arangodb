@@ -138,7 +138,12 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           builder.add("section", VPackValue(option.section));
           builder.add("description", VPackValue(option.description));
           builder.add("hidden", VPackValue(option.hidden));
-          builder.add(VPackValue("value"));
+          builder.add("type", VPackValue(option.parameter->name()));
+          std::string values = option.parameter->description();
+          if (!values.empty()) {
+            builder.add("values", VPackValue(values));
+          }
+          builder.add(VPackValue("default"));
           option.toVPack(builder);
           builder.close();
         } else {

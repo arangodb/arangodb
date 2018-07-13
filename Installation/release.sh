@@ -68,12 +68,12 @@ while [ "$#" -gt 0 ];  do
             PARALLEL=$1
             shift
             ;;
-        
+
         --force-tag)
             shift
             FORCE_TAG=1
             ;;
-        
+
         --no-lint)
             LINT=0
             shift
@@ -109,7 +109,7 @@ while [ "$#" -gt 0 ];  do
             DOWNLOAD_SYNCER_USER=$1
             shift
             ;;
-            
+
         --no-book)
             BOOK=0
             shift
@@ -143,7 +143,7 @@ if test "${FORCE_TAG}" == 0; then
 fi
 
 if fgrep -q "v$VERSION" CHANGELOG;  then
-    echo "version $VERSION defined in CHANGELOG" 
+    echo "version $VERSION defined in CHANGELOG"
 else
     echo "$0: version $VERSION not defined in CHANGELOG"
     exit 1
@@ -162,7 +162,7 @@ while test -z "${OAUTH_REPLY}"; do
              --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release-tag-${SEQNO}-${OSNAME}\"}"
                )
     if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
-        # retry with another number... 
+        # retry with another number...
         OAUTH_REPLY=""
         SEQNO=$((SEQNO + 1))
         count=$((count + 1))
@@ -302,6 +302,15 @@ echo "GRUNT"
 
 git add -f Documentation/Examples/*.generated
 
+echo "MAN"
+(
+    cd build
+    make man
+)
+git add -f Documentation/man
+
+
+
 if [ "$BOOK" == "1" ];  then
     echo "DOCUMENTATION"
     (cd Documentation/Books; make)
@@ -328,7 +337,7 @@ if [ "$TAG" == "1" ];  then
     else
         git tag -f "v$VERSION"
         git push --tags -f
-    fi        
+    fi
 
     cd "${ENTERPRISE_SRC_DIR}"
     git commit --allow-empty -m "release version $VERSION enterprise" -a
@@ -341,7 +350,7 @@ if [ "$TAG" == "1" ];  then
         git tag -f "v$VERSION"
         git push --tags -f
     fi
-    
+
     echo
     echo "--------------------------------------------------"
     echo "Remember to update the VERSION in 'devel' as well."

@@ -214,6 +214,11 @@ function importTestSuite () {
       var actual = getQueryResults("FOR i IN UnitTestsImportJson5 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
+      
+    testCsvImportNonoCreate : function () {
+      assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code,
+                  getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsvNonoCreate RETURN i"); } ));
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
@@ -237,8 +242,8 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCsvImport2 : function () {
-      assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code,
-                  getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i"); } ));
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsv2 RETURN i");
+      assertEqual([], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

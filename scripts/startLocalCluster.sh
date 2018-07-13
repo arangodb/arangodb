@@ -41,7 +41,7 @@ if [[ -f cluster/startup_parameters ]];then
 else
   #store parmeters
   if [[ -n "${params[@]}" ]]; then
-    echo "${params[@]}" > cluster/startup_parameters 
+    echo "${params[@]}" > cluster/startup_parameters
   fi
 fi
 
@@ -111,10 +111,10 @@ fi
 if [ ! -z "$INTERACTIVE_MODE" ] ; then
     if [ "$INTERACTIVE_MODE" == "C" ] ; then
         ARANGOD="${BUILD}/bin/arangod "
-        CO_ARANGOD="$XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod --console "
+        CO_ARANGOD="$XTERM $XTERMOPTIONS ${BUILD}/bin/arangod --console "
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
-        ARANGOD="$XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod --console "
+        ARANGOD="$XTERM $XTERMOPTIONS rr ${BUILD}/bin/arangod --console "
         CO_ARANGOD=$ARANGOD
         echo Running cluster in rr with --console.
     fi
@@ -123,8 +123,9 @@ else
     CO_ARANGOD=$ARANGOD
 fi
 
-echo == Starting agency ... 
+echo == Starting agency ...
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
+    [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
     $ARANGOD \
@@ -144,7 +145,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$port \
         --server.statistics false \
-        --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
@@ -155,7 +155,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
 done
 
 start() {
-    
+
     if [ "$1" == "dbserver" ]; then
         ROLE="PRIMARY"
     elif [ "$1" == "coordinator" ]; then
@@ -170,8 +170,9 @@ start() {
 
     TYPE=$1
     PORT=$2
-    mkdir -p cluster/data$PORT cluster/apps$PORT 
+    mkdir -p cluster/data$PORT cluster/apps$PORT
     echo == Starting $TYPE on port $PORT
+    [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     $CMD \
         -c none \
         --database.directory cluster/data$PORT \

@@ -2,7 +2,7 @@
 /*global assertEqual, assertMatch, assertTypeOf, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the document interface
+/// @brief test the edge interface
 ///
 /// @file
 ///
@@ -37,7 +37,6 @@ var db = arangodb.db;
 var ERRORS = arangodb.errors;
 var wait = require("internal").wait;
 var testHelper = require("@arangodb/test-helper").Helper;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: error handling
@@ -160,6 +159,205 @@ function CollectionEdgeSuite () {
       edge = null;
       vertex = null;
       wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid from/to on insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidFromToInsert : function () {
+      [ 
+        { _from: null, _to: "v/1" },
+        { _from: 1234, _to: "v/1" },
+        { _from: "", _to: "v/1" },
+        { _from: "v", _to: "v/1" },
+        { _from: "v/", _to: "v/1" },
+        { _from: " v/", _to: "v/1" },
+        { _from: "v/ ", _to: "v/1" },
+        { _to: null, _from: "v/1" },
+        { _to: 1234, _from: "v/1" },
+        { _to: "", _from: "v/1" },
+        { _to: "v", _from: "v/1" },
+        { _to: "v/", _from: "v/1" },
+        { _to: " v/", _from: "v/1" },
+        { _to: "v/ ", _from: "v/1" }
+      ].forEach(function(doc) {
+        try {
+          edge.insert(doc);
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid from/to on replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdatePartial : function () {
+      edge.insert({ _key: "test", _from: "v/a", _to: "v/b" });
+      edge.update("test", { _to: "v/xx" });
+
+      let doc = edge.document("test");
+      assertEqual("v/a", doc._from);
+      assertEqual("v/xx", doc._to);
+      
+      edge.update("test", { _from: "v/yy" });
+
+      doc = edge.document("test");
+      assertEqual("v/yy", doc._from);
+      assertEqual("v/xx", doc._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid from/to on update
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidFromToUpdate : function () {
+      edge.insert({ _key: "test", _from: "v/a", _to: "v/b" });
+      [ 
+        { _from: null, _to: "v/1" },
+        { _from: 1234, _to: "v/1" },
+        { _from: "", _to: "v/1" },
+        { _from: "v", _to: "v/1" },
+        { _from: "v/", _to: "v/1" },
+        { _from: " v/", _to: "v/1" },
+        { _from: "v/ ", _to: "v/1" },
+        { _to: null, _from: "v/1" },
+        { _to: 1234, _from: "v/1" },
+        { _to: "", _from: "v/1" },
+        { _to: "v", _from: "v/1" },
+        { _to: "v/", _from: "v/1" },
+        { _to: " v/", _from: "v/1" },
+        { _to: "v/ ", _from: "v/1" }
+      ].forEach(function(doc) {
+        try {
+          edge.update("test", doc);
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
+        }
+      });
+
+      let doc = edge.document("test");
+      assertEqual("v/a", doc._from);
+      assertEqual("v/b", doc._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid from on update
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidFromUpdatePartial : function () {
+      edge.insert({ _key: "test", _from: "v/a", _to: "v/b" });
+      [ null, "", " ", "v", "v/", " v/", "v/ " ].forEach(function(value) {
+        try {
+          edge.update("test", { _from: value });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
+        }
+      });
+
+      let doc = edge.document("test");
+      assertEqual("v/a", doc._from);
+      assertEqual("v/b", doc._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid to on update
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidToUpdatePartial : function () {
+      edge.insert({ _key: "test", _from: "v/a", _to: "v/b" });
+      [ null, "", " ", "v", "v/", " v/", "v/ " ].forEach(function(value) {
+        try {
+          edge.update("test", { _to: value });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
+        }
+      });
+
+      let doc = edge.document("test");
+      assertEqual("v/a", doc._from);
+      assertEqual("v/b", doc._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid from/to on replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidFromToReplace : function () {
+      edge.insert({ _key: "test", _from: "v/a", _to: "v/b" });
+      [ 
+        { _from: null, _to: "v/1" },
+        { _from: 1234, _to: "v/1" },
+        { _from: "", _to: "v/1" },
+        { _from: "v", _to: "v/1" },
+        { _from: "v/", _to: "v/1" },
+        { _from: " v/", _to: "v/1" },
+        { _from: "v/ ", _to: "v/1" },
+        { _to: null, _from: "v/1" },
+        { _to: 1234, _from: "v/1" },
+        { _to: "", _from: "v/1" },
+        { _to: "v", _from: "v/1" },
+        { _to: "v/", _from: "v/1" },
+        { _to: " v/", _from: "v/1" },
+        { _to: "v/ ", _from: "v/1" }
+      ].forEach(function(doc) {
+        try {
+          edge.replace("test", doc);
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
+        }
+      });
+
+      let doc = edge.document("test");
+      assertEqual("v/a", doc._from);
+      assertEqual("v/b", doc._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid from/to on replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidFromPartial : function () {
+      edge.insert({ _key: "test", _from: "v/a", _to: "v/b" });
+      [ null, "", " ", "v", "v/", " v/", "v/ " ].forEach(function(value) {
+        try {
+          edge.replace("test", { _from: value });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
+        }
+      });
+
+      let doc = edge.document("test");
+      assertEqual("v/a", doc._from);
+      assertEqual("v/b", doc._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid from/to on replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidToPartial : function () {
+      edge.insert({ _key: "test", _from: "v/a", _to: "v/b" });
+      [ null, "", " ", "v", "v/", " v/", "v/ " ].forEach(function(value) {
+        try {
+          edge.replace("test", { _to: value });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
+        }
+      });
+
+      let doc = edge.document("test");
+      assertEqual("v/a", doc._from);
+      assertEqual("v/b", doc._to);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

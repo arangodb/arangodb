@@ -30,7 +30,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ShortestPathBlock.h"
 #include "Aql/Query.h"
+#include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -225,9 +227,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
-void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                          bool verbose) const {
-  GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
+void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
   // In variables
   if (usesStartInVariable()) {
     nodes.add(VPackValue("startInVariable"));
@@ -246,11 +247,11 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
   // Filter Conditions
   TRI_ASSERT(_fromCondition != nullptr);
   nodes.add(VPackValue("fromCondition"));
-  _fromCondition->toVelocyPack(nodes, verbose);
+  _fromCondition->toVelocyPack(nodes, flags);
 
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
-  _toCondition->toVelocyPack(nodes, verbose);
+  _toCondition->toVelocyPack(nodes, flags);
 
   // And close it:
   nodes.close();
@@ -259,8 +260,7 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<ShortestPathBlock>(&engine, this);
 }
@@ -272,7 +272,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
+  auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                 _directions, _inStartVariable, _startVertexId,
                                 _inTargetVariable, _targetVertexId, std::move(tmp));
   if (usesVertexOutVariable()) {
@@ -304,9 +304,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   c->_fromCondition = _fromCondition->clone(_plan->getAst());
   c->_toCondition = _toCondition->clone(_plan->getAst());
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 double ShortestPathNode::estimateCost(size_t& nrItems) const {
@@ -331,17 +329,17 @@ void ShortestPathNode::prepareOptions() {
     auto dir = _directions[i];
     switch (dir) {
       case TRI_EDGE_IN:
-        opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addLookupInfo(_plan, _edgeColls[i]->name(),
                             StaticStrings::ToString, _toCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::FromString,
                                    _fromCondition->clone(ast));
         break;
       case TRI_EDGE_OUT:
-        opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addLookupInfo(_plan, _edgeColls[i]->name(),
                             StaticStrings::FromString,
                             _fromCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::ToString,
                                    _toCondition->clone(ast));
         break;

@@ -167,7 +167,7 @@ SECTION("tst_remove_invalid2") {
 SECTION("tst_at_empty") {
   VECTOR_INIT
 
-  void* r = 0;
+  void* r = nullptr;
   
   CHECK(r == TRI_AtVector(&v1, 0));
   CHECK(r == TRI_AtVector(&v1, 1));
@@ -217,7 +217,7 @@ SECTION("tst_at_insert") {
 SECTION("tst_at_insert_remove") {
   VECTOR_INIT
 
-  void* r = 0;
+  void* r = nullptr;
   int a = 1;
   int b = 2;
   int c = 3;

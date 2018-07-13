@@ -111,50 +111,65 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                                   arangodb::RocksDBIndex* oldIndex) {
   arangodb::Result res;
   TRI_idx_iid_t iid = oldIndex->id();
-  
+
   VPackBuilder oldDesc;
   oldIndex->toVelocyPack(oldDesc, false, false);
   VPackBuilder overw;
+
   overw.openObject();
-  overw.add("type", VPackValue(arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+  overw.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(
+      arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)
+    )
+  );
   overw.close();
+
   VPackBuilder newDesc = VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
-  
+
   bool dropped = collection.dropIndex(iid);
+
   if (!dropped) {
     res.reset(TRI_ERROR_INTERNAL);
     return res;
   }
-  
+
   bool created = false;
-  auto ctx = arangodb::transaction::StandaloneContext::Create(&vocbase);
-  arangodb::SingleCollectionTransaction trx(ctx, collection.name(),
+  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
+  arangodb::SingleCollectionTransaction trx(ctx, &collection,
                                             arangodb::AccessMode::Type::EXCLUSIVE);
+
   res = trx.begin();
+
   if (res.fail()) {
     return res;
   }
-  
+
   auto newIndex = collection.createIndex(&trx, newDesc.slice(), created);
+
   if (!created) {
     res.reset(TRI_ERROR_INTERNAL);
   }
+
   TRI_ASSERT(newIndex->id() == iid); // will break cluster otherwise
   TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
   res = trx.finish(res);
-  
+
   return res;
 }
 }  // namespace
 
-bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t* vocbase,
-                                     VPackSlice const&) {
+bool UpgradeTasks::upgradeGeoIndexes(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
   if (strcmp(EngineSelectorFeature::engineName(), "rocksdb") != 0) {
     LOG_TOPIC(INFO, Logger::STARTUP) << "No need to upgrade geo indexes!";
     return true;
   }
 
-  auto collections = vocbase->collections(false);
+  auto collections = vocbase.collections(false);
+
   for (auto collection : collections) {
     auto indexes = collection->getIndexes();
     for (auto index : indexes) {
@@ -163,7 +178,9 @@ bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t* vocbase,
           index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
         LOG_TOPIC(INFO, Logger::STARTUP)
             << "Upgrading legacy geo index '" << rIndex->id() << "'";
-        Result res = ::recreateGeoIndex(*vocbase, *collection, rIndex);
+
+        auto res = ::recreateGeoIndex(vocbase, *collection, rIndex);
+
         if (res.fail()) {
           LOG_TOPIC(ERR, Logger::STARTUP) << "Error upgrading geo indexes " << res.errorMessage();
           return false;
@@ -171,25 +188,49 @@ bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t* vocbase,
       }
     }
   }
+
   return true;
 }
 
-bool UpgradeTasks::setupGraphs(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return::createSystemCollection(vocbase, "_graphs");
+bool UpgradeTasks::setupGraphs(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_graphs");
 }
-bool UpgradeTasks::setupUsers(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return::createSystemCollection(vocbase, "_users");
+
+bool UpgradeTasks::setupUsers(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_users");
 }
-bool UpgradeTasks::createUsersIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  TRI_ASSERT(vocbase->isSystem());
-  return ::createIndex(vocbase, "_users", Index::TRI_IDX_TYPE_HASH_INDEX,
-                     {"user"}, /*unique*/ true, /*sparse*/ true);
+
+bool UpgradeTasks::createUsersIndex(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  TRI_ASSERT(vocbase.isSystem());
+
+  return ::createIndex(
+    &vocbase,
+    "_users",
+    Index::TRI_IDX_TYPE_HASH_INDEX,
+    {"user"},
+    /*unique*/ true,
+    /*sparse*/ true
+  );
 }
-bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t* vocbase,
-                                       VPackSlice const& params) {
-  TRI_ASSERT(!vocbase->isSystem());
+
+bool UpgradeTasks::addDefaultUserOther(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& params
+) {
+  TRI_ASSERT(!vocbase.isSystem());
   TRI_ASSERT(params.isObject());
+
   VPackSlice users = params.get("users");
+
   if (users.isNone()) {
     return true;  // exit, no users were specified
   } else if (!users.isArray()) {
@@ -224,22 +265,41 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t* vocbase,
   }
   return true;
 }
-bool UpgradeTasks::updateUserModels(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  TRI_ASSERT(vocbase->isSystem());
+
+bool UpgradeTasks::updateUserModels(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  TRI_ASSERT(vocbase.isSystem());
   // TODO isn't this done on the fly ?
   return true;
 }
-bool UpgradeTasks::createModules(TRI_vocbase_t* vocbase, VPackSlice const& s) {
-  return::createSystemCollection(vocbase, "_modules");
+
+bool UpgradeTasks::createModules(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_modules");
 }
-bool UpgradeTasks::setupAnalyzers(TRI_vocbase_t* vocbase, VPackSlice const& s) {
-  return::createSystemCollection(vocbase, "_iresearch_analyzers");
+
+bool UpgradeTasks::setupAnalyzers(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_iresearch_analyzers");
 }
-bool UpgradeTasks::createRouting(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return::createSystemCollection(vocbase, "_routing");
+
+bool UpgradeTasks::createRouting(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_routing");
 }
-bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
-                                      VPackSlice const&) {
+
+bool UpgradeTasks::insertRedirections(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
   std::vector<std::string> toRemove;  // remove in a different trx
   auto cb = [&toRemove](VPackSlice const& doc) {
     TRI_ASSERT(doc.isObject());
@@ -257,9 +317,7 @@ bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
     }
   };
 
-  TRI_ASSERT(nullptr !=
-             vocbase);  // this check was previously in the Query constructor
-  auto res = methods::Collections::all(*vocbase, "_routing", cb);
+  auto res = methods::Collections::all(vocbase, "_routing", cb);
 
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -287,8 +345,9 @@ bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
 
   std::vector<std::string> paths = {"/", "/_admin/html",
                                     "/_admin/html/index.html"};
-  std::string dest = "/_db/" + vocbase->name() + "/_admin/aardvark/index.html";
+  std::string dest = "/_db/" + vocbase.name() + "/_admin/aardvark/index.html";
   OperationResult opres;
+
   for (std::string const& path : paths) {
     VPackBuilder bb;
     bb.openObject();
@@ -307,50 +366,93 @@ bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
       THROW_ARANGO_EXCEPTION(opres.result);
     }
   }
+
   res = trx.finish(opres.result);
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   return true;
 }
 
-bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t* vocbase,
-                                     VPackSlice const&) {
-  return ::createSystemCollection(vocbase, "_aqlfunctions");
+bool UpgradeTasks::setupAqlFunctions(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_aqlfunctions");
 }
 
-bool UpgradeTasks::createFrontend(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return ::createSystemCollection(vocbase, "_frontend");
+bool UpgradeTasks::createFrontend(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_frontend");
 }
 
-bool UpgradeTasks::setupQueues(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return ::createSystemCollection(vocbase, "_queues");
+bool UpgradeTasks::setupQueues(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_queues");
 }
 
-bool UpgradeTasks::setupJobs(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return ::createSystemCollection(vocbase, "_jobs");
+bool UpgradeTasks::setupJobs(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_jobs");
 }
 
-bool UpgradeTasks::createJobsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  ::createSystemCollection(vocbase, "_jobs");
-  ::createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                {"queue", "status", "delayUntil"},
-                /*unique*/ true, /*sparse*/ true);
-  ::createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                {"status", "queue", "delayUntil"},
-                /*unique*/ true, /*sparse*/ true);
+bool UpgradeTasks::createJobsIndex(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  ::createSystemCollection(&vocbase, "_jobs");
+  ::createIndex(
+    &vocbase,
+    "_jobs",
+    Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+    {"queue", "status", "delayUntil"},
+    /*unique*/ true,
+    /*sparse*/ true
+  );
+  ::createIndex(
+    &vocbase,
+    "_jobs",
+    Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+    {"status", "queue", "delayUntil"},
+    /*unique*/ true,
+    /*sparse*/ true
+  );
+
   return true;
 }
 
-bool UpgradeTasks::setupApps(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return ::createSystemCollection(vocbase, "_apps");
+bool UpgradeTasks::setupApps(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_apps");
 }
 
-bool UpgradeTasks::createAppsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return ::createIndex(vocbase, "_apps", Index::TRI_IDX_TYPE_HASH_INDEX,
-                       {"mount"}, /*unique*/ true, /*sparse*/ true);
+bool UpgradeTasks::createAppsIndex(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createIndex(
+    &vocbase,
+    "_apps",
+    Index::TRI_IDX_TYPE_HASH_INDEX,
+    {"mount"},
+    /*unique*/ true,
+    /*sparse*/ true
+  );
 }
 
-bool UpgradeTasks::setupAppBundles(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return ::createSystemCollection(vocbase, "_appbundles");
+bool UpgradeTasks::setupAppBundles(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
+) {
+  return ::createSystemCollection(&vocbase, "_appbundles");
 }

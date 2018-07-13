@@ -17,7 +17,8 @@ and may even be as simple as an identity transformation thus making the view
 represent all documents available in the specified set of collections.
 
 Views can be defined and administered on a per view-type basis via
-the [web interface](../../Manual/Administration/WebInterface/index.html).
+the [web interface](../../Manual/Programs/WebInterface/index.html).
 
 The currently supported view implementations are:
-* **arangosearch** as described in [ArangoSearch View](ArangoSearch.md)
+
+- **arangosearch** as described in [ArangoSearch View](ArangoSearch/README.md)

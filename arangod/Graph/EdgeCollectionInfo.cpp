@@ -98,11 +98,21 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
                                             VPackBuilder& result) {
   TRI_ASSERT(result.isEmpty());
   arangodb::rest::ResponseCode responseCode;
+
   result.openObject();
+
   int res = getFilteredEdgesOnCoordinator(
-      _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
-      _dir, responseCode, result);
+    _trx->vocbase().name(),
+    _collectionName,
+    *_trx,
+    vertexId.copyString(),
+    _dir,
+    responseCode,
+    result
+  );
+
   result.close();
+
   return res;
 }
 
@@ -136,15 +146,27 @@ int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
                                                    VPackBuilder& result) {
   TRI_ASSERT(result.isEmpty());
   arangodb::rest::ResponseCode responseCode;
+
   result.openObject();
+
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
+
   if (_dir == TRI_EDGE_OUT) {
     dir = TRI_EDGE_IN;
   }
+
   int res = getFilteredEdgesOnCoordinator(
-      _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
-      dir, responseCode, result);
+    _trx->vocbase().name(),
+    _collectionName,
+    *_trx,
+    vertexId.copyString(),
+    dir,
+    responseCode,
+    result
+  );
+
   result.close();
+
   return res;
 }
 

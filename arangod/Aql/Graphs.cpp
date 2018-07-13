@@ -185,7 +185,7 @@ void Graph::addVertexCollection(std::string const& name) {
   _vertexColls.insert(name);
 }
 
-void Graph::toVelocyPack(VPackBuilder& builder, bool verbose) const {
+void Graph::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
 
   if (!_vertexColls.empty()) {

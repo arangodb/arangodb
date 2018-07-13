@@ -87,8 +87,14 @@ void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                         bool forPersistence) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(true));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(true)
+  );
   builder.add("minLength", VPackValue(_minWordLength));
   builder.close();
 }
@@ -97,18 +103,20 @@ void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
       // Invalid ID
       return false;
     }
+
     // Short circuit. If id is correct the index is identical.
     StringRef idRef(value);
     return idRef == std::to_string(_iid);
@@ -131,21 +139,29 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
 
-  value = info.get("fields");
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }
 
   size_t const n = static_cast<size_t>(value.length());
+
   if (n != _fields.size()) {
     return false;
   }
+
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                 )
+     ) {
     return false;
   }
+
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
+                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                 )
+     ) {
     return false;
   }
 
@@ -428,7 +444,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
       return rocksutils::convertStatus(s);
     }
 
-    LocalDocumentId documentId = RocksDBKey::documentId(
+    LocalDocumentId documentId = RocksDBKey::indexDocumentId(
         RocksDBEntryType::FulltextIndexValue, iter->key());
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(documentId);

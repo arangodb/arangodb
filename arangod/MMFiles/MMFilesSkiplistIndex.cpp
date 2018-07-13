@@ -31,7 +31,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
-#include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Indexes/SkiplistIndexAttributeMatcher.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -584,10 +585,50 @@ bool MMFilesSkiplistIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     }
     TRI_ASSERT(tmp != nullptr);
     TRI_ASSERT(tmp->document() != nullptr);
+      
     cb(tmp->document()->localDocumentId());
     limit--;
   }
   return true;
+}
+
+bool MMFilesSkiplistIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
+
+  bool done = false;
+  while (limit > 0) {
+    if (_cursor == nullptr) {
+      // We are exhausted already, sorry
+      done = true;
+      break;
+    }
+    TRI_ASSERT(_currentInterval < _intervals.size());
+    auto const& interval = _intervals[_currentInterval];
+    Node* tmp = _cursor;
+    if (_reverse) {
+      if (_cursor == interval.first) {
+        forwardCursor();
+      } else {
+        _cursor = _cursor->prevNode();
+      }
+    } else {
+      if (_cursor == interval.second) {
+        forwardCursor();
+      } else {
+        _cursor = _cursor->nextNode();
+      }
+    }
+    TRI_ASSERT(tmp != nullptr);
+    TRI_ASSERT(tmp->document() != nullptr);
+      
+    _documentIds.emplace_back(std::make_pair(tmp->document()->localDocumentId(), nullptr));
+    limit--;
+  }
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
 }
 
 void MMFilesSkiplistIterator::forwardCursor() {
@@ -956,162 +997,20 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
   return 0;
 }
 
-bool MMFilesSkiplistIndex::accessFitsIndex(
-    arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
-    arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    std::unordered_set<std::string>& nonNullAttributes,
-    bool isExecution) const {
-  if (!this->canUseConditionPart(access, other, op, reference,
-                                 nonNullAttributes, isExecution)) {
-    return false;
-  }
-
-  arangodb::aql::AstNode const* what = access;
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
-      attributeData;
-
-  if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!what->isAttributeAccessForVariable(attributeData) ||
-        attributeData.first != reference) {
-      // this access is not referencing this collection
-      return false;
-    }
-    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second)) {
-      // doc.value[*] == 'value'
-      return false;
-    }
-    if (isAttributeExpanded(attributeData.second)) {
-      // doc.value == 'value' (with an array index)
-      return false;
-    }
-  } else {
-    // ok, we do have an IN here... check if it's something like 'value' IN
-    // doc.value[*]
-    TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
-    bool canUse = false;
-
-    if (what->isAttributeAccessForVariable(attributeData) &&
-        attributeData.first == reference &&
-        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second) &&
-        attributeMatches(attributeData.second)) {
-      // doc.value IN 'value'
-      // can use this index
-      canUse = true;
-    } else {
-      // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
-      what = other;
-      if (what->isAttributeAccessForVariable(attributeData) &&
-          attributeData.first == reference &&
-          isAttributeExpanded(attributeData.second) &&
-          attributeMatches(attributeData.second)) {
-        canUse = true;
-      }
-    }
-
-    if (!canUse) {
-      return false;
-    }
-  }
-
-  std::vector<arangodb::basics::AttributeName> const& fieldNames =
-      attributeData.second;
-
-  for (size_t i = 0; i < _fields.size(); ++i) {
-    if (_fields[i].size() != fieldNames.size()) {
-      // attribute path length differs
-      continue;
-    }
-
-    if (this->isAttributeExpanded(i) &&
-        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      // If this attribute is correct or not, it could only serve for IN
-      continue;
-    }
-
-    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i],
-                                                              fieldNames, true);
-
-    if (match) {
-      // mark ith attribute as being covered
-      auto it = found.find(i);
-
-      if (it == found.end()) {
-        found.emplace(i, std::vector<arangodb::aql::AstNode const*>{op});
-      } else {
-        (*it).second.emplace_back(op);
-      }
-      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      return true;
-    }
-  }
-
-  return false;
-}
-
-void MMFilesSkiplistIndex::matchAttributes(
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-    bool isExecution) const {
-  for (size_t i = 0; i < node->numMembers(); ++i) {
-    auto op = node->getMember(i);
-
-    switch (op->type) {
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-        TRI_ASSERT(op->numMembers() == 2);
-        accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
-                        found, nonNullAttributes, isExecution);
-        accessFitsIndex(op->getMember(1), op->getMember(0), op, reference,
-                        found, nonNullAttributes, isExecution);
-        break;
-
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-        if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
-                            found, nonNullAttributes, isExecution)) {
-          size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(op->getMember(1));
-          if (av > 1) {
-            // attr IN [ a, b, c ]  =>  this will produce multiple items, so
-            // count them!
-            values += av - 1;
-          }
-        }
-        break;
-
-      default:
-        break;
-    }
-  }
-}
-
-bool MMFilesSkiplistIndex::accessFitsIndex(
-    arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
-    arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-    std::vector<std::vector<arangodb::aql::AstNode const*>>& found,
-    std::unordered_set<std::string>& nonNullAttributes) const {
+bool MMFilesSkiplistIndex::accessFitsIndex(arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
+                                           arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
+                                           std::vector<std::vector<arangodb::aql::AstNode const*>>& found,
+                                           std::unordered_set<std::string>& nonNullAttributes) const {
   if (!this->canUseConditionPart(access, other, op, reference,
                                  nonNullAttributes, true)) {
     return false;
   }
-
+  
   arangodb::aql::AstNode const* what = access;
   std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
-      attributeData;
-
+  std::vector<arangodb::basics::AttributeName>>
+  attributeData;
+  
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     if (!what->isAttributeAccessForVariable(attributeData) ||
         attributeData.first != reference) {
@@ -1119,7 +1018,7 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
       return false;
     }
     if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second)) {
+                                                          attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
     }
@@ -1132,11 +1031,11 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
     // doc.value[*]
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
-
+    
     if (what->isAttributeAccessForVariable(attributeData) &&
         attributeData.first == reference &&
         !arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second) &&
+                                                           attributeData.second) &&
         attributeMatches(attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
@@ -1151,42 +1050,42 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
         canUse = true;
       }
     }
-
+    
     if (!canUse) {
       return false;
     }
   }
-
+  
   std::vector<arangodb::basics::AttributeName> const& fieldNames =
-      attributeData.second;
-
+  attributeData.second;
+  
   for (size_t i = 0; i < _fields.size(); ++i) {
     if (_fields[i].size() != fieldNames.size()) {
       // attribute path length differs
       continue;
     }
-
+    
     if (this->isAttributeExpanded(i) &&
         op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }
-
+    
     bool match = arangodb::basics::AttributeName::isIdentical(_fields[i],
                                                               fieldNames, true);
-
+    
     if (match) {
       // mark ith attribute as being covered
       found[i].emplace_back(op);
-
+      
       TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-
+      
       return true;
     }
   }
-
+  
   return false;
 }
 
@@ -1208,10 +1107,10 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE: {
         TRI_ASSERT(op->numMembers() == 2);
-        accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
-                        mapping, nonNullAttributes);
-        accessFitsIndex(op->getMember(1), op->getMember(0), op, reference,
-                        mapping, nonNullAttributes);
+        accessFitsIndex(op->getMember(0), op->getMember(1),
+                        op, reference, mapping, nonNullAttributes);
+        accessFitsIndex(op->getMember(1), op->getMember(0),
+                        op, reference, mapping, nonNullAttributes);
         break;
       }
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
@@ -1317,270 +1216,21 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-
-  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-  std::unordered_set<std::string> nonNullAttributes;
-  size_t values = 0;
-  matchAttributes(node, reference, found, values, nonNullAttributes, false);
-
-  bool lastContainsEquality = true;
-  size_t attributesCovered = 0;
-  size_t attributesCoveredByEquality = 0;
-  double equalityReductionFactor = 20.0;
-  estimatedCost = static_cast<double>(itemsInIndex);
-
-  for (size_t i = 0; i < _fields.size(); ++i) {
-    auto it = found.find(i);
-
-    if (it == found.end()) {
-      // index attribute not covered by condition
-      break;
-    }
-
-    // check if the current condition contains an equality condition
-    auto const& nodes = (*it).second;
-    bool containsEquality = false;
-    for (size_t j = 0; j < nodes.size(); ++j) {
-      if (nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-          nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-        containsEquality = true;
-        break;
-      }
-    }
-
-    if (!lastContainsEquality) {
-      // unsupported condition. must abort
-      break;
-    }
-
-    ++attributesCovered;
-    if (containsEquality) {
-      ++attributesCoveredByEquality;
-      estimatedCost /= equalityReductionFactor;
-
-      // decrease the effect of the equality reduction factor
-      equalityReductionFactor *= 0.25;
-      if (equalityReductionFactor < 2.0) {
-        // equalityReductionFactor shouldn't get too low
-        equalityReductionFactor = 2.0;
-      }
-    } else {
-      // quick estimate for the potential reductions caused by the conditions
-      if (nodes.size() >= 2) {
-        // at least two (non-equality) conditions. probably a range with lower
-        // and upper bound defined
-        estimatedCost /= 7.5;
-      } else {
-        // one (non-equality). this is either a lower or a higher bound
-        estimatedCost /= 2.0;
-      }
-    }
-
-    lastContainsEquality = containsEquality;
-  }
-
-  if (values == 0) {
-    values = 1;
-  }
-
-  if (attributesCoveredByEquality == _fields.size() &&
-      (unique() || implicitlyUnique())) {
-    // index is unique and condition covers all attributes by equality
-    if (itemsInIndex == 0) {
-      estimatedItems = 0;
-      estimatedCost = 0.0;
-      return true;
-    }
-
-    if (estimatedItems >= values) {
-      TRI_ASSERT(itemsInIndex > 0);
-
-      estimatedItems = values;
-      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
-    }
-    // cost is already low... now slightly prioritize unique indexes
-    estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
-    return true;
-  }
-
-  if (attributesCovered > 0 &&
-      (!_sparse || attributesCovered == _fields.size())) {
-    // if the condition contains at least one index attribute and is not sparse,
-    // or the index is sparse and all attributes are covered by the condition,
-    // then it can be used (note: additional checks for condition parts in
-    // sparse indexes are contained in Index::canUseConditionPart)
-    estimatedItems = static_cast<size_t>((std::max)(
-        static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
-    if (itemsInIndex == 0) {
-      estimatedCost = 0.0;
-    } else {
-      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
-    }
-    return true;
-  }
-
-  // index does not help for this condition
-  estimatedItems = itemsInIndex;
-  estimatedCost = static_cast<double>(estimatedItems);
-  return false;
+  return SkiplistIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+                                                                estimatedItems, estimatedCost);
 }
 
 bool MMFilesSkiplistIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) const {
-  TRI_ASSERT(sortCondition != nullptr);
-
-  if (!_sparse) {
-    // only non-sparse indexes can be used for sorting
-    if (!_useExpansion && sortCondition->isUnidirectional() &&
-        sortCondition->isOnlyAttributeAccess()) {
-      coveredAttributes = sortCondition->coveredAttributes(reference, _fields);
-
-      if (coveredAttributes >= sortCondition->numAttributes()) {
-        // sort is fully covered by index. no additional sort costs!
-        estimatedCost = 0.0;
-        return true;
-      } else if (coveredAttributes > 0) {
-        estimatedCost = (itemsInIndex / coveredAttributes) *
-                        std::log2(static_cast<double>(itemsInIndex));
-        return true;
-      }
-    }
-  }
-
-  coveredAttributes = 0;
-  // by default no sort conditions are supported
-  if (itemsInIndex > 0) {
-    estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
-  } else {
-    estimatedCost = 0.0;
-  }
-  return false;
+  return SkiplistIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                        itemsInIndex, estimatedCost, coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
-  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-  std::unordered_set<std::string> nonNullAttributes;
-  size_t values = 0;
-  matchAttributes(node, reference, found, values, nonNullAttributes, false);
-
-  // must edit in place, no access to AST; TODO change so we can replace with
-  // copy
-  TEMPORARILY_UNLOCK_NODE(node);
-
-  std::vector<arangodb::aql::AstNode const*> children;
-  bool lastContainsEquality = true;
-
-  for (size_t i = 0; i < _fields.size(); ++i) {
-    auto it = found.find(i);
-
-    if (it == found.end()) {
-      // index attribute not covered by condition
-      break;
-    }
-
-    // check if the current condition contains an equality condition
-    auto& nodes = (*it).second;
-    bool containsEquality = false;
-    for (size_t j = 0; j < nodes.size(); ++j) {
-      if (nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-          nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-        containsEquality = true;
-        break;
-      }
-    }
-
-    if (!lastContainsEquality) {
-      // unsupported condition. must abort
-      break;
-    }
-
-    std::sort(nodes.begin(), nodes.end(),
-              [this](arangodb::aql::AstNode const* lhs,
-                 arangodb::aql::AstNode const* rhs) -> bool {
-                return this->sortWeight(lhs) < this->sortWeight(rhs);
-              });
-
-    lastContainsEquality = containsEquality;
-    std::unordered_set<int> operatorsFound;
-    for (auto& it : nodes) {
-      // do not let duplicate or related operators pass
-      if (isDuplicateOperator(it, operatorsFound)) {
-        continue;
-      }
-      operatorsFound.emplace(static_cast<int>(it->type));
-      children.emplace_back(it);
-    }
-  }
-
-  while (node->numMembers() > 0) {
-    node->removeMemberUnchecked(0);
-  }
-
-  for (auto& it : children) {
-    node->addMember(it);
-  }
-  return node;
-}
-
-bool MMFilesSkiplistIndex::isDuplicateOperator(
-    arangodb::aql::AstNode const* node,
-    std::unordered_set<int> const& operatorsFound) const {
-  auto type = node->type;
-  if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
-    // duplicate operator
-    return true;
-  }
-
-  if (operatorsFound.find(
-          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
-          operatorsFound.end() ||
-      operatorsFound.find(
-          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
-          operatorsFound.end()) {
-    return true;
-  }
-
-  bool duplicate = false;
-  switch (type) {
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
-                  operatorsFound.end();
-      break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
-                  operatorsFound.end();
-      break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
-                  operatorsFound.end();
-      break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
-                  operatorsFound.end();
-      break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
-                  operatorsFound.end();
-      break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
-                  operatorsFound.end();
-      break;
-    default: {
-      // ignore
-    }
-  }
-
-  return duplicate;
+  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
 }

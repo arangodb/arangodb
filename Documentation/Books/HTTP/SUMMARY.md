@@ -68,3 +68,4 @@
   * [Cluster Health](Cluster/Health.md)
   * [Agency](Agency/README.md)
 * [Miscellaneous functions](MiscellaneousFunctions/README.md)
+* [Repair Jobs](Repairs/README.md)

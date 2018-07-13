@@ -131,7 +131,7 @@ ConnectionManager::ServerConnections::popConnection() {
 
 void ConnectionManager::ServerConnections::pushConnection(
     ConnectionManager::SingleServerConnection* connection) {
-  connection->_lastUsed = time(0);
+  connection->_lastUsed = time(nullptr);
 
   WRITE_LOCKER(writeLocker, _lock);
   _unused.emplace_back(connection);
@@ -160,7 +160,7 @@ void ConnectionManager::ServerConnections::removeConnection(
 
 void ConnectionManager::ServerConnections::closeUnusedConnections(
     double limit) {
-  time_t const t = time(0);
+  time_t const t = time(nullptr);
 
   std::list<ConnectionManager::SingleServerConnection*>::iterator current;
 

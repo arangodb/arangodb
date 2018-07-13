@@ -187,6 +187,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   size_t _currentInterval;
 
   MMFilesBaseSkiplistLookupBuilder* _builder;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 
   std::function<int(void*, MMFilesSkiplistIndexElement const*,
                     MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)>
@@ -214,6 +215,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
   /// @brief Get the next elements in the skiplist
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -276,8 +278,6 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
 
   char const* typeName() const override { return "skiplist"; }
 
-  bool allowExpansion() const override { return true; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return true; }
@@ -316,14 +316,6 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
  private:
-  bool isDuplicateOperator(arangodb::aql::AstNode const*,
-                           std::unordered_set<int> const&) const;
-
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes, bool) const;
 
   bool accessFitsIndex(
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,

@@ -54,14 +54,12 @@ function ahuacatlMiscFunctionsTestSuite () { return {
             return `RETURN PARSE_IDENTIFIER(${input})`;
           case 1:
             return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
-          case 2:
-          return `RETURN NOOPT(V8(PARSE_IDENTIFIER(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
 
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         actual = getQueryResults(buildQuery(i, "'foo/bar'"));
         assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
 
@@ -104,14 +102,12 @@ function ahuacatlMiscFunctionsTestSuite () { return {
             return `RETURN PARSE_IDENTIFIER(${input})`;
           case 1:
             return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
-          case 2:
-          return `RETURN NOOPT(V8(PARSE_IDENTIFIER(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
 
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         expected = [ { collection: cn, key: "foobar" } ];
         actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', @key))"), { cn: cn, key: "foobar" });
         assertEqual(expected, actual);
@@ -143,14 +139,12 @@ function ahuacatlMiscFunctionsTestSuite () { return {
             return `RETURN PARSE_IDENTIFIER(${input})`;
           case 1:
             return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
-          case 2:
-          return `RETURN NOOPT(V8(PARSE_IDENTIFIER(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
 
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, ""));
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "'foo', 'bar'"));
         assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "null"));
@@ -177,14 +171,12 @@ function ahuacatlMiscFunctionsTestSuite () { return {
             return "RETURN " + q;
          case 1:
             return "RETURN NOOPT(" + q + ")";
-          case 2:
-            return "RETURN NOOPT(V8(" + q + "))";
           default:
             assertTrue(false, "Undefined state");
         }
       };
 
-     for (var i = 0; i < 3; ++i) {
+     for (var i = 0; i < 2; ++i) {
         assertEqual([ true ], getQueryResults(buildQuery(i, "foo", "foo/bar")));
         assertEqual([ true ], getQueryResults(buildQuery(i, "foo", "foo/bark")));
         assertEqual([ false ], getQueryResults(buildQuery(i, "FOO", "foo/bark")));
@@ -232,14 +224,12 @@ function ahuacatlMiscFunctionsTestSuite () { return {
             return `RETURN IS_SAME_COLLECTION(${cn}, ${input})`;
           case 1:
             return `RETURN NOOPT(IS_SAME_COLLECTION(${cn}, ${input}))`;
-          case 2:
-          return `RETURN NOOPT(V8(IS_SAME_COLLECTION(${cn}, ${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
 
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', @key))"), { cn: cn, key: "foobar" });
         assertTrue(actual[0]);
 
@@ -262,11 +252,8 @@ function ahuacatlMiscFunctionsTestSuite () { return {
 
     testIsSameCollectionInvalid : function () {
      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION())");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo')");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo'))");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', 'bar', 'baz')");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', 'bar', 'baz'))");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', null)");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', false)");
@@ -274,13 +261,6 @@ function ahuacatlMiscFunctionsTestSuite () { return {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', 3)");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', [ ])");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', { })");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', null))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', false))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', true))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', 3))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', [ ]))");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', { }))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,14 +283,12 @@ function ahuacatlMiscFunctionsTestSuite () { return {
             return `RETURN DOCUMENT(${input})`;
           case 1:
             return `RETURN NOOPT(DOCUMENT(${input}))`;
-          case 2:
-            return `RETURN NOOPT(V8(DOCUMENT(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
 
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         // test with two parameters
         expected = [ { title: "123", value : 456 } ];
         actual = getQueryResults(buildQuery(i, cn + ", \"" + d1._id + "\""));
@@ -519,9 +497,9 @@ function ahuacatlMiscFunctionsTestSuite () { return {
         }
       }
 
-      var actual = getQueryResults("RETURN CURRENT_USER()");
-      // there is no current user in the non-request context
-      assertEqual([ expected ], actual);
+       // there is no current user in the non-request context
+       assertEqual([ expected ], getQueryResults("RETURN NOOPT(CURRENT_USER())"));
+       assertEqual([ expected ], getQueryResults("RETURN NOOPT(V8(CURRENT_USER()))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -533,9 +511,6 @@ function ahuacatlMiscFunctionsTestSuite () { return {
       assertEqual([ "_system" ], actual);
 
       actual = getQueryResults("RETURN NOOPT(CURRENT_DATABASE())");
-      assertEqual([ "_system" ], actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(CURRENT_DATABASE()))");
       assertEqual([ "_system" ], actual);
     },
 
@@ -643,20 +618,13 @@ function ahuacatlCollectionCountTestSuite () {
     testLengthNonExisting : function () {
       var cnot = cn + "DoesNotExist";
 
-      var queries = [
-        "RETURN LENGTH(" + cnot + ")",
-        "RETURN V8(LENGTH(" + cnot + "))"
-      ];
-
-      queries.forEach(function(q) {
-        try {
-          AQL_EXECUTE(q);
-          fail();
-        }
-        catch (err) {
-          assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-        }
-      });
+      try {
+        AQL_EXECUTE("RETURN LENGTH(" + cnot + ")");
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -664,16 +632,9 @@ function ahuacatlCollectionCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLength : function () {
-      var queries = [
-        "RETURN LENGTH(" + cn + ")",
-        "RETURN V8(LENGTH(" + cn + "))"
-      ];
-
-      queries.forEach(function(q) {
-        var actual = AQL_EXECUTE(q);
-        assertEqual([ ], actual.warnings);
-        assertEqual([ 1000 ], actual.json);
-      });
+      var actual = AQL_EXECUTE("RETURN LENGTH(" + cn + ")");
+      assertEqual([ ], actual.warnings);
+      assertEqual([ 1000 ], actual.json);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -708,7 +669,6 @@ function ahuacatlCollectionCountTestSuite () {
 
     testCollections : function () {
       assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id};}), getQueryResults('RETURN NOOPT(COLLECTIONS())')[0]);
-      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id};}), getQueryResults('RETURN NOOPT(V8(COLLECTIONS()))')[0]);
     }
   };
 }

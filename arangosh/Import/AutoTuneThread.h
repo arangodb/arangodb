@@ -33,7 +33,7 @@ namespace import {
 
   class ImportHelper;
 
-class AutoTuneThread : public arangodb::Thread {
+class AutoTuneThread final : public arangodb::Thread {
  private:
   AutoTuneThread(AutoTuneThread const&) = delete;
   AutoTuneThread& operator=(AutoTuneThread const&) = delete;

@@ -149,32 +149,36 @@ bool read_columns_meta(
     std::vector<iresearch::column_meta*>& id_to_column,
     std::unordered_map<iresearch::hashed_string_ref, iresearch::column_meta*>& name_to_column
 ) {
+  size_t count = 0;
+  irs::field_id max_id;
   auto reader = codec.get_column_meta_reader();
-  iresearch::field_id count = 0;
 
-  if (!reader->prepare(dir, meta, count)) {
+  if (!reader->prepare(dir, meta, count, max_id)
+      || max_id >= irs::integer_traits<size_t>::const_max) {
     return false;
   }
 
   columns.reserve(count);
-  id_to_column.resize(count);
+  id_to_column.resize(max_id + 1); // +1 for count
   name_to_column.reserve(count);
 
   for (irs::column_meta col_meta; reader->read(col_meta);) {
     columns.emplace_back(std::move(col_meta));
 
     auto& column = columns.back();
-    id_to_column[column.id] = &column;
-
     const auto res = name_to_column.emplace(
       irs::make_hashed_ref(iresearch::string_ref(column.name), std::hash<irs::string_ref>()),
       &column
     );
 
-    if (!res.second) {
+    assert(column.id < id_to_column.size());
+
+    if (!res.second || id_to_column[column.id]) {
       // duplicate field
       return false;
     }
+
+    id_to_column[column.id] = &column;
   }
 
   if (!std::is_sorted(

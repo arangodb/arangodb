@@ -327,5 +327,77 @@ describe('Foxx Manager', function () {
         expect(res.code).to.equal(404);
       });
     });
+
+    describe('service with heal during setup', function () {
+      // Regression test: There was a race condition during foxx service install
+      // when selfHeal() ran after the service files were put in their final
+      // location and before the service was written to _apps.
+      // This service calls selfHeal() during setup to simulate that case.
+      const setupHealApp = fs.join(basePath, 'heal-during-setup');
+      const setupMinimalApp = fs.join(basePath, 'minimal-working-service');
+
+      beforeEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: true});
+        } catch (e) {
+        }
+      });
+
+      afterEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: false});
+        } catch (e) {
+        }
+      });
+
+      it('should be available after install', function () {
+        FoxxManager.install(setupHealApp, mount);
+        let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
+        const url = endpoint + mount;
+        const res = download(url);
+        expect(res.code).to.equal(200);
+        expect(res.body).to.equal('true');
+      });
+
+      it('should be available after replace', function () {
+        { // set up some service
+          FoxxManager.install(setupMinimalApp, mount);
+          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
+          const url = endpoint + mount;
+          const res = download(url);
+          expect(res.code).to.equal(200);
+          expect(JSON.parse(res.body)).to.deep.equal({hello: 'world'});
+        }
+
+        { // replace it and call heal() during setup
+          FoxxManager.replace(setupHealApp, mount);
+          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
+          const url = endpoint + mount;
+          const res = download(url);
+          expect(res.code).to.equal(200);
+          expect(res.body).to.equal('true');
+        }
+      });
+
+      it('should be available after upgrade', function () {
+        { // set up some service
+          FoxxManager.install(setupMinimalApp, mount);
+          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
+          const url = endpoint + mount;
+          const res = download(url);
+          expect(res.code).to.equal(200);
+          expect(JSON.parse(res.body)).to.deep.equal({hello: 'world'});
+        }
+
+        { // upgrade it and call heal() during setup
+          FoxxManager.upgrade(setupHealApp, mount);
+          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
+          const url = endpoint + mount;
+          const res = download(url);
+          expect(res.code).to.equal(200);
+          expect(res.body).to.equal('true');
+        }
+      });
+    });
   });
 });
