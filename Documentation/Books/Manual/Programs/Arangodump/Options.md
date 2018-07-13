@@ -4,3 +4,23 @@ Arangodump Options
 Usage: `arangodump [<options>]`
 
 @startDocuBlock program_options_arangodump
+
+Encryption Options
+------------------
+
+**The following options are only available in the Enterprise Edition.**
+ 
+*--encryption.keyfile path-of-keyfile*
+
+The file `path-to-keyfile` must contain the encryption key. This
+file must be secured, so that only `arangod` can access it. You should
+also ensure that in case someone steals your hardware, they will not be
+able to read the file. For example, by encryption `/mytmpfs` or
+creating a in-memory file-system under `/mytmpfs`. The encryption keyfile must 
+contain 32 bytes of random data.
+
+*--encryption.key-generator path-to-my-generator*
+
+This output is used if you want to use the program to generate your encryption key.
+The program `path-to-my-generator` must output the encryption on standard output
+and exit. The encryption keyfile must contain 32 bytes of random data.
