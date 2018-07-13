@@ -108,10 +108,13 @@ SECTION("test_start") {
     auto* function = arangodb::iresearch::getFunction(*functions, entry.first);
     CHECK((nullptr != function));
     CHECK((entry.second.first == function->arguments));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wlogical-op-parentheses"
     CHECK((
       entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function)
       || entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function)
     ));
+#pragma GCC diagnostic pop
   };
 }
 

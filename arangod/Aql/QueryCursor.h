@@ -58,8 +58,8 @@ class QueryResultCursor final : public arangodb::Cursor {
   size_t count() const override final;
 
   std::pair<ExecutionState, Result> dump(
-      velocypack::Builder& result,
-      std::function<void()>& continueHandler) override final;
+    velocypack::Builder& result,
+    std::function<void()>& continueHandler) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 
@@ -96,6 +96,9 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   size_t count() const override final { return 0; }
 
+  // TODO add this to Cursor and make it virtual / override final.
+  ExecutionState prepareDump(std::function<void()> const& continueHandler);
+
   std::pair<ExecutionState, Result> dump(
       velocypack::Builder& result,
       std::function<void()>& continueHandler) override final;
@@ -106,12 +109,20 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
  private:
 
-  Result writeResult(velocypack::Builder& builder, ExecutionState state, std::unique_ptr<AqlItemBlock>& value);
+  // Writes from _queryResults to builder. Removes copied blocks from _queryResults and sets _queryResultPos
+  // appropriately.
+  // Relies on the caller to have fetched more than batchSize() result rows
+  // (if possible) in order to set hasMore reliably.
+  Result writeResult(velocypack::Builder &builder);
 
  private:
   DatabaseGuard _guard;
   int64_t _exportCount;  // used by RocksDBRestExportHandler
   std::unique_ptr<aql::Query> _query;
+  std::deque<std::unique_ptr<AqlItemBlock>> _queryResults;
+
+  // index of the next to-be-returned row in _queryResults.front()
+  size_t _queryResultPos;
 };
 
 }  // aql
