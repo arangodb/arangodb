@@ -1,12 +1,17 @@
 Testing Foxx services
 =====================
 
-Foxx provides out of the box support for running tests against an installed service
-using an API similar to the [Mocha test runner](https://mochajs.org).
+Foxx provides out of the box support for running tests against an
+installed service using an API similar to
+the [Mocha test runner](https://mochajs.org).
 
-Test files have full access to the [service context](../Reference/Context.md) and all ArangoDB APIs but can not define Foxx routes.
+Test files have full access to the [service context](../Reference/Context.md)
+and all ArangoDB APIs but can not define Foxx routes.
 
-Test files can be specified in the [service manifest](../Reference/Manifest.md) using either explicit paths of each individual file or patterns that can match multiple files (even if multiple patterns match the same file, it will only be executed once):
+Test files can be specified in the [service manifest](../Reference/Manifest.md)
+using either explicit paths of each individual file or patterns that can
+match multiple files (even if multiple patterns match the same file,
+it will only be executed once):
 
 
 ```json
@@ -20,14 +25,21 @@ Test files can be specified in the [service manifest](../Reference/Manifest.md) 
 }
 ```
 
-To run a service's tests you can use the [web interface](), the [Foxx CLI]() or the [Foxx HTTP API](). Foxx will execute all test cases in the matching files and generate a report in the desired format.
+To run a service's tests you can use
+the [web interface](../../Programs/WebInterface/Services.md),
+the [Foxx CLI](../../Programs/FoxxCLI/README.md) or
+the [Foxx HTTP API](../../../HTTP/Foxx/Miscellaneous.md).
+Foxx will execute all test cases in the matching files and
+generate a report in the desired format.
 
-**Note**: Running tests in a production environment is not recommended and may result in data loss if the tests involve database access.
+**Note**: Running tests in a production environment is not recommended and
+may result in data loss if the tests involve database access.
 
 Writing tests
 -------------
 
-ArangoDB bundles the [`chai` library](http://www.chaijs.com), which can be used to define test assertions:
+ArangoDB bundles the [`chai` library](http://www.chaijs.com),
+which can be used to define test assertions:
 
 ```js
 "use strict";
@@ -37,7 +49,8 @@ const { expect } = require("chai");
 expect("test".length).to.equal(4);
 ```
 
-Alternatively ArangoDB also provides an implementation of [Node's `assert` module](https://nodejs.org/api/assert.html):
+Alternatively ArangoDB also provides an implementation of
+[Node's `assert` module](https://nodejs.org/api/assert.html):
 
 ```js
 "use strict";
@@ -47,21 +60,29 @@ const assert = require("assert");
 assert.equal("test".length, 4);
 ```
 
-Test cases can be defined in any of the following ways using helper functions injected by Foxx when executing the test file:
+Test cases can be defined in any of the following ways using helper functions
+injected by Foxx when executing the test file:
 
 ### Functional style
 
-Test cases are defined using the `it` function and can be grouped in test suites using the `describe` function. Test suites can use the `before` and `after` functions to prepare and cleanup the suite and the `beforeEach` and `afterEach` functions to prepare and cleanup each test case individually.
+Test cases are defined using the `it` function and can be grouped in
+test suites using the `describe` function. Test suites can use the
+`before` and `after` functions to prepare and cleanup the suite and
+the `beforeEach` and `afterEach` functions to prepare and cleanup
+each test case individually.
 
 The `it` function also has the aliases `test` and `specify`.
 
 The `describe` function also has the aliases `suite` and `context`.
 
-The `before` and `after` functions also have the aliases `suiteSetup` and `suiteTeardown`.
+The `before` and `after` functions also have
+the aliases `suiteSetup` and `suiteTeardown`.
 
-The `beforeEach` and `afterEach` functions also have the aliases `setup` and `teardown`.
+The `beforeEach` and `afterEach` functions also have
+the aliases `setup` and `teardown`.
 
-**Note**: These functions are automatically injected into the test file and don't have to be imported explicitly. The aliases can be used interchangeably.
+**Note**: These functions are automatically injected into the test file and
+don't have to be imported explicitly. The aliases can be used interchangeably.
 
 ```js
 "use strict";
@@ -107,7 +128,8 @@ context("yet another suite", () => {
 
 ### Exports style
 
-Test cases are defined as methods of plain objects assigned to test suite properties on the `exports` object:
+Test cases are defined as methods of plain objects assigned to test suite
+properties on the `exports` object:
 
 ```js
 "use strict";
@@ -120,7 +142,8 @@ exports["this is a test suite"] = {
 };
 ```
 
-Methods named `before`, `after`, `beforeEach` and `afterEach` behave similarly to the corresponding functions in the functional style described above:
+Methods named `before`, `after`, `beforeEach` and `afterEach` behave similarly
+to the corresponding functions in the functional style described above:
 
 ```js
 exports["a test suite"] = {
@@ -148,7 +171,9 @@ exports["a test suite"] = {
 Unit testing
 ------------
 
-The easiest way to make your Foxx service unit-testable is to extract critical logic into side-effect-free functions and move these functions into modules your tests (and router) can require:
+The easiest way to make your Foxx service unit-testable is to extract
+critical logic into side-effect-free functions and move these functions into
+modules your tests (and router) can require:
 
 ```js
 // in your router
@@ -179,9 +204,13 @@ describe("verifyCredentials", () => {
 Integration testing
 -------------------
 
-You can [use the `@arangodb/request` module](MakingRequests.md) to let tests talk to routes of the same service.
+You can [use the `@arangodb/request` module](MakingRequests.md)
+to let tests talk to routes of the same service.
 
-When the request module is used with a path instead of a full URL, the path is resolved as relative to the ArangoDB instance. Using the `baseUrl` property of the [service context](../Reference/Context.md) we can use this to make requests to the service itself:
+When the request module is used with a path instead of a full URL,
+the path is resolved as relative to the ArangoDB instance.
+Using the `baseUrl` property of the [service context](../Reference/Context.md)
+we can use this to make requests to the service itself:
 
 ```js
 "use strict";
@@ -222,4 +251,6 @@ router.get("/:name", (req, res) => {
 .response(["text/plain"]);
 ```
 
-**Note**: You should avoid running integration tests while a service is mounted in [development mode](DevelopmentMode.md) as each request will cause the service to be reloaded.
+**Note**: You should avoid running integration tests while a service
+is mounted in [development mode](DevelopmentMode.md) as each request
+will cause the service to be reloaded.

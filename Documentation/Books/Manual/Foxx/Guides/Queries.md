@@ -1,7 +1,10 @@
 Writing queries
 ===============
 
-ArangoDB provides the `query` template string handler (or [template tag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals)) to make it easy to write an execute [AQL queries](../../../AQL/index.html) in your Foxx services:
+ArangoDB provides the `query` template string handler
+(or [template tag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals))
+to make it easy to write an execute [AQL queries](../../../AQL/index.html)
+in your Foxx services:
 
 ```js
 const { query } = require("@arangodb");
@@ -14,9 +17,16 @@ const oddNumbers = query`
 console.log(oddNumbers); // 1,3,5,7,9,11,13
 ```
 
-Any values passed via interpolation (i.e. using the `${expression}` syntax) are passed to ArangoDB as [AQL bind parameters](../../../AQL/Fundamentals/BindParameters.html), so you don't have to worry about escaping them in order to protect against injection attacks in user-supplied data.
+Any values passed via interpolation (i.e. using the `${expression}` syntax)
+are passed to ArangoDB as
+[AQL bind parameters](../../../AQL/Fundamentals/BindParameters.html),
+so you don't have to worry about escaping them in order to protect against
+injection attacks in user-supplied data.
 
-The result of the executed query is [an ArangoDB array cursor](../../../AQL/Invocation/WithArangosh.html#cursors). You can extract all query results using the `toArray()` method or step through the result set using the `next()` method.
+The result of the executed query is
+[an ArangoDB array cursor](../../../AQL/Invocation/WithArangosh.html#cursors).
+You can extract all query results using the `toArray()` method or
+step through the result set using the `next()` method.
 
 You can also consume a cursor with a for-loop:
 
@@ -33,7 +43,9 @@ for (const item of cursor) {
 Using collections
 -----------------
 
-When [working with collections in your service](Collections.md) you generally want to avoid hardcoding exact collection names. But if you pass a collection name directly to a query it will be treated as a string:
+When [working with collections in your service](Collections.md) you generally
+want to avoid hardcoding exact collection names. But if you pass a
+collection name directly to a query it will be treated as a string:
 
 ```js
 // THIS DOES NOT WORK
@@ -58,12 +70,16 @@ const admins = query`
 `.toArray();
 ```
 
-Note that you don't need to use any different syntax to use a collection in a query, but you do need to make sure the collection is an actual ArangoDB collection object rather than a plain string.
+Note that you don't need to use any different syntax to use
+a collection in a query, but you do need to make sure the collection is
+an actual ArangoDB collection object rather than a plain string.
 
 Low-level access
 ----------------
 
-In addition to the `query` template tag, ArangoDB also provides the `aql` template tag, which only generates a query object but doesn't execute it:
+In addition to the `query` template tag, ArangoDB also provides
+the `aql` template tag, which only generates a query object
+but doesn't execute it:
 
 ```js
 const { db, aql } = require("@arangodb");
@@ -75,7 +91,8 @@ const query = aql`
 const numbers = db._query(query).toArray();
 ```
 
-You can also use the `db._query` method to execute queries using plain strings and passing the bind parameters as an object:
+You can also use the `db._query` method to execute queries using
+plain strings and passing the bind parameters as an object:
 
 ```js
 // Note the lack of a tag, this is a normal string
@@ -92,7 +109,8 @@ const admins = db._query(query, {
 }).toArray();
 ```
 
-Note that when using plain strings as queries ArangoDB provides no safeguards to prevent accidental AQL injections:
+Note that when using plain strings as queries ArangoDB provides
+no safeguards to prevent accidental AQL injections:
 
 ```js
 // Malicious user input where you might expect a number
@@ -109,12 +127,15 @@ const numbers = db._query(`
 // RETURN i
 ```
 
-If possible, you should always use the `query` or `aql` template tags rather than passing raw query strings to `db._query` directly.
+If possible, you should always use the `query` or `aql` template tags
+rather than passing raw query strings to `db._query` directly.
 
 AQL fragments
 -------------
 
-If you need to insert AQL snippets dynamically, you can still use the `query` template tag by using the `aql.literal` helper function to mark the snippet as a raw AQL fragment:
+If you need to insert AQL snippets dynamically, you can still use
+the `query` template tag by using the `aql.literal` helper function to
+mark the snippet as a raw AQL fragment:
 
 ```js
 const filter = aql.literal(
@@ -127,9 +148,13 @@ const result = query`
 `.toArray();
 ```
 
-Both the `query` and `aql` template tags understand fragments marked with the `aql.literal` helper and inline them directly into the query instead of converting them to bind parameters.
+Both the `query` and `aql` template tags understand fragments marked
+with the `aql.literal` helper and inline them directly into the query
+instead of converting them to bind parameters.
 
-Note that because the `aql.literal` helper takes a raw string as argument the same security implications apply to it as when writing raw AQL queries using plain strings:
+Note that because the `aql.literal` helper takes a raw string as argument
+the same security implications apply to it as when writing raw AQL queries
+using plain strings:
 
 ```js
 // Malicious user input where you might expect a condition
@@ -148,12 +173,15 @@ const result = query`
 // RETURN user
 ```
 
-A typical scenario that might result in an exploit like this is taking arbitrary strings from a search UI to filter or sort results by a field name. Make sure to restrict what values you accept.
+A typical scenario that might result in an exploit like this is taking
+arbitrary strings from a search UI to filter or sort results by a field name.
+Make sure to restrict what values you accept.
 
 Managing queries in your service
 --------------------------------
 
-In many cases it may be initially more convenient to perform queries right where you use their results:
+In many cases it may be initially more convenient to perform queries
+right where you use their results:
 
 ```js
 router.get("/emails", (req, res) => {
@@ -165,7 +193,9 @@ router.get("/emails", (req, res) => {
 });
 ```
 
-However to [help testability](Testing.md) and make the queries more reusable, it's often a good idea to move them out of your request handlers into separate functions, e.g.:
+However to [help testability](Testing.md) and make the queries more reusable,
+it's often a good idea to move them out of your request handlers
+into separate functions, e.g.:
 
 ```js
 // in queries/get-user-emails.js

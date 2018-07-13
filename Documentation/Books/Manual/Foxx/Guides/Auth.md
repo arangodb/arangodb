@@ -1,16 +1,27 @@
 Authentication
 ==============
 
-Foxx provides the [auth module](../Reference/Modules/Auth.md) to implement basic password verification and hashing but is not very secure unless using the (very slow) PBKDF2 algorithm. Alternatively you can use the [OAuth 1.0a](../Reference/Modules/OAuth1.md) or [OAuth 2.0](../Reference/Modules/OAuth2.md) modules to offload identity management to a trusted provider (e.g. Facebook, GitHub, Google or Twitter).
+Foxx provides the [auth module](../Reference/Modules/Auth.md) to implement
+basic password verification and hashing but is not very secure unless using
+the (very slow) PBKDF2 algorithm. Alternatively you can use the
+[OAuth 1.0a](../Reference/Modules/OAuth1.md) or
+[OAuth 2.0](../Reference/Modules/OAuth2.md) modules to offload identity
+management to a trusted provider (e.g. Facebook, GitHub, Google or Twitter).
 
-The [session middleware](../Reference/Sessions/README.md) provides a mechanism for adding session logic to your service, using e.g. a collection or JSON Web Tokens to store the sessions between requests.
+The [session middleware](../Reference/Sessions/README.md) provides a mechanism
+for adding session logic to your service, using e.g. a collection or
+JSON Web Tokens to store the sessions between requests.
 
-With these building blocks you can implement your own session-based authentication.
+With these building blocks you can implement your own session-based
+authentication.
 
 Implementing session authentication
 -----------------------------------
 
-In this example we'll use two collections: a `users` collection to store the user objects with names and credentials, and a `sessions` collection to store the session data. We'll also make sure usernames are unique by adding a hash index:
+In this example we'll use two collections: a `users` collection to store the
+user objects with names and credentials, and a `sessions` collection to store
+the session data. We'll also make sure usernames are unique
+by adding a hash index:
 
 ```js
 "use strict";
@@ -30,7 +41,9 @@ module.context.collection("users").ensureIndex({
 });
 ```
 
-Next you should create a sessions middleware that uses the `sessions` collection and the "cookie" transport in a separate file, and add it to the service router:
+Next you should create a sessions middleware that uses the `sessions`
+collection and the "cookie" transport in a separate file, and add it
+to the service router:
 
 ```js
 "use strict";
@@ -48,7 +61,9 @@ const sessions = require("./util/sessions");
 module.context.use(sessions);
 ```
 
-You'll want to be able to use the authenticator throughout multiple parts of your service so it's best to create it in a separate module and export it so we can import it anywhere we need it:
+You'll want to be able to use the authenticator throughout multiple parts
+of your service so it's best to create it in a separate module and export it
+so we can import it anywhere we need it:
 
 ```js
 "use strict";
@@ -57,7 +72,10 @@ const auth = createAuth();
 module.exports = auth;
 ```
 
-If you want, you can now use the authenticator to help create an initial user in the setup script. Note we're hardcoding the password here but you could make it configurable via a [service configuration option](../Reference/Configuration.md):
+If you want, you can now use the authenticator to help create an initial user
+in the setup script. Note we're hardcoding the password here but you could
+make it configurable via a
+[service configuration option](../Reference/Configuration.md):
 
 ```js
 // ...
@@ -108,7 +126,8 @@ router
   );
 ```
 
-To provide information about the authenticated user we can look up the session user:
+To provide information about the authenticated user we can look up
+the session user:
 
 ```js
 router.get("/me", function(req, res) {
@@ -133,7 +152,9 @@ router.post("/logout", function(req, res) {
 });
 ```
 
-Finally when using the collection-based session storage, it's a good idea to clean up expired sessions in a script which we can periodically call via an external tool like `cron` or a [Foxx queue](../Reference/Modules/Queues.md):
+Finally when using the collection-based session storage, it's a good idea to
+clean up expired sessions in a script which we can periodically call via an
+external tool like `cron` or a [Foxx queue](../Reference/Modules/Queues.md):
 
 ```js
 "use strict";
@@ -144,9 +165,14 @@ module.exports = sessions.storage.prune();
 Using ArangoDB authentication
 -----------------------------
 
-When using HTTP Basic authentication, ArangoDB will set the `arangoUser` attribute of the [request object](../Reference/Routers/Request.md) if the credentials match a valid ArangoDB user for the database.
+When using HTTP Basic authentication, ArangoDB will set the `arangoUser`
+attribute of the [request object](../Reference/Routers/Request.md) if the
+credentials match a valid ArangoDB user for the database.
 
-**Note**: Although the presence and value of this attribute can be used to implement a low-level authentication mechanism this is only useful if your service is only intended to be used by developers who already have access to the HTTP API or the administrative web interface.
+**Note**: Although the presence and value of this attribute can be used to
+implement a low-level authentication mechanism this is only useful if your
+service is only intended to be used by developers who already have access to
+the HTTP API or the administrative web interface.
 
 Example:
 
@@ -163,7 +189,8 @@ router.get("/me", function(req, res) {
 Alternative sessions implementation
 -----------------------------------
 
-If you need more control than the sessions middleware provides, you can also create a basic session system with a few lines of code yourself:
+If you need more control than the sessions middleware provides,
+you can also create a basic session system with a few lines of code yourself:
 
 ```js
 "use strict";
