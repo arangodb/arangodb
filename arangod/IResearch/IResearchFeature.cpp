@@ -412,12 +412,7 @@ class IResearchFeature::Async {
   struct Task: public Pending {
     std::unique_lock<ReadMutex> _lock; // prevent resource deallocation
 
-    Task(Pending&& pending): Pending(std::move(pending)) {
-      // lock resource mutex or ignore if none supplied
-      if(_mutex) {
-        _lock = std::unique_lock<ReadMutex>(_mutex->mutex());
-      }
-    }
+    Task(Pending&& pending): Pending(std::move(pending)) {}
   };
 
   struct Thread: public arangodb::Thread {
@@ -446,6 +441,7 @@ class IResearchFeature::Async {
 };
 
 void IResearchFeature::Async::Thread::run() {
+  std::vector<Pending> pendingRedelegate;
   std::chrono::system_clock::time_point timeout;
   bool timeoutSet = false;
 
@@ -466,7 +462,17 @@ void IResearchFeature::Async::Thread::run() {
 
         auto& task = _tasks.back();
 
-        if (task._mutex && !*(task._mutex)) {
+        if (task._mutex) {
+          task._lock =
+            std::unique_lock<ReadMutex>(task._mutex->mutex(), std::try_to_lock);
+
+          if (!task._lock.owns_lock()) {
+            // if can't lock 'task._mutex' then reasign the task to the next worker
+            pendingRedelegate.emplace_back(std::move(task));
+          } else if (*(task._mutex)) {
+            continue; // resourceMutex acquisition successful
+          }
+
           _tasks.pop_back(); // resource no longer valid
         }
       }
@@ -475,7 +481,9 @@ void IResearchFeature::Async::Thread::run() {
       _size.store(_tasks.size());
 
       // do not sleep if a notification was raised or pending tasks were added
-      if (_wasNotified || pendingStart < _tasks.size()) {
+      if (_wasNotified
+          || pendingStart < _tasks.size()
+          || !pendingRedelegate.empty()) {
         timeout = std::chrono::system_clock::now();
         timeoutSet = true;
       }
@@ -498,14 +506,26 @@ void IResearchFeature::Async::Thread::run() {
     timeoutSet = false;
 
     // transfer some tasks to '_next' if have too many
-    while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
+    if (!pendingRedelegate.empty()
+        || (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1)) {
       SCOPED_LOCK(_next->_mutex);
-      _next->_pending.emplace_back(std::move(_tasks.back()));
-      _tasks.pop_back();
-      ++_next->_size;
-      --_size;
+
+      // reasign to '_next' tasks that failed resourceMutex aquisition
+      while (!pendingRedelegate.empty()) {
+        _next->_pending.emplace_back(std::move(pendingRedelegate.back()));
+        pendingRedelegate.pop_back();
+        ++_next->_size;
+      }
+
+      // transfer some tasks to '_next' if have too many
+      while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
+        _next->_pending.emplace_back(std::move(_tasks.back()));
+        _tasks.pop_back();
+        ++_next->_size;
+        --_size;
+      }
+
       _next->_cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
-      _next->_wasNotified = true; // ensure the next thread checks task validity since task was supposed to be checked in this thread
     }
 
     for (size_t i = onlyPending ? pendingStart : 0, count = _tasks.size(); // optimization to skip previously run tasks if a notificationw as not raised
@@ -513,7 +533,7 @@ void IResearchFeature::Async::Thread::run() {
         ) {
       auto& task = _tasks[i];
       auto exec = std::chrono::system_clock::now() >= task._timeout;
-      size_t timeoutMsec;
+      size_t timeoutMsec = 0; // by default reschedule for the same time span
 
       try {
         if (!task._fn(timeoutMsec, exec)) {
