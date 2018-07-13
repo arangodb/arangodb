@@ -86,7 +86,7 @@ HTTP API
 - `GET /_api/replication/inventory` GET - 
   new parameters:
   - global - if its a database wide replication
-  - batchId - 
+  - batchId - rocksdb specific offset
 
 - `_api/view` - the new Views API, several new routes for manipulating views.
 
