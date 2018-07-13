@@ -34,10 +34,14 @@ struct MMFilesMarker;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 struct CompactionContext;
 class LogicalCollection;
+
 namespace transaction {
+
 class Methods;
+
 }
 
 class MMFilesCompactorThread final : public Thread {
@@ -62,7 +66,7 @@ class MMFilesCompactorThread final : public Thread {
   };
 
  public:
-  explicit MMFilesCompactorThread(TRI_vocbase_t* vocbase);
+  explicit MMFilesCompactorThread(TRI_vocbase_t& vocbase);
   ~MMFilesCompactorThread();
 
   void signal();
@@ -99,9 +103,7 @@ class MMFilesCompactorThread final : public Thread {
   int copyMarker(MMFilesDatafile* compactor, MMFilesMarker const* marker,
                  MMFilesMarker** result);
 
- private:
-  TRI_vocbase_t* _vocbase;
-
+  TRI_vocbase_t& _vocbase;
   arangodb::basics::ConditionVariable _condition;
 };
 

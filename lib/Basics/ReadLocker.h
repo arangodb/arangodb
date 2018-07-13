@@ -96,7 +96,7 @@ class ReadLocker {
   /// @brief releases the read-lock
   ~ReadLocker() {
     if (_isLocked) {
-      _readWriteLock->unlock();
+      _readWriteLock->unlockRead();
     }
 
 #ifdef TRI_SHOW_LOCK_TIME
@@ -135,7 +135,7 @@ class ReadLocker {
   /// @brief unlocks the lock if we own it
   bool unlock() {
     if (_isLocked) {
-      _readWriteLock->unlock();
+      _readWriteLock->unlockRead();
       _isLocked = false;
       return true;
     }

@@ -23,6 +23,7 @@
 
 #include "IndexFactory.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -32,6 +33,11 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+
+void IndexFactory::clear() {
+  _factories.clear();
+  _normalizers.clear();
+}
 
 Result IndexFactory::emplaceFactory(
   std::string const& type,
@@ -105,7 +111,7 @@ Result IndexFactory::enhanceIndexDefinition(
   bool isCreation,
   bool isCoordinator
 ) const {
-  auto type = definition.get("type");
+  auto type = definition.get(StaticStrings::IndexType);
 
   if (!type.isString()) {
     return TRI_ERROR_BAD_PARAMETER;
@@ -123,7 +129,7 @@ Result IndexFactory::enhanceIndexDefinition(
 
   try {
     velocypack::ObjectBuilder b(&normalized);
-    auto idSlice = definition.get("id");
+    auto idSlice = definition.get(StaticStrings::IndexId);
     uint64_t id = 0;
 
     if (idSlice.isNumber()) {
@@ -133,7 +139,10 @@ Result IndexFactory::enhanceIndexDefinition(
     }
 
     if (id) {
-      normalized.add("id", VPackValue(std::to_string(id)));
+      normalized.add(
+        StaticStrings::IndexId,
+        arangodb::velocypack::Value(std::to_string(id))
+      );
     }
 
     return itr->second(normalized, definition, isCreation);
@@ -153,7 +162,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
   bool isClusterConstructor
 ) const {
   auto id = validateSlice(definition, generateKey, isClusterConstructor);
-  auto type = definition.get("type");
+  auto type = definition.get(StaticStrings::IndexType);
 
   if (!type.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -173,6 +182,12 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
   return itr->second(collection, definition, id, isClusterConstructor);
 }
+  
+/// same for both storage engines
+std::vector<std::string> IndexFactory::supportedIndexes() const {
+  return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
+    "persistent", "geo",  "fulltext"};
+}
 
 TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info, 
                                           bool generateKey, 
@@ -182,12 +197,14 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   }
 
   TRI_idx_iid_t iid = 0;
-  arangodb::velocypack::Slice value = info.get("id");
+  auto value = info.get(StaticStrings::IndexId);
+
   if (value.isString()) {
     iid = basics::StringUtils::uint64(value.copyString());
   } else if (value.isNumber()) {
-    iid =
-        basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
+    iid = basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(
+      info, StaticStrings::IndexId.c_str(), 0
+    );
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(

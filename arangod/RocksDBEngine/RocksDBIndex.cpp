@@ -327,10 +327,12 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
       return RocksDBKeyBounds::FulltextIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
+      return RocksDBKeyBounds::LegacyGeoIndex(objectId);
+    case RocksDBIndex::TRI_IDX_TYPE_GEO_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
 #ifdef USE_IRESEARCH
     case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
-      return RocksDBKeyBounds::Empty();
+      return RocksDBKeyBounds::DatabaseViews(objectId);
 #endif
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:

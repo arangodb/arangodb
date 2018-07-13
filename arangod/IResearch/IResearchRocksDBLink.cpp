@@ -41,6 +41,7 @@ IResearchRocksDBLink::IResearchRocksDBLink(
     : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
                    RocksDBColumnFamily::invalid(), false),
       IResearchLink(iid, collection) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
 }

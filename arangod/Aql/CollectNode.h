@@ -122,13 +122,12 @@ class CollectNode : public ExecutionNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -139,7 +138,7 @@ class CollectNode : public ExecutionNode {
   double estimateCost(size_t&) const override final;
 
   /// @brief whether or not the count flag is set
-  inline bool count() const { return _count; }
+  bool count() const { return _count; }
   /// @brief set the count option
   void count(bool value) { _count = value; }
   
@@ -180,7 +179,7 @@ class CollectNode : public ExecutionNode {
   }
 
   /// @brief set the expression variable
-  void setExpressionVariable(Variable const* variable) {
+  void expressionVariable(Variable const* variable) {
     TRI_ASSERT(!hasExpressionVariable());
     _expressionVariable = variable;
   }
@@ -206,18 +205,25 @@ class CollectNode : public ExecutionNode {
   }
 
   /// @brief get all group variables (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> const&
-  groupVariables() const {
+  std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables() const {
     return _groupVariables;
+  }
+  
+  /// @brief set all group variables (out, in)
+  void groupVariables(std::vector<std::pair<Variable const*, Variable const*>> const& vars) {
+    _groupVariables = vars;
   }
 
   /// @brief get all aggregate variables (out, in)
-  std::vector<std::pair<Variable const*,
-                        std::pair<Variable const*, std::string>>> const&
-  aggregateVariables() const {
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables() const {
     return _aggregateVariables;
   }
-
+  
+  /// @brief get all aggregate variables (out, in)
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& aggregateVariables() {
+    return _aggregateVariables;
+  }
+  
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final;
 

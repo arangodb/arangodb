@@ -64,8 +64,6 @@ class IResearchLink {
     return !(*this == meta);
   }
 
-  bool allowExpansion() const; // arangodb::Index override
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a set of ArangoDB documents into an iResearch View using
   ///        '_meta' params
@@ -77,11 +75,6 @@ class IResearchLink {
   ); // arangodb::Index override
 
   bool canBeDropped() const; // arangodb::Index override
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the collection of this link
-  ////////////////////////////////////////////////////////////////////////////////
-  LogicalCollection* collection() const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
@@ -203,7 +196,6 @@ class IResearchLink {
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
   IResearchView* _view; // effectively the IResearch datastore itself (nullptr == not associated)
-  std::shared_ptr<arangodb::LogicalView> _wiew; // the DBServer view instance (valid only on DBServer)
   std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _viewLock; // prevent view deallocation (lock @ AsyncSelf)
 }; // IResearchLink
 

@@ -109,6 +109,8 @@ class Builder {
                                     // open objects/arrays
   std::vector<std::vector<ValueLength>> _index;  // Indices for starts
                                                  // of subindex
+  // temporary buffer used for sorting medium to big objects
+  std::vector<Builder::SortEntry> _sortEntries; 
   bool _keyWritten;  // indicates that in the current object the key
                      // has been written but the value not yet
 
@@ -121,14 +123,14 @@ class Builder {
   // of attribute names:
   static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len);
 
-  static void sortObjectIndexShort(uint8_t* objBase,
-                                   std::vector<ValueLength>& offsets);
+  void sortObjectIndexShort(uint8_t* objBase,
+                            std::vector<ValueLength>& offsets) const;
 
-  static void sortObjectIndexLong(uint8_t* objBase,
-                                  std::vector<ValueLength>& offsets);
+  void sortObjectIndexLong(uint8_t* objBase,
+                           std::vector<ValueLength>& offsets);
 
-  static void sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets);
+  void sortObjectIndex(uint8_t* objBase,
+                       std::vector<ValueLength>& offsets);
 
  public:
   Options const* options;
@@ -177,8 +179,6 @@ class Builder {
     }
   }
 
-  // The rule of five:
-
   ~Builder() {}
 
   Builder(Builder const& that)
@@ -215,9 +215,6 @@ class Builder {
     }
     _buffer = that._buffer;
     _bufferPtr = _buffer.get();
-    // seems unnecessary
-    // that._buffer.reset(new Buffer<uint8_t>());
-    // that._bufferPtr = that._buffer.get();
     _start = _bufferPtr->data();
     _pos = that._pos;
     _stack.clear();
@@ -226,7 +223,6 @@ class Builder {
     _index.swap(that._index);
     _keyWritten = that._keyWritten;
     options = that.options;
-    //that._start = that._bufferPtr->data();
     that._pos = 0;
     that._keyWritten = false;
   }
@@ -238,9 +234,6 @@ class Builder {
     if (this != &that) {
       _buffer = that._buffer;
       _bufferPtr = _buffer.get();
-// seems unnecessary
-//      that._buffer.reset(new Buffer<uint8_t>());
-//      that._bufferPtr = that._buffer.get();
       _start = _bufferPtr->data();
       _pos = that._pos;
       _stack.clear();
@@ -249,7 +242,6 @@ class Builder {
       _index.swap(that._index);
       _keyWritten = that._keyWritten;
       options = that.options;
-//      that._start = that._bufferPtr->data();
       that._pos = 0;
       that._keyWritten = false;
     }
@@ -288,20 +280,20 @@ class Builder {
   }
 
   // Clear and start from scratch:
-  void clear() {
+  void clear() noexcept {
     _pos = 0;
     _stack.clear();
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
-    _bufferPtr->resetTo(0);
+    _bufferPtr->reset();
     _keyWritten = false;
   }
 
   // Return a pointer to the start of the result:
   uint8_t* start() const {
-    if (!isClosed()) {
-      throw Exception(Exception::BuilderNotSealed);
+    if (isClosed()) {
+      return _start;
     }
-    return _start;
+    throw Exception(Exception::BuilderNotSealed);
   }
 
   // Return a Slice of the result:
@@ -341,39 +333,54 @@ class Builder {
   }
 
   // Add a subvalue into an object from a Value:
-  uint8_t* add(std::string const& attrName, Value const& sub);
-  uint8_t* add(char const* attrName, Value const& sub);
-  uint8_t* add(char const* attrName, size_t attrLength, Value const& sub);
+  inline uint8_t* add(std::string const& attrName, Value const& sub) {
+    return addInternal<Value>(attrName, sub);
+  }
 
+  inline uint8_t* add(char const* attrName, Value const& sub) {
+    return addInternal<Value>(attrName, sub);
+  }
+
+  inline uint8_t* add(char const* attrName, size_t attrLength, Value const& sub) {
+    return addInternal<Value>(attrName, attrLength, sub);
+  }
+ 
   // Add a subvalue into an object from a Slice:
-  uint8_t* add(std::string const& attrName, Slice const& sub) {
+  inline uint8_t* add(std::string const& attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, sub);
   }
-  uint8_t* add(char const* attrName, Slice const& sub) {
+  inline uint8_t* add(char const* attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, sub);
   }
-  uint8_t* add(char const* attrName, size_t attrLength, Slice const& sub) {
+  inline uint8_t* add(char const* attrName, size_t attrLength, Slice const& sub) {
     return addInternal<Slice>(attrName, attrLength, sub);
   }
-
+ 
   // Add a subvalue into an object from a ValuePair:
-  uint8_t* add(std::string const& attrName, ValuePair const& sub) {
+  inline uint8_t* add(std::string const& attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, sub);
   }
-  uint8_t* add(char const* attrName, ValuePair const& sub) {
+  inline uint8_t* add(char const* attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, sub);
   }
-  uint8_t* add(char const* attrName, size_t attrLength, ValuePair const& sub) {
+  inline uint8_t* add(char const* attrName, size_t attrLength, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, attrLength, sub);
   }
-
-  // Add all subkeys and subvalues into an object from an ObjectIterator
-  // and leaves open the object intentionally
-  uint8_t* add(ObjectIterator& sub);
-  uint8_t* add(ObjectIterator&& sub);
-
+ 
   // Add a subvalue into an array from a Value:
-  uint8_t* add(Value const& sub);
+  inline uint8_t* add(Value const& sub) {
+    return addInternal<Value>(sub); 
+  }
+  
+  // Add a slice to an array
+  inline uint8_t* add(Slice const& sub) {
+    return addInternal<Slice>(sub); 
+  }
+
+  // Add a subvalue into an array from a ValuePair:
+  inline uint8_t* add(ValuePair const& sub) {
+    return addInternal<ValuePair>(sub);
+  }
 
   // Add an External slice to an array
   uint8_t* addExternal(uint8_t const* sub) {
@@ -407,12 +414,11 @@ class Builder {
       throw;
     }
   }
-
-  // Add a slice to an array
-  uint8_t* add(Slice const& sub);
-
-  // Add a subvalue into an array from a ValuePair:
-  uint8_t* add(ValuePair const& sub);
+  
+  // Add all subkeys and subvalues into an object from an ObjectIterator
+  // and leaves open the object intentionally
+  uint8_t* add(ObjectIterator& sub);
+  uint8_t* add(ObjectIterator&& sub);
 
   // Add all subvalues into an array from an ArrayIterator
   // and leaves open the array intentionally
@@ -542,21 +548,37 @@ class Builder {
   inline void openObject(bool unindexed = false) {
     openCompoundValue(unindexed ? 0x14 : 0x0b);
   }
+  
+  template <typename T>
+  uint8_t* addUnchecked(char const* attrName, size_t attrLength, T const& sub) {
+    bool haveReported = false;
+    if (!_stack.empty()) {
+      reportAdd();
+      haveReported = true;
+    }
+
+    try {
+      set(ValuePair(attrName, attrLength, ValueType::String));
+      _keyWritten = true;
+      return set(sub);
+    } catch (...) {
+      // clean up in case of an exception
+      if (haveReported) {
+        cleanupAdd();
+      }
+      throw;
+    }
+  }
 
  private:
   inline void checkKeyIsString(bool isString) {
     if (!_stack.empty()) {
       ValueLength const tos = _stack.back();
       if (_start[tos] == 0x0b || _start[tos] == 0x14) {
-        if (!_keyWritten) {
-          if (isString) {
-            _keyWritten = true;
-          } else {
-            throw Exception(Exception::BuilderKeyMustBeString);
-          }
-        } else {
-          _keyWritten = false;
+        if (!_keyWritten && !isString) {
+          throw Exception(Exception::BuilderKeyMustBeString);
         }
+        _keyWritten = !_keyWritten;
       }
     }
   }
@@ -683,7 +705,7 @@ class Builder {
       throw;
     }
   }
-
+  
   void addCompoundValue(uint8_t type) {
     reserve(9);
     // an Array or Object is started:
@@ -728,8 +750,9 @@ class Builder {
 
   uint8_t* set(Slice const& item);
 
-  void cleanupAdd() {
+  void cleanupAdd() noexcept {
     size_t depth = _stack.size() - 1;
+    VELOCYPACK_ASSERT(!_index[depth].empty());
     _index[depth].pop_back();
   }
 
@@ -817,14 +840,14 @@ class Builder {
   }
 
   // move byte position x bytes ahead
-  inline void advance(size_t value) {
+  inline void advance(size_t value) noexcept {
     _pos += value;
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->advance(value);
   }
               
   // move byte position x bytes back
-  inline void rollback(size_t value) {
+  inline void rollback(size_t value) noexcept {
     _pos -= value;
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->rollback(value);

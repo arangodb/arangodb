@@ -68,13 +68,6 @@ class PhysicalCollection {
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
-  /// @brief used for updating properties
-  virtual void getPropertiesVPackCoordinator(velocypack::Builder&) const = 0;
-
-  /// @brief return the figures for a collection
-  std::shared_ptr<velocypack::Builder> figures();
-
-  void figures(std::shared_ptr<arangodb::velocypack::Builder>& builder);
 
   virtual int close() = 0;
   virtual void load() = 0;
@@ -113,6 +106,9 @@ class PhysicalCollection {
                        
   void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
+  
+  /// @brief return the figures for a collection
+  virtual std::shared_ptr<velocypack::Builder> figures();
 
   virtual std::shared_ptr<Index> createIndex(
       transaction::Methods* trx, arangodb::velocypack::Slice const& info,
@@ -124,8 +120,7 @@ class PhysicalCollection {
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
-  virtual std::unique_ptr<IndexIterator> getAllIterator(
-      transaction::Methods* trx, bool reverse) const = 0;
+  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx) const = 0;
   virtual void invokeOnAllElements(
@@ -188,9 +183,7 @@ class PhysicalCollection {
                          OperationOptions& options,
                          TRI_voc_tick_t& resultMarkerTick, bool lock,
                          TRI_voc_rid_t& prevRev,
-                         ManagedDocumentResult& previous,
-                         arangodb::velocypack::Slice const fromSlice,
-                         arangodb::velocypack::Slice const toSlice) = 0;
+                         ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice const slice,
@@ -208,22 +201,22 @@ class PhysicalCollection {
       std::function<bool(LogicalCollection*)> callback) = 0;
   
  protected:
+  
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
   // SECTION: Document pre commit preperation
 
   TRI_voc_rid_t newRevisionId() const;
 
+  bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
+
   /// @brief new object for insert, value must have _key set correctly.
-  int newObjectForInsert(transaction::Methods* trx,
-                         velocypack::Slice const& value,
-                         velocypack::Slice const& fromSlice,
-                         velocypack::Slice const& toSlice,
-                         bool isEdgeCollection, velocypack::Builder& builder,
-                         bool isRestore,
-                         TRI_voc_rid_t& revisionId) const;
+  Result newObjectForInsert(transaction::Methods* trx,
+                            velocypack::Slice const& value,
+                            bool isEdgeCollection, velocypack::Builder& builder,
+                            bool isRestore,
+                            TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
@@ -232,23 +225,21 @@ class PhysicalCollection {
                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief merge two objects for update
-  void mergeObjectsForUpdate(transaction::Methods* trx,
+  Result mergeObjectsForUpdate(transaction::Methods* trx,
+                               velocypack::Slice const& oldValue,
+                               velocypack::Slice const& newValue,
+                               bool isEdgeCollection,
+                               bool mergeObjects, bool keepNull,
+                               velocypack::Builder& builder,
+                               bool isRestore, TRI_voc_rid_t& revisionId) const;
+
+  /// @brief new object for replace
+  Result newObjectForReplace(transaction::Methods* trx,
                              velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
                              bool isEdgeCollection,
-                             bool mergeObjects, bool keepNull,
                              velocypack::Builder& builder,
                              bool isRestore, TRI_voc_rid_t& revisionId) const;
-
-  /// @brief new object for replace
-  void newObjectForReplace(transaction::Methods* trx,
-                           velocypack::Slice const& oldValue,
-                           velocypack::Slice const& newValue,
-                           velocypack::Slice const& fromSlice,
-                           velocypack::Slice const& toSlice,
-                           bool isEdgeCollection,
-                           velocypack::Builder& builder,
-                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found) const;

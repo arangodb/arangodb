@@ -54,7 +54,7 @@ TraverserCache::~TraverserCache() {}
 
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  auto col = _trx->vocbase()->lookupCollection(idToken.cid());
+  auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
   if (col == nullptr) {
     // collection gone... should not happen

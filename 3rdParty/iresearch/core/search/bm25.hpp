@@ -65,7 +65,7 @@ class bm25_sort : public sort {
     return b_ == 0.f;
   }
 
-  virtual sort::prepared::ptr prepare() const;
+  virtual sort::prepared::ptr prepare() const override;
 
  private:
   float_t k_; // [1.2 .. 2.0]

@@ -30,7 +30,7 @@ namespace arangodb {
 
 /// @brief StorageEngine agnostic wal access interface.
 /// TODO: add methods for _admin/wal/ and get rid of engine specific handlers
-class RocksDBWalAccess : public WalAccess {
+class RocksDBWalAccess final : public WalAccess {
  public:
   RocksDBWalAccess() {}
   virtual ~RocksDBWalAccess() {}

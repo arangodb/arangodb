@@ -1,0 +1,382 @@
+{
+  "async" : {
+    "default" : false,
+    "description" : "send asynchronous requests",
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "batch-size" : {
+    "default" : 0,
+    "description" : "number of operations in one batch (0 disables batching)",
+    "hidden" : false,
+    "section" : "",
+    "type" : "uint64"
+  },
+  "check-configuration" : {
+    "default" : false,
+    "description" : "check the configuration and exit",
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "collection" : {
+    "default" : "ArangoBenchmark",
+    "description" : "collection name to use in tests (if they involve collections)",
+    "hidden" : false,
+    "section" : "",
+    "type" : "string"
+  },
+  "complexity" : {
+    "default" : 1,
+    "description" : "complexity parameter for the test (meaning depends on test case)",
+    "hidden" : false,
+    "section" : "",
+    "type" : "uint64"
+  },
+  "concurrency" : {
+    "default" : 1,
+    "description" : "number of parallel threads and connections",
+    "hidden" : false,
+    "section" : "",
+    "type" : "uint64"
+  },
+  "config" : {
+    "default" : "",
+    "description" : "the configuration file or 'none'",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
+  "configuration" : {
+    "default" : "",
+    "description" : "the configuration file or 'none'",
+    "hidden" : false,
+    "section" : "",
+    "type" : "string"
+  },
+  "define" : {
+    "default" : [
+    ],
+    "description" : "define key=value for a @key@ entry in config file",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string..."
+  },
+  "delay" : {
+    "default" : false,
+    "description" : "use a startup delay (necessary only when run in series)",
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "dump-dependencies" : {
+    "default" : false,
+    "description" : "dump dependency graph",
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "dump-options" : {
+    "default" : true,
+    "description" : "dump configuration options in JSON format",
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "junit-report-file" : {
+    "default" : "",
+    "description" : "filename to write junit style report to",
+    "hidden" : false,
+    "section" : "",
+    "type" : "string"
+  },
+  "keep-alive" : {
+    "default" : true,
+    "description" : "use HTTP keep-alive",
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "log" : {
+    "default" : [
+      "info"
+    ],
+    "description" : "the global or topic-specific log level",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string..."
+  },
+  "log.color" : {
+    "default" : true,
+    "description" : "use colors for TTY logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.file" : {
+    "default" : "-",
+    "description" : "shortcut for '--log.output file://<filename>'",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.force-direct" : {
+    "default" : false,
+    "description" : "do not start a seperate thread for logging",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.foreground-tty" : {
+    "default" : false,
+    "description" : "also log to tty if backgrounded",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.keep-logrotate" : {
+    "default" : false,
+    "description" : "keep the old log file after receiving a sighup",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.level" : {
+    "default" : [
+      "info"
+    ],
+    "description" : "the global or topic-specific log level",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "string..."
+  },
+  "log.line-number" : {
+    "default" : false,
+    "description" : "append line number and file name",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.output" : {
+    "default" : [
+    ],
+    "description" : "log destination(s)",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "string..."
+  },
+  "log.performance" : {
+    "default" : false,
+    "description" : "shortcut for '--log.level performance=trace'",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.prefix" : {
+    "default" : "",
+    "description" : "prefix log message with this string",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.role" : {
+    "default" : false,
+    "description" : "log server role",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.shorten-filenames" : {
+    "default" : true,
+    "description" : "shorten filenames in log output (use with --log.line-number)",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.thread" : {
+    "default" : false,
+    "description" : "show thread identifier in log message",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.thread-name" : {
+    "default" : false,
+    "description" : "show thread name in log message",
+    "hidden" : true,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.use-local-time" : {
+    "default" : false,
+    "description" : "use local timezone instead of UTC",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.use-microtime" : {
+    "default" : false,
+    "description" : "use microtime instead",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "number-of-shards" : {
+    "default" : 1,
+    "description" : "number of shards of created collections (cluster only)",
+    "hidden" : false,
+    "section" : "",
+    "type" : "uint64"
+  },
+  "progress" : {
+    "default" : true,
+    "description" : "log intermediate progress",
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "quiet" : {
+    "default" : false,
+    "description" : "suppress status messages",
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "random.generator" : {
+    "default" : 1,
+    "description" : "random number generator to use (1 = MERSENNE, 2 = RANDOM, 3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows only)",
+    "hidden" : true,
+    "section" : "random",
+    "type" : "uint32",
+    "values" : "Possible values: 1, 2, 3, 4"
+  },
+  "replication-factor" : {
+    "default" : 1,
+    "description" : "replication factor of created collections (cluster only)",
+    "hidden" : false,
+    "section" : "",
+    "type" : "uint64"
+  },
+  "requests" : {
+    "default" : 1000,
+    "description" : "total number of operations",
+    "hidden" : false,
+    "section" : "",
+    "type" : "uint64"
+  },
+  "runs" : {
+    "default" : 1,
+    "description" : "run test n times (and calculate statistics based on median)",
+    "hidden" : false,
+    "section" : "",
+    "type" : "uint64"
+  },
+  "server.authentication" : {
+    "default" : true,
+    "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.connection-timeout" : {
+    "default" : 5,
+    "description" : "connection timeout in seconds",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "double"
+  },
+  "server.database" : {
+    "default" : "_system",
+    "description" : "database name to use when connecting",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.endpoint" : {
+    "default" : "tcp://127.0.0.1:8529",
+    "description" : "endpoint to connect to, use 'none' to start without a server",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.max-packet-size" : {
+    "default" : 134217728,
+    "description" : "maximum packet size (in bytes) for client/server communication",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.password" : {
+    "default" : "",
+    "description" : "password to use when connecting. If not specified and authentication is required, the user will be prompted for a password",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "server.request-timeout" : {
+    "default" : 1200,
+    "description" : "request timeout in seconds",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "double"
+  },
+  "server.username" : {
+    "default" : "root",
+    "description" : "username to use when connecting",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "string"
+  },
+  "ssl.protocol" : {
+    "default" : 5,
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2)",
+    "hidden" : false,
+    "section" : "ssl",
+    "type" : "uint64",
+    "values" : "Possible values: 1, 2, 3, 4, 5"
+  },
+  "temp.path" : {
+    "default" : "",
+    "description" : "path for temporary files",
+    "hidden" : false,
+    "section" : "temp",
+    "type" : "string"
+  },
+  "test-case" : {
+    "default" : "version",
+    "description" : "test case to use",
+    "hidden" : false,
+    "section" : "",
+    "type" : "string",
+    "values" : "Possible values: \"aqlinsert\", \"aqltrx\", \"aqlv8\", \"collection\", \"counttrx\", \"crud\", \"crud-append\", \"crud-write-read\", \"document\", \"edge\", \"hash\", \"import-document\", \"multi-collection\", \"multitrx\", \"random-shapes\", \"shapes\", \"shapes-append\", \"skiplist\", \"stream-cursor\", \"version\""
+  },
+  "verbose" : {
+    "default" : false,
+    "description" : "print out replies if the HTTP header indicates DB errors",
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "version" : {
+    "default" : false,
+    "description" : "reports the version and exits",
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  },
+  "wait-for-sync" : {
+    "default" : false,
+    "description" : "use waitForSync for created collections",
+    "hidden" : false,
+    "section" : "",
+    "type" : "boolean"
+  }
+}

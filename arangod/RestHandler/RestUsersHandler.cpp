@@ -181,33 +181,46 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
   VPackBuilder data;
   data.openObject();
   Result res = um->accessUser(username, [&](auth::User const& user) {
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      
-      if (full) {
-        auth::Level lvl = user.configuredDBAuthLevel(vocbase->name());
-        std::string str = convertFromAuthLevel(lvl);
-        VPackObjectBuilder b(&data, vocbase->name(), true);
-        data.add("permission", VPackValue(str));
-        VPackObjectBuilder b2(&data, "collections", true);
-        methods::Collections::enumerate(
-            vocbase, [&](LogicalCollection* c) {
-              lvl = user.configuredCollectionAuthLevel(vocbase->name(), c->name());
-              data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
-            });
-        lvl = user.configuredCollectionAuthLevel(vocbase->name(), "*");
-        data.add("*", VPackValue(convertFromAuthLevel(lvl)));
-      } else {  // hide db's without access
-        auth::Level lvl = user.databaseAuthLevel(vocbase->name());
-        if (lvl >= auth::Level::RO) {
-          data.add(vocbase->name(), VPackValue(convertFromAuthLevel(lvl)));
+    DatabaseFeature::DATABASE->enumerateDatabases(
+      [&](TRI_vocbase_t& vocbase)->void {
+        if (full) {
+          auto lvl = user.configuredDBAuthLevel(vocbase.name());
+          std::string str = convertFromAuthLevel(lvl);
+          velocypack::ObjectBuilder b(&data, vocbase.name(), true);
+
+          data.add("permission", VPackValue(str));
+
+          velocypack::ObjectBuilder b2(&data, "collections", true);
+
+          methods::Collections::enumerate(
+            &vocbase,
+            [&](LogicalCollection* c)->void {
+              lvl =
+                user.configuredCollectionAuthLevel(vocbase.name(), c->name());
+                data.add(
+                  c->name(),
+                  velocypack::Value(convertFromAuthLevel(lvl))
+                );
+            }
+          );
+          lvl = user.configuredCollectionAuthLevel(vocbase.name(), "*");
+          data.add("*", velocypack::Value(convertFromAuthLevel(lvl)));
+        } else {  // hide db's without access
+          auto lvl = user.databaseAuthLevel(vocbase.name());
+
+          if (lvl >= auth::Level::RO) {
+            data.add(vocbase.name(), VPackValue(convertFromAuthLevel(lvl)));
+          }
         }
       }
-    });
+    );
+
     if (full) {
       auth::Level lvl = user.databaseAuthLevel("*");
       data("*", VPackValue(VPackValueType::Object))(
           "permission", VPackValue(convertFromAuthLevel(lvl)))();
     }
+
     return TRI_ERROR_NO_ERROR;
   });
   data.close();

@@ -33,8 +33,6 @@ RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request,
                                                    GeneralResponse* response)
     : RestHandler(request, response) {}
 
-bool RestPleaseUpgradeHandler::isDirect() const { return true; }
-
 RestStatus RestPleaseUpgradeHandler::execute() {
   // TODO needs to generalized
   auto response = dynamic_cast<HttpResponse*>(_response.get());

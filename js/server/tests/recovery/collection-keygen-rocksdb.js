@@ -50,7 +50,7 @@ function runSetup () {
   });
 
   // write to other collection until all documents from first collection are
-  // out of the wall
+  // out of the wal
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2');
   var keepWriting = true;

@@ -65,8 +65,6 @@ void RestEngineHandler::handleGet() {
   } else {
     getStats();
   }
-  
-  return;
 }
 
 void RestEngineHandler::getCapabilities() {
@@ -75,7 +73,6 @@ void RestEngineHandler::getCapabilities() {
   engine->getCapabilities(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
-  return;
 }
 
 void RestEngineHandler::getStats() {
@@ -84,5 +81,4 @@ void RestEngineHandler::getStats() {
   engine->getStatistics(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
-  return;
 }

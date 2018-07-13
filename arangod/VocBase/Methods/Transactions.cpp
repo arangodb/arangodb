@@ -1,8 +1,11 @@
 #include "Transactions.h"
 #include <v8.h>
 
+#include "Basics/WriteLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Logger/Logger.h"
+#include "Transaction/Methods.h"
 #include "Transaction/Options.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
@@ -10,10 +13,8 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbaseprivate.h"
-#include "Logger/Logger.h"
+
 #include <velocypack/Slice.h>
-#include "Basics/WriteLocker.h"
-#include "Basics/ReadLocker.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
@@ -110,11 +111,7 @@ Result executeTransactionJS(
     v8::Handle<v8::Value>& result,
     v8::TryCatch& tryCatch) {
   Result rv;
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-  if (vocbase == nullptr) {
-    rv.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return rv;
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   // treat the value as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(arg);
@@ -321,25 +318,29 @@ Result executeTransactionJS(
     return rv;
   }
 
-  auto transactionContext =
-      std::make_shared<transaction::V8Context>(vocbase, embed);
+  auto ctx = std::make_shared<transaction::V8Context>(vocbase, embed);
+
   // start actual transaction
-  std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(transactionContext, readCollections,
+  std::unique_ptr<transaction::Methods> trx(new transaction::Methods(ctx, readCollections,
                                             writeCollections, exclusiveCollections,
                                             trxOptions));
-    
+
   rv = trx->begin();
-  
+
   if (rv.fail()) {
     return rv;
   }
-  
+
   try {
     v8::Handle<v8::Value> arguments = params;
+
     result = action->Call(current, 1, &arguments);
+
     if (tryCatch.HasCaught()) {
       trx->abort();
+
       std::tuple<bool, bool, Result> rvTuple = extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);
+
       if (std::get<1>(rvTuple)) {
         rv = std::get<2>(rvTuple);
       } else {

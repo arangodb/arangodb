@@ -30,7 +30,7 @@ namespace arangodb {
 
 /// @brief StorageEngine agnostic wal access interface.
 /// TODO: add methods for _admin/wal/ and get rid of engine specific handlers
-class MMFilesWalAccess : public WalAccess {
+class MMFilesWalAccess final : public WalAccess {
  public:
   MMFilesWalAccess() {}
 

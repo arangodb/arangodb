@@ -32,6 +32,7 @@
 #include "utils/log.hpp"
 
 #include "ApplicationServerHelper.h"
+#include "Containers.h"
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
@@ -45,6 +46,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -74,9 +76,9 @@ NS_LOCAL
 
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
-  IResearchLogTopic(std::string const& name, arangodb::LogLevel level)
-    : arangodb::LogTopic(name, level) {
-    setIResearchLogLevel(level);
+  IResearchLogTopic(std::string const& name)
+    : arangodb::LogTopic(name, DEFAULT_LEVEL) {
+    setIResearchLogLevel(DEFAULT_LEVEL);
   }
 
   virtual void setLogLevel(arangodb::LogLevel level) override {
@@ -85,33 +87,88 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 
  private:
+  static arangodb::LogLevel const DEFAULT_LEVEL= arangodb::LogLevel::INFO;
+
+  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
+  typedef std::underlying_type<arangodb::LogLevel>::type arangoLogLevelType;
+
+  static_assert(
+    static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) == static_cast<arangoLogLevelType>(arangodb::LogLevel::FATAL) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) == static_cast<arangoLogLevelType>(arangodb::LogLevel::ERR) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_WARN) == static_cast<arangoLogLevelType>(arangodb::LogLevel::WARN) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_INFO) == static_cast<arangoLogLevelType>(arangodb::LogLevel::INFO) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) == static_cast<arangoLogLevelType>(arangodb::LogLevel::DEBUG) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) == static_cast<arangoLogLevelType>(arangodb::LogLevel::TRACE) - 1,
+    "inconsistent log level mapping"
+  );
+
   static void setIResearchLogLevel(arangodb::LogLevel level) {
-    auto irsLevel = static_cast<irs::logger::level_t>(level);
+    if (level == arangodb::LogLevel::DEFAULT) {
+      level = DEFAULT_LEVEL;
+    }
+
+    auto irsLevel = static_cast<irs::logger::level_t>(
+      static_cast<arangoLogLevelType>(level) - 1
+    ); // -1 for DEFAULT
+
     irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
     irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
 
-    irs::logger::enabled(irsLevel);
+    irs::logger::output_le(irsLevel, stderr);
   }
 }; // IResearchLogTopic
 
-arangodb::aql::AqlValue noop(
+arangodb::aql::AqlValue filter(
     arangodb::aql::Query*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
     TRI_ERROR_NOT_IMPLEMENTED,
-    "Function is designed to be used with IResearchView only"
+    "Filter function is designed to be used with ArangoSearch view only"
   );
+}
+
+arangodb::aql::AqlValue scorer(
+    arangodb::aql::Query*,
+    arangodb::transaction::Methods* ,
+    arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+    TRI_ERROR_NOT_IMPLEMENTED,
+    "Scorer function is designed to be used with ArangoSearch view only"
+  );
+}
+
+typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
+  arangodb::aql::Query*,
+  arangodb::transaction::Methods* ,
+  arangodb::SmallVector<arangodb::aql::AqlValue> const&
+);
+
+void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
+  arangodb::iresearch::addFunction(functions, {
+    "__ARANGOSEARCH_SCORE_DEBUG",  // name
+    ".",    // value to convert
+    true,   // deterministic
+    false,  // can't throw
+    true,   // can be run on server
+    [](arangodb::aql::Query*,
+       arangodb::transaction::Methods*,
+       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
+      auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
+      auto const floatValue = *reinterpret_cast<float_t const*>(arg.slice().begin());
+      return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+    }
+  });
 }
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
-    ".|.,.",       // positional arguments (attribute, [ "analyzer"|"type", analyzer-name|"string"|"numeric"|"bool"|"null" ])
+    ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
@@ -120,45 +177,59 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "PHRASE",      // name
-    ".,.,.|.+",    // positional arguments (attribute, input [, offset, input... ], analyzer)
+    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &noop          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "MIN_MATCH",   // name
+    ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "BOOST",       // name
+    ".,.",         // positional arguments (filter expression, boost)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "ANALYZER",    // name
+    ".,.",         // positional arguments (filter expression, analyzer)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
   });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Single-server or DB server index factories
-////////////////////////////////////////////////////////////////////////////////
-const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> dbServerIndexFactories = {
-  { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
-  { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Coordinator index factories
-////////////////////////////////////////////////////////////////////////////////
-const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> coordinatorIndexFactories = {
-  { "MMFilesEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles },
-  { "RocksDBEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkRocksDB }
-};
-
 void registerIndexFactory() {
-  auto& factories = arangodb::ServerState::instance()->isCoordinator()
-    ? coordinatorIndexFactories
-    : dbServerIndexFactories;
-
+  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
+    { "ClusterEngine", arangodb::iresearch::IResearchLinkCoordinator::make },
+    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
+    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make }
+  };
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
   // register 'arangosearch' link
   for (auto& entry: factories) {
-    auto* engine = arangodb::iresearch::getFeature<arangodb::StorageEngine>(entry.first);
+    auto* engine = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::StorageEngine
+    >(entry.first);
 
     // valid situation if not running with the specified storage engine
     if (!engine) {
@@ -212,7 +283,7 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       true,   // deterministic
       false,  // can't throw
       true,   // can be run on server
-      &noop   // function implementation (use function name as placeholder)
+      &scorer // function implementation (use function name as placeholder)
     });
 
     return true;
@@ -229,7 +300,9 @@ void registerRecoveryHelper() {
 
 void registerViewFactory() {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
-  auto* viewTypes = arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>();
+  auto* viewTypes = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::ViewTypesFeature
+  >();
 
   if (!viewTypes) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -257,12 +330,12 @@ void registerViewFactory() {
   }
 }
 
-arangodb::Result transactionStateRegistrationCallback(
+arangodb::Result transactionDataSourceRegistrationCallback(
     arangodb::LogicalDataSource& dataSource,
-    arangodb::TransactionState& state
+    arangodb::transaction::Methods& trx
 ) {
   if (arangodb::iresearch::DATA_SOURCE_TYPE != dataSource.type()) {
-    return arangodb::Result(); // not an IResearchView (noop)
+    return {}; // not an IResearchView (noop)
   }
 
   // TODO FIXME find a better way to look up a LogicalView
@@ -274,40 +347,273 @@ arangodb::Result transactionStateRegistrationCallback(
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to get LogicalView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' name '" << dataSource.name() << "'";
+      << "failure to get LogicalView while processing a TransactionState by IResearchFeature for name '" << dataSource.name() << "'";
 
-    return arangodb::Result(TRI_ERROR_INTERNAL);
+    return {TRI_ERROR_INTERNAL};
   }
 
   // TODO FIXME find a better way to look up an IResearch View
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-  #else
-    auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view);
-  #endif
+  auto& impl = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*view);
 
-  if (!impl) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << dataSource.name() << "'";
+  return arangodb::Result(
+    impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL
+  );
+}
 
-    return arangodb::Result(TRI_ERROR_INTERNAL);
+void registerTransactionDataSourceRegistrationCallback() {
+  if (arangodb::ServerState::instance()->isSingleServer()) {
+    arangodb::transaction::Methods::addDataSourceRegistrationCallback(
+      &transactionDataSourceRegistrationCallback
+    );
   }
-
-  impl->apply(state);
-
-  return arangodb::Result();
 }
 
 std::string const FEATURE_NAME("ArangoSearch");
-IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
+IResearchLogTopic LIBIRESEARCH("libiresearch");
 
 NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+bool isFilter(arangodb::aql::Function const& func) noexcept {
+  auto* pimpl = func.implementation.target<IResearchFunctionPtr>();
+  return pimpl && *pimpl == &filter;
+}
+
+bool isScorer(arangodb::aql::Function const& func) noexcept {
+  auto* pimpl = func.implementation.target<IResearchFunctionPtr>();
+  return pimpl && *pimpl == &scorer;
+}
+
+class IResearchFeature::Async {
+ public:
+  typedef std::function<bool(size_t& timeoutMsec, bool timeout)> Fn;
+
+  Async();
+  ~Async();
+
+  void emplace(std::shared_ptr<ResourceMutex> const& mutex, Fn &&fn); // add an asynchronous task
+  void notify() const; // notify all tasks
+
+ private:
+  struct Pending {
+    Fn _fn; // the function to execute
+    std::shared_ptr<ResourceMutex> _mutex; // mutex for the task resources
+    std::chrono::system_clock::time_point _timeout; // when the task should be notified (std::chrono::milliseconds::max() == disabled)
+
+    Pending(std::shared_ptr<ResourceMutex> const& mutex,Fn &&fn)
+      : _fn(std::move(fn)),
+        _mutex(mutex),
+        _timeout(std::chrono::system_clock::time_point::max()) {
+    }
+  };
+
+  struct Task: public Pending {
+    std::unique_lock<ReadMutex> _lock; // prevent resource deallocation
+
+    Task(Pending&& pending): Pending(std::move(pending)) {
+      // lock resource mutex or ignore if none supplied
+      if(_mutex) {
+        _lock = std::unique_lock<ReadMutex>(_mutex->mutex());
+      }
+    }
+  };
+
+  struct Thread: public arangodb::Thread {
+    mutable std::condition_variable _cond; // trigger task run
+    mutable std::mutex _mutex; // mutex used with '_cond' and '_pending'
+    Thread* _next; // next thread in circular-list (never null!!!) (need to store pointer for move-assignment)
+    std::vector<Pending> _pending; // pending tasks
+    std::atomic<size_t> _size; // approximate size of the active+pending task list
+    std::vector<Task> _tasks; // the tasks to perform
+    std::atomic<bool>* _terminate; // trigger termination of this thread (need to store pointer for move-assignment)
+    mutable bool _wasNotified; // a notification was raised from another thread
+
+    Thread(std::string const& name)
+      : arangodb::Thread(name), _wasNotified(false) {
+    }
+    Thread(Thread&& other) // used in constructor before tasks are started
+      : arangodb::Thread(other.name()), _wasNotified(false) {
+    }
+    virtual bool isSystem() override { return true; } // or start(...) will fail
+    virtual void run() override;
+  };
+
+  arangodb::basics::ConditionVariable _join; // mutex to join on
+  std::vector<Thread> _pool; // thread pool (size fixed for the entire life of object)
+  std::atomic<bool> _terminate; // unconditionaly terminate async tasks
+};
+
+void IResearchFeature::Async::Thread::run() {
+  std::chrono::system_clock::time_point timeout;
+  bool timeoutSet = false;
+
+  for (;;) {
+    bool onlyPending;
+    auto pendingStart = _tasks.size();
+
+    {
+      SCOPED_LOCK_NAMED(_mutex, lock); // aquire before '_terminate' check so that don't miss notify()
+
+      if (_terminate->load()) {
+        return; // termination requested
+      }
+
+      // transfer any new pending tasks into active tasks
+      for (auto& pending: _pending) {
+        _tasks.emplace_back(std::move(pending)); // will aquire resource lock
+
+        auto& task = _tasks.back();
+
+        if (task._mutex && !*(task._mutex)) {
+          _tasks.pop_back(); // resource no longer valid
+        }
+      }
+
+      _pending.clear();
+      _size.store(_tasks.size());
+
+      // do not sleep if a notification was raised or pending tasks were added
+      if (_wasNotified || pendingStart < _tasks.size()) {
+        timeout = std::chrono::system_clock::now();
+        timeoutSet = true;
+      }
+
+      // sleep until timeout
+      if (!timeoutSet) {
+        _cond.wait(lock); // wait forever
+      } else {
+        _cond.wait_until(lock, timeout); // wait for timeout or notify
+      }
+
+      onlyPending = !_wasNotified && pendingStart < _tasks.size(); // process all tasks if a notification was raised
+      _wasNotified = false; // ignore notification since woke up
+
+      if (_terminate->load()) { // check again after sleep
+        return; // termination requested
+      }
+    }
+
+    timeoutSet = false;
+
+    // transfer some tasks to '_next' if have too many
+    while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
+      SCOPED_LOCK(_next->_mutex);
+      _next->_pending.emplace_back(std::move(_tasks.back()));
+      _tasks.pop_back();
+      ++_next->_size;
+      --_size;
+      _next->_cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
+      _next->_wasNotified = true; // ensure the next thread checks task validity since task was supposed to be checked in this thread
+    }
+
+    for (size_t i = onlyPending ? pendingStart : 0, count = _tasks.size(); // optimization to skip previously run tasks if a notificationw as not raised
+         i < count;
+        ) {
+      auto& task = _tasks[i];
+      auto exec = std::chrono::system_clock::now() >= task._timeout;
+      size_t timeoutMsec;
+
+      try {
+        if (!task._fn(timeoutMsec, exec)) {
+          if (i + 1 < count) {
+            std::swap(task, _tasks[count - 1]); // swap 'i' with tail
+          }
+
+          _tasks.pop_back(); // remove stale tail
+          --count;
+
+          continue;
+        }
+      } catch(...) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "caught error while executing asynchronous task";
+        IR_LOG_EXCEPTION();
+        timeoutMsec = 0; // sleep until previously set timeout
+      }
+
+      // task reschedule time modification requested
+      if (timeoutMsec) {
+        task._timeout = std::chrono::system_clock::now()
+                      + std::chrono::milliseconds(timeoutMsec);
+      }
+
+      timeout = timeoutSet ? std::min(timeout, task._timeout) : task._timeout;
+      timeoutSet = true;
+      ++i;
+    }
+  }
+}
+
+IResearchFeature::Async::Async(): _terminate(false) {
+  static const unsigned int MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
+  static const unsigned int MIN_THREADS = 1; // at least one thread is required
+  auto poolSize = std::max(
+    MIN_THREADS,
+    std::min(MAX_THREADS, std::thread::hardware_concurrency())
+  );
+
+  for (size_t i = 0; i < poolSize; ++i) {
+    _pool.emplace_back(std::string("ArangoSearch #") + std::to_string(i));
+  }
+
+  auto* last = &(_pool.back());
+
+  // buld circular list
+  for (auto& thread: _pool) {
+    last->_next = &thread;
+    last = &thread;
+    thread._terminate = &_terminate;
+  }
+
+  // start threads
+  for (auto& thread: _pool) {
+    thread.start(&_join);
+  }
+}
+
+IResearchFeature::Async::~Async() {
+  _terminate.store(true); // request stop asynchronous tasks
+  notify(); // notify all threads
+
+  CONDITION_LOCKER(lock, _join);
+
+  // join with all threads in pool
+  for (auto& thread: _pool) {
+    while(thread.isRunning()) {
+      _join.wait();
+    }
+  }
+}
+
+void IResearchFeature::Async::emplace(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    Fn &&fn
+) {
+  if (!fn) {
+    return; // skip empty functers
+  }
+
+  auto& thread = _pool[0];
+  SCOPED_LOCK(thread._mutex);
+  thread._pending.emplace_back(mutex, std::move(fn));
+  ++thread._size;
+  thread._cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
+}
+
+void IResearchFeature::Async::notify() const {
+  // notify all threads
+  for (auto& thread: _pool) {
+    SCOPED_LOCK(thread._mutex);
+    thread._cond.notify_all();
+    thread._wasNotified = true;
+  }
+}
+
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
+    _async(std::make_unique<Async>()),
     _running(false) {
   setOptional(true);
   startsAfter("ViewTypes");
@@ -323,6 +629,17 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter("TransactionManager");
 
   startsBefore("GeneralServer");
+}
+
+void IResearchFeature::async(
+    std::shared_ptr<ResourceMutex> const& mutex,
+    Async::Fn &&fn
+) {
+  _async->emplace(mutex, std::move(fn));
+}
+
+void IResearchFeature::asyncNotify() const {
+  _async->notify();
 }
 
 void IResearchFeature::beginShutdown() {
@@ -357,10 +674,8 @@ void IResearchFeature::prepare() {
   // register 'arangosearch' view
   registerViewFactory();
 
-  // register 'arangosearch' TransactionState state-change callback factory
-  arangodb::transaction::Methods::addStateRegistrationCallback(
-    transactionStateRegistrationCallback
-  );
+  // register 'arangosearch' Transaction DataSource registration callback
+  registerTransactionDataSourceRegistrationCallback();
 
   registerRecoveryHelper();
 }
@@ -369,12 +684,15 @@ void IResearchFeature::start() {
   ApplicationFeature::start();
 
   // register IResearchView filters
- {
-    auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+  {
+    auto* functions = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::aql::AqlFunctionFeature
+    >("AQLFunctions");
 
     if (functions) {
       registerFilters(*functions);
       registerScorers(*functions);
+      registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature 'AQLFunctions' while registering iresearch filters";

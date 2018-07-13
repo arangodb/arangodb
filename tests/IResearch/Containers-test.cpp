@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <set>
+#include <tuple>
 #include "catch.hpp"
 #include "utils/thread_utils.hpp"
 
@@ -44,12 +46,11 @@ TEST_CASE("ContainersTest", "[iresearch][iresearch-containers]") {
   ContainersSetup s;
   UNUSED(s);
 
-  SECTION("testAsyncValue") {
-    struct Value: public arangodb::iresearch::AsyncValue<int*> {
+  SECTION("testResourceMutex") {
+    struct Value: public arangodb::iresearch::ResourceMutex {
      public:
-      Value(int* value): AsyncValue(value) {}
-      void set(int* value) { _value = value; }
-      irs::async_utils::read_write_mutex& valueMutex() { return _mutex; }
+      Value(int* value): ResourceMutex(value) {}
+      int* get() const { return static_cast<int*>(arangodb::iresearch::ResourceMutex::get()); }
     };
 
     // test value
@@ -57,9 +58,8 @@ TEST_CASE("ContainersTest", "[iresearch][iresearch-containers]") {
       int i = 5;
       Value value(&i);
       CHECK((&i == value.get()));
-      int j = 6;
-      value.set(&j);
-      CHECK((&j == value.get()));
+      value.reset();
+      CHECK((nullptr == value.get()));
     }
 
     // test read lock
@@ -90,30 +90,21 @@ TEST_CASE("ContainersTest", "[iresearch][iresearch-containers]") {
       Value value(&i);
       std::condition_variable cond;
       std::mutex cond_mutex;
+      SCOPED_LOCK_NAMED(value.mutex(), lock);
       SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
-      irs::async_utils::read_write_mutex::write_mutex mutex(value.valueMutex());
-      SCOPED_LOCK_NAMED(mutex, lock); // write lock
-
-      std::atomic<bool> locked(false);
-      std::thread thread([&value, &cond, &cond_mutex, &locked]()->void {
-        auto mutex = value.mutex();
-        SCOPED_LOCK(mutex);
-        locked = true;
+      std::thread thread([&cond, &cond_mutex, &value]()->void {
+        value.reset();
         SCOPED_LOCK(cond_mutex);
         cond.notify_all();
       });
 
-      auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
-
-      // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
-      MSVC2015_OPTIMIZED_ONLY(while(!locked && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000)));
-      MSVC2017_ONLY(while(!locked && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000)));
-
-      CHECK((std::cv_status::timeout == result));
-      // ^^^ expecting timeout because reader should block indefinitely
-      cond_lock.unlock();
+      auto result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
       lock.unlock();
+      auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
+      cond_lock.unlock();
       thread.join();
+      CHECK((std::cv_status::timeout == result0)); // check only after joining with thread to avoid early exit
+      CHECK((std::cv_status::timeout != result1)); // check only after joining with thread to avoid early exit
     }
   }
 

@@ -30,16 +30,37 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
+#include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ServerState.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-NS_LOCAL
+namespace {
+
+size_t numberOfShards(
+    arangodb::CollectionNameResolver const& resolver,
+    arangodb::LogicalView const& view
+) {
+  size_t numberOfShards = 0;
+
+  auto visitor = [&numberOfShards](
+      arangodb::LogicalCollection const& collection
+  ) noexcept {
+    numberOfShards += collection.numberOfShards();
+    return true;
+  };
+
+  resolver.visitCollections(visitor, view.id());
+
+  return numberOfShards;
+}
 
 std::vector<arangodb::iresearch::IResearchSort> buildSort(
     ExecutionPlan const& plan,
@@ -86,6 +107,28 @@ std::vector<arangodb::iresearch::IResearchSort> buildSort(
   }
 
   return entries;
+}
+
+bool addView(
+    arangodb::LogicalView const& view,
+    arangodb::aql::Query& query
+) {
+  auto* collections = query.collections();
+
+  if (!collections) {
+    return false;
+  }
+
+  // linked collections
+  auto visitor = [collections](TRI_voc_cid_t cid) {
+    collections->add(
+      arangodb::basics::StringUtils::itoa(cid),
+      arangodb::AccessMode::Type::READ
+    );
+    return true;
+  };
+
+  return view.visitCollections(visitor);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -148,7 +191,7 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
     case EN::SORT: {
       // register which variables are used in a SORT
       if (_sorts.empty()) {
-        for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
+        for (auto& it : EN::castTo<SortNode const*>(en)->elements()) {
           _sorts.emplace_back(it.var, it.ascending);
           TRI_IF_FAILURE("IResearchViewConditionFinder::sortNode") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -164,7 +207,7 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
 
       _variableDefinitions.emplace(
           outvars[0]->id,
-          static_cast<CalculationNode const*>(en)->expression()->node());
+          EN::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("IResearchViewConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -172,7 +215,18 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_IRESEARCH_VIEW: {
-      auto node = static_cast<IResearchViewNode const*>(en);
+      auto node = EN::castTo<IResearchViewNode const*>(en);
+      auto& view = *node->view();
+
+      // add view and linked collections to the query
+      TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
+      if (!addView(view, *_plan->getAst()->query())) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          "failed to process all collections linked with the view '" + view.name() + "'"
+        );
+      }
+
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
         break;
@@ -260,7 +314,7 @@ bool IResearchViewConditionFinder::handleFilterCondition(
               auto setter = _plan->getVarSetBy(variable->id);
 
               if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-                auto s = static_cast<CalculationNode*>(setter);
+                auto s = EN::castTo<CalculationNode*>(setter);
                 auto filterExpression = s->expression();
                 AstNode* inNode = filterExpression->nodeForModification();
                 if (!inNode->canThrow() && inNode->isDeterministic() &&
@@ -311,7 +365,7 @@ bool IResearchViewConditionFinder::handleFilterCondition(
   return true;
 }
 
-NS_END // NS_LOCAL
+}
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
@@ -383,8 +437,9 @@ void handleViewsRule(
     auto const noMatch = createdViewNodes.end();
 
     for (auto* node : nodes) {
+      TRI_ASSERT(node);
       // find the node with the filter expression
-      auto inVar = static_cast<FilterNode const*>(node)->getVariablesUsedHere();
+      auto inVar = EN::castTo<FilterNode const*>(node)->getVariablesUsedHere();
       TRI_ASSERT(inVar.size() == 1);
 
       auto setter = plan->getVarSetBy(inVar[0]->id);
@@ -398,7 +453,7 @@ void handleViewsRule(
       if (it != noMatch) {
         toUnlink.emplace(node);
         toUnlink.emplace(setter);
-        static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
+        EN::castTo<CalculationNode*>(setter)->canRemoveIfThrows(true);
       }
     }
 
@@ -407,7 +462,8 @@ void handleViewsRule(
 
     // remove setters covered by a view internally
     for (auto* node : createdViewNodes) {
-      auto& viewNode = static_cast<IResearchViewNode const&>(*node);
+      TRI_ASSERT(node);
+      auto& viewNode = *EN::castTo<IResearchViewNode const*>(node);
 
       for (auto const& sort : viewNode.sortCondition()) {
         auto const* var = sort.var;
@@ -423,7 +479,7 @@ void handleViewsRule(
         }
 
         toUnlink.emplace(setter);
-        static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
+        EN::castTo<CalculationNode*>(setter)->canRemoveIfThrows(true);
       }
     }
 
@@ -481,7 +537,7 @@ void scatterViewInClusterRule(
 
   for (auto& it : nodes) {
     subqueries.emplace(
-      static_cast<SubqueryNode const*>(it)->getSubquery(), it
+      EN::castTo<SubqueryNode const*>(it)->getSubquery(), it
     );
   }
 
@@ -490,8 +546,26 @@ void scatterViewInClusterRule(
   nodes.clear();
   plan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
+  TRI_ASSERT(
+    plan->getAst()
+      && plan->getAst()->query()
+      && plan->getAst()->query()->trx()
+  );
+  auto* resolver = plan->getAst()->query()->trx()->resolver();
+  TRI_ASSERT(resolver);
+
   for (auto* node : nodes) {
     TRI_ASSERT(node);
+    auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
+
+    if (viewNode.empty()) {
+      // FIXME we have to invalidate plan cache (if exists)
+      // in case if corresponding view has been modified
+
+      // view has no associated collection, nothing to scatter
+      continue;
+    }
+
     auto const& parents = node->getParents();
     auto const& deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
@@ -508,17 +582,16 @@ void scatterViewInClusterRule(
       continue;
     }
 
+    auto& vocbase = viewNode.vocbase();
+    auto& view = *viewNode.view();
+
     bool const isRootNode = plan->isRoot(node);
     plan->unlinkNode(node, true);
 
-    auto& viewNode = static_cast<IResearchViewNode&>(*node);
-    auto& vocbase = viewNode.vocbase();
-    auto& view = viewNode.view();
-
     // insert a scatter node
     auto scatterNode = plan->registerNode(
-      std::make_unique<IResearchViewScatterNode>(
-        *plan, plan->nextId(), vocbase, view
+      std::make_unique<ScatterNode>(
+        plan.get(), plan->nextId()
     ));
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
@@ -546,21 +619,18 @@ void scatterViewInClusterRule(
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
 
-    // insert a gather node
+    // insert gather node
+    auto const sortMode = GatherNode::evaluateSortMode(
+      numberOfShards(*resolver, view)
+    );
     auto* gatherNode = plan->registerNode(
       std::make_unique<GatherNode>(
         plan.get(),
         plan->nextId(),
-        &vocbase,
-        nullptr //FIXME collection
+        sortMode
     ));
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
-
-   // FIXME
-   // if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
-   //   gatherNode->setElements(elements);
-   // }
 
     // and now link the gather node with the rest of the plan
     if (parents.size() == 1) {
@@ -571,7 +641,7 @@ void scatterViewInClusterRule(
     auto it = subqueries.find(node);
 
     if (it != subqueries.end()) {
-      auto* subQueryNode = static_cast<SubqueryNode*>((*it).second);
+      auto* subQueryNode = EN::castTo<SubqueryNode*>((*it).second);
       subQueryNode->setSubquery(gatherNode, true);
     }
 

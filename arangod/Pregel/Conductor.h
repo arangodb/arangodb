@@ -23,11 +23,12 @@
 #ifndef ARANGODB_PREGEL_CONDUCTOR_H
 #define ARANGODB_PREGEL_CONDUCTOR_H 1
 
-#include <string>
+#include "Basics/Common.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include "Basics/Common.h"
+
 #include "Basics/Mutex.h"
+#include "Basics/asio_ns.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
@@ -90,7 +91,7 @@ class Conductor {
   double _startTimeSecs = 0;
   double _computationStartTimeSecs = 0;
   double _endTimeSecs = 0;
-  std::unique_ptr<boost::asio::deadline_timer> _boost_timer;
+  std::unique_ptr<asio::deadline_timer> _boost_timer;
 
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& path, VPackSlice additional);
@@ -120,7 +121,7 @@ class Conductor {
   void start();
   void cancel();
   void startRecovery();
-  VPackBuilder collectAQLResults();
+  void collectAQLResults(velocypack::Builder& outBuilder);
   VPackBuilder toVelocyPack() const;
 
   double totalRuntimeSecs() const {

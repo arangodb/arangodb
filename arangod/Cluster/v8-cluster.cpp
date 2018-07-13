@@ -838,10 +838,11 @@ static void JS_GetResponsibleShardClusterInfo(
 
   ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(args[0]);
-  auto vocbase = GetContextVocBase(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
   auto ci = ClusterInfo::instance();
-  auto collInfo = ci->getCollection(vocbase->name(), collectionId);
+  auto collInfo = ci->getCollection(vocbase.name(), collectionId);
   bool usesDefaultShardingAttributes;
+
   res = ClusterInfo::instance()->getResponsibleShard(
       collInfo.get(), builder.slice(), documentIsComplete, shardId,
       usesDefaultShardingAttributes);
@@ -1237,26 +1238,6 @@ static void JS_RoleServerState(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the server id (used for testing)
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetIdServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setId(<id>)");
-  }
-
-  std::string const id = TRI_ObjectToString(args[0]);
-  ServerState::instance()->setId(id);
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the server role (used for testing)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1633,7 +1614,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationID opId = cc->asyncRequest(
       clientTransactionID, coordTransactionID, destination, reqType, path, body,
-      headerFields, 0, timeout, singleRequest, initTimeout);
+      headerFields, nullptr, timeout, singleRequest, initTimeout);
   ClusterCommResult res = cc->enquire(opId);
   if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1933,12 +1914,11 @@ static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& a
   ONLY_IN_CLUSTER
 
   v8::HandleScope scope(isolate);
-  auto vocbase = GetContextVocBase(isolate);
-
+  auto& vocbase = GetContextVocBase(isolate);
   auto reporter = cluster::ShardDistributionReporter::instance();
-
   VPackBuilder result;
-  reporter->getDistributionForDatabase(vocbase->name(), result);
+
+  reporter->getDistributionForDatabase(vocbase.name(), result);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   TRI_V8_TRY_CATCH_END
@@ -1959,12 +1939,13 @@ static void JS_GetCollectionShardDistribution(v8::FunctionCallbackInfo<v8::Value
   std::string const colName = TRI_ObjectToString(args[0]);
 
   v8::HandleScope scope(isolate);
-  auto vocbase = GetContextVocBase(isolate);
-
+  auto& vocbase = GetContextVocBase(isolate);
   auto reporter = cluster::ShardDistributionReporter::instance();
-
   VPackBuilder result;
-  reporter->getCollectionDistributionForDatabase(vocbase->name(), colName, result);
+
+  reporter->getCollectionDistributionForDatabase(
+    vocbase.name(), colName, result
+  );
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   TRI_V8_TRY_CATCH_END
@@ -2116,8 +2097,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "role"),
                        JS_RoleServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setId"),
-                       JS_SetIdServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setRole"),
                        JS_SetRoleServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "redetermineRole"),
@@ -2176,6 +2155,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
       JS_GetShardDistribution);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION"),
       JS_GetCollectionShardDistribution);
 }

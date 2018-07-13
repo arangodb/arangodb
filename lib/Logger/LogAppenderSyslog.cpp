@@ -64,7 +64,7 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   } else {
     CODE* ptr = reinterpret_cast<CODE*>(facilitynames);
 
-    while (ptr->c_name != 0) {
+    while (ptr->c_name != nullptr) {
       if (strcmp(ptr->c_name, facility.c_str()) == 0) {
         value = ptr->c_val;
         break;

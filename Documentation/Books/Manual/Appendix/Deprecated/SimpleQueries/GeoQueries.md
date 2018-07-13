@@ -2,7 +2,7 @@ Geo Queries
 ===========
 
 {% hint 'warning' %}
-It is recommended to use AQL instead, see [**Geo functions**](../../../AQL/Functions/Geo.html).
+It is recommended to use AQL instead, see [**Geo functions**](../../../../AQL/Functions/Geo.html).
 {% endhint %}
 
 The ArangoDB allows to select documents based on geographic coordinates. In
@@ -62,5 +62,5 @@ Related topics
 --------------
 
 Other ArangoDB geographic features are described in: 
-- [AQL Geo functions](../../../AQL/Functions/Geo.html)
-- [Geo indexes](../../../Indexing/Geo.md)
+- [AQL Geo functions](../../../../AQL/Functions/Geo.html)
+- [Geo-Spatial indexes](../../../Indexing/Geo.md)

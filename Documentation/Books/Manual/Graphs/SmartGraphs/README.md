@@ -1,7 +1,7 @@
 SmartGraphs
 ===========
 
-__This feature is only available in the Enterprise Edition.__
+**This feature is only available in the Enterprise Edition.**
 
 This chapter describes the [smart-graph](../README.md) module.
 It enables you to manage graphs at scale, it will give a vast performance benefit for all graphs sharded in an ArangoDB Cluster.
@@ -53,7 +53,7 @@ Getting started
 ---------------
 
 First of all SmartGraphs *cannot use existing collections*, when switching to SmartGraph from an existing data set you have to import the data into a fresh SmartGraph.
-This switch can be easily achieved with [arangodump](../../Administration/Arangodump.md) and [arangorestore](../../Administration/Arangorestore.md).
+This switch can be easily achieved with [arangodump](../../Programs/Arangodump/README.md) and [arangorestore](../../Programs/Arangorestore/README.md).
 The only thing you have to change in this pipeline is that you create the new collections with the SmartGraph before starting `arangorestore`.
 
 * Create a graph

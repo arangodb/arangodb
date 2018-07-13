@@ -24,7 +24,7 @@ function help() {
   echo "  $0"
   echo "  $0 -a 1 -c 1 -d 3 -t ssl"
   echo "  $0 -a 3 -c 1 -d 2 -t tcp -i C"
-  
+
 }
 
 # defaults
@@ -40,7 +40,7 @@ if [ -z "$XTERM" ] ; then
     XTERM="x-terminal-emulator"
 fi
 if [ -z "$XTERMOPTIONS" ] ; then
-    XTERMOPTIONS="--geometry=80x43"
+    XTERMOPTIONS=" --geometry=80x43 -e "
 fi
 BUILD="./build"
 JWT_SECRET=""
@@ -104,7 +104,7 @@ while [[ -n "$1" ]]; do
       ;;
     -h|--help)
       help
-      exit 1  
+      exit 1
       ;;
     -B|--build)
       BUILD=${2}
@@ -120,7 +120,7 @@ while [[ -n "$1" ]]; do
       exit 1
       ;;
   esac
-  
+
   if ! shift; then
     echo 'Missing parameter argument.' >&2
     return 1

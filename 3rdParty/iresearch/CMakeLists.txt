@@ -33,6 +33,22 @@ if (MSVC AND MSVC_BUILD_THREADS)
 endif()
 
 ################################################################################
+### directories
+################################################################################
+
+set(EXECUTABLE_OUTPUT_PATH
+  ${CMAKE_BINARY_DIR}/bin
+  CACHE PATH
+  "Executable output path"
+)
+
+set(LIBRARY_OUTPUT_PATH
+  ${CMAKE_BINARY_DIR}/bin
+  CACHE PATH 
+  "Library output path"
+)
+
+################################################################################
 ### find 3rd party libraries
 ################################################################################
 
@@ -108,19 +124,6 @@ set(IResearch_INCLUDE_DIR
   "${PROJECT_SOURCE_DIR}/core"
   CACHE INTERNAL
   ""
-)
-
-# set output directories
-set(EXECUTABLE_OUTPUT_PATH
-  ${CMAKE_BINARY_DIR}/bin
-  CACHE PATH
-  "Executable output path"
-)
-
-set(LIBRARY_OUTPUT_PATH
-  ${CMAKE_BINARY_DIR}/bin
-  CACHE PATH 
-  "Library output path"
 )
 
 mark_as_advanced( 

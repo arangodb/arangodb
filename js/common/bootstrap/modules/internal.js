@@ -7,31 +7,33 @@ global.DEFINE_MODULE('internal', (function () {
 
   const exports = {};
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief module "internal"
-  // /
-  // / @file
-  // /
-  // / DISCLAIMER
-  // /
-  // / Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-  // /
-  // / Licensed under the Apache License, Version 2.0 (the "License")
-  // / you may not use this file except in compliance with the License.
-  // / You may obtain a copy of the License at
-  // /
-  // /     http://www.apache.org/licenses/LICENSE-2.0
-  // /
-  // / Unless required by applicable law or agreed to in writing, software
-  // / distributed under the License is distributed on an "AS IS" BASIS,
-  // / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  // / See the License for the specific language governing permissions and
-  // / limitations under the License.
-  // /
-  // / Copyright holder is triAGENS GmbH, Cologne, Germany
-  // /
-  // / @author Dr. Frank Celler
-  // / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+  ///////////////////////////////////////////////////////////////////////////////
+  // @brief module "internal"
+  //
+  // @file
+  //
+  // DISCLAIMER
+  //
+  // Copyright 2018 ArangoDB GmbH, Cologne, Germany
+  // Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+  //
+  // Licensed under the Apache License, Version 2.0 (the "License")
+  // you may not use this file except in compliance with the License.
+  // You may obtain a copy of the License at
+  //
+  //     http://www.apache.org/licenses/LICENSE-2.0
+  //
+  // Unless required by applicable law or agreed to in writing, software
+  // distributed under the License is distributed on an "AS IS" BASIS,
+  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  // See the License for the specific language governing permissions and
+  // limitations under the License.
+  //
+  // Copyright holder is ArangoDB GmbH, Cologne, Germany
+  //
+  // @author Dr. Frank Celler
+  // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+  // @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
   // //////////////////////////////////////////////////////////////////////////////
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -747,6 +749,22 @@ global.DEFINE_MODULE('internal', (function () {
   exports.setUnitTestsResult = function (value) {
     global.SYS_UNIT_TESTS_RESULT = value;
   };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief unitFilterTests
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.unitTestFilter = function () {
+    return global.SYS_UNIT_FILTER_TEST;
+  };
+
+  // end process
+  if (global.SYS_EXIT) {
+    exports.exit = global.SYS_EXIT;
+    delete global.SYS_EXIT;
+  } else {
+    exports.exit = function() {};
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief structured to flat commandline arguments

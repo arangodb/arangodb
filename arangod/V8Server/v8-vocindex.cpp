@@ -29,7 +29,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
@@ -40,7 +39,6 @@
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -201,15 +199,16 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-  if (vocbase == nullptr || vocbase->isDangling()) {
+  auto& vocbase = GetContextVocBase(isolate);
+
+  if (vocbase.isDangling()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   } else if (args.Length() < 1 || args.Length() > 4) {
     TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>, <type>, <options>)");
   }
 
   if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseDatabase(vocbase->name(), auth::Level::RW)) {
+      !ExecContext::CURRENT->canUseDatabase(vocbase.name(), auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -256,19 +255,24 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   v8::Handle<v8::Value> result;
-  Result res = methods::Collections::create(vocbase, name, collectionType,
-                                            propSlice,
-                                            createWaitsForSyncReplication,
-                                            enforceReplicationFactor,
-                                            [&isolate, &result](LogicalCollection* coll) {
-                                              if (ServerState::instance()->isCoordinator()) {
-                                                std::unique_ptr<LogicalCollection> cc = coll->clone();
-                                                result = WrapCollection(isolate, cc.get());
-                                                cc.release();
-                                              } else {
-                                                result = WrapCollection(isolate, coll);
-                                              }
-                                            });
+  auto res = methods::Collections::create(
+    &vocbase,
+    name,
+    collectionType,
+    propSlice,
+    createWaitsForSyncReplication,
+    enforceReplicationFactor,
+    [&isolate, &result](LogicalCollection* coll) {
+      if (ServerState::instance()->isCoordinator()) {
+        std::unique_ptr<LogicalCollection> cc = coll->clone();
+        result = WrapCollection(isolate, cc.get());
+        cc.release();
+      } else {
+        result = WrapCollection(isolate, coll);
+      }
+    }
+  );
+
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }

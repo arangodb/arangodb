@@ -574,7 +574,7 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
 
-      if (index.type === 'geo1' || index.type === 'geo2') {
+      if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
         }
@@ -680,7 +680,7 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
 
-      if (index.type === 'geo1' || index.type === 'geo2') {
+      if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
         }
@@ -790,7 +790,7 @@ SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitu
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
 
-      if (index.type === 'geo1' || index.type === 'geo2') {
+      if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
         }

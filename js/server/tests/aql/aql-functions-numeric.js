@@ -68,9 +68,6 @@ function ahuacatlNumericFunctionsTestSuite () {
       
       query = "RETURN NOOPT(PI())";
       assertAlmostEqual(expected, getQueryResults(query)[0], "comparing NOOPT(PI)");
-        
-      query = "RETURN NOOPT(V8(PI()))";
-      assertAlmostEqual(expected, getQueryResults(query)[0], "comparing NOOPT(V8(PI))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,9 +136,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
         
         query = "RETURN NOOPT(LOG(@v))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(LOG(@v)))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
@@ -213,9 +207,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(LOG2(@v))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(LOG2(@v)))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -285,9 +276,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
         
         query = "RETURN NOOPT(LOG10(@v))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(LOG10(@v)))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
@@ -359,9 +347,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(EXP(@v))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(EXP(@v)))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -432,9 +417,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(EXP2(@v))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(EXP2(@v)))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -503,9 +485,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(RADIANS(@v))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(RADIANS(@v)))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -573,9 +552,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
         
         query = "RETURN NOOPT(DEGREES(@v))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(DEGREES(@v)))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
@@ -647,9 +623,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(SIN(@v))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(SIN(@v)))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -720,9 +693,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(COS(@v))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(COS(@v)))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -792,9 +762,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
         
         query = "RETURN NOOPT(TAN(@v))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(TAN(@v)))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
@@ -869,9 +836,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(ASIN(@v))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(ASIN(@v)))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -945,9 +909,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(ACOS(@v))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(ACOS(@v)))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -1017,9 +978,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
         
         query = "RETURN NOOPT(ATAN(@v))";
-        assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(ATAN(@v)))";
         assertAlmostEqual(v[1], getQueryResults(query, { v: v[0] })[0], query + " " + JSON.stringify(v));
       });
     },
@@ -3847,9 +3805,6 @@ function ahuacatlNumericFunctionsTestSuite () {
         
         query = "RETURN NOOPT(ATAN2(@v1, @v2))";
         assertAlmostEqual(v[2], getQueryResults(query, { v1: v[0], v2: v[1] })[0], query + " " + JSON.stringify(v));
-        
-        query = "RETURN NOOPT(V8(ATAN2(@v1, @v2)))";
-        assertAlmostEqual(v[2], getQueryResults(query, { v1: v[0], v2: v[1] })[0], query + " " + JSON.stringify(v));
       });
     },
 
@@ -3865,9 +3820,6 @@ function ahuacatlNumericFunctionsTestSuite () {
 
       actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(FLOOR(r))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(FLOOR(r)))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3881,13 +3833,11 @@ function ahuacatlNumericFunctionsTestSuite () {
             return `RETURN FLOOR(${input})`;
           case 1:
             return `RETURN NOOPT(FLOOR(${input}))`;
-          case 2:
-            return `RETURN NOOPT(V8(FLOOR(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1, 2")); 
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "null")));
@@ -3910,9 +3860,6 @@ function ahuacatlNumericFunctionsTestSuite () {
 
       actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(CEIL(r))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(CEIL(r)))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3926,13 +3873,11 @@ function ahuacatlNumericFunctionsTestSuite () {
             return `RETURN CEIL(${input})`;
           case 1:
             return `RETURN NOOPT(CEIL(${input}))`;
-          case 2:
-            return `RETURN NOOPT(V8(CEIL(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1, 2")); 
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "null")));
@@ -3962,12 +3907,6 @@ function ahuacatlNumericFunctionsTestSuite () {
       for (i = 0; i < expected.length; ++i) {
         assertEqual(expected[i].toPrecision(5), actual[i].toPrecision(5));
       }
-
-      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(ABS(r)))");
-      assertEqual(actual.length, expected.length);
-      for (i = 0; i < expected.length; ++i) {
-        assertEqual(expected[i].toPrecision(5), actual[i].toPrecision(5));
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3981,13 +3920,11 @@ function ahuacatlNumericFunctionsTestSuite () {
             return `RETURN ABS(${input})`;
           case 1:
             return `RETURN NOOPT(ABS(${input}))`;
-          case 2:
-            return `RETURN NOOPT(V8(ABS(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1,2")); 
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "null")));
@@ -4010,9 +3947,6 @@ function ahuacatlNumericFunctionsTestSuite () {
 
       actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(ROUND(r))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(ROUND(r)))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4026,14 +3960,12 @@ function ahuacatlNumericFunctionsTestSuite () {
             return `RETURN ROUND(${input})`;
           case 1:
             return `RETURN NOOPT(ROUND(${input}))`;
-          case 2:
-            return `RETURN NOOPT(V8(ROUND(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
 
       };
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1,2")); 
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "null")));
@@ -4052,8 +3984,7 @@ function ahuacatlNumericFunctionsTestSuite () {
     testRand : function () {
       var queries = [
         "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()",
-        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN NOOPT(RAND())",
-        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN NOOPT(V8(RAND()))"
+        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN NOOPT(RAND())"
       ];
       queries.forEach(function(query) {
         var actual = getQueryResults(query);
@@ -4076,9 +4007,6 @@ function ahuacatlNumericFunctionsTestSuite () {
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RAND(1))");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RAND(2))"); 
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RAND(1)))");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RAND(2)))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4152,14 +4080,6 @@ function ahuacatlNumericFunctionsTestSuite () {
 //        else {
           assertAlmostEqual(value[1], actual[0], query);
 //        }
-        query = "RETURN NOOPT(V8(SQRT(" + JSON.stringify(value[0]) + ")))";
-        actual = getQueryResults(query);
-//        if (value[1] === null) {
-//          assertEqual(0, actual[0]);
-//        }
-//        else {
-          assertAlmostEqual(value[1], actual[0], query);
-//        }
       });
     },
 
@@ -4174,13 +4094,11 @@ function ahuacatlNumericFunctionsTestSuite () {
             return `RETURN SQRT(${input})`;
           case 1:
             return `RETURN NOOPT(SQRT(${input}))`;
-          case 2:
-            return `RETURN NOOPT(V8(SQRT(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "2, 2")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "2, 2, 3")); 
@@ -5803,20 +5721,12 @@ function ahuacatlNumericFunctionsTestSuite () {
       var valgrind = require("internal").valgrind;
 
       data.forEach(function (value) {
-        if (valgrind && (value[0] === 0 || value[1] >= 0 && value[1] < 1)) {
-          // V8 under Valgrind has an issue with Math.pow(0, 0.1);
-          return;
-        }
         var query = "RETURN POW(" + JSON.stringify(value[0]) + ", " + JSON.stringify(value[1]) + ")";
         var actual = getQueryResults(query);
         assertAlmostEqual(value[2], actual[0], query + " " + JSON.stringify(value));
 
         actual = getQueryResults("RETURN NOOPT(POW(" + JSON.stringify(value[0]) + ", " + JSON.stringify(value[1]) + "))");
         assertAlmostEqual(value[2], actual[0], value, query + " " + JSON.stringify(value));
-
-        query = "RETURN NOOPT(V8(POW(" + JSON.stringify(value[0]) + ", " + JSON.stringify(value[1]) + ")))";
-        actual = getQueryResults(query);
-        assertAlmostEqual(value[2], actual[0], query + " " + JSON.stringify(value));
       });
     },
 
@@ -5831,13 +5741,11 @@ function ahuacatlNumericFunctionsTestSuite () {
             return `RETURN POW(${input})`;
           case 1:
             return `RETURN NOOPT(POW(${input}))`;
-          case 2:
-            return `RETURN NOOPT(V8(POW(${input})))`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "2")); 
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "2, 2, 3")); 

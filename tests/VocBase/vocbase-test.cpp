@@ -24,7 +24,6 @@
 #include "catch.hpp"
 #include "../IResearch/common.h"
 #include "../IResearch/StorageEngineMock.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -40,6 +39,7 @@ namespace {
 std::shared_ptr<arangodb::LogicalView> makeTestView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
+    bool /*isNew*/,
     uint64_t planVersion,
     arangodb::LogicalView::PreCommitCallback const& preCommit
   ) {
@@ -113,7 +113,9 @@ struct VocbaseSetup {
     }
 
     // register view factory
-    arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>()->emplace(
+    arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::ViewTypesFeature
+    >()->emplace(
       arangodb::LogicalDataSource::Type::emplace(
         arangodb::velocypack::StringRef("testViewType")
       ),

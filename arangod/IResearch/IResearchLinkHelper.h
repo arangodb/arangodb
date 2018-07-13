@@ -29,9 +29,13 @@
 
 namespace arangodb {
 
+class LogicalView; // forward declaration
+
 namespace velocypack {
+
 class Slice;
 class Builder;
+
 } // velocypack
 
 namespace iresearch {
@@ -46,31 +50,6 @@ struct IResearchLinkHelper {
   //////////////////////////////////////////////////////////////////////////////
   static velocypack::Slice const& emptyIndexSlice();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set the iResearch link 'type' field in the builder to the proper
-  ///        value
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setType(velocypack::Builder& builder);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set the IResearch view identifier field in the builder to the
-  ///        specified value
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setView(velocypack::Builder& builder, TRI_voc_cid_t value);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @returns view field from a specified link definition, or none slice if
-  ///          there is no such field
-  ////////////////////////////////////////////////////////////////////////////////
-  static velocypack::Slice getView(velocypack::Slice definition) noexcept;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief IResearch Link index type string value
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::string const& type() noexcept;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate and copy required fields from the 'definition' into
   ///        'normalized'
@@ -81,6 +60,27 @@ struct IResearchLinkHelper {
     bool isCreation
   );
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief IResearch Link index type string value
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::string const& type() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates the collections in 'vocbase' to match the specified
+  ///        IResearchLink definitions
+  /// @param modified set of modified collection IDs
+  /// @param viewId the view to associate created links with
+  /// @param links the link modification definitions, null link == link removal
+  /// @param stale links to remove if there is no creation definition in 'links'
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::Result updateLinks(
+      std::unordered_set<TRI_voc_cid_t>& modified,
+      TRI_vocbase_t& vocbase,
+      arangodb::LogicalView& view,
+      arangodb::velocypack::Slice const& links,
+      std::unordered_set<TRI_voc_cid_t> const& stale = {}
+  );
+
  private:
   IResearchLinkHelper() = delete;
 }; // IResearchLinkHelper
@@ -89,4 +89,3 @@ struct IResearchLinkHelper {
 } // arangodb
 
 #endif // ARANGODB_IRESEARCH__IRESEARCH_LINK_HELPER_H
-

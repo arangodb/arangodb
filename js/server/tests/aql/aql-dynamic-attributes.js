@@ -39,10 +39,6 @@ function ahuacatlDynamicAttributesTestSuite () {
   function checkResult(query, expected) {
     var q;
 
-    q = "RETURN NOOPT(V8(" + query + "))";
-    assertEqual(expected, AQL_EXECUTE(q).json[0]);
-    assertEqual("simple", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
-    
     q = "RETURN NOOPT(" + query + ")";
     assertEqual(expected, AQL_EXECUTE(q).json[0]);
     assertEqual("simple", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
@@ -239,10 +235,8 @@ function ahuacatlDynamicAttributesTestSuite () {
         doc["test-value-" + i] = i;
         expected.push(doc);
       }
-      var actual = AQL_EXECUTE("FOR i IN 1..100 RETURN V8({ [ CONCAT('test-value-', i) ] : i })");
-      assertEqual(expected, actual.json);
       
-      actual = AQL_EXECUTE("FOR i IN 1..100 RETURN { [ CONCAT('test-value-', i) ] : i }");
+      let actual = AQL_EXECUTE("FOR i IN 1..100 RETURN { [ CONCAT('test-value-', i) ] : i }");
       assertEqual(expected, actual.json);
     },
 

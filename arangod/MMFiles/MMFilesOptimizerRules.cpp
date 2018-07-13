@@ -58,7 +58,7 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
 
   for (auto const& n : nodes) {
     auto node = static_cast<SortNode*>(n);
-    auto const& elements = node->getElements();
+    auto const& elements = node->elements();
     if (elements.size() != 1) {
       // we're looking for "SORT RAND()", which has just one sort criterion
       continue;

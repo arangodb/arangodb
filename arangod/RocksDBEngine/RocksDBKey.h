@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_H
@@ -29,7 +29,7 @@
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/LocalDocumentId.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 #include <rocksdb/slice.h>
 
@@ -124,10 +124,9 @@ class RocksDBKey {
                                    LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for a geoIndexValue
+  /// @brief Create a fully-specified key for an S2CellId
   //////////////////////////////////////////////////////////////////////////////
-  void constructGeoIndexValue(uint64_t indexId, int32_t offset,
-                              bool isSlot);
+  void constructGeoIndexValue(uint64_t indexId, uint64_t value, LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a view
@@ -218,9 +217,15 @@ class RocksDBKey {
   ///
   /// May be called only on Document keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static LocalDocumentId documentId(RocksDBKey const&);
-  static LocalDocumentId documentId(RocksDBEntryType type, rocksdb::Slice const&);
-
+  static LocalDocumentId documentId(rocksdb::Slice const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the LocalDocumentId from an index key
+  ///
+  /// May be called only on Index keys. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
+  static LocalDocumentId indexDocumentId(RocksDBEntryType type, rocksdb::Slice const&);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the primary key (`_key`) from a key
   ///
@@ -249,12 +254,13 @@ class RocksDBKey {
   static VPackSlice indexedVPack(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the geo pot offset
+  /// @brief Extracts the geospatial cell id
   ///
   /// May be called only on GeoIndexValues
   //////////////////////////////////////////////////////////////////////////////
-  static std::pair<bool, int32_t> geoValues(rocksdb::Slice const& slice);
+  static uint64_t geoValue(rocksdb::Slice const& slice);
 
+  /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
 
  public:
@@ -270,6 +276,7 @@ class RocksDBKey {
   }
 
  private:
+  /// @brief Entry type in the definitions CF
   static RocksDBEntryType type(char const* data, size_t size) {
     TRI_ASSERT(data != nullptr);
     TRI_ASSERT(size >= sizeof(char));

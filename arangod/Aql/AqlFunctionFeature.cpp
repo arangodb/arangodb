@@ -30,12 +30,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
 
-/// @brief determines if code is executed on coordinator or not
-static ExecutionCondition const NotInCoordinator = [] {
-  return !arangodb::ServerState::instance()->isRunningInCluster() ||
-         !arangodb::ServerState::instance()->isCoordinator();
-};
-
 AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 
 AqlFunctionFeature::AqlFunctionFeature(
@@ -57,6 +51,7 @@ void AqlFunctionFeature::validateOptions(
 void AqlFunctionFeature::prepare() {
   // set singleton
   AQLFUNCTIONS = this;
+  Functions::init();
 
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
@@ -66,12 +61,13 @@ void AqlFunctionFeature::prepare() {
   addListFunctions();
   addDocumentFunctions();
   addGeoFunctions();
+  addGeometryConstructors();
   addDateFunctions();
   addMiscFunctions();
   addStorageEngineFunctions();
 
   add({"PREGEL_RESULT", ".", false, true,
-    true, &Functions::PregelResult, NotInCoordinator});
+    true, &Functions::PregelResult});
 }
 
 void AqlFunctionFeature::unprepare() {
@@ -200,6 +196,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SHA512", ".", true, false, true, &Functions::Sha512});
   add({"HASH", ".", true, false, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, &Functions::RandomToken});
+  // FULLTEXT is replaced by the AQL optimizer with an index lookup
+  add({"FULLTEXT", ".h,.,.|." , false, true, false, &Functions::NotImplemented});
 }
 
 void AqlFunctionFeature::addNumericFunctions() {
@@ -252,6 +250,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"STDDEV_SAMPLE", ".", true, false, true, &Functions::StdDevSample});
   add({"STDDEV_POPULATION", ".", true, false, true, &Functions::StdDevPopulation});
   addAlias("STDDEV", "STDDEV_POPULATION");
+  add({"COUNT_DISTINCT", ".", true, false, true, &Functions::CountDistinct});
+  addAlias("COUNT_UNIQUE", "COUNT_DISTINCT");
   add({"UNIQUE", ".", true, false, true, &Functions::Unique});
   add({"SORTED_UNIQUE", ".", true, false, true, &Functions::SortedUnique});
   add({"SORTED", ".", true, false, true, &Functions::Sorted});
@@ -294,8 +294,24 @@ void AqlFunctionFeature::addDocumentFunctions() {
 void AqlFunctionFeature::addGeoFunctions() {
   // geo functions
   add({"DISTANCE", ".,.,.,.", true, false, true, &Functions::Distance});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false, true, false });
-  add({"IS_IN_POLYGON", ".,.|.", true, false, true });
+  add({"IS_IN_POLYGON", ".,.|.", true, false, true, &Functions::IsInPolygon});
+  add({"GEO_DISTANCE", ".,.", true, false, true, &Functions::GeoDistance});
+  add({"GEO_CONTAINS", ".,.", true, false, true, &Functions::GeoContains});
+  add({"GEO_INTERSECTS", ".,.", true, false, true, &Functions::GeoIntersects});
+  add({"GEO_EQUALS", ".,.", true, false, true, &Functions::GeoEquals});
+  // NEAR and WITHIN are replaced by the AQL optimizer with collection-based subqueries
+  add({"NEAR", ".h,.,.|.,.", false, true, false, &Functions::NotImplemented});
+  add({"WITHIN", ".h,.,.,.|.", false, true, false, &Functions::NotImplemented});
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false, true, false, &Functions::NotImplemented });
+}
+
+void AqlFunctionFeature::addGeometryConstructors() {
+  // geometry types
+  add({"GEO_POINT", ".,.", true, false, true, &Functions::GeoPoint});
+  add({"GEO_MULTIPOINT", ".", true, false, true, &Functions::GeoMultiPoint});
+  add({"GEO_POLYGON", ".", true, false, true, &Functions::GeoPolygon});
+  add({"GEO_LINESTRING", ".", true, false, true, &Functions::GeoLinestring});
+  add({"GEO_MULTILINESTRING", ".", true, false, true, &Functions::GeoMultiLinestring});
 }
 
 void AqlFunctionFeature::addDateFunctions() {
@@ -320,7 +336,8 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_SUBTRACT", ".,.|.", true, false, true, &Functions::DateSubtract});
   add({"DATE_DIFF", ".,.,.|.", true, false, true, &Functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", true, false, true, &Functions::DateCompare});
-  add({"DATE_FORMAT", ".,.", true, false, true });
+  add({"DATE_FORMAT", ".,.", true, false, true, &Functions::DateFormat});
+  add({"DATE_TRUNC",   ".,.", true, false, true, &Functions::DateTrunc});
 }
 
 void AqlFunctionFeature::addMiscFunctions() {
@@ -329,7 +346,6 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"PASSTHRU", ".", false, false, true, &Functions::Passthru});
   addAlias("NOOPT", "PASSTHRU");
   add({"V8", ".", true, false, true });
-  add({"TEST_INTERNAL", ".,.", false, false, true });
   add({"SLEEP", ".", false, true, true, &Functions::Sleep});
   add({"COLLECTIONS", "", false, true, false, &Functions::Collections});
   add({"NOT_NULL", ".|+", true, false, true, &Functions::NotNull});
@@ -337,7 +353,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_DOCUMENT", ".|+", true, false, true, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", true, false, true, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", true, false, true, &Functions::IsSameCollection});
-  add({"CURRENT_USER", "", false, false, false });
+  add({"CURRENT_USER", "", false, false, false, &Functions::CurrentUser});
   add({"CURRENT_DATABASE", "", false, false, false, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", ".h", false, true, false, &Functions::CollectionCount});
   add({"ASSERT", ".,.", false, true, true, &Functions::Assert});

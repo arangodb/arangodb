@@ -39,7 +39,23 @@ CMake flags
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
  * *-DUSE_CATCH_TESTS=On (default is On so this is set unless you explicitly disable it)
 
-If you have made changes to errors.dat, remember to use the -DUSE_MAINTAINER_MODE flag.
+Errors in ArangoDB
+------------------
+
+If one changes any error in the ArangoDB system, then one has to:
+
+ 1. Only touch `lib/Basics/errors.dat` and not the files which are
+    automatically generated from it (`lib/Basics/voc-errors.h`,
+    `lib/Basics/voc-errors.cpp` and `js/common/bootstrap/errors.js`)
+ 2. Always do a full build with `USE_MAINTAINER_MODE` switched ON
+    afterwards, *before* you commit the change.
+ 3. A `make arangod` is not enough! Since it will not recreate these
+    files!
+
+*Reason*: These files are only built in maintainer mode, we want that a
+build in non-maintainer-mode works from every commit.
+If you only change the generated files, the next build with maintainer
+mode will delete your changes.
 
 CFLAGS
 ------
@@ -138,6 +154,22 @@ Dependencies
 * *Ruby*, *rspec*, *httparty* to install the required dependencies run:
   `cd UnitTests/HttpInterface; bundler`
 * catch (compile time, shipped in the 3rdParty directory)
+
+Invoking
+--------
+Since several testing technoligies are utilized, and different arangodb startup options may be required 
+(even different compilation options may be required) the framework is split into testsuites. 
+Get a list of the available testsuites and options by invoking: 
+
+    ./scripts/unittest
+
+To locate the suite(s) associated with a specific test file use: 
+
+    ./scripts/unittest find --test js/common/tests/shell/shell-aqlfunctions.js
+
+or to run all of them: 
+
+    ./scripts/unittest auto --test js/common/tests/shell/shell-aqlfunctions.js
 
 
 Filename conventions
@@ -319,11 +351,24 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
  - we force the logging not to happen asynchroneous
  - eventually you may still add temporary `console.log()` statements to tests you debug.
 
+Debugging AQL execution blocks
+------------------------------
+To debug AQL execution blocks, two steps are required:
+
+- turn on logging for queries using `--extraArgs:log.level queries=info`
+- send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
+
+you now will get log-entries with the contents being passed between the blocks.
+
 Running a single unittestsuite
 ------------------------------
 Testing a single test with the framework directly on a server:
 
     scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js
+
+You can also only execute a single test case in a jsunity testsuite (in this case `testTokens`:
+
+    scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js --testCase testTokens
 
 Testing a single test with the framework via arangosh:
 
@@ -348,6 +393,10 @@ arangod Emergency console
 -------------------------
 
     require("jsunity").runTest("js/server/tests/aql/aql-escaping.js");
+
+Filtering for one test case (in this case `testTokens`):
+
+    require("jsunity").runTest("js/server/tests/aql/aql-escaping.js", false, "testTokens");
 
 arangosh client
 ---------------

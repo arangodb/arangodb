@@ -16,3 +16,4 @@ EXTERNAL_DOC_spring-data=master
 EXTERNAL_DOC_kube-arangodb=master
 EXTERNAL_DOC_foxx-cli=master
 EXTERNAL_DOC_arangodb-php=devel
+EXTERNAL_DOC_go-driver=master

@@ -638,6 +638,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
+  
+  // get the view list
+  VPackSlice views = body.get("views");
+  if (!views.isArray()) {
+    views = VPackSlice::emptyArraySlice();
+  }
 
   // read the server's max tick value
   std::string const tickString =
@@ -655,6 +661,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     maxTick = _options.tickEnd;
   }
 
+  // Step 1. write the dump.json file
   try {
     VPackBuilder meta;
     meta.openObject();
@@ -688,7 +695,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         std::pair<std::string, bool>(_options.collections[i], true));
   }
 
-  // iterate over collections
+  // Step 2. iterate over collections, queue dump jobs
   for (VPackSlice const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
@@ -702,20 +709,25 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     // extract basic info about the collection
     uint64_t const cid = basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
-        parameters, "name", "");
+      parameters, StaticStrings::DataSourceName, ""
+    );
     bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        parameters, "deleted", false);
+      parameters, StaticStrings::DataSourceDeleted.c_str(), false
+    );
     int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-        parameters, "type", 2);
+      parameters, StaticStrings::DataSourceType.c_str(), 2
+    );
     std::string const collectionType(type == 2 ? "document" : "edge");
 
     // basic filtering
     if (cid == 0 || name == "") {
       return ::ErrorMalformedJsonResponse;
     }
+
     if (deleted) {
       continue;
     }
+
     if (name[0] == '_' && !_options.includeSystemCollections) {
       continue;
     }
@@ -733,13 +745,43 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
-
+  
   // wait for all jobs to finish, then check for errors
   _clientTaskQueue.waitForIdle();
   {
     MUTEX_LOCKER(lock, _workerErrorLock);
     if (!_workerErrors.empty()) {
       return _workerErrors.front();
+    }
+  }
+  
+  // Step 3. Store view definition files
+  for (VPackSlice view : VPackArrayIterator(views)) {
+    auto nameSlice = view.get(StaticStrings::DataSourceName);
+    if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+      continue; // ignore
+    }
+    
+    try {
+      std::string fname = nameSlice.copyString();
+      fname.append(".view.json");
+      // save last tick in file
+      auto file = _directory->writableFile(fname, true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
+      
+      std::string const viewString = view.toJson();
+      file->write(viewString.c_str(), viewString.size());
+      if (file->status().fail()) {
+        return file->status();
+      }
+    } catch (basics::Exception const& ex) {
+      return {ex.code(), ex.what()};
+    } catch (std::exception const& ex) {
+      return {TRI_ERROR_INTERNAL, ex.what()};
+    } catch (...) {
+      return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
     }
   }
 
@@ -883,7 +925,7 @@ void DumpFeature::start() {
 
   // set up the output directory, not much else
   _directory =
-      std::make_unique<ManagedDirectory>(_options.outputPath, true, true);
+      std::make_unique<ManagedDirectory>(_options.outputPath, !_options.overwrite, true);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_EXISTS:
@@ -911,14 +953,14 @@ void DumpFeature::start() {
   auto dbName = client->databaseName();
 
   // get a client to use in main thread
-  auto httpClient = _clientManager.getConnectedClient(_options.force, true);
+  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
 
   // check if we are in cluster or single-server mode
   Result result{TRI_ERROR_NO_ERROR};
   std::tie(result, _options.clusterMode) =
       _clientManager.getArangoIsCluster(*httpClient);
   if (result.fail()) {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(FATAL, Logger::FIXME)
         << "Error: could not detect ArangoDB instance type";
     FATAL_ERROR_EXIT();
   }

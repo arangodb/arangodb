@@ -24,6 +24,7 @@
 #include "ExecutionEngine.h"
 
 #include "Aql/AqlResult.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
@@ -35,7 +36,6 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 
@@ -94,17 +94,14 @@ Result ExecutionEngine::createBlocks(
     auto const nodeType = en->getType();
 
     if (nodeType == ExecutionNode::REMOTE) {
-      remoteNode = static_cast<RemoteNode const*>(en);
+      remoteNode = ExecutionNode::castTo<RemoteNode const*>(en);
       continue;
     }
 
-
     // for all node types but REMOTEs, we create blocks
-    std::unordered_set<std::string> const includedShards{};
-    std::unique_ptr<ExecutionBlock> uptrEb(
-        en->createBlock(*this, cache, includedShards));
+    auto uptrEb = en->createBlock(*this, cache);
 
-    if (uptrEb == nullptr) {
+    if (!uptrEb) {
       return {TRI_ERROR_INTERNAL, "illegal node type"};
     }
 
@@ -181,16 +178,15 @@ ExecutionEngine::ExecutionEngine(Query* query)
       _root(nullptr),
       _query(query),
       _resultRegister(0),
-      _wasShutdown(false),
-      _previouslyLockedShards(nullptr),
-      _lockedShards(nullptr) {
+      _initializeCursorCalled(false),
+      _wasShutdown(false) {
   _blocks.reserve(8);
 }
 
 /// @brief destroy the engine, frees all assigned blocks
 ExecutionEngine::~ExecutionEngine() {
   try {
-    shutdown(TRI_ERROR_INTERNAL);
+    shutdownSync(TRI_ERROR_INTERNAL);
   } catch (...) {
     // shutdown can throw - ignore it in the destructor
   }
@@ -202,13 +198,12 @@ ExecutionEngine::~ExecutionEngine() {
 
 struct Instanciator final : public WalkerWorker<ExecutionNode> {
   ExecutionEngine* engine;
-  ExecutionBlock* root;
+  ExecutionBlock* root{};
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
 
-  explicit Instanciator(ExecutionEngine* engine)
-      : engine(engine), root(nullptr) {}
-
-  ~Instanciator() {}
+  explicit Instanciator(ExecutionEngine* engine) noexcept
+    : engine(engine) {
+  }
 
   virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
@@ -216,7 +211,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
       if (en->getType() == ExecutionNode::TRAVERSAL ||
           en->getType() == ExecutionNode::SHORTEST_PATH) {
         // We have to prepare the options before we build the block
-        static_cast<GraphNode*>(en)->prepareOptions();
+        ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
       }
 
       // do we need to adjust the root node?
@@ -224,16 +219,12 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 
       if (nodeType == ExecutionNode::DISTRIBUTE ||
           nodeType == ExecutionNode::SCATTER ||
-#ifdef USE_IRESEARCH
-          nodeType == ExecutionNode::SCATTER_IRESEARCH_VIEW ||
-#endif
           nodeType == ExecutionNode::GATHER) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
       }
 
-      static const std::unordered_set<std::string> EMPTY;
-      block = engine->addBlock(en->createBlock(*engine, cache, EMPTY));
+      block = engine->addBlock(en->createBlock(*engine, cache));
 
       if (!en->hasParent()) {
         // yes. found a new root!
@@ -340,7 +331,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 // of them the nodes from left to right in these lists. In the end, we have
 // a proper instantiation of the whole thing.
 
-struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
+struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
  private:
   EngineInfoContainerCoordinator _coordinatorParts;
   EngineInfoContainerDBServer _dbserverParts;
@@ -349,19 +340,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   Query* _query;
 
  public:
-
-  explicit CoordinatorInstanciator(Query* query)
-      : _dbserverParts(query), 
-        _isCoordinator(true), 
-        _lastClosed(0), 
+  explicit CoordinatorInstanciator(Query* query) noexcept
+      : _dbserverParts(query),
+        _isCoordinator(true),
+        _lastClosed(0),
         _query(query) {
     TRI_ASSERT(_query);
   }
 
-  ~CoordinatorInstanciator() {}
-
   /// @brief before method for collection of pieces phase
-  ///        Collects all nodes on the path and devides them
+  ///        Collects all nodes on the path and divides them
   ///        into coordinator and dbserver parts
   bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
@@ -376,20 +364,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
-          _dbserverParts.addGraphNode(static_cast<GraphNode*>(en));
+          _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en));
           break;
         default:
           // Do nothing
           break;
       }
     } else {
-      if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
-        return false;
-      }
-
       // on dbserver
       _dbserverParts.addNode(en);
-      if (nodeType == ExecutionNode::REMOTE) {
+      if (ExecutionNode::REMOTE == nodeType) {
         _isCoordinator = true;
         _coordinatorParts.openSnippet(en->id());
       }
@@ -435,52 +419,99 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // QueryIds are filled by responses of DBServer parts.
     MapRemoteToSnippet queryIds{};
 
-    bool needsErrorCleanup = true;
-    auto cleanup = [&]() {
-      if (needsErrorCleanup) {
-        _dbserverParts.cleanupEngines(ClusterComm::instance(),
-                                      TRI_ERROR_INTERNAL,
-                                      _query->vocbase()->name(), queryIds);
-      }
-    };
-    TRI_DEFER(cleanup());
+    auto cleanupGuard = scopeGuard([this, &queryIds]() {
+      _dbserverParts.cleanupEngines(
+        ClusterComm::instance(),
+        TRI_ERROR_INTERNAL,
+        _query->vocbase().name(), queryIds
+      );
+    });
 
-    _dbserverParts.buildEngines(queryIds, lockedShards);
+    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, lockedShards);
+    if (res.fail()) {
+      return res;
+    }
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    auto res = _coordinatorParts.buildEngines(
-        _query, registry, _query->vocbase()->name(),
-        _query->queryOptions().shardIds, queryIds, lockedShards);
+    res = _coordinatorParts.buildEngines(
+      _query,
+      registry,
+      _query->vocbase().name(),
+      _query->queryOptions().shardIds,
+      queryIds,
+      lockedShards
+    );
+
     if (res.ok()) {
-      needsErrorCleanup = false;
+      cleanupGuard.cancel();
     }
+
     return res;
   }
 };
 
-/// @brief shutdown, will be called exactly once for the whole query
-int ExecutionEngine::shutdown(int errorCode) {
-  int res = TRI_ERROR_NO_ERROR;
-  if (_root != nullptr && !_wasShutdown) {
-    // Take care of locking prevention measures in the cluster:
-    if (_lockedShards != nullptr) {
-      if (CollectionLockState::_noLockHeaders == _lockedShards) {
-        CollectionLockState::_noLockHeaders = _previouslyLockedShards;
-      }
+std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(AqlItemBlock* items, size_t pos) {
+  auto res = _root->initializeCursor(items, pos);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
+  }
+  _initializeCursorCalled = true;
+  return res;
+}
 
-      delete _lockedShards;
-      _lockedShards = nullptr;
-      _previouslyLockedShards = nullptr;
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionEngine::getSome(size_t atMost) {
+  if (!_initializeCursorCalled) {
+    auto res = initializeCursor(nullptr, 0);
+    if (res.first == ExecutionState::WAITING) {
+      return {res.first, nullptr};
     }
+  }
+  return _root->getSome(atMost);
+}
 
-    res = _root->shutdown(errorCode);
+std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
+  if (!_initializeCursorCalled) {
+    auto res = initializeCursor(nullptr, 0);
+    if (res.first == ExecutionState::WAITING) {
+      return {res.first, 0};
+    }
+  }
+  return _root->skipSome(atMost);
+}
+
+Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
+  Result res{TRI_ERROR_INTERNAL};
+  ExecutionState state = ExecutionState::WAITING;
+  try {
+    _query->setContinueCallback([&]() { _query->tempSignalAsyncResponse(); });
+    while (state == ExecutionState::WAITING) {
+      std::tie(state, res) = shutdown(errorCode);
+      if (state == ExecutionState::WAITING) {
+        _query->tempWaitForAsyncResponse();
+      }
+    }
+  } catch (...) {
+    res.reset(TRI_ERROR_INTERNAL);
+  }
+  return res;
+}
+
+/// @brief shutdown, will be called exactly once for the whole query
+std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
+  ExecutionState state = ExecutionState::DONE;
+  Result res;
+  if (_root != nullptr && !_wasShutdown) {
+    std::tie(state, res) = _root->shutdown(errorCode);
+    if (state == ExecutionState::WAITING) {
+      return {state, res};
+    }
 
     // prevent a duplicate shutdown
     _wasShutdown = true;
   }
 
-  return res;
+  return {state, res};
 }
 
 /// @brief create an execution engine from a plan
@@ -488,9 +519,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     QueryRegistry* queryRegistry, Query* query, ExecutionPlan* plan,
     bool planRegisters) {
   auto role = arangodb::ServerState::instance()->getRole();
-  bool const isCoordinator =
-      arangodb::ServerState::instance()->isCoordinator(role);
-  bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
+  bool const isCoordinator = arangodb::ServerState::isCoordinator(role);
+  bool const isDBServer = arangodb::ServerState::isDBServer(role);
 
   TRI_ASSERT(queryRegistry != nullptr);
 
@@ -509,9 +539,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     if (isCoordinator) {
       try {
         std::unordered_set<std::string> lockedShards;
-        if (CollectionLockState::_noLockHeaders != nullptr) {
-          lockedShards = *CollectionLockState::_noLockHeaders;
-        }
 
         CoordinatorInstanciator inst(query);
 
@@ -531,15 +558,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         engine = result.engine();
         TRI_ASSERT(engine != nullptr);
 
-        // We can always use the _noLockHeaders. They have not been modified
-        // until now
-        // And it is correct to set the previously locked to nullptr if the
-        // headers are nullptr.
-        engine->_previouslyLockedShards = CollectionLockState::_noLockHeaders;
-
-        // Now update _noLockHeaders;
-        CollectionLockState::_noLockHeaders = engine->_lockedShards;
-
         root = engine->root();
         TRI_ASSERT(root != nullptr);
 
@@ -550,7 +568,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       }
     } else {
       // instantiate the engine on a local server
-      engine = new ExecutionEngine(query); 
+      engine = new ExecutionEngine(query);
       Instanciator inst(engine);
       plan->root()->walk(inst);
       root = inst.root;
@@ -568,15 +586,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
       // in short: this avoids copying the return values
       engine->resultRegister(
-          static_cast<ReturnBlock*>(root)->returnInheritedResults());
+        dynamic_cast<ReturnBlock*>(root)->returnInheritedResults());
     }
 
     engine->_root = root;
-
-    if (plan->isResponsibleForInitialize()) {
-      root->initialize();
-      root->initializeCursor(nullptr, 0);
-    }
 
     return engine;
   } catch (...) {

@@ -270,7 +270,7 @@ static inline void AddValue(BuilderContext& context,
                             arangodb::StringRef const& attributeName,
                             T const& value) {
   if (inObject) {
-    context.builder.add(attributeName.begin(), attributeName.size(), value);
+    context.builder.addUnchecked(attributeName.begin(), attributeName.size(), value);
   } else {
     context.builder.add(value);
   }

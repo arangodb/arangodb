@@ -52,7 +52,6 @@ uint64_t PregelFeature::createExecutionNumber() {
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
-  startsAfter("WorkMonitor");
   startsAfter("Logger");
   startsAfter("Database");
   startsAfter("Endpoint");
@@ -259,6 +258,6 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    w->aqlResult(&outBuilder);
+    w->aqlResult(outBuilder);
   }
 }

@@ -119,15 +119,13 @@ enum TRI_vocbase_col_status_e : int {
 
 /// @brief database
 struct TRI_vocbase_t {
-  friend class arangodb::CollectionNameResolver;
   friend class arangodb::StorageEngine;
 
   /// @brief database state
   enum class State {
     NORMAL = 0,
     SHUTDOWN_COMPACTOR = 1,
-    SHUTDOWN_CLEANUP = 2,
-    FAILED_VERSION = 3
+    SHUTDOWN_CLEANUP = 2
   };
 
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
@@ -174,7 +172,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
 
   arangodb::basics::ReadWriteLock _replicationClientsLock;
-  std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
+  std::unordered_map<TRI_server_id_t, std::tuple<double, double, TRI_voc_tick_t>>
       _replicationClients;
 
  public:
@@ -206,7 +204,7 @@ struct TRI_vocbase_t {
   State state() const { return _state; }
   void setState(State state) { _state = state; }
   // return all replication clients registered
-  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
+  std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>>
   getReplicationClients();
 
   // the ttl value is amount of seconds after which the client entry will
@@ -317,12 +315,12 @@ struct TRI_vocbase_t {
   /// @brief looks up a view by identifier
   std::shared_ptr<arangodb::LogicalView> lookupView(
     TRI_voc_cid_t id
-  ) const noexcept;
+  ) const;
 
   /// @brief looks up a view by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalView> lookupView(
     std::string const& nameOrId
-  ) const noexcept;
+  ) const;
 
   /// @brief renames a collection
   int renameCollection(

@@ -27,6 +27,9 @@ for book in ${ALLBOOKS}; do
                 git pull --all
             )
         else
+            if test "${GITAUTH}" == "git"; then
+                AUTHREPO=$(echo "${AUTHREPO}" | sed -e "s;github.com/;github.com:;" -e "s;https://;;" )
+            fi
             git clone "${AUTHREPO}" "${CODIR}"
         fi
 
@@ -46,13 +49,13 @@ for book in ${ALLBOOKS}; do
             export NAME=$(basename ${oneMD})
             export MDSUBDIR=$(echo "${oneMD}" | sed "s;${NAME};;")
             export DSTDIR="../Books/${book}/${DST}/${MDSUBDIR}"
-            
+            export TOPREF=$(echo ${MDSUBDIR} | sed 's;\([a-zA-Z]*\)/;../;g')
             if test ! -d "${DSTDIR}"; then
                 mkdir -p "${DSTDIR}"
             fi
             (
                 echo "<!-- don't edit here, its from ${REPO} / ${SUBDIR}/${SRC} -->"
-                cat "${CODIR}/${SUBDIR}/${SRC}/${oneMD}"
+                cat "${CODIR}/${SUBDIR}/${SRC}/${oneMD}" |sed "s;https://docs.arangodb.com/latest;../${TOPREF};g"
             ) > "${DSTDIR}/${NAME}"
 
         done

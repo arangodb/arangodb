@@ -45,31 +45,19 @@ RestStatus RestViewHandler::execute() {
 
   if (type == rest::RequestType::POST) {
     createView();
-    return RestStatus::DONE;
-  }
-
-  if (type == rest::RequestType::PUT) {
+  } else if (type == rest::RequestType::PUT) {
     modifyView(false);
-    return RestStatus::DONE;
-  }
-
-  if (type == rest::RequestType::PATCH) {
+  } else if (type == rest::RequestType::PATCH) {
     modifyView(true);
-    return RestStatus::DONE;
-  }
-
-  if (type == rest::RequestType::DELETE_REQ) {
+  } else if (type == rest::RequestType::DELETE_REQ) {
     deleteView();
-    return RestStatus::DONE;
-  }
-
-  if (type == rest::RequestType::GET) {
+  } else if (type == rest::RequestType::GET) {
     getViews();
-    return RestStatus::DONE;
+  } else {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -108,9 +96,11 @@ void RestViewHandler::createView() {
     badParamError();
     return;
   }
-  VPackSlice const nameSlice = body.get("name");
-  VPackSlice const typeSlice = body.get("type");
+
+  auto nameSlice = body.get(StaticStrings::DataSourceName);
+  auto typeSlice = body.get(StaticStrings::DataSourceType);
   VPackSlice const propertiesSlice = body.get("properties");
+
   if (!nameSlice.isString() || !typeSlice.isString() ||
       !propertiesSlice.isObject()) {
     badParamError();

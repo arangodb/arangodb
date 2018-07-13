@@ -31,6 +31,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace transaction {
+  class Context;
+}
+
 namespace traverser {
 
 class BaseEngine;
@@ -51,9 +55,10 @@ class TraverserEngineRegistry {
   ///        internally went wrong.
   TEST_VIRTUAL TraverserEngineID createNew(
     TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
     arangodb::velocypack::Slice engineInfo,
-    bool needToLock,
-    double ttl = 600.0
+    double ttl,
+    bool needToLock
   );
 
   /// @brief Get the engine with the given ID.
@@ -95,6 +100,7 @@ class TraverserEngineRegistry {
 
     EngineInfo(
       TRI_vocbase_t& vocbase,
+      std::shared_ptr<transaction::Context> const& ctx,
       arangodb::velocypack::Slice info,
       bool needToLock
     );

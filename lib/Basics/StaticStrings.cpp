@@ -61,6 +61,7 @@ std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::ReplaceExisting("replaceExisting");
+std::string const StaticStrings::OverWrite("overwrite");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore("x-arango-replication-checkmore");
@@ -72,6 +73,22 @@ std::string const StaticStrings::ReplicationHeaderActive("x-arango-replication-a
 
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");
+
+// LogicalDataSource definition fields
+std::string const StaticStrings::DataSourceDeleted("deleted");
+std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
+std::string const StaticStrings::DataSourceId("id");
+std::string const StaticStrings::DataSourceName("name");
+std::string const StaticStrings::DataSourcePlanId("planId");
+std::string const StaticStrings::DataSourceSystem("isSystem");
+std::string const StaticStrings::DataSourceType("type");
+
+// Index definition fields
+std::string const StaticStrings::IndexFields("fields");
+std::string const StaticStrings::IndexId("id");
+std::string const StaticStrings::IndexSparse("sparse");
+std::string const StaticStrings::IndexType("type");
+std::string const StaticStrings::IndexUnique("unique");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -119,18 +136,23 @@ std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
-std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
-std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Queue("x-arango-queue");
+std::string const StaticStrings::RequestServedBy("x-arango-request-served-by");
+std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
-std::string const StaticStrings::StartThread("x-arango-start-thread");
+std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
+std::string const StaticStrings::XArangoNoLock("x-arango-nolock");
 
 // mime types
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
+std::string const StaticStrings::MultiPartContentType("multipart/form-data");
+
+// misc strings
+std::string const StaticStrings::LastValue("lastValue");

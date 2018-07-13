@@ -37,7 +37,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 using namespace arangodb::options;
 
 ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
@@ -179,8 +178,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
       filename = name;
       break;
     } else if (checkArangoImp) {
-      name = FileUtils::buildFilename(location, "arangoimp");
-      LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file'" << name << "'";
+      name = FileUtils::buildFilename(location, "arangoimp.conf");
+      LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file '" << name << "'";
       if (FileUtils::exists(name)) {
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
         filename = name;

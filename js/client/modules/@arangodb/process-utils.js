@@ -377,7 +377,7 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreCheck = false) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCores, coreCheck = false) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -403,6 +403,14 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreC
     cmd = options.valgrind;
   }
 
+  if (circumventCores) {
+    if (platform.substr(0, 3) !== 'win') {
+      // this shellscript will prevent cores from being writen on macos and linux.
+      args.unshift(cmd);
+      cmd = TOP_DIR + '/scripts/disable-cores.sh';
+    }
+  }
+  
   if (options.extremeVerbosity) {
     print('executeAndWait: cmd =', cmd, 'args =', args);
   }
@@ -420,7 +428,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreC
 
   let errorMessage = ' - ';
 
-  if (!disableCoreCheck &&
+  if (coreCheck &&
       res.hasOwnProperty('signal') &&
       ((res.signal === 11) ||
        (res.signal === 6) ||
@@ -516,7 +524,7 @@ function makeArgsArangosh (options) {
 // / @brief runs arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
+function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false) {
   let args = makeArgsArangosh(options);
   args['server.endpoint'] = instanceInfo.endpoint;
 
@@ -526,14 +534,14 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
 
   internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir);
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangoimport
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoImport (options, instanceInfo, what) {
+function runArangoImport (options, instanceInfo, what, coreCheck = false) {
   let args = {
     'server.username': options.username,
     'server.password': options.password,
@@ -576,14 +584,14 @@ function runArangoImport (options, instanceInfo, what) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir);
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangodump or arangorestore
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true) {
+function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
     'server.username': options.username,
@@ -614,14 +622,14 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     print(args);
   }
 
-  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir);
+  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangobench
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoBenchmark (options, instanceInfo, cmds, rootDir) {
+function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = false) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
     'server.username': options.username,
@@ -638,7 +646,7 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir) {
     args['flatCommands'] = ['--quiet'];
   }
 
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir);
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -672,7 +680,7 @@ function checkArangoAlive (arangod, options) {
       // Windows sometimes has random numbers in signal...
       (platform.substr(0, 3) === 'win')
       )
-    ) {
+       ) {
       arangod.exitStatus = res;
       analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
       serverCrashed = true;
@@ -1062,7 +1070,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
     if (!reply.error && reply.code === 200) {
       let res = JSON.parse(reply.body);
-      internal.print("Response ====> " + reply.body);
+      //internal.print("Response ====> " + reply.body);
       let leader = res[0].arango.Plan.AsyncReplication.Leader;
       if (!leader) {
         throw "Leader is not selected";
@@ -1249,7 +1257,8 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   let instanceInfo = {
     rootDir,
-    arangods: []
+    arangods: [],
+    protocol: protocol
   };
 
   const startTime = time();

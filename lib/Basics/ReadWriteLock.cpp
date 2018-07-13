@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,79 +27,106 @@ using namespace arangodb::basics;
 
 /// @brief locks for writing
 void ReadWriteLock::writeLock() {
-  std::unique_lock<std::mutex> guard(_mut);
-  if (_state == 0) {
-    _state = -1;
+  if (tryWriteLock()) {
     return;
   }
-  do {
-    _wantWrite = true;
-    _bell.wait(guard);
-  } while (_state != 0);
-  _state = -1;
-  _wantWrite = false;
+
+  // the lock is either hold by another writer or we have active readers
+  // -> announce that we want to write
+  _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
+
+  std::unique_lock<std::mutex> guard(_writer_mutex);
+  while (true) {
+    auto state = _state.load(std::memory_order_relaxed);
+    // try to acquire write lock as long as no readers or writers are active,
+    while ((state & ~QUEUED_WRITER_MASK) == 0) {
+      // try to acquire lock and perform queued writer decrement in one step
+      if (_state.compare_exchange_weak(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK, std::memory_order_acquire)) {
+        return;
+      }
+    }
+    _writers_bell.wait(guard);
+  }
 }
 
 /// @brief locks for writing, but only tries
 bool ReadWriteLock::tryWriteLock() {
-  std::unique_lock<std::mutex> guard(_mut);
-  if (_state == 0) {
-    _state = -1;
-    return true;
+  // order_relaxed is an optimization, cmpxchg will synchronize side-effects
+  auto state = _state.load(std::memory_order_relaxed);
+  // try to acquire write lock as long as no readers or writers are active,
+  // we might "overtake" other queued writers though.
+  while ((state & ~QUEUED_WRITER_MASK) == 0) {
+    if (_state.compare_exchange_weak(state, state | WRITE_LOCK, std::memory_order_acquire)) {
+      return true; // we successfully acquired the write lock!
+    }
   }
   return false;
 }
 
 /// @brief locks for reading
 void ReadWriteLock::readLock() {
-  std::unique_lock<std::mutex> guard(_mut);
-  if (!_wantWrite && _state >= 0) {
-    _state += 1;
+  if (tryReadLock()) {
     return;
   }
+
+  std::unique_lock<std::mutex> guard(_reader_mutex);
   while (true) {
-    while (_wantWrite || _state < 0) {
-      _bell.wait(guard);
+    if (tryReadLock()) {
+      return;
     }
-    if (!_wantWrite) {
-      break;
-    }
+
+    _readers_bell.wait(guard);
   }
-  _state += 1;
 }
 
 /// @brief locks for reading, tries only
 bool ReadWriteLock::tryReadLock() {
-  std::unique_lock<std::mutex> guard(_mut);
-  if (!_wantWrite && _state >= 0) {
-    _state += 1;
-    return true;
+  // order_relaxed is an optimization, cmpxchg will synchronize side-effects
+  auto state = _state.load(std::memory_order_relaxed);
+  // try to acquire read lock as long as no writers are active or queued
+  while ((state & ~READER_MASK) == 0) {
+    if (_state.compare_exchange_weak(state, state + READER_INC, std::memory_order_acquire)) {
+      return true;
+    }
   }
   return false;
 }
 
 /// @brief releases the read-lock or write-lock
 void ReadWriteLock::unlock() {
-  std::unique_lock<std::mutex> guard(_mut);
-  TRI_ASSERT(_state >= -1);
-  if (_state == -1) {
-    _state = 0;
-    _bell.notify_all();
+  if (_state.load(std::memory_order_relaxed) & WRITE_LOCK) {
+    // we were holding the write-lock
+    unlockWrite();
   } else {
-    TRI_ASSERT(_state > 0);
-    _state -= 1;
-    if (_state == 0) {
-      _bell.notify_all();
-    }
+    // we were holding a read-lock
+    unlockRead();
   }
 }
-  
-/// @brief releases the read-lock
-void ReadWriteLock::unlockRead() {
-  unlock();
-}
-  
+
 /// @brief releases the write-lock
 void ReadWriteLock::unlockWrite() {
-  unlock();
+  TRI_ASSERT((_state.load() & WRITE_LOCK) != 0);
+  // clear the WRITE_LOCK flag
+  auto state = _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
+  if ((state & QUEUED_WRITER_MASK) != 0) {
+    // there are other writers waiting -> wake up one of them
+    std::unique_lock<std::mutex> guard(_writer_mutex);
+    _writers_bell.notify_one();
+  } else {
+    // no more writers -> wake up any waiting readings
+    std::unique_lock<std::mutex> guard(_reader_mutex);
+    _readers_bell.notify_all();
+  }
+}
+
+/// @brief releases the read-lock
+void ReadWriteLock::unlockRead() {
+  TRI_ASSERT((_state.load() & READER_MASK) != 0);
+  auto state = _state.fetch_sub(READER_INC, std::memory_order_release) - READER_INC;
+  if (state != 0 && (state & ~QUEUED_WRITER_MASK) == 0) {
+    // we were the last reader and there are other writers waiting
+    // -> wake up one of them
+    std::unique_lock<std::mutex> guard(_writer_mutex);
+    _writers_bell.notify_one();
+  }
 }

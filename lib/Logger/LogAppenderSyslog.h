@@ -29,7 +29,7 @@
 namespace arangodb {
 #ifdef ARANGODB_ENABLE_SYSLOG
 
-class LogAppenderSyslog : public LogAppender {
+class LogAppenderSyslog final : public LogAppender {
  public:
   static void close();
 

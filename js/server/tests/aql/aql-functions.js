@@ -790,6 +790,27 @@ function ahuacatlFunctionsTestSuite () {
         assertEqual([ test[1] ], actual);
       });
     },
+    
+    testCountUnique : function () {
+      var tests = [
+        [ [ null, { b: 2 }, { a: 1 }, 1, "1", [], 2, "2", 3, "3", 0, false, -1, true, [2], [1] ], 16 ],
+        [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], 10 ],
+        [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 ], 10 ],
+        [ [ 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1 ], 12 ],
+        [ [ 1, 10, 100, 1000, 99, 2, 7, 8, 13, 4, 242, 123 ], 12 ],
+        [ [ 1, 4, 10, 100, 99, 1000, 99, 2, 1, 7, 8, 13, 4, 10, 2, 242, 123, 1000 ], 12 ],
+        [ [ 13, 1000, 99, 7, 8, 1, 10, 4, 242, 100, 123, 2 ], 12 ],
+        [ [ "foo", "bar", "foo", "food", "baz", "bark", "foo", "sauron", "bar" ], 6 ],
+        [ [ 1, 2, 1, 2, 3, 4, -1, 2, -1, -2, 0 ], 7 ],
+        [ [ true, true, false, null, false, true, null ], 3 ],
+        [ [ -3.5, 12.4777, 12.477777, 12.436, 12.46777, 1, 1.0, -12.4777, 10000, 10000.1, 9999.9999, 9999.999, 10000.0 ], 11 ]
+      ];
+
+      tests.forEach(function(test) {
+        let actual = getQueryResults("RETURN COUNT_UNIQUE(" + JSON.stringify(test[0]) + ")");
+        assertEqual([ test[1] ], actual);
+      });
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test slice function
@@ -3485,6 +3506,9 @@ function ahuacatlFunctionsTestSuite () {
     testZip : function () {
       var values = [
         [ { }, [ ], [ ] ], 
+        // duplicate keys
+        [ { "" : 1, " " : 3 }, [ "", "", " ", " " ], [ 1, 2, 3, 4 ] ], 
+        [ { "a" : 1 }, [ "a", "a", "a", "a" ], [ 1, 2, 3, 4 ] ], 
         [ { "" : true }, [ "" ], [ true ] ], 
         [ { " " : null }, [ " " ], [ null ] ], 
         [ { "MÖTÖR" : { } }, [ "MÖTÖR" ], [ { } ] ], 

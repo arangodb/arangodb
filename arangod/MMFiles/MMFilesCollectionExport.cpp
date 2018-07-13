@@ -39,9 +39,11 @@
 
 using namespace arangodb;
 
-MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
-                                   std::string const& name,
-                                   CollectionExport::Restrictions const& restrictions)
+MMFilesCollectionExport::MMFilesCollectionExport(
+    TRI_vocbase_t& vocbase,
+    std::string const& name,
+    CollectionExport::Restrictions const& restrictions
+)
     : _collection(nullptr),
       _ditch(nullptr),
       _name(name),
@@ -49,7 +51,7 @@ MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
       _restrictions(restrictions) {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard.reset(new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
+  _guard.reset(new arangodb::CollectionGuard(&vocbase, _name.c_str(), false));
 
   _collection = _guard->collection();
   TRI_ASSERT(_collection != nullptr);
@@ -81,11 +83,11 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
   {
     static uint64_t const SleepTime = 10000;
-
     uint64_t tries = 0;
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
+
     while (++tries < maxTries) {
       if (mmColl->isFullyCollected()) {
         break;
@@ -95,18 +97,20 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   }
 
   {
-    auto ctx = transaction::StandaloneContext::Create(&(_collection->vocbase()));
+    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
     SingleCollectionTransaction trx(ctx, _name, AccessMode::Type::READ);
 
     // already locked by guard above
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+
     Result res = trx.begin();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+
     size_t maxDocuments = _collection->numberDocuments(&trx);
+
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {

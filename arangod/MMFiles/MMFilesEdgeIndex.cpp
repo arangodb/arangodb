@@ -118,6 +118,57 @@ bool MMFilesEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
   return true;
 }
 
+bool MMFilesEdgeIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
+
+  if (limit == 0 || (_buffer.empty() && !_iterator.valid())) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  bool done = false;
+  while (limit > 0) {
+    if (_buffer.empty()) {
+      // We start a new lookup
+      _posInBuffer = 0;
+
+      VPackSlice tmp = _iterator.value();
+      if (tmp.isObject()) {
+        tmp = tmp.get(StaticStrings::IndexEq);
+      }
+      _index->lookupByKey(&_context, &tmp, _buffer, _batchSize);
+    } else if (_posInBuffer >= _buffer.size()) {
+      // We have to refill the buffer
+      _buffer.clear();
+
+      _posInBuffer = 0;
+      _index->lookupByKeyContinue(&_context, _lastElement, _buffer, _batchSize);
+    }
+
+    if (_buffer.empty()) {
+      _iterator.next();
+      _lastElement = MMFilesSimpleIndexElement();
+      if (!_iterator.valid()) {
+        done = true;
+        break;
+      }
+    } else {
+      _lastElement = _buffer.back();
+      // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
+      _documentIds.emplace_back(std::make_pair(_buffer[_posInBuffer++].localDocumentId(), nullptr));
+      limit--;
+    }
+  }
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
+}
+
 void MMFilesEdgeIndexIterator::reset() {
   _posInBuffer = 0;
   _buffer.clear();
@@ -158,10 +209,13 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
 }
 
 /// @brief return a selectivity estimate for the index
-double MMFilesEdgeIndex::selectivityEstimateLocal(
+double MMFilesEdgeIndex::selectivityEstimate(
     arangodb::StringRef const* attribute) const {
-  if (_edgesFrom == nullptr || _edgesTo == nullptr ||
-      ServerState::instance()->isCoordinator()) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_unique) {
+    return 1.0;
+  }
+  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
     // use hard-coded selectivity estimate in case of cluster coordinator
     return 0.1;
   }
@@ -200,8 +254,14 @@ void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.openObject();
   Index::toVelocyPack(builder, withFigures, forPersistence);
   // hard-coded
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(false));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 
@@ -360,9 +420,10 @@ bool MMFilesEdgeIndex::supportsFilterCondition(
 IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
   TRI_ASSERT(node->numMembers() == 1);
 
   auto comp = node->getMember(0);
@@ -403,41 +464,6 @@ arangodb::aql::AstNode* MMFilesEdgeIndex::specializeCondition(
     arangodb::aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.specializeOne(this, node, reference);
-}
-
-/// @brief Transform the list of search slices to search values.
-///        This will multiply all IN entries and simply return all other
-///        entries.
-void MMFilesEdgeIndex::expandInSearchValues(VPackSlice const slice,
-                                            VPackBuilder& builder) const {
-  TRI_ASSERT(slice.isArray());
-  builder.openArray();
-  for (auto const& side : VPackArrayIterator(slice)) {
-    if (side.isNull()) {
-      builder.add(side);
-    } else {
-      TRI_ASSERT(side.isArray());
-      builder.openArray();
-      for (auto const& item : VPackArrayIterator(side)) {
-        TRI_ASSERT(item.isObject());
-        if (item.hasKey(StaticStrings::IndexEq)) {
-          TRI_ASSERT(!item.hasKey(StaticStrings::IndexIn));
-          builder.add(item);
-        } else {
-          TRI_ASSERT(item.hasKey(StaticStrings::IndexIn));
-          VPackSlice list = item.get(StaticStrings::IndexIn);
-          TRI_ASSERT(list.isArray());
-          for (auto const& it : VPackArrayIterator(list)) {
-            builder.openObject();
-            builder.add(StaticStrings::IndexEq, it);
-            builder.close();
-          }
-        }
-      }
-      builder.close();
-    }
-  }
-  builder.close();
 }
 
 /// @brief create the iterator

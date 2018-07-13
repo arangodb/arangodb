@@ -44,7 +44,7 @@ using namespace arangodb::methods;
 std::vector<Upgrade::Task> Upgrade::_tasks;
 
 /// corresponding to cluster-bootstrap.js
-UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t* system) {
+UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t& system) {
   uint64_t cc = Version::current(); // not actually used here
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
   uint32_t clusterFlag = Flags::CLUSTER_COORDINATOR_GLOBAL;
@@ -59,8 +59,10 @@ UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t* system) {
 }
 
 /// corresponding to local-database.js
-UpgradeResult Upgrade::createDB(TRI_vocbase_t* vocbase,
-                                VPackSlice const& users) {
+UpgradeResult Upgrade::createDB(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& users
+) {
   TRI_ASSERT(users.isArray());
 
   uint32_t clusterFlag = 0;
@@ -94,24 +96,29 @@ UpgradeResult Upgrade::createDB(TRI_vocbase_t* vocbase,
                   Upgrade::Flags::DATABASE_INIT);
 }
 
-UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade, bool ignoreFileErrors) {
+UpgradeResult Upgrade::startup(
+    TRI_vocbase_t& vocbase,
+    bool isUpgrade,
+    bool ignoreFileErrors
+) {
   uint32_t clusterFlag = Flags::CLUSTER_LOCAL;
+
   if (ServerState::instance()->isSingleServer()) {
     clusterFlag = Flags::CLUSTER_NONE;
   }
-  uint32_t dbflag = Flags::DATABASE_EXISTING;
 
-  VersionResult vinfo = Version::check(vocbase);
+  uint32_t dbflag = Flags::DATABASE_EXISTING;
+  auto vinfo = Version::check(&vocbase);
 
   if (vinfo.status == methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
       vinfo.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
     if (ignoreFileErrors) {
       // try to install a fresh new, empty VERSION file instead
-      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
+      if (methods::Version::write(&vocbase, std::map<std::string, bool>(), true).ok()) {
         // give it another try
         LOG_TOPIC(WARN, Logger::STARTUP) << "overwriting unparsable VERSION file with default value "
                                          << "because option `--database.ignore-logfile-errors` is set";
-        vinfo = methods::Version::check(vocbase);
+        vinfo = methods::Version::check(&vocbase);
       }
     } else {
       LOG_TOPIC(WARN, Logger::STARTUP) << "in order to automatically fix the VERSION file on startup, "
@@ -193,6 +200,11 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade, bool igno
 void methods::Upgrade::registerTasks() {
   TRI_ASSERT(_tasks.empty());
 
+  addTask("upgradeGeoIndexes", "upgrade legacy geo indexes",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE,
+          &UpgradeTasks::upgradeGeoIndexes);
   addTask("setupGraphs", "setup _graphs collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
@@ -281,42 +293,43 @@ void methods::Upgrade::registerTasks() {
           &UpgradeTasks::setupAppBundles);
 }
 
-UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
-                                         VersionResult& vinfo,
-                                         VPackSlice const& params,
-                                         uint32_t clusterFlag,
-                                         uint32_t dbFlag) {
-  TRI_ASSERT(vocbase != nullptr);
+UpgradeResult methods::Upgrade::runTasks(
+    TRI_vocbase_t& vocbase,
+    VersionResult& vinfo,
+    arangodb::velocypack::Slice const& params,
+    uint32_t clusterFlag,
+    uint32_t dbFlag
+) {
   TRI_ASSERT(clusterFlag != 0 && dbFlag != 0);
   TRI_ASSERT(!_tasks.empty());  // forgot to call registerTask!!
   // needs to run in superuser scope, otherwise we get errors
   ExecContextScope scope(ExecContext::superuser());
   // only local should actually write a VERSION file
   bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL;
-  
+
   bool ranOnce = false;
   // execute all tasks
   for (Task const& t : _tasks) {
     // check for system database
-    if (t.systemFlag == DATABASE_SYSTEM && !vocbase->isSystem()) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+    if (t.systemFlag == DATABASE_SYSTEM && !vocbase.isSystem()) {
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: DB not system, skipping " << t.name;
       continue;
     }
-    if (t.systemFlag == DATABASE_EXCEPT_SYSTEM && vocbase->isSystem()) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+    if (t.systemFlag == DATABASE_EXCEPT_SYSTEM && vocbase.isSystem()) {
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: DB system, Skipping " << t.name;
       continue;
     }
 
     // check that the cluster occurs in the cluster list
     if (!(t.clusterFlags & clusterFlag)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: cluster mismatch, skipping " << t.name;
       continue;
     }
 
     auto const& it = vinfo.tasks.find(t.name);
     if (it != vinfo.tasks.end()) {
       if (it->second) {
-        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Already executed, skipping " << t.name;
         continue;
       }
       vinfo.tasks.erase(it);  // in case we encounter false
@@ -330,7 +343,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
           t.databaseFlags == DATABASE_UPGRADE) {
         vinfo.tasks.emplace(t.name, true);
       }
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: db flag mismatch, skipping " << t.name;
       continue;
     }
 
@@ -352,12 +365,15 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
 
     // remember we already executed this one
     vinfo.tasks.emplace(t.name, true);
+
     if (isLocal) {  // save after every task for resilience
-      Result res = methods::Version::write(vocbase, vinfo.tasks, /*sync*/false);
+      auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/false);
+
       if (res.fail()) {
         return UpgradeResult(res.errorNumber(), res.errorMessage(),
                              vinfo.status);
       }
+
       ranOnce = true;
     }
   }
@@ -365,10 +381,12 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
   if (isLocal) {  // no need to write this for cluster bootstrap
     // save even if no tasks were executed
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Writing VERSION file";
-    Result res = methods::Version::write(vocbase, vinfo.tasks, /*sync*/ranOnce);
+    auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/ranOnce);
+
     if (res.fail()) {
       return UpgradeResult(res.errorNumber(), res.errorMessage(), vinfo.status);
     }
   }
+
   return UpgradeResult(TRI_ERROR_NO_ERROR, vinfo.status);
 }

@@ -169,7 +169,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       tests.forEach(function(test) {
         assertEqual([ test[1] ], getQueryResults("RETURN IS_KEY(" + JSON.stringify(test[0]) + ")"), test);
-        assertEqual([ test[1] ], getQueryResults("RETURN V8(IS_KEY(" + JSON.stringify(test[0]) + "))"), test);
         assertEqual([ test[1] ], getQueryResults("RETURN NOOPT(IS_KEY(" + JSON.stringify(test[0]) + "))"), test);
       });
     },
@@ -217,9 +216,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, 2 + 4))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, 2 + 4)))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,9 +228,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(2 + 4, 2 + 5))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(2 + 4, 2 + 5)))");
       assertEqual(expected, actual);
     },
 
@@ -249,9 +242,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, null))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, null)))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,9 +254,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(2, null))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(2, null)))");
       assertEqual(expected, actual);
     },
 
@@ -281,9 +268,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(false, true))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(false, true)))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,9 +280,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, null, null, null))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, null, null, null)))");
       assertEqual(expected, actual);
     },
 
@@ -313,9 +294,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, null, null, null, -6, -7))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, null, null, null, -6, -7)))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,9 +306,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, null, null, null, 12, null))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, null, null, null, 12, null)))");
       assertEqual(expected, actual);
     },
 
@@ -345,9 +320,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(null))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null)))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,9 +332,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(NOT_NULL(23))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(23)))");
       assertEqual(expected, actual);
     },
 
@@ -377,9 +346,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST(null, [ 1, 2 ]))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST(null, [ 1, 2 ])))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,9 +358,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST(null, \"not a list!\"))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST(null, \"not a list!\")))");
       assertEqual(expected, actual);
     },
 
@@ -409,9 +372,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST([ 1, 4 ], [ 1, 5 ]))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST([ 1, 4 ], [ 1, 5 ])))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,9 +384,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST([ ], [ 1, 5 ]))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST([ ], [ 1, 5 ])))");
       assertEqual(expected, actual);
     },
 
@@ -441,9 +398,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST([ false ], [ 1, 5 ]))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST([ false ], [ 1, 5 ])))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -456,9 +410,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST(false, 7))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST(false, 7)))");
       assertEqual(expected, actual);
     },
 
@@ -473,9 +424,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST(1, 2, 3, 4, [ 0 ]))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST(1, 2, 3, 4, [ 0 ])))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,9 +436,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST(1, 2, 3, 4, { }))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST(1, 2, 3, 4, { })))");
       assertEqual(expected, actual);
     },
 
@@ -505,9 +450,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST([ 7 ]))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST([ 7 ])))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,9 +462,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_LIST(99))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_LIST(99)))");
       assertEqual(expected, actual);
     },
 
@@ -537,9 +476,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT(null, { a : 1 }))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT(null, { a : 1 })))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,9 +488,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT(null, \"not a doc!\"))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT(null, \"not a doc!\")))");
       assertEqual(expected, actual);
     },
 
@@ -569,9 +502,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT({ a : 1 }, { b : 2 }))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT({ a : 1 }, { b : 2 })))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -584,9 +514,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT({ }, { b : 2 }))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT({ }, { b : 2 })))");
       assertEqual(expected, actual);
     },
 
@@ -601,9 +528,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT({ a : null, b : false }, { a : 1000, b : 1000 }))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT({ a : null, b : false }, { a : 1000, b : 1000 })))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -616,9 +540,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT(false, { czz : 7 }))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT(false, { czz : 7 })))");
       assertEqual(expected, actual);
     },
 
@@ -633,9 +554,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT(1, 2, 3, 4, { }))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT(1, 2, 3, 4, { })))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -648,9 +566,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT(1, 2, 3, 4, [ ]))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT(1, 2, 3, 4, [ ])))");
       assertEqual(expected, actual);
     },
 
@@ -665,9 +580,6 @@ function ahuacatlTypesFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT({ c : 4 }))");
       assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT({ c : 4 })))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -680,9 +592,6 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN NOOPT(FIRST_DOCUMENT(false))");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(FIRST_DOCUMENT(false)))");
       assertEqual(expected, actual);
     },
 

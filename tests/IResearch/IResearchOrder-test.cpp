@@ -42,8 +42,8 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 
 #include "search/scorers.hpp"
 #include "utils/misc.hpp"
@@ -140,8 +140,12 @@ void assertOrder(
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     arangodb::iresearch::QueryContext const ctx{

@@ -192,7 +192,7 @@ retrieve the storage engine type used by the server
 
 Returns the name of the storage engine in use (`mmfiles` or `rocksdb`), as well
 as a list of supported features (types of indexes and
-[dfdb](../../Troubleshooting/DatafileDebugger.md)).
+[dfdb](../../Programs/Arango-dfdb/README.md)).
 
 ### Engine statistics
 

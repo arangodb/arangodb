@@ -37,7 +37,6 @@ namespace aql {
 class Ast;
 class EnumerateCollectionNode;
 class ExecutionPlan;
-struct Index;
 class SortCondition;
 struct Variable;
 

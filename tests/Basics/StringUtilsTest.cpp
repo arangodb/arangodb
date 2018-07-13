@@ -30,6 +30,7 @@
 #include "catch.hpp"
 
 #include <iomanip>
+#include <sstream>
 
 #include "Basics/directories.h"
 #include "Basics/StringUtils.h"
@@ -231,12 +232,107 @@ SECTION("test_uint64_trusted") {
   CHECK(UINT64_MAX ==  StringUtils::uint64_trusted(std::to_string(UINT64_MAX)));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
+SECTION("test_encodeHex") {
+  CHECK("" ==  StringUtils::encodeHex(""));
+
+  CHECK("00" ==  StringUtils::encodeHex(std::string("\x00", 1)));
+  CHECK("01" ==  StringUtils::encodeHex("\x01"));
+  CHECK("02" ==  StringUtils::encodeHex("\x02"));
+  CHECK("03" ==  StringUtils::encodeHex("\x03"));
+  CHECK("04" ==  StringUtils::encodeHex("\x04"));
+  CHECK("05" ==  StringUtils::encodeHex("\x05"));
+  CHECK("06" ==  StringUtils::encodeHex("\x06"));
+  CHECK("07" ==  StringUtils::encodeHex("\x07"));
+  CHECK("08" ==  StringUtils::encodeHex("\x08"));
+  CHECK("09" ==  StringUtils::encodeHex("\x09"));
+  CHECK("0a" ==  StringUtils::encodeHex("\x0a"));
+  CHECK("0b" ==  StringUtils::encodeHex("\x0b"));
+  CHECK("0c" ==  StringUtils::encodeHex("\x0c"));
+  CHECK("0d" ==  StringUtils::encodeHex("\x0d"));
+  CHECK("0e" ==  StringUtils::encodeHex("\x0e"));
+  CHECK("0f" ==  StringUtils::encodeHex("\x0f"));
+
+  CHECK("10" ==  StringUtils::encodeHex("\x10"));
+  CHECK("42" ==  StringUtils::encodeHex("\x42"));
+  CHECK("ff" ==  StringUtils::encodeHex("\xff"));
+  CHECK("aa0009" ==  StringUtils::encodeHex(std::string("\xaa\x00\x09", 3)));
+  CHECK("000102" ==  StringUtils::encodeHex(std::string("\x00\x01\x02", 3)));
+  CHECK("00010203" ==  StringUtils::encodeHex(std::string("\x00\x01\x02\03", 4)));
+  CHECK("20" ==  StringUtils::encodeHex(" "));
+  CHECK("2a2a" ==  StringUtils::encodeHex("**"));
+  CHECK("616263646566" ==  StringUtils::encodeHex("abcdef"));
+  CHECK("4142434445462047" ==  StringUtils::encodeHex("ABCDEF G"));
+  CHECK("54686520517569636b2062726f776e20466f78206a756d706564206f76657220746865206c617a7920646f6721" ==  StringUtils::encodeHex("The Quick brown Fox jumped over the lazy dog!"));
+  CHECK("446572204bc3b674c3b67220737072c3bc6e6720c3bc62657220646965204272c3bc636b65" ==  StringUtils::encodeHex("Der Kötör sprüng über die Brücke"));
+  CHECK("c3a4c3b6c3bcc39fc384c396c39ce282acc2b5" == StringUtils::encodeHex("äöüßÄÖÜ€µ"));
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
+SECTION("test_decodeHex") {
+  CHECK("" ==  StringUtils::decodeHex(""));
+
+  CHECK(std::string("\x00", 1) ==  StringUtils::decodeHex("00"));
+  CHECK("\x01" ==  StringUtils::decodeHex("01"));
+  CHECK("\x02" ==  StringUtils::decodeHex("02"));
+  CHECK("\x03" ==  StringUtils::decodeHex("03"));
+  CHECK("\x04" ==  StringUtils::decodeHex("04"));
+  CHECK("\x05" ==  StringUtils::decodeHex("05"));
+  CHECK("\x06" ==  StringUtils::decodeHex("06"));
+  CHECK("\x07" ==  StringUtils::decodeHex("07"));
+  CHECK("\x08" ==  StringUtils::decodeHex("08"));
+  CHECK("\x09" ==  StringUtils::decodeHex("09"));
+  CHECK("\x0a" ==  StringUtils::decodeHex("0a"));
+  CHECK("\x0b" ==  StringUtils::decodeHex("0b"));
+  CHECK("\x0c" ==  StringUtils::decodeHex("0c"));
+  CHECK("\x0d" ==  StringUtils::decodeHex("0d"));
+  CHECK("\x0e" ==  StringUtils::decodeHex("0e"));
+  CHECK("\x0f" ==  StringUtils::decodeHex("0f"));
+  CHECK("\x0a" ==  StringUtils::decodeHex("0A"));
+  CHECK("\x0b" ==  StringUtils::decodeHex("0B"));
+  CHECK("\x0c" ==  StringUtils::decodeHex("0C"));
+  CHECK("\x0d" ==  StringUtils::decodeHex("0D"));
+  CHECK("\x0e" ==  StringUtils::decodeHex("0E"));
+  CHECK("\x0f" ==  StringUtils::decodeHex("0F"));
+  
+  CHECK("\x1a" ==  StringUtils::decodeHex("1a"));
+  CHECK("\x2b" ==  StringUtils::decodeHex("2b"));
+  CHECK("\x3c" ==  StringUtils::decodeHex("3c"));
+  CHECK("\x4d" ==  StringUtils::decodeHex("4d"));
+  CHECK("\x5e" ==  StringUtils::decodeHex("5e"));
+  CHECK("\x6f" ==  StringUtils::decodeHex("6f"));
+  CHECK("\x7a" ==  StringUtils::decodeHex("7A"));
+  CHECK("\x8b" ==  StringUtils::decodeHex("8B"));
+  CHECK("\x9c" ==  StringUtils::decodeHex("9C"));
+  CHECK("\xad" ==  StringUtils::decodeHex("AD"));
+  CHECK("\xbe" ==  StringUtils::decodeHex("BE"));
+  CHECK("\xcf" ==  StringUtils::decodeHex("CF"));
+  CHECK("\xdf" ==  StringUtils::decodeHex("df"));
+  CHECK("\xef" ==  StringUtils::decodeHex("eF"));
+  CHECK("\xff" ==  StringUtils::decodeHex("ff"));
+  
+  CHECK(" " ==  StringUtils::decodeHex("20"));
+  CHECK("**" ==  StringUtils::decodeHex("2a2a"));
+  CHECK("abcdef" ==  StringUtils::decodeHex("616263646566"));
+  CHECK("ABCDEF G" == StringUtils::decodeHex("4142434445462047"));
+
+  CHECK("The Quick brown Fox jumped over the lazy dog!" == StringUtils::decodeHex("54686520517569636b2062726f776e20466f78206a756d706564206f76657220746865206c617a7920646f6721"));
+  CHECK("Der Kötör sprüng über die Brücke" == StringUtils::decodeHex("446572204bc3b674c3b67220737072c3bc6e6720c3bc62657220646965204272c3bc636b65"));
+  CHECK("äöüßÄÖÜ€µ" == StringUtils::decodeHex("c3a4c3b6c3bcc39fc384c396c39ce282acc2b5"));
+  
+  CHECK("" ==  StringUtils::decodeHex("1"));
+  CHECK("" ==  StringUtils::decodeHex(" "));
+  CHECK("" ==  StringUtils::decodeHex(" 2"));
+  CHECK("" ==  StringUtils::decodeHex("1 "));
+  CHECK("" ==  StringUtils::decodeHex("12 "));
+  CHECK("" ==  StringUtils::decodeHex("x"));
+  CHECK("" ==  StringUtils::decodeHex("X"));
+  CHECK("" ==  StringUtils::decodeHex("@@@"));
+  CHECK("" ==  StringUtils::decodeHex("111"));
+  CHECK("" ==  StringUtils::decodeHex("1 2 3"));
+  CHECK("" ==  StringUtils::decodeHex("1122334"));
+  CHECK("" ==  StringUtils::decodeHex("112233 "));
+  CHECK("" ==  StringUtils::decodeHex(" 112233"));
+  CHECK("" ==  StringUtils::decodeHex("abcdefgh"));
+}
+
+}
+

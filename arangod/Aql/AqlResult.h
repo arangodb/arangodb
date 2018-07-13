@@ -39,6 +39,10 @@ class ExecutionEngineResult : public Result {
     explicit ExecutionEngineResult(int errorNumber);
     ExecutionEngineResult(int errorNumber, std::string const& errorMessage);
     ExecutionEngineResult(int errorNumber, std::string&& errorMessage);
+
+    // This is not explicit on purpose
+    // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
+    ExecutionEngineResult(Result const& result);
     explicit ExecutionEngineResult(ExecutionEngine*);
 
     ~ExecutionEngineResult();

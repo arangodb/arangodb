@@ -96,17 +96,15 @@ function recoverySuite () {
       idx = c.getIndexes();
 
       for (i = 1; i < idx.length; ++i) {
-        if (idx[i].type === 'geo1') {
+        if (idx[i].type === 'geo1' || (idx[i].type === 'geo' && idx[i].fields.length === 1)) {
           geo1 = idx[i];
           assertFalse(geo1.unique);
-          assertTrue(geo1.ignoreNull);
           assertTrue(geo1.sparse);
           assertFalse(geo1.geoJson);
           assertEqual([ 'loc' ], geo1.fields);
-        } else if (idx[i].type === 'geo2') {
+        } else if (idx[i].type === 'geo2' || (idx[i].type === 'geo' && idx[i].fields.length === 2)) {
           geo2 = idx[i];
           assertFalse(geo2.unique);
-          assertTrue(geo2.ignoreNull);
           assertTrue(geo2.sparse);
           assertEqual([ 'lat', 'lon' ], geo2.fields);
         }
@@ -121,7 +119,6 @@ function recoverySuite () {
       c = db._collection('UnitTestsRecovery2');
       geo1 = c.getIndexes()[1];
       assertFalse(geo1.unique);
-      assertTrue(geo1.ignoreNull);
       assertTrue(geo1.sparse);
       assertTrue(geo1.geoJson);
       assertEqual([ 'a.loc' ], geo1.fields);
@@ -131,7 +128,6 @@ function recoverySuite () {
       c = db._collection('UnitTestsRecovery3');
       geo1 = c.getIndexes()[1];
       assertFalse(geo1.unique);
-      assertTrue(geo1.ignoreNull);
       assertTrue(geo1.sparse);
       assertFalse(geo1.geoJson);
       assertEqual([ 'a.lat', 'a.lon' ], geo1.fields);

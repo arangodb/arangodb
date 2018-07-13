@@ -39,7 +39,7 @@ class Slice;
 }
 namespace graph {
 
-struct ShortestPathOptions : public BaseOptions {
+struct ShortestPathOptions final : public BaseOptions {
  public:
   std::string start;
   std::string direction;

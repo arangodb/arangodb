@@ -36,9 +36,8 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
     : ExecutionNode(plan, base), _reinsertInCluster(true),  _elements(elements), _stable(stable){}
 
 /// @brief toVelocyPack, for SortNode
-void SortNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);  // call base class method
 
   nodes.add(VPackValue("elements"));
   {
@@ -70,7 +69,7 @@ class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
   std::vector<std::pair<ExecutionNode*, bool>> _myVars;
 
   explicit SortNodeFindMyExpressions(SortNode* me)
-      : _foundCalcNodes(0), _elms(me->getElements()) {
+      : _foundCalcNodes(0), _elms(me->elements()) {
     _myVars.resize(_elms.size());
   }
 
@@ -114,7 +113,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
     if (setter != nullptr) {
       if (setter->getType() == ExecutionNode::CALCULATION) {
         // variable introduced by a calculation
-        auto expression = static_cast<CalculationNode*>(setter)->expression();
+        auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
         if (expression->isConstant()) {
           // constant expression, remove it!
@@ -141,8 +140,8 @@ SortInformation SortNode::getSortInformation(
     ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
 
-  auto elements = getElements();
-  for (auto it = elements.begin(); it != elements.end(); ++it) {
+  auto const& elms = elements();
+  for (auto it = elms.begin(); it != elms.end(); ++it) {
     auto variable = (*it).var;
     TRI_ASSERT(variable != nullptr);
     auto setter = _plan->getVarSetBy(variable->id);
@@ -158,7 +157,7 @@ SortInformation SortNode::getSortInformation(
 
     if (setter->getType() == ExecutionNode::CALCULATION) {
       // variable introduced by a calculation
-      auto expression = static_cast<CalculationNode*>(setter)->expression();
+      auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
       if (!expression->isDeterministic()) {
         result.isDeterministic = false;
@@ -194,8 +193,7 @@ SortInformation SortNode::getSortInformation(
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<SortBlock>(&engine, this);
 }

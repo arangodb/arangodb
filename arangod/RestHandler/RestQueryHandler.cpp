@@ -45,10 +45,6 @@ RestQueryHandler::RestQueryHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-bool RestQueryHandler::isDirect() const {
-  return _request->requestType() != rest::RequestType::POST;
-}
-
 RestStatus RestQueryHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

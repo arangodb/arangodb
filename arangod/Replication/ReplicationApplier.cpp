@@ -58,7 +58,7 @@ struct ApplierThread : public Thread {
     shutdown();
   }
   
-  void run() {
+  void run() override {
     TRI_ASSERT(_syncer != nullptr);
     TRI_ASSERT(_applier != nullptr);
     

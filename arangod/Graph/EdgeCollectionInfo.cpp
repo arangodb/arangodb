@@ -77,14 +77,15 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
     arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.setVertexId(vertexId);
   std::unique_ptr<arangodb::OperationCursor> res;
+  IndexIteratorOptions opts;
   if (_dir == TRI_EDGE_OUT) {
     res.reset(_trx->indexScanForCondition(
         _forwardIndexId, _searchBuilder.getOutboundCondition(),
-        _searchBuilder.getVariable(), mmdr, false));
+        _searchBuilder.getVariable(), mmdr, opts));
   } else {
     res.reset(_trx->indexScanForCondition(
         _forwardIndexId, _searchBuilder.getInboundCondition(),
-        _searchBuilder.getVariable(), mmdr, false));
+        _searchBuilder.getVariable(), mmdr, opts));
   }
   return res;
 }
@@ -97,11 +98,21 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
                                             VPackBuilder& result) {
   TRI_ASSERT(result.isEmpty());
   arangodb::rest::ResponseCode responseCode;
+
   result.openObject();
+
   int res = getFilteredEdgesOnCoordinator(
-      _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
-      _dir, responseCode, result);
+    _trx->vocbase().name(),
+    _collectionName,
+    *_trx,
+    vertexId.copyString(),
+    _dir,
+    responseCode,
+    result
+  );
+
   result.close();
+
   return res;
 }
 
@@ -114,14 +125,15 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
     arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.setVertexId(vertexId);
   std::unique_ptr<arangodb::OperationCursor> res;
+  IndexIteratorOptions opts;
   if (_dir == TRI_EDGE_OUT) {
     res.reset(_trx->indexScanForCondition(
         _backwardIndexId, _searchBuilder.getInboundCondition(),
-        _searchBuilder.getVariable(), mmdr, false));
+        _searchBuilder.getVariable(), mmdr, opts));
   } else {
     res.reset(_trx->indexScanForCondition(
         _backwardIndexId, _searchBuilder.getOutboundCondition(),
-        _searchBuilder.getVariable(), mmdr, false));
+        _searchBuilder.getVariable(), mmdr, opts));
   }
   return res;
 }
@@ -134,15 +146,27 @@ int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
                                                    VPackBuilder& result) {
   TRI_ASSERT(result.isEmpty());
   arangodb::rest::ResponseCode responseCode;
+
   result.openObject();
+
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
+
   if (_dir == TRI_EDGE_OUT) {
     dir = TRI_EDGE_IN;
   }
+
   int res = getFilteredEdgesOnCoordinator(
-      _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
-      dir, responseCode, result);
+    _trx->vocbase().name(),
+    _collectionName,
+    *_trx,
+    vertexId.copyString(),
+    dir,
+    responseCode,
+    result
+  );
+
   result.close();
+
   return res;
 }
 

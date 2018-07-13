@@ -372,6 +372,15 @@ public:
     preconditions.push_back(precondition);
   }
 
+  AgencyWriteTransaction(AgencyOperation const& operation,
+                         std::vector<AgencyPrecondition> const& precs) :
+    clientId(to_string(boost::uuids::random_generator()())) {
+    operations.push_back(operation);
+    for (auto const& pre : precs) {
+      preconditions.push_back(pre);
+    }
+  }
+
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          std::vector<AgencyPrecondition> const& precs) :
     clientId(to_string(boost::uuids::random_generator()())) {

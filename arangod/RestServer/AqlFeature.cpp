@@ -24,6 +24,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/ExecutionBlock.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
@@ -46,7 +47,6 @@ AqlFeature::AqlFeature(
   startsAfter("QueryRegistry");
   startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
 }
 
 AqlFeature* AqlFeature::lease() {

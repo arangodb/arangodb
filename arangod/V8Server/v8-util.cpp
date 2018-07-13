@@ -34,12 +34,13 @@ using namespace arangodb::basics;
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* GetContextVocBase(v8::Isolate* isolate) {
+TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_vocbase != nullptr);
   TRI_ASSERT(!v8g->_vocbase->isDangling());
-  return static_cast<TRI_vocbase_t*>(v8g->_vocbase);
+
+  return *static_cast<TRI_vocbase_t*>(v8g->_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +77,7 @@ static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg,
   }
 
   // document key only
-  if (TraditionalKeyGenerator::validateKey(*str, str.length())) {
+  if (KeyGenerator::validateKey(*str, str.length())) {
     auto const length = str.length();
     auto buffer = new char[length + 1];
     memcpy(buffer, *str, length);

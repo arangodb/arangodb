@@ -29,7 +29,7 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -68,7 +68,7 @@ void MMFilesRestReplicationHandler::insertClient(
 
     if (serverId > 0) {
       _vocbase.updateReplicationClient(
-        serverId, lastServedTick, InitialSyncer::defaultBatchTimeout
+        serverId, lastServedTick, replutils::BatchInfo::DefaultTimeout
       );
     }
   }
@@ -95,7 +95,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
 
     TRI_voc_tick_t id;
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
@@ -129,7 +129,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
 
     // now extend the blocker
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
@@ -330,7 +330,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   if (found) {
     includeSystem = StringUtils::boolean(value4);
   }
-  
+
   // grab list of transactions from the body value
   std::unordered_set<TRI_voc_tid_t> transactionIds;
 
@@ -367,7 +367,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
-  
+
   grantTemporaryRights();
 
   // extract collection
@@ -392,7 +392,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                                             tickStart);
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
@@ -407,11 +407,13 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     generateError(GeneralResponse::responseCode(res), res);
     return;
   }
+
   bool const checkMore = (dump._lastFoundTick > 0 &&
                           dump._lastFoundTick != state.lastCommittedTick);
 
   // generate the result
   size_t length = 0;
+
   if (useVst) {
     length = dump._slices.size();
   } else {
@@ -453,13 +455,13 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "invalid response type");
       }
-      
+
       /*std::string ll(TRI_BeginStringBuffer(dump._buffer),
                        TRI_LengthStringBuffer(dump._buffer));
       for (std::string const& str : basics::StringUtils::split(ll, '\n')) {
         if (!str.empty()) LOG_TOPIC(WARN, Logger::FIXME) << str;
       }*/
-      
+
       // transfer ownership of the buffer contents
       httpResponse->body().set(dump._buffer);
 
@@ -510,7 +512,7 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
     return;
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(
@@ -519,13 +521,14 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // and dump
   int res =
       MMFilesDetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
+
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const err = "failed to determine open transactions";
     LOG_TOPIC(ERR, Logger::REPLICATION) << err;
     generateError(rest::ResponseCode::BAD, res, err);
     return;
   }
-    
+
   // generate the result
   size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
@@ -571,7 +574,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
       includeSystem = StringUtils::boolean(value);
     }
   }
-  
+
   // produce inventory for all databases?
   bool global = false;
   {
@@ -580,14 +583,14 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
       global = StringUtils::boolean(value);
     }
   }
-    
+
   if (global &&
       _request->databaseName() != StaticStrings::SystemDatabase) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "global inventory can only be created from within _system database");
     return;
   }
-  
+
   auto nameFilter = [includeSystem](LogicalCollection const* collection) {
     std::string const cname = collection->name();
     if (!includeSystem && !cname.empty() && cname[0] == '_') {
@@ -604,27 +607,17 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     return true;
   };
 
-  // collections and indexes
-  VPackBuilder inventoryBuilder;
-
-  if (global) {
-    DatabaseFeature::DATABASE->inventory(inventoryBuilder, tick, nameFilter);
-  } else {
-    _vocbase.inventory(inventoryBuilder, tick, nameFilter);
-  }
-
-  VPackSlice const inventory = inventoryBuilder.slice();
   VPackBuilder builder;
-
   builder.openObject();
 
+  // collections and indexes
   if (global) {
-    TRI_ASSERT(inventory.isObject());
-    builder.add("databases", inventory);
+    builder.add(VPackValue("databases"));
+    DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
   } else {
-    // add collections data
-    TRI_ASSERT(inventory.isArray());
-    builder.add("collections", inventory);
+    // add collections and views
+    _vocbase.inventory(builder, tick, nameFilter);
+    TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
 
   // "state"
@@ -693,7 +686,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
 
   // initialize a container with the keys
   auto keys = std::make_unique<MMFilesCollectionKeys>(
-    &_vocbase, std::move(guard), id, 300.0
+    _vocbase, std::move(guard), id, 300.0
   );
 
   std::string const idString(std::to_string(keys->id()));
@@ -844,7 +837,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
     // "offset" was introduced with ArangoDB 3.3. if the client sends it,
     // it means we can adapt the result size dynamically and the client
     // may refetch data for the same chunk
-    maxChunkSize = 8 * 1024 * 1024; 
+    maxChunkSize = 8 * 1024 * 1024;
     // if a client does not send an "offset" parameter at all, we are
     // not sure if it supports this protocol (3.2 and before) or not
   }
@@ -865,7 +858,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   try {
-    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     VPackBuilder resultBuilder(ctx->getVPackOptions());
 
     resultBuilder.openArray();
@@ -882,6 +875,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
         collectionKeys->release();
         return;
       }
+
       collectionKeys->dumpDocs(resultBuilder, chunk,
                                static_cast<size_t>(chunkSize), offsetInChunk,
                                maxChunkSize, parsedIds);
@@ -942,44 +936,20 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  // determine start tick for dump
-  TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd = static_cast<TRI_voc_tick_t>(UINT64_MAX);
-  bool flush = true;  // flush WAL before dumping?
-  bool withTicks = true;
-  uint64_t flushWait = 0;
-
-  // determine flush WAL value
-  bool found;
-  std::string const& value1 = _request->value("flush", found);
-
-  if (found) {
-    flush = StringUtils::boolean(value1);
-  }
+  // flush WAL before dumping?
+  bool flush = _request->parsedValue("flush", true);
 
   // determine flush WAL wait time value
-  std::string const& value3 = _request->value("flushWait", found);
-
-  if (found) {
-    flushWait = StringUtils::uint64(value3);
-    if (flushWait > 60) {
-      flushWait = 60;
-    }
+  uint64_t flushWait = _request->parsedValue("flushWait", static_cast<uint64_t>(0));
+  if (flushWait > 60) {
+    flushWait = 60;
   }
 
   // determine start tick for dump
-  std::string const& value4 = _request->value("from", found);
-
-  if (found) {
-    tickStart = (TRI_voc_tick_t)StringUtils::uint64(value4);
-  }
+  TRI_voc_tick_t tickStart = _request->parsedValue("from", static_cast<TRI_voc_tick_t>(0));
 
   // determine end tick for dump
-  std::string const& value5 = _request->value("to", found);
-
-  if (found) {
-    tickEnd = (TRI_voc_tick_t)StringUtils::uint64(value5);
-  }
+  TRI_voc_tick_t tickEnd = _request->parsedValue("to", static_cast<TRI_voc_tick_t>(UINT64_MAX));
 
   if (tickStart > tickEnd || tickEnd == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -987,18 +957,10 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  bool includeSystem = true;
+  bool includeSystem = _request->parsedValue("includeSystem", true);
+  bool withTicks = _request->parsedValue("ticks", true);
 
-  std::string const& value6 = _request->value("includeSystem", found);
-
-  if (found) {
-    includeSystem = StringUtils::boolean(value6);
-  }
-
-  std::string const& value7 = _request->value("ticks", found);
-  if (found) {
-    withTicks = StringUtils::boolean(value7);
-  }
+  grantTemporaryRights();
 
   auto c = _vocbase.lookupCollection(collection);
 
@@ -1035,13 +997,13 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(&_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),
                                      includeSystem, 0);
-  
+
   int res = MMFilesDumpCollectionReplication(&dump, col, tickStart, tickEnd,
                                              withTicks);
 

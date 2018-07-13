@@ -25,39 +25,55 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_DBSERVER_H 1
 
 #include "utils/async_utils.hpp"
-#include "utils/memory.hpp"
-#include "utils/utf8_path.hpp"
 
+#include "Transaction/Status.h"
+#include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
-class DatabasePathFeature; // forward declaration
+class DatabasePathFeature;
+class TransactionState;
+class CollectionNameResolver;
 
-NS_END // arangodb
+namespace transaction {
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+class Methods; // forward declaration
+
+} // transaction
+
+} // arangodb
+
+namespace arangodb {
+namespace iresearch {
+
+class AsyncMeta;
+class PrimaryKeyIndexReader;
 
 class IResearchViewDBServer final: public arangodb::LogicalView {
  public:
   virtual ~IResearchViewDBServer();
 
+  /// @return success
   virtual arangodb::Result drop() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop the view association for the specified 'cid'
   /// @return if an association was removed
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result drop(TRI_voc_cid_t cid);
+  arangodb::Result drop(TRI_voc_cid_t cid) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure there is a view instance for the specified 'cid'
+  /// @param force creation of a new instance if none is available in vocbase
   /// @return an existing instance or create a new instance if none is registred
   ///         on ptr reset the view will be dropped if it has no collections
   /// @note view created in vocbase() to match callflow during regular startup
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalView> ensure(TRI_voc_cid_t cid);
+  std::shared_ptr<arangodb::LogicalView> ensure(
+      TRI_voc_cid_t cid,
+      bool create = true
+  );
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
@@ -66,17 +82,26 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
+    bool isNew,
     uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit = LogicalView::PreCommitCallback()
+    LogicalView::PreCommitCallback const& preCommit = {}
   );
 
   virtual void open() override;
   virtual arangodb::Result rename(std::string&& newName, bool doSync) override;
-  virtual void toVelocyPack(
-    arangodb::velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const override;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @return pointer to an index reader containing the datastore record snapshot
+  ///         associated with 'state'
+  ///         (nullptr == no view snapshot associated with the specified state)
+  ///         if force == true && no snapshot -> associate current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  PrimaryKeyIndexReader* snapshot(
+    transaction::Methods& trx,
+    std::vector<std::string> const& shards,
+    bool force = false
+  ) const;
+
   virtual arangodb::Result updateProperties(
     arangodb::velocypack::Slice const& properties,
     bool partialUpdate,
@@ -86,13 +111,17 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
     CollectionVisitor const& visitor
   ) const override;
 
- private:
-  DECLARE_SPTR(LogicalView);
+ protected:
+  virtual arangodb::Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override;
 
+ private:
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
-  arangodb::velocypack::Builder _meta; // the view definition
+  std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
-  irs::utf8_path const _persistedPath;
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,
@@ -102,7 +131,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   );
 };
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif

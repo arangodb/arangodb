@@ -1,6 +1,8 @@
 Windows
 =======
 
+**Note:** Please note that ArangoDB will only work on 64bit.
+
 The default installation directory is *C:\Program Files\ArangoDB-3.x.x*. During the
 installation process you may change this. In the following description we will assume
 that ArangoDB has been installed in the location *&lt;ROOTDIR&gt;*.
@@ -86,8 +88,8 @@ If you are upgrading ArangoDB from an earlier version you need to copy your old
 database directory [to the new default paths](#custom-install-paths). Upgrading
 will keep your old data, password and choice of storage engine as it is.
 Switching to the RocksDB storage engine requires a
-[export](../Administration/Arangoexport.md) and
-[reimport](../Administration/Arangoimport.md) of your data.
+[export](../Programs/Arangoexport/README.md) and
+[reimport](../Programs/Arangoimport/README.md) of your data.
 
 Starting
 --------

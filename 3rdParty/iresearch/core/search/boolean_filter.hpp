@@ -68,7 +68,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx
-  ) const final;
+  ) const override final;
 
  protected:
   boolean_filter(const type_id& type) NOEXCEPT;
