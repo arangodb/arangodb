@@ -2452,7 +2452,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
             auto newNode = condition.removeIndexCondition(
-                plan.get(), indexNode->outVariable(), indexCondition->root());
+                plan.get(), indexNode->outVariable(), indexCondition->root(), indexesUsed[0].getIndex()->sparse());
 
             if (newNode == nullptr) {
               // no condition left...
@@ -3658,7 +3658,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                       if (setter == nullptr || setter->getType() != EN::CALCULATION) {
                         continue;
                       }
-                      auto* expr = static_cast<CalculationNode const*>(setter)->expression();
+                      auto* expr = ExecutionNode::castTo<CalculationNode const*>(setter)->expression();
                       if (expr == nullptr) {
                         continue;
                       }
