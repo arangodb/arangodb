@@ -1015,7 +1015,7 @@ bool State::compact(index_t cind, index_t keep) {
   {
     MUTEX_LOCKER(_logLocker, _logLock);
     if (cind <= _cur) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Not compacting log at index " << cind
         << ", because we already have a later snapshot at index " << _cur;
       return true;

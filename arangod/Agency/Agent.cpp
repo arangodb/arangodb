@@ -895,16 +895,20 @@ bool Agent::challengeLeadership() {
 
 
 /// Get last acknowledged responses on leader
-query_t Agent::lastAckedAgo() const {
+void Agent::lastAckedAgo(Builder& ret) const {
 
   std::unordered_map<std::string, index_t> confirmed;
   std::unordered_map<std::string, SteadyTimePoint> lastAcked;
   std::unordered_map<std::string, SteadyTimePoint> lastSent;
+  index_t lastCompactionAt, nextCompactionAfter;
+  
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;
     confirmed = _confirmed;
     lastSent = _lastSent;
+    lastCompactionAt = _state.lastCompactionAt();
+    nextCompactionAfter = _state.nextCompactionAfter();    
   }
 
   std::function<double(std::pair<std::string,SteadyTimePoint> const&)> dur2str =
@@ -914,22 +918,22 @@ query_t Agent::lastAckedAgo() const {
         std::floor(duration<double>(steady_clock::now()-i.second).count()*1.0e3);
   };
 
-  auto ret = std::make_shared<Builder>();
-  { VPackObjectBuilder e(ret.get());
-    if (leading()) {
-      for (auto const& i : lastAcked) {
-        auto lsit = lastSent.find(i.first);
-        ret->add(VPackValue(i.first));
-        { VPackObjectBuilder o(ret.get());
-          ret->add("lastAckedTime", VPackValue(dur2str(i)));
-          ret->add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
-          if (i.first != id()) {
-            ret->add("lastAppend", VPackValue(dur2str(*lsit)));
-          }}
-      }
-    }}
-
-  return ret;
+  ret.add("lastCompactionAt", VPackValue(lastCompactionAt));
+  ret.add("nextCompactionAfter", VPackValue(nextCompactionAfter));
+  if (leading()) {
+    ret.add(VPackValue("lastAcked"));
+    VPackObjectBuilder b(&ret);
+    for (auto const& i : lastAcked) {
+      auto lsit = lastSent.find(i.first);
+      ret.add(VPackValue(i.first));
+      { VPackObjectBuilder o(&ret);
+        ret.add("lastAckedTime", VPackValue(dur2str(i)));
+        ret.add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
+        if (i.first != id()) {
+          ret.add("lastAppend", VPackValue(dur2str(*lsit)));
+        }}
+    }
+  }
 
 }
 
