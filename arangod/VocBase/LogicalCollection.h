@@ -233,9 +233,6 @@ class LogicalCollection: public LogicalDataSource {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(velocypack::Builder&, bool translateCids,
-                    bool forPersistence = false) const;
-
   void toVelocyPackIgnore(velocypack::Builder& result,
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
       bool forPersistence) const;
