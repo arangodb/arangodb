@@ -1,3 +1,10 @@
+v3.3.13 (XXXX-XX-XX)
+--------------------
+
+* inception could get caught in a trap, where agent configuration
+  version and timeout multiplier lead to incapacitated agency
+
+
 v3.3.12 (2018-07-12)
 --------------------
 
@@ -101,9 +108,6 @@ v3.3.10 (2018-06-04)
 * fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 * inception was ignoring leader's configuration
-
-* inception could get caught in a trap, where agent configuration
-  version and timeout multiplier lead to incapacitated agency
 
 * Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
