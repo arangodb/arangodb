@@ -32,6 +32,8 @@
 #include "Aql/RegexCache.h"
 #include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -62,6 +64,10 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <s2/s2loop.h>
 #include <date/date.h>
@@ -1414,12 +1420,93 @@ AqlValue Functions::ToString(arangodb::aql::Query*,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+  ::appendAsString(trx, adapter, value);
+  return AqlValue(buffer->begin(), buffer->length());
+}
+
+/// @brief function TO_BASE64
+AqlValue Functions::ToBase64(arangodb::aql::Query*,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TO_BASE64", 1, 1);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   ::appendAsString(trx, adapter, value);
-  return AqlValue(buffer->begin(), buffer->length());
+  
+  std::string encoded = basics::StringUtils::encodeBase64(std::string(buffer->begin(), buffer->length()));
+    
+  return AqlValue(encoded);
+}
+
+/// @brief function TO_HEX
+AqlValue Functions::ToHex(arangodb::aql::Query*,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TO_HEX", 1, 1);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+  ::appendAsString(trx, adapter, value);
+    
+    std::string encoded = basics::StringUtils::encodeHex(std::string(buffer->begin(), buffer->length()));
+    
+  return AqlValue(encoded);
+}
+
+/// @brief function ENCODE_URI_COMPONENT
+AqlValue Functions::EncodeURIComponent(arangodb::aql::Query*,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+    ValidateParameters(parameters, "ENCODE_URI_COMPONENT", 1, 1);
+    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+    ::appendAsString(trx, adapter, value);
+    
+    std::string encoded = basics::StringUtils::encodeURIComponent(std::string(buffer->begin(), buffer->length()));
+    
+    return AqlValue(encoded);
+}
+
+/// @brief function UUID
+static Mutex theMutex;
+    
+AqlValue Functions::UUID(arangodb::aql::Query*,
+                        transaction::Methods* trx,
+                        VPackFunctionParameters const& parameters){
+    MUTEX_LOCKER(mutexLocker, theMutex);
+    
+    std::string uuid = boost::uuids::to_string(boost::uuids::random_generator()());
+    
+    return AqlValue(uuid);
+}
+
+/// @brief function SOUNDEX
+AqlValue Functions::Soundex(arangodb::aql::Query*,
+                                       transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters) {
+    ValidateParameters(parameters, "SOUNDEX", 1, 1);
+    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+    ::appendAsString(trx, adapter, value);
+    
+    std::string encoded = basics::StringUtils::soundex(basics::StringUtils::trim(basics::StringUtils::tolower(std::string(buffer->begin(), buffer->length()))));
+    
+    return AqlValue(encoded);
 }
 
 /// @brief function TO_BOOL
