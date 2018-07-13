@@ -263,7 +263,7 @@ function optimizerIndexesTestSuite () {
           ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
         ), query);
 
-      var results = AQL_EXECUTE(query, {}, {profile: 30 });
+      var results = AQL_EXECUTE(query);
       assertEqual([ 1 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(1, results.stats.scannedIndex);

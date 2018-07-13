@@ -2,7 +2,7 @@
 /*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, range optimisations
+/// @brief tests for query language, range optimizations
 ///
 /// @file
 ///

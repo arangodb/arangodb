@@ -1414,7 +1414,7 @@ SECTION("FieldIterator_nullptr_analyzer") {
     linkMeta._includeAllFields = true; // include all fields
 
     // acquire analyzer, another one should be created
-    auto analyzer = linkMeta._analyzers.front()->get(); // cached instance should have been aquired
+    auto analyzer = linkMeta._analyzers.front()->get(); // cached instance should have been acquired
 
     arangodb::iresearch::FieldIterator it(slice, linkMeta);
     REQUIRE(it.valid());

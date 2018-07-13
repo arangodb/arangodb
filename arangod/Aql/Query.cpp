@@ -896,7 +896,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
               size_t const n = value->size();
 
               for (size_t i = 0; i < n; ++i) {
-                AqlValue const &val = value->getValueReference(
+                AqlValue const& val = value->getValueReference(
                   i, resultRegister
                 );
 

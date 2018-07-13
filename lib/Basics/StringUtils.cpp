@@ -23,6 +23,9 @@
 
 #include "StringUtils.h"
 
+#include <stdio.h>
+#include <ctype.h>
+
 #include <math.h>
 #include <time.h>
 
@@ -40,6 +43,29 @@
 // -----------------------------------------------------------------------------
 
 namespace {
+  
+static char const* hexValuesLower = "0123456789abcdef";
+static char const* hexValuesUpper = "0123456789ABCDEF";
+
+char soundexCode(char c) {
+  switch (c) {
+    case 'b': case 'f': case 'p': case 'v':
+        return '1';
+    case 'c': case 'g': case 'j': case 'k': case 'q': case 's': case 'x': case 'z':
+        return '2';
+    case 'd': case 't':
+        return '3';
+    case 'l':
+        return '4';
+    case 'm': case 'n':
+        return '5';
+    case 'r':
+        return '6';
+    default:
+        return '\0';
+  }
+}
+    
 bool isSpace(char a) { return a == ' ' || a == '\t' || a == '_'; }
 
 char const* const BASE64_CHARS =
@@ -151,6 +177,7 @@ bool parseHexanumber(char const* inputStr, size_t len, uint32_t* outputInt) {
   }
   return ok;
 }
+
 ///-------------------------------------------------------
 /// @brief computes the unicode value of an ut16 symbol
 ///-------------------------------------------------------
@@ -192,6 +219,7 @@ bool toUtf8(uint32_t outputInt, std::string& outputStr) {
   }
   return true;
 }
+
 ///-------------------------------------------------------
 /// @brief true when number lays in the range
 ///        U+D800  U+DBFF
@@ -199,13 +227,15 @@ bool toUtf8(uint32_t outputInt, std::string& outputStr) {
 bool isHighSurrugate(uint32_t number) {
   return (number >= 0xD800) && (number <= 0xDBFF);
 }
+
 ///-------------------------------------------------------
 /// @brief true when number lays in the range
 ///        U+DC00  U+DFFF
 bool isLowSurrugate(uint32_t number) {
   return (number >= 0xDC00) && (number <= 0xDFFF);
 }
-}
+
+} // namespace
 
 namespace arangodb {
 namespace basics {
@@ -1300,7 +1330,82 @@ std::string urlEncode(char const* src, size_t const len) {
 
   return result;
 }
+    
+std::string encodeURIComponent(std::string const& str) {
+  return encodeURIComponent(str.c_str(), str.size());
+}
+    
+std::string encodeURIComponent(char const* src, size_t const len){
+  char const* end = src + len;
+    
+  if (len >= (SIZE_MAX - 1) / 3) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+    
+  std::string result;
+  result.reserve(3 * len);
+    
+  for (; src < end; ++src) {
+    if (*src == '-' || *src == '_' || *src == '.' || *src == '!' || *src == '~' || *src == '*' || *src == '(' || *src == ')' || *src == '\''|| (*src >= 'a' && *src <= 'z') || (*src >= 'A' && *src <= 'Z') || (*src >= '0' && *src <= '9')) {
+      // no need to encode this character
+      result.push_back(*src);
+    } else {
+      // hex-encode the following character
+      result.push_back('%');
+      auto c = static_cast<unsigned char>(*src);
+      result.push_back(::hexValuesUpper[c >> 4]);
+      result.push_back(::hexValuesUpper[c % 16]);
+    }
+  }
+    
+  return result;
+}
+    
+std::string soundex(std::string const& str) {
+  return soundex(str.c_str(), str.size());
+}
+    
+std::string soundex(char const* src, size_t const len) {
+  char const* end = src + len;
 
+  while (src < end) {
+    // skip over characters (e.g. whitespace and other non-ASCII letters)
+    // until we find something sensible
+    if ((*src >= 'a' && *src <= 'z') || (*src >= 'A' && *src <= 'Z')) {
+      break;
+    }
+    ++src;
+  }
+  
+  std::string result;
+
+  if (src != end) {
+    // emit an upper-case character
+    result.push_back(::toupper(*src));
+    src++;
+    char previousCode = '\0';
+    
+    while (src < end) {
+      char currentCode = ::soundexCode(*src);
+      if (currentCode != '\0' && currentCode != previousCode) {
+        result.push_back(currentCode);
+        if (result.length() >= 4) {
+          break;
+        }
+      }
+      previousCode = currentCode;
+      src++;
+    }
+  
+    // pad result string with '0' chars up to a length of 4  
+    while (result.length() < 4) {
+      result.push_back('0');
+    }
+  }
+  
+  return result;
+}
+    
 // .............................................................................
 // CONVERT TO STRING
 // .............................................................................
@@ -2267,8 +2372,6 @@ size_t numEntries(std::string const& sourceStr, std::string const& delimiter) {
 }
 
 std::string encodeHex(char const* value, size_t length) {
-  static char const* hexValues = "0123456789abcdef";
-
   std::string result;
   result.reserve(length * 2);
   
@@ -2276,8 +2379,8 @@ std::string encodeHex(char const* value, size_t length) {
   char const* e = p + length;
   while (p < e) {
     auto c = static_cast<unsigned char>(*p++);
-    result.push_back(hexValues[c >> 4]);
-    result.push_back(hexValues[c % 16]);
+    result.push_back(::hexValuesLower[c >> 4]);
+    result.push_back(::hexValuesLower[c % 16]);
   }
 
   return result;
