@@ -115,14 +115,14 @@ prototype is affected. [arangorestore](../Arangorestore/README.md)
 Encryption
 ----------
 
-This feature is only available in the Enterprise Edition.
+**This feature is only available in the Enterprise Edition.**
 
 Starting form version ??? encryption of the dump is supported.
 
 The dump is encrypted using an encryption keyfile, which must contain 32 bytes of
 random data. 
 
-The kyfile can be created by an external problem, or by using a command line the
+The kyfile can be created by an external program, or by using a command like the
 following:
 
 ```
@@ -133,5 +133,5 @@ For security reasons, it is best to create these keys offline (away from your
 database servers) and directly store them in you secret management
 tool.
 
-put example here and also say somthing about restore.
+--> put use case / example here and also say something about restore. <--
 
