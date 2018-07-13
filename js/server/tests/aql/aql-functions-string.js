@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen:5000 */
-/* global assertEqual, assertNotEqual, assertTrue */
+/* global assertEqual, assertNotEqual, assertTrue, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for query language, functions
