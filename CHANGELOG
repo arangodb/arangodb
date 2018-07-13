@@ -1,6 +1,8 @@
 v3.3.12 (XXXX-XX-XX)
 --------------------
 
+* Foxx HTTP API errors now log stacktraces
+
 * fixed issue #5727: Edge document with user provided key is inserted as many
   times as the number of shards, violating the primary index
 
