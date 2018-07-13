@@ -256,13 +256,12 @@ class ApplicationServer {
 
  private:
   // throws an exception that a requested feature was not found
-  static void throwFeatureNotFoundException(std::string const& name);
+  [[ noreturn ]] static void throwFeatureNotFoundException(std::string const& name);
 
   // throws an exception that a requested feature is not enabled
-  static void throwFeatureNotEnabledException(std::string const& name);
+  [[ noreturn ]] static void throwFeatureNotEnabledException(std::string const& name);
 
-  static void disableFeatures(std::vector<std::string> const& names,
-                              bool force);
+  static void disableFeatures(std::vector<std::string> const& names, bool force);
 
   // walks over all features and runs a callback function for them
   void apply(std::function<void(ApplicationFeature*)>, bool enabledOnly);

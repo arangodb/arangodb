@@ -2707,16 +2707,26 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::fstream file;
 
+    errno = 0;
+    // disable exceptions in the stream object:
+    file.exceptions(std::ifstream::goodbit);
     file.open(*name, std::ios::out | std::ios::binary);
 
-    if (file.is_open()) {
+    if (file.is_open() && file.good()) {
       file.write(data, size);
-      if (flush) {
-        file.flush();
-        file.sync();
+      if (file.good()) {
+        if (flush) {
+          file.flush();
+          file.sync();
+        }
+        file.close();
+        if (file.good()) {
+          TRI_V8_RETURN_TRUE();
+        }
       }
-      file.close();
-      TRI_V8_RETURN_TRUE();
+      else {
+        file.close();
+      }
     }
   } else {
     TRI_Utf8ValueNFC content(args[1]);
@@ -2727,16 +2737,26 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::fstream file;
 
+    errno = 0;
+    // disable exceptions in the stream object:
+    file.exceptions(std::ifstream::goodbit);
     file.open(*name, std::ios::out | std::ios::binary);
 
-    if (file.is_open()) {
+    if (file.is_open() && file.good()) {
       file << *content;
-      if (flush) {
-        file.flush();
-        file.sync();
+      if (file.good()) {
+        if (flush) {
+          file.flush();
+          file.sync();
+        }
+        file.close();
+        if (file.good()) {
+          TRI_V8_RETURN_TRUE();
+        }
       }
-      file.close();
-      TRI_V8_RETURN_TRUE();
+      else {
+        file.close();
+      }
     }
   }
 
@@ -3016,13 +3036,13 @@ static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha512
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA512(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3058,13 +3078,13 @@ static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha384
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA384(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3100,13 +3120,13 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha256
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA256(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3142,13 +3162,13 @@ static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha224
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA224(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3184,13 +3204,13 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha1
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA1(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);

@@ -63,11 +63,12 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     auto res = registerUserFunction(_vocbase, body, replacedExisting);
 
     if (res.ok()) {
-      auto code = (replacedExisting)? rest::ResponseCode::OK : rest::ResponseCode::CREATED;
+      auto code = replacedExisting ? rest::ResponseCode::OK : rest::ResponseCode::CREATED;
       VPackBuilder tmp;
       tmp.add(VPackValue(VPackValueType::Object));
       tmp.add("error", VPackValue(false));
       tmp.add("code", VPackValue(static_cast<int>(code)));
+      tmp.add("isNewlyCreated", VPackValue(!replacedExisting));
       tmp.close();
 
       generateResult(code, tmp.slice());
@@ -88,7 +89,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     Result res;
     int deletedCount = 0;
-    bool deleteGroup = extractBooleanParameter(StaticStrings::Group, false);
+    bool deleteGroup = _request->parsedValue(StaticStrings::Group, false);
 
     if (deleteGroup) {
       res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);

@@ -65,7 +65,8 @@ class StaticStrings {
   static std::string const Group;
   static std::string const Namespace;
   static std::string const ReplaceExisting;
-  static std::string const Prefix;;
+  static std::string const Prefix;
+  static std::string const OverWrite;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -74,8 +75,8 @@ class StaticStrings {
   static std::string const ReplicationHeaderLastTick;
   static std::string const ReplicationHeaderFromPresent;
   static std::string const ReplicationHeaderActive;
- 
-  // database and collection names 
+
+  // database and collection names
   static std::string const SystemDatabase;
 
   // LogicalDataSource definition fields
@@ -130,21 +131,25 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
-  static std::string const MultiPartContentType;
   static std::string const NoSniff;
   static std::string const Origin;
-  static std::string const ResponseCode;
   static std::string const Queue;
+  static std::string const RequestServedBy;
+  static std::string const ResponseCode;
   static std::string const Server;
-  static std::string const StartThread;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
+  static std::string const XArangoNoLock;
 
   // mime types
   static std::string const MimeTypeJson;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
+  static std::string const MultiPartContentType;
+
+  // misc strings
+  static std::string const LastValue;
 };
 }
 

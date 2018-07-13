@@ -58,7 +58,7 @@ struct thread_data_t {
 static void* ThreadStarter(void* data) {
   sigset_t all;
   sigfillset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, 0);
+  pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
   // this will automatically free the thread struct when leaving this function
   std::unique_ptr<thread_data_t> d(static_cast<thread_data_t*>(data));
@@ -188,7 +188,7 @@ bool TRI_IsSelfThread(TRI_thread_t* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AllowCancelation() {
-  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

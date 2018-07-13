@@ -71,8 +71,6 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }
@@ -100,14 +98,6 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
-
-  /// @brief looks up all points within a given radius
-  void withinQuery(transaction::Methods*, double, double,
-                              double, std::string const&, VPackBuilder&) const;
-
-  /// @brief looks up the nearest points
-  void nearQuery(transaction::Methods*, double, double,
-                            size_t, std::string const&, VPackBuilder&) const;
 
   void load() override {}
   void unload() override;

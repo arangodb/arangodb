@@ -7,7 +7,7 @@ PostgreSQL, or other database systems.
 User management is possible in the [web interface](../../Programs/WebInterface/Users.md)
 and in [arangosh](InArangosh.md) while logged on to the *\_system* database.
 
-Note that the only usernames *must* not start with `:role:`.
+Note that usernames *must* not start with `:role:`.
 
 Actions and Access Levels
 -------------------------

@@ -29,88 +29,7 @@
 
 using namespace arangodb::aql;
 
-#ifdef USE_IRESEARCH
-
-#include "IResearch/IResearchViewNode.h"
-#include "IResearch/IResearchOrderFactory.h"
-#include "IResearch/AqlHelper.h"
-
 namespace {
-
-int compareIResearchScores(
-    irs::sort::prepared const* comparer,
-    arangodb::transaction::Methods*,
-    AqlValue const& lhs,
-    AqlValue const& rhs
-) {
-  arangodb::velocypack::ValueLength tmp;
-
-  auto const* lhsScore = reinterpret_cast<irs::byte_type const*>(lhs.slice().getString(tmp));
-  auto const* rhsScore = reinterpret_cast<irs::byte_type const*>(rhs.slice().getString(tmp));
-
-  if (comparer->less(lhsScore, rhsScore)) {
-    return -1;
-  }
-
-  if (comparer->less(rhsScore, lhsScore)) {
-    return 1;
-  }
-
-  return 0;
-}
-
-int compareAqlValues(
-    irs::sort::prepared const*,
-    arangodb::transaction::Methods* trx,
-    AqlValue const& lhs,
-    AqlValue const& rhs) {
-  return AqlValue::Compare(
-    reinterpret_cast<arangodb::transaction::Methods*>(trx), lhs, rhs, true
-  );
-}
-
-void fillSortRegisters(
-    std::vector<SortRegister>& sortRegisters,
-    SortNode const& en
-) {
-  TRI_ASSERT(en.plan());
-  auto& execPlan = *en.plan();
-
-  auto const& elements = en.elements();
-  sortRegisters.reserve(elements.size());
-  std::unordered_map<ExecutionNode const*, size_t> offsets(sortRegisters.capacity());
-
-  irs::sort::ptr comparer;
-
-  for (auto const& p : elements) {
-    auto const varId = p.var->id;
-    auto it = en.getRegisterPlan()->varInfo.find(varId);
-    TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    sortRegisters.emplace_back(it->second.registerId, p.ascending, nullptr, &compareAqlValues);
-
-    auto const* setter = execPlan.getVarSetBy(varId);
-
-    if (setter && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == setter->getType()) {
-      // sort condition is covered by `IResearchViewNode`
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto const& viewNode = dynamic_cast<arangodb::iresearch::IResearchViewNode const&>(*setter);
-#else
-      auto const& viewNode = static_cast<arangodb::iresearch::IResearchViewNode const&>(*setter);
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
-
-      auto& offset = offsets[&viewNode];
-      auto* node = viewNode.sortCondition()[offset++].node;
-
-      if (arangodb::iresearch::OrderFactory::comparer(&comparer, *node)) {
-        auto& reg = sortRegisters.back();
-        std::get<2>(reg) = comparer->prepare(); // set score comparer
-        std::get<3>(reg) = &compareIResearchScores; // set comparator
-      }
-    }
-  }
-}
 
 /// @brief OurLessThan
 class OurLessThan {
@@ -127,72 +46,20 @@ class OurLessThan {
   bool operator()(std::pair<uint32_t, uint32_t> const& a,
                   std::pair<uint32_t, uint32_t> const& b) const {
     for (auto const& reg : _sortRegisters) {
-      auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
-      auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
+      auto const& lhs = _buffer[a.first]->getValueReference(a.second, reg.reg);
+      auto const& rhs = _buffer[b.first]->getValueReference(b.second, reg.reg);
 
-      auto const comparator = std::get<3>(reg);
-      TRI_ASSERT(comparator);
-
-      int const cmp = (*comparator)(std::get<2>(reg).get(), _trx, lhs, rhs);
-
-      if (cmp < 0) {
-        return std::get<1>(reg);
-      } else if (cmp > 0) {
-        return !std::get<1>(reg);
-      }
-    }
-
-    return false;
-  }
-
- private:
-  arangodb::transaction::Methods* _trx;
-  std::deque<AqlItemBlock*>& _buffer;
-  std::vector<SortRegister>& _sortRegisters;
-};
-
-}
-
+#ifdef USE_IRESEARCH
+      TRI_ASSERT(reg.comparator);
+      int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
-
-void fillSortRegisters(
-    std::vector<SortRegister>& sortRegisters,
-    SortNode const& en
-) {
-  auto const& elements = en.elements();
-  sortRegisters.reserve(elements.size());
-
-  for (auto const& p : elements) {
-    auto const varId = p.var->id;
-    auto it = en.getRegisterPlan()->varInfo.find(varId);
-    TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    sortRegisters.emplace_back(it->second.registerId, p.ascending);
-  }
-}
-
-/// @brief OurLessThan
-class OurLessThan {
- public:
-  OurLessThan(arangodb::transaction::Methods* trx,
-              std::deque<AqlItemBlock*>& buffer,
-              std::vector<SortRegister>& sortRegisters)
-      : _trx(trx),
-        _buffer(buffer),
-        _sortRegisters(sortRegisters) {}
-
-  bool operator()(std::pair<size_t, size_t> const& a,
-                  std::pair<size_t, size_t> const& b) const {
-    for (auto const& reg : _sortRegisters) {
-      auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
-      auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
-
       int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+#endif
 
       if (cmp < 0) {
-        return std::get<1>(reg);
+        return reg.asc;
       } else if (cmp > 0) {
-        return !std::get<1>(reg);
+        return !reg.asc;
       }
     }
 
@@ -203,45 +70,59 @@ class OurLessThan {
   arangodb::transaction::Methods* _trx;
   std::deque<AqlItemBlock*>& _buffer;
   std::vector<SortRegister>& _sortRegisters;
-};
+}; // OurLessThan
 
-#endif // USE_IRESEARCH
+}
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
   : ExecutionBlock(engine, en),
     _stable(en->_stable),
     _mustFetchAll(true) {
-  TRI_ASSERT(en);
-  fillSortRegisters(_sortRegisters, *en);
+  TRI_ASSERT(en && en->plan() && en->getRegisterPlan());
+  SortRegister::fill(
+    *en->plan(),
+    *en->getRegisterPlan(),
+    en->elements(),
+    _sortRegisters
+  );
 }
 
 SortBlock::~SortBlock() {}
 
-int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK(); 
-  int res = ExecutionBlock::initializeCursor(items, pos);
-  if (res != TRI_ERROR_NO_ERROR) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   _mustFetchAll = !_done;
   _pos = 0;
 
-  return TRI_ERROR_NO_ERROR;
+  return res; 
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
-int SortBlock::getOrSkipSome(size_t atMost, bool skipping,
-                             AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK(); 
-  
+std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();
+
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_mustFetchAll) {
+    ExecutionState res = ExecutionState::HASMORE;
     // suck all blocks into _buffer
-    while (getBlock(DefaultBatchSize())) {
+    while (res != ExecutionState::DONE) {
+      res = getBlock(DefaultBatchSize()).first;
+      if (res == ExecutionState::WAITING) {
+        return {res, TRI_ERROR_NO_ERROR};
+      }
     }
 
     _mustFetchAll = false;
@@ -251,9 +132,8 @@ int SortBlock::getOrSkipSome(size_t atMost, bool skipping,
   }
 
   return ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
-  
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 void SortBlock::doSorting() {

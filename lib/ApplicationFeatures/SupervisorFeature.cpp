@@ -153,7 +153,7 @@ void SupervisorFeature::daemonize() {
     return;
   }
 
-  time_t startTime = time(0);
+  time_t startTime = time(nullptr);
   time_t t;
   bool done = false;
   int result = EXIT_SUCCESS;
@@ -232,7 +232,7 @@ void SupervisorFeature::daemonize() {
             done = true;
             horrible = false;
           } else {
-            t = time(0) - startTime;
+            t = time(nullptr) - startTime;
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOG_TOPIC(ERR, Logger::STARTUP)
@@ -269,7 +269,7 @@ void SupervisorFeature::daemonize() {
 
             default:
               TRI_ASSERT(horrible);
-              t = time(0) - startTime;
+              t = time(nullptr) - startTime;
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_TOPIC(ERR, Logger::STARTUP)

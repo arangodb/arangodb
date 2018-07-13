@@ -31,7 +31,8 @@ to the [naming conventions](../NamingConventions/README.md).
   specified, then *keyOptions* should be a JSON array containing the
   following attributes (**note**: some of them are optional):
   * *type*: specifies the type of the key generator. The currently
-    available generators are *traditional* and *autoincrement*.
+    available generators are *traditional*, *autoincrement*, *uuid*
+    and *padded*.
   * *allowUserKeys*: if set to *true*, then it is allowed to supply
     own key values in the *_key* attribute of a document. If set to
     *false*, then the key generator will solely be responsible for

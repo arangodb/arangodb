@@ -23,6 +23,8 @@
 #ifndef ARANGOD_SCHEDULER_ACCEPTOR_H
 #define ARANGOD_SCHEDULER_ACCEPTOR_H 1
 
+#include "Basics/Common.h"
+
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Scheduler/Socket.h"
@@ -30,25 +32,26 @@
 
 namespace arangodb {
 class Acceptor {
-  public:
-    typedef std::function<void(asio::error_code const&)> AcceptHandler;
+ public:
+  typedef std::function<void(asio_ns::error_code const&)> AcceptHandler;
 
-    Acceptor(asio::io_context& ioService, Endpoint* endpoint);
-    virtual ~Acceptor() {}
+ public:
+  Acceptor(rest::Scheduler*, Endpoint* endpoint);
+  virtual ~Acceptor() {}
 
-    virtual void open() = 0;
-    virtual void close() = 0;
-    virtual void asyncAccept(AcceptHandler const& handler) = 0;
-    std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
-  
-  public:
-    static std::unique_ptr<Acceptor> factory(
-        asio::io_context& _ioService, Endpoint* endpoint);
-  
-  protected:
-    asio::io_context& _ioContext;
-    Endpoint* _endpoint;
-    std::unique_ptr<Socket> _peer;
+ public:
+  virtual void open() = 0;
+  virtual void close() = 0;
+  virtual void asyncAccept(AcceptHandler const& handler) = 0;
+  std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
+
+ public:
+  static std::unique_ptr<Acceptor> factory(rest::Scheduler*, Endpoint*);
+
+ protected:
+  rest::Scheduler* _scheduler;
+  Endpoint* _endpoint;
+  std::unique_ptr<Socket> _peer;
 };
 }
 #endif

@@ -58,9 +58,9 @@ struct RocksDBTransactionData final : public TransactionData {};
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
     transaction::Options const& options
-)
-    : TransactionState(vocbase, options),
+): TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _snapshot(nullptr),
       _rocksWriteOptions(),
@@ -113,8 +113,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   if (_nestingLevel == 0) {
-    // get a new id
-    _id = TRI_NewTickServer();
 
     // register a protector (intentionally empty)
     auto data = std::make_unique<RocksDBTransactionData>();
@@ -193,7 +191,8 @@ void RocksDBTransactionState::createTransaction() {
 
   // add transaction begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-    auto header = RocksDBLogValue::BeginTransaction(_vocbase.id(), _id);
+    auto header =
+      RocksDBLogValue::BeginTransaction(_vocbase.id(), _id);
 
     _rocksTransaction->PutLogData(header.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -221,21 +220,22 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 arangodb::Result RocksDBTransactionState::internalCommit() {
   TRI_ASSERT(_rocksTransaction != nullptr);
 
+  // we may need to block intermediate commits
   ExecContext const* exe = ExecContext::CURRENT;
   if (!isReadOnlyTransaction() && exe != nullptr) {
-    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
     if (exe->isCanceled() || cancelRW) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
   Result result;
-
   if (hasOperations()) {
     // we are actually going to attempt a commit
     if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       // add custom commit marker to increase WAL tailing reliability
-      auto logValue = RocksDBLogValue::CommitTransaction(_vocbase.id(), id());
+      auto logValue =
+        RocksDBLogValue::CommitTransaction(_vocbase.id(), id());
 
       _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -276,7 +276,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       collection->prepareCommit(id(), preCommitSeq);
     }
     bool committed = false;
-    auto cleanupCollectionTransactions = [this, &committed]() -> void {
+    auto cleanupCollectionTransactions = scopeGuard([this, &committed]() {
       // if we didn't commit, make sure we remove blockers, etc.
       if (!committed) {
         for (auto& trxCollection : _collections) {
@@ -285,8 +285,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
           collection->abortCommit(id());
         }
       }
-    };
-    TRI_DEFER(cleanupCollectionTransactions());
+    });
 
     ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
@@ -393,7 +392,8 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
       case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
-        auto logValue = RocksDBLogValue::SinglePut(_vocbase.id(), cid);
+        auto logValue =
+          RocksDBLogValue::SinglePut(_vocbase.id(), cid);
 
         _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

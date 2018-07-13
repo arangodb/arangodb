@@ -43,28 +43,29 @@ class TraversalBlock final : public ExecutionBlock {
 
   ~TraversalBlock();
 
-  /// @brief initialize, here we fetch all docs from the database
-  int initialize() override;
+  Type getType() const override final {
+    return Type::TRAVERSAL;
+  }
 
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown send destroy to all engines.
-  int shutdown(int errorCode) override final;
+  std::pair<ExecutionState, Result> shutdown(int errorCode) override final;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
-  size_t skipSome(size_t atMost) override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
-
   /// @brief cleanup, here we clean up all internally generated values
   void freeCaches();
 
-  /// @brief continue fetching of paths
-  bool morePaths(size_t hint);
+  /// @brief read more paths from _traverser. returns true if there are more
+  /// paths.
+  bool getSomePaths(size_t hint);
 
   /// @brief skip the next paths
   size_t skipPaths(size_t hint);

@@ -72,8 +72,6 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-  /// @brief used for updating properties
-  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
   int close() override;
@@ -130,6 +128,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool locked) override {
+    if (!key.isString()) {
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
     return this->read(trx, arangodb::StringRef(key), result, locked);
   }
 
@@ -159,9 +160,7 @@ class RocksDBCollection final : public PhysicalCollection {
                  arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 arangodb::velocypack::Slice const fromSlice,
-                 arangodb::velocypack::Slice const toSlice) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
 
   Result remove(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const slice,
@@ -204,12 +203,8 @@ class RocksDBCollection final : public PhysicalCollection {
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
   /// @brief return engine-specific figures
-  void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) override;
-  /// @brief creates the initial indexes for the collection
-  void createInitialIndexes();
+  void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
   void addIndex(std::shared_ptr<arangodb::Index> idx);
-  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
   int saveIndex(transaction::Methods* trx,
                 std::shared_ptr<arangodb::Index> idx);
 
@@ -232,10 +227,6 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::Result removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
-
-  arangodb::Result lookupDocument(
-      transaction::Methods* trx, arangodb::velocypack::Slice const& key,
-      ManagedDocumentResult& result) const;
 
   arangodb::Result updateDocument(
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -313,15 +313,27 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 }
 
 /// @brief Report a failed append entry call from AgentCallback
-void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
+void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
   if (toLog > 0) {
     // This is only used for non-empty appendEntriesRPC calls. If such calls
     // fail, we have to set this earliestPackage time to now such that the
-    // main thread tries again immediately:
+    // main thread tries again immediately: and for that agent starting at 0
+    // which effectively will be _state.firstIndex().
     MUTEX_LOCKER(guard, _tiLock);
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Resetting _earliestPackage to now for id " << slaveId;
-    _earliestPackage[slaveId] = steady_clock::now();
+    _earliestPackage[slaveId] = steady_clock::now() + seconds(1);
+    _confirmed[slaveId] = 0;
+  } else {
+    // answer to sendAppendEntries to empty request, when follower's highest
+    // log index is 0. This is necessary so that a possibly restarted agent
+    // without persistence immediately is brought up to date. We only want to do
+    // this, when the agent was able to answer and no or corrupt answer is
+    // handled
+    if (sent) {
+      MUTEX_LOCKER(guard, _tiLock);
+      _confirmed[slaveId] = 0;
+    }
   }
 }
 
@@ -348,18 +360,41 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
     return priv_rpc_ret_t(false,t);
   }
 
+  size_t nqs = payload.length();
+  if(nqs > 0 && !payload[0].get("readDB").isNone()) {
+    // We have received a compacted state.
+    // Whatever we got in our own state is meaningless now. It is a new world.
+    // checkLeader just does plausibility as if it were an empty request
+    prevIndex = 0;
+    prevTerm = 0;
+  }
+
+  // Leadership claim plausibility check
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Not accepting appendEntries from " << leaderId;
     return priv_rpc_ret_t(false,t);
   }
 
-  size_t nqs = payload.length();
-
+  // Empty appendEntries:
+  // We answer with success if and only if our highest index is greater 0.
+  // Else we want to indicate to the leader that we are behind and need data:
+  // a single false will go back and trigger _confirmed[thisfollower] = 0
   if (nqs == 0) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Finished empty AppendEntriesRPC from "
-      << leaderId << " with term " << term;
-    return priv_rpc_ret_t(true,t);
+    if (_state.lastIndex() > 0) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Finished empty AppendEntriesRPC from " << leaderId << " with term " << term;
+      {
+        WRITE_LOCKER(oLocker, _outputLock);
+        _commitIndex = leaderCommitIndex;
+        if (_commitIndex >= _state.nextCompactionAfter()) {
+          _compactor.wakeUp();
+        }
+      }
+      return priv_rpc_ret_t(true,t);
+    } else {
+      return priv_rpc_ret_t(false,t);
+    }
   }
 
   bool ok = true;
@@ -424,8 +459,21 @@ void Agent::sendAppendEntriesRPC() {
         earliestPackage = _earliestPackage[followerId];
       }
 
-      if (
-        ((steady_clock::now() - earliestPackage).count() < 0)) {
+      // We essentially have to send some log entries from their lastConfirmed+1
+      // on. However, we have to take care of the case that their lastConfirmed
+      // is a value which is very outdated, such that we have in the meantime
+      // done a log compaction and do not actually have lastConfirmed+1 any
+      // more. In that case, we need to send our latest snapshot at index S
+      // (say), and then some log entries from (and including) S on. This is
+      // to ensure that the other side does not only have the snapshot, but
+      // also the log entry which produced that snapshot.
+      // Therefore, we will set lastConfirmed to one less than our latest
+      // snapshot in this special case, and we will always fetch enough
+      // entries from the log to fulfull our duties.
+
+      if ((steady_clock::now() - earliestPackage).count() < 0 ||
+          _state.lastIndex() <= lastConfirmed) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
         continue;
       }
 
@@ -440,8 +488,24 @@ void Agent::sendAppendEntriesRPC() {
         READ_LOCKER(oLocker, _outputLock);
         commitIndex = _commitIndex;
       }
-      std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
 
+      // If lastConfirmed is smaller than our first log entry's index, and
+      // given that our first log entry is either the 0-entry or a compacted
+      // state and that compactions are only performed up to a RAFT-wide 
+      // committed index, and by that up to absolut truth we can correct
+      // lastConfirmed to one minus our first log index.
+      if (lastConfirmed < _state.firstIndex()) {
+        lastConfirmed = _state.firstIndex() - 1;
+        // Note that this can only ever happen if _state.firstIndex() is
+        // greater than 0, so there is no underflow.
+      }
+      LOG_TOPIC(TRACE, Logger::AGENCY)
+        << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
+      // If lastConfirmed is one minus the first log entry, then this is
+      // corrected in _state::get and we only get from the beginning of the
+      // log.
+      std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
+         
       lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
         LOG_TOPIC(WARN, Logger::AGENCY)
@@ -455,17 +519,13 @@ void Agent::sendAppendEntriesRPC() {
         LOG_TOPIC(ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
           << "lastConfirmed=" << lastConfirmed << " commitIndex="
           << commitIndex;
+        TRI_ASSERT(false);
       }
 
-      TRI_ASSERT(!unconfirmed.empty());
-
-      if (unconfirmed.size() == 1) {
-        // Note that this case means that everything we have is already
-        // confirmed, since we always get everything from (and including!)
-        // the last confirmed entry.
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
-        continue;
-      }
+      // Note that if we get here we have at least two entries, otherwise
+      // we would have done continue earlier, since this can only happen
+      // if lastConfirmed is equal to the last index in our log, in which
+      // case there is nothing to replicate.
 
       duration<double> m = steady_clock::now() - _lastSent[followerId];
 
@@ -483,6 +543,7 @@ void Agent::sendAppendEntriesRPC() {
       Store snapshot(this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
+      
       if (lowest > lastConfirmed) {
         // Ooops, compaction has thrown away so many log entries that
         // we cannot actually update the follower. We need to send our
@@ -543,6 +604,12 @@ void Agent::sendAppendEntriesRPC() {
       for (size_t i = 0; i < unconfirmed.size(); ++i) {
         auto const& entry = unconfirmed.at(i);
         if (entry.index > lastConfirmed) {
+          // This condition is crucial, because usually we have one more
+          // entry than we need in unconfirmed, so we want to skip this. If,
+          // however, we have sent a snapshot, we need to send the log entry
+          // with the same index than the snapshot along to retain the
+          // invariant of our data structure that the _log in _state is
+          // non-empty.
           builder.add(VPackValue(VPackValueType::Object));
           builder.add("index", VPackValue(entry.index));
           builder.add("term", VPackValue(entry.term));
@@ -833,24 +900,37 @@ bool Agent::challengeLeadership() {
 /// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
 
+  std::unordered_map<std::string, index_t> confirmed;
   std::unordered_map<std::string, SteadyTimePoint> lastAcked;
+  std::unordered_map<std::string, SteadyTimePoint> lastSent;
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;
+    confirmed = _confirmed;
+    lastSent = _lastSent;
   }
 
+  std::function<double(std::pair<std::string,SteadyTimePoint> const&)> dur2str =
+    [&](std::pair<std::string,SteadyTimePoint> const& i) {
+    return id() == i.first ? 0.0 :
+      1.0e-3 *
+        std::floor(duration<double>(steady_clock::now()-i.second).count()*1.0e3);
+  };
+
   auto ret = std::make_shared<Builder>();
-  ret->openObject();
-  if (leading()) {
-    for (auto const& i : lastAcked) {
-      ret->add(i.first, VPackValue(
-                 1.0e-3 * std::floor(
-                   (i.first!=id() ?
-                    duration<double>(steady_clock::now()-i.second).count()*1.0e3 :
-		    0.0))));
-    }
-  }
-  ret->close();
+  { VPackObjectBuilder e(ret.get());
+    if (leading()) {
+      for (auto const& i : lastAcked) {
+        auto lsit = lastSent.find(i.first);
+        ret->add(VPackValue(i.first));
+        { VPackObjectBuilder o(ret.get());
+          ret->add("lastAckedTime", VPackValue(dur2str(i)));
+          ret->add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
+          if (i.first != id()) {
+            ret->add("lastAppend", VPackValue(dur2str(*lsit)));
+          }}
+      }
+    }}
 
   return ret;
 
@@ -1672,14 +1752,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
-
-  std::unordered_map<std::string, std::string> incoming;
   for (auto const& pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           20004, "Gossip message pool must contain string parameters");
     }
-    incoming[pair.key.copyString()] = pair.value.copyString();
   }
 
   query_t out = std::make_shared<Builder>();
@@ -1697,14 +1774,10 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       }
     }
 
-    for (auto const& i : incoming) {
-
-      /// disagreement over pool membership: fatal!
-      if (!_config.addToPool(i)) {
-        LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
-        FATAL_ERROR_EXIT();
-      }
-
+    /// disagreement over pool membership: fatal!
+    if (!_config.upsertPool(pslice, id)) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
+      FATAL_ERROR_EXIT();
     }
 
     if (!isCallback) { // no gain in callback to a callback.
@@ -1725,6 +1798,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   if (!isCallback) {
     LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
                                      << out->slice().toJson();
+  }
+
+  // let gossip loop know that it has new data
+  if ( _inception != nullptr && isCallback) {
+    _inception->signalConditionVar();
   }
 
   return out;

@@ -297,9 +297,9 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
-                                       bool verbose) const {
-  GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
+void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                       unsigned flags) const {
+  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -311,7 +311,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   // Condition
   if (_condition != nullptr) {
     nodes.add(VPackValue("condition"));
-    _condition->toVelocyPack(nodes, verbose);
+    _condition->toVelocyPack(nodes, flags != 0);
   }
 
   if (!_conditionVariables.empty()) {
@@ -333,17 +333,17 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
 
   TRI_ASSERT(_fromCondition != nullptr);
   nodes.add(VPackValue("fromCondition"));
-  _fromCondition->toVelocyPack(nodes, verbose);
+  _fromCondition->toVelocyPack(nodes, flags);
 
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
-  _toCondition->toVelocyPack(nodes, verbose);
+  _toCondition->toVelocyPack(nodes, flags);
 
   if (!_globalEdgeConditions.empty()) {
     nodes.add(VPackValue("globalEdgeConditions"));
     nodes.openArray();
     for (auto const& it : _globalEdgeConditions) {
-      it->toVelocyPack(nodes, verbose);
+      it->toVelocyPack(nodes, flags);
     }
     nodes.close();
   }
@@ -352,7 +352,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.add(VPackValue("globalVertexConditions"));
     nodes.openArray();
     for (auto const& it : _globalVertexConditions) {
-      it->toVelocyPack(nodes, verbose);
+      it->toVelocyPack(nodes, flags);
     }
     nodes.close();
   }
@@ -362,7 +362,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.openObject();
     for (auto const& it : _vertexConditions) {
       nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
-      it.second->toVelocyPack(nodes, verbose);
+      it.second->toVelocyPack(nodes, flags);
     }
     nodes.close();
   }
@@ -372,7 +372,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.openObject();
     for (auto& it : _edgeConditions) {
       nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
-      it.second->toVelocyPack(nodes, verbose);
+      it.second->toVelocyPack(nodes, flags);
     }
     nodes.close();
   }
@@ -387,8 +387,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<TraversalBlock>(&engine, this);
 }
@@ -472,9 +471,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief the cost of a traversal node
@@ -506,12 +503,12 @@ void TraversalNode::prepareOptions() {
     switch (dir) {
       case TRI_EDGE_IN:
         _options->addLookupInfo(
-            _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
+            _plan, _edgeColls[i]->name(), StaticStrings::ToString,
             globalEdgeConditionBuilder.getInboundCondition()->clone(ast));
         break;
       case TRI_EDGE_OUT:
         _options->addLookupInfo(
-            _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
+            _plan, _edgeColls[i]->name(), StaticStrings::FromString,
             globalEdgeConditionBuilder.getOutboundCondition()->clone(ast));
         break;
       case TRI_EDGE_ANY:
@@ -539,12 +536,12 @@ void TraversalNode::prepareOptions() {
       switch (dir) {
         case TRI_EDGE_IN:
           opts->addDepthLookupInfo(
-              _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
+              _plan, _edgeColls[i]->name(), StaticStrings::ToString,
               builder->getInboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(
-              _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
+              _plan, _edgeColls[i]->name(), StaticStrings::FromString,
               builder->getOutboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_ANY:

@@ -100,3 +100,34 @@ arangodb create jwt-secret \
 ```
 
 Make sure to protect and store the generated file (`my-secret.jwt`) in a safe place.
+
+## Using authentication tokens
+
+ArangoDB deployments that require authentication can be accessed through standard user+password
+pairs or using a JWT to get "super-user" access.
+
+This super-user access is needed to communicate directly with the agency or with any server
+in the deployment.
+Note that uses super-user access for normal database access is NOT advised.
+
+To create a JWT from the JWT secret file specified using the `--auth.jwt-secret` option,
+use the following command:
+
+```bash
+arangodb auth token --auth.jwt-secret=<secret-file>
+```
+
+To create a complete HTTP Authorization header that can be passed directly to tools like `curl`,
+use the following command:
+
+```bash
+arangodb auth header --auth.jwt-secret=<secret-file>
+```
+
+Using `curl` with this command looks like this:
+
+```bash
+curl -v -H "$(arangodb auth header --auth.jwt-secret=<secret-file>)" http://<database-ip>:8529/_api/version
+```
+
+Note the double quotes around `$(...)`.

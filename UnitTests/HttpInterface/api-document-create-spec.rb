@@ -70,7 +70,7 @@ describe ArangoDB do
 
         ArangoDB.drop_collection(cn)
       end
-      
+
       it "returns an error if an object sub-attribute in the JSON body is corrupted" do
         cn = "UnitTestsCollectionBasics"
         id = ArangoDB.create_collection(cn)
@@ -89,7 +89,7 @@ describe ArangoDB do
 
         ArangoDB.drop_collection(cn)
       end
-      
+
       it "returns an error if an array attribute in the JSON body is corrupted" do
         cn = "UnitTestsCollectionBasics"
         id = ArangoDB.create_collection(cn)
@@ -143,7 +143,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -155,7 +155,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new document, setting compatibility header" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
@@ -175,7 +175,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -187,7 +187,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new document complex body" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
@@ -207,7 +207,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -226,7 +226,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new document complex body, setting compatibility header " do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
@@ -246,7 +246,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -285,7 +285,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -309,7 +309,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new umlaut document, setting compatibility header" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
@@ -329,7 +329,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -349,7 +349,7 @@ describe ArangoDB do
         newBody.should eq("\\u00F6\\u00E4\\u00FC\\u00D6\\u00C4\\u00DC\\u00DF\\u3042\\u5BFF\\u53F8")
 
         doc.parsed_response['Hallo'].should eq('öäüÖÄÜßあ寿司')
-        
+
         ArangoDB.delete(location)
 
         ArangoDB.size_collection(@cn).should eq(0)
@@ -399,7 +399,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new not normalized umlaut document, setting compatibility header" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Grüß Gott.\" }"
@@ -469,7 +469,7 @@ describe ArangoDB do
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
         did.should eq("#{@cn}/#{@key}")
-  
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -478,7 +478,7 @@ describe ArangoDB do
 
         ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
       end
-      
+
       it "creating a document with an existing id, setting compatibility header" do
         @key = "a_new_key"
 
@@ -503,7 +503,7 @@ describe ArangoDB do
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
         did.should eq("#{@cn}/#{@key}")
-  
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -512,7 +512,7 @@ describe ArangoDB do
 
         ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
       end
-      
+
       it "creating a document with a duplicate existing id" do
         @key = "a_new_key"
 
@@ -568,7 +568,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -580,7 +580,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new document, setting compatibility header" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
@@ -600,7 +600,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -612,7 +612,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new document, waitForSync URL param = false" do
         cmd = "/_api/document?collection=#{@cn}&waitForSync=false"
         body = "{ \"Hallo\" : \"World\" }"
@@ -632,7 +632,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -644,7 +644,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new document, waitForSync URL param = false, setting compatibility header" do
         cmd = "/_api/document?collection=#{@cn}&waitForSync=false"
         body = "{ \"Hallo\" : \"World\" }"
@@ -664,7 +664,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -676,7 +676,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new document, waitForSync URL param = true" do
         cmd = "/_api/document?collection=#{@cn}&waitForSync=true"
         body = "{ \"Hallo\" : \"World\" }"
@@ -696,7 +696,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -708,7 +708,7 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cn).should eq(0)
       end
-      
+
       it "creating a new document, waitForSync URL param = true, setting compatibility header" do
         cmd = "/_api/document?collection=#{@cn}&waitForSync=true"
         body = "{ \"Hallo\" : \"World\" }"
@@ -728,7 +728,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -755,7 +755,7 @@ describe ArangoDB do
       after do
         ArangoDB.drop_collection(@cn)
       end
-      
+
       it "creating a new document" do
         cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"World\" }"
@@ -775,7 +775,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -807,7 +807,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        
+
         match = didRegex.match(did)
 
         match[1].should eq("#{@cn}")
@@ -845,8 +845,213 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
-      
+
     end
 
-  end
-end
+################################################################################
+## known collection identifier, overwrite = true
+################################################################################
+
+    context "known collection identifier, overwrite = true:" do
+      before do
+        @cn = "UnitTestsCollectionUnsynced"
+        @cid = ArangoDB.create_collection(@cn, false)
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+
+      it "replace a document by _key" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
+
+        doc.code.should eq(202)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+
+        key = doc.parsed_response['_key']
+        key.should be_kind_of(String)
+
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_db/_system/_api/document/#{did}")
+
+        cmd = "/_api/document?collection=#{@cn}&overwrite=true&waitForSync=false&returnOld=true"
+        body = "{ \"_key\" : \"#{key}\",  \"Hallo\" : \"ULF\" }"
+        newdoc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
+
+        newrev = newdoc.parsed_response['_rev']
+        newrev.should be_kind_of(String)
+        newrev.should_not eq(rev)
+
+        newoldrev = newdoc.parsed_response['_oldRev']
+        newoldrev.should be_kind_of(String)
+        newoldrev.should eq(rev)
+
+        newoldrev = newdoc.parsed_response['old']['Hallo']
+        newoldrev.should be_kind_of(String)
+        newoldrev.should eq("World")
+
+        newkey = newdoc.parsed_response['_key']
+        newkey.should be_kind_of(String)
+        newkey.should eq(key)
+        newdoc.code.should eq(202)
+
+        ArangoDB.delete(location)
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+
+      it "replace a document by _key, return new / old" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
+
+        doc.code.should eq(202)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+
+        key = doc.parsed_response['_key']
+        key.should be_kind_of(String)
+
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_db/_system/_api/document/#{did}")
+
+        cmd = "/_api/document?collection=#{@cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true"
+        body = "{ \"_key\" : \"#{key}\",  \"Hallo\" : \"ULF\" }"
+        newdoc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
+
+        newrev = newdoc.parsed_response['_rev']
+        newrev.should be_kind_of(String)
+        newrev.should_not eq(rev)
+
+        newoldrev = newdoc.parsed_response['_oldRev']
+        newoldrev.should be_kind_of(String)
+        newoldrev.should eq(rev)
+
+        newkey = newdoc.parsed_response['_key']
+        newkey.should be_kind_of(String)
+        newkey.should eq(key)
+
+        newnew = newdoc.parsed_response['new']
+        newnew["_key"].should be_kind_of(String)
+        newnew["_key"].should eq(key)
+        newnew["_rev"].should eq(newrev)
+        newnew["Hallo"].should eq("ULF")
+
+        newold = newdoc.parsed_response['old']
+        newold["_key"].should eq(key)
+        newold["_rev"].should eq(newoldrev)
+
+        newold["Hallo"].should be_kind_of(String)
+        newold["Hallo"].should eq("World")
+
+        newdoc.code.should eq(201)
+
+        ArangoDB.delete(location)
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+
+      it "replace documents by _key" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
+
+        doc.code.should eq(202)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+
+        key = doc.parsed_response['_key']
+        key.should be_kind_of(String)
+
+        match = didRegex.match(did)
+
+        match[1].should eq("#{@cn}")
+
+        etag.should eq("\"#{rev}\"")
+        location.should eq("/_db/_system/_api/document/#{did}")
+
+        cmd = "/_api/document?collection=#{@cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true"
+        body = "[{ \"_key\" : \"#{key}\",  \"Hallo\" : \"ULF\" }, { \"_key\" : \"#{key}\",  \"Hallo\" : \"ULFINE\" }]"
+        newdoc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
+
+        newrev = newdoc.parsed_response[0]['_rev']
+        newrev.should be_kind_of(String)
+        newrev.should_not eq(rev)
+
+        newoldrev = newdoc.parsed_response[0]['_oldRev']
+        newoldrev.should be_kind_of(String)
+        newoldrev.should eq(rev)
+
+        newkey = newdoc.parsed_response[0]['_key']
+        newkey.should be_kind_of(String)
+        newkey.should eq(key)
+
+        newnew = newdoc.parsed_response[0]['new']
+        newnew["_key"].should be_kind_of(String)
+        newnew["_key"].should eq(key)
+        newnew["_rev"].should eq(newrev)
+
+        newold = newdoc.parsed_response[0]['old']
+        newold["_key"].should eq(key)
+        newold["_rev"].should eq(newoldrev)
+
+        newrev = newdoc.parsed_response[1]['_rev']
+        newrev.should be_kind_of(String)
+        newrev.should_not eq(rev)
+
+        newdoc.parsed_response[1]['new']['Hallo'].should eq("ULFINE")
+        newdoc.parsed_response[1]['old']['Hallo'].should eq("ULF")
+
+
+        newdoc.code.should eq(201)
+
+        ArangoDB.delete(location)
+        ArangoDB.size_collection(@cn).should eq(0)
+      end
+
+    end #overwrite - end
+
+  end # context - end
+end # decribe - end

@@ -1,23 +1,150 @@
 devel
 -----
 
+* PR5857: rocksdb engine would frequently request a new DelayToken.  This caused
+  excessive write delay on the next Put() call.  Alternate approach taken.
+
+* changed the thread handling in the scheduler. `--server.threads` will be
+  the maximum number of threads for the scheduler.
+
+  The hidden option `--server.maximal-threads` is now obsolete.
+
+  The hidden options `--server.queue-size`, `--server.prioN-size` (N = 1 or 2)
+  control the size of the internal queues. The defaults are sensible, do not
+  change these settings.
+
+* use sparse indexes in more cases now, when it is clear that the index attribute
+  value cannot be null
+
+* introduce SingleRemoteOperationNode via "optimize-cluster-single-document-operations"
+  optimizer rule, which triggers single document operations directly from the coordinator 
+  instead of using a full-featured AQL setup. This saves cluster roundtrips.
+
+  Queries directly referencing the document key benefit from this:
+
+	    UPDATE {_key: '1'} WITH {foo: 'bar'} IN collection RETURN OLD
+
+* Added load balancer support and user-restriction to cursor API.
+
+  If a cursor is accessed on a different coordinator than where it was created,
+  the requests will be forwarded to the correct coordinator. If a cursor is
+  accessed by a different user than the one who created it, the request will
+  be denied.
+
+* if authentication is turned on requests to databases by users with insufficient rights
+ will be answered with the HTTP forbidden (401) response.
+
+* upgraded bundled RocksDB library version to 5.14
+
+* added key generators `uuid` and `padded`
+
+  The `uuid` key generator generates universally unique 128 bit keys, which are
+  stored in hexadecimal human-readable format.
+  The `padded` key generator generates keys of a fixed length (16 bytes) in
+  ascending lexicographical sort order.
+
+* The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
+  field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
+  the inverted meaning.
+
+* added `COUNT_DISTINCT` AQL function
+
+* make AQL optimizer rule `collect-in-cluster` optimize aggregation functions
+  `AVERAGE`, `VARIANCE`, `STDDEV`, `UNIQUE`, `SORTED_UNIQUE` and `COUNT_DISTINCT`
+  in a cluster by pushing parts of the aggregation onto the DB servers and only
+  doing the total aggregation on the coordinator
+
+* replace JavaScript functions FULLTEXT, NEAR, WITHIN and WITHIN_RECTANGLE with
+  regular AQL subqueries via a new optimizer rule "replace-function-with-index".
+
+* the existing "fulltext-index-optimizer" optimizer rule has been removed because its
+  duty is now handled by the "replace-function-with-index" rule.
+
+* The `NEAR` AQL function now does not default to a limit of 100 documents any more.
+
+* added option "--latency true" option to arangoimport. Lists microsecond latency
+  statistics on 10 second intervals.
+
+* fixed internal issue #2256: ui, document id not showing up when deleting a document
+
+* fixed internal issue #2163: wrong labels within foxx validation of service
+  input parameters
+
+* fixed internal issue #2160: fixed misplaced tooltips in indices view
+
+* Added exclusive option for rocksdb collections. Modifying AQL queries can
+  now set the exclusive option as well as it can be set on JavaScript transactions.
+
+* added optimizer rule "optimize-subqueries", which makes qualifying subqueries
+  return less data
+
+  The rule fires in the following situations:
+  * in case only a few results are used from a non-modifying subquery, the rule
+    will add a LIMIT statement into the subquery. For example
+
+        LET docs = (
+          FOR doc IN collection
+            FILTER ...
+            RETURN doc
+        )
+        RETURN docs[0]
+
+    will be turned into
+
+        LET docs = (
+          FOR doc IN collection
+            FILTER ...
+            LIMIT 1
+            RETURN doc
+        )
+        RETURN docs[0]
+
+    Another optimization performed by this rule is to modify the result value
+    of subqueries in case only the number of results is checked later. For example
+
+        RETURN LENGTH(
+          FOR doc IN collection
+            FILTER ...
+            RETURN doc
+        )
+
+    will be turned into
+
+        RETURN LENGTH(
+          FOR doc IN collection
+            FILTER ...
+            RETURN true
+        )
+
+  This saves copying the document data from the subquery to the outer scope and may
+  enable follow-up optimizations.
+
+* fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header
 
 * abort startup when using SSLv2 for a server endpoint, or when connecting with
   a client tool via an SSLv2 connection.
-  
-  SSLv2 has been disabled in the OpenSSL library by default in recent versions
-  because of security vulnerabilities inherent in this protocol. 
 
-  As it is not safe at all to use this protocol, the support for it has also 
+  SSLv2 has been disabled in the OpenSSL library by default in recent versions
+  because of security vulnerabilities inherent in this protocol.
+
+  As it is not safe at all to use this protocol, the support for it has also
   been stopped in ArangoDB. End users that use SSLv2 for connecting to ArangoDB
   should change the protocol from SSLv2 to TLSv12 if possible, by adjusting
-  the value of the `--ssl.protocol` startup option. 
+  the value of the `--ssl.protocol` startup option.
+
+* added `overwrite` option to the `document rest-handler` to allow for easier syncing.
+
+  This implements almost the much inquired UPSERT. In reality it is a REPSERT
+  (replace/insert) because only replacement and not modification of documents
+  is possible. The option does not work in cluster collections with custom
+  sharding.
 
 * added startup option `--log.escape`
 
-  This option toggles the escaping of log output. 
+  This option toggles the escaping of log output.
 
   If set to `true` (which is the default value), then the logging will work
   as before, and the following characters in the log output are escaped:
@@ -31,12 +158,12 @@ devel
   an ordinal value less than hex 20 will not be printed in this mode but will
   be replaced with a space character (hex 20).
 
-  A side effect of turning off the escaping is that it will reduce the CPU 
+  A side effect of turning off the escaping is that it will reduce the CPU
   overhead for the logging. However, this will only be noticable when logging
   is set to a very verbose level (e.g. debug or trace).
 
 * increased the default values for the startup options `--javascript.gc-interval`
-  from every 1000 to every 2000 requests, and for `--javascript.gc-frequency` from 
+  from every 1000 to every 2000 requests, and for `--javascript.gc-frequency` from
   30 to 60 seconds
 
   This will make the V8 garbage collection run less often by default than in previous
@@ -46,18 +173,18 @@ devel
   distributeShardsLike where the shards aren't actually distributed like in the
   prototype collection, as could happen due to internal issue #1770
 
-* Fixed issue #4271: Change the behavior of the `fullCount` option for AQL query 
-  cursors so that it will only take into account `LIMIT` statements on the top level 
+* Fixed issue #4271: Change the behavior of the `fullCount` option for AQL query
+  cursors so that it will only take into account `LIMIT` statements on the top level
   of the query.
-  
-  `LIMIT` statements in subqueries will not have any effect on the `fullCount` results
-  any more. 
 
-* We added a new geo-spatial index implementation. On the RocksDB storage engine all 
-  installations will need to be upgraded with `--database.auto-upgrade true`. New geo 
-  indexes will now only report with the type `geo` instead of `geo1` or `geo2`. 
+  `LIMIT` statements in subqueries will not have any effect on the `fullCount` results
+  any more.
+
+* We added a new geo-spatial index implementation. On the RocksDB storage engine all
+  installations will need to be upgraded with `--database.auto-upgrade true`. New geo
+  indexes will now only report with the type `geo` instead of `geo1` or `geo2`.
   The index types `geo1` and `geo2` are now deprecated.
-  Additionally we removed the deprecated flags `constraint` and `ignoreNull` from geo 
+  Additionally we removed the deprecated flags `constraint` and `ignoreNull` from geo
   index definitions, these fields were initially deprecated in ArangoDB 2.5
 
 * Add revision id to RocksDB values in primary indexes to speed up replication (~10x).
@@ -65,7 +192,7 @@ devel
 * PR #5238: Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
   on VMs with limited disk throughput
 
-* Starting a cluster with coordinators and DB servers using different storage engines 
+* Starting a cluster with coordinators and DB servers using different storage engines
   is unsupported. Doing it anyway will now produce a warning on startup
 
 * fixed issue #4919: C++ implementation of LIKE function now matches the old and correct
@@ -74,8 +201,8 @@ devel
 * added `--json` option to arangovpack, allowing to treat its input as plain JSON data
   make arangovpack work without any configuration file
 
-* added experimental arangodb startup option `--javascript.enabled` to enable/disable the 
-  initialization of the V8 JavaScript engine. Only expected to work on single-servers and 
+* added experimental arangodb startup option `--javascript.enabled` to enable/disable the
+  initialization of the V8 JavaScript engine. Only expected to work on single-servers and
   agency deployments
 
 * pull request #5201: eliminate race scenario where handlePlanChange could run infinite times
@@ -83,7 +210,7 @@ devel
 
 * UI: fixed an unreasonable event bug within the modal view engine
 
-* pull request #5114: detect shutdown more quickly on heartbeat thread of coordinator and 
+* pull request #5114: detect shutdown more quickly on heartbeat thread of coordinator and
   DB servers
 
 * fixed issue #3811: gharial api is now checking existence of `_from` and `_to` vertices
@@ -93,14 +220,14 @@ devel
   print an explain with annotated runtime information.
 
 * Query cursors can now be created with option `profile`, with a value of 0, 1 or 2.
-  This will cause queries to include more statistics in their results and will allow tracing 
+  This will cause queries to include more statistics in their results and will allow tracing
   of queries.
 
 * fixed internal issue #2147: fixed database filter in UI
 
 * fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
 
-* fixed internal issue #2150: UI - loading a saved query does not update the list of bind 
+* fixed internal issue #2150: UI - loading a saved query does not update the list of bind
   parameters
 
 * removed option `--cluster.my-local-info` in favor of persisted server UUIDs
@@ -126,7 +253,7 @@ devel
 
 * remove `_admin/echo` handler
 
-* added new query option `stream` to enable streaming query execution via the 
+* added new query option `stream` to enable streaming query execution via the
   `POST /_api/cursor` rest interface.
 
 * fixed issue #4698: databases within the UI are now displayed in a sorted order.
@@ -216,6 +343,7 @@ devel
 * Foxx manifest.json files can now contain a $schema key with the value
   of "http://json.schemastore.org/foxx-manifest" to improve tooling support.
 
+* fixed agency restart from compaction without data
 
 v3.3.8 (XXXX-XX-XX)
 -------------------

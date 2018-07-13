@@ -251,9 +251,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     //          - databases
 
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      storeMaxHLC(RocksDBKey::documentId(RocksDBEntryType::Document, key).id());
-      storeLastKeyValue(RocksDBKey::objectId(key),
-                        RocksDBValue::keyValue(value));
+      storeMaxHLC(RocksDBKey::documentId(key).id());
+      storeLastKeyValue(RocksDBKey::objectId(key), RocksDBValue::keyValue(value));
     } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
       // document key
       StringRef ref = RocksDBKey::primaryKey(key);
@@ -301,7 +300,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     updateMaxTick(column_family_id, key, value);
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      LocalDocumentId docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
+      LocalDocumentId docId = RocksDBKey::documentId(key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
@@ -341,7 +340,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
                            const rocksdb::Slice& key) override {
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      LocalDocumentId docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
+      LocalDocumentId docId = RocksDBKey::documentId(key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {

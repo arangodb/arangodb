@@ -518,6 +518,17 @@ class VelocyPackHelper {
 }
 
 namespace std {
+
+template<>
+struct less<arangodb::velocypack::StringRef> {
+  bool operator()(
+      arangodb::velocypack::StringRef const& lhs,
+      arangodb::velocypack::StringRef const& rhs
+  ) const noexcept {
+    return lhs.compare(rhs) < 0;
+  }
+};
+
 template <>
 struct hash<arangodb::basics::VPackHashedSlice> {
   inline size_t operator()(arangodb::basics::VPackHashedSlice const& slice) const noexcept {

@@ -33,26 +33,34 @@
 using namespace arangodb::aql;
 
 /// @brief convert the statistics to VelocyPack
-void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
+void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) const {
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("filtered", VPackValue(filtered));
-  builder.add("httpRequests", VPackValue(httpRequests));
-  builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
-  builder.add("count", VPackValue(count));
+  builder.add("httpRequests", VPackValue(requests));
+  if (reportFullCount) {
+    // fullCount is optional
+    builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
+  }
+  //builder.add("count", VPackValue(count));
   builder.add("executionTime", VPackValue(executionTime));
   
   if (!nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
-    for (std::pair<size_t, ExecutionStats::Node> const& pair : nodes) {
+    for (std::pair<size_t const, ExecutionStats::Node> const& pair : nodes) {
+      // the block type should always be set here
+      TRI_ASSERT(pair.second.type != ExecutionBlock::Type::_UNDEFINED);
+
       builder.openObject();
       builder.add("id", VPackValue(pair.first));
       builder.add("calls", VPackValue(pair.second.calls));
       builder.add("items", VPackValue(pair.second.items));
       builder.add("runtime", VPackValue(pair.second.runtime));
+      builder.add("blockType",
+                  VPackValue(ExecutionBlock::typeToString(pair.second.type)));
       builder.close();
     }
     builder.close();
@@ -62,7 +70,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
 
 void ExecutionStats::toVelocyPackStatic(VPackBuilder& builder) {
   ExecutionStats s;
-  s.toVelocyPack(builder);
+  s.toVelocyPack(builder, true);
 }
 
 /// @brief sumarize two sets of ExecutionStats
@@ -72,7 +80,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   scannedFull += summand.scannedFull;
   scannedIndex += summand.scannedIndex;
   filtered += summand.filtered;
-  httpRequests += summand.httpRequests;
+  requests += summand.requests;
   if (summand.fullCount > 0) {
     fullCount += summand.fullCount;
   }
@@ -95,7 +103,7 @@ ExecutionStats::ExecutionStats()
       scannedFull(0),
       scannedIndex(0),
       filtered(0),
-      httpRequests(0),
+      requests(0),
       fullCount(0),
       count(0),
       executionTime(0.0) {}
@@ -114,13 +122,9 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
   filtered = slice.get("filtered").getNumber<int64_t>();
   
   if (slice.hasKey("httpRequests")) {
-    httpRequests = slice.get("httpRequests").getNumber<int64_t>();
+    requests = slice.get("httpRequests").getNumber<int64_t>();
   }
   
-  if (slice.hasKey("count")) {
-    count = slice.get("count").getNumber<int64_t>();
-  }
-
   // note: fullCount is an optional attribute!
   if (slice.hasKey("fullCount")) {
     fullCount = slice.get("fullCount").getNumber<int64_t>();
@@ -136,6 +140,8 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
       node.calls = val.get("calls").getNumber<size_t>();
       node.items = val.get("items").getNumber<size_t>();
       node.runtime = val.get("runtime").getNumber<double>();
+      node.type =
+          ExecutionBlock::typeFromString(val.get("blockType").copyString());
       nodes.emplace(nid, node);
     }
   }

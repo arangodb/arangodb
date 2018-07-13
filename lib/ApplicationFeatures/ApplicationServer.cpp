@@ -388,7 +388,7 @@ void ApplicationServer::validateOptions() {
   }
 
   // inform about obsolete options  
-  _options->walk([](Section const& section, Option const& option) {
+  _options->walk([](Section const&, Option const& option) {
     if (option.obsolete) {
       LOG_TOPIC(WARN, Logger::STARTUP) << "obsolete option '" << option.displayName() << "' used in configuration. "
                                        << "setting this option will not have any effect.";

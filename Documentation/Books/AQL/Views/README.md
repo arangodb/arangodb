@@ -20,4 +20,5 @@ Views can be defined and administered on a per view-type basis via
 the [web interface](../../Manual/Programs/WebInterface/index.html).
 
 The currently supported view implementations are:
-* **arangosearch** as described in [ArangoSearch View](ArangoSearch.md)
+
+- **arangosearch** as described in [ArangoSearch View](ArangoSearch/README.md)

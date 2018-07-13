@@ -181,7 +181,7 @@ class Graph {
   void addVertexCollection(std::string const&);
 
   /// @brief return a VelocyPack representation of the graph
-  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   virtual void enhanceEngineInfo(arangodb::velocypack::Builder&) const;
 };

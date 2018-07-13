@@ -34,13 +34,6 @@
     "section" : "console",
     "type" : "boolean"
   },
-  "console.code-page" : {
-    "default" : 850,
-    "description" : "Windows code page to use",
-    "hidden" : true,
-    "section" : "console",
-    "type" : "uint16"
-  },
   "console.colors" : {
     "default" : true,
     "description" : "enable color support",
@@ -113,6 +106,13 @@
     "section" : "javascript",
     "type" : "string..."
   },
+  "javascript.client-module" : {
+    "default" : "client.js",
+    "description" : "client module to use at startup",
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "string"
+  },
   "javascript.current-module-directory" : {
     "default" : true,
     "description" : "add current directory to module path",
@@ -152,7 +152,7 @@
     "type" : "string..."
   },
   "javascript.startup-directory" : {
-    "default" : "./js",
+    "default" : "/usr/share/arangodb3/js",
     "description" : "startup paths containing the Javascript files",
     "hidden" : true,
     "section" : "javascript",
@@ -201,6 +201,13 @@
   "log.color" : {
     "default" : true,
     "description" : "use colors for TTY logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -326,7 +333,7 @@
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
-    "values" : "Possible values: 1, 5"
+    "values" : "Possible values: 1, 2, 3, 4"
   },
   "server.ask-jwt-secret" : {
     "default" : false,
@@ -336,7 +343,7 @@
     "type" : "boolean"
   },
   "server.authentication" : {
-    "default" : false,
+    "default" : true,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
     "hidden" : false,
     "section" : "server",
@@ -357,7 +364,7 @@
     "type" : "string"
   },
   "server.endpoint" : {
-    "default" : "http+tcp://127.0.0.1:8529",
+    "default" : "tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
     "hidden" : false,
     "section" : "server",

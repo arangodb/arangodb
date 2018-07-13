@@ -25,21 +25,20 @@
 
 #include "Scheduler/Acceptor.h"
 
-#include <asio/local/stream_protocol.hpp>
-
 namespace arangodb {
 class AcceptorUnixDomain final : public Acceptor {
-  public:
-    AcceptorUnixDomain(asio::io_context& ioService, Endpoint* endpoint)
-    : Acceptor(ioService, endpoint),
-      _acceptor(ioService) {
-    }
-    void open() override;
-    void close() override;
-    void asyncAccept(AcceptHandler const& handler) override;
+ public:
+  AcceptorUnixDomain(rest::Scheduler* scheduler, Endpoint* endpoint)
+      : Acceptor(scheduler, endpoint),
+        _acceptor(scheduler->newDomainAcceptor()) {}
 
-  private:
-    asio::local::stream_protocol::acceptor _acceptor;
+ public:
+  void open() override;
+  void close() override;
+  void asyncAccept(AcceptHandler const& handler) override;
+
+ private:
+  std::unique_ptr<asio_ns::local::stream_protocol::acceptor> _acceptor;
 };
 }
 

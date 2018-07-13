@@ -47,15 +47,22 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
   TRI_ASSERT(_cache != nullptr);
   auto trx = _opts->trx();
   transaction::BuilderLeaser leased(trx);
-
   transaction::BuilderLeaser b(trx);
+
   b->add(VPackValuePair(vertexId.data(), vertexId.length(),
                         VPackValueType::String));
-
-  fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        depth, _cache->cache(), _edgeList, _cache->datalake(),
-                        *(leased.get()), _cache->filteredDocuments(),
-                        _cache->insertedDocuments());
+  fetchEdgesFromEngines(
+    trx->vocbase().name(),
+    _cache->engines(),
+    b->slice(),
+    depth,
+    _cache->cache(),
+    _edgeList,
+    _cache->datalake(),
+    *(leased.get()),
+    _cache->filteredDocuments(),
+    _cache->insertedDocuments()
+  );
 }
 
 // ShortestPath variant
@@ -68,14 +75,21 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
   TRI_ASSERT(_cache != nullptr);
   auto trx = _opts->trx();
   transaction::BuilderLeaser leased(trx);
-
   transaction::BuilderLeaser b(trx);
+
   b->add(VPackValuePair(vertexId.data(), vertexId.length(),
                         VPackValueType::String));
-  fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        backward, _cache->cache(), _edgeList,
-                        _cache->datalake(), *(leased.get()),
-                        _cache->insertedDocuments());
+  fetchEdgesFromEngines(
+    trx->vocbase().name(),
+    _cache->engines(),
+    b->slice(),
+    backward,
+    _cache->cache(),
+    _edgeList,
+    _cache->datalake(),
+    *(leased.get()),
+    _cache->insertedDocuments()
+  );
 }
 
 bool ClusterEdgeCursor::next(

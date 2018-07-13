@@ -38,7 +38,7 @@ namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+  VstCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket> socket,
               ConnectionInfo&&, double timeout, ProtocolVersion protocolVersion,
               bool skipSocketInit = false);
 
@@ -53,22 +53,22 @@ class VstCommTask final : public GeneralCommTask {
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
-  
-  /// @brief send simple response including response body
+
+  // @brief send simple response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType,
-                         uint64_t messageId, velocypack::Buffer<uint8_t>&&) override;
-  
+                         uint64_t messageId,
+                         velocypack::Buffer<uint8_t>&&) override;
+
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse &, RequestStatistics *) override;  
+  void addResponse(GeneralResponse&, RequestStatistics*) override;
 
   bool allowDirectHandling() const override final { return false; }
 
  private:
-  
-  /// process the VST 1000 request type
+  // process the VST 1000 request type
   void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
-  
+
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
@@ -119,18 +119,17 @@ class VstCommTask final : public GeneralCommTask {
 
   // Returns true if and only if there was no error, if false is returned,
   // the connection is closed
-  bool getMessageFromSingleChunk(
-      ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
-      char const* vpackBegin, char const* chunkEnd);
+  bool getMessageFromSingleChunk(ChunkHeader const& chunkHeader,
+                                 VstInputMessage& message, bool& doExecute,
+                                 char const* vpackBegin, char const* chunkEnd);
 
   // Returns true if and only if there was no error, if false is returned,
   // the connection is closed
-  bool getMessageFromMultiChunks(
-      ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
-      char const* vpackBegin, char const* chunkEnd);
-  
-private:
+  bool getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
+                                 VstInputMessage& message, bool& doExecute,
+                                 char const* vpackBegin, char const* chunkEnd);
 
+ private:
   /// Is the current user authorized
   bool _authorized;
   rest::AuthenticationMethod _authMethod;

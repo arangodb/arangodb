@@ -6,7 +6,6 @@ set(MMFILES_SOURCES
   MMFiles/mmfiles-fulltext-list.cpp
   MMFiles/mmfiles-fulltext-query.cpp
   MMFiles/MMFilesAllocatorThread.cpp
-  MMFiles/MMFilesAqlFunctions.cpp
   MMFiles/MMFilesCleanupThread.cpp
   MMFiles/MMFilesCollection.cpp
   MMFiles/MMFilesCollectionExport.cpp

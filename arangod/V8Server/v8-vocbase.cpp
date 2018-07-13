@@ -52,7 +52,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -63,7 +62,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"
@@ -357,7 +355,7 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int64_t datetime = TRI_ObjectToInt64(args[0]);
   v8::String::Value pattern(args[1]);
 
-  TimeZone* tz = 0;
+  TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(args[2]);
 
@@ -417,7 +415,7 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value datetimeString(args[0]);
   v8::String::Value pattern(args[1]);
 
-  TimeZone* tz = 0;
+  TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(args[2]);
 
@@ -501,6 +499,7 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const queryString(TRI_ObjectToString(args[0]));
+  // If we execute an AQL query from V8 we need to unset the nolock headers
   arangodb::aql::Query query(
     true,
     vocbase,
@@ -736,8 +735,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     options,
     arangodb::aql::PART_MAIN
   );
-  auto queryResult = query.execute(
-      static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+  aql::QueryResult queryResult = query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
@@ -838,8 +836,15 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     options,
     arangodb::aql::PART_MAIN
   );
-  auto queryResult = query.executeV8(
-      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+  aql::QueryResultV8 queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry), queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED) {
@@ -1605,12 +1610,8 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    vocbase = databaseFeature->useDatabaseCoordinator(name);
-  } else {
-    // check if the other database exists, and increase its refcount
-    vocbase = databaseFeature->useDatabase(name);
-  }
+  // check if the other database exists, and increase its refcount
+  vocbase = databaseFeature->useDatabase(name);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

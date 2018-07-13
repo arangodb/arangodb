@@ -35,16 +35,12 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace basics {
-
 class StringBuffer;
-
 }
 
 namespace velocypack {
-
 class Builder;
 struct CustomTypeHandler;
-
 }
 
 class CollectionNameResolver;
@@ -111,9 +107,6 @@ class Context {
   virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
   orderCustomTypeHandler() = 0;
 
-  /// @brief return the resolver
-  virtual CollectionNameResolver const* getResolver() = 0;
-
   /// @brief get parent transaction (if any)
   virtual TransactionState* getParentTransaction() const = 0;
 
@@ -122,6 +115,8 @@ class Context {
 
   /// @brief register the transaction in the context
   virtual void registerTransaction(TransactionState*) = 0;
+
+  virtual CollectionNameResolver const& resolver() = 0;
 
   /// @brief unregister the transaction
   virtual void unregisterTransaction() noexcept = 0;

@@ -6,15 +6,15 @@ SSL Endpoints
 
 Given a hostname:
 
-`--server.endpoint tcp://hostname:port`
+`--server.endpoint ssl://hostname:port`
 
 Given an IPv4 address:
 
-`--server.endpoint tcp://ipv4-address:port`
+`--server.endpoint ssl://ipv4-address:port`
 
 Given an IPv6 address:
 
-`--server.endpoint tcp://[ipv6-address]:port`
+`--server.endpoint ssl://[ipv6-address]:port`
 
 **Note**: If you are using SSL-encrypted endpoints, you must also supply the
 path to a server certificate using the `--ssl.keyfile` option.

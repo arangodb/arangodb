@@ -31,7 +31,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/BaseOptions.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -118,7 +117,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       }
     }
 
-    CollectionNameResolver resolver(vocbase);
+    CollectionNameResolver resolver(*vocbase);
 
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
@@ -257,7 +256,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 GraphNode::GraphNode(ExecutionPlan* plan,
                      arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
       _graphObj(nullptr),
@@ -390,8 +389,8 @@ GraphNode::GraphNode(
     // Collections cannot be copied. So we need to create new ones to prevent
     // leaks
     _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-        it->getName(), _vocbase, AccessMode::Type::READ));
-    _graphInfo.add(VPackValue(it->getName()));
+        it->name(), _vocbase, AccessMode::Type::READ));
+    _graphInfo.add(VPackValue(it->name()));
   }
   _graphInfo.close();
 
@@ -399,15 +398,16 @@ GraphNode::GraphNode(
     // Collections cannot be copied. So we need to create new ones to prevent
     // leaks
     _vertexColls.emplace_back(std::make_unique<aql::Collection>(
-        it->getName(), _vocbase, AccessMode::Type::READ));
+        it->name(), _vocbase, AccessMode::Type::READ));
   }
 }
 
 GraphNode::~GraphNode() {}
 
-void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  
   // Vocbase
   nodes.add("database", VPackValue(_vocbase->name()));
 
@@ -418,7 +418,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   // Graph Definition
   if (_graphObj != nullptr) {
     nodes.add(VPackValue("graphDefinition"));
-    _graphObj->toVelocyPack(nodes, verbose);
+    _graphObj->toVelocyPack(nodes);
   }
 
   // Directions
@@ -435,7 +435,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
-      nodes.add(VPackValue(e->getName()));
+      nodes.add(VPackValue(e->name()));
     }
   }
 
@@ -443,7 +443,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
-      nodes.add(VPackValue(v->getName()));
+      nodes.add(VPackValue(v->name()));
     }
   }
 
@@ -464,11 +464,11 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   TRI_ASSERT(_tmpObjVarNode != nullptr);
   nodes.add(VPackValue("tmpObjVarNode"));
-  _tmpObjVarNode->toVelocyPack(nodes, verbose);
+  _tmpObjVarNode->toVelocyPack(nodes, flags != 0);
 
   TRI_ASSERT(_tmpIdNode != nullptr);
   nodes.add(VPackValue("tmpIdNode"));
-  _tmpIdNode->toVelocyPack(nodes, verbose);
+  _tmpIdNode->toVelocyPack(nodes, flags != 0);
 
   nodes.add(VPackValue("options"));
   _options->toVelocyPack(nodes);
@@ -552,4 +552,4 @@ void GraphNode::addEdgeCollection(std::string const& n,
     _edgeColls.emplace_back(
         std::make_unique<aql::Collection>(n, _vocbase, AccessMode::Type::READ));
   }
-};
+}

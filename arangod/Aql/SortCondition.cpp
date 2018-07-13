@@ -236,7 +236,7 @@ std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
 }
 
 /// @brief toVelocyPack
-void SortCondition::toVelocyPackHelper(VPackBuilder& nodes,
+void SortCondition::toVelocyPackHelper(VPackBuilder& nodes, 
                                        bool verbose) const {
   // TODO FIXME implement
 }

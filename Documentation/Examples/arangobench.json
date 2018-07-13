@@ -22,21 +22,21 @@
   },
   "collection" : {
     "default" : "ArangoBenchmark",
-    "description" : "collection name to use in tests",
+    "description" : "collection name to use in tests (if they involve collections)",
     "hidden" : false,
     "section" : "",
     "type" : "string"
   },
   "complexity" : {
     "default" : 1,
-    "description" : "complexity parameter for the test",
+    "description" : "complexity parameter for the test (meaning depends on test case)",
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
   },
   "concurrency" : {
     "default" : 1,
-    "description" : "number of parallel connections",
+    "description" : "number of parallel threads and connections",
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
@@ -110,6 +110,13 @@
   "log.color" : {
     "default" : true,
     "description" : "use colors for TTY logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -224,21 +231,21 @@
   },
   "number-of-shards" : {
     "default" : 1,
-    "description" : "number of shards of created collections",
+    "description" : "number of shards of created collections (cluster only)",
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
   },
   "progress" : {
     "default" : true,
-    "description" : "show progress",
+    "description" : "log intermediate progress",
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
   },
   "quiet" : {
     "default" : false,
-    "description" : "supress status messages",
+    "description" : "suppress status messages",
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -249,11 +256,11 @@
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
-    "values" : "Possible values: 1, 5"
+    "values" : "Possible values: 1, 2, 3, 4"
   },
   "replication-factor" : {
     "default" : 1,
-    "description" : "replication factor of created collections",
+    "description" : "replication factor of created collections (cluster only)",
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
@@ -273,7 +280,7 @@
     "type" : "uint64"
   },
   "server.authentication" : {
-    "default" : false,
+    "default" : true,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
     "hidden" : false,
     "section" : "server",
@@ -294,7 +301,7 @@
     "type" : "string"
   },
   "server.endpoint" : {
-    "default" : "http+tcp://127.0.0.1:8529",
+    "default" : "tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
     "hidden" : false,
     "section" : "server",
@@ -353,7 +360,7 @@
   },
   "verbose" : {
     "default" : false,
-    "description" : "print out replies if the http-header indicates db-errors",
+    "description" : "print out replies if the HTTP header indicates DB errors",
     "hidden" : false,
     "section" : "",
     "type" : "boolean"

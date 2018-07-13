@@ -27,6 +27,7 @@
 
 #include "LogicalDataSource.h"
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
@@ -184,11 +185,11 @@ class LogicalCollection: public LogicalDataSource {
   std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
   void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
 
-  double clusterIndexEstimatesTTL(){
+  double clusterIndexEstimatesTTL() const {
     return _clusterEstimateTTL;
   }
 
-  void clusterIndexEstimatesTTL(double ttl){
+  void clusterIndexEstimatesTTL(double ttl) {
     _clusterEstimateTTL = ttl;
   }
   // End - Estimates
@@ -205,7 +206,7 @@ class LogicalCollection: public LogicalDataSource {
   bool isSatellite() const;
 
   // SECTION: Sharding
-  int numberOfShards() const;
+  int numberOfShards() const noexcept;
   void numberOfShards(int);
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;
@@ -302,10 +303,12 @@ class LogicalCollection: public LogicalDataSource {
                 ManagedDocumentResult& result, OperationOptions&,
                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
                 ManagedDocumentResult& previous);
+
   Result replace(transaction::Methods*, velocypack::Slice const,
                  ManagedDocumentResult& result, OperationOptions&,
-                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
+                 TRI_voc_tick_t&, bool /*lock*/, TRI_voc_rid_t& prevRev,
                  ManagedDocumentResult& previous);
+
   Result remove(transaction::Methods*, velocypack::Slice const,
                 OperationOptions&, TRI_voc_tick_t&, bool,
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
@@ -420,7 +423,7 @@ class LogicalCollection: public LogicalDataSource {
 
   mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
-  mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
+  mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
   std::unordered_map<std::string, double> _clusterEstimates;
   double _clusterEstimateTTL; //only valid if above vector is not empty

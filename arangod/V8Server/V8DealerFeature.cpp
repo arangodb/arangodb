@@ -61,8 +61,6 @@ using namespace arangodb::options;
 
 V8DealerFeature* V8DealerFeature::DEALER = nullptr;
 
-static thread_local bool alreadyLockedInThread = false;
-
 namespace {
 class V8GcThread : public Thread {
  public:
@@ -366,17 +364,8 @@ bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
     return result;
   };
 
-  if (alreadyLockedInThread) {
-    // the condition lock has already been acquired in this thread
-    // we cannot detect this easily here without a thread-local variable
-    // as we may be called from a JavaScript callback here
-    return cb();
-  } else {
-    // the condition lock has not been acquired in this thread, so
-    // we are responsible for locking properly!
-    CONDITION_LOCKER(guard, _contextCondition);
-    return cb();
-  }
+  CONDITION_LOCKER(guard, _contextCondition);
+  return cb();
 }
 
 void V8DealerFeature::collectGarbage() {
@@ -536,9 +525,6 @@ void V8DealerFeature::unblockDynamicContextCreation() {
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     std::string const& file, VPackBuilder* builder) {
    
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-  
   if (builder != nullptr) {
     builder->openArray();
   }
@@ -823,13 +809,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         continue;
       }
 
-      {
-        JobGuard jobGuard(SchedulerFeature::SCHEDULER);
-        jobGuard.block();
-        
-        TRI_ASSERT(guard.isLocked());
-        guard.wait(100000);
-      }
+      TRI_ASSERT(guard.isLocked());
+      guard.wait(100000);
 
       if (exitWhenNoContext.tick()) {
         vocbase->release();
@@ -1220,7 +1201,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
     v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
     v8::Persistent<v8::Context> persistentContext;
-    persistentContext.Reset(isolate, v8::Context::New(isolate, 0, global));
+    persistentContext.Reset(isolate, v8::Context::New(isolate, nullptr, global));
     auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
 
     localContext->Enter();
@@ -1259,10 +1240,10 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       }
       TRI_InitV8UserFunctions(isolate, localContext);
       TRI_InitV8UserStructures(isolate, localContext);
-      TRI_InitV8Buffer(isolate, localContext);
+      TRI_InitV8Buffer(isolate);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8DebugUtils(isolate, localContext);
-      TRI_InitV8Shell(isolate, localContext);
+      TRI_InitV8Shell(isolate);
 
       {
         v8::HandleScope scope(isolate);

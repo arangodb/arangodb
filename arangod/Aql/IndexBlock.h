@@ -48,13 +48,11 @@ class ExecutionEngine;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {
-  Expression* expression;
+  std::unique_ptr<Expression> expression;
   std::vector<size_t> const indexPath;
 
-  NonConstExpression(Expression* exp, std::vector<size_t>&& idxPath)
-    : expression(exp), indexPath(std::move(idxPath)){}
-
-  ~NonConstExpression() { delete expression; }
+  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath)
+    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
 };
 
 class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
@@ -63,18 +61,21 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   ~IndexBlock();
 
-  /// @brief initialize, here we fetch all docs from the database
-  int initialize() override;
+  Type getType() const override final {
+    return Type::INDEX;
+  }
 
   /// @brief initializeCursor, here we release our docs from this collection
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  AqlItemBlock* getSome(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip between atMost documents, returns the number actually skipped . . .
-  size_t skipSome(size_t atMost) override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
+  void initializeOnce();
+
   /// @brief adds a SORT to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
@@ -114,7 +115,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
-  std::vector<NonConstExpression*> _nonConstExpressions;
+  std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpressions;
 
   /// @brief _inVars, a vector containing for each expression above
   /// a vector of Variable*, used to execute the expression
@@ -159,8 +160,17 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   bool _hasMultipleExpansions;
   
   /// @brief Counter how many documents have been returned/skipped
-  ///        during one call.
+  ///        during one call. Retained during WAITING situations.
+  ///        Needs to be 0 after we return a result.
   size_t _returned;
+
+  /// @brief Capture from which row variables can be copied. Retained during WAITING
+  ///        Needs to be 0 after we return a result.
+  size_t _copyFromRow;
+
+  /// @brief Capture of all results that are produced before the last WAITING call.
+  ///        Needs to be nullptr after it got returned.
+  std::unique_ptr<AqlItemBlock> _resultInFlight;
 };
 
 }  // namespace aql

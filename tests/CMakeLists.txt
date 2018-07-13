@@ -61,9 +61,7 @@ if (USE_IRESEARCH)
   )
 endif ()
 
-add_executable(
-  arangodbtests
-  ${CMAKE_SOURCE_DIR}/arangod/RestServer/FlushFeature.cpp
+set(ARANGODB_TESTS_SOURCES
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
@@ -74,9 +72,10 @@ add_executable(
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Aql/DateFunctions.cpp
+  Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
@@ -129,16 +128,32 @@ add_executable(
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
+  RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
+)
+
+if (LINUX)
+  # add "-fno-var-tracking" to the compiler flags
+  # this speeds up the compilation with newer g++ versions and prevents the
+  # "variable tracking size limit exceeded warnings"
+  set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
+endif ()
+
+add_executable(
+  arangodbtests
+  ${ARANGODB_TESTS_SOURCES}
   main.cpp
 )
+
+SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
 
 target_link_libraries(
   arangodbtests
   arangoserver
+  rocksdb
 )
 
 target_include_directories(arangodbtests PRIVATE

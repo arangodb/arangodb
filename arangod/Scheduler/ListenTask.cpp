@@ -37,11 +37,11 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
-    : Task(loop, "ListenTask"),
+ListenTask::ListenTask(Scheduler* scheduler, Endpoint* endpoint)
+    : Task(scheduler, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
-      _acceptor(Acceptor::factory(*loop.ioContext, endpoint)) {}
+      _acceptor(Acceptor::factory(scheduler, endpoint)) {}
 
 ListenTask::~ListenTask() {}
 
@@ -55,21 +55,23 @@ bool ListenTask::start() {
 
   try {
     _acceptor->open();
-  } catch (asio::system_error const& err) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
-              << "' with error: " << err.what();
+  } catch (asio_ns::system_error const& err) {
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+        << "failed to open endpoint '" << _endpoint->specification()
+        << "' with error: " << err.what();
     return false;
   } catch (std::exception const& err) {
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
-              << "' with error: " << err.what();
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+        << "failed to open endpoint '" << _endpoint->specification()
+        << "' with error: " << err.what();
     return false;
   }
-  
-  _handler = [this](asio::error_code const& ec) {
+
+  _handler = [this](asio_ns::error_code const& ec) {
     MUTEX_LOCKER(mutex, _shutdownMutex);
-    JobGuard guard(_loop);
+    JobGuard guard(_scheduler);
     guard.work();
-    
+
     if (!_bound) {
       _handler = nullptr;
       return;
@@ -79,25 +81,29 @@ bool ListenTask::start() {
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {
-      if (ec == asio::error::operation_aborted) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+      if (ec == asio_ns::error::operation_aborted) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
+                                                 << ec.message();
         return;
       }
 
       ++_acceptFailures;
 
       if (_acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
+                                                 << ec.message();
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "too many accept failures, stopping to report";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
+                                                 << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "too many accept failures, stopping to report";
       }
     }
 
     ConnectionInfo info;
 
     std::unique_ptr<Socket> peer = _acceptor->movePeer();
-    
+
     // set the endpoint
     info.endpoint = _endpoint->specification();
     info.endpointType = _endpoint->domainType();
@@ -111,8 +117,7 @@ bool ListenTask::start() {
 
     _acceptor->asyncAccept(_handler);
   };
-  
-  
+
   _bound = true;
   _acceptor->asyncAccept(_handler);
   return true;

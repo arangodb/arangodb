@@ -25,6 +25,9 @@
 
 using namespace arangodb;
 
+/// @brief rocksdb format version
+char arangodb::rocksDBFormatVersion() { return '1'; }
+
 namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;
@@ -264,4 +267,3 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   return Placeholder;  // avoids warning - errorslice instead ?!
 }
 
-char arangodb::rocksDBFormatVersion() { return '0'; }

@@ -49,14 +49,14 @@ class StandaloneContext final : public Context {
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
   orderCustomTypeHandler() override final;
 
-  /// @brief return the resolver
-  CollectionNameResolver const* getResolver() override final;
-
   /// @brief return the parent transaction (none in our case)
   TransactionState* getParentTransaction() const override { return nullptr; }
 
   /// @brief register the transaction, does nothing
   void registerTransaction(TransactionState*) override {}
+
+  /// @brief return the resolver
+  CollectionNameResolver const& resolver() override final;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override {}
@@ -65,7 +65,7 @@ class StandaloneContext final : public Context {
   bool isEmbeddable() const override { return false; }
 
   /// @brief create a context, returned in a shared ptr
-  static std::shared_ptr<transaction::StandaloneContext> Create(
+  static std::shared_ptr<transaction::Context> Create(
     TRI_vocbase_t& vocbase
   );
 };

@@ -2,7 +2,8 @@ import sys
 import re
 import os
 import json
-
+import io
+import shutil
 
 RESET  = '\033[0m'
 def make_std_color(No):
@@ -344,6 +345,8 @@ have_RESTREPLYBODY = re.compile(r"@RESTREPLYBODY")
 have_RESTSTRUCT = re.compile(r"@RESTSTRUCT")
 remove_MULTICR = re.compile(r'\n\n\n*')
 
+RXIMAGES = re.compile(r".*\!\[([\d\s\w\/\. ()-]*)\]\(([\d\s\w\/\.-]*)\).*")
+
 def _mkdir_recursive(path):
     sub_path = os.path.dirname(path)
     if not os.path.exists(sub_path):
@@ -478,20 +481,20 @@ def walk_on_files(inDirPath, outDirPath):
         for file in files:
             if file.endswith(".md") and not file.endswith("SUMMARY.md"):
                 count += 1
-                inFileFull = os.path.join(root, file)
-                outFileFull = os.path.join(outDirPath, inFileFull)
+                nextInFileFull = os.path.join(root, file)
+                nextOutFileFull = os.path.join(outDirPath, nextInFileFull)
                 if fileFilter != None:
-                    if fileFilter.match(inFileFull) == None:
+                    if fileFilter.match(nextInFileFull) == None:
                         skipped += 1
                         # print "Skipping %s -> %s" % (inFileFull, outFileFull)
                         continue;
-                # print "%s -> %s" % (inFileFull, outFileFull)
+                #print "%s -> %s" % (nextInFileFull, nextOutFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
-                findStartCode(inFileFull, outFileFull)
+                findStartCode(nextInFileFull, nextOutFileFull, inDirPath)
     print STD_COLOR + "Processed %d files, skipped %d" % (count, skipped) + RESET
 
-def findStartCode(inFileFull, outFileFull):
-    inFD = open(inFileFull, "r")
+def findStartCode(inFileFull, outFileFull, baseInPath):
+    inFD = io.open(inFileFull, "r", encoding="utf-8", newline=None)
     textFile = inFD.read()
     inFD.close()
     #print "-" * 80
@@ -519,7 +522,32 @@ def findStartCode(inFileFull, outFileFull):
         raise
     #print "9" * 80
     #print textFile
-    outFD = open(outFileFull, "w")
+    
+    def analyzeImages(m):
+        imageLink = m.groups()[1]
+        inf = os.path.realpath(os.path.join(os.path.dirname(inFileFull), imageLink))
+        outf = os.path.realpath(os.path.join(os.path.dirname(outFileFull), imageLink))
+        bookDir = os.path.realpath(baseInPath)
+        depth = len(inFileFull.split(os.sep)) - 1 # filename + book directory
+        assets = os.path.join((".." + os.sep)*depth, baseInPath, "assets")
+	# print(inf, outf, bookDir, depth, assets)
+        
+        outdir = os.path.dirname(outf)
+        if not os.path.exists(outdir):
+            _mkdir_recursive(outdir)
+        if os.path.commonprefix([inf, bookDir]) != bookDir:
+            assetDir = os.path.join(outdir, assets)
+            if not os.path.exists(assetDir):
+                os.mkdir(assetDir)
+            outf=os.path.join(assetDir, os.path.basename(imageLink))
+            imageLink = os.path.join((".." + os.sep)* (depth - 1), "assets",os.path.basename(imageLink))
+
+        if not os.path.exists(outf):
+            shutil.copy(inf, outf)
+        return str('![' + m.groups()[0] + '](' + imageLink + ')')
+
+    textFile = re.sub(RXIMAGES,analyzeImages, textFile)
+    outFD = io.open(outFileFull, "w", encoding="utf-8", newline="")
     outFD.write(textFile)
     outFD.close()
 #JSF_put_api_replication_synchronize
@@ -605,7 +633,7 @@ def readNextLine(line):
 
 def loadDokuBlocks():
     state = STATE_SEARCH_START
-    f=open("allComments.txt", 'rU')
+    f = io.open("allComments.txt", "r", encoding="utf-8", newline=None)
     count = 0
     for line in f.readlines():
         if state == STATE_SEARCH_START:
@@ -684,11 +712,12 @@ def loadProgramOptionBlocks():
         output = []
 
         # Load program options dump and convert to Python object
-        with open(programOptionsDump, 'r') as fp:
+        with io.open(programOptionsDump, 'r', encoding='utf-8', newline=None) as fp:
             try:
                 optionsRaw = json.load(fp)
             except ValueError as err:
                 # invalid JSON
+                print >>sys.stderr, ERR_COLOR + "Failed to parse program options json: '" + programOptionsDump + "' - to be used as: '" + program + "' - " + err.message + RESET
                 raise err
 
         # Group and sort by section name, global section first
@@ -759,7 +788,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 5 and sys.argv[5].strip() != '':
         print STD_COLOR + "filtering Docublocks: " + sys.argv[5] + RESET
         blockFilter = re.compile(sys.argv[5])
-    f=open(swaggerJson, 'rU')
+    f = io.open(swaggerJson, 'r', encoding='utf-8', newline=None)
     swagger= json.load(f)
     f.close()
     loadDokuBlocks()

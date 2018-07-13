@@ -50,9 +50,31 @@ private:
 char const* ARGV0 = "";
 
 int main(int argc, char* argv[]) {
-  ARGV0 = argv[0];
+  int subargc = 0;
+  char **subargv = (char**)malloc(sizeof(char*) * argc);
+  bool logLineNumbers = false;
   arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
   // global setup...
+  for (int i = 0; i < argc; i ++) {
+    if (strcmp(argv[i], "--log.line-number") == 0) {
+      if (i < argc) {
+        i++;
+        if (i < argc) {
+          if (strcmp(argv[i], "true") == 0) {
+            logLineNumbers = true;
+          }
+          i++;
+        }
+      }
+    }
+    else {
+      subargv[subargc] = argv[i];
+      subargc ++;
+    }
+  }
+
+  ARGV0 = subargv[0];
+  arangodb::Logger::setShowLineNumber(logLineNumbers);
   arangodb::Logger::initialize(false);
   arangodb::LogAppender::addAppender("-"); 
 
@@ -74,11 +96,11 @@ int main(int argc, char* argv[]) {
   auto tests = [] (int argc, char* argv[]) -> int {
     return Catch::Session().run( argc, argv );
   };
-  TestThread<decltype(tests)> t(std::move(tests), argc, argv);
+  TestThread<decltype(tests)> t(std::move(tests), subargc, subargv);
   result = t.result();
 
   arangodb::Logger::shutdown();
   // global clean-up...
-
+  free(subargv);
   return ( result < 0xff ? result : 0xff );
 }

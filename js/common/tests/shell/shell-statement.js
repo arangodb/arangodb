@@ -603,7 +603,6 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("fullCount"));
       assertTrue(stats.hasOwnProperty("filtered"));
       assertEqual(12345, stats.fullCount);
-      assertEqual(0, stats.count);
       var docs = result.toArray();
       assertEqual(0, docs.length);
     },
@@ -626,12 +625,9 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("scannedIndex"));
       assertTrue(stats.hasOwnProperty("writesExecuted"));
       assertTrue(stats.hasOwnProperty("writesIgnored"));
-      assertTrue(stats.hasOwnProperty("fullCount"));
-      assertTrue(stats.hasOwnProperty("count"));
+      assertFalse(stats.hasOwnProperty("fullCount"));
       assertTrue(stats.hasOwnProperty("filtered"));
       
-      assertEqual(10, stats.fullCount);
-      assertEqual(10, stats.count);
       var docs = result.toArray();
       assertEqual(10, docs.length);
     },
@@ -661,6 +657,7 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("writesIgnored"));
       assertTrue(stats.hasOwnProperty("filtered"));
       assertTrue(stats.hasOwnProperty("nodes"));
+      assertFalse(stats.hasOwnProperty("fullCount"));
 
       assertTrue(Array.isArray(stats.nodes));
       assertTrue(stats.nodes.length >= 4);
@@ -704,6 +701,7 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("writesIgnored"));
       assertTrue(stats.hasOwnProperty("filtered"));
       assertTrue(stats.hasOwnProperty("nodes"));
+      assertFalse(stats.hasOwnProperty("fullCount"));
 
       assertTrue(Array.isArray(stats.nodes));
       assertTrue(stats.nodes.length >= 4);

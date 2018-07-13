@@ -176,7 +176,7 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
 
 // convert a string into a number, version for double values
 template <>
-inline double toNumber<double>(std::string value, double base) {
+inline double toNumber<double>(std::string value, double /*base*/) {
   return std::stod(value);
 }
 

@@ -283,6 +283,7 @@ void MMFilesCollectorThread::forceStop() {
 
 /// @brief main loop
 void MMFilesCollectorThread::run() {
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   int counter = 0;
 
   while (true) {
@@ -291,7 +292,7 @@ void MMFilesCollectorThread::run() {
 
     try {
       // step 1: collect a logfile if any qualifies
-      if (!isStopping()) {
+      if (!isStopping() && !engine->isCompactionDisabled()) {
         // don't collect additional logfiles in case we want to shut down
         bool worked;
         int res = this->collectLogfiles(worked);
@@ -442,10 +443,16 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
 /// @brief step 2: process all still-queued collection operations
 int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
+
   // always init result variable
   worked = false;
 
   TRI_IF_FAILURE("CollectorThreadProcessQueuedOperations") {
+    return TRI_ERROR_NO_ERROR;
+  }
+            
+  if (engine->isCompactionDisabled()) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -620,10 +627,13 @@ void MMFilesCollectorThread::clearQueuedOperations() {
       it.second.clear();
     }
   } catch (...) {
-    // must clear the inuse flag here
-    MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
-    TRI_ASSERT(_operationsQueueInUse); // used by us
-    _operationsQueueInUse = false;
+    {
+      // must clear the inuse flag here
+      MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+      TRI_ASSERT(_operationsQueueInUse); // used by us
+      _operationsQueueInUse = false;
+    }
+
     throw;
   }
 
@@ -752,7 +762,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-    collection->id(),
+    collection,
     AccessMode::Type::WRITE
   );
 

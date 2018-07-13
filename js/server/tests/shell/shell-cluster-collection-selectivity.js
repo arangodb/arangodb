@@ -80,6 +80,7 @@ function ClusterCollectionSuite () {
         }
         internal.waitForEstimatorSync(); // make sure estimates are consistent
         indexes = c.getIndexes(true);
+        // if this fails, increase wait-time in ClusterEngine::waitForEstimatorSync
         assertEqual(indexes[1].selectivityEstimate, 1);
 
         for(i=0; i < 10; ++i){

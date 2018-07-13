@@ -119,7 +119,6 @@ enum TRI_vocbase_col_status_e : int {
 
 /// @brief database
 struct TRI_vocbase_t {
-  friend class arangodb::CollectionNameResolver;
   friend class arangodb::StorageEngine;
 
   /// @brief database state
@@ -173,7 +172,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
 
   arangodb::basics::ReadWriteLock _replicationClientsLock;
-  std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
+  std::unordered_map<TRI_server_id_t, std::tuple<double, double, TRI_voc_tick_t>>
       _replicationClients;
 
  public:
@@ -205,7 +204,7 @@ struct TRI_vocbase_t {
   State state() const { return _state; }
   void setState(State state) { _state = state; }
   // return all replication clients registered
-  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
+  std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>>
   getReplicationClients();
 
   // the ttl value is amount of seconds after which the client entry will

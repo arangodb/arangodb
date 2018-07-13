@@ -26,6 +26,7 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/fasthash.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
@@ -215,7 +216,8 @@ LogicalCollection::LogicalCollection(
       _keyOptions(nullptr),
       _keyGenerator(),
       _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
+        EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)
+      ),
       _clusterEstimateTTL(0) {
   TRI_ASSERT(info.isObject());
 
@@ -251,17 +253,9 @@ LogicalCollection::LogicalCollection(
     }
 
     VPackSlice keyGenSlice = info.get("keyOptions");
-    if (keyGenSlice.isObject()) {
-      keyGenSlice = keyGenSlice.get("type");
-      if (keyGenSlice.isString()) {
-        StringRef tmp(keyGenSlice);
-        if (!tmp.empty() && tmp != "traditional") {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                         "non-traditional key generators are "
-                                         "not supported for sharded "
-                                         "collections");
-        }
-      }
+    if (!KeyGenerator::canUseType(keyGenSlice)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
+                                     "the specified key generator is not supported for sharded collections");
     }
   }
 
@@ -565,7 +559,7 @@ void LogicalCollection::replicationFactor(int r) {
 }
 
 // SECTION: Sharding
-int LogicalCollection::numberOfShards() const {
+int LogicalCollection::numberOfShards() const noexcept {
   return static_cast<int>(_numberOfShards);
 }
 void LogicalCollection::numberOfShards(int n) {
@@ -662,7 +656,7 @@ Result LogicalCollection::rename(std::string&& newName, bool doSync) {
     TRI_ASSERT(engine != nullptr);
 
     name(std::move(newName));
-    engine->changeCollection(vocbase(), id(), this, doSync);
+    engine->changeCollection(vocbase(), id(), *this, doSync);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -701,7 +695,7 @@ arangodb::Result LogicalCollection::drop() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  engine->destroyCollection(vocbase(), this);
+  engine->destroyCollection(vocbase(), *this);
   deleted(true);
   _physical->drop();
 
@@ -732,12 +726,15 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                              "distributeShardsLike", "objectId"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
+
     for (auto const& p : VPackObjectIterator(params.slice())) {
       result.add(p.key);
       result.add(p.value);
     }
+
     if (!_distributeShardsLike.empty()) {
-      CollectionNameResolver resolver(&vocbase());
+      CollectionNameResolver resolver(vocbase());
+
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
@@ -813,14 +810,18 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   result.add(VPackValue("shards"));
   result.openObject();
   auto tmpShards = _shardIds;
+
   for (auto const& shards : *tmpShards) {
     result.add(VPackValue(shards.first));
     result.openArray();
+
     for (auto const& servers : shards.second) {
       result.add(VPackValue(servers));
     }
+
     result.close();  // server array
   }
+
   result.close();  // shards
 
   if (isSatellite()) {
@@ -828,10 +829,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   } else {
     result.add("replicationFactor", VPackValue(_replicationFactor));
   }
+
   if (!_distributeShardsLike.empty() &&
       ServerState::instance()->isCoordinator()) {
+
     if (translateCids) {
-      CollectionNameResolver resolver(&vocbase());
+      CollectionNameResolver resolver(vocbase());
+
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
@@ -843,9 +847,11 @@ arangodb::Result LogicalCollection::appendVelocyPack(
 
   result.add(VPackValue("shardKeys"));
   result.openArray();
+
   for (auto const& key : _shardKeys) {
     result.add(VPackValue(key));
   }
+
   result.close();  // shardKeys
 
   if (!_avoidServers.empty()) {
@@ -901,7 +907,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // - _isVolatile
   // ... probably a few others missing here ...
 
-  WRITE_LOCKER(writeLocker, _infoLock);
+  MUTEX_LOCKER(guard, _infoLock); // prevent simultanious updates
   
   size_t rf = _replicationFactor;
   VPackSlice rfSl = slice.get("replicationFactor");
@@ -972,7 +978,8 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->changeCollection(vocbase(), id(), this, doSync);
+
+  engine->changeCollection(vocbase(), id(), *this, doSync);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -984,20 +991,6 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
 /// @brief return the figures for a collection
 std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() const {
-  if (ServerState::instance()->isCoordinator()) {
-    auto builder = std::make_shared<VPackBuilder>();
-
-    builder->openObject();
-    builder->close();
-
-    int res =
-      figuresOnCoordinator(vocbase().name(), std::to_string(id()), builder);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    return builder;
-  }
   return getPhysical()->figures();
 }
 
@@ -1065,7 +1058,7 @@ void LogicalCollection::persistPhysicalCollection() {
   // We have not yet persisted this collection!
   TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(vocbase(), id(), this);
+  auto path = engine->createCollection(vocbase(), id(), *this);
 
   getPhysical()->setPath(path);
 }
@@ -1155,23 +1148,8 @@ Result LogicalCollection::replace(transaction::Methods* trx,
   }
 
   prevRev = 0;
-  VPackSlice fromSlice;
-  VPackSlice toSlice;
-
-  if (type() == TRI_COL_TYPE_EDGE) {
-    fromSlice = newSlice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    toSlice = newSlice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-  }
-
   return getPhysical()->replace(trx, newSlice, result, options,
-                                resultMarkerTick, lock, prevRev, previous,
-                                fromSlice, toSlice);
+                                resultMarkerTick, lock, prevRev, previous);
 }
 
 /// @brief removes a document or edge
@@ -1219,7 +1197,7 @@ VPackSlice LogicalCollection::keyOptions() const {
 
 ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
   auto ctx = transaction::StandaloneContext::Create(vocbase());
-  SingleCollectionTransaction trx(ctx, id(), AccessMode::Type::READ);
+  SingleCollectionTransaction trx(ctx, this, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (!res.ok()) {

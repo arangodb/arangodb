@@ -222,8 +222,8 @@ char* duplicate(std::string const& source) {
 }
 
 char* duplicate(char const* source, size_t len) {
-  if (source == 0) {
-    return 0;
+  if (source == nullptr) {
+    return nullptr;
   }
 
   char* result = new char[len + 1];
@@ -235,8 +235,8 @@ char* duplicate(char const* source, size_t len) {
 }
 
 char* duplicate(char const* source) {
-  if (source == 0) {
-    return 0;
+  if (source == nullptr) {
+    return nullptr;
   }
   size_t len = strlen(source);
   char* result = new char[len + 1];
@@ -248,25 +248,25 @@ char* duplicate(char const* source) {
 }
 
 void destroy(char*& source) {
-  if (source != 0) {
+  if (source != nullptr) {
     ::memset(source, 0, ::strlen(source));
     delete[] source;
-    source = 0;
+    source = nullptr;
   }
 }
 
 void destroy(char*& source, size_t length) {
-  if (source != 0) {
+  if (source != nullptr) {
     ::memset(source, 0, length);
     delete[] source;
-    source = 0;
+    source = nullptr;
   }
 }
 
 void erase(char*& source) {
-  if (source != 0) {
+  if (source != nullptr) {
     delete[] source;
-    source = 0;
+    source = nullptr;
   }
 }
 
@@ -1588,7 +1588,7 @@ std::string itoa(uint64_t attr) {
 }
 
 std::string ftoa(double i) {
-  char buffer[64];
+  char buffer[24];
   int length = fpconv_dtoa(i, &buffer[0]);
   
   return std::string(&buffer[0], static_cast<size_t>(length));
@@ -1599,10 +1599,11 @@ std::string ftoa(double i) {
 // .............................................................................
 
 bool boolean(std::string const& str) {
-  std::string lower = tolower(trim(str));
+  std::string lower = trim(str);
+  tolowerInPlace(&lower);
 
   if (lower == "true" || lower == "yes" || lower == "on" || lower == "y" ||
-      lower == "1") {
+      lower == "1" || lower == "✓") {
     return true;
   } else {
     return false;
@@ -1611,7 +1612,7 @@ bool boolean(std::string const& str) {
 
 int64_t int64(std::string const& str) {
   try {
-    return std::stoll(str, 0, 10);
+    return std::stoll(str, nullptr, 10);
   } catch (...) {
     return 0;
   }
@@ -1619,7 +1620,7 @@ int64_t int64(std::string const& str) {
 
 uint64_t uint64(std::string const& str) {
   try {
-    return std::stoull(str, 0, 10);
+    return std::stoull(str, nullptr, 10);
   } catch (...) {
     return 0;
   }
@@ -1682,7 +1683,7 @@ int32_t int32(std::string const& str) {
   struct reent buffer;
   return _strtol_r(&buffer, str.c_str(), 0, 10);
 #else
-  return (int32_t)strtol(str.c_str(), 0, 10);
+  return (int32_t)strtol(str.c_str(), nullptr, 10);
 #endif
 #endif
 }
@@ -1708,7 +1709,7 @@ int32_t int32(char const* value, size_t size) {
   struct reent buffer;
   return _strtol_r(&buffer, value, 0, 10);
 #else
-  return (int32_t)strtol(value, 0, 10);
+  return (int32_t)strtol(value, nullptr, 10);
 #endif
 #endif
 }
@@ -1722,7 +1723,7 @@ uint32_t uint32(std::string const& str) {
   struct reent buffer;
   return _strtoul_r(&buffer, str.c_str(), 0, 10);
 #else
-  return (uint32_t)strtoul(str.c_str(), 0, 10);
+  return (uint32_t)strtoul(str.c_str(), nullptr, 10);
 #endif
 #endif
 }
@@ -1736,7 +1737,7 @@ uint32_t unhexUint32(std::string const& str) {
   struct reent buffer;
   return _strtoul_r(&buffer, str.c_str(), 0, 16);
 #else
-  return (uint32_t)strtoul(str.c_str(), 0, 16);
+  return (uint32_t)strtoul(str.c_str(), nullptr, 16);
 #endif
 #endif
 }
@@ -1762,7 +1763,7 @@ uint32_t uint32(char const* value, size_t size) {
   struct reent buffer;
   return _strtoul_r(&buffer, value, 0, 10);
 #else
-  return (uint32_t)strtoul(value, 0, 10);
+  return (uint32_t)strtoul(value, nullptr, 10);
 #endif
 #endif
 }
@@ -1788,7 +1789,7 @@ uint32_t unhexUint32(char const* value, size_t size) {
   struct reent buffer;
   return _strtoul_r(&buffer, value, 0, 16);
 #else
-  return (uint32_t)strtoul(value, 0, 16);
+  return (uint32_t)strtoul(value, nullptr, 16);
 #endif
 #endif
 }

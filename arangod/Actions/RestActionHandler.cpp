@@ -84,7 +84,7 @@ RestStatus RestActionHandler::execute() {
   }
 
   // handler has finished, generate result
-  return result.isValid ? RestStatus::DONE : RestStatus::FAIL;
+  return RestStatus::DONE;
 }
 
 bool RestActionHandler::cancel() {

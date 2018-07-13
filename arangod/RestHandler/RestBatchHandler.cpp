@@ -57,7 +57,7 @@ RestStatus RestBatchHandler::execute() {
   }
   // should never get here
   TRI_ASSERT(false);
-  return RestStatus::FAIL;
+  return RestStatus::DONE;
 }
 
 RestStatus RestBatchHandler::executeVst() {
@@ -95,7 +95,7 @@ RestStatus RestBatchHandler::executeHttp() {
   if (!getBoundary(&boundary)) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid content-type or boundary received");
-    return RestStatus::FAIL;
+    return RestStatus::DONE;
   }
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "boundary of multipart-message is '" << boundary << "'";
@@ -129,7 +129,7 @@ RestStatus RestBatchHandler::executeHttp() {
                     "invalid multipart message received");
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received a corrupted multipart message";
 
-      return RestStatus::FAIL;
+      return RestStatus::DONE;
     }
 
     // split part into header & body
@@ -202,7 +202,7 @@ RestStatus RestBatchHandler::executeHttp() {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "could not create handler for batch part processing");
 
-        return RestStatus::FAIL;
+        return RestStatus::DONE;
       }
 
       handler.reset(h);
@@ -212,7 +212,7 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       // ignore any errors here, will be handled later by inspecting the response
       try {
-        ExecContextScope scope(nullptr);// workaround because of assertions
+        ExecContextScope scope(nullptr);// workaround because of assertions        
         handler->runHandler([](RestHandler*) {});
       } catch (...) {
       }
@@ -224,7 +224,7 @@ RestStatus RestBatchHandler::executeHttp() {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "could not create a response for batch part request");
 
-        return RestStatus::FAIL;
+        return RestStatus::DONE;
       }
 
       rest::ResponseCode const code = partResponse->responseCode();
@@ -239,7 +239,7 @@ RestStatus RestBatchHandler::executeHttp() {
       httpResponse->body().appendText(StaticStrings::BatchContentType);
 
       // append content-id if it is present
-      if (helper.contentId != 0) {
+      if (helper.contentId != nullptr) {
         httpResponse->body().appendText(
             "\r\nContent-Id: " +
             std::string(helper.contentId, helper.contentIdLength));
@@ -389,7 +389,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
   helper->foundStart = nullptr;
   helper->foundLength = 0;
   helper->containsMore = false;
-  helper->contentId = 0;
+  helper->contentId = nullptr;
   helper->contentIdLength = 0;
 
   char const* searchEnd = helper->message->messageEnd;

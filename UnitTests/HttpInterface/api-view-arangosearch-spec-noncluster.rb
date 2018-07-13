@@ -291,7 +291,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1211)
+          doc.parsed_response['errorNum'].should eq(1203)
         end
 
       end
@@ -306,7 +306,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1211)
+          doc.parsed_response['errorNum'].should eq(1203)
         end
 
         it "getting properties of a non-existent view" do
@@ -317,7 +317,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1211)
+          doc.parsed_response['errorNum'].should eq(1203)
         end
 
       end
@@ -349,7 +349,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1211)
+          doc.parsed_response['errorNum'].should eq(1203)
         end
 
         it "modifying a view with unacceptable properties" do
@@ -368,18 +368,24 @@ describe ArangoDB do
 
           cmd2 = api + '/lemon/properties'
           body2 = <<-JSON
-                 { "bogus": "junk", "threadsMaxTotal": 17 }
+                 { "bogus": "junk", "commit": { "commitIntervalMsec": 17 } }
                  JSON
           doc2 = ArangoDB.log_put("#{prefix}-modify-unacceptable", cmd2, :body => body2)
           doc2.code.should eq(200)
           doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-          doc2.parsed_response['threadsMaxTotal'].should eq(17)
+          doc2.parsed_response['name'].should eq("lemon")
+          doc2.parsed_response['type'].should eq("arangosearch")
+          doc2.parsed_response['id'].should eq(doc1.parsed_response['id'])
 
-          cmd3 = api + '/lemon'
-          doc3 = ArangoDB.log_delete("#{prefix}-modify-unacceptable", cmd3)
+          cmd3 = api + '/lemon/properties'
+          doc4 = ArangoDB.log_get("#{prefix}-modify-unacceptable", cmd3)
+          doc4.parsed_response['commit']['commitIntervalMsec'].should eq(17)
 
-          doc3.code.should eq(200)
-          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+          cmd4 = api + '/lemon'
+          doc4 = ArangoDB.log_delete("#{prefix}-modify-unacceptable", cmd4)
+
+          doc4.code.should eq(200)
+          doc4.headers['content-type'].should eq("application/json; charset=utf-8")
         end
 
       end
@@ -434,8 +440,8 @@ describe ArangoDB do
         body1 = <<-JSON
                { "name": "abc",
                  "type": "arangosearch",
-                 "properties": {
-                   "threadsMaxTotal": 10 } }
+                 "properties": { "commit": { "commitIntervalMsec": 10 } }
+               }
                JSON
         doc1 = ArangoDB.log_post("#{prefix}-short-list", cmd1, :body => body1)
         doc1.code.should eq(201)
@@ -447,8 +453,8 @@ describe ArangoDB do
         body2 = <<-JSON
                { "name": "def",
                  "type": "arangosearch",
-                 "properties": {
-                   "threadsMaxTotal": 10 } }
+                 "properties": { "commit": { "commitIntervalMsec": 10 } }
+               }
                JSON
         doc2 = ArangoDB.log_post("#{prefix}-short-list", cmd2, :body => body2)
         doc2.code.should eq(201)
@@ -479,7 +485,7 @@ describe ArangoDB do
         doc2 = ArangoDB.log_get("#{prefix}-individual-views", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['threadsMaxTotal'].should eq(10)
+        doc2.parsed_response['commit']['commitIntervalMsec'].should eq(10)
 
         cmd3 = api + '/def'
         doc3 = ArangoDB.log_get("#{prefix}-individual-views", cmd3)
@@ -492,7 +498,7 @@ describe ArangoDB do
         doc4 = ArangoDB.log_get("#{prefix}-individual-views", cmd4)
         doc4.code.should eq(200)
         doc4.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc4.parsed_response['threadsMaxTotal'].should eq(10)
+        doc4.parsed_response['commit']['commitIntervalMsec'].should eq(10)
       end
 
     end
@@ -502,55 +508,60 @@ describe ArangoDB do
       it "change properties" do
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
-                { "threadsMaxTotal": 7 }
+                { "commit": { "commitIntervalMsec": 7 } }
                 JSON
         doc1 = ArangoDB.log_put("#{prefix}-change-properties", cmd1, :body => body1)
         doc1.code.should eq(200)
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc1.parsed_response['threadsMaxTotal'].should eq(7)
+        doc1.parsed_response['name'].should eq('abc')
+        doc1.parsed_response['type'].should eq('arangosearch')
+        doc1.parsed_response['properties'].should eq(nil)
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-change-properties", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['threadsMaxTotal'].should eq(7)
+        doc2.parsed_response['commit']['commitIntervalMsec'].should eq(7)
       end
 
       it "ignore extra properties" do
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
-                { "threadsMaxTotal": 10,
-                  "extra": "foobar" }
+                { "commit": { "commitIntervalMsec": 10 }, "extra": "foobar" }
                 JSON
         doc1 = ArangoDB.log_put("#{prefix}-ignore-extra-properties", cmd1, :body => body1)
         doc1.code.should eq(200)
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc1.parsed_response['threadsMaxTotal'].should eq(10)
+        doc1.parsed_response['name'].should eq('abc')
+        doc1.parsed_response['type'].should eq('arangosearch')
+        doc1.parsed_response['properties'].should eq(nil)
         doc1.parsed_response['extra'].should eq(nil)
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-ignore-extra-properties", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['threadsMaxTotal'].should eq(10)
+        doc2.parsed_response['commit']['commitIntervalMsec'].should eq(10)
         doc2.parsed_response['extra'].should eq(nil)
       end
 
       it "accept updates via PATCH as well" do
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
-                { "threadsMaxTotal": 3 }
+                { "commit": { "commitIntervalMsec": 3 } }
                 JSON
         doc1 = ArangoDB.log_patch("#{prefix}-accept-patch", cmd1, :body => body1)
         doc1.code.should eq(200)
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc1.parsed_response['threadsMaxTotal'].should eq(3)
+        doc1.parsed_response['name'].should eq('abc')
+        doc1.parsed_response['type'].should eq('arangosearch')
+        doc1.parsed_response['properties'].should eq(nil)
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-accept-patch", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['threadsMaxTotal'].should eq(3)
+        doc2.parsed_response['commit']['commitIntervalMsec'].should eq(3)
       end
 
     end

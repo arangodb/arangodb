@@ -26,8 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-//#include "Basics/asio-helper.h"
-#include <asio/signal_set.hpp>
+#include "Scheduler/Socket.h"
 
 namespace arangodb {
 namespace rest {
@@ -54,15 +53,14 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t queueSize() const { return _queueSize; }
 
  private:
-  uint64_t _nrServerThreads = 0;
-  uint64_t _nrMinimalThreads = 0;
+  uint64_t _nrMinimalThreads = 2;
   uint64_t _nrMaximalThreads = 0;
-  uint64_t _queueSize = 0;
+  uint64_t _queueSize = 128;
+  uint64_t _fifo1Size = 16 * 4096;
+  uint64_t _fifo2Size = 4096;
 
  public:
-  size_t concurrency() const {
-    return static_cast<size_t>(_nrServerThreads);
-  }
+  size_t concurrency() const { return static_cast<size_t>(_nrMaximalThreads); }
   void buildControlCHandler();
   void buildHangupHandler();
 
@@ -72,12 +70,12 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
  private:
   std::unique_ptr<rest::Scheduler> _scheduler;
 
-  std::function<void(const asio::error_code&, int)> _signalHandler;
-  std::function<void(const asio::error_code&, int)> _exitHandler;
-  std::shared_ptr<asio::signal_set> _exitSignals;
-  
-  std::function<void(const asio::error_code&, int)> _hangupHandler;
-  std::shared_ptr<asio::signal_set> _hangupSignals;
+  std::function<void(const asio_ns::error_code&, int)> _signalHandler;
+  std::function<void(const asio_ns::error_code&, int)> _exitHandler;
+  std::shared_ptr<asio_ns::signal_set> _exitSignals;
+
+  std::function<void(const asio_ns::error_code&, int)> _hangupHandler;
+  std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 }
 

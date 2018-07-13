@@ -40,8 +40,6 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestAdminLogHandler::isDirect() const { return true; }
-
 RestStatus RestAdminLogHandler::execute() {
   size_t const len = _request->suffixes().size();
 
@@ -295,8 +293,7 @@ void RestAdminLogHandler::setLogLevel() {
     bool parseSuccess = false;
     VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      // error message generated in parseVPackBody
-      return;
+      return; // error message generated in parseVPackBody
     }
     
     if (slice.isString()) {

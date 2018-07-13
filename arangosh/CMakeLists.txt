@@ -372,3 +372,13 @@ install_command_alias(${BIN_ARANGOSH}
   foxx-manager)
 
 install_config(foxx-manager)
+
+################################################################################
+## arangoinspect
+################################################################################
+
+install_command_alias(${BIN_ARANGOSH}
+  ${CMAKE_INSTALL_BINDIR}
+  arangoinspect)
+
+install_config(arangoinspect)

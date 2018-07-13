@@ -138,7 +138,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
   } else {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(collection->vocbase()),
-      collection->id(),
+      collection,
       AccessMode::Type::READ
     );
 
@@ -260,7 +260,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   SingleCollectionTransaction trx(
     transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-    collection->id(),
+    collection,
     create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -339,7 +339,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
         (lvl == auth::Level::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
-    if (create && !exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    if (create && !exec->isSuperuser() && ServerState::readOnly()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
@@ -569,8 +569,9 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
   TRI_idx_iid_t iid = 0;
   if (ServerState::instance()->isCoordinator()) {
-    CollectionNameResolver resolver(&(collection->vocbase()));
+    CollectionNameResolver resolver(collection->vocbase());
     Result res = Indexes::extractHandle(collection, &resolver, indexArg, iid);
+
     if (!res.ok()) {
       return res;
     }
@@ -591,7 +592,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
     SingleCollectionTransaction trx(
       transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-      collection->id(),
+      collection,
       AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();

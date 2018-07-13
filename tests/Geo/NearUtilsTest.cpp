@@ -68,10 +68,10 @@ static std::vector<LocalDocumentId> nearSearch(index_t const& index,
     std::vector<geo::Interval> intervals = near.intervals();
     for (geo::Interval const& interval : intervals) {
       // seek to first element after or equal interval.min
-      index_t::const_iterator it = index.lower_bound(interval.min);
+      index_t::const_iterator it = index.lower_bound(interval.range_min);
 
-      while (it != index.end() && it->first <= interval.max) {
-        REQUIRE(it->first >= interval.min);
+      while (it != index.end() && it->first <= interval.range_max) {
+        REQUIRE(it->first >= interval.range_min);
 
         S2Point center = coords.at(it->second).ToPoint();
         near.reportFound(it->second, center);

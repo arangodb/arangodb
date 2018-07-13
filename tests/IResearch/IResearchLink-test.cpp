@@ -51,12 +51,13 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
-#include "velocypack/Parser.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+
+#include <velocypack/Parser.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -203,7 +204,6 @@ SECTION("test_defaults") {
     bool created;
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
     REQUIRE((false == !link && created));
-    CHECK((true == link->allowExpansion()));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection == link->collection()));
     CHECK((link->fieldNames().empty()));
@@ -256,7 +256,6 @@ SECTION("test_defaults") {
     bool created;
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
     REQUIRE((false == !link && created));
-    CHECK((true == link->allowExpansion()));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection == link->collection()));
     CHECK((link->fieldNames().empty()));
@@ -579,8 +578,8 @@ SECTION("test_write") {
   static std::vector<std::string> const EMPTY;
   auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
-  std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-42")).utf8();
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  std::string dataPath = ((((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-42")).utf8();
   auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42, \"includeAllFields\": true }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -608,7 +607,7 @@ SECTION("test_write") {
   CHECK((0 == reader.reopen().live_docs_count()));
   CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).errorNumber()));
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,
@@ -626,7 +625,7 @@ SECTION("test_write") {
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,
@@ -644,7 +643,7 @@ SECTION("test_write") {
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,

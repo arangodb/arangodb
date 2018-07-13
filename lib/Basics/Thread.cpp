@@ -42,10 +42,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief local thread number
-////////////////////////////////////////////////////////////////////////////////
-
 static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
@@ -57,16 +54,7 @@ std::atomic<uint64_t> NEXT_THREAD_ID(1);
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current work description as thread local variable
-////////////////////////////////////////////////////////////////////////////////
-
-thread_local Thread* Thread::CURRENT_THREAD = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief static started with access to the private variables
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::startThread(void* arg) {
 #if defined(ARANGODB_HAVE_GETTID)
   LOCAL_THREAD_NUMBER = (uint64_t)gettid();
@@ -88,26 +76,21 @@ void Thread::startThread(void* arg) {
     TRI_SetProcessorAffinity(&ptr->_thread, ptr->_affinity);
   }
 
+  auto guard = scopeGuard([&ptr]() {
+    ptr->cleanupMe();
+  });
+
   try {
     ptr->runMe();
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
     ptr->crashNotification(ex);
-    ptr->cleanupMe();
     throw;
-  } catch (...) {
-    ptr->cleanupMe();
-    throw;
-  }
-
-  ptr->cleanupMe();
+  } 
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the process id
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_pid_t Thread::currentProcessId() {
 #ifdef _WIN32
   return _getpid();
@@ -116,23 +99,14 @@ TRI_pid_t Thread::currentProcessId() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the thread process id
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name of the current thread, if set
 /// note that this function may return a nullptr
-////////////////////////////////////////////////////////////////////////////////
-
 char const* Thread::currentThreadName() { return LOCAL_THREAD_NAME; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the thread id
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_tid_t Thread::currentThreadId() {
 #ifdef TRI_HAVE_WIN32_THREADS
   return GetCurrentThreadId();
@@ -161,10 +135,7 @@ std::string Thread::stringify(ThreadState state) {
   return "unknown";
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a thread
-////////////////////////////////////////////////////////////////////////////////
-
 Thread::Thread(std::string const& name, bool deleteOnExit)
     : _deleteOnExit(deleteOnExit),
       _name(name),
@@ -177,10 +148,7 @@ Thread::Thread(std::string const& name, bool deleteOnExit)
   TRI_InitThread(&_thread);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the thread
-////////////////////////////////////////////////////////////////////////////////
-
 Thread::~Thread() {
   auto state = _state.load();
   LOG_TOPIC(TRACE, Logger::THREADS)
@@ -211,10 +179,7 @@ Thread::~Thread() {
   LOCAL_THREAD_NAME = nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief flags the thread as stopping
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::beginShutdown() {
   LOG_TOPIC(TRACE, Logger::THREADS)
       << "beginShutdown(" << _name << ") in state " << stringify(_state.load());
@@ -235,10 +200,7 @@ void Thread::beginShutdown() {
       << stringify(_state.load());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief derived class MUST call from its destructor
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::shutdown() {
   LOG_TOPIC(TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
@@ -280,10 +242,7 @@ void Thread::shutdown() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the current thread was asked to stop
-////////////////////////////////////////////////////////////////////////////////
-
 bool Thread::isStopping() const {
   auto state = _state.load(std::memory_order_relaxed);
 
@@ -291,10 +250,7 @@ bool Thread::isStopping() const {
          state == ThreadState::DETACHED;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the thread
-////////////////////////////////////////////////////////////////////////////////
-
 bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !ApplicationServer::isPrepared()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -342,16 +298,10 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   return ok;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process affinity
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::setProcessorAffinity(size_t c) { _affinity = (int)c; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets status
-////////////////////////////////////////////////////////////////////////////////
-
 void Thread::addStatus(VPackBuilder* b) {
   b->add("affinity", VPackValue(_affinity));
 

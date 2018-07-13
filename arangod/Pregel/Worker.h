@@ -23,18 +23,18 @@
 #ifndef ARANGODB_PREGEL_WORKER_H
 #define ARANGODB_PREGEL_WORKER_H 1
 
-#include <atomic>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include "Basics/Common.h"
+
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/asio_ns.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
-
-#include <asio/deadline_timer.hpp>
 
 struct TRI_vocbase_t;
 
@@ -60,7 +60,7 @@ class IWorker {
   virtual void startRecovery(VPackSlice const& data) = 0;
   virtual void compensateStep(VPackSlice const& data) = 0;
   virtual void finalizeRecovery(VPackSlice const& data) = 0;
-  virtual void aqlResult(VPackBuilder*) const = 0;
+  virtual void aqlResult(VPackBuilder&) const = 0;
 };
 
 template <typename V, typename E>
@@ -171,7 +171,7 @@ class Worker : public IWorker {
   void compensateStep(VPackSlice const& data) override;
   void finalizeRecovery(VPackSlice const& data) override;
 
-  void aqlResult(VPackBuilder*) const override;
+  void aqlResult(VPackBuilder&) const override;
 };
 
 }

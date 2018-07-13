@@ -278,8 +278,6 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
 
   char const* typeName() const override { return "skiplist"; }
 
-  bool allowExpansion() const override { return true; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return true; }
@@ -318,14 +316,6 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
  private:
-  bool isDuplicateOperator(arangodb::aql::AstNode const*,
-                           std::unordered_set<int> const&) const;
-
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes, bool) const;
 
   bool accessFitsIndex(
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,

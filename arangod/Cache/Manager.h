@@ -176,7 +176,7 @@ class Manager {
   static constexpr uint64_t triesSlow = 1000;
 
   // simple state variables
-  basics::ReadWriteSpinLock<64> _lock;
+  basics::ReadWriteSpinLock _lock;
   bool _shutdown;
   bool _shuttingDown;
   bool _resizing;

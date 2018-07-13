@@ -586,23 +586,37 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 }
 
-void MMFilesIndexFactory::fillSystemIndexes(
-    arangodb::LogicalCollection* col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
-  // create primary index
-  systemIndexes.emplace_back(
-      std::make_shared<arangodb::MMFilesPrimaryIndex>(col));
-
-  // create edges index
-  if (col->type() == TRI_COL_TYPE_EDGE) {
-    systemIndexes.emplace_back(
-        std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
+void MMFilesIndexFactory::fillSystemIndexes(arangodb::LogicalCollection* col,
+                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+    // create primary index
+    systemIndexes.emplace_back(std::make_shared<arangodb::MMFilesPrimaryIndex>(col));
+    
+    // create edges index
+    if (col->type() == TRI_COL_TYPE_EDGE) {
+      systemIndexes.emplace_back(std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
+    }
   }
-}
 
-std::vector<std::string> MMFilesIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{ "primary",    "edge", "hash", "skiplist",
-                                   "persistent", "geo",  "fulltext" };
+void MMFilesIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice const& indexesSlice,
+                                         std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+    if (basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
+      // We have an error here.
+      // Do not add index.
+      continue;
+    }
+
+    auto idx = prepareIndexFromSlice(v, false, col, true);
+
+    if (!idx) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "error creating index from definition '" << v.toString() << "'";
+
+      continue;
+    }
+
+    indexes.emplace_back(std::move(idx));
+  }
 }
 
 // -----------------------------------------------------------------------------

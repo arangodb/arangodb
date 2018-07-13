@@ -37,8 +37,8 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -79,7 +79,7 @@ RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase,
       _trx{},
       _collection{nullptr},
       _lastIteratorOffset{0},
-      _ttl{ttl > 0.0 ? ttl : InitialSyncer::defaultBatchTimeout},
+      _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
       _expires{TRI_microtime() + _ttl},
       _isDeleted{false},
       _exclusive{true},
@@ -146,7 +146,7 @@ void RocksDBReplicationContext::internalBind(
     auto ctx = transaction::StandaloneContext::Create(vocbase);
 
     _trx.reset(
-        new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
+        new transaction::Methods(ctx, {}, {}, {}, transactionOptions));
 
     auto state = RocksDBTransactionState::toState(_trx.get());
 
@@ -739,7 +739,7 @@ void RocksDBReplicationContext::release() {
       ttl = _ttl;
     } else {
       // none configuration. use default
-      ttl = InitialSyncer::defaultBatchTimeout;
+      ttl = replutils::BatchInfo::DefaultTimeout;
     }
     _vocbase->updateReplicationClient(_serverId, ttl);
   }
@@ -760,7 +760,7 @@ void RocksDBReplicationContext::releaseDumpingResources() {
 
 RocksDBReplicationContext::CollectionIterator::CollectionIterator(
     LogicalCollection& collection, transaction::Methods& trx,
-    bool sorted) 
+    bool sorted)
     : logical{collection},
       iter{nullptr},
       currentTick{1},

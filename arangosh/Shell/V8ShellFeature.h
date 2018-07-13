@@ -53,6 +53,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   
  private:
   std::string _startupDirectory;
+  std::string _clientModule;
   std::vector<std::string> _moduleDirectory;
   bool _currentModuleDirectory;
   uint64_t _gcInterval;
@@ -64,7 +65,8 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   bool runString(std::vector<std::string> const& files,
                  std::vector<std::string> const&);
   bool runUnitTests(std::vector<std::string> const& files,
-                    std::vector<std::string> const&);
+                    std::vector<std::string> const& positionals,
+                    std::string const& testFilter);
   bool jslint(std::vector<std::string> const& files);
 
  private:

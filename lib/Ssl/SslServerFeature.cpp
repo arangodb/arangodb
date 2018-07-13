@@ -244,7 +244,7 @@ asio::ssl::context SslServerFeature::createSslContext() const {
       LOG_TOPIC(TRACE, arangodb::Logger::SSL)
           << "trying to load CA certificates from '" << _cafile << "'";
 
-      int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), 0);
+      int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), nullptr);
 
       if (res == 0) {
         LOG_TOPIC(ERR, arangodb::Logger::SSL)

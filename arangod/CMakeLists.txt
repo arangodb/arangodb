@@ -192,6 +192,7 @@ SET(ARANGOD_SOURCES
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
   Aql/Collections.cpp
+  Aql/CollectionAccessingNode.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
@@ -219,6 +220,8 @@ SET(ARANGOD_SOURCES
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp
+  Aql/OptimizerRulesCluster.cpp
+  Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OptimizerRulesFeature.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
@@ -243,6 +246,7 @@ SET(ARANGOD_SOURCES
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
   Aql/SortNode.cpp
+  Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
@@ -250,6 +254,7 @@ SET(ARANGOD_SOURCES
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
+  Aql/WakeupQueryCallback.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
   Auth/Common.cpp
@@ -284,7 +289,6 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
-  Cluster/CollectionLockState.cpp
   Cluster/CriticalThread.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
@@ -330,7 +334,9 @@ SET(ARANGOD_SOURCES
   Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
   Indexes/IndexLookupContext.cpp
+  Indexes/PersistentIndexAttributeMatcher.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
+  Indexes/SkiplistIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
@@ -374,6 +380,7 @@ SET(ARANGOD_SOURCES
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
+  Replication/utilities.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
@@ -436,14 +443,12 @@ SET(ARANGOD_SOURCES
   RestServer/VocbaseContext.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
-  Scheduler/Job.cpp
   Scheduler/JobGuard.cpp
-  Scheduler/JobQueue.cpp
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
+  Scheduler/SocketSslTcp.cpp
   Scheduler/SocketTask.cpp
-  Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
   Statistics/ConnectionStatistics.cpp
   Statistics/Descriptions.cpp
@@ -460,6 +465,7 @@ SET(ARANGOD_SOURCES
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
+  Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
   Transaction/V8Context.cpp
@@ -513,10 +519,11 @@ if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
 endif()
 
+include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
+add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}

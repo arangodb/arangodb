@@ -584,28 +584,160 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
       });
 }
 
-void RocksDBIndexFactory::fillSystemIndexes(
-    arangodb::LogicalCollection* col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+
+void RocksDBIndexFactory::fillSystemIndexes(arangodb::LogicalCollection* col,
+                                            std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+  
   // create primary index
   VPackBuilder builder;
   builder.openObject();
   builder.close();
-
-  systemIndexes.emplace_back(
-      std::make_shared<arangodb::RocksDBPrimaryIndex>(col, builder.slice()));
+  
+  indexes.emplace_back(std::make_shared<RocksDBPrimaryIndex>(col, builder.slice()));
   // create edges indexes
   if (col->type() == TRI_COL_TYPE_EDGE) {
-    systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        1, col, builder.slice(), StaticStrings::FromString));
-    systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        2, col, builder.slice(), StaticStrings::ToString));
+    indexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, builder.slice(), StaticStrings::FromString));
+    indexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, builder.slice(), StaticStrings::ToString));
   }
 }
 
-std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
-                                  "persistent", "geo",  "fulltext"};
+/// @brief create indexes from a list of index definitions
+void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice const& indexesSlice,
+                                         std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+  TRI_ASSERT(indexesSlice.isArray());
+
+  bool splitEdgeIndex = false;
+  TRI_idx_iid_t last = 0;
+
+  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
+                                                            false)) {
+      // We have an error here.
+      // Do not add index.
+      // TODO Handle Properly
+      continue;
+    }
+
+    // check for combined edge index from MMFiles; must split!
+    auto value = v.get("type");
+
+    if (value.isString()) {
+      std::string tmp = value.copyString();
+      arangodb::Index::IndexType const type =
+      arangodb::Index::type(tmp.c_str());
+
+      if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+        VPackSlice fields = v.get("fields");
+
+        if (fields.isArray() && fields.length() == 2) {
+          VPackBuilder from;
+
+          from.openObject();
+
+          for (auto const& f : VPackObjectIterator(v)) {
+            if (arangodb::StringRef(f.key) == "fields") {
+              from.add(VPackValue("fields"));
+              from.openArray();
+              from.add(VPackValue(StaticStrings::FromString));
+              from.close();
+            } else {
+              from.add(f.key);
+              from.add(f.value);
+            }
+          }
+
+          from.close();
+
+          VPackBuilder to;
+
+          to.openObject();
+
+          for (auto const& f : VPackObjectIterator(v)) {
+            if (arangodb::StringRef(f.key) == "fields") {
+              to.add(VPackValue("fields"));
+              to.openArray();
+              to.add(VPackValue(StaticStrings::ToString));
+              to.close();
+            } else if (arangodb::StringRef(f.key) == "id") {
+              auto iid = basics::StringUtils::uint64(f.value.copyString()) + 1;
+
+              last = iid;
+              to.add("id", VPackValue(std::to_string(iid)));
+            } else {
+              to.add(f.key);
+              to.add(f.value);
+            }
+          }
+
+          to.close();
+
+          auto idxFrom = prepareIndexFromSlice(from.slice(), false, col, true);
+
+          if (!idxFrom) {
+            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              << "error creating index from definition '" << from.slice().toString() << "'";
+
+            continue;
+          }
+
+          auto idxTo = prepareIndexFromSlice(to.slice(), false, col, true);
+
+          if (!idxTo) {
+            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              << "error creating index from definition '" << to.slice().toString() << "'";
+
+            continue;
+          }
+
+          indexes.emplace_back(std::move(idxFrom));
+          indexes.emplace_back(std::move(idxTo));
+          splitEdgeIndex = true;
+
+          continue;
+        }
+      } else if (splitEdgeIndex) {
+        VPackBuilder b;
+
+        b.openObject();
+
+        for (auto const& f : VPackObjectIterator(v)) {
+          if (arangodb::StringRef(f.key) == "id") {
+            last++;
+            b.add("id", VPackValue(std::to_string(last)));
+          } else {
+            b.add(f.key);
+            b.add(f.value);
+          }
+        }
+
+        b.close();
+
+        auto idx = prepareIndexFromSlice(b.slice(), false, col, true);
+
+        if (!idx) {
+          LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+            << "error creating index from definition '" << b.slice().toString() << "'";
+
+          continue;
+        }
+
+        indexes.emplace_back(std::move(idx));
+
+        continue;
+      }
+    }
+
+    auto idx = prepareIndexFromSlice(v, false, col, true);
+
+    if (!idx) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "error creating index from definition '" << v.toString() << "'";
+
+      continue;
+    }
+
+    indexes.emplace_back(std::move(idx));
+  }
 }
 
 // -----------------------------------------------------------------------------

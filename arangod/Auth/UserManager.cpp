@@ -122,7 +122,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
-  auto queryResult = query.execute(queryRegistry);
+
+  aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -275,7 +276,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       if (userDoc.isExternal()) {
         userDoc = userDoc.resolveExternal();
       }
-      
+
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);
       TRI_ASSERT(!created.key().empty() && created.rev() != 0);
@@ -327,7 +328,7 @@ void auth::UserManager::createRootUser() {
   }
   TRI_ASSERT(_userCache.empty());
   LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Creating user \"root\"";
-  
+
   try {
     // Attention:
     // the root user needs to have a specific rights grant
@@ -506,7 +507,7 @@ Result auth::UserManager::updateUser(std::string const& name,
     return r;
   }
   r = storeUserInternal(user, /*replace*/ true);
-  
+
   // cannot hold _userCacheLock while  invalidating token cache
   writeGuard.unlock();
   if (r.ok() || r.is(TRI_ERROR_ARANGO_CONFLICT)) {
@@ -537,7 +538,7 @@ Result auth::UserManager::accessUser(std::string const& user,
 
 VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   loadFromDB();
-  
+
   READ_LOCKER(readGuard, _userCacheLock);
 
   UserMap::iterator const& it = _userCache.find(user);
@@ -654,9 +655,8 @@ Result auth::UserManager::removeAllUsers() {
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
-  // AuthResult result(username);
   if (username.empty() || IsRole(username)) {
-    return false;
+    return false; // we cannot authenticate during bootstrap
   }
 
   loadFromDB();
@@ -700,19 +700,19 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
   if (dbname.empty()) {
     return auth::Level::NONE;
   }
-  
+
   loadFromDB();
   READ_LOCKER(readGuard, _userCacheLock);
-  
+
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return auth::Level::NONE;
   }
-  
+
   auth::Level level = it->second.databaseAuthLevel(dbname);
   if (!configured) {
-    if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    if (level > auth::Level::RO && ServerState::readOnly()) {
       return auth::Level::RO;
     }
   }
@@ -727,16 +727,16 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   if (coll.empty()) {
     return auth::Level::NONE;
   }
-  
+
   loadFromDB();
   READ_LOCKER(readGuard, _userCacheLock);
-  
+
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return auth::Level::NONE; // no user found
   }
-  
+
   auth::Level level;
   if (coll[0] >= '0' && coll[0] <= '9') {
     std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
@@ -744,10 +744,10 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   } else {
     level = it->second.collectionAuthLevel(dbname, coll);
   }
-  
+
   if (!configured) {
     static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-    if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    if (level > auth::Level::RO && ServerState::readOnly()) {
       return auth::Level::RO;
     }
   }

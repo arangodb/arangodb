@@ -22,8 +22,8 @@
 
 #include "Scheduler/Acceptor.h"
 
-#include "Scheduler/AcceptorTcp.h"
 #include "Basics/operating-system.h"
+#include "Scheduler/AcceptorTcp.h"
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 #include "Scheduler/AcceptorUnixDomain.h"
@@ -31,17 +31,15 @@
 
 using namespace arangodb;
 
-Acceptor::Acceptor(asio::io_context& ioService, Endpoint* endpoint)
-  : _ioContext(ioService),
-    _endpoint(endpoint) {
-}
+Acceptor::Acceptor(rest::Scheduler* scheduler, Endpoint* endpoint)
+    : _scheduler(scheduler), _endpoint(endpoint) {}
 
-std::unique_ptr<Acceptor> Acceptor::factory(
-    asio::io_context& ioService, Endpoint* endpoint) {
+std::unique_ptr<Acceptor> Acceptor::factory(rest::Scheduler* scheduler,
+                                            Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
-    return std::make_unique<AcceptorUnixDomain>(ioService, endpoint);
+    return std::make_unique<AcceptorUnixDomain>(scheduler, endpoint);
   }
 #endif
-  return std::make_unique<AcceptorTcp>(ioService, endpoint);
+  return std::make_unique<AcceptorTcp>(scheduler, endpoint);
 }

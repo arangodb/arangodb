@@ -308,7 +308,7 @@ void Logger::log(char const* function, char const* file, int line,
   if (_useMicrotime) {
     snprintf(buf, sizeof(buf), "%.6f ", TRI_microtime());
   } else {
-    time_t tt = time(0);
+    time_t tt = time(nullptr);
     struct tm tb;
 
     if (!_useLocalTime) {

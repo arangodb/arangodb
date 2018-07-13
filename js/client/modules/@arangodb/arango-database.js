@@ -1229,7 +1229,7 @@ ArangoDatabase.prototype._dropView = function (id) {
     }
   }
 
-  var v = this._collection(id);
+  var v = this._view(id);
   if (v) {
     return v.drop();
   }

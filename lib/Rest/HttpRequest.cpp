@@ -481,7 +481,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
       }
 
       keyBegin = key = buffer + 1;
-      valueBegin = value = 0;
+      valueBegin = value = nullptr;
 
       continue;
     } else if (next == PERCENT) {

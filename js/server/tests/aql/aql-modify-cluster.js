@@ -43,7 +43,6 @@ var sanitizeStats = function (stats) {
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;
-  delete stats.count;
   delete stats.fullCount;
   return stats;
 };
@@ -161,7 +160,7 @@ function ahuacatlRemoveSuite () {
     testRemoveNothing : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 REMOVE d IN " + cn1);
-    
+
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
@@ -215,7 +214,7 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
-      
+
       actual.json = actual.json.sort(function(l, r) {
         return l.value1 - r.value1;
       });
@@ -427,7 +426,7 @@ function ahuacatlRemoveSuite () {
 
     testRemoveEdge : function () {
       db._drop("UnitTestsAhuacatlEdge");
-      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       for (var i = 0; i < 100; ++i) {
         edge.save("UnitTestsAhuacatlRemove1/foo" + i, "UnitTestsAhuacatlRemove2/bar", { what: i, _key: "test" + i });
@@ -500,7 +499,7 @@ function ahuacatlInsertSuite () {
     testInsertNothing : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 INSERT { foxx: true } IN " + cn1);
-    
+
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
@@ -749,7 +748,7 @@ function ahuacatlInsertSuite () {
 
       assertEqual(100, c3.count());
       assertEqual(expected, sanitizeStats(actual));
-      
+
       var docs = db._query("FOR doc IN @@cn FILTER doc.bar >= 0 SORT doc.bar RETURN doc", { "@cn" : cn3 }).toArray();
 
       for (var i = 0; i < 100; ++i) {
@@ -758,7 +757,7 @@ function ahuacatlInsertSuite () {
         assertEqual(i, doc.bar);
         assertEqual(i, doc.a);
         assertEqual(i, doc.b);
-        
+
         var doc2 = c3.document(doc._key);
         assertEqual(doc._key, doc2._key);
         assertEqual(doc._rev, doc2._rev);
@@ -778,7 +777,7 @@ function ahuacatlInsertSuite () {
 
       assertEqual(100, c3.count());
       assertEqual(expected, sanitizeStats(actual));
-      
+
       var docs = db._query("FOR doc IN @@cn FILTER doc.bar >= 0 SORT doc.bar RETURN doc", { "@cn" : cn3 }).toArray();
 
       for (var i = 0; i < 100; ++i) {
@@ -786,7 +785,7 @@ function ahuacatlInsertSuite () {
         assertMatch(/^\d+$/, doc._key);
         assertEqual(i, doc.bar);
         assertEqual(i, doc.a);
-        
+
         var doc2 = c3.document(doc._key);
         assertEqual(doc._key, doc2._key);
         assertEqual(doc._rev, doc2._rev);
@@ -911,7 +910,7 @@ function ahuacatlInsertSuite () {
 
     testInsertEdgeInvalid : function () {
       db._drop("UnitTestsAhuacatlEdge");
-      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       assertQueryError(errors.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, "FOR i IN 1..50 INSERT { } INTO @@cn", { "@cn": edge.name() });
       assertEqual(0, edge.count());
@@ -925,7 +924,7 @@ function ahuacatlInsertSuite () {
 
     testInsertEdgeNoFrom : function () {
       db._drop("UnitTestsAhuacatlEdge");
-      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       assertQueryError(errors.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, "FOR i IN 1..50 INSERT { _to: CONCAT('UnitTestsAhuacatlInsert1/', i) } INTO @@cn", { "@cn": edge.name() });
       assertEqual(0, edge.count());
@@ -939,7 +938,7 @@ function ahuacatlInsertSuite () {
 
     testInsertEdgeNoTo : function () {
       db._drop("UnitTestsAhuacatlEdge");
-      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       assertQueryError(errors.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, "FOR i IN 1..50 INSERT { _from: CONCAT('UnitTestsAhuacatlInsert1/', i) } INTO @@cn", { "@cn": edge.name() });
       assertEqual(0, edge.count());
@@ -953,7 +952,7 @@ function ahuacatlInsertSuite () {
 
     testInsertEdge : function () {
       db._drop("UnitTestsAhuacatlEdge");
-      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 1..50 INSERT { _key: CONCAT('test', i), _from: CONCAT('UnitTestsAhuacatlInsert1/', i), _to: CONCAT('UnitTestsAhuacatlInsert2/', i), value: [ i ], sub: { foo: 'bar' } } INTO @@cn", { "@cn": edge.name() });
@@ -977,14 +976,14 @@ function ahuacatlInsertSuite () {
 
     testInsertEdgeReturn : function () {
       db._drop("UnitTestsAhuacatlEdge");
-      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = AQL_EXECUTE("FOR i IN 0..49 INSERT { _key: CONCAT('test', i), _from: CONCAT('UnitTestsAhuacatlInsert1/', i), _to: CONCAT('UnitTestsAhuacatlInsert2/', i), value: [ i ], sub: { foo: 'bar' } } INTO @@cn LET result = NEW RETURN result", { "@cn": edge.name() });
 
       assertEqual(expected, sanitizeStats(actual.stats));
       assertEqual(50, edge.count());
-      
+
       actual.json = actual.json.sort(function(l, r) {
         return l.value[0] - r.value[0];
       });
@@ -1009,9 +1008,63 @@ function ahuacatlInsertSuite () {
       }
 
       db._drop("UnitTestsAhuacatlEdge");
-    }
+    },
 
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertOverwrite : function () {
+      c1.truncate();
+      assertEqual(0, c1.count());
+
+      var rv1 = db._query(" INSERT { _key: '123', name: 'ulf' } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
+      assertEqual(1, c1.count());
+      var doc1 = rv1.toArray()[0];
+      assertEqual(doc1._key, '123');
+      assertEqual(doc1.name, 'ulf');
+
+      var rv2 = db._query(" INSERT { _key: '123', name: 'ulfine' } IN @@cn OPTIONS { overwrite: true } RETURN {old: OLD, new: NEW}", { "@cn": cn1 });
+      assertEqual(1, c1.count());
+      var doc2 = rv2.toArray()[0];
+      assertEqual(doc2.new._key, '123');
+      assertEqual(doc2.new.name, 'ulfine');
+      assertEqual(doc2.old._rev, doc1._rev);
+      assertEqual(doc2.old._key, doc1._key);
+      assertEqual(doc2.old.name, doc1.name);
+
+      var rv3 = db._query(`
+          LET x = (
+            FOR a IN 3..5
+              INSERT { _key: CONCAT('12',a), name: a }
+            IN @@cn
+              OPTIONS { overwrite: true }
+              RETURN {old: OLD, new: NEW}
+          )
+
+          FOR d IN x SORT d.new._key
+            RETURN d
+        `, { "@cn": cn1 });
+
+      var resultArray3 = rv3.toArray();
+      assertEqual(3, c1.count());
+
+      var doc3a = resultArray3[0];
+      var doc3b = resultArray3[1];
+      var doc3c = resultArray3[2];
+
+      assertEqual(doc3a.old._rev, doc2.new._rev);
+      assertEqual(doc3a.old._key, doc2.new._key);
+      assertEqual(doc3a.old.name, "ulfine");
+      assertEqual(doc3a.new.name, 3);
+      assertEqual(doc3b.old, null);
+      assertEqual(doc3b.new.name, 4);
+      assertEqual(doc3c.old, null);
+      assertEqual(doc3c.new.name, 5);
+
+    },
+
+  }; // end insert tests
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1079,7 +1132,7 @@ function ahuacatlUpdateSuite () {
     testUpdateNothing : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 UPDATE { foxx: true } IN " + cn1);
-    
+
       assertEqual(expected, sanitizeStats(actual));
     },
 
@@ -1389,7 +1442,7 @@ function ahuacatlUpdateSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
-      
+
       actual.json = actual.json.sort(function(l, r) {
         return l.value1 - r.value1;
       });
@@ -1415,7 +1468,7 @@ function ahuacatlUpdateSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
-      
+
       actual.json = actual.json.sort(function(l, r) {
         return l.value1 - r.value1;
       });
@@ -1502,7 +1555,7 @@ function ahuacatlUpdateSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
-      
+
       actual.json = actual.json.sort(function(l, r) {
         return l.value1 - r.value1;
       });
@@ -1528,7 +1581,7 @@ function ahuacatlUpdateSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
-      
+
       actual.json = actual.json.sort(function(l, r) {
         return l.value3 - r.value3;
       });

@@ -86,7 +86,7 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
 
-    cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()));
+    cb(RocksDBKey::documentId(_iterator->key()));
     --limit;
     _iterator->Next();
 
@@ -102,7 +102,7 @@ bool RocksDBAllIndexIterator::nextDocument(
     IndexIterator::DocumentCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid()) {
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -110,12 +110,12 @@ bool RocksDBAllIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()),
+    cb(RocksDBKey::documentId(_iterator->key()),
        VPackSlice(_iterator->value().data()));
     --limit;
     _iterator->Next();
 
-    if (!_iterator->Valid()) {
+    if (!_iterator->Valid() || outOfRange()) {
       return false;
     }
   }
@@ -218,7 +218,7 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()));
+    cb(RocksDBKey::documentId(_iterator->key()));
     --limit;
     _returned++;
     _iterator->Next();
@@ -245,7 +245,7 @@ bool RocksDBAnyIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()),
+    cb(RocksDBKey::documentId(_iterator->key()),
        VPackSlice(_iterator->value().data()));
     --limit;
     _returned++;

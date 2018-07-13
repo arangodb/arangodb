@@ -113,7 +113,7 @@
     "type" : "uint64"
   },
   "cache.size" : {
-    "default" : 9644884377,
+    "default" : 9452014387,
     "description" : "size of cache in bytes",
     "hidden" : false,
     "section" : "cache",
@@ -281,6 +281,13 @@
     "section" : "",
     "type" : "boolean"
   },
+  "daemon" : {
+    "default" : false,
+    "description" : "background the server, running it as daemon",
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
   "database.auto-upgrade" : {
     "default" : false,
     "description" : "perform a database upgrade if necessary",
@@ -304,7 +311,7 @@
     "type" : "boolean"
   },
   "database.directory" : {
-    "default" : "",
+    "default" : "/var/lib/arangodb3",
     "description" : "path to the database directory",
     "hidden" : false,
     "section" : "database",
@@ -446,6 +453,13 @@
     "section" : "frontend",
     "type" : "boolean"
   },
+  "gid" : {
+    "default" : "",
+    "description" : "switch to group-id after reading config files",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
   "http.allow-method-override" : {
     "default" : false,
     "description" : "allow HTTP method override using special headers",
@@ -482,13 +496,6 @@
     "section" : "",
     "type" : "boolean"
   },
-  "install-service" : {
-    "default" : false,
-    "description" : "used to register a service with windows",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
-  },
   "javascript.allow-admin-execute" : {
     "default" : false,
     "description" : "for testing purposes allow '_admin/execute', NEVER enable on production",
@@ -497,21 +504,28 @@
     "type" : "boolean"
   },
   "javascript.app-path" : {
-    "default" : "./js/apps",
+    "default" : "/var/lib/arangodb3-apps",
     "description" : "directory for Foxx applications",
     "hidden" : false,
     "section" : "javascript",
     "type" : "string"
   },
+  "javascript.enabled" : {
+    "default" : true,
+    "description" : "enable or disable the V8 JS engine entirely",
+    "hidden" : true,
+    "section" : "javascript",
+    "type" : "boolean"
+  },
   "javascript.gc-frequency" : {
-    "default" : 30,
+    "default" : 60,
     "description" : "JavaScript time-based garbage collection frequency (each x seconds)",
     "hidden" : true,
     "section" : "javascript",
     "type" : "double"
   },
   "javascript.gc-interval" : {
-    "default" : 1000,
+    "default" : 2000,
     "description" : "JavaScript request-based garbage collection interval (each x requests)",
     "hidden" : true,
     "section" : "javascript",
@@ -542,7 +556,7 @@
     "type" : "string..."
   },
   "javascript.startup-directory" : {
-    "default" : "./js",
+    "default" : "/usr/share/arangodb3/js",
     "description" : "path to the directory containing JavaScript startup scripts",
     "hidden" : false,
     "section" : "javascript",
@@ -608,8 +622,15 @@
     "section" : "log",
     "type" : "boolean"
   },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
   "log.file" : {
-    "default" : "",
+    "default" : "/var/log/arangodb3/arangod.log",
     "description" : "shortcut for '--log.output file://<filename>'",
     "hidden" : true,
     "section" : "log",
@@ -724,6 +745,13 @@
     "section" : "nonce",
     "type" : "uint64"
   },
+  "pid-file" : {
+    "default" : "",
+    "description" : "pid-file in daemon mode",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
+  },
   "query.cache-entries" : {
     "default" : 128,
     "description" : "maximum number of results in query result cache per database",
@@ -752,6 +780,13 @@
     "section" : "query",
     "type" : "uint64"
   },
+  "query.registry-ttl" : {
+    "default" : 600,
+    "description" : "Default time-to-live of query snippets (in seconds)",
+    "hidden" : true,
+    "section" : "query",
+    "type" : "double"
+  },
   "query.slow-threshold" : {
     "default" : 10,
     "description" : "threshold for slow AQL queries (in seconds)",
@@ -779,7 +814,7 @@
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
-    "values" : "Possible values: 1, 5"
+    "values" : "Possible values: 1, 2, 3, 4"
   },
   "replication.active-failover" : {
     "default" : false,
@@ -810,7 +845,7 @@
     "type" : "int64"
   },
   "rocksdb.block-cache-size" : {
-    "default" : 9644884377,
+    "default" : 9452014387,
     "description" : "size of block cache in bytes",
     "hidden" : false,
     "section" : "rocksdb",
@@ -887,7 +922,7 @@
     "type" : "int64"
   },
   "rocksdb.max-background-jobs" : {
-    "default" : 7,
+    "default" : 8,
     "description" : "Maximum number of concurrent background jobs (compactions and flushes)",
     "hidden" : true,
     "section" : "rocksdb",
@@ -1005,6 +1040,20 @@
     "section" : "rocksdb",
     "type" : "int64"
   },
+  "rocksdb.use-direct-io-for-flush-and-compaction" : {
+    "default" : false,
+    "description" : "use O_DIRECT for flush and compaction",
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.use-direct-reads" : {
+    "default" : false,
+    "description" : "use O_DIRECT for reading files",
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
   "rocksdb.use-fsync" : {
     "default" : false,
     "description" : "issue an fsync when writing to disk (set to true for issuing fdatasync only)",
@@ -1023,6 +1072,13 @@
     "default" : 10,
     "description" : "timeout after which unused WAL files are deleted",
     "hidden" : false,
+    "section" : "rocksdb",
+    "type" : "double"
+  },
+  "rocksdb.wal-file-timeout-initial" : {
+    "default" : 180,
+    "description" : "initial timeout after which unused WAL files deletion kicks in after server start",
+    "hidden" : true,
     "section" : "rocksdb",
     "type" : "double"
   },
@@ -1068,9 +1124,30 @@
     "section" : "server",
     "type" : "double"
   },
+  "server.authentication-unix-sockets" : {
+    "default" : true,
+    "description" : "authentication for requests via UNIX domain sockets",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.check-max-memory-mappings" : {
+    "default" : true,
+    "description" : "check the maximum number of memory mappings at runtime",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "boolean"
+  },
+  "server.descriptors-minimum" : {
+    "default" : 0,
+    "description" : "minimum number of file descriptors needed to start",
+    "hidden" : false,
+    "section" : "server",
+    "type" : "uint64"
+  },
   "server.endpoint" : {
     "default" : [
-      "tcp://0.0.0.0:8529"
+      "tcp://127.0.0.1:8529"
     ],
     "description" : "endpoint for client requests (e.g. 'http+tcp://127.0.0.1:8529', or 'vst+ssl://192.168.1.1:8529')",
     "hidden" : false,
@@ -1083,6 +1160,13 @@
     "hidden" : false,
     "section" : "server",
     "type" : "uint64"
+  },
+  "server.gid" : {
+    "default" : "",
+    "description" : "switch to group-id after reading config files",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "string"
   },
   "server.jwt-secret" : {
     "default" : "",
@@ -1098,23 +1182,30 @@
     "section" : "server",
     "type" : "boolean"
   },
-  "server.maximal-queue-size" : {
-    "default" : 0,
-    "description" : "maximum queue length for pending operations (use 0 for unrestricted)",
-    "hidden" : false,
-    "section" : "server",
-    "type" : "uint64"
-  },
-  "server.maximal-threads" : {
-    "default" : 0,
-    "description" : "maximal number of threads",
+  "server.minimal-threads" : {
+    "default" : 2,
+    "description" : "minimal number of threads",
     "hidden" : true,
     "section" : "server",
     "type" : "uint64"
   },
-  "server.minimal-threads" : {
-    "default" : 0,
-    "description" : "minimal number of threads",
+  "server.prio1-size" : {
+    "default" : 65536,
+    "description" : "size of the priority 1 fifo",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.prio2-size" : {
+    "default" : 4096,
+    "description" : "size of the priority 2 fifo",
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint64"
+  },
+  "server.queue-size" : {
+    "default" : 128,
+    "description" : "number of simultaneously queues requests inside the scheduler",
     "hidden" : true,
     "section" : "server",
     "type" : "uint64"
@@ -1155,33 +1246,12 @@
     "section" : "server",
     "type" : "uint64"
   },
-  "servicectl-start" : {
-    "default" : false,
-    "description" : "command an already registered service to start",
+  "server.uid" : {
+    "default" : "arangodb",
+    "description" : "switch to user-id after reading config files",
     "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
-  },
-  "servicectl-start-wait" : {
-    "default" : false,
-    "description" : "command an already registered service to start and wait till its up",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
-  },
-  "servicectl-stop" : {
-    "default" : false,
-    "description" : "command an already registered service to stop",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
-  },
-  "servicectl-stop-wait" : {
-    "default" : false,
-    "description" : "command an already registered service to stop and wait till its gone",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
+    "section" : "server",
+    "type" : "string"
   },
   "ssl.cafile" : {
     "default" : "",
@@ -1212,7 +1282,7 @@
     "type" : "string"
   },
   "ssl.options" : {
-    "default" : 18446744071563119615,
+    "default" : 2147485780,
     "description" : "ssl connection options, see OpenSSL documentation",
     "hidden" : true,
     "section" : "ssl",
@@ -1233,9 +1303,9 @@
     "section" : "ssl",
     "type" : "boolean"
   },
-  "start-service" : {
+  "supervisor" : {
     "default" : false,
-    "description" : "used to start as windows service",
+    "description" : "background the server, starts a supervisor",
     "hidden" : true,
     "section" : "",
     "type" : "boolean"
@@ -1261,19 +1331,12 @@
     "section" : "temp",
     "type" : "string"
   },
-  "uninstall-service" : {
-    "default" : false,
-    "description" : "used to UNregister a service with windows",
+  "uid" : {
+    "default" : "arangodb",
+    "description" : "switch to user-id after reading config files",
     "hidden" : true,
     "section" : "",
-    "type" : "boolean"
-  },
-  "uninstall-service-force" : {
-    "default" : false,
-    "description" : "specify to ovrerride the protection to uninstall the service of another installation",
-    "hidden" : true,
-    "section" : "",
-    "type" : "boolean"
+    "type" : "string"
   },
   "version" : {
     "default" : false,
@@ -1386,5 +1449,12 @@
     "hidden" : true,
     "section" : "wal",
     "type" : "boolean"
+  },
+  "working-directory" : {
+    "default" : "/var/tmp",
+    "description" : "working directory in daemon mode",
+    "hidden" : true,
+    "section" : "",
+    "type" : "string"
   }
 }

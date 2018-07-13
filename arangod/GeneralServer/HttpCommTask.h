@@ -17,7 +17,7 @@ class HttpCommTask final : public GeneralCommTask {
   static size_t const RunCompactEvery;
 
  public:
-  HttpCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+  HttpCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket> socket,
                ConnectionInfo&&, double timeout);
 
   arangodb::Endpoint::TransportType transportType() override {

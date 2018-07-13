@@ -820,7 +820,19 @@ background_thread_boot0(void) {
 	}
 
 #ifdef JEMALLOC_PTHREAD_CREATE_WRAPPER
+  /* If JEMALLOC_LAZY_LOCK is defined, we have overwritten pthread_create
+   * with our own function. In that case we have to use dlsym with
+   * RTLD_NEXT to find the real symbol pthread_create in the library.
+   * If JEMALLOC_LAZY_LOCK is not defined, pthread_create is not overwritten
+   * and we better use the symbol directly to allow for static linking.
+   */
+
+#ifdef JEMALLOC_LAZY_LOCK
 	pthread_create_fptr = dlsym(RTLD_NEXT, "pthread_create");
+#else
+	pthread_create_fptr = pthread_create;
+#endif
+
 	if (pthread_create_fptr == NULL) {
 		can_enable_background_thread = false;
 		if (config_lazy_lock || opt_background_thread) {

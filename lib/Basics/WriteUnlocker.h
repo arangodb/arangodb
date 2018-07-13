@@ -77,14 +77,14 @@ class WriteUnlocker {
 
   WriteUnlocker(ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
-    _readWriteLock->unlock();
+    _readWriteLock->unlockWrite();
   }
 
 #else
 
   explicit WriteUnlocker(ReadWriteLock* readWriteLock)
       : _readWriteLock(readWriteLock) {
-      _readWriteLock->unlock();
+      _readWriteLock->unlockWrite();
     }
 
 #endif

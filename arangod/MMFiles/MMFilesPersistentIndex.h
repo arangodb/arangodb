@@ -113,8 +113,6 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
 
   char const* typeName() const override { return "persistent"; }
 
-  bool allowExpansion() const override { return true; }
-
   bool isPersistent() const override { return true; }
   bool canBeDropped() const override { return true; }
 
@@ -198,22 +196,6 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
-
- private:
-  bool isDuplicateOperator(arangodb::aql::AstNode const*,
-                           std::unordered_set<int> const&) const;
-
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes, bool) const;
-
-  void matchAttributes(
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-      bool) const;
 };
 }
 

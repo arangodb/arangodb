@@ -63,7 +63,7 @@ static void JS_RotateVocbaseCol(
 
   SingleCollectionTransaction trx(
     transaction::V8Context::Create(collection->vocbase(), true),
-    collection->id(),
+    collection,
     AccessMode::Type::WRITE
   );
   Result res = trx.begin();

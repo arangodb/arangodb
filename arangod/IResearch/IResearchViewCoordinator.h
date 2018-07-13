@@ -40,6 +40,22 @@ namespace iresearch {
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief acquire locks on the specified 'cid' during read-transactions
+  ///        allowing retrieval of documents contained in the aforementioned
+  ///        collection
+  /// @note definitions are not persisted
+  /// @param cid the collection ID to track
+  /// @param key the key of the link definition for use in appendVelocyPack(...)
+  /// @param value the link definition to use in appendVelocyPack(...)
+  /// @return the 'cid' was newly added to the IResearch View
+  ////////////////////////////////////////////////////////////////////////////////
+  bool emplace(
+    TRI_voc_cid_t cid,
+    std::string const& key,
+    arangodb::velocypack::Slice const& value
+  );
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
   /// @returns initialized view object
@@ -59,9 +75,6 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   }
 
   Result drop() override;
-
-  // drops collection from a view
-  Result drop(TRI_voc_cid_t cid);
 
   virtual Result rename(
       std::string&& /*newName*/,
@@ -89,9 +102,9 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion
   );
 
+  std::unordered_map<TRI_voc_cid_t, std::pair<std::string, arangodb::velocypack::Builder>> _collections; // transient member, not persisted
+  mutable irs::async_utils::read_write_mutex _mutex; // for use with '_collections'
   IResearchViewMeta _meta;
-  velocypack::Builder _links;
-
 }; // IResearchViewCoordinator
 
 } // iresearch

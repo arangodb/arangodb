@@ -35,6 +35,10 @@ const optionsDocumentation = [
 const pu = require('@arangodb/process-utils');
 const fs = require('fs');
 
+const testPaths = {
+  'foxx_manager': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: foxx manager
 // //////////////////////////////////////////////////////////////////////////////
@@ -71,10 +75,9 @@ function foxxManager (options) {
 
   return results;
 }
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['foxx_manager'] = foxxManager;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

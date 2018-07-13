@@ -1,32 +1,13 @@
+Geo functions
+=============
+
 Geo utility functions
 ---------------------
 
 The following helper functions **can** use geo indexes, but do not have to in
 all cases. You can use all of these functions in combination with each other,
-and if you have  configured a geo index it may be used. For more information see
-the [geo index page](../../Manual/Indexing/Geo.html)
-
-### GEO_DISTANCE()
-
-`GEO_DISTANCE(geoJSONA, geoJSONB) → double`
-
-Return the distance between two GeoJSON objects, measured from the **centroid**
-of each shape (For a list of supported Types see [geo index
-page](../../Manual/Indexing/Geo.html#geojson)).
-- **geoJSONA** first GeoJSON object
-- **geoJSONB** second GeoJSON object.
-- returns **double**: the distance between the centroid points of the two
-  objects.
-
-```js
-LET polygon = {
-  type:"Polygon",
-  coordinates: [[[-11.5, 23.5], [-10.5, 26.1], [-11.2, 27.1], [-11.5, 23.5]]]
-}
-FOR doc IN collectionName
-  LET distance = GEO_DISTANCE(doc.geometry, polygon) // calculates the distance
-  RETURN distance
-```
+and if you have configured a geo index it may be utilized,
+see [Geo Indexing](../../Manual/Indexing/Geo.html).
 
 ### DISTANCE()
 
@@ -55,39 +36,50 @@ FOR doc IN doc // e.g. documents returned by a traversal
 
 ### GEO_CONTAINS()
 
-`GEO_CONTAINS(geoJSONA, geoJSONB) → bool`
+`GEO_CONTAINS(geoJsonA, geoJsonB) → bool`
 
-Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJSONA`
-fully contains `geoJSONB` (Every point in B is also in A). The object `geoJSONA` has to be of type 
+Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJsonA`
+fully contains `geoJsonB` (Every point in B is also in A). The object `geoJsonA` has to be of type 
 `Polygon` or `MultiPolygon`, other types are not supported because containment is ill defined. 
 This function can be **optimized** via a S2 based geospatial index.
 
-- **geoJSONA** first GeoJSON object or coordinate array (in longitude, latitude order)
-- **geoJSONB** second GeoJSON object or coordinate array (in longitude, latitude order)
-- returns **bool**: true when every point in B is also contained in A, false otherwise
+- **geoJsonA** (object): first GeoJSON object or coordinate array (in longitude, latitude order)
+- **geoJsonB** (object): second GeoJSON object or coordinate array (in longitude, latitude order)
+- returns **bool** (bool): true when every point in B is also contained in A, false otherwise
 
-### GEO_INTERSECTS()
 
-`GEO_INTERSECTS(geoJSONA, geoJSONB) → bool`
+### GEO_DISTANCE()
 
-Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJSONA`
-intersects with `geoJSONB` (At least one point in B is also A or vice-versa). 
-This function can be **optimized** via a S2 based geospatial index, please look at the [relevant](../../Manual/Indexing/Geo.html) manual section for more information.
+`GEO_DISTANCE(geoJsonA, geoJsonB) → distance`
 
-- **geoJSONA** first GeoJSON object
-- **geoJSONB** second GeoJSON object.
-- returns **bool**: true if B intersects A, false otherwise
+Return the distance between two GeoJSON objects, measured from the **centroid**
+of each shape (For a list of supported Types see [geo index
+page](../../Manual/Indexing/Geo.html#geojson)).
+- **geoJsonA** (object): first GeoJSON object
+- **geoJsonB** (object): second GeoJSON object
+- returns **distance** (number): the distance between the centroid points of
+  the two objects
+
+```js
+LET polygon = {
+  type: "Polygon",
+  coordinates: [[[-11.5, 23.5], [-10.5, 26.1], [-11.2, 27.1], [-11.5, 23.5]]]
+}
+FOR doc IN collectionName
+  LET distance = GEO_DISTANCE(doc.geometry, polygon) // calculates the distance
+  RETURN distance
+```
 
 ### GEO_EQUALS()
 
-`GEO_EQUALS(geoJSONA, geoJSONB) → bool`
+`GEO_EQUALS(geoJsonA, geoJsonB) → bool`
 
 Checks whether two GeoJSON objects are equal or not. (For a list of supported
 Types see [geo index page](../../Manual/Indexing/Geo.html#geojson)).
 
-- **geoJSONA** first GeoJSON object
-- **geoJSONB** second GeoJSON object.
-- returns **bool**: true for equality.
+- **geoJsonA** (object): first GeoJSON object
+- **geoJsonB** (object): second GeoJSON object.
+- returns **bool** (bool): true for equality.
 
 ```js
 LET polygonA = GEO_POLYGON([
@@ -96,11 +88,7 @@ LET polygonA = GEO_POLYGON([
 LET polygonB = GEO_POLYGON([
   [-11.5, 23.5], [-10.5, 26.1], [-11.2, 27.1], [-11.5, 23.5]
 ])
-RETURN GEO_EQUALS(polygonA, polygonB)
-```
-
-```
-// true
+RETURN GEO_EQUALS(polygonA, polygonB) // true
 ```
 
 ```js
@@ -110,12 +98,20 @@ LET polygonA = GEO_POLYGON([
 LET polygonB = GEO_POLYGON([
   [-11.5, 23.5], [-10.5, 26.1], [-11.2, 27.1], [-11.5, 23.5]
 ])
-RETURN GEO_EQUALS(polygonA, polygonB)
+RETURN GEO_EQUALS(polygonA, polygonB) // false
 ```
 
-```
-// false
-```
+### GEO_INTERSECTS()
+
+`GEO_INTERSECTS(geoJsonA, geoJsonB) → bool`
+
+Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJsonA`
+intersects with `geoJsonB` (At least one point in B is also A or vice-versa). 
+This function can be **optimized** via a S2 based geospatial index, please look at the [relevant](../../Manual/Indexing/Geo.html) manual section for more information.
+
+- **geoJsonA** (object): first GeoJSON object
+- **geoJsonB** (object): second GeoJSON object.
+- returns **bool** (bool): true if B intersects A, false otherwise
 
 ### IS_IN_POLYGON()
 
@@ -169,11 +165,123 @@ IS_IN_POLYGON( [ [ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], [ 4, 7 ] )
 IS_IN_POLYGON( [ [ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 10 ] ], [ 7, 4 ], true )
 ```
 
-Geo Index Functions **(Deprecated)**
+GeoJSON Constructors
+---------------------
+
+The following helper functions are available to easily create valid GeoJSON
+output. In all cases you can write equivalent JSON yourself, but these functions
+will help you to make all your AQL queries shorter and easier to read.
+
+### GEO_LINESTRING()
+
+`GEO_LINESTRING(points) → geoJson`
+
+Construct a GeoJSON LineString.
+Needs at least two longitude/latitude pairs.
+
+- **points** (array): number array of longitude/latitude pairs
+- returns **geoJson** (object): a valid GeoJSON LineString
+
+@startDocuBlockInline aqlGeoLineString_1
+@EXAMPLE_AQL{aqlGeoLineString_1}
+RETURN GEO_LINESTRING([
+  [35, 10], [45, 45]
+])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlGeoLineString_1
+
+### GEO_MULTILINESTRING()
+
+`GEO_MULTILINESTRING(points) → geoJson`
+
+Construct a GeoJSON MultiLineString.
+Needs at least two elements consisting valid LineStrings coordinate arrays.
+
+- **points** (array): array of LineStrings
+- returns **geoJson** (object): a valid GeoJSON MultiLineString
+
+@startDocuBlockInline aqlGeoMultiLineString_1
+@EXAMPLE_AQL{aqlGeoMultiLineString_1}
+RETURN GEO_MULTILINESTRING([
+ [[100.0, 0.0], [101.0, 1.0]],
+ [[102.0, 2.0], [101.0, 2.3]]
+])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlGeoMultiLineString_1
+
+### GEO_MULTIPOINT()
+
+`GEO_MULTIPOINT(points) → geoJson`
+
+Construct a GeoJSON LineString. Needs at least two longitude/latitude pairs.
+
+- **points** (array): number array of longitude/latitude pairs
+- returns **geoJson** (object): a valid GeoJSON Point
+
+@startDocuBlockInline aqlGeoMultiPoint_1
+@EXAMPLE_AQL{aqlGeoMultiPoint_1}
+RETURN GEO_MULTIPOINT([
+  [35, 10], [45, 45]
+])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlGeoMultiPoint_1
+
+### GEO_POINT()
+
+`GEO_POINT(longitude, latitude) → geoJson`
+
+Construct a valid GeoJSON Point.
+
+- **longitude** (number): the longitude portion of the point
+- **latitude** (number): the latitude portion of the point
+- returns **geoJson** (object): a GeoJSON Point
+
+@startDocuBlockInline aqlGeoPoint_1
+@EXAMPLE_AQL{aqlGeoPoint_1}
+RETURN GEO_POINT(1.0, 2.0)
+@END_EXAMPLE_AQL
+@endDocuBlock aqlGeoPoint_1
+
+### GEO_POLYGON()
+
+`GEO_POLYGON(points) → geoJson`
+
+Construct a GeoJSON Polygon. Needs at least one array representing a loop.
+Each loop consists of an array with at least three longitude/latitude pairs. The
+first loop must be the outermost, while any subsequent loops will be interpreted
+as holes.
+
+- **points** (array): array of arrays of longitude/latitude pairs
+- returns **geoJson** (object|null): a valid GeoJSON Polygon
+
+Simple Polygon:
+
+@startDocuBlockInline aqlGeoPolygon_1
+@EXAMPLE_AQL{aqlGeoPolygon_1}
+RETURN GEO_POLYGON([
+  [0.0, 0.0], [7.5, 2.5], [0.0, 5.0]
+])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlGeoPolygon_1
+
+Advanced Polygon with a hole inside:
+
+@startDocuBlockInline aqlGeoPolygon_2
+@EXAMPLE_AQL{aqlGeoPolygon_2}
+RETURN GEO_POLYGON([
+  [[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],
+  [[20, 30], [35, 35], [30, 20], [20, 30]]
+])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlGeoPolygon_2
+
+Geo Index Functions
 -------------------
 
-Note: Below AQL functions are *deprecated*, please use above geo utility
-functions.
+{% hint 'warning' %}
+The AQL functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` are deprecated.
+Please use the [Geo utility functions](#geo-utility-functions) instead.
+{% endhint %}
 
 AQL offers the following functions to filter data based on [geo
 indexes](../../Manual/Indexing/Geo.html). These functions require the collection
@@ -185,23 +293,20 @@ the query however.
 
 `NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
 
-Return at most *limit* documents from collection *coll* that are near *latitude*
-and *longitude*. The result contains at most *limit* documents, returned sorted
-by distance, with closest distances being returned first. If more than *limit*
-documents qualify, with the distance being exactly the same among multiple
-documents around the limit, it is undefined which of the qualifying documents
-are returned. Optionally, the distances in meters between the specified
-coordinate (*latitude* and *longitude*) and the document coordinates can be
-returned as well. To make use of that, the desired attribute  name for the
-distance result has to be specified in the *distanceName* argument. The result
-documents will contain the distance value in an attribute of that name.
+Return at most *limit* documents from collection *coll* that are near
+*latitude* and *longitude*. The result contains at most *limit* documents,
+returned sorted by distance, with closest distances being returned first.
+Optionally, the distances in meters between the specified coordinate
+(*latitude* and *longitude*) and the document coordinates can be returned as
+well. To make use of that, the desired attribute  name for the distance result
+has to be specified in the *distanceName* argument. The result documents will
+contain the distance value in an attribute of that name.
 
 - **coll** (collection): a collection
 - **latitude** (number): the latitude portion of the search coordinate
 - **longitude** (number): the longitude portion of the search coordinate
 - **limit** (number, *optional*): cap the result to at most this number of
-  documents. The default is 100. If more documents than *limit* are found, it is
-  undefined which ones will be returned.
+  documents.
 - **distanceName** (string, *optional*): include the distance to the search
   coordinate in each document in the result (in meters), using the attribute
   name *distanceName*
@@ -243,11 +348,12 @@ value in an attribute of that name.
   (shortest distance first)
 
 **Note:** `WITHIN` is a *deprecated* AQL function, instead use a query like this:
+
 ```js
 FOR doc IN doc
   LET d = DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude)
-	FILTER d <= radius
-	SORT d ASC     
+  FILTER d <= radius
+  SORT d ASC
   RETURN doc
 ```
 
@@ -277,7 +383,7 @@ bounding rectangle with the points (*latitude1*, *longitude1*) and (*latitude2*,
 using a GeoJSON polygon:
 
 ```js
-LET rect = {type:"Polygon", coordinates:[[[longitude1, latitude1], ...]]]}
+LET rect = {type: "Polygon", coordinates: [[[longitude1, latitude1], ...]]]}
 FOR doc IN doc
   FILTER GEO_CONTAINS(poly, [doc.longitude, doc.latitude])
   RETURN doc
