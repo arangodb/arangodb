@@ -99,7 +99,7 @@ There are essentially 3 ways to change this behavior:
 Note that you can remove individual collections from your dump by
 deleting their pair of structure and data file in the dump directory.
 In this way you can restore your data in several steps or even
-parallelise the restore operation by running multiple `arangorestore`
+parallelize the restore operation by running multiple `arangorestore`
 processes concurrently on different dump directories. You should
 consider using different coordinators for the different `arangorestore`
 processes in this case.

@@ -1,8 +1,8 @@
 Services
 ========
 
-The services section displays all installed foxx applications. You can create new services
-or go into a detailed view of a choosen service.
+The services section displays all installed Foxx applications. You can create new services
+or go into a detailed view of a chosen service.
 
 ![Services](images/servicesView.png)
 

@@ -7,7 +7,7 @@ ArangoSearch is a natively integrated AQL extension making use of the IResearch 
 Arangosearch allows one to:
 * join documents located in different collections to one result list
 * filter documents based on AQL boolean expressions and functions
-* sort the resultset based on how closely each document matched the filter
+* sort the result set based on how closely each document matched the filter
 
 A concept of value 'analysis' that is meant to break up a given value into
 a set of sub-values internally tied together by metadata which influences both

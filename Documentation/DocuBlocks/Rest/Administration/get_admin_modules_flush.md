@@ -52,7 +52,7 @@ identified by its @LIT{lid} and the identifiers are in ascending
 order.
 
 @RESTREPLYBODY{level,string,required,string}
-A list of the loglevels for all log entries.
+A list of the log levels for all log entries.
 
 @RESTREPLYBODY{timestamp,array,required,string}
 a list of the timestamps as seconds since 1970-01-01 for all log
@@ -77,12 +77,12 @@ error.
 
 
 @startDocuBlock get_admin_loglevel
-@brief returns the current loglevel settings
+@brief returns the current log level settings
 
-@RESTHEADER{GET /_admin/log/level, Return the current server loglevel}
+@RESTHEADER{GET /_admin/log/level, Return the current server log level}
 
 @RESTDESCRIPTION
-Returns the server's current loglevel settings.
+Returns the server's current log level settings.
 The result is a JSON object with the log topics being the object keys, and
 the log levels being the object values.
 
@@ -98,21 +98,21 @@ error.
 
 
 @startDocuBlock put_admin_loglevel
-@brief modifies the current loglevel settings
+@brief modifies the current log level settings
 
-@RESTHEADER{PUT /_admin/log/level, Modify and return the current server loglevel}
+@RESTHEADER{PUT /_admin/log/level, Modify and return the current server log level}
 
 @RESTDESCRIPTION
-Modifies and returns the server's current loglevel settings.
+Modifies and returns the server's current log level settings.
 The request body must be a JSON object with the log topics being the object keys
 and the log levels being the object values.
 
 The result is a JSON object with the adjusted log topics being the object keys, and
 the adjusted log levels being the object values.
 
-It can set the loglevel of all facilities by only specifying the loglevel as string without json.
+It can set the log level of all facilities by only specifying the log level as string without json.
 
-Possible loglevels are:
+Possible log levels are:
  - FATAL - There will be no way out of this. ArangoDB will go down after this message.
  - ERROR - This is an error. you should investigate and fix it. It may harm your production.
  - WARNING - This may be serious application-wise, but we don't know.
@@ -121,121 +121,121 @@ Possible loglevels are:
  - TRACE - trace - prepare your log to be flooded - don't use in production.
 
 @RESTBODYPARAM{agency,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{agencycomm,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{authentication,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{authorization,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{cache,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{cluster,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{collector,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{communication,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{compactor,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{config,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{datafiles,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{development,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{engines,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{general,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{graphs,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{heartbeat,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{memory,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{mmap,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{performance,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{pregel,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{queries,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{replication,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{requests,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{rocksdb,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{ssl,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{startup,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{supervision,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{syscall,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{threads,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{trx,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{v8,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{views,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{ldap,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{audit-authentication,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{audit-database,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{audit-collection,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{audit-view,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{audit-documentation,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTBODYPARAM{audit-service,string,optional,string}
-One of the possible loglevels.
+One of the possible log levels.
 
 @RESTRETURNCODES
 

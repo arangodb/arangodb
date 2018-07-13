@@ -97,11 +97,11 @@ namespace {
         T& mutex,
         std::atomic<std::thread::id>& owner,
         arangodb::basics::LockerType type,
-        bool aquire,
+        bool acquire,
         char const* file,
         int line
     ): _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
-      if (aquire) {
+      if (acquire) {
         lock();
       }
     }
@@ -147,7 +147,7 @@ namespace {
   #define NAME_EXPANDER__(name, line) NAME__(name, line)
   #define NAME(name) NAME_EXPANDER__(name, __LINE__)
   #define RECURSIVE_READ_LOCKER(lock, owner) RecursiveReadLocker<typename std::decay<decltype (lock)>::type> NAME(RecursiveLocker)(lock, owner, __FILE__, __LINE__)
-  #define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, aquire) RecursiveWriteLocker<typename std::decay<decltype (lock)>::type> name(lock, owner, arangodb::basics::LockerType::BLOCKING, aquire, __FILE__, __LINE__)
+  #define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire) RecursiveWriteLocker<typename std::decay<decltype (lock)>::type> name(lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__)
   #define RECURSIVE_WRITE_LOCKER(lock, owner) RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
 
 }
