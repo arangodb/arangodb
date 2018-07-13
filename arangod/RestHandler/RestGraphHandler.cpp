@@ -816,19 +816,20 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
   // TODO maybe merge this function with modifyEdgeDefinition?
   bool waitForSync =
           _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  bool dropCollections =
-          _request->parsedValue(StaticStrings::GraphDropCollections, false);
+  bool dropCollection =
+          _request->parsedValue(StaticStrings::GraphDropCollection, false);
+  bool createCollection =
+          _request->parsedValue(StaticStrings::GraphCreateCollection, true);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-
   GraphOperations gops{*graph, ctx};
   OperationResult result;
 
   if (action == VertexDefinitionAction::CREATE) {
-    result = gops.addOrphanCollection(body, waitForSync, true);
+    result = gops.addOrphanCollection(body, waitForSync, createCollection);
   } else if (action == VertexDefinitionAction::REMOVE) {
     result = gops.eraseOrphanCollection(
-      waitForSync, vertexDefinitionName, dropCollections
+      waitForSync, vertexDefinitionName, dropCollection
     );
   } else {
     TRI_ASSERT(false);

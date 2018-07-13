@@ -159,12 +159,17 @@ std::string const StaticStrings::GraphIsSmart("isSmart");
 std::string const StaticStrings::GraphFrom("from");
 std::string const StaticStrings::GraphTo("to");
 std::string const StaticStrings::GraphSmartGraphAttribute("smartGraphAttribute");
+std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
+std::string const StaticStrings::GraphOrphans("orphanCollections");
+
+// rest query parameter // todo rename to a general name
+std::string const StaticStrings::GraphDropCollections("dropCollections");
+std::string const StaticStrings::GraphDropCollection("dropCollection");
+std::string const StaticStrings::GraphCreateCollections("createCollections");
+std::string const StaticStrings::GraphCreateCollection("createCollection");
 std::string const StaticStrings::GraphNumberOfShards("numberOfShards");
 std::string const StaticStrings::GraphReplicationFactor("replicationFactor");
 std::string const StaticStrings::GraphDistributeShardsLike("distributeShardsLike");
-std::string const StaticStrings::GraphDropCollections("dropCollections");
-std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
-std::string const StaticStrings::GraphOrphans("orphanCollections");
 
 // misc strings
 std::string const StaticStrings::LastValue("lastValue"); 

@@ -81,28 +81,38 @@ CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
     data.collection = name;
   }
   var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex";
-  if (createCollection) {
+  if (createCollection !== false) {
     uri += "?createCollection=true";
   } else {
     uri += "?createCollection=false";
   }
   var requestResult = db._connection.POST(uri, JSON.stringify(data));
+  arangosh.checkRequestResult(requestResult);
 
-  this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+  try {
+    this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+  } catch (ignore) {
+  }
 };
 
-/*
-CommonGraph.prototype._addVertexCollection = function (name) {
-  var data = {};
-  if (name) {
-    data.collection = name;
+CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) {
+  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex/" + encodeURIComponent(name);
+  console.log(uri);
+  if (dropCollection === true) {
+    uri += "?dropCollection=true";
+  } else {
+    uri += "?dropCollection=false";
   }
-  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex";
-  print(data);
-  print(uri);
-  var requestResult = db._connection.DELETE(uri, JSON.stringify(data));
-  return arangosh.checkRequestResult(requestResult);
-};*/
+  var requestResult = db._connection.DELETE(uri);
+  print(requestResult);
+  arangosh.checkRequestResult(requestResult);
+
+  try {
+    this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+  } catch (ignore) {
+  }
+};
+
 
 /*
 exports._exists = function (graphName) {

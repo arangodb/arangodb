@@ -1876,6 +1876,7 @@ function OrphanCollectionSuite() {
       graph._drop(gN1, true);
       assertTrue(db._collection(vC3) !== null);
       graph._drop(gN2, true);
+      db._flushCache();
       assertTrue(db._collection(vC3) === null);
     },
 
@@ -1886,6 +1887,7 @@ function OrphanCollectionSuite() {
       graph._drop(gN2, true);
       assertTrue(db._collection(vC3) !== null);
       graph._drop(gN1, true);
+      db._flushCache();
       assertTrue(db._collection(vC3) === null);
     },
 
@@ -1897,6 +1899,7 @@ function OrphanCollectionSuite() {
       graph._drop(gN1, true);
       assertTrue(db._collection(vC4) !== null);
       graph._drop(gN2, true);
+      db._flushCache();
       assertTrue(db._collection(vC4) === null);
     },
 
