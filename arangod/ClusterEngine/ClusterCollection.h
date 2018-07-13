@@ -32,13 +32,19 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 namespace rocksdb {
+
 class Transaction;
+
 }
 
 namespace arangodb {
+
 namespace cache {
+
 class Cache;
+
 }
+
 class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
@@ -47,14 +53,15 @@ class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class ClusterCollection final : public PhysicalCollection {
-
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
-  explicit ClusterCollection(LogicalCollection*, ClusterEngineType sengineType,
-                             velocypack::Slice const& info);
-  ClusterCollection(LogicalCollection*,
-                    PhysicalCollection const*);  // use in cluster only!!!!!
+  explicit ClusterCollection(
+    LogicalCollection& collection,
+    ClusterEngineType sengineType,
+    arangodb::velocypack::Slice const& info
+  );
+  ClusterCollection(LogicalCollection& collection, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~ClusterCollection();
 
@@ -65,7 +72,7 @@ class ClusterCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) const override;
+  virtual PhysicalCollection* clone(LogicalCollection& collection) const override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
@@ -120,6 +127,10 @@ class ClusterCollection final : public PhysicalCollection {
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
+  void deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& callback
+  ) override;
+
   LocalDocumentId lookupKey(transaction::Methods* trx,
                             velocypack::Slice const& key) const override;
 
@@ -165,9 +176,6 @@ class ClusterCollection final : public PhysicalCollection {
                 bool lock, TRI_voc_rid_t& prevRev,
                 TRI_voc_rid_t& revisionId) override;
 
-  void deferDropCollection(
-      std::function<bool(LogicalCollection*)> callback) override;
-
  protected:
   /// @brief Inject figures that are specific to StorageEngine
   void figuresSpecific(
@@ -176,7 +184,6 @@ class ClusterCollection final : public PhysicalCollection {
  private:
   void addIndex(std::shared_ptr<arangodb::Index> idx);
 
- private:
   // keep locks just to adhere to behaviour in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;
