@@ -97,7 +97,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
   size_t count() const override final { return 0; }
 
   // TODO add this to Cursor and make it virtual / override final.
-  ExecutionState prepareDump(std::function<void()> const& continueHandler);
+  ExecutionState prepareDump();
 
   std::pair<ExecutionState, Result> dump(
       velocypack::Builder& result,

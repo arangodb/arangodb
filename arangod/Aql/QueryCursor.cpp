@@ -210,7 +210,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
   _query->setContinueHandler(continueHandler);
 
   try {
-    ExecutionState state = prepareDump(continueHandler);
+    ExecutionState state = prepareDump();
 
     if (state == ExecutionState::WAITING) {
       return  {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
@@ -262,7 +262,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     ExecutionState state = ExecutionState::WAITING;
 
     while (state == ExecutionState::WAITING) {
-      state = prepareDump(continueCallback);
+      state = prepareDump();
       if (state == ExecutionState::WAITING) {
         _query->tempWaitForAsyncResponse();
       }
@@ -393,7 +393,7 @@ std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
   return _query->trx()->transactionContext();
 }
 
-ExecutionState QueryStreamCursor::prepareDump(std::function<void()> const& continueHandler) {
+ExecutionState QueryStreamCursor::prepareDump() {
   aql::ExecutionEngine* engine = _query->engine();
   TRI_ASSERT(engine != nullptr);
 
