@@ -852,9 +852,17 @@ IResearchView::IResearchView(
 
     try {
       {
-        SCOPED_LOCK_NAMED(mutex, lock); // for '_meta._commit._commitIntervalMsec'
-        SCOPED_LOCK_NAMED(_asyncMutex, asyncLock); // acquire before '_asyncTerminate' check
-
+        SCOPED_LOCK(mutex); // for '_meta._commit._commitIntervalMsec'
+ 
+        // transfer filters first since they only apply to pre-merge data
+        // transactions are single-threaded so no mutex is required for '_removals'
+        for (auto& filter: cookie->_removals) {
+          // FIXME TODO potential problem of loss of 'remove' if:
+          // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
+          // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
+          viewPtr->_memoryNode->_store._writer->remove(filter);
+          viewPtr->_toFlush->_store._writer->remove(filter);
+ 
         if (_asyncTerminate.load()) {
           return; // termination requested
         }
