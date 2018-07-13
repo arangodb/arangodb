@@ -8,6 +8,8 @@
  * Streaming support for Node v0.10+
  * [Deprecated] Can extend Node.js primitives (buffers, streams) to support all iconv-lite encodings.
  * In-browser usage via [Browserify](https://github.com/substack/node-browserify) (~180k gzip compressed with Buffer shim included).
+ * Typescript [type definition file](https://github.com/ashtuchkin/iconv-lite/blob/master/lib/index.d.ts) included.
+ * React Native is supported (need to explicitly `npm install` two more modules: `buffer` and `stream`).
  * License: MIT.
 
 [![NPM Stats](https://nodei.co/npm/iconv-lite.png?downloads=true&downloadRank=true)](https://npmjs.org/packages/iconv-lite/)
@@ -96,7 +98,7 @@ iconv.undoExtendNodeEncodings();
  *  All widespread singlebyte encodings: Windows 125x family, ISO-8859 family, 
     IBM/DOS codepages, Macintosh family, KOI8 family, all others supported by iconv library. 
     Aliases like 'latin1', 'us-ascii' also supported.
- *  All widespread multibyte encodings: CP932, CP936, CP949, CP950, GB2313, GBK, GB18030, Big5, Shift_JIS, EUC-JP.
+ *  All widespread multibyte encodings: CP932, CP936, CP949, CP950, GB2312, GBK, GB18030, Big5, Shift_JIS, EUC-JP.
 
 See [all supported encodings on wiki](https://github.com/ashtuchkin/iconv-lite/wiki/Supported-Encodings).
 
@@ -120,6 +122,7 @@ Note: your results may vary, so please always check on your hardware.
  * Decoding: BOM is stripped by default, unless overridden by passing `stripBOM: false` in options
    (f.ex. `iconv.decode(buf, enc, {stripBOM: false})`).
    A callback might also be given as a `stripBOM` parameter - it'll be called if BOM character was actually found.
+ * If you want to detect UTF-8 BOM when decoding other encodings, use [node-autodetect-decoder-stream](https://github.com/danielgindi/node-autodetect-decoder-stream) module.
  * Encoding: No BOM added, unless overridden by `addBOM: true` option.
 
 ## UTF-16 Encodings
@@ -154,4 +157,4 @@ $ open coverage/lcov-report/index.html
 
 ## Adoption
 [![NPM](https://nodei.co/npm-dl/iconv-lite.png)](https://nodei.co/npm/iconv-lite/)
-[![Codeship Status for ashtuchkin/iconv-lite](https://www.codeship.io/projects/81670840-fa72-0131-4520-4a01a6c01acc/status)](https://www.codeship.io/projects/29053)
+[![Codeship Status for ashtuchkin/iconv-lite](https://www.codeship.com/projects/81670840-fa72-0131-4520-4a01a6c01acc/status)](https://www.codeship.com/projects/29053)

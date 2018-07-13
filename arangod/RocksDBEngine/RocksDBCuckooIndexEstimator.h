@@ -216,7 +216,7 @@ class RocksDBCuckooIndexEstimator {
       default: {
         LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
             << "unable to restore index estimates: invalid format found";
-        // Do not construct from serialisation, use other constructor instead
+        // Do not construct from serialization, use other constructor instead
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
     }

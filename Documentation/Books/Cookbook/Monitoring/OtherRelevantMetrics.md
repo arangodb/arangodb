@@ -19,7 +19,7 @@ For this recipe you need to install the following tools:
 ### Disk usage
 You may want to monitor that ArangoDB doesn't run out of disk space. The [df Plugin](https://collectd.org/wiki/index.php/Plugin:DF) can aggregate these values for you.
 
-First we need to find out which disks are used by your ArangoDB. By default you need to find **/var/lib/arango** in the mountpoints. Since nowadays many virtual file systems are also mounted on a typical \*nix system we want to sort the output of mount:
+First we need to find out which disks are used by your ArangoDB. By default you need to find **/var/lib/arango** in the mount points. Since nowadays many virtual file systems are also mounted on a typical \*nix system we want to sort the output of mount:
 
     mount | sort
     /dev/sda3 on /local/home type ext4 (rw,relatime,data=ordered)
@@ -30,7 +30,7 @@ First we need to find out which disks are used by your ArangoDB. By default you 
     ....
     udev on /dev type devtmpfs (rw,relatime,size=10240k,nr_inodes=1022123,mode=755)
 
-So here we can see the mountpoints are `/`, `/local/home`, `/mnt/` so `/var/lib/` can be found on the root partition (`/`) `/dev/sda3` here. A production setup may be different so the OS doesn't interfere with the services.
+So here we can see the mount points are `/`, `/local/home`, `/mnt/` so `/var/lib/` can be found on the root partition (`/`) `/dev/sda3` here. A production setup may be different so the OS doesn't interfere with the services.
 
 The collectd configuration `/etc/collectd/collectd.conf.d/diskusage.conf` looks like this:
 
@@ -64,7 +64,7 @@ The collectd configuration `/etc/collectd/collectd.conf.d/diskusage.conf` looks 
 Another interesting metric is the amount of data read/written to disk - its an estimate how busy your ArangoDB or the whole system currently is.
 The [Disk plugin](https://collectd.org/wiki/index.php/Plugin:Disk) aggregates these values.
 
-According to the mountpoints above our configuration `/etc/collectd/collectd.conf.d/disk_io.conf` looks like this:
+According to the mount points above our configuration `/etc/collectd/collectd.conf.d/disk_io.conf` looks like this:
 
     LoadPlugin disk
     <Plugin disk>
