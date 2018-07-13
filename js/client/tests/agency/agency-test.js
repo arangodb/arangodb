@@ -120,7 +120,7 @@ function agencyTestSuite () {
     return ret;
   }
 
-  function accessAgency(api, list = [], method = "POST") {
+  function accessAgency(api, list, timeout = 60) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
@@ -129,15 +129,9 @@ function agencyTestSuite () {
       var payload = {url: agencyLeader + "/_api/agency/" + api,
                      method: method, followRedirect: false,
                      headers: {"Content-Type": "application/json"},
-                     timeout: 240  /* essentially for the huge trx package
-                                      running under ASAN in the CI */ };
-      
-      if (method == "POST") {
-        payload.body = JSON.stringify(list);
-      }
-      
-      res = request(payload);
-      
+                     timeout: timeout  /* essentially for the huge trx package
+                                          running under ASAN in the CI */ });
+
       if(res.statusCode === 307) {
         require('console').topic("agency=info", '307 from ' + agencyLeader);
         agencyLeader = res.headers.location;
@@ -168,8 +162,8 @@ function agencyTestSuite () {
     return res.bodyParsed;
   }
 
-  function writeAndCheck(list) {
-    var res = accessAgency("write", list);
+  function writeAndCheck(list, timeout = 60) {
+    var res = accessAgency("write", list, timeout);
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
@@ -1086,7 +1080,7 @@ function agencyTestSuite () {
       for (var i = 0; i < 20000; ++i) {
         huge.push([{"a":{"op":"increment"}}]);
       }
-      writeAndCheck(huge);
+      writeAndCheck(huge, 600);
       assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
     },
 

@@ -1,5 +1,11 @@
-v3.3.12 (XXXX-XX-XX)
+v3.3.12 (2018-07-12)
 --------------------
+
+* PR5854: rocksdb engine would frequently request a new DelayToken.  This caused
+  excessive write delay on the next Put() call.  Alternate approach taken.
+
+* fixed graph creation under some circumstances failing with 'edge collection
+  already used in edge def' despite the edge definitions being identical
 
 * fixed issue #5727: Edge document with user provided key is inserted as many
   times as the number of shards, violating the primary index
@@ -24,6 +30,8 @@ v3.3.12 (XXXX-XX-XX)
 * fixed for agent coming back to agency with changed endpoint and
   total data loss
 
+* more patient agency tests to allow for ASAN tests to successfully finish
+
 
 v3.3.11 (2018-06-26)
 --------------------
@@ -40,7 +48,7 @@ v3.3.11 (2018-06-26)
   more than a single shard and using a custom shard key (i.e. some shard
   key attribute other than `_key`).
   The previous implementation of DOCUMENT restricted to lookup to a single
-  shard in all cases, though this restriction was invalid. That lead to 
+  shard in all cases, though this restriction was invalid. That lead to
   `DOCUMENT` not finding documents in cases the wrong shard was contacted. The
   fixed implementation in 3.3.11 will reach out to all shards to find the
   document, meaning it will produce the correct result, but will cause more
@@ -54,7 +62,7 @@ v3.3.11 (2018-06-26)
 
 * fixed internal issue #2256: ui, document id not showing up when deleting a document
 
-* fixed internal issue #2163: wrong labels within foxx validation of service 
+* fixed internal issue #2163: wrong labels within foxx validation of service
   input parameters
 
 * fixed internal issue #2160: fixed misplaced tooltips in indices view
@@ -230,7 +238,7 @@ v3.3.9 (2018-05-17)
   `COLLECT ...` (no options)                 => create a plan using sorted, and another plan using hash method
 
 * added bulk document lookups for MMFiles engine, which will improve the performance
-  of document lookups from an inside an index in case the index lookup produces many 
+  of document lookups from an inside an index in case the index lookup produces many
   documents
 
 
