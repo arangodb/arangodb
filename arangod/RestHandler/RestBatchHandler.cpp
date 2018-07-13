@@ -353,12 +353,12 @@ bool RestBatchHandler::getBoundaryHeader(std::string* result) {
 
   std::string boundary = parts[1].substr(boundaryLength);
 
-  if ((boundary[0]  == '"') &&
-      (boundary.length() > 1) && 
+  if ((boundary.length() > 1) &&
+      (boundary[0]  == '"') &&
       (boundary[boundary.length() -1] == '"')) {
     StringUtils::trimInPlace(boundary, "\"");
-  } else if ((boundary[0] == '\'') &&
-             (boundary.length() > 1) && 
+  } else if ((boundary.length() > 1) &&
+             (boundary[0] == '\'') &&
              (boundary[boundary.length() -1] == '\'')) {
     StringUtils::trimInPlace(boundary, "'");
   }
