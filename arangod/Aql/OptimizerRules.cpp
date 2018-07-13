@@ -4164,6 +4164,17 @@ void arangodb::aql::restrictToSingleShardRule(
                 toRemove.clear();
                 break;
               }
+              
+              if (c->getType() == EN::CALCULATION) {
+                auto cn = ExecutionNode::castTo<CalculationNode const*>(c);
+                auto expr = cn->expression();
+                if (expr != nullptr && !expr->canRunOnDBServer()) {
+                  // found something that must not run on a DB server,
+                  // but that must run on a coordinator. stop optimization here!
+                  toRemove.clear();
+                  break;
+                }
+              }
             }
 
             for (auto const& it : toRemove) {
