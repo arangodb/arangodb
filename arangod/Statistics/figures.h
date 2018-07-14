@@ -30,21 +30,6 @@ namespace arangodb {
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vector generator
-////////////////////////////////////////////////////////////////////////////////
-
-struct StatisticsVector {
-  StatisticsVector() : _value() {}
-
-  StatisticsVector& operator<<(double v) {
-    _value.push_back(v);
-    return *this;
-  }
-
-  std::vector<double> _value;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a simple counter
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,8 +50,8 @@ struct StatisticsCounter {
 struct StatisticsDistribution {
   StatisticsDistribution() : _count(0), _total(0.0), _cuts(), _counts() {}
 
-  StatisticsDistribution(StatisticsVector const& dist)
-      : _count(0), _total(0.0), _cuts(dist._value), _counts() {
+  explicit StatisticsDistribution(std::vector<double> const& dist)
+      : _count(0), _total(0.0), _cuts(dist), _counts() {
     _counts.resize(_cuts.size() + 1);
   }
 

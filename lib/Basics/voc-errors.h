@@ -92,7 +92,7 @@ constexpr int TRI_ERROR_CANNOT_OVERWRITE_FILE                                   
 
 /// 17: ERROR_TYPE_ERROR
 /// "type error"
-/// Will be raised when a type error is unencountered.
+/// Will be raised when a type error is encountered.
 constexpr int TRI_ERROR_TYPE_ERROR                                              = 17;
 
 /// 18: ERROR_LOCK_TIMEOUT
@@ -172,6 +172,11 @@ constexpr int TRI_ERROR_CANNOT_READ_FILE                                        
 /// "incompatible server version"
 /// Will be raised when a server is running an incompatible version of ArangoDB.
 constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    = 35;
+
+/// 36: ERROR_DISABLED
+/// "disabled"
+/// Will be raised when a requested resource is not enabled.
+constexpr int TRI_ERROR_DISABLED                                                = 36;
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
