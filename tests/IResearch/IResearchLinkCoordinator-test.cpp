@@ -58,7 +58,6 @@
 #include "Logger/LogTopic.h"
 #include "Random/RandomFeature.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/EndpointFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/DatabaseFeature.h"
