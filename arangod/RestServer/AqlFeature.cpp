@@ -44,6 +44,7 @@ AqlFeature::AqlFeature(
   startsAfter("V8Phase");
 
   startsAfter("QueryRegistry");
+  startsAfter("TraverserEngineRegistry");
 }
 
 AqlFeature* AqlFeature::lease() {
