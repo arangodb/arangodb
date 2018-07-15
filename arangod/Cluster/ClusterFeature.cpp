@@ -23,7 +23,6 @@
 
 #include "ClusterFeature.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -240,16 +239,13 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-  auto agency =
-    application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
-
 #ifdef DEBUG_SYNC_REPLICATION
   bool startClusterComm = true;
 #else
   bool startClusterComm = false;
 #endif
 
-  if (agency->isEnabled() || _enableCluster) {
+  if (ServerState::instance()->isAgent() || _enableCluster) {
     startClusterComm = true;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown
