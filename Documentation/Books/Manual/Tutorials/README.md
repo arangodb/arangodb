@@ -9,3 +9,18 @@ Tutorials
 
 - [Kubernetes](Kubernetes/README.md):
   Start ArangoDB on Kubernetes in 5 minutes
+
+- [DC2DC on Kubernetes](Kubernetes/DC2DC.md):
+  Start DC2DC between two ArangoDB clusters running in Kubernetes 
+  
+---
+
+Link languange tutorial (use a table?) https://www.arangodb.com/arangodb-training-center/
+
+arangosearch https://www.arangodb.com/tutorials/arangosearch/
+
+smartgraph https://www.arangodb.com/using-smartgraphs-arangodb/
+
+pregel https://www.arangodb.com/pregel-community-detection/
+
+etc
