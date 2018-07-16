@@ -231,6 +231,16 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (result.touched("agency.supervision")) {
     _supervisionTouched = true;
   }
+
+  // turn off the following features, as they are not needed in an agency:
+  // - MMFilesPersistentIndex: not needed by agency even if MMFiles is 
+  //   the selected storage engine
+  // - ArangoSearch: not needed by agency even if MMFiles is the selected
+  //   storage engine
+  // - Statistics: turn off statistics gathering for agency
+  application_features::ApplicationServer::disableFeatures(
+      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics"}
+  );
 }
 
 void AgencyFeature::prepare() {
