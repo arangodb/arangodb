@@ -218,6 +218,33 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   Using any of these functions from inside AQL will now produce an error.
 
 
+Usage of V8
+-----------
+
+The internal usage of the V8 JavaScript for non-user actions has been reduced 
+in ArangoDB. Several APIs have been rewritten to not depend on V8 and thus do 
+not require using a V8 context for execution.
+
+Compared to ArangoDB 3.3, the following parts of ArangoDB can now be used 
+without requiring V8 contexts:
+
+- all of AQL (with the exception of user-defined functions)
+- the graph modification APIs at endpoint `/_api/gharial`
+- background server statistics gathering
+
+Reduced usage of V8 by ArangoDB may allow end users to lower the configured 
+numbers of V8 contexts to start. In terms of configuration options, these
+are:
+
+- `--javascript.v8-contexts`: the maximum number of V8 contexts to create
+- `--javascript.v8-contexts-minimim`: the minimum number of V8 contexts to 
+  create at server start and to keep around
+
+The default values for these startup options have not been changed in ArangoDB
+3.4, but depending on the actual workload, 3.4 ArangoDB instances may need
+less V8 contexts than 3.3.
+
+
 Startup option changes
 ----------------------
 
