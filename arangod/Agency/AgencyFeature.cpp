@@ -51,8 +51,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervisionTouched(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
-      _compactionStepSize(20000),
-      _compactionKeepSize(10000),
+      _compactionStepSize(1000),
+      _compactionKeepSize(50000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false) {
@@ -201,7 +201,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_compactionKeepSize == 0) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "agency.compaction-keep-size must not be 0, set to 1000";
-    _compactionKeepSize = 1000;
+    _compactionKeepSize = 50000;
   }
 
   if (!_agencyMyAddress.empty()) {
