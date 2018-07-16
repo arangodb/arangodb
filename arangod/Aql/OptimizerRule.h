@@ -181,6 +181,10 @@ struct OptimizerRule {
     removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
 
+    // when we have single document operations, fill in special cluster
+    // handling.
+    substituteSingleDocumentOperations_pass6,
+
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,
 

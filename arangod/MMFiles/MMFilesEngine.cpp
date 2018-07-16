@@ -319,7 +319,7 @@ std::unique_ptr<PhysicalCollection> MMFilesEngine::createPhysicalCollection(
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 
   return std::unique_ptr<PhysicalCollection>(
-    new MMFilesCollection(&collection, info)
+    new MMFilesCollection(collection, info)
   );
 }
 

@@ -55,9 +55,11 @@ class RocksDBCollection final : public PhysicalCollection {
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
- public:
-  explicit RocksDBCollection(LogicalCollection*, VPackSlice const& info);
-  RocksDBCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
+  explicit RocksDBCollection(
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
+  RocksDBCollection(LogicalCollection& collection, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~RocksDBCollection();
 
@@ -68,7 +70,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) const override;
+  virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
@@ -120,6 +122,10 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
+  void deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& callback
+  ) override;
+
   LocalDocumentId lookupKey(transaction::Methods* trx,
                             velocypack::Slice const& key) const override;
 
@@ -167,9 +173,6 @@ class RocksDBCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
-
-  void deferDropCollection(
-      std::function<bool(LogicalCollection*)> callback) override;
 
   void setRevision(TRI_voc_rid_t revisionId);
   void adjustNumberDocuments(int64_t adjustment);

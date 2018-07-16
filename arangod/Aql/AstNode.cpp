@@ -379,14 +379,15 @@ static bool IsEmptyString(char const* p, size_t length) {
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
     : type(type), flags(0), computedValue(nullptr) {
-  value.type = VALUE_TYPE_NULL;
+  // properly zero-initialize all members
+  value.value._int = 0;
   value.length = 0;
+  value.type = VALUE_TYPE_NULL;
 }
 
 /// @brief create a node, with defining a value type
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
-  value.length = 0;
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
 }
@@ -1077,6 +1078,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
       type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_VIEW ||
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
+    TRI_ASSERT(getStringValue() != nullptr);
     builder.add("name", VPackValuePair(getStringValue(), getStringLength(),
                                         VPackValueType::String));
   }

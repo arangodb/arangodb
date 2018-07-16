@@ -532,7 +532,7 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("term", Value(_agent->term()));
     body.add("leaderId", Value(_agent->leaderID()));
     body.add("commitIndex", Value(last));
-    body.add("lastAcked", _agent->lastAckedAgo()->slice());
+    _agent->lastAckedAgo(body);
     body.add("configuration", _agent->config().toBuilder()->slice());
   }
 

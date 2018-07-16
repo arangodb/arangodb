@@ -595,7 +595,7 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
 /// @brief get the output variable from a node
 Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   if (node->getType() == ExecutionNode::CALCULATION) {
-    // CalculationNode has an outVariale() method
+    // CalculationNode has an outVariable() method
     return ExecutionNode::castTo<CalculationNode const*>(node)->outVariable();
   }
 
@@ -614,9 +614,13 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
     TRI_ASSERT(v != nullptr);
     return v;
   }
+  
+  if (node->getType() == ExecutionNode::SUBQUERY) {
+    return ExecutionNode::castTo<SubqueryNode const*>(node)->outVariable();
+  }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid node type in getOutVariable");
+                                 std::string("invalid node type '") + node->getTypeString() + "' in getOutVariable");
 }
 
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)

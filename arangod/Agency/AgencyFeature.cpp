@@ -51,8 +51,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervisionTouched(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
-      _compactionStepSize(20000),
-      _compactionKeepSize(10000),
+      _compactionStepSize(1000),
+      _compactionKeepSize(50000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false) {
@@ -195,7 +195,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_compactionKeepSize == 0) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "agency.compaction-keep-size must not be 0, set to 1000";
-    _compactionKeepSize = 1000;
+    _compactionKeepSize = 50000;
   }
 
   if (!_agencyMyAddress.empty()) {
@@ -225,6 +225,16 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (result.touched("agency.supervision")) {
     _supervisionTouched = true;
   }
+
+  // turn off the following features, as they are not needed in an agency:
+  // - MMFilesPersistentIndex: not needed by agency even if MMFiles is 
+  //   the selected storage engine
+  // - ArangoSearch: not needed by agency even if MMFiles is the selected
+  //   storage engine
+  // - Statistics: turn off statistics gathering for agency
+  application_features::ApplicationServer::disableFeatures(
+      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics"}
+  );
 }
 
 void AgencyFeature::prepare() {

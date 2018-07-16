@@ -33,7 +33,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -126,7 +125,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "SslServer", "Supervisor"});
+                                        "SslServer", "Statistics", "Supervisor"});
 
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
@@ -136,10 +135,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
           ApplicationServer::getFeature<ReplicationFeature>("Replication");
       replicationFeature->disableReplicationApplier();
     }
-
-    StatisticsFeature* statisticsFeature =
-        ApplicationServer::getFeature<StatisticsFeature>("Statistics");
-    statisticsFeature->disableStatistics();
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {

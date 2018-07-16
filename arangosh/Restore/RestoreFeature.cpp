@@ -822,8 +822,8 @@ void RestoreFeature::validateOptions(
     _options.chunkSize = 1024 * 128;
   }
 
-  auto clamped = boost::algorithm::clamp(_options.threadCount, 1,
-                                         4 * TRI_numberProcessors());
+  auto clamped = boost::algorithm::clamp(_options.threadCount, uint32_t(1),
+                                         uint32_t(4 * TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC(WARN, Logger::RESTORE) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;

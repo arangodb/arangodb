@@ -655,7 +655,8 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
 }
 
 bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
-                                  std::vector<std::string> const& positionals) {
+                                  std::vector<std::string> const& positionals,
+                                  std::string const& testFilter) {
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -695,6 +696,9 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   // variables!!
   context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
                          v8::True(_isolate));
+
+  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_FILTER_TEST"),
+                         TRI_V8_ASCII_STD_STRING(_isolate, testFilter));
 
   // run tests
   auto input = TRI_V8_ASCII_STRING(

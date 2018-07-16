@@ -143,7 +143,8 @@ class State {
   }
 
   /// @brief compact state machine
-  bool compact(arangodb::consensus::index_t cind);
+  bool compact(arangodb::consensus::index_t cind,
+               arangodb::consensus::index_t keep);
 
  private:
   /// @brief Remove RAFT conflicts. i.e. All indices, where higher term version
@@ -166,6 +167,9 @@ class State {
   /// is reset to the state after log index `index` has been applied. Sets
   /// `index` to 0 if there is no compacted snapshot.
   bool loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term);
+
+  /// @brief lastCompactedAt
+  index_t lastCompactionAt() const;
 
   /// @brief nextCompactionAfter
   index_t nextCompactionAfter() const {
@@ -227,10 +231,12 @@ class State {
   bool createCollection(std::string const& name);
 
   /// @brief Compact persisted logs
-  bool compactPersisted(arangodb::consensus::index_t cind);
+  bool compactPersisted(arangodb::consensus::index_t cind,
+                        arangodb::consensus::index_t keep);
 
   /// @brief Compact RAM logs
-  bool compactVolatile(arangodb::consensus::index_t cind);
+  bool compactVolatile(arangodb::consensus::index_t cind,
+                       arangodb::consensus::index_t keep);
 
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
@@ -253,8 +259,9 @@ class State {
   bool _collectionsLoaded;
   std::multimap<std::string,arangodb::consensus::index_t> _clientIdLookupTable;
 
-  /// @brief Next compaction after
+  /// @brief compaction indexes
   std::atomic<index_t> _nextCompactionAfter;
+  std::atomic<index_t> _lastCompactionAt;
 
   /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;

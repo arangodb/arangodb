@@ -146,9 +146,10 @@ void raceForClusterBootstrap() {
       continue;
     }
 
-    // become Foxxmater, ignore result
+    // become Foxxmaster, ignore result
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Write Foxxmaster";
     agency.setValue("Current/Foxxmaster", b.slice(), 0);
+    agency.increment("Current/Version");
 
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();

@@ -30,6 +30,11 @@ function runJSUnityTests (tests) {
     runenvironment = 'arangosh';
   }
 
+  var unitTestFilter = internal.unitTestFilter();
+  if (unitTestFilter === "") {
+    unitTestFilter = "undefined";
+  }
+
   _.each(tests, function (file) {
     if (result) {
       print('\n' + Date() + ' ' + runenvironment + ": Running JSUnity test from file '" + file + "'");
@@ -39,7 +44,7 @@ function runJSUnityTests (tests) {
     }
 
     try {
-      res = runTest(file, true);
+      res = runTest(file, true, unitTestFilter);
       allResults.push(res);
       result = result && res.status;
       if (!res.status) {

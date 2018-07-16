@@ -75,7 +75,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
     ExecutionNode* current = n->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == EN::CALCULATION) {
-        Expression* exp = static_cast<CalculationNode*>(current)->expression();
+        Expression* exp = ExecutionNode::castTo<CalculationNode*>(current)->expression();
 
         if (exp != nullptr && exp->node() != nullptr) {
           AstNode const* node = exp->node();
@@ -92,7 +92,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         }
       } else if (current->getType() == EN::GATHER) {
         // compare sort attributes of GatherNode
-        auto gn = static_cast<GatherNode*>(current);
+        auto gn = ExecutionNode::castTo<GatherNode*>(current);
         for (auto const& it : gn->elements()) {
           if (it.var == v) {
             if (it.attributePath.empty()) {
@@ -135,7 +135,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
 
       if (n->getType() == ExecutionNode::INDEX) {
         // need to update _indexCoversProjections value in an IndexNode
-        static_cast<IndexNode*>(n)->initIndexCoversProjections();
+        ExecutionNode::castTo<IndexNode*>(n)->initIndexCoversProjections();
       }
       
       modified = true;

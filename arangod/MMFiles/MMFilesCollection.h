@@ -125,9 +125,14 @@ class MMFilesCollection final : public PhysicalCollection {
     bool _isJournal;
   };
 
- public:
-  explicit MMFilesCollection(LogicalCollection*, VPackSlice const& info);
-  MMFilesCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
+  explicit MMFilesCollection(
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
+  MMFilesCollection(
+    LogicalCollection& collection,
+    PhysicalCollection const* physical
+  );  // use in cluster only!!!!!
 
   ~MMFilesCollection();
 
@@ -143,7 +148,7 @@ class MMFilesCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) const override;
+  virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   TRI_voc_rid_t revision() const;
@@ -328,6 +333,14 @@ class MMFilesCollection final : public PhysicalCollection {
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
+  /// @brief Defer a callback to be executed when the collection
+  ///        can be dropped. The callback is supposed to drop
+  ///        the collection and it is guaranteed that no one is using
+  ///        it at that moment.
+  void deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& callback
+  ) override;
+
   LocalDocumentId lookupKey(transaction::Methods* trx,
                             velocypack::Slice const& key) const override;
 
@@ -380,13 +393,6 @@ class MMFilesCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
-
-  /// @brief Defer a callback to be executed when the collection
-  ///        can be dropped. The callback is supposed to drop
-  ///        the collection and it is guaranteed that no one is using
-  ///        it at that moment.
-  void deferDropCollection(
-      std::function<bool(LogicalCollection*)> callback) override;
 
   Result rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                            LocalDocumentId const& oldDocumentId,

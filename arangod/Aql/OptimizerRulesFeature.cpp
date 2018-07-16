@@ -267,6 +267,10 @@ void OptimizerRulesFeature::addRules() {
                                       OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
+
+    registerRule("optimize-cluster-single-document-operations", substituteClusterSingleDocumentOperations,
+                 OptimizerRule::substituteSingleDocumentOperations_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
 #if 0
     registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
                  OptimizerRule::optimizeClusterSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);

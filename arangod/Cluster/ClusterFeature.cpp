@@ -417,31 +417,27 @@ void ClusterFeature::start() {
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
-  while (true) {
-    VPackBuilder builder;
-    try {
-      VPackObjectBuilder b(&builder);
-      builder.add("endpoint", VPackValue(_myAddress));
-      builder.add("host", VPackValue(ServerState::instance()->getHost()));
-    } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
-      FATAL_ERROR_EXIT();
-    }
-
-    result.clear();
-    result = comm.setValue("Current/ServersRegistered/" + myId,
-                           builder.slice(), 0.0);
-
-    if (!result.successful()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to register server in agency: http code: "
-                 << result.httpCode() << ", body: " << result.body();
-      FATAL_ERROR_EXIT();
-    } else {
-      break;
-    }
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+  VPackBuilder builder;
+  try {
+    VPackObjectBuilder b(&builder);
+    builder.add("endpoint", VPackValue(_myAddress));
+    builder.add("host", VPackValue(ServerState::instance()->getHost()));
+  } catch (...) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
+    FATAL_ERROR_EXIT();
   }
+
+  result.clear();
+  result = comm.setValue("Current/ServersRegistered/" + myId,
+                         builder.slice(), 0.0);
+
+  if (!result.successful()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to register server in agency: http code: "
+               << result.httpCode() << ", body: " << result.body();
+    FATAL_ERROR_EXIT();
+  }
+
+  comm.increment("Current/Version");
 
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
@@ -524,6 +520,8 @@ void ClusterFeature::unprepare() {
   unreg.operations.push_back(
       AgencyOperation("Current/ServersRegistered/" + me,
                       AgencySimpleOperationType::DELETE_OP));
+  unreg.operations.push_back(
+      AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
   comm.sendTransactionWithFailover(unreg, 120.0);
 
   while (_heartbeatThread->isRunning()) {

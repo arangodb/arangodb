@@ -750,6 +750,14 @@ global.DEFINE_MODULE('internal', (function () {
     global.SYS_UNIT_TESTS_RESULT = value;
   };
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief unitFilterTests
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.unitTestFilter = function () {
+    return global.SYS_UNIT_FILTER_TEST;
+  };
+
   // end process
   if (global.SYS_EXIT) {
     exports.exit = global.SYS_EXIT;
