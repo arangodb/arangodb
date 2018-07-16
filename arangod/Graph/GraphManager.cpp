@@ -116,7 +116,7 @@ Result GraphManager::assertFeasibleEdgeDefinitions(
     EdgeDefinition& def = res.get();
     bool inserted;
     std::tie(std::ignore, inserted) =
-        tmpEdgeDefinitions.emplace(def.getName(), std::move(def));
+        tmpEdgeDefinitions.emplace(def.getName(), def);
 
     if (!inserted) {
       return Result(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
