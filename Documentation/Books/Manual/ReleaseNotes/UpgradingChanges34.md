@@ -38,6 +38,36 @@ or 3.3) will continue to use the existing on-disk format for the RocksDB engine
 even with ArangoDB 3.4.
 
 
+Threading and request handling
+------------------------------
+
+The processing of incoming requests and the execution of requests by server threads
+has changed in 3.4.
+
+Previous ArangoDB versions had a hard-coded implicit lower bound of 64 running 
+threads, and up to which they would increase the number of running server threads.
+That value could be increased further by adjusting the option `--server.maximal-threads`.
+The configuration option `--server.threads` existed, but did not effectively set
+or limit the number of running threads.
+
+In ArangoDB 3.4, the number of threads ArangoDB uses for request handling can now 
+be strictly bounded by configuration options.
+
+The number of server threads is now configured by the following startup options:
+
+- `--server.threads`: determines the maximum number of request processing threads
+  the server will start for request handling. If that number of threads is already
+  running, arangod will not start further threads for request handling
+- `--server.minimal-threads`: determines the minimum number of request processing
+  threads the server will start and always keep around
+
+The actual number of request processing threads is adjusted dynamically at runtime
+and will float between `--server.minimal-threads` and `--server.threads`.
+
+To avoid overloading servers, the value of `--server.threads` should not exceed the 
+server's number of hardware threads in ArangoDB 3.4.
+
+
 HTTP REST API
 -------------
 
@@ -185,6 +215,8 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   - `KEYVISITOR`
   - `COUNTINGVISITOR`        
 
+  Using any of these functions from inside AQL will now produce an error.
+
 
 Startup option changes
 ----------------------
@@ -193,7 +225,18 @@ The arangod, the following startup options have changed:
 
 - the hidden option `--server.maximal-threads` is now obsolete.
 
-  Setting the option will have no effect.
+  Setting the option will have no effect. 
+  The number of server threads is now configured by the following startup options:
+
+  - `--server.threads`: determines the maximum number of request processing threads
+    the server will start
+  - `--server.minimal-threads`: determines the minimum number of request processing
+    threads the server will start
+
+  The actual number of request processing threads is adjusted dynamically at runtime
+  and will float between `--server.minimal-threads` and `--server.threads`. Thus the
+  value configured for `--server.threads` should not greatly exceed the server's number
+  of hardware threads.
 
 - the option `--server.maximal-queue-size` has been renamed to `--server.queue-size`.
 
@@ -261,8 +304,8 @@ ArangoDB 3.4.
 Miscellaneous changes
 ---------------------
 
-For the MMFiles engine, the compactor thread(s) were renamed from 
-"Compactor" to "MMFilesCompactor".
+For the MMFiles engine, the compactor thread(s) were renamed from "Compactor" 
+to "MMFilesCompactor".
 
 This change will be visible only on systems which allow assigning names to
 threads.
