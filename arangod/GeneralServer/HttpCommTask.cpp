@@ -258,10 +258,6 @@ bool HttpCommTask::processRead(double startTime) {
     size_t headerLength = ptr - (_readBuffer.c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-          << "maximal header size is " << MaximalHeaderSize
-          << ", request header size is " << headerLength;
-
       // header is too large
       addSimpleResponse(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
                         rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
@@ -324,7 +320,6 @@ bool HttpCommTask::processRead(double startTime) {
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
         addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, rest::ContentType::UNSET,
                           1, VPackBuffer<uint8_t>());
-        LOG_TOPIC(WARN, Logger::FIXME) << "HTTP version not supported";
         _closeRequested = true;
         return false;
       }
@@ -335,7 +330,6 @@ bool HttpCommTask::processRead(double startTime) {
       if (_fullUrl.size() > 16384) {
         addSimpleResponse(rest::ResponseCode::REQUEST_URI_TOO_LONG, rest::ContentType::UNSET,
                           1, VPackBuffer<uint8_t>());
-        LOG_TOPIC(WARN, Logger::REQUESTS) << "requst uri too long";
         _closeRequested = true;
         return false;
       }
@@ -428,9 +422,6 @@ bool HttpCommTask::processRead(double startTime) {
           if (6 < l) {
             l = 6;
           }
-
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got corrupted HTTP request '" << std::string(sptr, l)
-                    << "'";
 
           // bad request, method not allowed
           addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED, rest::ContentType::UNSET,
@@ -640,16 +631,12 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 
   if (!expectContentLength && bodyLength > 0) {
     // content-length header was sent but the request method does not support
-    // that
-    // we'll warn but read the body anyway
+    // that we'll warn but read the body anyway
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received HTTP GET/HEAD request with content-length, this "
                  "should not happen";
   }
 
   if ((size_t)bodyLength > MaximalBodySize) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "maximal body size is " << MaximalBodySize
-              << ", request body size is " << bodyLength;
-
     // request entity too large
     addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE, rest::ContentType::UNSET,
                       1, VPackBuffer<uint8_t>());
