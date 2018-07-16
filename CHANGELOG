@@ -17,6 +17,9 @@ v3.2.16 (2018-07-12)
 
 * inception was ignoring leader's configuration
 
+* inception could get caught in a trap, where agent configuration
+  version and timeout multiplier lead to incapacitated agency
+
 * more patient agency tests to allow for ASAN tests to successfully finish
 
 * fixed for agent coming back to agency with changed endpoint and
