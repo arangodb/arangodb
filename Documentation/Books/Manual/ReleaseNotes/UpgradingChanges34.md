@@ -252,6 +252,13 @@ The arangod, the following startup options have changed:
 
   The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
 
+- the startup option `--database.check-30-revisions` was removed. It was used for
+  checking the revision ids of documents for having been created with ArangoDB 3.0,
+  which required a dump & restore migration of the data to 3.1.
+
+  As direct upgrades from ArangoDB 3.0 to 3.4 or from 3.1 to 3.4 are not supported,
+  this option has been removed in 3.4.
+
 
 Permissions
 -----------
