@@ -329,7 +329,8 @@ class LogicalCollection: public LogicalDataSource {
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
   void deferDropCollection(
-      std::function<bool(arangodb::LogicalCollection*)> callback);
+    std::function<bool(arangodb::LogicalCollection&)> const& callback
+  );
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;

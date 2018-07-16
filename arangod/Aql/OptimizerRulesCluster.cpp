@@ -59,7 +59,7 @@ ExecutionNode* hasSingleDep(ExecutionNode const* in, EN::NodeType const type) {
 
 Index* hasSingleIndexHandle(ExecutionNode const* node) {
   TRI_ASSERT(node->getType() == EN::INDEX);
-  IndexNode const* indexNode = static_cast<IndexNode const*>(node);
+  IndexNode const* indexNode = ExecutionNode::castTo<IndexNode const*>(node);
   auto indexHandleVec = indexNode->getIndexes();
   if (indexHandleVec.size() == 1) {
     return indexHandleVec.front().getIndex().get();
@@ -79,7 +79,7 @@ std::vector<AstNode const*> hasBinaryCompare(ExecutionNode const* node) {
   // returns any AstNode in the expression that is
   // a binary comparison.
   TRI_ASSERT(node->getType() == EN::INDEX);
-  IndexNode const* indexNode = static_cast<IndexNode const*>(node);
+  IndexNode const* indexNode = ExecutionNode::castTo<IndexNode const*>(node);
   AstNode const* cond = indexNode->condition()->root();
   std::vector<AstNode const*> result;
 
@@ -123,9 +123,13 @@ std::string getFirstKey(std::vector<AstNode const*> const& compares) {
 }
 
 bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
-  while (node){
+  while (node) {
     node = node->getFirstDependency();
-    if(node->getType() == EN::SINGLETON) {
+    if (node == nullptr) {
+      return false;
+    }
+
+    if (node->getType() == EN::SINGLETON) {
       return true;
     }
 
@@ -192,8 +196,8 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
     }
 
     Index* index = ::hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
-    if (index){
-      IndexNode* indexNode = static_cast<IndexNode*>(node);
+    if (index) {
+      IndexNode* indexNode = ExecutionNode::castTo<IndexNode*>(node);
       auto binaryCompares = ::hasBinaryCompare(node);
       std::string key = ::getFirstKey(binaryCompares);
       if (key.empty()) {
@@ -203,7 +207,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       auto* parentModification = ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
 
       if (parentModification){
-        auto mod = static_cast<ModificationNode*>(parentModification);
+        auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
         auto parentType = parentModification->getType();
         auto const& vec = mod->getVariablesUsedHere();
 
@@ -215,7 +219,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           TRI_ASSERT(vec.size() == 1);
         } else {
           update = vec.front();
-          if(vec.size() > 1){
+          if (vec.size() > 1) {
             keyVar = vec.back();
           }
         }
@@ -282,7 +286,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
   }
 
   for (auto* node : nodes) {
-    auto mod = static_cast<ModificationNode*>(node);
+    auto mod = ExecutionNode::castTo<ModificationNode*>(node);
 
     if (!::depIsSingletonOrConstCalc(node)) {
       continue;
@@ -320,7 +324,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       while (cursor) {
         cursor = ::hasSingleDep(cursor, EN::CALCULATION);
         if (cursor) {
-          CalculationNode* c = static_cast<CalculationNode*>(cursor);
+          CalculationNode* c = ExecutionNode::castTo<CalculationNode*>(cursor);
           if (c->setsVariable(keySet)) {
            calc = c;
            break;

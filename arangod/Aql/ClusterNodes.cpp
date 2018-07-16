@@ -22,15 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterNodes.h"
-#include "Aql/Ast.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Collection.h"
-#include "Aql/ModificationNodes.h"
+#include "Aql/Ast.h"
 #include "Aql/ClusterBlocks.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
-#include "Aql/IndexNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IndexNode.h"
+#include "Aql/ModificationNodes.h"
+#include "Aql/Query.h"
 #include "Transaction/Methods.h"
 
 #include <type_traits>
@@ -379,15 +379,12 @@ double GatherNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
                                                      size_t id,
                                                      NodeType mode,
                                                      bool replaceIndexNode,
                                                      std::string const& key,
-                                                     aql::Collection const* collection,
+                                                     Collection const* collection,
                                                      ModificationOptions const& options,
                                                      Variable const* in,
                                                      Variable const* out,

@@ -710,9 +710,9 @@ AstNode* Ast::createNodeAccess(Variable const* variable,
   return node;
 }
 
-AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std::string> const& path){
+AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std::string> const& path) {
   AstNode* rv = refNode->clone(this);
-  for(auto const& part : path){
+  for (auto const& part : path) {
     char const* p = query()->registerString(part.data(), part.size());
     rv = createNodeAttributeAccess(rv, p, part.size());
   }
@@ -720,10 +720,7 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std:
 }
 
 /// @brief create an AST parameter node
-AstNode* Ast::createNodeParameter(
-    char const* name,
-    size_t length
-) {
+AstNode* Ast::createNodeParameter(char const* name, size_t length) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -739,23 +736,23 @@ AstNode* Ast::createNodeParameter(
 }
 
 AstNode* Ast::createNodeParameterCollection(char const* name, size_t length) {
-  auto node = createNodeParameter(name, length);
+  // prevent creating a collection node with a nullptr string
+  auto collection = createNode(NODE_TYPE_COLLECTION);
+  collection->setStringValue("", 0);
 
-  if (node) {
-    node->reserve(1);
-    node->addMember(createNode(NODE_TYPE_COLLECTION));
-  }
+  auto node = createNodeParameter(name, length);
+  node->addMember(collection);
 
   return node;
 }
 
 AstNode* Ast::createNodeParameterView(char const* name, size_t length) {
-  auto node = createNodeParameter(name, length);
+  // prevent creating a view node with a nullptr string
+  auto view = createNode(NODE_TYPE_VIEW);
+  view->setStringValue("", 0);
 
-  if (node) {
-    node->reserve(1);
-    node->addMember(createNode(NODE_TYPE_VIEW));
-  }
+  auto node = createNodeParameter(name, length);
+  node->addMember(view);
 
   return node;
 }

@@ -25,7 +25,7 @@ the HTTP status code - 200
 A list of active cluster endpoints.
 
 @RESTSTRUCT{endpoint,cluster_endpoints_struct,string,required,}
-The bind of the coordinaror, like `tcp://[::1]:8530`
+The bind of the coordinator, like `tcp://[::1]:8530`
 
 
 @RESTRETURNCODE{403} server is not a coordinator or method was not GET.

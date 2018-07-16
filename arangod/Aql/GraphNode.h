@@ -153,10 +153,10 @@ class GraphNode : public ExecutionNode {
   /// @brief Reference to the pseudo variable
   AstNode* _tmpObjVarNode;
 
-  /// @brief Pseudo string value node to hold the last visted vertex id.
+  /// @brief Pseudo string value node to hold the last visited vertex id.
   AstNode* _tmpIdNode;
 
-  /// @brief input graphInfo only used for serialisation & info
+  /// @brief input graphInfo only used for serialization & info
   arangodb::velocypack::Builder _graphInfo;
 
   /// @brief the edge collection names
@@ -171,7 +171,7 @@ class GraphNode : public ExecutionNode {
   /// @brief Options for traversals
   std::unique_ptr<graph::BaseOptions> _options;
 
-  /// @brief Pseudo string value node to hold the last visted vertex id.
+  /// @brief Pseudo string value node to hold the last visited vertex id.
   /// @brief Flag if the options have been build.
   /// Afterwards this class is not copyable anymore.
   bool _optionsBuilt;

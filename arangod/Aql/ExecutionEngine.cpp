@@ -586,7 +586,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
       // in short: this avoids copying the return values
       engine->resultRegister(
-        dynamic_cast<ReturnBlock*>(root)->returnInheritedResults());
+        static_cast<ReturnBlock*>(root)->returnInheritedResults());
     }
 
     engine->_root = root;

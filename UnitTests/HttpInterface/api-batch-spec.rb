@@ -173,7 +173,6 @@ describe ArangoDB do
         doc.headers['x-arango-errors'].should eq("2")
       end
 
-      
       it "checks an empty operation multipart message" do
         cmd = "/_api/batch"
 
@@ -203,6 +202,33 @@ describe ArangoDB do
         end
       end
       
+      it "checks valid content-type with boundary in quotes" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+
+        multipart.addPart("GET", "/_api/version", { }, "")
+        multipart.addPart("GET", "/_api/version", { }, "")
+        multipart.addPart("GET", "/_api/version", { }, "")
+        multipart.addPart("GET", "/_api/version", { }, "")
+        doc = ArangoDB.log_post("#{prefix}-post-version-mult",
+                                cmd,
+                                :body => multipart.to_s,
+                                :format => :plain,
+                                :headers => {
+                                  "Content-Type" => "multipart/form-data; boundary=\"" + multipart.getBoundary + "\""
+                                })
+
+        doc.code.should eq(200)
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        parts.each do|part|
+          part[:status].should eq(200)
+        end
+      end
+      
+
       it "checks a multipart message with a multiple operations" do
         cmd = "/_api/batch"
 
@@ -212,7 +238,13 @@ describe ArangoDB do
         multipart.addPart("GET", "/_api/version", { }, "")
         multipart.addPart("GET", "/_api/version", { }, "")
         multipart.addPart("GET", "/_api/version", { }, "")
-        doc = ArangoDB.log_post("#{prefix}-post-version-mult", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+        doc = ArangoDB.log_post("#{prefix}-post-version-mult",
+                                cmd,
+                                :body => multipart.to_s,
+                                :format => :plain,
+                                :headers => {
+                                  "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary
+                                })
 
         doc.code.should eq(200)
 
