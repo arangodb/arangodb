@@ -1130,25 +1130,6 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
   return 0;
 }
 
-VPackBuilder VelocyPackHelper::copyObjectWithout(
-  const VPackSlice &objectSlice,
-  const std::unordered_set<std::string> &keysToOmit
-) {
-  TRI_ASSERT(objectSlice.isObject());
-  VPackBuilder builder;
-
-  builder.add(VPackValue(VPackValueType::Object));
-  for (auto it = VPackObjectIterator(objectSlice); it.valid(); it.next()) {
-    std::string key = it.key(true).copyString();
-    if (keysToOmit.find(key) == keysToOmit.end()) {
-      builder.add(key, it.value());
-    }
-  }
-  builder.close();
-
-  return std::move(builder);
-}
-
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
                                    VPackSlice const& slice) {
   size_t const cutoff = 100;

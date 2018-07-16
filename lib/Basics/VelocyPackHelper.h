@@ -429,16 +429,6 @@ class VelocyPackHelper {
                                              bool, bool);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Copy object into a new builder, but omit the specified properties.
-  //////////////////////////////////////////////////////////////////////////////
-
-  static arangodb::velocypack::Builder copyObjectWithout(
-    arangodb::velocypack::Slice const &objectSlice,
-    const std::unordered_set<std::string> &keysToOmit
-  );
-
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Transforms any VelocyPack to a double value. The second parameter
   ///        indicates if the transformation was successful.
   //////////////////////////////////////////////////////////////////////////////

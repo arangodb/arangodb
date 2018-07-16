@@ -24,6 +24,7 @@
 
 #include <boost/optional.hpp>
 #include <utility>
+#include <velocypack/Collection.h>
 
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
@@ -503,7 +504,7 @@ void RestGraphHandler::generateModified(TRI_col_type_e colType,
   }
 
   VPackBuilder objectBuilder =
-      VelocyPackHelper::copyObjectWithout(resultSlice, {"old", "new"});
+      VPackCollection::remove(resultSlice, std::unordered_set{"old", "new"});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
   VPackSlice oldSlice = resultSlice.get("old");
@@ -545,7 +546,7 @@ void RestGraphHandler::generateCreated(TRI_col_type_e colType,
   }
 
   VPackBuilder objectBuilder =
-      VelocyPackHelper::copyObjectWithout(resultSlice, {"old", "new"});
+      VPackCollection::remove(resultSlice, std::unordered_set{"old", "new"});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
   VPackSlice newSlice = resultSlice.get("new");
