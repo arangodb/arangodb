@@ -1,7 +1,10 @@
 v3.3.13 (XXXX-XX-XX)
 --------------------
 
-* fixed issue #5827: Batch request handling incompatible with .NET's default 
+* inception could get caught in a trap, where agent configuration
+  version and timeout multiplier lead to incapacitated agency
+
+* fixed issue #5827: Batch request handling incompatible with .NET's default
   ContentType format
 
 * fixed agency's log compaction for internal issue #2249 

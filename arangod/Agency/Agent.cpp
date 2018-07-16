@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1796,6 +1796,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   if (!isCallback) {
     LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
                                      << out->slice().toJson();
+  }
+
+  // let gossip loop know that it has new data
+  if ( _inception != nullptr && isCallback) {
+    _inception->signalConditionVar();
   }
 
   return out;
