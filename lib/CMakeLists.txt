@@ -81,13 +81,15 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
-)
+  )
+
+add_definitions ("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
 if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
   if (DARWIN)
     set(LIB_ASM_SOURCES Basics/crc1.S)
   else()
-    set(LIB_ASM_SOURCES Basics/crc4.S)
+    set(LIB_ASM_SOURCES Basics/crc5.S)
   endif()
 
   add_definitions("-DENABLE_ASM_CRC32=1")
@@ -110,11 +112,22 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
+  ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/ApplicationServer.cpp
+  ApplicationFeatures/AgencyPhase.cpp
+  ApplicationFeatures/AQLPhase.cpp
+  ApplicationFeatures/BasicPhase.cpp
+  ApplicationFeatures/ClusterPhase.cpp
+  ApplicationFeatures/DatabasePhase.cpp
+  ApplicationFeatures/FinalPhase.cpp
+  ApplicationFeatures/FoxxPhase.cpp
+  ApplicationFeatures/GreetingsPhase.cpp
+  ApplicationFeatures/ServerPhase.cpp
+  ApplicationFeatures/V8Phase.cpp
+  ApplicationFeatures/V8ShellPhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
-  ApplicationFeatures/JemallocFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
@@ -152,10 +165,10 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Utf8Helper.cpp
   Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
-  Basics/WorkMonitor.cpp
   Basics/application-exit.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
+  Basics/datetime.cpp
   Basics/debugging.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
@@ -229,6 +242,7 @@ add_library(${LIB_ARANGO} STATIC
 )
 
 target_link_libraries(${LIB_ARANGO}
+    s2
     boost_system
     boost_boost
 )
@@ -239,6 +253,35 @@ if (USE_ENTERPRISE)
   target_include_directories(${LIB_ARANGO} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+################################################################################
+## LIB_ARANGO_GEO
+################################################################################
+
+add_library(${LIB_ARANGO_GEO} STATIC
+  Geo/GeoJson.cpp
+  Geo/GeoParams.cpp
+  Geo/GeoUtils.cpp
+  Geo/ShapeContainer.cpp
+  Geo/Shapes.cpp
+  Geo/S2/S2MultiPointRegion.cpp
+  Geo/S2/S2MultiPolyline.cpp
+)
+
+target_link_libraries(${LIB_ARANGO_GEO}
+    ${LIB_ARANGO}
+    boost_system
+    boost_boost
+)
+
+if (WINDOWS)
+  target_compile_options(${LIB_ARANGO_GEO} PUBLIC "-J")
+endif()
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${LIB_ARANGO_GEO} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${LIB_ARANGO_GEO} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
 
 ################################################################################
 ## LIB_ARANGO_V8
@@ -261,3 +304,9 @@ target_link_libraries(${LIB_ARANGO_V8}
     boost_system
     boost_boost
 )
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${LIB_ARANGO_V8} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${LIB_ARANGO_V8} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()

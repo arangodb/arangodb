@@ -36,14 +36,22 @@ class DatabasePathFeature final
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
 
  public:
   std::string const& directory() const { return _directory; }
   std::string subdirectoryName(std::string const& subDirectory) const;
+  void setDirectory(std::string const& path) {
+    // This is only needed in the catch tests, where we initialize the
+    // feature but do not have options or run `validateOptions`. Please
+    // do not use it from other code.
+    _directory = path;
+  }
 
  private:
   std::string _directory;
+  std::string _requiredDirectoryState;
 };
 }
 

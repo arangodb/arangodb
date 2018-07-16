@@ -13,6 +13,9 @@ General Options
 Prints a list of the most common options available and then exits. In order to
 see all options use *--help-all*.
 
+To receive the startup options in JSON format, pass the `--dump-options` flag. This will
+print out all options and exit.
+
 ### Version
 
 `--version`
@@ -20,6 +23,7 @@ see all options use *--help-all*.
 `-v`
 
 Prints the version of the server and exits.
+
 
 ### Configuration Files
 
@@ -51,8 +55,7 @@ Only command line options with a value should be set within the configuration
 file. Command line options which act as flags should be entered on the command
 line when starting the server.
 
-Whitespace in the configuration file is ignored. Each option is specified on a
-separate line in the form
+Each option is specified on a separate line in the form:
 
 ```js
 key = value
@@ -79,9 +82,24 @@ So you see in general `--section.param value` translates to
 param=value 
 ```
 
-Where one section may occur multiple times, and the last occurance of `param`
+{% hint 'tip' %}
+Whitespace around `=` is ignored in the configuration file.
+This includes whitespace around equals signs in the parameter value:
+
+```js
+log.level = startup = trace
+```
+
+It is the same as without whitespace:
+
+```js
+log.level=startup=trace
+```
+{% endhint %}
+
+Where one section may occur multiple times, and the last occurrence of `param`
 will become the final value. In case of parameters being vectors, multiple
-occurance adds another item to the vector. Vectors can be identified by the
+occurrence adds another item to the vector. Vectors can be identified by the
 `...` in the `--help` output of the binaries.
 
 Comments can be placed in the configuration file, only if the line begins with
@@ -104,4 +122,4 @@ or
 --configuration none
 ```
 
-When starting up the server. Note that, the word *none* is case-insensitive.
+when starting up the server. Note that, the word *none* is case-insensitive.

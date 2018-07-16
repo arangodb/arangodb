@@ -31,8 +31,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/process-utils.h"
-#include "Basics/WorkMonitor.h"
-#include "Basics/asio-helper.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Logger/Logger.h"
@@ -61,8 +59,7 @@ CacheManagerFeature::CacheManagerFeature(
                   : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Scheduler");
+  startsAfter("BasicsPhase");
 }
 
 CacheManagerFeature::~CacheManagerFeature() {}

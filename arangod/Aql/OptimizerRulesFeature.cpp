@@ -28,6 +28,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewOptimizerRules.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
@@ -47,13 +51,18 @@ OptimizerRulesFeature::OptimizerRulesFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
-  startsAfter("EngineSelector");
+  startsAfter("V8Phase");
+
   startsAfter("Aql");
-  startsAfter("Cluster");
 }
 
 void OptimizerRulesFeature::prepare() {
   addRules();
+}
+
+void OptimizerRulesFeature::unprepare() {
+  _ruleLookup.clear();
+  _rules.clear();
 }
 
 /// @brief register a rule
@@ -118,6 +127,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeRedundantCalculationsRule_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 2": try to remove redundant or unnecessary nodes
+
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
@@ -132,6 +142,10 @@ void OptimizerRulesFeature::addRules() {
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
                OptimizerRule::removeRedundantSortsRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
+  // push limits into subqueries and simplify them
+  registerRule("optimize-subqueries", optimizeSubqueriesRule,
+               OptimizerRule::optimizeSubqueriesRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
@@ -154,11 +168,11 @@ void OptimizerRulesFeature::addRules() {
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
                OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
   // rule remove all filters using the path variable
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
@@ -212,12 +226,12 @@ void OptimizerRulesFeature::addRules() {
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort", useIndexForSortRule,
                OptimizerRule::useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule, OptimizerRule::sortInValuesRule_pass6,
                DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,
@@ -230,16 +244,33 @@ void OptimizerRulesFeature::addRules() {
   // patch update statements
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
+  registerRule("replace-function-with-index", replaceNearWithinFulltext,
+               OptimizerRule::replaceNearWithinFulltext, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+#ifdef USE_IRESEARCH
+  // move filters and sort conditions into views
+  registerRule(
+    "handle-views",
+    arangodb::iresearch::handleViewsRule,
+    OptimizerRule::handleViewsRule_pass6,
+    DoesNotCreateAdditionalPlans,
+    CanNotBeDisabled
+  );
+#endif
+
+  // @brief replace WITHIN_RECTANGLE(...), NEAR(...), WITHIN(...)
+  /*OptimizerRulesFeature::registerRule("replace-legacy-geo-functions", replaceLegacyGeoFunctionsRule,
+                OptimizerRule::removeLegacyGeoFunctions_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);*/
+
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
                                       OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
-  // replace FOR v IN FULLTEXT(...) with an IndexNode and Limit
-  OptimizerRulesFeature::registerRule("fulltext-index-optimizer", fulltextIndexRule,
-                                      OptimizerRule::applyFulltextIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
+
+    registerRule("optimize-cluster-single-document-operations", substituteClusterSingleDocumentOperations,
+                 OptimizerRule::substituteSingleDocumentOperations_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
 #if 0
     registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
                  OptimizerRule::optimizeClusterSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
@@ -254,6 +285,9 @@ void OptimizerRulesFeature::addRules() {
 
     registerRule("distribute-in-cluster", distributeInClusterRule,
                  OptimizerRule::distributeInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+
+    registerRule("collect-in-cluster", collectInClusterRule,
+                 OptimizerRule::collectInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
     // distribute operations in cluster
     registerRule("distribute-filtercalc-to-cluster",
@@ -276,14 +310,29 @@ void OptimizerRulesFeature::addRules() {
                  removeSatelliteJoinsRule,
                  OptimizerRule::removeSatelliteJoinsRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
+
+#ifdef USE_IRESEARCH
+  // distribute view queries in cluster
+  registerRule(
+    "scatter-arangosearch-view-in-cluster",
+    arangodb::iresearch::scatterViewInClusterRule,
+    OptimizerRule::scatterIResearchViewInClusterRule_pass10,
+    DoesNotCreateAdditionalPlans,
+    CanNotBeDisabled
+  );
+#endif
+
+    registerRule("restrict-to-single-shard",
+                 restrictToSingleShardRule,
+                 OptimizerRule::restrictToSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
   }
-  
+
   // finally add the storage-engine specific rules
   addStorageEngineRules();
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE; 
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
   engine->addOptimizerRules();
 }
@@ -319,7 +368,7 @@ char const* OptimizerRulesFeature::translateRule(int rule) {
 std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
     std::vector<std::string> const& names) {
   std::unordered_set<int> disabled;
-                 
+
   // lookup ids of all disabled rules
   for (auto const& name : names) {
     if (name.empty()) {

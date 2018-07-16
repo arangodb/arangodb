@@ -41,14 +41,9 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "Logger"),
       _threaded(threaded) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
 
   startsAfter("ShellColors");
   startsAfter("Version");
-
-  if (threaded) {
-    startsAfter("WorkMonitor");
-  }
 
   _levels.push_back("info");
 
@@ -74,6 +69,9 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
   options->addOption("--log.color", "use colors for TTY logging",
                      new BooleanParameter(&_useColor));
+  
+  options->addOption("--log.escape", "escape characters when logging",
+                     new BooleanParameter(&_useEscaped));
 
   options->addOption("--log.output,-o", "log destination(s)",
                      new VectorParameter<StringParameter>(&_output));
@@ -135,7 +133,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LoggerFeature::loadOptions(
-    std::shared_ptr<options::ProgramOptions> options,
+    std::shared_ptr<options::ProgramOptions>,
     char const* binaryPath) {
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
@@ -173,6 +171,7 @@ void LoggerFeature::prepare() {
   Logger::setUseColor(_useColor);
   Logger::setUseLocalTime(_useLocalTime);
   Logger::setUseMicrotime(_useMicrotime);
+  Logger::setUseEscaped(_useEscaped);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
   Logger::setShowThreadIdentifier(_threadId);

@@ -23,9 +23,13 @@
 #ifndef APPLICATION_FEATURES_CHECK_VERSION_FEATURE_H
 #define APPLICATION_FEATURES_CHECK_VERSION_FEATURE_H 1
 
+#include <cstdint>
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+
 class CheckVersionFeature final
     : public application_features::ApplicationFeature {
  public:

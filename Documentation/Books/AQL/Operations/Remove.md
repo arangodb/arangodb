@@ -4,13 +4,22 @@ REMOVE
 
 The *REMOVE* keyword can be used to remove documents from a collection. On a
 single server, the document removal is executed transactionally in an 
-all-or-nothing fashion. For sharded collections, the entire remove operation
-is not transactional.
+all-or-nothing fashion. 
+
+If the RocksDB engine is used and intermediate commits are enabled, a query may 
+execute intermediate transaction commits in case the running transaction (AQL
+query) hits the specified size thresholds. In this case, the query's operations 
+carried out so far will be committed and not rolled back in case of a later abort/rollback. 
+That behavior can be controlled by adjusting the intermediate commit settings for 
+the RocksDB engine. 
+
+For sharded collections, the entire query and/or remove operation may not be transactional,
+especially if it involves different shards and/or database servers.
 
 Each *REMOVE* operation is restricted to a single collection, and the 
 [collection name](../../Manual/Appendix/Glossary.html#collection-name) must not be dynamic.
 Only a single *REMOVE* statement per collection is allowed per AQL query, and 
-it cannot be followed by read operations that access the same collection, by
+it cannot be followed by read or write operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
 
 The syntax for a remove operation is:
@@ -50,7 +59,30 @@ FOR u IN users
   REMOVE { _key: u._key } IN backup
 ```
 
-### Setting query options
+A single document can be removed as well, using a document key string or a
+document with `_key` attribute:
+
+```
+REMOVE 'john' IN users
+```
+
+```
+LET doc = DOCUMENT('users/john')
+REMOVE doc IN users
+```
+
+The restriction of a single remove operation per query and collection
+applies. The following query causes an *access after data-modification*
+error because of the third remove operation:
+
+```
+REMOVE 'john' IN users
+REMOVE 'john' IN backups // OK, different collection
+REMOVE 'mary' IN users   // Error, users collection again
+```
+
+Setting query options
+---------------------
 
 *options* can be used to suppress query errors that may occur when trying to
 remove non-existing documents. For example, the following query will fail if one
@@ -77,7 +109,17 @@ FOR i IN 1..1000
   REMOVE { _key: CONCAT('test', i) } IN users OPTIONS { waitForSync: true }
 ```
 
-### Returning the removed documents
+In order to not accidentially remove documents that have been updated since you last fetched
+them, you can use the option *ignoreRevs* to either let ArangoDB compare the `_rev` values and 
+only succeed if they still match, or let ArangoDB ignore them (default):
+
+```
+FOR i IN 1..1000
+  REMOVE { _key: CONCAT('test', i), _rev: "1287623" } IN users OPTIONS { ignoreRevs: false }
+```
+
+Returning the removed documents
+-------------------------------
 
 The removed documents can also be returned by the query. In this case, the `REMOVE` 
 statement must be followed by a `RETURN` statement (intermediate `LET` statements
@@ -97,4 +139,3 @@ FOR u IN users
   LET removed = OLD 
   RETURN removed._key
 ```
-

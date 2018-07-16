@@ -1,0 +1,22 @@
+shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"collections"</span> : { 
+    <span class="hljs-string">"read"</span> : [ 
+      <span class="hljs-string">"_frontend"</span> 
+    ] 
+  }, 
+  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () {require('internal').sleep(15.0);}"</span> 
+}
+EOF
+
+HTTP/1.1 202 Accepted
+x-content-type-options: nosniff
+x-arango-async-id: 153130265990948
+content-type: text/plain; charset=utf-8
+
+shell> curl --dump - http://localhost:8529/_api/job/153130265990948
+
+HTTP/1.1 204 No Content
+content-type: text/plain; charset=utf-8
+x-content-type-options: nosniff
+

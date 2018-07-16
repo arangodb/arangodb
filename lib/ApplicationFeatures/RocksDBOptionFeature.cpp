@@ -63,7 +63,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _blockCacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
         ? static_cast<uint64_t>(((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3))
         : (256 << 20)),
-      _blockCacheShardBits(0),
+      _blockCacheShardBits(-1),
       _tableBlockSize(std::max(rocksDBTableOptionsDefaults.block_size, static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(2 * 1024 * 1024),//rocksDBDefaults.compaction_readahead_size
@@ -78,11 +78,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _skipCorrupted(false),
       _dynamicLevelBytes(true),
       _enableStatistics(false) {
-  uint64_t testSize = _blockCacheSize >> 19;
-  while (testSize > 0) {
-    _blockCacheShardBits++;
-    testSize >>= 1;
-  }
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
                                                      std::min(TRI_numberProcessors(), (size_t)8)));
@@ -91,15 +86,13 @@ RocksDBOptionFeature::RocksDBOptionFeature(
   //  compactions.  Therefore it is possible for rocksdb to use all
   //  CPU time on compactions.  Essential network communications can be lost.
   //  Save one CPU for ArangoDB network and other activities.
-  if (2<_maxBackgroundJobs) {
+  if (2 < _maxBackgroundJobs) {
     --_maxBackgroundJobs;
   } // if
 #endif
 
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Daemon");
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
 }
 
 void RocksDBOptionFeature::collectOptions(
@@ -244,8 +237,8 @@ void RocksDBOptionFeature::collectOptions(
                      new UInt64Parameter(&_blockCacheSize));
 
   options->addOption("--rocksdb.block-cache-shard-bits",
-                     "number of shard bits to use for block cache",
-                     new UInt64Parameter(&_blockCacheShardBits));
+                     "number of shard bits to use for block cache (use -1 for default value)",
+                     new Int64Parameter(&_blockCacheShardBits));
 
   options->addOption("--rocksdb.table-block-size",
                      "approximate size (in bytes) of user data packed per block",
@@ -306,7 +299,8 @@ void RocksDBOptionFeature::validateOptions(
   if (_maxSubcompactions > _numThreadsLow) {
     _maxSubcompactions = _numThreadsLow;
   }
-  if (_blockCacheShardBits > 32) {
+  if (_blockCacheShardBits >= 20 || _blockCacheShardBits < -1) {
+    // -1 is RocksDB default value, but anything less is invalid
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.block-cache-shard-bits'";
     FATAL_ERROR_EXIT();
@@ -325,7 +319,7 @@ void RocksDBOptionFeature::start() {
   }
 
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
-                                    << " wal_dir: " << _walDirectory << "'"
+                                    << " wal_dir: '" << _walDirectory << "'"
                                     << ", write_buffer_size: " << _writeBufferSize
                                     << ", max_write_buffer_number: " << _maxWriteBufferNumber
                                     << ", max_total_wal_size: " << _maxTotalWalSize

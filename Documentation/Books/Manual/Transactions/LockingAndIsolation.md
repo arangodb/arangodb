@@ -2,7 +2,7 @@ Locking and Isolation
 =====================
 
 Transactions need to specify from which collections they will read data and which
-collections they intend do modify. This can be done by setting the *read*, *write*,
+collections they intend to modify. This can be done by setting the *read*, *write*,
 or *exclusive* attributes in the *collections* attribute of the transaction:
 
 ```js
@@ -28,7 +28,8 @@ db._executeTransaction({
 write access to the collection, which can be interleaved with write accesses by other
 concurrent transactions.
 
-### MMFiles engine
+MMFiles engine
+--------------
 
 The *MMFiles engine* uses the following locking mechanisms to serialize transactions
 on the same data:
@@ -51,7 +52,8 @@ other transactions. Additionally, reads inside a transaction are repeatable.
 Note that the above is true only for all collections that are declared in the 
 *collections* attribute of the transaction.
 
-### RocksDB engine
+RocksDB engine
+--------------
 
 The *RocksDB* engine does not lock any collections participating in a transaction
 for read. Read operations can run in parallel to other read or write operations on the
@@ -71,7 +73,8 @@ Exclusive accesses will internally acquire a write-lock on the collections, so t
 are not executed in parallel with any other write operations. Read operations can still
 be carried out by other concurrent transactions.
 
-### Lazily adding collections
+Lazily adding collections
+-------------------------
 
 There might be situations when declaring all collections a priori is not possible,
 for example, because further collections are determined by a dynamic AQL query 
@@ -160,7 +163,8 @@ edges connected to it. `FOR v IN ANY DOCUMENT("users/not_linked") ...` will fail
 even without edges, as it is always considered to be a read access to the *users*
 collection.
 
-### Deadlocks and Deadlock detection
+Deadlocks and Deadlock detection
+--------------------------------
 
 A deadlock is a situation in which two or more concurrent operations (user transactions
 or AQL queries) try to access the same resources (collections, documents) and need to 

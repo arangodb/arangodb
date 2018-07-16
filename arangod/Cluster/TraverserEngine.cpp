@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Result.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
@@ -51,9 +52,38 @@ static const std::string TYPE = "type";
 static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
-BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
-    : _query(nullptr), _trx(nullptr), _collections(vocbase) {
+#ifndef USE_ENTERPRISE
+/*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
+    VPackSlice info,
+    bool needToLock
+) {
+  VPackSlice type = info.get(std::vector<std::string>({"options", "type"}));
+
+  if (!type.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires an 'options.type' attribute.");
+  }
+
+  if (type.isEqualString("traversal")) {
+    return std::make_unique<TraverserEngine>(vocbase, ctx, info, needToLock);
+  } else if (type.isEqualString("shortestPath")) {
+    return std::make_unique<ShortestPathEngine>(vocbase, ctx, info, needToLock);
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "The 'options.type' attribute either has to be traversal or shortestPath");
+}
+#endif
+
+BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
+                       std::shared_ptr<transaction::Context> const& ctx,
+                       VPackSlice info, bool needToLock)
+    : _query(nullptr), _trx(nullptr), _collections(&vocbase) {
   VPackSlice shardsSlice = info.get(SHARDS);
+
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -97,10 +127,10 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
     _vertexShards.emplace(collection.key.copyString(), shards);
   }
 
-  // FIXME: in the future this needs to be replaced with t
-  // he new cluster wide transactions
+  // FIXME: in the future this needs to be replaced with
+  // the new cluster wide transactions
   transaction::Options trxOpts;
-  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
+  
 #ifdef USE_ENTERPRISE
   VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
   if (inaccessSlice.isArray()) {
@@ -121,6 +151,9 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
                                      trxOpts, true);
 #endif
 
+  if (!needToLock) {
+    _trx->addHint(transaction::Hints::Hint::LOCK_NEVER);
+  }
   // true here as last argument is crucial: it leads to the fact that the
   // created transaction is considered a "MAIN" part and will not switch
   // off collection locking completely!
@@ -166,14 +199,21 @@ bool BaseEngine::lockCollection(std::string const& shard) {
     return false;
   }
   _trx->pinData(cid);  // will throw when it fails
-  Result res = _trx->lock(cid, AccessMode::Type::READ);
-  if (!res.ok()) {
+
+  Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
+  
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Logging Shard " << shard << " lead to exception '"
-        << res.errorNumber() << "' (" << res.errorMessage() << ") ";
+        << "Locking shard " << shard << " lead to exception '"
+        << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ") ";
     return false;
   }
+
   return true;
+}
+
+Result BaseEngine::lockAll() {
+  return _trx->lockCollections();
 }
 
 std::shared_ptr<transaction::Context> BaseEngine::context() const {
@@ -232,9 +272,13 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   builder.close(); // The outer object
 }
 
-BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
-                                         VPackSlice info)
-    : BaseEngine(vocbase, info), _opts(nullptr) {}
+BaseTraverserEngine::BaseTraverserEngine(
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
+    VPackSlice info,
+    bool needToLock
+)
+    : BaseEngine(vocbase, ctx, info, needToLock), _opts(nullptr) {}
 
 BaseTraverserEngine::~BaseTraverserEngine() {}
 
@@ -364,9 +408,13 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   builder.close();
 }
 
-ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t* vocbase,
-                                       arangodb::velocypack::Slice info)
-    : BaseEngine(vocbase, info) {
+ShortestPathEngine::ShortestPathEngine(
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
+    arangodb::velocypack::Slice info,
+    bool needToLock
+)
+    : BaseEngine(vocbase, ctx, info, needToLock) {
   VPackSlice optsSlice = info.get(OPTIONS);
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -461,9 +509,13 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
   builder.close();
 }
 
-TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
-                                 arangodb::velocypack::Slice info)
-    : BaseTraverserEngine(vocbase, info) {
+TraverserEngine::TraverserEngine(
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
+    arangodb::velocypack::Slice info,
+    bool needToLock
+) : BaseTraverserEngine(vocbase, ctx, info, needToLock) {
+
   VPackSlice optsSlice = info.get(OPTIONS);
   if (!optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -315,6 +315,46 @@ class VelocyPackHelper {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @return string ref, or the default ref if slice is not a string
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::velocypack::StringRef getStringRef(
+    arangodb::velocypack::Slice slice,
+    arangodb::velocypack::StringRef const& defaultValue
+  ) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return string ref, or the default ref if slice is not a string
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::velocypack::StringRef getStringRef(
+    arangodb::velocypack::Slice slice,
+    char const* defaultValue
+  ) noexcept {
+    return getStringRef(slice, arangodb::velocypack::StringRef(defaultValue));
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return string ref, or the defaultValue if slice[key] is not a string
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::velocypack::StringRef getStringRef(
+    arangodb::velocypack::Slice slice,
+    std::string const& key,
+    arangodb::velocypack::StringRef const& defaultValue
+  ) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return string ref, or the defaultValue if slice[key] is not a string
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::velocypack::StringRef getStringRef(
+    arangodb::velocypack::Slice slice,
+    std::string const& key,
+    char const* defaultValue
+  ) noexcept {
+    return getStringRef(
+      slice, key, arangodb::velocypack::StringRef(defaultValue)
+    );
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string value, or the default value if it is not a string
   //////////////////////////////////////////////////////////////////////////////
 
@@ -448,7 +488,8 @@ class VelocyPackHelper {
                                      arangodb::velocypack::Slice base,
                                      arangodb::velocypack::Builder& output,
                                      arangodb::velocypack::Options const*,
-                                     bool sanitizeExternals, bool sanitizeCustom);
+                                     bool sanitizeExternals, bool sanitizeCustom,
+                                     bool allowUnindexed = false);
 
   static VPackBuffer<uint8_t> sanitizeNonClientTypesChecked(
       arangodb::velocypack::Slice,
@@ -477,6 +518,17 @@ class VelocyPackHelper {
 }
 
 namespace std {
+
+template<>
+struct less<arangodb::velocypack::StringRef> {
+  bool operator()(
+      arangodb::velocypack::StringRef const& lhs,
+      arangodb::velocypack::StringRef const& rhs
+  ) const noexcept {
+    return lhs.compare(rhs) < 0;
+  }
+};
+
 template <>
 struct hash<arangodb::basics::VPackHashedSlice> {
   inline size_t operator()(arangodb::basics::VPackHashedSlice const& slice) const noexcept {

@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpRequest.h"
+#include "Basics/NumberUtils.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -480,7 +481,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
       }
 
       keyBegin = key = buffer + 1;
-      valueBegin = value = 0;
+      valueBegin = value = nullptr;
 
       continue;
     } else if (next == PERCENT) {
@@ -549,7 +550,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   if (keyLength == StaticStrings::ContentLength.size() &&
       memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) ==
           0) {  // 14 = strlen("content-length")
-    _contentLength = StringUtils::int64(value, valueLength);
+    _contentLength = NumberUtils::atoi_zero<int64_t>(value, value + valueLength);
     // do not store this header
     return;
   }
@@ -564,6 +565,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&
       memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentType = ContentType::VPACK;
+    // don't insert this header!!
     return;
   }
 
@@ -741,7 +743,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
 
   if (_contentType == ContentType::JSON) {
     if (!_body.empty()) {
-      if (_vpackBuilder == nullptr) {
+      if (!_vpackBuilder) {
         VPackParser parser(options);
         parser.parse(_body);
         _vpackBuilder = parser.steal();

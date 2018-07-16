@@ -40,10 +40,8 @@ using namespace arangodb::options;
 ScriptFeature::ScriptFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Script"),
       _result(result) {
-  startsAfter("Database");
-  startsAfter("Nonce");
-  startsAfter("Server");
-  startsAfter("GeneralServer");
+  setOptional(true);
+  startsAfter("AgencyPhase");
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -1,7 +1,8 @@
 Working with Databases
 ======================
 
-### Database Methods
+Database Methods
+----------------
 
 The following methods are available to manage databases via JavaScript.
 Please note that several of these methods can be used from the _system
@@ -184,12 +185,21 @@ database. The *_system* database itself cannot be dropped.
 Databases are dropped asynchronously, and will be physically removed if
 all clients have disconnected and references have been garbage-collected.
 
+### Engine
+
+retrieve the storage engine type used by the server
+`db._engine()`
+
+Returns the name of the storage engine in use (`mmfiles` or `rocksdb`), as well
+as a list of supported features (types of indexes and
+[dfdb](../../Programs/Arango-dfdb/README.md)).
+
 ### Engine statistics
 
-retrieve statistics related to the storage engine-rocksdb
+retrieve statistics related to the storage engine (rocksdb)
 `db._engineStats()`
 
-Returns some statistics related to storage engine activity, including figures
+Returns some statistics related to the storage engine activity, including figures
 about data size, cache usage, etc.
 
 **Note**: Currently this only produces useful output for the RocksDB engine.

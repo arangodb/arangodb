@@ -55,7 +55,7 @@ function ahuacatlFailureSuite () {
       fail();
     }
     catch (err) {
-      assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, query);
     }
   };
 
@@ -189,7 +189,7 @@ function ahuacatlFailureSuite () {
     
     testSingletonBlock1 : function () {
       internal.debugSetFailAt("SingletonBlock::getOrSkipSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN UNIQUE(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +198,7 @@ function ahuacatlFailureSuite () {
     
     testSingletonBlock2 : function () {
       internal.debugSetFailAt("SingletonBlock::getOrSkipSomeSet");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN UNIQUE(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +207,7 @@ function ahuacatlFailureSuite () {
 
     testReturnBlock : function () {
       internal.debugSetFailAt("ReturnBlock::getSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ] RETURN CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', q))) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ] RETURN CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', q))) RETURN UNIQUE(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,18 +259,9 @@ function ahuacatlFailureSuite () {
     testSortBlock5 : function () {
       internal.debugSetFailAt("SortBlock::doSortingNext2");
       // we need values that are >= 16 bytes long
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN key");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    testFilterBlock1 : function () {
-      internal.debugSetFailAt("FilterBlock::getOrSkipSome1");
-      assertFailingQuery("FOR c IN " + c.name() + " FILTER c.value >= 40 FILTER c.value <= 9999 LIMIT 50, 5 RETURN c");
+      assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i._key SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
+      assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i.value SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
+      assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i.value2 SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -478,13 +469,6 @@ function ahuacatlFailureSuite () {
     },
 
     testIndexBlock6 : function () {
-      c.ensureHashIndex("value");
-      internal.debugSetFailAt("IndexBlock::executeV8");
-      // DATE_NOW is an arbitrary v8 function and can be replaced
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(PASSTHRU(DATE_NOW())) RETURN i");
-    },
-
-    testIndexBlock7 : function () {
       c.ensureHashIndex("value");
       internal.debugSetFailAt("IndexBlock::executeExpression");
       // CONCAT  is an arbitrary non v8 function and can be replaced

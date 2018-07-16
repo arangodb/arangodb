@@ -28,40 +28,28 @@ using namespace arangodb::aql;
 
 /// @brief create the function
 Function::Function(std::string const& name,
-                   char const* arguments, 
+                   char const* arguments,
                    bool isDeterministic, bool canThrow, bool canRunOnDBServer,
-                   bool canPassArgumentsByReference,
-                   FunctionImplementation implementation,
-                   ExecutionCondition condition)
+                   FunctionImplementation const& implementation)
     : name(name),
-      nonAliasedName(name),
       arguments(arguments),
       isDeterministic(isDeterministic),
       canThrow(canThrow),
       canRunOnDBServer(canRunOnDBServer),
-      canPassArgumentsByReference(canPassArgumentsByReference),
       implementation(implementation),
-      condition(condition),
       conversions() {
   initializeArguments();
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "setting up AQL function '" << name << 
-                                     "'. cacheable: " << isCacheable() << 
-                                     ", deterministic: " << isDeterministic << 
-                                     ", canThrow: " << canThrow << 
-                                     ", canRunOnDBServer: " << canRunOnDBServer << 
-                                     ", canPassArgumentsByReference: " << canPassArgumentsByReference << 
-                                     ", hasCxxImplementation: " << (implementation != nullptr) << 
+  // almost all AQL functions have a cxx implementation
+  // only function V8() plus the ArangoSearch functions do not
+  LOG_TOPIC(TRACE, Logger::FIXME) << "registered AQL function '" << name <<
+                                     "'. cacheable: " << isCacheable() <<
+                                     ", deterministic: " << isDeterministic <<
+                                     ", canThrow: " << canThrow <<
+                                     ", canRunOnDBServer: " << canRunOnDBServer <<
+                                     ", hasCxxImplementation: " << (implementation != nullptr) <<
                                      ", hasConversions: " << !conversions.empty();
-                                     
-  // condition must only be set if we also have an implementation
-  TRI_ASSERT(implementation != nullptr || condition == nullptr);
-  
-  LOG_TOPIC(TRACE, Logger::FIXME) << "setting up AQL function '" << name << ", hasImpl:" << hasImplementation(); 
 }
-
-/// @brief destroy the function
-Function::~Function() {}
 
 /// @brief parse the argument list and set the minimum and maximum number of
 /// arguments
@@ -147,13 +135,13 @@ void Function::initializeArguments() {
         }
         foundArg = true;
         break;
-      
+
       default: {
         // unknown parameter type
         std::string message("unknown function signature parameter type for AQL function '");
         message += name + "': " + c;
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-      } 
+      }
     }
   }
 }

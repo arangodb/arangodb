@@ -173,6 +173,16 @@ function foxxQueuesSuite () {
       }
       // should have failed
       assertEqual('failed', db._jobs.document(id).status);
+      // failure callback is executed after job status is updated
+      // so we need to wait a few a extra seconds here
+      tries = 0;
+      while (++tries < 20) {
+        if (db.UnitTestsFoxx.count() === 0) {
+          internal.wait(0.5, false);
+        } else {
+          break;
+        }
+      }
       assertNotEqual(0, db.UnitTestsFoxx.count());
     },
     
@@ -199,6 +209,16 @@ function foxxQueuesSuite () {
       }
       // should have failed
       assertEqual('failed', db._jobs.document(id).status);
+      // failure callback is executed after job status is updated
+      // so we need to wait a few a extra seconds here
+      tries = 0;
+      while (++tries < 20) {
+        if (db.UnitTestsFoxx.count() < 3) {
+          internal.wait(0.5, false);
+        } else {
+          break;
+        }
+      }
       assertNotEqual(3, db.UnitTestsFoxx.count());
     }
 

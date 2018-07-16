@@ -35,7 +35,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -43,6 +42,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -54,7 +54,7 @@ namespace {
 static std::string const statisticsCollection("_statistics");
 static std::string const statistics15Collection("_statistics15");
 static std::string const statisticsRawCollection("_statisticsRaw");
-      
+
 static std::string const garbageCollectionQuery("FOR s in @@collection FILTER s.time < @start RETURN s._key");
 
 static std::string const lastEntryQuery("FOR s in @@collection FILTER s.time >= @start SORT s.time DESC LIMIT 1 RETURN s");
@@ -67,27 +67,34 @@ static std::string const filteredFifteenMinuteQuery("FOR s in _statistics FILTER
 using namespace arangodb;
 using namespace arangodb::basics;
 
-StatisticsWorker::StatisticsWorker() 
-    : Thread("StatisticsWorker"), 
-      _gcTask(GC_STATS) {
+StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
+  : Thread("StatisticsWorker"),
+    _gcTask(GC_STATS),
+    _vocbase(vocbase) {
   _bytesSentDistribution.openArray();
-  for (auto const& val : TRI_BytesSentDistributionVectorStatistics._value) {
+
+  for (auto const& val : TRI_BytesSentDistributionVectorStatistics) {
     _bytesSentDistribution.add(VPackValue(val));
   }
+
   _bytesSentDistribution.close();
 
   _bytesReceivedDistribution.openArray();
-  for (auto const& val : TRI_BytesReceivedDistributionVectorStatistics._value) {
+
+  for (auto const& val : TRI_BytesReceivedDistributionVectorStatistics) {
     _bytesReceivedDistribution.add(VPackValue(val));
   }
+
   _bytesReceivedDistribution.close();
 
   _requestTimeDistribution.openArray();
-  for (auto const& val : TRI_RequestTimeDistributionVectorStatistics._value) {
+
+  for (auto const& val : TRI_RequestTimeDistributionVectorStatistics) {
     _requestTimeDistribution.add(VPackValue(val));
   }
+
   _requestTimeDistribution.close();
-  
+
   _bindVars = std::make_shared<VPackBuilder>();
 }
 
@@ -115,34 +122,38 @@ void StatisticsWorker::collectGarbage(std::string const& name,
       application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
           "QueryRegistry");
   auto _queryRegistry = queryRegistryFeature->queryRegistry();
-
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-
   auto bindVars = _bindVars.get();
+
   bindVars->clear();
   bindVars->openObject();
   bindVars->add("@collection", VPackValue(name));
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(garbageCollectionQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(
+    false,
+    _vocbase,
+    arangodb::aql::QueryString(garbageCollectionQuery),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
 
   VPackSlice keysToRemove = queryResult.result->slice();
-
   OperationOptions opOptions;
+
   opOptions.ignoreRevs = true;
   opOptions.waitForSync = false;
   opOptions.silent = true;
 
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE);
-
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -150,6 +161,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   }
 
   OperationResult result = trx.remove(name, keysToRemove, opOptions);
+
   res = trx.finish(result.result);
 
   if (res.fail()) {
@@ -231,10 +243,8 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
       application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
           "QueryRegistry");
   auto _queryRegistry = queryRegistryFeature->queryRegistry();
-
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-
   auto bindVars = _bindVars.get();
+
   bindVars->clear();
   bindVars->openObject();
   bindVars->add("@collection", VPackValue(collectionName));
@@ -243,13 +253,22 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
   if (!_clusterId.empty()) {
     bindVars->add("clusterId", VPackValue(_clusterId));
   }
+
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, 
-                             arangodb::aql::QueryString(_clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(
+    false,
+    _vocbase,
+    arangodb::aql::QueryString(
+      _clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery
+    ),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
@@ -262,10 +281,8 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
           "QueryRegistry");
   auto _queryRegistry = queryRegistryFeature->queryRegistry();
-
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-
   auto bindVars = _bindVars.get();
+
   bindVars->clear();
   bindVars->openObject();
   bindVars->add("start", VPackValue(start));
@@ -276,11 +293,19 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, 
-                             arangodb::aql::QueryString(_clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(
+    false,
+    _vocbase,
+    arangodb::aql::QueryString(
+      _clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery
+    ),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
@@ -551,13 +576,15 @@ void StatisticsWorker::computePerSeconds(VPackBuilder& result,
   result.add("physicalMemory", currentServer.get("physicalMemory"));
   result.add("uptime", currentServer.get("uptime"));
   VPackSlice currentV8Context = currentServer.get("v8Context");
-  result.add("v8Context", VPackValue(VPackValueType::Object));
-  result.add("availablePerSecond", currentV8Context.get("available"));
-  result.add("busyPerSecond", currentV8Context.get("busy"));
-  result.add("dirtyPerSecond", currentV8Context.get("dirty"));
-  result.add("freePerSecond", currentV8Context.get("free"));
-  result.add("maxPerSecond", currentV8Context.get("max"));
-  result.close();
+  if (currentV8Context.isObject()) {
+    result.add("v8Context", VPackValue(VPackValueType::Object));
+    result.add("availablePerSecond", currentV8Context.get("available"));
+    result.add("busyPerSecond", currentV8Context.get("busy"));
+    result.add("dirtyPerSecond", currentV8Context.get("dirty"));
+    result.add("freePerSecond", currentV8Context.get("free"));
+    result.add("maxPerSecond", currentV8Context.get("max"));
+    result.close();
+  }
 
   VPackSlice currentThreads = currentServer.get("threads");
   result.add("threads", VPackValue(VPackValueType::Object));
@@ -786,12 +813,8 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   V8DealerFeature* dealer =
       application_features::ApplicationServer::getFeature<V8DealerFeature>(
           "V8Dealer");
-  auto v8Counters = dealer->getCurrentContextNumbers();
-
-  auto threadCounters = SchedulerFeature::SCHEDULER->getCounters();
 
   builder.openObject();
-
   if (!_clusterId.empty()) {
     builder.add("clusterId", VPackValue(_clusterId));
   }
@@ -871,22 +894,19 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
-  builder.add("v8Context", VPackValue(VPackValueType::Object));
-  builder.add("available", VPackValue(v8Counters.available));
-  builder.add("busy", VPackValue(v8Counters.busy));
-  builder.add("dirty", VPackValue(v8Counters.dirty));
-  builder.add("free", VPackValue(v8Counters.free));
-  builder.add("max", VPackValue(v8Counters.max));
-  builder.close();
+  if (dealer->isEnabled()) {
+    auto v8Counters = dealer->getCurrentContextNumbers();
+    builder.add("v8Context", VPackValue(VPackValueType::Object));
+    builder.add("available", VPackValue(v8Counters.available));
+    builder.add("busy", VPackValue(v8Counters.busy));
+    builder.add("dirty", VPackValue(v8Counters.dirty));
+    builder.add("free", VPackValue(v8Counters.free));
+    builder.add("max", VPackValue(v8Counters.max));
+    builder.close();
+  }
 
   builder.add("threads", VPackValue(VPackValueType::Object));
-  builder.add("running",
-              VPackValue(rest::Scheduler::numRunning(threadCounters)));
-  builder.add("working",
-              VPackValue(rest::Scheduler::numWorking(threadCounters)));
-  builder.add("blocked",
-              VPackValue(rest::Scheduler::numBlocked(threadCounters)));
-  builder.add("queued", VPackValue(SchedulerFeature::SCHEDULER->numQueued()));
+  SchedulerFeature::SCHEDULER->addQueueStatistics(builder);
   builder.close();
 
   builder.close();
@@ -919,17 +939,19 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice,
     return;
   }
 
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   arangodb::OperationOptions opOptions;
+
   opOptions.waitForSync = false;
   opOptions.silent = true;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::WRITE);
+
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
+
   if (!res.ok()) {
     LOG_TOPIC(WARN, Logger::STATISTICS) << "could not start transaction on "
                                         << collection << ": " << res.errorMessage();
@@ -955,13 +977,12 @@ void StatisticsWorker::createCollections() const {
 }
 
 void StatisticsWorker::createCollection(std::string const& collection) const {
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-  TRI_ASSERT(vocbase != nullptr);
-
   VPackBuilder s;
+
   s.openObject();
   s.add("isSystem", VPackValue(true));
   s.add("journalSize", VPackValue(8 * 1024 * 1024));
+
   if (ServerState::instance()->isRunningInCluster() &&
       ServerState::instance()->isCoordinator()) {
     auto clusterFeature =
@@ -971,9 +992,15 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
           VPackValue(clusterFeature->systemReplicationFactor()));
     s.add("distributeShardsLike", VPackValue("_graphs"));
   }
+
   s.close();
   methods::Collections::create(
-      vocbase, collection, TRI_COL_TYPE_DOCUMENT, s.slice(), false, true,
+    &_vocbase,
+    collection,
+    TRI_COL_TYPE_DOCUMENT,
+    s.slice(),
+    false,
+    true,
       [&](LogicalCollection* coll) {
         VPackBuilder t;
         t.openObject();
@@ -998,7 +1025,7 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
         }
       });
 }
-  
+
 void StatisticsWorker::beginShutdown() {
   Thread::beginShutdown();
 

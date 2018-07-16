@@ -1,0 +1,7 @@
+@Q:
+RETURN LENGTH( <span class="hljs-string">"🥑"</span> )
+
+@R
+[
+  <span class="hljs-number">1</span>
+]

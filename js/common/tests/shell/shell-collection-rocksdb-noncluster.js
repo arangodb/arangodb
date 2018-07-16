@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var ArangoCollection = arangodb.ArangoCollection;
 var testHelper = require("@arangodb/test-helper").Helper;
+const internal = require("internal");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
@@ -453,12 +454,12 @@ function CollectionSuite () {
           inital[i] = idx.figures;
         }
       });
-      for(let i=0;i<10000;i++) {
-        c.outEdges("c/v"+(i/100));
-        c.inEdges("c/v"+(i/100));
+      for(let i = 0; i < 10000; i++) {
+        c.outEdges("c/v" + (i / 100));
+        c.inEdges("c/v" + (i / 100));
       }
       idxs = c.getIndexes(true);
-      // cache was filled same queries, hit rate must be biglier
+      // cache was filled with same queries, hit rate must be higher
       idxs.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
           assertTrue(Math.abs(inital[i].cacheSize - idx.figures.cacheSize) < 1024);
@@ -469,14 +470,16 @@ function CollectionSuite () {
       // cache size should be 0 after unload
       c.unload();
       idxs = c.getIndexes(true);
-      idxs.forEach(function(idx) {
-        assertEqual(idx.figures.cacheSize, 0, idx);
+      idxs.forEach(function(idx, i) {
+        if (idx.figures.cacheInUse) {
+          assertTrue(Math.abs(inital[i].cacheSize > idx.figures.cacheSize));
+        }
       });
 
       // lets do some reads
-      for(let i=0;i<10000;i++) {
-        c.outEdges("c/v"+(i/100));
-        c.inEdges("c/v"+(i/100));        
+      for(let i = 0; i < 10000; i++) {
+        c.outEdges("c/v" + (i / 100));
+        c.inEdges("c/v" + (i / 100));        
       }
       idxs = c.getIndexes(true);
       // cache was empty, hit rate should be 0
@@ -487,9 +490,9 @@ function CollectionSuite () {
         }
       });
 
-      for(let i=0;i<10000;i++) {
-        c.outEdges("c/v"+(i/100));
-        c.inEdges("c/v"+(i/100));        
+      for(let i = 0; i < 10000; i++) {
+        c.outEdges("c/v" + (i / 100));
+        c.inEdges("c/v" + (i / 100));        
       }
       idxs = c.getIndexes(true);
       // cache was partially filled same queries, lifetime hit rate 
@@ -571,7 +574,6 @@ function CollectionCacheSuite () {
     }
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites

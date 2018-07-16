@@ -75,13 +75,20 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
 }
 
 template <typename V, typename E, typename M>
-IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
-                                    Algorithm<V, E, M>* algo, VPackSlice body) {
-  return new Worker<V, E, M>(vocbase, algo, body);
+/*static*/ std::unique_ptr<IWorker> AlgoRegistry::createWorker(
+    TRI_vocbase_t& vocbase,
+    Algorithm<V, E, M>* algo,
+    VPackSlice body
+) {
+  return std::make_unique<Worker<V, E, M>>(vocbase, algo, body);
 }
 
-IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
+/*static*/std::unique_ptr<IWorker> AlgoRegistry::createWorker(
+    TRI_vocbase_t& vocbase,
+    VPackSlice body
+) {
   VPackSlice algoSlice = body.get(Utils::algorithmKey);
+
   if (!algoSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Supplied bad parameters to worker");
@@ -122,9 +129,8 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
     return createWorker(vocbase, new algos::SLPA(userParams), body);
   } else if (algorithm == "dmid") {
     return createWorker(vocbase, new algos::DMID(userParams), body);
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Unsupported Algorithm");
-  }
-  return nullptr;
-};
+  } 
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                 "Unsupported algorithm");
+}

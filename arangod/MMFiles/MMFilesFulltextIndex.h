@@ -51,8 +51,6 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   char const* typeName() const override { return "fulltext"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }
@@ -82,7 +80,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override final;
+                                      IndexIteratorOptions const&) override final;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;
@@ -113,10 +111,9 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
  public:
   MMFilesFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               ManagedDocumentResult* mmdr,
                                MMFilesFulltextIndex const* index,
                                std::set<TRI_voc_rid_t>&& docs)
-      : IndexIterator(collection, trx, mmdr, index),
+      : IndexIterator(collection, trx, index),
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 
@@ -128,7 +125,7 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
     TRI_ASSERT(limit > 0);
     while (_pos != _docs.end() && limit > 0) {
       cb(LocalDocumentId(*_pos));
-      _pos++;
+      ++_pos;
       limit--;
     }
     return _pos != _docs.end();
@@ -137,8 +134,8 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
   void reset() override { _pos = _docs.begin(); }
 
   void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end()) {
-      _pos++;
+    while (_pos != _docs.end() && skipped < count) {
+      ++_pos;
       skipped++;
     }
   }

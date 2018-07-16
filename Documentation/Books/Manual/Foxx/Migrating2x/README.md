@@ -1,7 +1,7 @@
 Migrating 2.x services to 3.0
 =============================
 
-When migrating services from older versions of ArangoDB it is generally recommended you make sure they work in [legacy compatibility mode](../LegacyMode.md), which can also serve as a stop-gap solution.
+When migrating services from older versions of ArangoDB it is generally recommended you make sure they work in [legacy compatibility mode](../Reference/LegacyMode.md), which can also serve as a stop-gap solution.
 
 This chapter outlines the major differences in the Foxx API between ArangoDB 2.8 and ArangoDB 3.0.
 

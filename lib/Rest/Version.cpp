@@ -27,8 +27,12 @@
 #include "Basics/win-utils.h"
 #endif
 
-#include <openssl/ssl.h>
 #include <sstream>
+
+#include <openssl/ssl.h>
+
+#include <rocksdb/convenience.h>
+#include <rocksdb/version.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
@@ -36,13 +40,14 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/asio-helper.h"
+#include "Basics/asio_ns.h"
 #include "Basics/build-date.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 
-#include <rocksdb/convenience.h>
-#include <rocksdb/version.h>
+#ifdef USE_IRESEARCH
+#include "3rdParty/iresearch/core/utils/version_defines.hpp"
+#endif
 
 using namespace arangodb::rest;
 
@@ -100,6 +105,14 @@ void Version::initialize() {
   Values["debug"] = "true";
 #else
   Values["debug"] = "false";
+#endif
+#ifdef NDEBUG
+  Values["ndebug"] = "true";
+#else
+  Values["ndebug"] = "false";
+#endif
+#if defined(ARCHITECTURE_OPTIMIZATIONS)
+  Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
@@ -182,6 +195,10 @@ void Version::initialize() {
   Values["fd-client-event-handler"] = "poll";
 #else
   Values["fd-client-event-handler"] = "select";
+#endif
+
+#ifdef USE_IRESEARCH
+  Values["iresearch-version"] = getIResearchVersion();
 #endif
   
   for (auto& it : Values) {
@@ -291,6 +308,15 @@ std::string Version::getICUVersion() {
   return icuVersionString;
 }
 
+#ifdef USE_IRESEARCH
+
+/// @brief get IResearch version
+std::string Version::getIResearchVersion() {
+  return IResearch_version;
+}
+
+#endif
+
 /// @brief get compiler
 std::string Version::getCompiler() {
 #if defined(__clang__)
@@ -355,10 +381,14 @@ std::string Version::getVerboseVersionString() {
 #ifdef ARANGODB_HAVE_JEMALLOC
           << "jemalloc, "
 #endif
+#ifdef HAVE_ARANGODB_BUILD_REPOSITORY 
+          << "build " << getBuildRepository() << ", " 
+#endif
           << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", " << getOpenSSLVersion();
+          << "V8 " << getV8Version() << ", " 
+          << getOpenSSLVersion();
 
   return version.str();
 }

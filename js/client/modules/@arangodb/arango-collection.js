@@ -260,6 +260,7 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '  type()                                type of the collection            ' + '\n' +
   '  truncate()                            delete all documents              ' + '\n' +
   '  properties()                          show collection properties        ' + '\n' +
+  '  properties(<data>)                    change collection properties      ' + '\n' +
   '  drop()                                delete a collection               ' + '\n' +
   '  load()                                load a collection                 ' + '\n' +
   '  unload()                              unload a collection               ' + '\n' +
@@ -343,10 +344,12 @@ ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
     'doCompact': true,
     'journalSize': true,
+    'isSmart': false,
     'isSystem': false,
     'isVolatile': false,
     'waitForSync': true,
     'shardKeys': false,
+    'smartGraphAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
     'indexBuckets': true,
@@ -460,9 +463,10 @@ ArangoCollection.prototype.drop = function (options) {
     requestResult = this._database._connection.DELETE(this._baseurl());
   }
 
-  if (requestResult !== null
+  if (requestResult !== null 
+    && requestResult !== undefined
     && requestResult.error === true
-    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "collection not found"
     arangosh.checkRequestResult(requestResult);
   }
@@ -887,8 +891,17 @@ ArangoCollection.prototype.save =
     if (options.returnNew) {
       url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
     }
+
+    if (options.returnOld) {
+      url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    }
+
     if (options.silent) {
       url = this._appendBoolParameter(url, 'silent', options.silent);
+    }
+
+    if (options.overwrite) {
+      url = this._appendBoolParameter(url, 'overwrite', options.overwrite);
     }
 
     if (data === undefined || typeof data !== 'object') {

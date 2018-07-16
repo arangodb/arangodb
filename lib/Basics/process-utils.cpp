@@ -336,6 +336,19 @@ static char* makeWindowsArgs(ExternalProcess* external) {
   if (buf == nullptr) {
     return nullptr;
   }
+
+  if (( external->_executable.find('/') == std::string::npos) && 
+      ( external->_executable.find('\\') == std::string::npos)) {
+    // oK, this is a binary without path, start the lookup.
+    char buf[MAX_PATH];
+    char *pBuf;
+    DWORD n;
+    n = SearchPath(nullptr, external->_executable.c_str(), nullptr, MAX_PATH, buf, &pBuf);
+    if (n > 0) {
+      external->_executable = std::string(buf, n);
+    }
+  }
+
   TRI_ReserveStringBuffer(buf, 1024);
   err = appendQuotedArg(buf, external->_executable.c_str());
   if (err != TRI_ERROR_NO_ERROR) {
@@ -663,7 +676,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   ////////////////////////////////////////////////////////////////////////////////
   typedef struct process_state_s {
     pid_t pid;
-    /* size was choosen arbitrary */
+    /* size was chosen arbitrary */
     char comm[128];
     char state;
     int ppid;

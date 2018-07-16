@@ -24,7 +24,6 @@
 #include "Cache/Manager.h"
 #include "Basics/Common.h"
 #include "Basics/SharedPRNG.h"
-#include "Basics/asio-helper.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -96,16 +95,16 @@ Manager::Manager(PostFn schedulerPost, uint64_t globalLimit,
       _findStats.reset(new Manager::FindStatBuffer(16384));
       _fixedAllocation += _findStats->memoryUsage();
       _globalAllocation = _fixedAllocation;
-    } catch (std::bad_alloc) {
+    } catch (std::bad_alloc const&) {
       _findStats.reset(nullptr);
       _enableWindowedStats = false;
     }
   }
 }
 
-Manager::~Manager() { 
+Manager::~Manager() {
   try {
-    shutdown(); 
+    shutdown();
   } catch (...) {
     // no exceptions allowed here
   }
@@ -547,7 +546,7 @@ int Manager::rebalance(bool onlyCalculate) {
         std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (newDeserved < Manager::minCacheAllocation) {
-      LOG_TOPIC(FATAL, Logger::CACHE)
+      LOG_TOPIC(DEBUG, Logger::CACHE)
           << "Deserved limit of " << newDeserved << " from weight " << weight
           << " and highwater " << _globalHighwaterMark
           << ". Should be at least " << Manager::minCacheAllocation;
@@ -559,8 +558,9 @@ int Manager::rebalance(bool onlyCalculate) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
     if (newDeserved < fixed) {
-      LOG_TOPIC(ERR, Logger::CACHE) << "Setting deserved cache size " << newDeserved << " below usage: " << fixed
-      << " ; Using weight  " << weight;
+      LOG_TOPIC(DEBUG, Logger::CACHE)
+        << "Setting deserved cache size " << newDeserved << " below usage: "
+        << fixed << " ; Using weight  " << weight;
     }
 #endif
     metadata->adjustDeserved(newDeserved);
@@ -694,7 +694,7 @@ std::shared_ptr<Table> Manager::leaseTable(uint32_t logSize) {
       try {
         table = std::make_shared<Table>(logSize);
         _globalAllocation += table->memoryUsage();
-      } catch (std::bad_alloc) {
+      } catch (std::bad_alloc const&) {
         table.reset();
       }
     }

@@ -25,8 +25,10 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
+#include "Replication/utilities.h"
 #include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Slice.h>
@@ -35,57 +37,30 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class InitialSyncer : public Syncer {
-
  public:
-  explicit InitialSyncer(ReplicationApplierConfiguration const&);
+  explicit InitialSyncer(ReplicationApplierConfiguration const&,
+                         replutils::ProgressInfo::Setter s =
+                             [](std::string const&) -> void {});
 
   ~InitialSyncer();
 
  public:
-  
   virtual Result run(bool incremental) = 0;
-  
+
   /// @brief return the last log tick of the master at start
-  TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
+  TRI_voc_tick_t getLastLogTick() const { return _state.master.lastLogTick; }
 
   /// @brief return the collections that were synced
   std::map<TRI_voc_cid_t, std::string> const& getProcessedCollections() const {
-    return _processedCollections;
+    return _progress.processedCollections;
   }
 
-  std::string progress() const { return _progress; }
-  
- protected:
-  
-  /// @brief set a progress message
-  virtual void setProgress(std::string const& msg) {}
-
-  /// @brief send a "start batch" command
-  Result sendStartBatch();
-
-  /// @brief send an "extend batch" command
-  Result sendExtendBatch();
-
-  /// @brief send a "finish batch" command
-  Result sendFinishBatch();
+  std::string progress() const { return _progress.message; }
 
  protected:
-  /// @brief progress message
-  std::string _progress;
-
-  /// @brief collections synced
-  std::map<TRI_voc_cid_t, std::string> _processedCollections;
-
-  /// @brief dump batch id
-  uint64_t _batchId;
-
-  /// @brief dump batch last update time
-  double _batchUpdateTime;
-
-  /// @brief ttl for batches
-  int _batchTtl;
-
+  replutils::BatchInfo _batch;
+  replutils::ProgressInfo _progress;
 };
-}
+}  // namespace arangodb
 
 #endif

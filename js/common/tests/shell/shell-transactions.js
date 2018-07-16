@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, fail */
+/*global assertEqual, assertTrue, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client/server side transaction invocation
@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var internal = require("internal");
 var ERRORS = arangodb.errors;
+var ArangoError = require("@arangodb").ArangoError;
 var cluster;
 var isOnServer = (typeof ArangoClusterComm === "object");
 if (isOnServer) {
@@ -64,6 +65,48 @@ function TransactionsInvocationsSuite () {
     tearDown : function () {
       internal.wait(0);
     },
+
+    testErrorHandling : function () {
+      try {
+        db._executeTransaction({
+          collections: {},
+          action: function() {
+            var err = new Error('test');
+            err.errorNum = 1234;
+            Object.defineProperty(err, 'name', {
+                get: function() { throw new Error('Error in getter'); }
+            });
+            throw err;
+          }
+        });
+        fail();
+      } catch (err) {
+        assertTrue(err instanceof ArangoError);
+        assertMatch(/test/, err.errorMessage);
+        assertEqual(1234, err.errorNum);
+      }
+    },
+    
+    testErrorHandlingArangoError : function () {
+      try {
+        db._executeTransaction({
+          collections: {},
+          action: function () {
+            const arangodb = require('@arangodb');
+            var err = new arangodb.ArangoError();
+            err.errorNum = arangodb.ERROR_BAD_PARAMETER;
+            err.errorMessage = "who's bad?";
+            throw err;
+          }
+        });
+        fail();
+      } catch (err) {
+        assertTrue(err instanceof ArangoError);
+        assertMatch(/who's bad?/, err.errorMessage);
+        assertEqual(arangodb.ERROR_BAD_PARAMETER, err.errorNum);
+      }
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a transaction with a string action
@@ -271,12 +314,64 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test read collection object
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleReadCollectionObject : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { read: db._collection(cn1) },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn1 RETURN doc', { '@cn1' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test read collection object in array
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleReadCollectionArray : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { read: [db._collection(cn1)] },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn1 RETURN doc', { '@cn1' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test allowImplicit
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleWriteOnly : function () {
       assertEqual([], db._executeTransaction({
         collections: { allowImplicit: false, write: cn1 },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write collection object
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleWriteCollectionObject : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { write: db._collection(cn1) },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write collection object in array
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleWriteCollectionArray : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { write: [db._collection(cn1)] },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
         params: { cn: cn1 }

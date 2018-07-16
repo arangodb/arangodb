@@ -34,6 +34,8 @@ Query / Transaction Functions:
   _createStatement(&lt;data&gt;)              create and return AQL query       
                                                                           
 View Functions:                                                           
-  _views()                                  list all views                
-  _view(&lt;name&gt;)                             get view by name              
-  _createView(&lt;name&gt;, &lt;type&gt;, &lt;properties&gt;) creates a new view            
+  _views()                              list all views                    
+  _view(&lt;name&gt;)                         get view by name                  
+  _createView(&lt;name&gt;, &lt;type&gt;,           creates a new view                
+              &lt;properties&gt;)                                               
+  _dropView(&lt;name&gt;)                     delete a view                     

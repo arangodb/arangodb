@@ -161,21 +161,26 @@ struct AqlValue final {
   /// RANGE: a managed range object. The memory is managed by the AqlValue
  private:
   union {
+    uint64_t words[2];
     uint8_t internal[16];
     uint8_t const* pointer;
     uint8_t* slice;
     arangodb::velocypack::Buffer<uint8_t>* buffer;
-    std::vector<AqlItemBlock*>* docvec;
+    std::vector<std::unique_ptr<AqlItemBlock>>* docvec;
     Range const* range;
   } _data;
 
  public:
   // construct an empty AqlValue
   // note: this is the default constructor and should be as cheap as possible
-  AqlValue() noexcept {
+  inline AqlValue() noexcept {
     // construct a slice of type None
-    _data.internal[0] = '\x00';
-    setType(AqlValueType::VPACK_INLINE);
+    // we will simply zero-initialize the two 64 bit words
+    _data.words[0] = 0;
+    _data.words[1] = 0;
+
+    // VPACK_INLINE must have a value of 0, and VPackSlice::None must be equal to a NUL byte too 
+    static_assert(AqlValueType::VPACK_INLINE == 0, "invalid value for VPACK_INLINE");
   }
   
   // construct from pointer, not copying!
@@ -193,7 +198,7 @@ struct AqlValue final {
   }
   
   // construct from docvec, taking over its ownership
-  explicit AqlValue(std::vector<AqlItemBlock*>* docvec) noexcept {
+  explicit AqlValue(std::vector<std::unique_ptr<AqlItemBlock>>* docvec) noexcept {
     TRI_ASSERT(docvec != nullptr);
     _data.docvec = docvec;
     setType(AqlValueType::DOCVEC);
@@ -500,7 +505,7 @@ struct AqlValue final {
   /// @brief return the item block at position
   AqlItemBlock* docvecAt(size_t position) const {
     TRI_ASSERT(isDocvec());
-    return _data.docvec->at(position);
+    return _data.docvec->at(position).get();
   }
   
   /// @brief construct a V8 value as input for the expression execution in V8
@@ -558,7 +563,7 @@ struct AqlValue final {
         // no need to count the memory usage for the item blocks in docvec.
         // these have already been counted elsewhere (in ctors of AqlItemBlock
         // and AqlItemBlock::setValue)
-        return sizeof(AqlItemBlock*) * _data.docvec->size();
+        return sizeof(std::unique_ptr<AqlItemBlock>) * _data.docvec->size();
       case RANGE:
         return sizeof(Range);
     }

@@ -147,7 +147,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF -DUSE_IRESEARCH=On")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -167,6 +167,8 @@ VERBOSE=0
 MSVC=
 ENTERPRISE_GIT_URL=
 
+ARCH="-DTARGET_ARCHITECTURE=nehalem"
+
 case "$1" in
     standard)
         CFLAGS="${CFLAGS} -O3"
@@ -179,10 +181,17 @@ case "$1" in
 
     debug)
         BUILD_CONFIG=Debug
+        MAINTAINER_MODE=''
         CFLAGS="${CFLAGS} -O0"
         CXXFLAGS="${CXXFLAGS} -O0"
-        CONFIGURE_OPTIONS+=('-DV8_TARGET_ARCHS=Debug' "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}")
-
+        CONFIGURE_OPTIONS+=(
+            '-DUSE_MAINTAINER_MODE=On'
+            '-DUSE_FAILURE_TESTS=On'
+            '-DOPTDBG=On'
+            '-DUSE_BACKTRACE=On'
+            "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
+        )
+        
         echo "using debug compile configuration"
         shift
         ;;
@@ -241,11 +250,12 @@ while [ $# -gt 0 ];  do
         --sanitize)
             TAR_SUFFIX="-sanitize"
             SANITIZE=1
+	    USE_JEMALLOC=0
             shift
             ;;
 
         --noopt)
-            CONFIGURE_OPTIONS+=(-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off)
+            ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
             shift
             ;;
 
@@ -263,9 +273,12 @@ while [ $# -gt 0 ];  do
              PAR=""
              PARALLEL_BUILDS=""
              GENERATOR="Visual Studio 14 Win64"
+             CONFIGURE_OPTIONS+=("-T")
+             CONFIGURE_OPTIONS+=("v140,host=x64")
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
-             CONFIGURE_OPTIONS+=(-DV8_TARGET_ARCHS=Release)
+             # MSVC doesn't know howto do our assembler in first place.
+             ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
              export _IsNativeEnvironment=true
              ;;
 
@@ -406,12 +419,21 @@ while [ $# -gt 0 ];  do
 
         --maintainer)
             shift
+            MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=on"
             ;;
 
+        --debugV8)
+            shift
+            CONFIGURE_OPTIONS+=(-DUSE_DEBUG_V8=ON)
+            ;;
         --retryPackages)
             shift
             RETRY_N_TIMES=$1
             shift
+            ;;
+        --forceVersionNightly)
+            shift
+            CONFIGURE_OPTIONS+=(-DARANGODB_VERSION_REVISION=nightly)
             ;;
         *)
             echo "Unknown option: $1"
@@ -449,7 +471,7 @@ elif [ "$CLANG36" == 1 ]; then
     CXXFLAGS="${CXXFLAGS} -std=c++11"
 elif [ "${XCGCC}" = 1 ]; then
     USE_JEMALLOC=0
-    
+    ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
     BUILD_DIR="${BUILD_DIR}-$(basename "${TOOL_PREFIX}")"
 
     # tell cmake we're cross compiling:
@@ -479,6 +501,8 @@ fi
 
 if [ "${USE_JEMALLOC}" = 1 ]; then
     CONFIGURE_OPTIONS+=(-DUSE_JEMALLOC=On)
+else
+    CONFIGURE_OPTIONS+=(-DUSE_JEMALLOC=Off)
 fi
 
 if [ "$SANITIZE" == 1 ]; then
@@ -517,9 +541,7 @@ if [ -n "$CXX" ]; then
     CONFIGURE_OPTIONS+=("-DCMAKE_CXX_COMPILER=${CXX}")
 fi
 
-if [ -z "${MSVC}" ]; then
-    # MSVC doesn't know howto do assembler in first place.
-    CONFIGURE_OPTIONS+=(-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off)
+if [ "${MSVC}" != "1" ]; then
     # on all other system cmake tends to be sluggish on finding strip.
     # workaround by presetting it:
     if test -z "${STRIP}"; then
@@ -555,6 +577,7 @@ if [ -z "${MSVC}" ]; then
 fi
 
 CONFIGURE_OPTIONS+=("${MAINTAINER_MODE}")
+CONFIGURE_OPTIONS+=("${ARCH}")
 
 if [ "${VERBOSE}" == 1 ];  then
     CONFIGURE_OPTIONS+=(-DVERBOSE=ON)
@@ -715,7 +738,7 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
             curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
-                ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
+                "${SRC}/Installation/Jenkins/curl_time_machine.sh" "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
             if ! test -s "${FN}" ; then
                 echo "failed to download syncer binary - aborting!"
                 exit 1
@@ -833,7 +856,7 @@ if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
 fi
 
 mkdir -p "${DST}/lib/Basics/"
-cat "${SOURCE_DIR}/lib/Basics/build-date.h.in" | sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" >"${DST}/lib/Basics/build-date.h"
+sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" "${SOURCE_DIR}/lib/Basics/build-date.h.in" > "${DST}/lib/Basics/build-date.h"
 TRIES=0;
 set +e
 while /bin/true; do
@@ -941,15 +964,7 @@ if test -n "${TARGET_DIR}";  then
         fi
 
         if test "${isCygwin}" == 1; then
-            SSLDIR=$(grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt | \
-                            ${SED} 's/\r//' | \
-                            ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
-                  )
-            DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
-            # shellcheck disable=SC2086
-            cp ${DLLS} "bin/${BUILD_CONFIG}"
             cp "bin/${BUILD_CONFIG}/"* bin/
-            cp "tests/${BUILD_CONFIG}/"*exe bin/
         fi
         tar -u -f "${TARFILE_TMP}" \
             bin etc tests

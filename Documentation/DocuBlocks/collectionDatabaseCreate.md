@@ -31,7 +31,8 @@ to the [naming conventions](../NamingConventions/README.md).
   specified, then *keyOptions* should be a JSON array containing the
   following attributes (**note**: some of them are optional):
   * *type*: specifies the type of the key generator. The currently
-    available generators are *traditional* and *autoincrement*.
+    available generators are *traditional*, *autoincrement*, *uuid*
+    and *padded*.
   * *allowUserKeys*: if set to *true*, then it is allowed to supply
     own key values in the *_key* attribute of a document. If set to
     *false*, then the key generator will solely be responsible for
@@ -68,11 +69,10 @@ to the [naming conventions](../NamingConventions/README.md).
   attribute and this can only be done efficiently if this is the
   only shard key by delegating to the individual shards.
 
-<!---
- *cacheEnabled* (optional, default is *false*, **rocksdb-only**): Enable in-memory
- caching for documents. This can potentially speed up point-lookups significantly,
-  especially if your collections has a subset of frequently accessed keys.
--->
+ *cacheEnabled* (optional, default is *false*, **rocksdb-only**, from v. 3.4): Enable in-memory
+  caching for documents and primary index entries. This can potentially speed up point-lookups significantly,
+  especially if your collection has a subset of frequently accessed keys. Please test this feature
+  carefully to ensure that it does not adversely affect the performance of your system.
 
 * *isVolatile* (optional, default is *false*, **mmfiles-only**): If *true* then the
   collection data is kept in-memory only and not made persistent. Unloading

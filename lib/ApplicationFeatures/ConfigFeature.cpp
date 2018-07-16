@@ -37,17 +37,16 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 using namespace arangodb::options;
 
 ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
-                             std::string const& progname)
+                             std::string const& progname,
+                             std::string const& configFilename)
     : ApplicationFeature(server, "Config"),
-      _file(""),
+      _file(configFilename),
       _checkConfiguration(false),
       _progname(progname) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("ShellColors");
 }
@@ -143,6 +142,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   auto context = ArangoGlobalContext::CONTEXT;
   std::string basename = progname;
+  bool checkArangoImp = (progname == "arangoimport");
 
   if (!StringUtils::isSuffix(basename, ".conf")) {
     basename += ".conf";
@@ -177,6 +177,14 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
       LOG_TOPIC(DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
       filename = name;
       break;
+    } else if (checkArangoImp) {
+      name = FileUtils::buildFilename(location, "arangoimp.conf");
+      LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file '" << name << "'";
+      if (FileUtils::exists(name)) {
+        LOG_TOPIC(DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
+        filename = name;
+        break;
+      }
     }
   }
 

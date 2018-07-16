@@ -168,10 +168,6 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1] LET a = CONCAT('a', i) RETURN CONCAT(a, a)",
         "FOR i IN [1] LET a = i * 2 COLLECT y = a INTO g RETURN [ y * 2, g ]",
         
-        // v8 vs. non-v8 expression types
-        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = V8(ATTRIBUTES(doc)) RETURN KEEP(doc, a)",
-        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN V8(KEEP(doc, a))",
-        
         // different loop
         "LET a = NOOPT(CONCAT('a', 'b')) FOR i IN [ 1, 2, 3 ] RETURN CONCAT(a, 'b')"
       ];
@@ -269,7 +265,6 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
         
         // same expression types
-        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = V8(ATTRIBUTES(doc)) RETURN V8(KEEP(doc, a))",
         "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN KEEP(doc, a)",
         
         // same loop

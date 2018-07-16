@@ -29,31 +29,32 @@
 const _ = require('lodash');
 const fs = require('fs');
 const yaml = require('js-yaml');
-const toArgv = require('internal').toArgv;
+const internal = require('internal');
+const toArgv = internal.toArgv;
 const crashUtils = require('@arangodb/crash-utils');
 const crypto = require('@arangodb/crypto');
 
 /* Functions: */
-const executeExternal = require('internal').executeExternal;
-const executeExternalAndWait = require('internal').executeExternalAndWait;
-const killExternal = require('internal').killExternal;
-const statusExternal = require('internal').statusExternal;
-const base64Encode = require('internal').base64Encode;
-const testPort = require('internal').testPort;
-const download = require('internal').download;
-const time = require('internal').time;
-const wait = require('internal').wait;
-const sleep = require('internal').sleep;
+const executeExternal = internal.executeExternal;
+const executeExternalAndWait = internal.executeExternalAndWait;
+const killExternal = internal.killExternal;
+const statusExternal = internal.statusExternal;
+const base64Encode = internal.base64Encode;
+const testPort = internal.testPort;
+const download = internal.download;
+const time = internal.time;
+const wait = internal.wait;
+const sleep = internal.sleep;
 
 /* Constants: */
-// const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
-// const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+// const BLUE = internal.COLORS.COLOR_BLUE;
+const CYAN = internal.COLORS.COLOR_CYAN;
+const GREEN = internal.COLORS.COLOR_GREEN;
+const RED = internal.COLORS.COLOR_RED;
+const RESET = internal.COLORS.COLOR_RESET;
+// const YELLOW = internal.COLORS.COLOR_YELLOW;
 
-const platform = require('internal').platform;
+const platform = internal.platform;
 
 const abortSignal = 6;
 
@@ -69,7 +70,7 @@ let BIN_DIR;
 let ARANGOBENCH_BIN;
 let ARANGODUMP_BIN;
 let ARANGOD_BIN;
-let ARANGOIMP_BIN;
+let ARANGOIMPORT_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOEXPORT_BIN;
 let ARANGOSH_BIN;
@@ -130,7 +131,7 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench' + executableExt);
   ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump' + executableExt);
   ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executableExt);
-  ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp' + executableExt);
+  ARANGOIMPORT_BIN = fs.join(BIN_DIR, 'arangoimport' + executableExt);
   ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executableExt);
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
@@ -152,7 +153,7 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOBENCH_BIN,
     ARANGODUMP_BIN,
     ARANGOD_BIN,
-    ARANGOIMP_BIN,
+    ARANGOIMPORT_BIN,
     ARANGORESTORE_BIN,
     ARANGOEXPORT_BIN,
     ARANGOSH_BIN];
@@ -192,7 +193,7 @@ function findFreePort (minPort, maxPort, usedPorts) {
       return port;
     }
 
-    require('internal').wait(0.1);
+    internal.wait(0.1);
   }
 }
 
@@ -376,7 +377,7 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreCheck = false) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCores, coreCheck = false) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -402,6 +403,14 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreC
     cmd = options.valgrind;
   }
 
+  if (circumventCores) {
+    if (platform.substr(0, 3) !== 'win') {
+      // this shellscript will prevent cores from being writen on macos and linux.
+      args.unshift(cmd);
+      cmd = TOP_DIR + '/scripts/disable-cores.sh';
+    }
+  }
+  
   if (options.extremeVerbosity) {
     print('executeAndWait: cmd =', cmd, 'args =', args);
   }
@@ -419,7 +428,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, disableCoreC
 
   let errorMessage = ' - ';
 
-  if (!disableCoreCheck &&
+  if (coreCheck &&
       res.hasOwnProperty('signal') &&
       ((res.signal === 11) ||
        (res.signal === 6) ||
@@ -515,7 +524,7 @@ function makeArgsArangosh (options) {
 // / @brief runs arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
+function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false) {
   let args = makeArgsArangosh(options);
   args['server.endpoint'] = instanceInfo.endpoint;
 
@@ -523,16 +532,16 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
     args = Object.assign(args, addArgs);
   }
 
-  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
+  internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir);
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangoimp
+// / @brief runs arangoimport
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoImp (options, instanceInfo, what) {
+function runArangoImport (options, instanceInfo, what, coreCheck = false) {
   let args = {
     'server.username': options.username,
     'server.password': options.password,
@@ -540,7 +549,8 @@ function runArangoImp (options, instanceInfo, what) {
     'file': fs.join(TOP_DIR, what.data),
     'collection': what.coll,
     'type': what.type,
-    'on-duplicate': what.onDuplicate || 'error'
+    'on-duplicate': what.onDuplicate || 'error',
+    'ignore-missing': what.ignoreMissing || false
   };
 
   if (what.skipLines !== undefined) {
@@ -549,6 +559,14 @@ function runArangoImp (options, instanceInfo, what) {
 
   if (what.create !== undefined) {
     args['create-collection'] = what.create;
+  }
+
+  if (what.createDatabase !== undefined) {
+    args['create-database'] = what.createDatabase;
+  }
+
+  if (what.database !== undefined) {
+    args['server.database'] = what.database;
   }
 
   if (what.backslash !== undefined) {
@@ -566,14 +584,14 @@ function runArangoImp (options, instanceInfo, what) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMP_BIN, toArgv(args), options, 'arangoimp', instanceInfo.rootDir);
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangodump or arangorestore
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true) {
+function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
     'server.username': options.username,
@@ -585,7 +603,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
 
   let exe;
   rootDir = rootDir || instanceInfo.rootDir;
-  
+
   if (which === 'dump') {
     args['output-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGODUMP_BIN;
@@ -594,9 +612,9 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     args['input-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGORESTORE_BIN;
   }
-  
+
   if (options.encrypted) {
-    args['encryption.keyfile'] = fs.join(rootDir, 'secret-key'); 
+    args['encryption.keyfile'] = fs.join(rootDir, 'secret-key');
   }
 
   if (options.extremeVerbosity === true) {
@@ -604,14 +622,14 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     print(args);
   }
 
-  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir);
+  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangobench
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoBenchmark (options, instanceInfo, cmds, rootDir) {
+function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = false) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
     'server.username': options.username,
@@ -628,7 +646,7 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir) {
     args['flatCommands'] = ['--quiet'];
   }
 
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir);
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -662,7 +680,7 @@ function checkArangoAlive (arangod, options) {
       // Windows sometimes has random numbers in signal...
       (platform.substr(0, 3) === 'win')
       )
-    ) {
+       ) {
       arangod.exitStatus = res;
       analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
       serverCrashed = true;
@@ -833,7 +851,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     timeout *= 2;
   }
 
-  var shutdownTime = require('internal').time();
+  var shutdownTime = internal.time();
 
   let toShutdown = instanceInfo.arangods.slice();
   while (toShutdown.length > 0) {
@@ -854,7 +872,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if (arangod.role === 'agent') {
           localTimeout = localTimeout + 60;
         }
-        if ((require('internal').time() - shutdownTime) > localTimeout) {
+        if ((internal.time() - shutdownTime) > localTimeout) {
           print('forcefully terminating ' + yaml.safeDump(arangod.pid) +
             ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashed = true;
@@ -911,8 +929,8 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
 function startInstanceCluster (instanceInfo, protocol, options,
   addArgs, rootDir) {
-  if (options.cluster && options.singleresilient ||
-     !options.cluster && !options.singleresilient) {
+  if (options.cluster && options.activefailover ||
+     !options.cluster && !options.activefailover) {
     throw "invalid call to startInstanceCluster";
   }
 
@@ -936,7 +954,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', 'agency', {}));
 
   let agencyEndpoint = instanceInfo.endpoint;
-
+  let agencyUrl = instanceInfo.url;
   if (!checkInstanceAlive(instanceInfo, options)) {
     throw new Error('startup of agency failed! bailing out!');
   }
@@ -968,9 +986,8 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
     }
-  } else if (options.singleresilient) {
-    // for now start just two (TODO config parameter)
-    for (i = 0; i < 2; i++) {      
+  } else if (options.activefailover) {
+    for (i = 0; i < options.singles; i++) {
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
@@ -979,7 +996,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       singleArgs['cluster.my-address'] = endpoint;
       singleArgs['cluster.my-role'] = 'SINGLE';
       singleArgs['cluster.agency-endpoint'] = agencyEndpoint;
-      singleArgs['replication.automatic-failover'] = true;
+      singleArgs['replication.active-failover'] = true;
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('single' + i, 'single', singleArgs), 'single');
       sleep(1.0);
     }
@@ -1042,21 +1059,35 @@ function startInstanceCluster (instanceInfo, protocol, options,
   }
 
   // we need to find the leading server
-  if (options.singleresilient) {
-    const internal = require('internal');
-    const reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', makeAuthorizationHeaders(authOpts));
+  if (options.activefailover) {
+    internal.wait(5.0);
+    let opts = {
+      method: 'POST',
+      jwt: crypto.jwtEncode(authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
+      headers: {'content-type': 'application/json' }
+    };
+    let reply = download(agencyUrl + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
+
     if (!reply.error && reply.code === 200) {
       let res = JSON.parse(reply.body);
-      internal.print("Response ====> " + reply.body);      
-      let leader = res.endpoints[0].endpoint;
-      instanceInfo.arangods.forEach(d => {
-        if (d.endpoint === leader) {
-          instanceInfo.endpoint = d.endpoint;
-          instanceInfo.url = d.url;
-        }
-      });
+      //internal.print("Response ====> " + reply.body);
+      let leader = res[0].arango.Plan.AsyncReplication.Leader;
+      if (!leader) {
+        throw "Leader is not selected";
+      }
     }
-  }   
+
+    opts['method'] = 'GET';
+    reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', opts);
+    let res = JSON.parse(reply.body);
+    let leader = res.endpoints[0].endpoint;
+    instanceInfo.arangods.forEach(d => {
+      if (d.endpoint === leader) {
+        instanceInfo.endpoint = d.endpoint;
+        instanceInfo.url = d.url;
+      }
+    });
+  }
 
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
   return true;
@@ -1226,7 +1257,8 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   let instanceInfo = {
     rootDir,
-    arangods: []
+    arangods: [],
+    protocol: protocol
   };
 
   const startTime = time();
@@ -1239,7 +1271,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
-    } else if (options.cluster || options.singleresilient) {
+    } else if (options.cluster || options.activefailover) {
       startInstanceCluster(instanceInfo, protocol, options,
                            addArgs, rootDir);
     } else if (options.agency) {
@@ -1327,7 +1359,7 @@ exports.executeAndWait = executeAndWait;
 
 exports.run = {
   arangoshCmd: runArangoshCmd,
-  arangoImp: runArangoImp,
+  arangoImport: runArangoImport,
   arangoDumpRestore: runArangoDumpRestore,
   arangoBenchmark: runArangoBenchmark
 };

@@ -69,8 +69,6 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(+0)");
       assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(+0)");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,8 +80,6 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN +1");
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(+1)");
-      assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(+1)");
       assertEqual(expected, actual);
     },
 
@@ -97,8 +93,6 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(++1)");
       assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(++1)");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,8 +105,6 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(+-5)");
       assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(+-5)");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,8 +116,6 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN +++5.4");
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(+++5.4)");
-      assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(+++5.4)");
       assertEqual(expected, actual);
     },
 
@@ -163,21 +153,6 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual([ 0 ], getQueryResults("RETURN NOOPT(+[ \"abc\" ])"));
       assertEqual([ 3 ], getQueryResults("RETURN NOOPT(+[ \"3\" ])"));
       assertEqual([ 0 ], getQueryResults("RETURN NOOPT(+{ })"));
-      
-      assertEqual([ 0 ], getQueryResults("RETURN V8(+null)"));
-      assertEqual([ 1 ], getQueryResults("RETURN V8(+true)"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(+false)"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(+\"value\")"));
-      assertEqual([ 1 ], getQueryResults("RETURN V8(+\"1\")"));
-      assertEqual([ -3 ], getQueryResults("RETURN V8(+\"-3\")"));
-      assertEqual([ -3.4 ], getQueryResults("RETURN V8(+\"-3.4\")"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(+[ ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(+[ 0 ])"));
-      assertEqual([ -34 ], getQueryResults("RETURN V8(+[ -34 ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(+[ 1, 2 ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(+[ \"abc\" ])"));
-      assertEqual([ 3 ], getQueryResults("RETURN V8(+[ \"3\" ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(+{ })"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,8 +164,6 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN -0");
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(-0)");
-      assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(-0)");
       assertEqual(expected, actual);
     },
 
@@ -204,8 +177,6 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(-1)");
       assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(-1)");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,8 +188,6 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN --1");
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(--1)");
-      assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(--1)");
       assertEqual(expected, actual);
     },
 
@@ -232,8 +201,6 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(-+5)");
       assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(-+5)");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,8 +212,6 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN ---5.4");
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN NOOPT(---5.4)");
-      assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(---5.4)");
       assertEqual(expected, actual);
     },
 
@@ -284,21 +249,6 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual([ 0 ], getQueryResults("RETURN NOOPT(-[ \"abc\" ])"));
       assertEqual([ -3 ], getQueryResults("RETURN NOOPT(-[ \"3\" ])"));
       assertEqual([ 0 ], getQueryResults("RETURN NOOPT(-{ })"));
-      
-      assertEqual([ 0 ], getQueryResults("RETURN V8(-null)"));
-      assertEqual([ -1 ], getQueryResults("RETURN V8(-true)"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(-false)"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(-\"value\")"));
-      assertEqual([ -1 ], getQueryResults("RETURN V8(-\"1\")"));
-      assertEqual([ 3 ], getQueryResults("RETURN V8(-\"-3\")"));
-      assertEqual([ 3.5 ], getQueryResults("RETURN V8(-\"-3.5\")"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(-[ ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(-[ 0 ])"));
-      assertEqual([ 34 ], getQueryResults("RETURN V8(-[ -34 ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(-[ 1, 2 ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(-[ \"abc\" ])"));
-      assertEqual([ -3 ], getQueryResults("RETURN V8(-[ \"3\" ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN V8(-{ })"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

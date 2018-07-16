@@ -10,7 +10,12 @@ var runTest = require('jsunity').runTest,
   // //////////////////////////////////////////////////////////////////////////////
 
 function runJSUnityTests (tests) {
-  let instanceinfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  let env = require('internal').env;
+  let instanceinfo;
+  if (!env.hasOwnProperty('INSTANCEINFO')) {
+    throw new Error('env.INSTANCEINFO was not set by caller!');
+  }
+  instanceinfo = JSON.parse(env.INSTANCEINFO);
   if (!instanceinfo) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
@@ -25,6 +30,11 @@ function runJSUnityTests (tests) {
     runenvironment = 'arangosh';
   }
 
+  var unitTestFilter = internal.unitTestFilter();
+  if (unitTestFilter === "") {
+    unitTestFilter = "undefined";
+  }
+
   _.each(tests, function (file) {
     if (result) {
       print('\n' + Date() + ' ' + runenvironment + ": Running JSUnity test from file '" + file + "'");
@@ -34,7 +44,7 @@ function runJSUnityTests (tests) {
     }
 
     try {
-      res = runTest(file, true);
+      res = runTest(file, true, unitTestFilter);
       allResults.push(res);
       result = result && res.status;
       if (!res.status) {

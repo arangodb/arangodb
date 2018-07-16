@@ -33,7 +33,8 @@ using namespace arangodb::options;
 FrontendFeature::FrontendFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Frontend"),
       _versionCheck(true) {
-  startsAfter("Logger");
+  setOptional(true);
+  startsAfter("ServerPhase");
 }
 
 void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

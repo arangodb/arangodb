@@ -59,15 +59,13 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
-#include "Basics/Common.h"
-
 #include "Basics/Mutex.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
-#include "Logger/LogThread.h"
 #include "Logger/LogTopic.h"
 
 namespace arangodb {
+class LogThread;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief message container
@@ -128,6 +126,7 @@ class Logger {
  public:
   static LogTopic AGENCY;
   static LogTopic AGENCYCOMM;
+  static LogTopic AQL;
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic CACHE;
@@ -138,6 +137,7 @@ class Logger {
   static LogTopic CONFIG;
   static LogTopic DATAFILES;
   static LogTopic DEVEL;
+  static LogTopic DUMP;
   static LogTopic ENGINES;
   static LogTopic FIXME;
   static LogTopic GRAPHS;
@@ -150,6 +150,7 @@ class Logger {
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
+  static LogTopic RESTORE;
   static LogTopic ROCKSDB;
   static LogTopic SSL;
   static LogTopic STARTUP;
@@ -168,7 +169,7 @@ class Logger {
     double _value;
     int _precision;
   };
-  
+
   struct CHARS {
     CHARS(char const* data, size_t size)
         : data(data), size(size) {}
@@ -223,6 +224,8 @@ class Logger {
   static void setShowThreadName(bool);
   static void setUseColor(bool);
   static bool getUseColor() {return _useColor;};
+  static void setUseEscaped(bool);
+  static bool getUseEscaped() {return _useEscaped;};
   static void setUseLocalTime(bool);
   static bool getUseLocalTime() {return _useLocalTime;};
   static void setUseMicrotime(bool);
@@ -231,7 +234,7 @@ class Logger {
 
   static std::string const& translateLogLevel(LogLevel);
 
-  static void log(char const* function, char const* file, long int line,
+  static void log(char const* function, char const* file, int line,
                   LogLevel level, size_t topicId, std::string const& message);
 
   static bool isEnabled(LogLevel level) {
@@ -264,6 +267,7 @@ class Logger {
   static bool _showRole;
   static bool _threaded;
   static bool _useColor;
+  static bool _useEscaped;
   static bool _useLocalTime;
   static bool _keepLogRotate;
   static bool _useMicrotime;

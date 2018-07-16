@@ -49,7 +49,10 @@ ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
     const char *binaryPath)
-    : _options(options), _stopping(false), _binaryPath(binaryPath) {
+    : _state(ServerState::UNINITIALIZED),
+      _options(options),
+      _stopping(false),
+      _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
   
@@ -172,8 +175,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   
   // collect options from all features
   // in this phase, all features are order-independent
-  _state = ServerState::IN_COLLECT_OPTIONS;
-  reportServerProgress(_state);
+  _state.store(ServerState::IN_COLLECT_OPTIONS, std::memory_order_relaxed);
+  reportServerProgress(ServerState::IN_COLLECT_OPTIONS);
   collectOptions();
 
   // setup dependency, but ignore any failure for now
@@ -192,8 +195,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   // validate options of all features
-  _state = ServerState::IN_VALIDATE_OPTIONS;
-  reportServerProgress(_state);
+  _state.store(ServerState::IN_VALIDATE_OPTIONS, std::memory_order_relaxed);
+  reportServerProgress(ServerState::IN_VALIDATE_OPTIONS);
   validateOptions();
 
   // setup and validate all feature dependencies
@@ -211,8 +214,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // furthermore, they must not write any files under elevated privileges
   // if they want other features to access them, or if they want to access
   // these files with dropped privileges
-  _state = ServerState::IN_PREPARE;
-  reportServerProgress(_state);
+  _state.store(ServerState::IN_PREPARE, std::memory_order_relaxed);
+  reportServerProgress(ServerState::IN_PREPARE);
   prepare();
   
   // turn off all features that depend on other features that have been
@@ -224,28 +227,28 @@ void ApplicationServer::run(int argc, char* argv[]) {
   dropPrivilegesPermanently();
 
   // start features. now features are allowed to start threads, write files etc.
-  _state = ServerState::IN_START;
-  reportServerProgress(_state);
+  _state.store(ServerState::IN_START, std::memory_order_relaxed);
+  reportServerProgress(ServerState::IN_START);
   start();
 
   // wait until we get signaled the shutdown request
-  _state = ServerState::IN_WAIT;
-  reportServerProgress(_state);
+  _state.store(ServerState::IN_WAIT, std::memory_order_relaxed);
+  reportServerProgress(ServerState::IN_WAIT);
   wait();
 
   // stop all features
-  _state = ServerState::IN_STOP;
-  reportServerProgress(_state);
+  _state.store(ServerState::IN_STOP, std::memory_order_relaxed);
+  reportServerProgress(ServerState::IN_STOP);
   stop();
 
   // unprepare all features
-  _state = ServerState::IN_UNPREPARE;
-  reportServerProgress(_state);
+  _state.store(ServerState::IN_UNPREPARE, std::memory_order_relaxed);
+  reportServerProgress(ServerState::IN_UNPREPARE);
   unprepare();
 
   // stopped
-  _state = ServerState::STOPPED;
-  reportServerProgress(_state);
+  _state.store(ServerState::STOPPED, std::memory_order_relaxed);
+  reportServerProgress(ServerState::STOPPED);
 }
 
 // signal the server to shut down
@@ -285,7 +288,7 @@ void ApplicationServer::shutdownFatalError() {
 
 VPackBuilder ApplicationServer::options(
     std::unordered_set<std::string> const& excludes) const {
-  return _options->toVPack(false, excludes);
+  return _options->toVPack(false, false, excludes);
 }
 
 // walks over all features and runs a callback function for them
@@ -307,12 +310,15 @@ void ApplicationServer::collectOptions() {
 
   _options->addHiddenOption("--dump-dependencies", "dump dependency graph",
                             new BooleanParameter(&_dumpDependencies));
+  
+  _options->addHiddenOption("--dump-options", "dump configuration options in JSON format",
+                            new BooleanParameter(&_dumpOptions));
 
   apply(
       [this](ApplicationFeature* feature) {
         LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";
         feature->collectOptions(_options);
-        reportFeatureProgress(_state, feature->name());
+        reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
       },
       true);
 }
@@ -358,23 +364,31 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
       (*it)->loadOptions(_options, _binaryPath);
     }
   }
+  
+  if (_dumpOptions) {
+    auto builder = _options->toVPack(false, true, std::unordered_set<std::string>());
+    arangodb::velocypack::Options options;
+    options.prettyPrint = true;
+    std::cout << builder.slice().toJson(&options) << std::endl;
+    exit(EXIT_SUCCESS);
+  }
 }
 
 void ApplicationServer::validateOptions() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
-
+    
   for (auto feature : _orderedFeatures) {
     if (feature->isEnabled()) {
       LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name()
                                         << "::validateOptions";
       feature->validateOptions(_options);
       feature->state(FeatureState::VALIDATED);
-      reportFeatureProgress(_state, feature->name());
+      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
     }
   }
 
   // inform about obsolete options  
-  _options->walk([](Section const& section, Option const& option) {
+  _options->walk([](Section const&, Option const& option) {
     if (option.obsolete) {
       LOG_TOPIC(WARN, Logger::STARTUP) << "obsolete option '" << option.displayName() << "' used in configuration. "
                                        << "setting this option will not have any effect.";
@@ -561,7 +575,7 @@ void ApplicationServer::prepare() {
         throw;
       }
 
-      reportFeatureProgress(_state, feature->name());
+      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
     }
   }
 }
@@ -581,7 +595,7 @@ void ApplicationServer::start() {
     try {
       feature->start();
       feature->state(FeatureState::STARTED);
-      reportFeatureProgress(_state, feature->name());
+      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
     } catch (basics::Exception const& ex) {
       res.reset(ex.code(), std::string("startup aborted: caught exception during start of feature '") + feature->name() + "': " + ex.what());
     } catch (std::bad_alloc const& ex) {
@@ -660,7 +674,7 @@ void ApplicationServer::stop() {
       LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during stop of feature '" << feature->name() << "'";
     }
     feature->state(FeatureState::STOPPED);
-    reportFeatureProgress(_state, feature->name());
+    reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
   }
 }
 
@@ -680,7 +694,7 @@ void ApplicationServer::unprepare() {
       LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during unprepare of feature '" << feature->name() << "'";
     }
     feature->state(FeatureState::UNPREPARED);
-    reportFeatureProgress(_state, feature->name());
+    reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
   }
 }
 

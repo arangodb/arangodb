@@ -1,0 +1,15 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/view/products/properties &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"threadMaxIdle"</span> : <span class="hljs-number">10</span> 
+}
+EOF
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
+
+{ 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"13108"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span> 
+}

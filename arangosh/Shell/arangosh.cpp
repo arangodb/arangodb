@@ -24,12 +24,15 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
+#include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8ShellPhase.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Logger/Logger.h"
@@ -60,7 +63,11 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     
     try {
-      server.addFeature(new ClientFeature(&server));
+      server.addFeature(new application_features::BasicFeaturePhase(&server, true));
+      server.addFeature(new application_features::GreetingsFeaturePhase(&server, true));
+      server.addFeature(new application_features::V8ShellFeaturePhase(&server));
+
+      server.addFeature(new ClientFeature(&server, true));
       server.addFeature(new ConfigFeature(&server, name));
       server.addFeature(new ConsoleFeature(&server));
       server.addFeature(new LanguageFeature(&server));

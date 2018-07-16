@@ -21,16 +21,15 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/WriteLocker.h"
-#include "Basics/ReadLocker.h"
 #include "RestTransactionHandler.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "VocBase/Methods/Transactions.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
-#include "Basics/voc-errors.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Transactions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -40,15 +39,14 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
-  : RestVocbaseBaseHandler(request, response)
-  , _v8Context(nullptr)
-  , _lock()
-{}
+: RestVocbaseBaseHandler(request, response)
+, _v8Context(nullptr)
+, _lock() {}
 
-void RestTransactionHandler::returnContext(){
-    WRITE_LOCKER(writeLock, _lock);
-    V8DealerFeature::DEALER->exitContext(_v8Context);
-    _v8Context = nullptr;
+void RestTransactionHandler::returnContext() {
+  WRITE_LOCKER(writeLock, _lock);
+  V8DealerFeature::DEALER->exitContext(_v8Context);
+  _v8Context = nullptr;
 }
 
 RestStatus RestTransactionHandler::execute() {
@@ -56,35 +54,37 @@ RestStatus RestTransactionHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
-
+  
   auto slice = _request->payload();
-  if(!slice.isObject()){
+  if (!slice.isObject()) {
     generateError(Result(TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context"));
     return RestStatus::DONE;
   }
-
+  
   std::string portType = _request->connectionInfo().portType();
-
-  _v8Context = V8DealerFeature::DEALER->enterContext(_vocbase, true /*allow use database*/);
+  
+  _v8Context =
+  V8DealerFeature::DEALER->enterContext(&_vocbase, true /*allow use database*/);
+  
   if (!_v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
     return RestStatus::DONE;
   }
-
+  
   TRI_DEFER(returnContext());
-
+  
   VPackBuilder result;
   try {
     {
       WRITE_LOCKER(lock, _lock);
-      if(_canceled){
+      if (_canceled) {
         generateCanceled();
         return RestStatus::DONE;
       }
     }
-
+    
     Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled, slice , portType, result);
-    if (res.ok()){
+    if (res.ok()) {
       VPackSlice slice = result.slice();
       if (slice.isNone()) {
         generateOk(rest::ResponseCode::OK, VPackSlice::nullSlice());
@@ -101,7 +101,7 @@ RestStatus RestTransactionHandler::execute() {
   } catch (...) {
     generateError(Result(TRI_ERROR_INTERNAL));
   }
-
+  
   return RestStatus::DONE;
 }
 
@@ -111,7 +111,7 @@ bool RestTransactionHandler::cancel() {
   _canceled.store(true);
   auto isolate = _v8Context->_isolate;
   if (!v8::V8::IsExecutionTerminating(isolate)) {
-      v8::V8::TerminateExecution(isolate);
+    v8::V8::TerminateExecution(isolate);
   }
   return true;
 }

@@ -222,7 +222,7 @@ function dumpTestSuite () {
       assertEqual("fulltext", c.getIndexes()[7].type);
       assertEqual([ "a_f" ], c.getIndexes()[7].fields);
 
-      assertEqual("geo2", c.getIndexes()[8].type);
+      assertEqual("geo", c.getIndexes()[8].type);
       assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
       assertFalse(c.getIndexes()[8].unique);
 
@@ -386,6 +386,28 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 10000 RETURN doc").toArray();
       assertEqual(0, res.length);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test view restoring
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testView : function () {
+      try {
+        db._createView("check", "arangosearch", {});
+      } catch (err) {}
+
+      let views = db._views();
+      if (views.length === 0) {
+        return; // arangosearch views are not supported
+      }
+
+      let view = db._view("UnitTestsDumpView");
+      assertTrue(view !== null);
+      let props = view.properties();
+      assertEqual(props.collections.length, 1);
+      assertTrue(props.hasOwnProperty("links"));
+      assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
     }
 
   };

@@ -60,13 +60,14 @@ static void JS_RotateVocbaseCol(
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  
-  SingleCollectionTransaction trx(
-      transaction::V8Context::Create(collection->vocbase(), true),
-      collection->cid(), AccessMode::Type::WRITE);
 
+  SingleCollectionTransaction trx(
+    transaction::V8Context::Create(collection->vocbase(), true),
+    collection,
+    AccessMode::Type::WRITE
+  );
   Result res = trx.begin();
-  
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -414,7 +415,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         if (args.Length() > 2) {
           writeShutdownFile = TRI_ObjectToBoolean(args[2]);
-        
+
           if (args.Length() > 3) {
             maxWaitTime = TRI_ObjectToDouble(args[3]);
           }
@@ -460,11 +461,7 @@ static void JS_WaitCollectorWal(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -472,11 +469,10 @@ static void JS_WaitCollectorWal(
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
-
-  arangodb::LogicalCollection* col = vocbase->lookupCollection(name);
+  auto col = vocbase.lookupCollection(name);
 
   if (col == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   double timeout = 30.0;
@@ -485,7 +481,8 @@ static void JS_WaitCollectorWal(
   }
 
   int res = MMFilesLogfileManager::instance()->waitForCollectorQueue(
-      col->cid(), timeout);
+    col->id(), timeout
+  );
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -537,6 +534,16 @@ static void JS_TransactionsWal(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  EngineSelectorFeature::ENGINE->waitForEstimatorSync(std::chrono::seconds(10));
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
 void MMFilesV8Functions::registerResources() {
   ISOLATE;
   v8::HandleScope scope(isolate);
@@ -546,7 +553,7 @@ void MMFilesV8Functions::registerResources() {
   // patch ArangoCollection object
   v8::Handle<v8::ObjectTemplate> rt = v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
-  
+
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "datafiles"),
                        JS_DatafilesVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "datafileScan"),
@@ -557,17 +564,21 @@ void MMFilesV8Functions::registerResources() {
                        JS_TruncateDatafileVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "tryRepairDatafile"),
                        JS_TryRepairDatafileVocbaseCol, true);
-  
+
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"), JS_FlushWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, 
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "WAL_WAITCOLLECTOR"),
                                JS_WaitCollectorWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, 
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "WAL_PROPERTIES"),
                                JS_PropertiesWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, 
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "WAIT_FOR_ESTIMATOR_SYNC"),
+                               JS_WaitForEstimatorSync, true);
 }

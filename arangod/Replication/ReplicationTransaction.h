@@ -37,15 +37,12 @@ namespace arangodb {
 class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
-  explicit ReplicationTransaction(TRI_vocbase_t* vocbase)
-      : transaction::Methods(transaction::StandaloneContext::Create(vocbase)),
-        _guard(vocbase) {
-
+  explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
+    : transaction::Methods(transaction::StandaloneContext::Create(vocbase)),
+      _guard(vocbase) {
     TRI_ASSERT(_state != nullptr);
     _state->setType(AccessMode::Type::EXCLUSIVE);
   }
-
- public:
 
   /// @brief get a collection by id
   /// this will automatically add the collection to the transaction

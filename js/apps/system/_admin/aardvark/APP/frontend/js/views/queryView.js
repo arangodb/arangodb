@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa */
-/* global _, arangoHelper, numeral, templateEngine, Joi */
+/* global Backbone, $, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
+/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
   'use strict';
@@ -18,6 +18,7 @@
 
     allowUpload: false,
     renderComplete: false,
+    loadedCachedQuery: false,
 
     customQueries: [],
     cachedQueries: {},
@@ -71,6 +72,7 @@
     events: {
       'click #executeQuery': 'executeQuery',
       'click #explainQuery': 'explainQuery',
+      'click #debugQuery': 'debugDownloadDialog',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
       'click .outputEditorWrapper #downloadCsvResult': 'downloadCsvResult',
@@ -116,14 +118,14 @@
 
     storeQuerySize: function (e) {
       if (typeof (Storage) !== 'undefined') {
-        localStorage.setItem('querySize', $(e.currentTarget).val());
+        sessionStorage.setItem('querySize', $(e.currentTarget).val());
       }
     },
 
     restoreQuerySize: function () {
       if (typeof (Storage) !== 'undefined') {
-        if (localStorage.getItem('querySize')) {
-          $('#querySize').val(localStorage.getItem('querySize'));
+        if (sessionStorage.getItem('querySize')) {
+          $('#querySize').val(sessionStorage.getItem('querySize'));
         }
       }
     },
@@ -144,6 +146,7 @@
           $('#switchTypes').text('JSON');
           this.renderBindParamTable();
         }
+        this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
       } else {
         arangoHelper.arangoError('Bind parameter', 'Could not parse bind parameter');
       }
@@ -240,6 +243,7 @@
 
     exportCustomQueries: function () {
       var name;
+      var self = this;
 
       $.ajax('whoAmI?_=' + Date.now()).success(function (data) {
         name = data.user;
@@ -247,8 +251,12 @@
         if (name === null || name === false) {
           name = 'root';
         }
-        var url = 'query/download/' + encodeURIComponent(name);
-        arangoHelper.download(url);
+        if (frontendConfig.ldapEnabled) {
+          self.collection.downloadLocalQueries();
+        } else {
+          var url = 'query/download/' + encodeURIComponent(name);
+          arangoHelper.download(url);
+        }
       });
     },
 
@@ -270,7 +278,7 @@
             $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
           }
 
-          if (localStorage.getItem('lastOpenQuery') !== 'undefined') {
+          if (sessionStorage.getItem('lastOpenQuery') !== 'undefined') {
             $('#updateCurrentQuery').show();
           }
         }
@@ -359,7 +367,7 @@
         this.toggleQueries();
       }
 
-      var lastQueryName = localStorage.getItem('lastOpenQuery');
+      var lastQueryName = sessionStorage.getItem('lastOpenQuery');
       // backup the last query
       this.state.lastQuery.query = this.aqlEditor.getValue();
       this.state.lastQuery.bindParam = this.bindParamTableObj;
@@ -371,7 +379,7 @@
       this.currentQuery = this.collection.findWhere({name: name});
 
       if (this.currentQuery) {
-        localStorage.setItem('lastOpenQuery', this.currentQuery.get('name'));
+        sessionStorage.setItem('lastOpenQuery', this.currentQuery.get('name'));
       }
 
       $('#updateCurrentQuery').show();
@@ -503,7 +511,7 @@
       var outputEditor = ace.edit('outputEditor' + counter);
 
       outputEditor.setReadOnly(true);
-      outputEditor.getSession().setMode('ace/mode/json');
+      outputEditor.getSession().setMode('ace/mode/aql');
       outputEditor.setOption('vScrollBarAlwaysVisible', true);
       outputEditor.setOption('showPrintMargin', false);
       this.setEditorAutoHeight(outputEditor);
@@ -516,6 +524,62 @@
 
       this.fillExplain(outputEditor, counter);
       this.outputCounter++;
+    },
+
+    debugDownloadDialog: function () {
+      var buttons = [];
+      var tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          'debug-download-package-disclaimer',
+          'Disclaimer',
+          'This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include collection names and created indexes, including attribute names and bind parameters. All string values will be obfuscated in a not-reversable way. If the below check box is not checked this package will not include any data. If the below check box is checked it will include a sample data-set again obfuscating all string values, all number values are not obfuscated. In order to check if any sensitive data is shared open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before. Including this package in bug reports will lower the amout of questioning back and forth until the issue is reproduced.',
+          undefined,
+          false,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createCheckboxEntry(
+          'debug-download-package-examples',
+          'Include obfuscated examples',
+          'includeExamples',
+          'Includes an example set of documents, obfuscating all String values inside the data. This helps the Team in many ways as many issues are related to the document structure / format and the indexes defined on them.',
+          true
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton('Download Package', this.downloadDebugZip.bind(this))
+      );
+      window.modalView.show('modalTable.ejs', 'Download Query Debug Package', buttons, tableContent, undefined, undefined);
+    },
+
+    downloadDebugZip: function () {
+      if (this.verifyQueryAndParams()) {
+        return;
+      }
+
+      var cbFunction = function () {
+        window.modalView.hide();
+      };
+      var errorFunction = function (errorCode, response) {
+        window.arangoHelper.arangoError('Debug Dump', errorCode + ': ' + response);
+        window.modalView.hide();
+      };
+
+      var query = this.aqlEditor.getValue();
+      if (query !== '' && query !== undefined && query !== null) {
+        var url = 'query/debugDump';
+        var body = {
+          query: query,
+          bindVars: this.bindParamTableObj || {},
+          examples: $('#debug-download-package-examples').is(':checked')
+        };
+        arangoHelper.downloadPost(url, JSON.stringify(body), cbFunction, errorFunction);
+      } else {
+        arangoHelper.arangoError('Query error', 'Could not create a debug package.');
+      }
     },
 
     fillExplain: function (outputEditor, counter) {
@@ -586,15 +650,15 @@
     },
 
     getCachedQueryAfterRender: function () {
-      if (this.renderComplete === false) {
+      if (this.renderComplete === false && this.aqlEditor) {
         // get cached query if available
         var queryObject = this.getCachedQuery();
         var self = this;
 
-        if (queryObject !== null && queryObject !== undefined && queryObject !== '') {
+        if (queryObject !== null && queryObject !== undefined && queryObject !== '' && Object.keys(queryObject).length > 0) {
           this.aqlEditor.setValue(queryObject.query, 1);
 
-          var queryName = localStorage.getItem('lastOpenQuery');
+          var queryName = sessionStorage.getItem('lastOpenQuery');
 
           if (queryName !== undefined && queryName !== 'undefined') {
             try {
@@ -614,16 +678,7 @@
             try {
               // then fill values into input boxes
               self.bindParamTableObj = JSON.parse(queryObject.parameter);
-
-              var key;
-              _.each($('#arangoBindParamTable input'), function (element) {
-                key = $(element).attr('name');
-                if (typeof self.bindParamTableObj[key] === 'object') {
-                  $(element).val(JSON.parse(self.bindParamTableObj[key]));
-                } else {
-                  $(element).val(self.bindParamTableObj[key]);
-                }
-              });
+              self.fillBindParamTable(self.bindParamTableObj);
 
               // resave cached query
               self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
@@ -636,7 +691,7 @@
 
     getCachedQuery: function () {
       if (Storage !== 'undefined') {
-        var cache = localStorage.getItem('cachedQuery');
+        var cache = sessionStorage.getItem('cachedQuery');
         if (cache !== undefined) {
           var query = JSON.parse(cache);
           this.currentQuery = query;
@@ -656,7 +711,7 @@
             parameter: vars
           };
           this.currentQuery = myObject;
-          localStorage.setItem('cachedQuery', JSON.stringify(myObject));
+          sessionStorage.setItem('cachedQuery', JSON.stringify(myObject));
         }
       }
     },
@@ -737,6 +792,7 @@
       this.restoreCachedQueries();
       this.delegateEvents();
       this.restoreQuerySize();
+      this.getCachedQueryAfterRender();
     },
 
     cleanupGraphs: function () {
@@ -1064,6 +1120,7 @@
 
       var counter = 0;
 
+      this.checkForNewBindParams();
       _.each(this.bindParamTableObj, function (val, key) {
         $('#arangoBindParamTable tbody').append(
           '<tr>' +
@@ -1072,17 +1129,6 @@
           '</tr>'
         );
         counter++;
-        _.each($('#arangoBindParamTable input'), function (element) {
-          if ($(element).attr('name') === key) {
-            if (val instanceof Array) {
-              $(element).val(JSON.stringify(val)).addClass('arraytype');
-            } else if (typeof val === 'object') {
-              $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
-            } else {
-              $(element).val(val).addClass(typeof val + 'type');
-            }
-          }
-        });
       });
       if (counter === 0) {
         $('#arangoBindParamTable tbody').append(
@@ -1091,10 +1137,12 @@
           '<td></td>' +
           '</tr>'
         );
+      } else {
+        this.fillBindParamTable(this.bindParamTableObj);
       }
 
       // check if existing entry already has a stored value
-      var queryName = localStorage.getItem('lastOpenQuery');
+      var queryName = sessionStorage.getItem('lastOpenQuery');
       var query = this.collection.findWhere({name: queryName});
 
       try {
@@ -1102,16 +1150,9 @@
       } catch (ignore) {
       }
 
-      if (query) {
-        var attributeName;
-        _.each($('#arangoBindParamTable input'), function (elem) {
-          attributeName = $(elem).attr('name');
-          _.each(query.parameter, function (qVal, qKey) {
-            if (qKey === attributeName) {
-              $(elem).val(qVal);
-            }
-          });
-        });
+      if (query && this.loadedCachedQuery === false) {
+        this.loadedCachedQuery = true;
+        this.fillBindParamTable(query.parameter);
       }
     },
 
@@ -1119,7 +1160,28 @@
       _.each(object, function (val, key) {
         _.each($('#arangoBindParamTable input'), function (element) {
           if ($(element).attr('name') === key) {
-            $(element).val(val);
+            if (val instanceof Array) {
+              $(element).val(JSON.stringify(val)).addClass('arraytype');
+            } else if (typeof val === 'object') {
+              $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
+            } else if (typeof val === 'number') {
+              $(element).val(val).addClass(typeof val + 'type');
+            } else {
+              var isNumber = false;
+              // check if a potential string value is a number
+              try {
+                if (typeof JSON.parse(val) === 'number') {
+                  isNumber = true;
+                }
+              } catch (ignore) {
+              }
+
+              if (!isNumber) {
+                $(element).val(val).addClass(typeof val + 'type');
+              } else {
+                $(element).val('"' + val + '"').addClass(typeof val + 'type');
+              }
+            }
           }
         });
       });
@@ -1410,7 +1472,7 @@
     },
 
     createAQL: function () {
-      localStorage.setItem('lastOpenQuery', undefined);
+      sessionStorage.setItem('lastOpenQuery', undefined);
       this.aqlEditor.setValue('');
 
       this.refreshAQL(true);
@@ -1556,21 +1618,22 @@
 
     verifyQueryAndParams: function () {
       var quit = false;
+      var self = this;
 
       if (this.aqlEditor.getValue().length === 0) {
         arangoHelper.arangoError('Query', 'Your query is empty');
         quit = true;
       }
 
-      var keys = [];
-      _.each(this.bindParamTableObj, function (val, key) {
-        if (val === '') {
+      // if query bind parameter editor is visible
+      if ($('#bindParamAceEditor').is(':visible')) {
+        try {
+          // check if parameters are parseable
+          JSON.parse(self.bindParamAceEditor.getValue());
+        } catch (e) {
+          arangoHelper.arangoError('Bind Parameter', 'Could not parse bind parameter');
           quit = true;
-          keys.push(key);
         }
-      });
-      if (keys.length > 0) {
-        arangoHelper.arangoError('Bind Parameter', JSON.stringify(keys) + ' not defined.');
       }
 
       return quit;
@@ -2312,7 +2375,7 @@
         var check = true;
         var attributes = {};
 
-        if (result.length <= 1) {
+        if (result.length < 1) {
           check = false;
         }
 
@@ -2519,7 +2582,7 @@
           self.getCachedQueryAfterRender();
 
           // old storage method
-          var item = localStorage.getItem('customQueries');
+          var item = sessionStorage.getItem('customQueries');
           if (item) {
             var queries = JSON.parse(item);
             // save queries in user collections extra attribute
@@ -2537,7 +2600,7 @@
                   'Could not import old local storage queries'
                 );
               } else {
-                localStorage.removeItem('customQueries');
+                sessionStorage.removeItem('customQueries');
               }
             };
             self.collection.saveCollectionQueries(callback);

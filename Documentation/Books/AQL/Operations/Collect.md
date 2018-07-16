@@ -23,7 +23,8 @@ COLLECT WITH COUNT INTO countVariable options
 
 `options` is optional in all variants.
 
-### Grouping syntaxes
+Grouping syntaxes
+-----------------
 
 The first syntax form of *COLLECT* only groups the result by the defined group 
 criteria specified in *expression*. In order to further process the results 
@@ -85,7 +86,8 @@ by city, and for each distinct combination of country and city, the users
 will be returned.
 
 
-### Discarding obsolete variables
+Discarding obsolete variables
+-----------------------------
 
 The third form of *COLLECT* allows rewriting the contents of the *groupsVariable* 
 using an arbitrary *projectionExpression*:
@@ -147,7 +149,8 @@ be used in the *KEEP* clause. *KEEP* supports the specification of multiple
 variable names.
 
 
-### Group length calculation
+Group length calculation
+------------------------
 
 *COLLECT* also provides a special *WITH COUNT* clause that can be used to 
 determine the number of group members efficiently.
@@ -161,13 +164,10 @@ FOR u IN users
   RETURN length
 ```
 
-The above is equivalent to, but more efficient than:
+The above is equivalent to, but less efficient than:
 
 ```
-RETURN LENGTH(
-  FOR u IN users
-    RETURN length
-)
+RETURN LENGTH(users)
 ```
 
 The *WITH COUNT* clause can also be used to efficiently count the number
@@ -185,7 +185,8 @@ FOR u IN users
 Note: the *WITH COUNT* clause can only be used together with an *INTO* clause.
 
 
-### Aggregation
+Aggregation
+-----------
 
 A `COLLECT` statement can be used to perform aggregation of data per group. To
 only determine group lengths, the `WITH COUNT INTO` variant of `COLLECT` can be
@@ -242,12 +243,16 @@ assignment:
 
 - on the top level, an aggregate expression must be a call to one of the supported 
   aggregation functions `LENGTH`, `MIN`, `MAX`, `SUM`, `AVERAGE`, `STDDEV_POPULATION`, 
-  `STDDEV_SAMPLE`, `VARIANCE_POPULATION`, or `VARIANCE_SAMPLE`
+  `STDDEV_SAMPLE`, `VARIANCE_POPULATION`, `VARIANCE_SAMPLE`, `UNIQUE`, `SORTED_UNIQUE` 
+  or `COUNT_DISTINCT`. The following aliases are allowed too: `COUNT` (for `LENGTH`),
+  `AVG` (for `AVERAGE`), `STDDEV` (for `STDDEV_POPULATION`), `VARIANCE` (for `VARIANCE_POPULATION`),
+  `COUNT_UNIQUE` (for `COUNT_DISTINCT`).
 
 - an aggregate expression must not refer to variables introduced by the `COLLECT` itself
 
 
-### COLLECT variants
+COLLECT variants
+----------------
 
 Since ArangoDB 2.6, there are two variants of *COLLECT* that the optimizer can
 choose from: the *sorted* variant and the *hash* variant. The *hash* variant only becomes a
@@ -259,7 +264,7 @@ To ensure correctness of the result, the AQL optimizer will automatically insert
 statement into the query in front of the *COLLECT* statement. The optimizer may be able to 
 optimize away that *SORT* statement later if a sorted index is present on the group criteria. 
 
-In case a *COLLECT* qualifies for using the *hash* variant, the optimizer will create an extra 
+In case a *COLLECT* statement qualifies for using the *hash* variant, the optimizer will create an extra 
 plan for it at the beginning of the planning phase. In this plan, no extra *SORT* statement will be
 added in front of the *COLLECT*. This is because the *hash* variant of *COLLECT* does not require
 sorted input. Instead, a *SORT* statement will be added after the *COLLECT* to sort its output. 
@@ -290,7 +295,8 @@ Which variant of *COLLECT* was actually used can be figured out by looking into 
 a query, specifically the *AggregateNode* and its *aggregationOptions* attribute.
 
 
-### Setting COLLECT options
+Setting COLLECT options
+-----------------------
 
 *options* can be used in a *COLLECT* statement to inform the optimizer about the preferred *COLLECT*
 method. When specifying the following appendix to a *COLLECT* statement, the optimizer will always use
@@ -300,12 +306,17 @@ the *sorted* variant of *COLLECT* and not even create a plan using the *hash* va
 OPTIONS { method: "sorted" }
 ```
 
-Note that specifying *hash* as method will not make the optimizer use the *hash* variant. This is
-because the *hash* variant is not eligible for all queries. Instead, if no options or any other method
-than *sorted* are specified in *OPTIONS*, the optimizer will use its regular cost estimations.
+It is also possible to specify *hash* as the preferred method. In this case the optimizer will create
+a plan using the *hash* method only if the COLLECT statement qualifies (not all COLLECT statements
+can use the *hash* method). In case the COLLECT statement qualifies, there will be only a one plan
+that uses the *hash* method. If it does not qualify, the optimizer will use the *sorted* method.
+
+If no method is specified, then the optimizer will create a plan that uses the *sorted* method, and
+an additional plan using the *hash* method if the COLLECT statement qualifies for it.
 
 
-### COLLECT vs. RETURN DISTINCT
+COLLECT vs. RETURN DISTINCT
+---------------------------
 
 In order to make a result set unique, one can either use *COLLECT* or *RETURN DISTINCT*. Behind the
 scenes, both variants will work by creating an *AggregateNode*. For both variants, the optimizer
@@ -325,6 +336,3 @@ FOR u IN users
 
 However, *COLLECT* is vastly more flexible than *RETURN DISTINCT*. Additionally, the order of results is 
 undefined for a *RETURN DISTINCT*, whereas for a *COLLECT* the results will be sorted.
-
-
-

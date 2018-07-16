@@ -41,8 +41,8 @@ static constexpr size_t maxCollectCount = 32;
 /// @brief create a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationManager::RocksDBReplicationManager() 
-    : _lock(), 
+RocksDBReplicationManager::RocksDBReplicationManager()
+    : _lock(),
       _contexts(),
       _isShuttingDown(false) {
   _contexts.reserve(64);
@@ -95,8 +95,10 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl);
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(TRI_vocbase_t* vocbase, 
+                                                                    double ttl, 
+                                                                    TRI_server_id_t serverId) {
+  auto context = std::make_unique<RocksDBReplicationContext>(vocbase, ttl, serverId);
   TRI_ASSERT(context.get() != nullptr);
   TRI_ASSERT(context->isUsed());
 
@@ -112,6 +114,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl) 
 
     _contexts.emplace(id, context.get());
   }
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "created replication context " << id;
+
   return context.release();
 }
 
@@ -130,6 +134,8 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
       // not found
       return false;
     }
+
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication context " << id; 
 
     context = it->second;
     TRI_ASSERT(context != nullptr);
@@ -162,7 +168,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::find(
-    RocksDBReplicationId id, bool& busy, double ttl) {
+    RocksDBReplicationId id, bool& busy, bool exclusive, double ttl) {
   RocksDBReplicationContext* context = nullptr;
   busy = false;
 
@@ -183,12 +189,11 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
       return nullptr;
     }
 
-    if (context->isUsed()) {
+    bool acquired = context->use(ttl, exclusive);
+    if (!acquired) {
       busy = true;
       return nullptr;
     }
-
-    context->use(ttl);
   }
 
   return context;
@@ -205,11 +210,12 @@ void RocksDBReplicationManager::release(RocksDBReplicationContext* context) {
     TRI_ASSERT(context->isUsed());
     context->release();
 
-    if (!context->isDeleted()) {
+    if (!context->isDeleted() || context->isUsed()) {
       return;
     }
-      
+
     // remove from the list
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing deleted replication context " << context->id(); 
     _contexts.erase(context->id());
   }
 
@@ -292,7 +298,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
     for (auto it = _contexts.begin(); it != _contexts.end();
          /* no hoisting */) {
       auto context = it->second;
-      
+
       if (force || context->expires() < now) {
         // expire contexts
         context->deleted();
@@ -326,17 +332,18 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
   // remove contexts outside the lock
   for (auto it : found) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "garbage collecting replication context " << it->id(); 
     delete it;
   }
 
   return (!found.empty());
 }
-  
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief tell the replication manager that a shutdown is in progress
 /// effectively this will block the creation of new contexts
 //////////////////////////////////////////////////////////////////////////////
-    
+
 void RocksDBReplicationManager::beginShutdown() {
   MUTEX_LOCKER(mutexLocker, _lock);
   _isShuttingDown = true;

@@ -134,7 +134,7 @@ bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) noexcept {
 
   // special case: finalize shrinking case above
   if ((softLimit == Cache::minSize) && (hardLimit == Cache::minSize) &&
-      (usage < hardLimit)) {
+      (usage <= hardLimit)) {
     return approve();
   }
 

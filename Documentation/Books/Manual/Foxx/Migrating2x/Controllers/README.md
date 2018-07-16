@@ -1,7 +1,7 @@
 Controllers vs routers
 ======================
 
-Foxx Controllers have been replaced with [routers](../../Router/README.md). This is more than a cosmetic change as there are significant differences in behaviour:
+Foxx Controllers have been replaced with [routers](../../Reference/Routers/README.md). This is more than a cosmetic change as there are significant differences in behaviour:
 
 Controllers were automatically mounted when the file defining them was executed. Routers need to be explicitly mounted using the `module.context.use` method. Routers can also be exported, imported and even nested. This makes it easier to split up complex routing trees across multiple files.
 

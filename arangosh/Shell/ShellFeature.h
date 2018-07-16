@@ -57,6 +57,7 @@ class ShellFeature final : public application_features::ApplicationFeature {
   int* _result;
   RunMode _runMode;
   std::vector<std::string> _positionals;
+  std::string _unitTestFilter;
 };
 }
 

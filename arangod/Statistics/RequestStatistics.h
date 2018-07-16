@@ -37,7 +37,6 @@ namespace arangodb {
 class RequestStatistics {
  public:
   static void initialize();
-  static void shutdown();
   static size_t processAll();
 
   static RequestStatistics* acquire();
@@ -126,6 +125,13 @@ class RequestStatistics {
 
   static void SET_REQUEST_END(RequestStatistics* stat) {
     if (stat != nullptr) {
+      stat->_requestEnd = StatisticsFeature::time();
+    }
+  }
+  
+  static void SET_REQUEST_START_END(RequestStatistics* stat) {
+    if (stat != nullptr) {
+      stat->_requestStart = StatisticsFeature::time();
       stat->_requestEnd = StatisticsFeature::time();
     }
   }

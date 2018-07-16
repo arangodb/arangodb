@@ -30,7 +30,7 @@ namespace aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
-  
+
 /// @brief type of an optimizer rule function, the function gets an
 /// optimizer, an ExecutionPlan, and the current rule. it has
 /// to append one or more plans to the resulting deque. This must
@@ -53,10 +53,14 @@ struct OptimizerRule {
 
     // "Pass 1": moving nodes "up" (potentially outside loops):
     // ========================================================
+    replaceNearWithinFulltext,
 
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1,
+
+    // remove legacy geo functions
+    removeLegacyGeoFunctions_pass1,
 
     inlineSubqueriesRule_pass1,
 
@@ -76,7 +80,7 @@ struct OptimizerRule {
 
     // "Pass 2": try to remove redundant or unnecessary nodes
     // ======================================================
-    
+
     // remove filters from the query that are not necessary at all
     // filters that are always true will be removed entirely
     // filters that are always false will be replaced with a NoResults node
@@ -88,16 +92,20 @@ struct OptimizerRule {
     // remove redundant sort blocks
     removeRedundantSortsRule_pass2,
 
+    // push limits into subqueries and simplify them
+    optimizeSubqueriesRule_pass2,
+
+
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher
     //           levels go back to this or lower levels!
     // ======================================================
-    
+
     interchangeAdjacentEnumerationsRule_pass3,
 
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
     // ======================================================
-    
+
     // move calculations up the dependency chain (to pull them out of
     // inner loops etc.)
     moveCalculationsUpRule_pass4,
@@ -135,10 +143,10 @@ struct OptimizerRule {
 
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
-    
+
     // remove FILTER and SORT if there are geoindexes
     applyGeoIndexRule_pass6,
-    
+
     // replace FULLTEXT with index
     applyFulltextIndexRule_pass6,
 
@@ -151,46 +159,58 @@ struct OptimizerRule {
 
     // try to find sort blocks which are superseeded by indexes
     useIndexForSortRule_pass6,
-    
+
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule_pass6,
-    
+
     // merge filters into graph traversals
     optimizeTraversalsRule_pass6,
     // remove redundant filters statements
     removeFiltersCoveredByTraversal_pass6,
-    
+
     // remove calculations that are redundant
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule_pass6,
+
+#ifdef USE_IRESEARCH
+    // move filters and sort conditions into views and remove them
+    handleViewsRule_pass6,
+#endif
+
     // remove now obsolete path variables
     removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
 
-    // simplify an EnumerationCollectionNode that fetches an
-    // entire document to a projection of this document
-    reduceExtractionToProjectionRule_pass6,
+    // when we have single document operations, fill in special cluster
+    // handling.
+    substituteSingleDocumentOperations_pass6,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,
 
     /// Pass 9: patch update statements
     patchUpdateStatementsRule_pass9,
-    
+
     /// "Pass 10": final transformations for the cluster
-    
+
     // optimize queries in the cluster so that the entire query
     // gets pushed to a single server
     optimizeClusterSingleShardRule_pass10,
 
     // make operations on sharded collections use distribute
     distributeInClusterRule_pass10,
-    
+
     // try to find candidates for shard-local joins in the cluster
     optimizeClusterJoinsRule_pass10,
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule_pass10,
+
+#ifdef USE_IRESEARCH
+    // FIXME order-???
+    // make operations on sharded IResearch views use scatter / gather / remote
+    scatterIResearchViewInClusterRule_pass10,
+#endif
 
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
@@ -213,9 +233,18 @@ struct OptimizerRule {
 #endif
 
     // recognize that a RemoveNode can be moved to the shards
-    undistributeRemoveAfterEnumCollRule_pass10
-  };
+    undistributeRemoveAfterEnumCollRule_pass10,
 
+    // push collect operations to the db servers
+    collectInClusterRule_pass10,
+
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule_pass10,
+
+    // simplify an EnumerationCollectionNode that fetches an
+    // entire document to a projection of this document
+    reduceExtractionToProjectionRule_pass10,
+  };
 
   std::string name;
   RuleFunction func;
@@ -234,7 +263,7 @@ struct OptimizerRule {
         canCreateAdditionalPlans(canCreateAdditionalPlans),
         canBeDisabled(canBeDisabled),
         isHidden(isHidden) {}
- 
+
 };
 
 } // namespace aql

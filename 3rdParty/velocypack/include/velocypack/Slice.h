@@ -67,12 +67,12 @@ namespace velocypack {
 
 class SliceScope;
 
-class SliceStaticData {
-  friend class Slice;
-  static ValueLength const FixedTypeLengths[256];
+struct SliceStaticData {
+  static uint8_t const FixedTypeLengths[256];
   static ValueType const TypeMap[256];
   static unsigned int const WidthMap[32];
   static unsigned int const FirstSubMap[32];
+  static uint64_t const PrecalculatedHashesForDefaultSeed[256];
 };
 
 class Slice {
@@ -87,6 +87,7 @@ class Slice {
   uint8_t const* _start;
 
  public:
+  static constexpr uint64_t defaultSeed = 0xdeadbeef;
 
   // constructor for an empty Value of type None
   constexpr Slice() noexcept : Slice("\x00") {}
@@ -171,18 +172,24 @@ class Slice {
   inline uint8_t head() const noexcept { return *_start; }
 
   // hashes the binary representation of a value
-  inline uint64_t hash(uint64_t seed = 0xdeadbeef) const {
-    return VELOCYPACK_HASH(start(), checkOverflow(byteSize()), seed);
+  inline uint64_t hash(uint64_t seed = defaultSeed) const {
+    size_t const size = checkOverflow(byteSize());
+    if (seed == defaultSeed && size == 1) {
+      uint64_t h = SliceStaticData::PrecalculatedHashesForDefaultSeed[head()];
+      VELOCYPACK_ASSERT(h != 0);
+      return h;
+    }
+    return VELOCYPACK_HASH(start(), size, seed);
   }
 
   // hashes the value, normalizing different representations of
   // arrays, objects and numbers. this function may produce different
   // hash values than the binary hash() function
-  uint64_t normalizedHash(uint64_t seed = 0xdeadbeef) const;
+  uint64_t normalizedHash(uint64_t seed = defaultSeed) const;
 
   // hashes the binary representation of a String slice. No check
   // is done if the Slice value is actually of type String
-  inline uint64_t hashString(uint64_t seed = 0xdeadbeef) const noexcept {
+  inline uint64_t hashString(uint64_t seed = defaultSeed) const noexcept {
     return VELOCYPACK_HASH(start(), static_cast<size_t>(stringSliceLength()), seed);
   }
 
@@ -384,7 +391,7 @@ class Slice {
       Slice first(_start + firstSubOffset);
       ValueLength s = first.byteSize();
       if (s == 0) {
-        throw Exception(Exception::InternalError);
+        throw Exception(Exception::InternalError, "Invalid data for Object");
       }
       return (end - firstSubOffset) / s;
     } else if (offsetSize < 8) {
@@ -425,13 +432,13 @@ class Slice {
       throw Exception(Exception::InvalidValueType, "Expecting type Object");
     }
 
-    Slice key = getNthKey(index, false);
+    Slice key = getNthKeyUntranslated(index);
     return Slice(key.start() + key.byteSize());
   }
   
   // extract the nth value from an Object
   Slice getNthValue(ValueLength index) const {
-    Slice key = getNthKey(index, false);
+    Slice key = getNthKeyUntranslated(index);
     return Slice(key.start() + key.byteSize());
   }
 
@@ -646,6 +653,19 @@ class Slice {
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
+  
+  char const* getStringUnchecked(ValueLength& length) const noexcept {
+    uint8_t const h = head();
+    if (h >= 0x40 && h <= 0xbe) {
+      // short UTF-8 String
+      length = h - 0x40;
+      return reinterpret_cast<char const*>(_start + 1);
+    }
+
+    // long UTF-8 String
+    length = readIntegerFixed<ValueLength, 8>(_start + 1);
+    return reinterpret_cast<char const*>(_start + 1 + 8);
+  }
 
   // return the length of the String slice
   ValueLength getStringLength() const {
@@ -731,7 +751,7 @@ class Slice {
   ValueLength byteSize() const {
     auto const h = head();
     // check if the type has a fixed length first
-    ValueLength l = SliceStaticData::FixedTypeLengths[h];
+    ValueLength l = static_cast<ValueLength>(SliceStaticData::FixedTypeLengths[h]);
     if (l != 0) {
       // return fixed length
       return l;
@@ -746,15 +766,7 @@ class Slice {
           return readVariableValueLength<false>(_start + 1);
         }
 
-        if (h == 0x01 || h == 0x0a) {
-          // we cannot get here, because the FixedTypeLengths lookup
-          // above will have kicked in already. however, the compiler
-          // claims we'll be reading across the bounds of the input
-          // here...
-          return 1;
-        }
-
-        VELOCYPACK_ASSERT(h > 0x00 && h <= 0x0e);
+        VELOCYPACK_ASSERT(h > 0x01 && h <= 0x0e && h != 0x0a);
         if (h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0])) {
           throw Exception(Exception::InternalError, "invalid Array/Object type");
         }
@@ -762,20 +774,9 @@ class Slice {
                                                 SliceStaticData::WidthMap[h]);
       }
 
-      case ValueType::External: {
-        return 1 + sizeof(char*);
-      }
-
-      case ValueType::UTCDate: {
-        return 1 + sizeof(int64_t);
-      }
-
-      case ValueType::Int: {
-        return static_cast<ValueLength>(1 + (h - 0x1f));
-      }
-
       case ValueType::String: {
         VELOCYPACK_ASSERT(h == 0xbf);
+
         if (h < 0xbf) {
           // we cannot get here, because the FixedTypeLengths lookup
           // above will have kicked in already. however, the compiler
@@ -783,6 +784,7 @@ class Slice {
           // here...
           return h - 0x40;
         }
+        
         // long UTF-8 String
         return static_cast<ValueLength>(
             1 + 8 + readIntegerFixed<ValueLength, 8>(_start + 1));
@@ -845,7 +847,7 @@ class Slice {
       }
     }
 
-    throw Exception(Exception::InternalError);
+    throw Exception(Exception::InternalError, "Invalid type for byteSize()");
   }
   
   ValueLength findDataOffset(uint8_t head) const noexcept {
@@ -875,12 +877,14 @@ class Slice {
   Slice makeKey() const;
 
   int compareString(char const* value, size_t length) const;
+  int compareStringUnchecked(char const* value, size_t length) const noexcept;
   
   inline int compareString(std::string const& attribute) const {
-    return compareString(attribute.c_str(), attribute.size());
+    return compareString(attribute.data(), attribute.size());
   }
 
   bool isEqualString(std::string const& attribute) const;
+  bool isEqualStringUnchecked(std::string const& attribute) const noexcept;
 
   // check if two Slices are equal on the binary level
   bool equals(Slice const& other) const {
@@ -910,11 +914,15 @@ class Slice {
   std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;
   
-  int64_t getIntUnchecked() const;
+  int64_t getIntUnchecked() const noexcept;
 
   // return the value for a UInt object, without checks
   // returns 0 for invalid values/types
-  uint64_t getUIntUnchecked() const;
+  uint64_t getUIntUnchecked() const noexcept;
+
+  // return the value for a SmallInt object, without checks
+  // returns 0 for invalid values/types
+  int64_t getSmallIntUnchecked() const noexcept;
   
  private:
   // get the total byte size for a String slice, including the head byte
@@ -941,6 +949,12 @@ class Slice {
   // extract the nth member from an Object, note that this is the nth
   // entry in the hash table for types 0x0b to 0x0e
   Slice getNthKey(ValueLength index, bool translate) const;
+
+  // extract the nth member from an Object, no translation
+  inline Slice getNthKeyUntranslated(ValueLength index) const {
+    VELOCYPACK_ASSERT(type() == ValueType::Object);
+    return Slice(_start + getNthOffset(index));
+  }
 
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;

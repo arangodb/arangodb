@@ -50,7 +50,7 @@ class GraphNode : public ExecutionNode {
   /// @brief constructor with a vocbase and a collection name
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             AstNode const* direction, AstNode const* graph,
-            std::unique_ptr<graph::BaseOptions>& options);
+            std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -60,13 +60,13 @@ class GraphNode : public ExecutionNode {
             std::vector<std::unique_ptr<Collection>> const& edgeColls,
             std::vector<std::unique_ptr<Collection>> const& vertexColls,
             std::vector<TRI_edge_direction_e> const& directions,
-            std::unique_ptr<graph::BaseOptions>& options);
+            std::unique_ptr<graph::BaseOptions> options);
 
  public:
   virtual ~GraphNode();
 
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
-                          bool verbose) const;
+                          unsigned flags) const override;
 
   /// @brief flag, if smart traversal (enterprise edition only!) is done
   bool isSmart() const { return _isSmart; }
@@ -153,10 +153,10 @@ class GraphNode : public ExecutionNode {
   /// @brief Reference to the pseudo variable
   AstNode* _tmpObjVarNode;
 
-  /// @brief Pseudo string value node to hold the last visted vertex id.
+  /// @brief Pseudo string value node to hold the last visited vertex id.
   AstNode* _tmpIdNode;
 
-  /// @brief input graphInfo only used for serialisation & info
+  /// @brief input graphInfo only used for serialization & info
   arangodb::velocypack::Builder _graphInfo;
 
   /// @brief the edge collection names
@@ -171,7 +171,7 @@ class GraphNode : public ExecutionNode {
   /// @brief Options for traversals
   std::unique_ptr<graph::BaseOptions> _options;
 
-  /// @brief Pseudo string value node to hold the last visted vertex id.
+  /// @brief Pseudo string value node to hold the last visited vertex id.
   /// @brief Flag if the options have been build.
   /// Afterwards this class is not copyable anymore.
   bool _optionsBuilt;

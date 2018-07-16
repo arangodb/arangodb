@@ -45,6 +45,20 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::httpclient;
 
+static void VerifyAttributes(VPackSlice result, std::string const& colName,
+                          std::string const& sName) {
+  REQUIRE(result.isObject());
+
+  VPackSlice col = result.get(colName);
+  REQUIRE(col.isObject());
+
+  VPackSlice plan = col.get("Plan");
+  REQUIRE(plan.isObject());
+
+  VPackSlice shard = plan.get(sName);
+  REQUIRE(shard.isObject());
+}
+
 static void VerifyNumbers(VPackSlice result, std::string const& colName,
                           std::string const& sName, uint64_t testTotal,
                           uint64_t testCurrent) {
@@ -97,6 +111,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
   std::string dbname = "UnitTestDB";
   std::string colName = "UnitTestCollection";
+  TRI_voc_cid_t cid = 1337;
   std::string cidString = "1337";
 
   std::string s1 = "s1234";
@@ -123,11 +138,26 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
   // Fake the collections
   std::vector<std::shared_ptr<LogicalCollection>> allCollections;
-
+  
   // Now we fake the calls
   fakeit::When(Method(infoMock, getCollections)).AlwaysDo([&](DatabaseID const& dbId) {
     REQUIRE(dbId == dbname);
     return allCollections;
+  });
+  // Now we fake the single collection call
+  fakeit::When(Method(infoMock, getCollection)).AlwaysDo([&](DatabaseID const& dbId, CollectionID const& colId) {
+    REQUIRE(dbId == dbname);
+    // REQUIRE(colId == colName);
+    REQUIRE(allCollections.size() > 0);
+
+    for (auto const& c : allCollections) {
+      if (c->name() == colId) {
+        return c;
+      }
+    }
+
+    REQUIRE(false);
+    return std::shared_ptr<LogicalCollection>(nullptr);
   });
   fakeit::When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
   fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
@@ -137,11 +167,11 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         return cic;
       });
 
-  fakeit::When(Method(colMock, name)).AlwaysReturn(colName);
+  const_cast<std::string&>(col.name()).assign(colName);
   fakeit::When(
       ConstOverloadedMethod(colMock, shardIds, std::shared_ptr<ShardMap>()))
       .AlwaysReturn(shards);
-  fakeit::When(Method(colMock, cid_as_string)).AlwaysReturn(cidString);
+  const_cast<TRI_voc_cid_t&>(col.id()) = cid;
 
   ShardDistributionReporter testee(
       std::shared_ptr<ClusterComm>(&cc, [](ClusterComm*) {}), &ci);
@@ -181,7 +211,6 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
       bool gotFirstRequest = false;
       CoordTransactionID cordTrxId = 0;
-      uint64_t requestsInFlight = 0;
 
       std::queue<ClusterCommResult> responses;
       ClusterCommResult leaderS2Response;
@@ -241,8 +270,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                   std::string const& destination, rest::RequestType reqtype,
                   std::string const& path,
                   std::shared_ptr<std::string const> body,
-                  std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                      headerFields,
+                  std::unordered_map<std::string, std::string> const& headerFields,
                   std::shared_ptr<ClusterCommCallback> callback,
                   ClusterCommTimeout timeout, bool singleRequest,
                   ClusterCommTimeout initTimeout) -> OperationID {
@@ -251,7 +279,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(callback == nullptr);  // We actively wait
                 REQUIRE(reqtype ==
                         rest::RequestType::GET);  // count is only get!
-                REQUIRE(headerFields->empty());   // Nono headers
+                REQUIRE(headerFields.empty());   // Nono headers
 
                 // This feature has at most 2s to do its job
                 // otherwise default values will be returned
@@ -350,238 +378,463 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
           });
 
       VPackBuilder resultBuilder;
-      testee.getDistributionForDatabase(dbname, resultBuilder);
+      WHEN("testing distribution for database") {
+        testee.getDistributionForDatabase(dbname, resultBuilder);
+        VPackSlice result = resultBuilder.slice();
 
-      VPackSlice result = resultBuilder.slice();
+        THEN("It should return an object") { REQUIRE(result.isObject()); }
 
-      THEN("It should return an object") { REQUIRE(result.isObject()); }
+        THEN("It should return one entry for every collection") {
+          VPackSlice col = result.get(colName);
+          REQUIRE(col.isObject());
+        }
 
-      THEN("It should return one entry for every collection") {
-        VPackSlice col = result.get(colName);
-        REQUIRE(col.isObject());
-      }
+        WHEN("Checking one of those collections") {
+          result = result.get(colName);
+          REQUIRE(result.isObject());
 
-      WHEN("Checking one of those collections") {
-        result = result.get(colName);
-        REQUIRE(result.isObject());
+          WHEN("validating the plan") {
+            VPackSlice plan = result.get("Plan");
+            REQUIRE(plan.isObject());
 
-        WHEN("validating the plan") {
-          VPackSlice plan = result.get("Plan");
-          REQUIRE(plan.isObject());
+            // One entry per shard
+            REQUIRE(plan.length() == shards->size());
 
-          // One entry per shard
-          REQUIRE(plan.length() == shards->size());
+            WHEN("Testing the in-sync shard") {
+              VPackSlice shard = plan.get(s1);
 
-          WHEN("Testing the in-sync shard") {
-            VPackSlice shard = plan.get(s1);
+              REQUIRE(shard.isObject());
 
-            REQUIRE(shard.isObject());
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
 
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver1short);
+              }
 
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver1short);
-            }
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 2);
 
-            THEN("It should have the correct followers shortnames") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 2);
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
 
-              VPackSlice firstFollower = followers.at(0);
-              REQUIRE(firstFollower.isString());
+                VPackSlice secondFollower = followers.at(1);
+                REQUIRE(secondFollower.isString());
 
-              VPackSlice secondFollower = followers.at(1);
-              REQUIRE(secondFollower.isString());
+                // We do not guarentee any ordering here
+                if (StringRef(firstFollower) == dbserver2short) {
+                  REQUIRE(secondFollower.copyString() == dbserver3short);
+                } else {
+                  REQUIRE(firstFollower.copyString() == dbserver3short);
+                  REQUIRE(secondFollower.copyString() == dbserver2short);
+                }
+              }
 
-              // We do not guarentee any ordering here
-              if (StringRef(firstFollower) == dbserver2short) {
-                REQUIRE(secondFollower.copyString() == dbserver3short);
-              } else {
-                REQUIRE(firstFollower.copyString() == dbserver3short);
-                REQUIRE(secondFollower.copyString() == dbserver2short);
+              THEN("It should not display progress") {
+                VPackSlice progress = shard.get("progress");
+                REQUIRE(progress.isNone());
               }
             }
 
-            THEN("It should not display progress") {
-              VPackSlice progress = shard.get("progress");
-              REQUIRE(progress.isNone());
-            }
-          }
+            WHEN("Testing the off-sync shard") {
+              VPackSlice shard = plan.get(s2);
 
-          WHEN("Testing the off-sync shard") {
-            VPackSlice shard = plan.get(s2);
+              REQUIRE(shard.isObject());
 
-            REQUIRE(shard.isObject());
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
 
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver2short);
+              }
 
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver2short);
-            }
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 2);
 
-            THEN("It should have the correct followers shortnames") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 2);
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
 
-              VPackSlice firstFollower = followers.at(0);
-              REQUIRE(firstFollower.isString());
+                VPackSlice secondFollower = followers.at(1);
+                REQUIRE(secondFollower.isString());
 
-              VPackSlice secondFollower = followers.at(1);
-              REQUIRE(secondFollower.isString());
+                // We do not guarentee any ordering here
+                if (StringRef(firstFollower) == dbserver1short) {
+                  REQUIRE(secondFollower.copyString() == dbserver3short);
+                } else {
+                  REQUIRE(firstFollower.copyString() == dbserver3short);
+                  REQUIRE(secondFollower.copyString() == dbserver1short);
+                }
+              }
 
-              // We do not guarentee any ordering here
-              if (StringRef(firstFollower) == dbserver1short) {
-                REQUIRE(secondFollower.copyString() == dbserver3short);
-              } else {
-                REQUIRE(firstFollower.copyString() == dbserver3short);
-                REQUIRE(secondFollower.copyString() == dbserver1short);
+              THEN("It should not display the progress") {
+                VPackSlice progress = shard.get("progress");
+                REQUIRE(progress.isNone());
               }
             }
 
-            THEN("It should display the progress") {
-              VPackSlice progress = shard.get("progress");
-              REQUIRE(progress.isObject());
+            WHEN("Testing the partial in-sync shard") {
+              VPackSlice shard = plan.get(s3);
 
-              VPackSlice total = progress.get("total");
-              REQUIRE(total.isNumber());
-              REQUIRE(total.getNumber<uint64_t>() == shard2LeaderCount);
+              REQUIRE(shard.isObject());
 
-              VPackSlice current = progress.get("current");
-              REQUIRE(current.isNumber());
-              REQUIRE(current.getNumber<uint64_t>() == shard2LowFollowerCount);
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
+
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver3short);
+              }
+
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 2);
+
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
+
+                VPackSlice secondFollower = followers.at(1);
+                REQUIRE(secondFollower.isString());
+
+                // We do not guarentee any ordering here
+                if (StringRef(firstFollower) == dbserver1short) {
+                  REQUIRE(secondFollower.copyString() == dbserver2short);
+                } else {
+                  REQUIRE(firstFollower.copyString() == dbserver2short);
+                  REQUIRE(secondFollower.copyString() == dbserver1short);
+                }
+              }
+
+              THEN("It should not display the progress") {
+                VPackSlice progress = shard.get("progress");
+                REQUIRE(progress.isNone());
+              }
+
             }
           }
 
-          WHEN("Testing the partial in-sync shard") {
-            VPackSlice shard = plan.get(s3);
+          WHEN("validating current") {
+            VPackSlice current = result.get("Current");
+            REQUIRE(current.isObject());
 
-            REQUIRE(shard.isObject());
+            // One entry per shard
+            REQUIRE(current.length() == shards->size());
 
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
+            WHEN("Testing the in-sync shard") {
+              VPackSlice shard = current.get(s1);
 
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver3short);
+              REQUIRE(shard.isObject());
+
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
+
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver1short);
+              }
+
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 2);
+
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
+
+                VPackSlice secondFollower = followers.at(1);
+                REQUIRE(secondFollower.isString());
+
+                // We do not guarentee any ordering here
+                if (StringRef(firstFollower) == dbserver2short) {
+                  REQUIRE(secondFollower.copyString() == dbserver3short);
+                } else {
+                  REQUIRE(firstFollower.copyString() == dbserver3short);
+                  REQUIRE(secondFollower.copyString() == dbserver2short);
+                }
+              }
             }
 
-            THEN("It should have the correct followers shortnames") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 2);
+            WHEN("Testing the off-sync shard") {
+              VPackSlice shard = current.get(s2);
 
-              VPackSlice firstFollower = followers.at(0);
-              REQUIRE(firstFollower.isString());
+              REQUIRE(shard.isObject());
 
-              VPackSlice secondFollower = followers.at(1);
-              REQUIRE(secondFollower.isString());
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
 
-              // We do not guarentee any ordering here
-              if (StringRef(firstFollower) == dbserver1short) {
-                REQUIRE(secondFollower.copyString() == dbserver2short);
-              } else {
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver2short);
+              }
+
+              THEN("It should not have any followers") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 0);
+              }
+            }
+
+            WHEN("Testing the partial in-sync shard") {
+              VPackSlice shard = current.get(s3);
+
+              REQUIRE(shard.isObject());
+
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
+
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver3short);
+              }
+
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 1);
+
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
                 REQUIRE(firstFollower.copyString() == dbserver2short);
-                REQUIRE(secondFollower.copyString() == dbserver1short);
               }
-            }
-
-            THEN("It should display the progress") {
-              VPackSlice progress = shard.get("progress");
-              REQUIRE(progress.isObject());
-
-              VPackSlice total = progress.get("total");
-              REQUIRE(total.isNumber());
-              REQUIRE(total.getNumber<uint64_t>() == shard3LeaderCount);
-
-              VPackSlice current = progress.get("current");
-              REQUIRE(current.isNumber());
-              REQUIRE(current.getNumber<uint64_t>() == shard3FollowerCount);
             }
           }
         }
+      }
 
-        WHEN("validating current") {
-          VPackSlice current = result.get("Current");
-          REQUIRE(current.isObject());
+      WHEN("testing distribution for collection database") {
+        testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+        VPackSlice result = resultBuilder.slice();
 
-          // One entry per shard
-          REQUIRE(current.length() == shards->size());
+        THEN("It should return an object") { REQUIRE(result.isObject()); }
 
-          WHEN("Testing the in-sync shard") {
-            VPackSlice shard = current.get(s1);
+        THEN("It should return one entry for every collection") {
+          VPackSlice col = result.get(colName);
+          REQUIRE(col.isObject());
+        }
 
-            REQUIRE(shard.isObject());
+        WHEN("Checking one of those collections") {
+          result = result.get(colName);
+          REQUIRE(result.isObject());
 
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
+          WHEN("validating the plan") {
+            VPackSlice plan = result.get("Plan");
+            REQUIRE(plan.isObject());
 
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver1short);
-            }
+            // One entry per shard
+            REQUIRE(plan.length() == shards->size());
 
-            THEN("It should have the correct followers shortnames") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 2);
+            WHEN("Testing the in-sync shard") {
+              VPackSlice shard = plan.get(s1);
 
-              VPackSlice firstFollower = followers.at(0);
-              REQUIRE(firstFollower.isString());
+              REQUIRE(shard.isObject());
 
-              VPackSlice secondFollower = followers.at(1);
-              REQUIRE(secondFollower.isString());
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
 
-              // We do not guarentee any ordering here
-              if (StringRef(firstFollower) == dbserver2short) {
-                REQUIRE(secondFollower.copyString() == dbserver3short);
-              } else {
-                REQUIRE(firstFollower.copyString() == dbserver3short);
-                REQUIRE(secondFollower.copyString() == dbserver2short);
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver1short);
+              }
+
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 2);
+
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
+
+                VPackSlice secondFollower = followers.at(1);
+                REQUIRE(secondFollower.isString());
+
+                // We do not guarentee any ordering here
+                if (StringRef(firstFollower) == dbserver2short) {
+                  REQUIRE(secondFollower.copyString() == dbserver3short);
+                } else {
+                  REQUIRE(firstFollower.copyString() == dbserver3short);
+                  REQUIRE(secondFollower.copyString() == dbserver2short);
+                }
+              }
+
+              THEN("It should not display progress") {
+                VPackSlice progress = shard.get("progress");
+                REQUIRE(progress.isNone());
               }
             }
+
+            WHEN("Testing the off-sync shard") {
+              VPackSlice shard = plan.get(s2);
+
+              REQUIRE(shard.isObject());
+
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
+
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver2short);
+              }
+
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 2);
+
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
+
+                VPackSlice secondFollower = followers.at(1);
+                REQUIRE(secondFollower.isString());
+
+                // We do not guarentee any ordering here
+                if (StringRef(firstFollower) == dbserver1short) {
+                  REQUIRE(secondFollower.copyString() == dbserver3short);
+                } else {
+                  REQUIRE(firstFollower.copyString() == dbserver3short);
+                  REQUIRE(secondFollower.copyString() == dbserver1short);
+                }
+              }
+
+              THEN("It should not display the progress") {
+                VPackSlice progress = shard.get("progress");
+                REQUIRE(progress.isObject());
+
+                VPackSlice total = progress.get("total");
+                REQUIRE(total.isNumber());
+                REQUIRE(total.getNumber<uint64_t>() == shard2LeaderCount);
+
+                VPackSlice current = progress.get("current");
+                REQUIRE(current.isNumber());
+                REQUIRE(current.getNumber<uint64_t>() == shard2LowFollowerCount);
+              }
+            }
+
+            WHEN("Testing the partial in-sync shard") {
+              VPackSlice shard = plan.get(s3);
+
+              REQUIRE(shard.isObject());
+
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
+
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver3short);
+              }
+
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 2);
+
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
+
+                VPackSlice secondFollower = followers.at(1);
+                REQUIRE(secondFollower.isString());
+
+                // We do not guarentee any ordering here
+                if (StringRef(firstFollower) == dbserver1short) {
+                  REQUIRE(secondFollower.copyString() == dbserver2short);
+                } else {
+                  REQUIRE(firstFollower.copyString() == dbserver2short);
+                  REQUIRE(secondFollower.copyString() == dbserver1short);
+                }
+              }
+
+              THEN("It should display the progress") {
+                VPackSlice progress = shard.get("progress");
+                REQUIRE(progress.isObject());
+
+                VPackSlice total = progress.get("total");
+                REQUIRE(total.isNumber());
+                REQUIRE(total.getNumber<uint64_t>() == shard3LeaderCount);
+
+                VPackSlice current = progress.get("current");
+                REQUIRE(current.isNumber());
+                REQUIRE(current.getNumber<uint64_t>() == shard3FollowerCount);
+              }
+
+            }
           }
 
-          WHEN("Testing the off-sync shard") {
-            VPackSlice shard = current.get(s2);
+          WHEN("validating current") {
+            VPackSlice current = result.get("Current");
+            REQUIRE(current.isObject());
 
-            REQUIRE(shard.isObject());
+            // One entry per shard
+            REQUIRE(current.length() == shards->size());
 
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
+            WHEN("Testing the in-sync shard") {
+              VPackSlice shard = current.get(s1);
 
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver2short);
+              REQUIRE(shard.isObject());
+
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
+
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver1short);
+              }
+
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 2);
+
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
+
+                VPackSlice secondFollower = followers.at(1);
+                REQUIRE(secondFollower.isString());
+
+                // We do not guarentee any ordering here
+                if (StringRef(firstFollower) == dbserver2short) {
+                  REQUIRE(secondFollower.copyString() == dbserver3short);
+                } else {
+                  REQUIRE(firstFollower.copyString() == dbserver3short);
+                  REQUIRE(secondFollower.copyString() == dbserver2short);
+                }
+              }
             }
 
-            THEN("It should not have any followers") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 0);
+            WHEN("Testing the off-sync shard") {
+              VPackSlice shard = current.get(s2);
+
+              REQUIRE(shard.isObject());
+
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
+
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver2short);
+              }
+
+              THEN("It should not have any followers") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 0);
+              }
             }
-          }
 
-          WHEN("Testing the partial in-sync shard") {
-            VPackSlice shard = current.get(s3);
+            WHEN("Testing the partial in-sync shard") {
+              VPackSlice shard = current.get(s3);
 
-            REQUIRE(shard.isObject());
+              REQUIRE(shard.isObject());
 
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
+              THEN("It should have the correct leader shortname") {
+                VPackSlice leader = shard.get("leader");
 
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver3short);
-            }
+                REQUIRE(leader.isString());
+                REQUIRE(leader.copyString() == dbserver3short);
+              }
 
-            THEN("It should have the correct followers shortnames") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 1);
+              THEN("It should have the correct followers shortnames") {
+                VPackSlice followers = shard.get("followers");
+                REQUIRE(followers.isArray());
+                REQUIRE(followers.length() == 1);
 
-              VPackSlice firstFollower = followers.at(0);
-              REQUIRE(firstFollower.isString());
-              REQUIRE(firstFollower.copyString() == dbserver2short);
+                VPackSlice firstFollower = followers.at(0);
+                REQUIRE(firstFollower.isString());
+                REQUIRE(firstFollower.copyString() == dbserver2short);
+              }
             }
           }
         }
@@ -589,65 +842,65 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     }
   }
 
-  GIVEN("A single shard with off-sync replicas") {
-    shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+  WHEN("testing distribution for database") {
+    GIVEN("A single collection of three shards, and 3 replicas") {
+      shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
-    currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
+      currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
 
-    allCollections.emplace_back(
-        std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
+      allCollections.emplace_back(
+          std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
 
-    fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-      REQUIRE(sid == s1);
-      return currentShards[sid];
-    });
+      fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+          REQUIRE(sid == s1);
+          return currentShards[sid];
+          });
 
-    // Moking HttpResults
-    fakeit::Mock<SimpleHttpResult> leaderCountMock;
-    SimpleHttpResult& lCount = leaderCountMock.get();
+      // Moking HttpResults
+      fakeit::Mock<SimpleHttpResult> leaderCountMock;
+      SimpleHttpResult& lCount = leaderCountMock.get();
 
-    fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-    SimpleHttpResult& f1Count = followerOneCountMock.get();
+      fakeit::Mock<SimpleHttpResult> followerOneCountMock;
+      SimpleHttpResult& f1Count = followerOneCountMock.get();
 
-    fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-    SimpleHttpResult& f2Count = followerTwoCountMock.get();
+      fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
+      SimpleHttpResult& f2Count = followerTwoCountMock.get();
 
-    uint64_t leaderCount = 1337;
-    uint64_t smallerFollowerCount = 456;
-    uint64_t largerFollowerCount = 1111;
+      uint64_t leaderCount = 1337;
+      uint64_t smallerFollowerCount = 456;
+      uint64_t largerFollowerCount = 1111;
 
-    // Mocking HTTP Response
-    fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                               std::shared_ptr<VPackBuilder>()))
+      // Mocking HTTP Response
+      fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+            std::shared_ptr<VPackBuilder>()))
         .AlwaysDo([&]() { return buildCountBody(leaderCount); });
 
-    fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                               std::shared_ptr<VPackBuilder>()))
+      fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+            std::shared_ptr<VPackBuilder>()))
         .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
 
-    fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                               std::shared_ptr<VPackBuilder>()))
+      fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+            std::shared_ptr<VPackBuilder>()))
         .AlwaysDo([&]() { return buildCountBody(smallerFollowerCount); });
 
-    ClusterCommResult leaderRes;
-    ClusterCommResult follower1Res;
-    ClusterCommResult follower2Res;
+      ClusterCommResult leaderRes;
+      ClusterCommResult follower1Res;
+      ClusterCommResult follower2Res;
 
-    bool returnedFirstFollower = false;
+      bool returnedFirstFollower = false;
 
-    // Mocking the ClusterComm for count calls
-    fakeit::When(Method(commMock, asyncRequest))
+      // Mocking the ClusterComm for count calls
+      fakeit::When(Method(commMock, asyncRequest))
         .AlwaysDo(
             [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
-                std::string const& destination, rest::RequestType reqtype,
-                std::string const& path,
-                std::shared_ptr<std::string const> body,
-                std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                    headerFields,
-                std::shared_ptr<ClusterCommCallback> callback,
-                ClusterCommTimeout timeout, bool singleRequest,
-                ClusterCommTimeout initTimeout) -> OperationID {
+              CoordTransactionID const coordTransactionID,
+              std::string const& destination, rest::RequestType reqtype,
+              std::string const& path,
+              std::shared_ptr<std::string const> body,
+              std::unordered_map<std::string, std::string> const& headerFields,
+              std::shared_ptr<ClusterCommCallback> callback,
+              ClusterCommTimeout timeout, bool singleRequest,
+              ClusterCommTimeout initTimeout) -> OperationID {
             REQUIRE(path == "/_api/collection/" + s1 + "/count");
 
             OperationID opId = TRI_NewTickServer();
@@ -674,438 +927,266 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               REQUIRE(false);
             }
             return opId;
-        });
+            });
 
-    fakeit::When(Method(commMock, wait))
+      fakeit::When(Method(commMock, wait))
         .AlwaysDo([&](ClientTransactionID const&,
-                      CoordTransactionID const coordTransactionID,
-                      OperationID const operationID, ShardID const& shardID,
-                      ClusterCommTimeout timeout) {
-          if (operationID != 0) {
+              CoordTransactionID const coordTransactionID,
+              OperationID const operationID, ShardID const& shardID,
+              ClusterCommTimeout timeout) {
+            if (operationID != 0) {
             return leaderRes;
-          }
-          if (returnedFirstFollower) {
+            }
+            if (returnedFirstFollower) {
             return follower2Res;
-          } else {
+            } else {
             returnedFirstFollower = true;
             return follower1Res;
+            }
+            });
+    }
+  }
+
+  WHEN("testing collection distribution for database") {
+    GIVEN("A single collection of three shards, and 3 replicas") {
+      shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+
+      currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
+
+      allCollections.emplace_back(
+          std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
+
+      fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+          REQUIRE(sid == s1);
+          return currentShards[sid];
+          });
+
+      // Moking HttpResults
+      fakeit::Mock<SimpleHttpResult> leaderCountMock;
+      SimpleHttpResult& lCount = leaderCountMock.get();
+
+      fakeit::Mock<SimpleHttpResult> followerOneCountMock;
+      SimpleHttpResult& f1Count = followerOneCountMock.get();
+
+      fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
+      SimpleHttpResult& f2Count = followerTwoCountMock.get();
+
+      uint64_t leaderCount = 1337;
+      uint64_t smallerFollowerCount = 456;
+      uint64_t largerFollowerCount = 1111;
+
+      // Mocking HTTP Response
+      fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+            std::shared_ptr<VPackBuilder>()))
+        .AlwaysDo([&]() { return buildCountBody(leaderCount); });
+
+      fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+            std::shared_ptr<VPackBuilder>()))
+        .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
+
+      fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+            std::shared_ptr<VPackBuilder>()))
+        .AlwaysDo([&]() { return buildCountBody(smallerFollowerCount); });
+
+      ClusterCommResult leaderRes;
+      ClusterCommResult follower1Res;
+      ClusterCommResult follower2Res;
+
+      bool returnedFirstFollower = false;
+
+      // Mocking the ClusterComm for count calls
+      fakeit::When(Method(commMock, asyncRequest))
+        .AlwaysDo(
+            [&](ClientTransactionID const&,
+              CoordTransactionID const coordTransactionID,
+              std::string const& destination, rest::RequestType reqtype,
+              std::string const& path,
+              std::shared_ptr<std::string const> body,
+              std::unordered_map<std::string, std::string> const& headerFields,
+              std::shared_ptr<ClusterCommCallback> callback,
+              ClusterCommTimeout timeout, bool singleRequest,
+              ClusterCommTimeout initTimeout) -> OperationID {
+            REQUIRE(path == "/_api/collection/" + s1 + "/count");
+
+            OperationID opId = TRI_NewTickServer();
+
+            ClusterCommResult response;
+            response.coordTransactionID = coordTransactionID;
+            response.operationID = opId;
+            response.answer_code = rest::ResponseCode::OK;
+            response.status = CL_COMM_RECEIVED;
+
+            if (destination == "server:" + dbserver1) {
+              response.result = std::shared_ptr<SimpleHttpResult>(
+                  &lCount,  [](SimpleHttpResult*) {});
+              leaderRes = response;
+            } else if (destination == "server:" + dbserver2) {
+              response.result = std::shared_ptr<SimpleHttpResult>(
+                  &f1Count,  [](SimpleHttpResult*) {});
+              follower1Res = response;
+            } else if (destination == "server:" + dbserver3) {
+              response.result = std::shared_ptr<SimpleHttpResult>(
+                  &f2Count,  [](SimpleHttpResult*) {});
+              follower2Res = response;
+            } else {
+              REQUIRE(false);
+            }
+            return opId;
+            });
+
+      fakeit::When(Method(commMock, wait))
+        .AlwaysDo([&](ClientTransactionID const&,
+              CoordTransactionID const coordTransactionID,
+              OperationID const operationID, ShardID const& shardID,
+              ClusterCommTimeout timeout) {
+            if (operationID != 0) {
+            return leaderRes;
+            }
+            if (returnedFirstFollower) {
+            return follower2Res;
+            } else {
+            returnedFirstFollower = true;
+            return follower1Res;
+            }
+            });
+
+      WHEN("testing collection distribution for database") {
+        WHEN("Both followers have a smaller amount of documents") {
+          smallerFollowerCount = 456;
+          largerFollowerCount = 1111;
+
+
+          THEN("The minimum should be reported") {
+            VPackBuilder resultBuilder;
+            testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+
+            VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
           }
-        });
+        }
 
-    WHEN("Both followers have a smaller amount of documents") {
-      smallerFollowerCount = 456;
-      largerFollowerCount = 1111;
+        WHEN("Both followers have a larger amount of documents") {
+          smallerFollowerCount = 1987;
+          largerFollowerCount = 2345;
 
+          THEN("The maximum should be reported") {
+            VPackBuilder resultBuilder;
+            testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
-      THEN("The minimum should be reported") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
+            VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
+          }
+        }
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
-      }
-    }
+        WHEN("one follower has more and one has less documents") {
+          smallerFollowerCount = 456;
+          largerFollowerCount = 2345;
 
-    WHEN("Both followers have a larger amount of documents") {
-      smallerFollowerCount = 1987;
-      largerFollowerCount = 2345;
+          THEN("The lesser should be reported") {
+            VPackBuilder resultBuilder;
+            testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
-      THEN("The maximum should be reported") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
-
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
-      }
-    }
-
-    WHEN("one follower has more and one has less documents") {
-      smallerFollowerCount = 456;
-      largerFollowerCount = 2345;
-
-      THEN("The lesser should be reported") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
-
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
+            VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
+          }
+        }
       }
     }
   }
 
-  GIVEN("An unhealthy cluster") {
-    shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+  WHEN("testing distribution for database") {
+    GIVEN("An unhealthy cluster") {
+      shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
-    currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
-
-    allCollections.emplace_back(
-        std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
-
-    fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-      REQUIRE(currentShards.find(sid) != currentShards.end());
-      return currentShards[sid];
-    });
-
-    WHEN("The leader does not respond") {
-
-      ClusterCommResult leaderRes;
-
-      CoordTransactionID coordId = 0;
-      // Mocking the ClusterComm for count calls
-      fakeit::When(Method(commMock, asyncRequest))
-          .AlwaysDo(
-              [&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
-                  std::string const& destination, rest::RequestType reqtype,
-                  std::string const& path,
-                  std::shared_ptr<std::string const> body,
-                  std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                      headerFields,
-                  std::shared_ptr<ClusterCommCallback> callback,
-                  ClusterCommTimeout timeout, bool singleRequest,
-                  ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
-
-              OperationID opId = TRI_NewTickServer();
-              coordId = coordTransactionID;
-
-              ClusterCommResult response;
-              response.coordTransactionID = coordTransactionID;
-              response.operationID = opId;
-              response.answer_code = rest::ResponseCode::OK;
-              response.status = CL_COMM_RECEIVED;
-
-              if (destination == "server:" + dbserver1) {
-                response.status = CL_COMM_TIMEOUT;
-              } else if (destination == "server:" + dbserver2) {
-              } else if (destination == "server:" + dbserver3) {
-              } else {
-                REQUIRE(false);
-              }
-              return opId;
-          });
-
-      fakeit::When(Method(commMock, wait))
-        .AlwaysDo([&](ClientTransactionID const&,
-                      CoordTransactionID const coordTransactionID,
-                      OperationID const operationID, ShardID const& shardID,
-                      ClusterCommTimeout timeout) {
-          if (operationID != 0) {
-            return leaderRes;
-          }
-          // If we get here we tried to wait for followers and we cannot use the answer...
-          REQUIRE(false);
-          return leaderRes;
-        });
-
-      fakeit::When(Method(commMock, drop))
-        .AlwaysDo([&](ClientTransactionID const&,
-                      CoordTransactionID const coordTransactionID,
-                      OperationID const operationID, ShardID const& shardID
-                      ) {
-            // We need to abort this trx
-            REQUIRE(coordTransactionID == coordId);
-            // For all operations and shards
-            REQUIRE(operationID == 0);
-            REQUIRE(shardID == "");
-          });
-
-      THEN("It should use the defaults total: 1 current: 0") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
-        VerifyNumbers(resultBuilder.slice(), colName, s1, 1, 0);
-      }
-
-      THEN("It needs to call drop") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
-        fakeit::Verify(Method(commMock, drop)).Exactly(1);
-      }
-
-    }
-
-    WHEN("One follower does not respond") {
-      uint64_t leaderCount = 1337;
-      uint64_t smallerFollowerCount = 456;
-      uint64_t largerFollowerCount = 1111;
-
-      // Moking HttpResults
-      fakeit::Mock<SimpleHttpResult> leaderCountMock;
-      SimpleHttpResult& lCount = leaderCountMock.get();
-
-      fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-      SimpleHttpResult& f1Count = followerOneCountMock.get();
-
-      fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-      SimpleHttpResult& f2Count = followerTwoCountMock.get();
-
-      // Mocking HTTP Response
-      fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                 std::shared_ptr<VPackBuilder>()))
-          .AlwaysDo([&]() { return buildCountBody(leaderCount); });
-
-      fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                 std::shared_ptr<VPackBuilder>()))
-          .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
-
-      fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                 std::shared_ptr<VPackBuilder>()))
-          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(smallerFollowerCount); });
-
-
-
-      ClusterCommResult leaderRes;
-      ClusterCommResult follower1Res;
-      ClusterCommResult follower2Res;
-      bool returnedFirstFollower = false;
-
-      CoordTransactionID coordId = 0;
-      // Mocking the ClusterComm for count calls
-      fakeit::When(Method(commMock, asyncRequest))
-          .AlwaysDo(
-              [&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
-                  std::string const& destination, rest::RequestType reqtype,
-                  std::string const& path,
-                  std::shared_ptr<std::string const> body,
-                  std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                      headerFields,
-                  std::shared_ptr<ClusterCommCallback> callback,
-                  ClusterCommTimeout timeout, bool singleRequest,
-                  ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
-
-              OperationID opId = TRI_NewTickServer();
-              coordId = coordTransactionID;
-
-              ClusterCommResult response;
-              response.coordTransactionID = coordTransactionID;
-              response.operationID = opId;
-              response.answer_code = rest::ResponseCode::OK;
-              response.status = CL_COMM_RECEIVED;
-
-              if (destination == "server:" + dbserver1) {
-                response.result = std::shared_ptr<SimpleHttpResult>(
-                    &lCount,  [](SimpleHttpResult*) {});
-                leaderRes = response;
-              } else if (destination == "server:" + dbserver2) {
-                response.result = std::shared_ptr<SimpleHttpResult>(
-                    &f1Count,  [](SimpleHttpResult*) {});
-                follower1Res = response;
-              } else if (destination == "server:" + dbserver3) {
-                response.status = CL_COMM_TIMEOUT;
-                response.result = std::shared_ptr<SimpleHttpResult>(
-                    &f2Count,  [](SimpleHttpResult*) {});
-                follower2Res = response;
-              } else {
-                REQUIRE(false);
-              }
- 
-              return opId;
-          });
-      fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                        CoordTransactionID const coordTransactionID,
-                        OperationID const operationID, ShardID const& shardID,
-                        ClusterCommTimeout timeout) {
-            if (operationID != 0) {
-              return leaderRes;
-            }
-            if (returnedFirstFollower) {
-              return follower2Res;
-            } else {
-              returnedFirstFollower = true;
-              return follower1Res;
-            }
-          });
-
-      fakeit::When(Method(commMock, drop))
-        .AlwaysDo([&](ClientTransactionID const&,
-                      CoordTransactionID const coordTransactionID,
-                      OperationID const operationID, ShardID const& shardID
-                      ) {
-            // We need to abort this trx
-            REQUIRE(coordTransactionID == coordId);
-            // For all operations and shards
-            REQUIRE(operationID == 0);
-            REQUIRE(shardID == "");
-          });
-
-      THEN("It should use the leader and the other one") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
-      }
-
-      THEN("It should not call drop") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
-        fakeit::Verify(Method(commMock, drop)).Exactly(0);
-      }
-
-    }
-
-    WHEN("No follower does respond") {
-      uint64_t leaderCount = 1337;
-      uint64_t smallerFollowerCount = 456;
-      uint64_t largerFollowerCount = 1111;
-
-      // Moking HttpResults
-      fakeit::Mock<SimpleHttpResult> leaderCountMock;
-      SimpleHttpResult& lCount = leaderCountMock.get();
-
-      fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-      SimpleHttpResult& f1Count = followerOneCountMock.get();
-
-      fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-      SimpleHttpResult& f2Count = followerTwoCountMock.get();
-
-      // Mocking HTTP Response
-      fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                 std::shared_ptr<VPackBuilder>()))
-          .AlwaysDo([&]() { return buildCountBody(leaderCount); });
-
-      fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                 std::shared_ptr<VPackBuilder>()))
-          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(largerFollowerCount); });
-
-      fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                 std::shared_ptr<VPackBuilder>()))
-          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(smallerFollowerCount); });
-
-      ClusterCommResult leaderRes;
-      ClusterCommResult follower1Res;
-      ClusterCommResult follower2Res;
-      bool returnedFirstFollower = false;
-
-      CoordTransactionID coordId = 0;
-      // Mocking the ClusterComm for count calls
-      fakeit::When(Method(commMock, asyncRequest))
-          .AlwaysDo(
-              [&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
-                  std::string const& destination, rest::RequestType reqtype,
-                  std::string const& path,
-                  std::shared_ptr<std::string const> body,
-                  std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                      headerFields,
-                  std::shared_ptr<ClusterCommCallback> callback,
-                  ClusterCommTimeout timeout, bool singleRequest,
-                  ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
-
-              OperationID opId = TRI_NewTickServer();
-              coordId = coordTransactionID;
-
-              ClusterCommResult response;
-              response.coordTransactionID = coordTransactionID;
-              response.operationID = opId;
-              response.answer_code = rest::ResponseCode::OK;
-              response.status = CL_COMM_RECEIVED;
-
-              if (destination == "server:" + dbserver1) {
-                response.result = std::shared_ptr<SimpleHttpResult>(
-                    &lCount,  [](SimpleHttpResult*) {});
-                leaderRes = response;
-              } else if (destination == "server:" + dbserver2) {
-                response.status = CL_COMM_TIMEOUT;
-                response.result = std::shared_ptr<SimpleHttpResult>(
-                    &f1Count,  [](SimpleHttpResult*) {});
-                follower1Res = response;
-              } else if (destination == "server:" + dbserver3) {
-                response.status = CL_COMM_TIMEOUT;
-                response.result = std::shared_ptr<SimpleHttpResult>(
-                    &f2Count,  [](SimpleHttpResult*) {});
-                follower2Res = response;
-              } else {
-                REQUIRE(false);
-              }
- 
-              return opId;
-          });
-      fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                        CoordTransactionID const coordTransactionID,
-                        OperationID const operationID, ShardID const& shardID,
-                        ClusterCommTimeout timeout) {
-            if (operationID != 0) {
-              return leaderRes;
-            }
-            if (returnedFirstFollower) {
-              return follower2Res;
-            } else {
-              returnedFirstFollower = true;
-              return follower1Res;
-            }
-          });
-
-      fakeit::When(Method(commMock, drop))
-        .AlwaysDo([&](ClientTransactionID const&,
-                      CoordTransactionID const coordTransactionID,
-                      OperationID const operationID, ShardID const& shardID
-                      ) {
-            // We need to abort this trx
-            REQUIRE(coordTransactionID == coordId);
-            // For all operations and shards
-            REQUIRE(operationID == 0);
-            REQUIRE(shardID == "");
-          });
-
-      THEN("It should use the leader and the default current of 0") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, 0);
-      }
-
-      THEN("It should not call drop") {
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
-        fakeit::Verify(Method(commMock, drop)).Exactly(0);
-      }
-
-    }
-
-    GIVEN("A second collection") {
-      fakeit::Mock<LogicalCollection> secColMock;
-      LogicalCollection& secCol = secColMock.get();
-
-      std::string secColName = "UnitTestOtherCollection";
-      std::string secCidString = "4561";
-
-
-      fakeit::Mock<CollectionInfoCurrent> infoOtherCurrentMock;
-      CollectionInfoCurrent& otherCicInst = infoOtherCurrentMock.get();
-
-      std::shared_ptr<CollectionInfoCurrent> otherCic(
-          &otherCicInst, [](CollectionInfoCurrent*) {});
-
-      fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, secCidString))
-          .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& cId) {
-            REQUIRE(dbId == dbname);
-            REQUIRE(cId == secCidString);
-            return otherCic;
-          });
+      currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
 
       allCollections.emplace_back(
-          std::shared_ptr<LogicalCollection>(&secCol, [](LogicalCollection*) {}));
+          std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
 
-      // Fake the shard map
-      auto otherShards = std::make_shared<ShardMap>();
-      ShardMap otherCurrentShards;
+      fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+          REQUIRE(currentShards.find(sid) != currentShards.end());
+          return currentShards[sid];
+          });
 
-      otherShards->emplace(s2, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+      WHEN("The leader does not respond") {
 
-      otherCurrentShards.emplace(s2, std::vector<ServerID>{dbserver1});
+        ClusterCommResult leaderRes;
 
-      fakeit::When(Method(secColMock, name)).AlwaysReturn(secColName);
-      fakeit::When(
-          ConstOverloadedMethod(secColMock, shardIds, std::shared_ptr<ShardMap>()))
-          .AlwaysReturn(otherShards);
-      fakeit::When(Method(secColMock, cid_as_string)).AlwaysReturn(secCidString);
+        CoordTransactionID coordId = 0;
+        // Mocking the ClusterComm for count calls
+        fakeit::When(Method(commMock, asyncRequest))
+          .AlwaysDo(
+              [&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                std::string const& destination, rest::RequestType reqtype,
+                std::string const& path,
+                std::shared_ptr<std::string const> body,
+                std::unordered_map<std::string, std::string> const& headerFields,
+                std::shared_ptr<ClusterCommCallback> callback,
+                ClusterCommTimeout timeout, bool singleRequest,
+                ClusterCommTimeout initTimeout) -> OperationID {
+              REQUIRE(path == "/_api/collection/" + s1 + "/count");
 
-      fakeit::When(Method(infoOtherCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-        REQUIRE(otherCurrentShards.find(sid) != otherCurrentShards.end());
-        return otherCurrentShards[sid];
-      });
+              OperationID opId = TRI_NewTickServer();
+              coordId = coordTransactionID;
 
-      THEN("It should not ask the second collection if the first waits > 2.0s") {
+              ClusterCommResult response;
+              response.coordTransactionID = coordTransactionID;
+              response.operationID = opId;
+              response.answer_code = rest::ResponseCode::OK;
+              response.status = CL_COMM_RECEIVED;
+
+              if (destination == "server:" + dbserver1) {
+                response.status = CL_COMM_TIMEOUT;
+              } else if (destination == "server:" + dbserver2) {
+              } else if (destination == "server:" + dbserver3) {
+              } else {
+                REQUIRE(false);
+              }
+              return opId;
+              });
+
+        fakeit::When(Method(commMock, wait))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID,
+                ClusterCommTimeout timeout) {
+              if (operationID != 0) {
+              return leaderRes;
+              }
+              // If we get here we tried to wait for followers and we cannot use the answer...
+              REQUIRE(false);
+              return leaderRes;
+              });
+
+        fakeit::When(Method(commMock, drop))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID
+                ) {
+              // We need to abort this trx
+              REQUIRE(coordTransactionID == coordId);
+              // For all operations and shards
+              REQUIRE(operationID == 0);
+              REQUIRE(shardID == "");
+              });
+
+        THEN("It should use the defaults total: 1 current: 0") {
+          VPackBuilder resultBuilder;
+          testee.getDistributionForDatabase(dbname, resultBuilder);
+          VerifyAttributes(resultBuilder.slice(), colName, s1);
+        }
+
+        THEN("It needs to call drop") {
+          VPackBuilder resultBuilder;
+          testee.getDistributionForDatabase(dbname, resultBuilder);
+          fakeit::Verify(Method(commMock, drop)).Exactly(1);
+        }
+
+      }
+
+      WHEN("One follower does not respond") {
+        uint64_t leaderCount = 1337;
+        uint64_t smallerFollowerCount = 456;
+        uint64_t largerFollowerCount = 1111;
+
         // Moking HttpResults
         fakeit::Mock<SimpleHttpResult> leaderCountMock;
         SimpleHttpResult& lCount = leaderCountMock.get();
@@ -1116,42 +1197,654 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
         SimpleHttpResult& f2Count = followerTwoCountMock.get();
 
-        uint64_t leaderCount = 1337;
-        uint64_t smallerFollowerCount = 456;
-        uint64_t largerFollowerCount = 1111;
-
         // Mocking HTTP Response
         fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                   std::shared_ptr<VPackBuilder>()))
-            .AlwaysDo([&]() { return buildCountBody(leaderCount); });
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { return buildCountBody(leaderCount); });
 
         fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                   std::shared_ptr<VPackBuilder>()))
-            .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
 
         fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                   std::shared_ptr<VPackBuilder>()))
-            .AlwaysDo([&]() { return buildCountBody(smallerFollowerCount); });
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(smallerFollowerCount); });
+
+
 
         ClusterCommResult leaderRes;
         ClusterCommResult follower1Res;
         ClusterCommResult follower2Res;
-
         bool returnedFirstFollower = false;
 
+        CoordTransactionID coordId = 0;
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
+          .AlwaysDo(
+              [&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                std::string const& destination, rest::RequestType reqtype,
+                std::string const& path,
+                std::shared_ptr<std::string const> body,
+                std::unordered_map<std::string, std::string> const& headerFields,
+                std::shared_ptr<ClusterCommCallback> callback,
+                ClusterCommTimeout timeout, bool singleRequest,
+                ClusterCommTimeout initTimeout) -> OperationID {
+              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+
+              OperationID opId = TRI_NewTickServer();
+              coordId = coordTransactionID;
+
+              ClusterCommResult response;
+              response.coordTransactionID = coordTransactionID;
+              response.operationID = opId;
+              response.answer_code = rest::ResponseCode::OK;
+              response.status = CL_COMM_RECEIVED;
+
+              if (destination == "server:" + dbserver1) {
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &lCount,  [](SimpleHttpResult*) {});
+                leaderRes = response;
+              } else if (destination == "server:" + dbserver2) {
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &f1Count,  [](SimpleHttpResult*) {});
+                follower1Res = response;
+              } else if (destination == "server:" + dbserver3) {
+                response.status = CL_COMM_TIMEOUT;
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &f2Count,  [](SimpleHttpResult*) {});
+                follower2Res = response;
+              } else {
+                REQUIRE(false);
+              }
+
+              return opId;
+              });
+        fakeit::When(Method(commMock, wait))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID,
+                ClusterCommTimeout timeout) {
+              if (operationID != 0) {
+              return leaderRes;
+              }
+              if (returnedFirstFollower) {
+              return follower2Res;
+              } else {
+              returnedFirstFollower = true;
+              return follower1Res;
+              }
+              });
+
+        fakeit::When(Method(commMock, drop))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID
+                ) {
+              // We need to abort this trx
+              REQUIRE(coordTransactionID == coordId);
+              // For all operations and shards
+              REQUIRE(operationID == 0);
+              REQUIRE(shardID == "");
+              });
+
+        THEN("It should use the leader and the other one") {
+          VPackBuilder resultBuilder;
+          testee.getDistributionForDatabase(dbname, resultBuilder);
+          VerifyAttributes(resultBuilder.slice(), colName, s1);
+        }
+
+        THEN("It should not call drop") {
+          VPackBuilder resultBuilder;
+          testee.getDistributionForDatabase(dbname, resultBuilder);
+          fakeit::Verify(Method(commMock, drop)).Exactly(0);
+        }
+
+      }
+
+      WHEN("No follower does respond") {
+        uint64_t leaderCount = 1337;
+        uint64_t smallerFollowerCount = 456;
+        uint64_t largerFollowerCount = 1111;
+
+        // Moking HttpResults
+        fakeit::Mock<SimpleHttpResult> leaderCountMock;
+        SimpleHttpResult& lCount = leaderCountMock.get();
+
+        fakeit::Mock<SimpleHttpResult> followerOneCountMock;
+        SimpleHttpResult& f1Count = followerOneCountMock.get();
+
+        fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
+        SimpleHttpResult& f2Count = followerTwoCountMock.get();
+
+        // Mocking HTTP Response
+        fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { return buildCountBody(leaderCount); });
+
+        fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(largerFollowerCount); });
+
+        fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(smallerFollowerCount); });
+
+        ClusterCommResult leaderRes;
+        ClusterCommResult follower1Res;
+        ClusterCommResult follower2Res;
+        bool returnedFirstFollower = false;
+
+        CoordTransactionID coordId = 0;
+        // Mocking the ClusterComm for count calls
+        fakeit::When(Method(commMock, asyncRequest))
+          .AlwaysDo(
+              [&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                std::string const& destination, rest::RequestType reqtype,
+                std::string const& path,
+                std::shared_ptr<std::string const> body,
+                std::unordered_map<std::string, std::string> const& headerFields,
+                std::shared_ptr<ClusterCommCallback> callback,
+                ClusterCommTimeout timeout, bool singleRequest,
+                ClusterCommTimeout initTimeout) -> OperationID {
+              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+
+              OperationID opId = TRI_NewTickServer();
+              coordId = coordTransactionID;
+
+              ClusterCommResult response;
+              response.coordTransactionID = coordTransactionID;
+              response.operationID = opId;
+              response.answer_code = rest::ResponseCode::OK;
+              response.status = CL_COMM_RECEIVED;
+
+              if (destination == "server:" + dbserver1) {
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &lCount,  [](SimpleHttpResult*) {});
+                leaderRes = response;
+              } else if (destination == "server:" + dbserver2) {
+                response.status = CL_COMM_TIMEOUT;
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &f1Count,  [](SimpleHttpResult*) {});
+                follower1Res = response;
+              } else if (destination == "server:" + dbserver3) {
+                response.status = CL_COMM_TIMEOUT;
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &f2Count,  [](SimpleHttpResult*) {});
+                follower2Res = response;
+              } else {
+                REQUIRE(false);
+              }
+
+              return opId;
+              });
+        fakeit::When(Method(commMock, wait))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID,
+                ClusterCommTimeout timeout) {
+              if (operationID != 0) {
+              return leaderRes;
+              }
+              if (returnedFirstFollower) {
+              return follower2Res;
+              } else {
+              returnedFirstFollower = true;
+              return follower1Res;
+              }
+              });
+
+        fakeit::When(Method(commMock, drop))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID
+                ) {
+              // We need to abort this trx
+              REQUIRE(coordTransactionID == coordId);
+              // For all operations and shards
+              REQUIRE(operationID == 0);
+              REQUIRE(shardID == "");
+              });
+
+        THEN("It should use the leader") {
+          VPackBuilder resultBuilder;
+          testee.getDistributionForDatabase(dbname, resultBuilder);
+          VerifyAttributes(resultBuilder.slice(), colName, s1);
+        }
+
+        THEN("It should not call drop") {
+          VPackBuilder resultBuilder;
+          testee.getDistributionForDatabase(dbname, resultBuilder);
+          fakeit::Verify(Method(commMock, drop)).Exactly(0);
+        }
+
+      }
+    }
+  }
+
+  WHEN("testing collection distribution for database") {
+    GIVEN("An unhealthy cluster") {
+      shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+
+      currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
+
+      allCollections.emplace_back(
+          std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
+
+      fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+          REQUIRE(currentShards.find(sid) != currentShards.end());
+          return currentShards[sid];
+          });
+
+      WHEN("The leader does not respond") {
+
+        ClusterCommResult leaderRes;
+
+        CoordTransactionID coordId = 0;
+        // Mocking the ClusterComm for count calls
+        fakeit::When(Method(commMock, asyncRequest))
+          .AlwaysDo(
+              [&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                std::string const& destination, rest::RequestType reqtype,
+                std::string const& path,
+                std::shared_ptr<std::string const> body,
+                std::unordered_map<std::string, std::string> const& headerFields,
+                std::shared_ptr<ClusterCommCallback> callback,
+                ClusterCommTimeout timeout, bool singleRequest,
+                ClusterCommTimeout initTimeout) -> OperationID {
+              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+
+              OperationID opId = TRI_NewTickServer();
+              coordId = coordTransactionID;
+
+              ClusterCommResult response;
+              response.coordTransactionID = coordTransactionID;
+              response.operationID = opId;
+              response.answer_code = rest::ResponseCode::OK;
+              response.status = CL_COMM_RECEIVED;
+
+              if (destination == "server:" + dbserver1) {
+                response.status = CL_COMM_TIMEOUT;
+              } else if (destination == "server:" + dbserver2) {
+              } else if (destination == "server:" + dbserver3) {
+              } else {
+                REQUIRE(false);
+              }
+              return opId;
+              });
+
+        fakeit::When(Method(commMock, wait))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID,
+                ClusterCommTimeout timeout) {
+              if (operationID != 0) {
+              return leaderRes;
+              }
+              // If we get here we tried to wait for followers and we cannot use the answer...
+              REQUIRE(false);
+              return leaderRes;
+              });
+
+        fakeit::When(Method(commMock, drop))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID
+                ) {
+              // We need to abort this trx
+              REQUIRE(coordTransactionID == coordId);
+              // For all operations and shards
+              REQUIRE(operationID == 0);
+              REQUIRE(shardID == "");
+              });
+
+        THEN("It should use the defaults total: 1 current: 0") {
+          VPackBuilder resultBuilder;
+          testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+          VerifyNumbers(resultBuilder.slice(), colName, s1, 1, 0);
+        }
+
+        THEN("It needs to call drop") {
+          VPackBuilder resultBuilder;
+          testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+          fakeit::Verify(Method(commMock, drop)).Exactly(1);
+        }
+
+      }
+
+      WHEN("One follower does not respond") {
+        uint64_t leaderCount = 1337;
+        uint64_t smallerFollowerCount = 456;
+        uint64_t largerFollowerCount = 1111;
+
+        // Moking HttpResults
+        fakeit::Mock<SimpleHttpResult> leaderCountMock;
+        SimpleHttpResult& lCount = leaderCountMock.get();
+
+        fakeit::Mock<SimpleHttpResult> followerOneCountMock;
+        SimpleHttpResult& f1Count = followerOneCountMock.get();
+
+        fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
+        SimpleHttpResult& f2Count = followerTwoCountMock.get();
+
+        // Mocking HTTP Response
+        fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { return buildCountBody(leaderCount); });
+
+        fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
+
+        fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(smallerFollowerCount); });
+
+
+
+        ClusterCommResult leaderRes;
+        ClusterCommResult follower1Res;
+        ClusterCommResult follower2Res;
+        bool returnedFirstFollower = false;
+
+        CoordTransactionID coordId = 0;
+        // Mocking the ClusterComm for count calls
+        fakeit::When(Method(commMock, asyncRequest))
+          .AlwaysDo(
+              [&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                std::string const& destination, rest::RequestType reqtype,
+                std::string const& path,
+                std::shared_ptr<std::string const> body,
+                std::unordered_map<std::string, std::string> const& headerFields,
+                std::shared_ptr<ClusterCommCallback> callback,
+                ClusterCommTimeout timeout, bool singleRequest,
+                ClusterCommTimeout initTimeout) -> OperationID {
+              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+
+              OperationID opId = TRI_NewTickServer();
+              coordId = coordTransactionID;
+
+              ClusterCommResult response;
+              response.coordTransactionID = coordTransactionID;
+              response.operationID = opId;
+              response.answer_code = rest::ResponseCode::OK;
+              response.status = CL_COMM_RECEIVED;
+
+              if (destination == "server:" + dbserver1) {
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &lCount,  [](SimpleHttpResult*) {});
+                leaderRes = response;
+              } else if (destination == "server:" + dbserver2) {
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &f1Count,  [](SimpleHttpResult*) {});
+                follower1Res = response;
+              } else if (destination == "server:" + dbserver3) {
+                response.status = CL_COMM_TIMEOUT;
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &f2Count,  [](SimpleHttpResult*) {});
+                follower2Res = response;
+              } else {
+                REQUIRE(false);
+              }
+
+              return opId;
+              });
+        fakeit::When(Method(commMock, wait))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID,
+                ClusterCommTimeout timeout) {
+              if (operationID != 0) {
+              return leaderRes;
+              }
+              if (returnedFirstFollower) {
+              return follower2Res;
+              } else {
+              returnedFirstFollower = true;
+              return follower1Res;
+              }
+              });
+
+        fakeit::When(Method(commMock, drop))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID
+                ) {
+              // We need to abort this trx
+              REQUIRE(coordTransactionID == coordId);
+              // For all operations and shards
+              REQUIRE(operationID == 0);
+              REQUIRE(shardID == "");
+              });
+
+        THEN("It should use the leader and the other one") {
+          VPackBuilder resultBuilder;
+          testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+          VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
+        }
+
+        THEN("It should not call drop") {
+          VPackBuilder resultBuilder;
+          testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+          fakeit::Verify(Method(commMock, drop)).Exactly(0);
+        }
+
+      }
+
+      WHEN("No follower does respond") {
+        uint64_t leaderCount = 1337;
+        uint64_t smallerFollowerCount = 456;
+        uint64_t largerFollowerCount = 1111;
+
+        // Moking HttpResults
+        fakeit::Mock<SimpleHttpResult> leaderCountMock;
+        SimpleHttpResult& lCount = leaderCountMock.get();
+
+        fakeit::Mock<SimpleHttpResult> followerOneCountMock;
+        SimpleHttpResult& f1Count = followerOneCountMock.get();
+
+        fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
+        SimpleHttpResult& f2Count = followerTwoCountMock.get();
+
+        // Mocking HTTP Response
+        fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { return buildCountBody(leaderCount); });
+
+        fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(largerFollowerCount); });
+
+        fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+              std::shared_ptr<VPackBuilder>()))
+          .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(smallerFollowerCount); });
+
+        ClusterCommResult leaderRes;
+        ClusterCommResult follower1Res;
+        ClusterCommResult follower2Res;
+        bool returnedFirstFollower = false;
+
+        CoordTransactionID coordId = 0;
+        // Mocking the ClusterComm for count calls
+        fakeit::When(Method(commMock, asyncRequest))
+          .AlwaysDo(
+              [&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                std::string const& destination, rest::RequestType reqtype,
+                std::string const& path,
+                std::shared_ptr<std::string const> body,
+                std::unordered_map<std::string, std::string> const& headerFields,
+                std::shared_ptr<ClusterCommCallback> callback,
+                ClusterCommTimeout timeout, bool singleRequest,
+                ClusterCommTimeout initTimeout) -> OperationID {
+              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+
+              OperationID opId = TRI_NewTickServer();
+              coordId = coordTransactionID;
+
+              ClusterCommResult response;
+              response.coordTransactionID = coordTransactionID;
+              response.operationID = opId;
+              response.answer_code = rest::ResponseCode::OK;
+              response.status = CL_COMM_RECEIVED;
+
+              if (destination == "server:" + dbserver1) {
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &lCount,  [](SimpleHttpResult*) {});
+                leaderRes = response;
+              } else if (destination == "server:" + dbserver2) {
+                response.status = CL_COMM_TIMEOUT;
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &f1Count,  [](SimpleHttpResult*) {});
+                follower1Res = response;
+              } else if (destination == "server:" + dbserver3) {
+                response.status = CL_COMM_TIMEOUT;
+                response.result = std::shared_ptr<SimpleHttpResult>(
+                    &f2Count,  [](SimpleHttpResult*) {});
+                follower2Res = response;
+              } else {
+                REQUIRE(false);
+              }
+
+              return opId;
+              });
+        fakeit::When(Method(commMock, wait))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID,
+                ClusterCommTimeout timeout) {
+              if (operationID != 0) {
+              return leaderRes;
+              }
+              if (returnedFirstFollower) {
+              return follower2Res;
+              } else {
+              returnedFirstFollower = true;
+              return follower1Res;
+              }
+              });
+
+        fakeit::When(Method(commMock, drop))
+          .AlwaysDo([&](ClientTransactionID const&,
+                CoordTransactionID const coordTransactionID,
+                OperationID const operationID, ShardID const& shardID
+                ) {
+              // We need to abort this trx
+              REQUIRE(coordTransactionID == coordId);
+              // For all operations and shards
+              REQUIRE(operationID == 0);
+              REQUIRE(shardID == "");
+              });
+
+        THEN("It should use the leader and the default current of 0") {
+          VPackBuilder resultBuilder;
+          testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+          VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, 0);
+        }
+
+        THEN("It should not call drop") {
+          VPackBuilder resultBuilder;
+          testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+          fakeit::Verify(Method(commMock, drop)).Exactly(0);
+        }
+
+      }
+
+      // this should be obsolete because from now on only one collection can be asked
+      // for its progressing state
+
+      /*GIVEN("A second collection") {
+        fakeit::Mock<LogicalCollection> secColMock;
+        LogicalCollection& secCol = secColMock.get();
+
+        std::string secColName = "UnitTestOtherCollection";
+        std::string secCidString = "4561";
+
+
+        fakeit::Mock<CollectionInfoCurrent> infoOtherCurrentMock;
+        CollectionInfoCurrent& otherCicInst = infoOtherCurrentMock.get();
+
+        std::shared_ptr<CollectionInfoCurrent> otherCic(
+            &otherCicInst, [](CollectionInfoCurrent*) {});
+
+        fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, secCidString))
+          .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& cId) {
+              REQUIRE(dbId == dbname);
+              REQUIRE(cId == secCidString);
+              return otherCic;
+              });
+
+        allCollections.emplace_back(
+            std::shared_ptr<LogicalCollection>(&secCol, [](LogicalCollection*) {}));
+
+        // Fake the shard map
+        auto otherShards = std::make_shared<ShardMap>();
+        ShardMap otherCurrentShards;
+
+        otherShards->emplace(s2, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+
+        otherCurrentShards.emplace(s2, std::vector<ServerID>{dbserver1});
+
+        fakeit::When(Method(secColMock, name)).AlwaysReturn(secColName);
+        fakeit::When(
+            ConstOverloadedMethod(secColMock, shardIds, std::shared_ptr<ShardMap>()))
+          .AlwaysReturn(otherShards);
+        fakeit::When(Method(secColMock, cid_as_string)).AlwaysReturn(secCidString);
+
+        fakeit::When(Method(infoOtherCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+            REQUIRE(otherCurrentShards.find(sid) != otherCurrentShards.end());
+            return otherCurrentShards[sid];
+            });
+
+        THEN("It should not ask the second collection if the first waits > 2.0s") {
+          // Moking HttpResults
+          fakeit::Mock<SimpleHttpResult> leaderCountMock;
+          SimpleHttpResult& lCount = leaderCountMock.get();
+
+          fakeit::Mock<SimpleHttpResult> followerOneCountMock;
+          SimpleHttpResult& f1Count = followerOneCountMock.get();
+
+          fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
+          SimpleHttpResult& f2Count = followerTwoCountMock.get();
+
+          uint64_t leaderCount = 1337;
+          uint64_t smallerFollowerCount = 456;
+          uint64_t largerFollowerCount = 1111;
+
+          // Mocking HTTP Response
+          fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+                std::shared_ptr<VPackBuilder>()))
+            .AlwaysDo([&]() { return buildCountBody(leaderCount); });
+
+          fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+                std::shared_ptr<VPackBuilder>()))
+            .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
+
+          fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+                std::shared_ptr<VPackBuilder>()))
+            .AlwaysDo([&]() { return buildCountBody(smallerFollowerCount); });
+
+          ClusterCommResult leaderRes;
+          ClusterCommResult follower1Res;
+          ClusterCommResult follower2Res;
+
+          bool returnedFirstFollower = false;
+
+          // Mocking the ClusterComm for count calls
+          fakeit::When(Method(commMock, asyncRequest))
             .AlwaysDo(
                 [&](ClientTransactionID const&,
-                    CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path,
-                    std::shared_ptr<std::string const> body,
-                    std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                        headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback,
-                    ClusterCommTimeout timeout, bool singleRequest,
-                    ClusterCommTimeout initTimeout) -> OperationID {
+                  CoordTransactionID const coordTransactionID,
+                  std::string const& destination, rest::RequestType reqtype,
+                  std::string const& path,
+                  std::shared_ptr<std::string const> body,
+                  std::unordered_map<std::string, std::string> const& headerFields,
+                  std::shared_ptr<ClusterCommCallback> callback,
+                  ClusterCommTimeout timeout, bool singleRequest,
+                  ClusterCommTimeout initTimeout) -> OperationID {
                 REQUIRE(path == "/_api/collection/" + s1 + "/count");
 
                 OperationID opId = TRI_NewTickServer();
@@ -1178,38 +1871,42 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                   REQUIRE(false);
                 }
                 return opId;
-            });
+                });
 
-        fakeit::When(Method(commMock, wait))
+          fakeit::When(Method(commMock, wait))
             .AlwaysDo([&](ClientTransactionID const&,
-                          CoordTransactionID const coordTransactionID,
-                          OperationID const operationID, ShardID const& shardID,
-                          ClusterCommTimeout timeout) {
-              if (operationID != 0) {
+                  CoordTransactionID const coordTransactionID,
+                  OperationID const operationID, ShardID const& shardID,
+                  ClusterCommTimeout timeout) {
+                if (operationID != 0) {
                 // Let us sleep 2 seconds here
                 std::this_thread::sleep_for(std::chrono::seconds(2));
                 return leaderRes;
-              }
-              if (returnedFirstFollower) {
+                }
+                if (returnedFirstFollower) {
                 return follower2Res;
-              } else {
+                } else {
                 returnedFirstFollower = true;
                 return follower1Res;
-              }
-            });
+                }
+                });
 
 
-        VPackBuilder resultBuilder;
-        testee.getDistributionForDatabase(dbname, resultBuilder);
+          VPackBuilder resultBuilder;
+          testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
-        VPackSlice result = resultBuilder.slice();
-        // Validate first collection is okay (we did not really timeout, just tricked the system...)
-        VerifyNumbers(result, colName, s1, leaderCount, smallerFollowerCount);
-        // Validate that the second collection uses default values.
-        VerifyNumbers(result, secColName, s2, 1, 0);
+          VPackSlice result = resultBuilder.slice();
+          // Validate first collection is okay (we did not really timeout, just tricked the system...)
+          VerifyNumbers(result, colName, s1, leaderCount, smallerFollowerCount);
+          // Validate that the second collection uses default values.
+          VerifyNumbers(result, secColName, s2, 1, 0);
 
-      }
-
+        }
+      }*/
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

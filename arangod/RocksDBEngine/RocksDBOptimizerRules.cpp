@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBOptimizerRules.h"
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -40,32 +41,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-class AttributeAccessReplacer final : public WalkerWorker<ExecutionNode> {
- public:
-  AttributeAccessReplacer(Variable const* variable, std::vector<std::string> const& attribute)
-      : _variable(variable), _attribute(attribute) {
-    TRI_ASSERT(_variable != nullptr);
-    TRI_ASSERT(!_attribute.empty());
-  }
-
-  bool before(ExecutionNode* en) override final {
-    if (en->getType() == EN::CALCULATION) {
-      auto node = static_cast<CalculationNode*>(en);
-      node->expression()->replaceAttributeAccess(_variable, _attribute);
-    }
-
-    // always continue
-    return false;
-  }
-
- private:
-  Variable const* _variable;
-  std::vector<std::string> _attribute;
-};
-
 void RocksDBOptimizerRules::registerResources() {
   OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, 
-               OptimizerRule::reduceExtractionToProjectionRule_pass6, false, true);
+               OptimizerRule::reduceExtractionToProjectionRule_pass10, false, true);
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
@@ -77,67 +55,55 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION}; 
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
   plan->findNodesOfType(nodes, types, true);
 
   bool modified = false;
   std::unordered_set<Variable const*> vars;
-  std::vector<std::string> attributeNames;
+  std::unordered_set<std::string> attributes;
 
   for (auto const& n : nodes) {
     bool stop = false;
     bool optimize = false;
-    attributeNames.clear();
+    attributes.clear();
     DocumentProducingNode* e = dynamic_cast<DocumentProducingNode*>(n);
     if (e == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
     }
-
     Variable const* v = e->outVariable();
-    Variable const* replaceVar = nullptr;
-              
+
     ExecutionNode* current = n->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == EN::CALCULATION) {
-        Expression* exp = static_cast<CalculationNode*>(current)->expression();
+        Expression* exp = ExecutionNode::castTo<CalculationNode*>(current)->expression();
 
-        if (exp != nullptr) {
+        if (exp != nullptr && exp->node() != nullptr) {
           AstNode const* node = exp->node();
           vars.clear();
           current->getVariablesUsedHere(vars);
             
           if (vars.find(v) != vars.end()) {
-            if (attributeNames.empty()) {
-              vars.clear();
-              current->getVariablesUsedHere(vars);
-              
-              if (node != nullptr) {
-                if (Ast::populateSingleAttributeAccess(node, v, attributeNames)) {
-                  if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
-                    stop = true;
-                    break;
-                  }
-                  replaceVar = static_cast<CalculationNode*>(current)->outVariable();
-                  optimize = true;
-                  TRI_ASSERT(!attributeNames.empty());
-                } else {
-                  stop = true;
-                  break;
-                }
-              } else {
-                stop = true;
-                break;
-              }
-            } else if (node != nullptr) {
-              if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
-                stop = true;
-                break;
-              }
-            } else {
-              // don't know what to do
+            if (!Ast::getReferencedAttributes(node, v, attributes)) {
               stop = true;
               break;
             }
+            optimize = true;
+          }
+        }
+      } else if (current->getType() == EN::GATHER) {
+        // compare sort attributes of GatherNode
+        auto gn = ExecutionNode::castTo<GatherNode*>(current);
+        for (auto const& it : gn->elements()) {
+          if (it.var == v) {
+            if (it.attributePath.empty()) {
+              // sort of GatherNode refers to the entire document, not to an
+              // attribute of the document
+              stop = true;
+              break;
+            }
+            // insert 0th level of attribute name into the set of attributes
+            // that we need for our projection
+            attributes.emplace(it.attributePath[0]); 
           }
         }
       } else {
@@ -151,20 +117,27 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         }
       }
 
-      TRI_ASSERT(!stop);
+      if (stop) {
+        break;
+      }
 
       current = current->getFirstParent();
     }
 
-    if (optimize && !stop) {
-      TRI_ASSERT(replaceVar != nullptr);
+    // projections are currently limited (arbitrarily to 5 attributes)
+    if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
+      std::vector<std::string> r;
+      for (auto& it : attributes) {
+        r.emplace_back(std::move(it));
+      }
+      // store projections in DocumentProducingNode
+      e->projections(std::move(r));
 
-      AttributeAccessReplacer finder(v, attributeNames);
-      plan->root()->walk(&finder);
+      if (n->getType() == ExecutionNode::INDEX) {
+        // need to update _indexCoversProjections value in an IndexNode
+        ExecutionNode::castTo<IndexNode*>(n)->initIndexCoversProjections();
+      }
       
-      std::reverse(attributeNames.begin(), attributeNames.end());
-      e->setProjection(std::move(attributeNames));
-
       modified = true;
     }
   }

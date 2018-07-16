@@ -34,6 +34,8 @@
 #include "VocBase/AccessMode.h"
 
 #include <functional>
+#include <iterator>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -65,7 +67,7 @@ class Ast {
 
   /// @brief return the variable generator
   inline VariableGenerator* variables() { return &_variables; }
-  
+
   /// @brief return the root of the AST
   inline AstNode const* root() const { return _root; }
 
@@ -117,11 +119,11 @@ class Ast {
   inline Scopes* scopes() { return &_scopes; }
 
   /// @brief track the write collection
-  inline void addWriteCollection(AstNode const* node) {
+  inline void addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
     TRI_ASSERT(node->type == NODE_TYPE_COLLECTION ||
                node->type == NODE_TYPE_PARAMETER);
 
-    _writeCollections.emplace_back(node);
+    _writeCollections.emplace_back(node, isExclusiveAccess);
   }
 
   /// @brief whether or not function calls may access collection documents
@@ -149,8 +151,14 @@ class Ast {
   /// @brief create an AST example node
   AstNode* createNodeExample(AstNode const*, AstNode const*);
 
+  /// @brief create an AST subquery node
+  AstNode* createNodeSubquery();
+
   /// @brief create an AST for node
   AstNode* createNodeFor(char const*, size_t, AstNode const*, bool);
+
+  /// @brief create an AST for node, using an existing output variable
+  AstNode* createNodeFor(Variable*, AstNode const*);
 
   /// @brief create an AST let node, without an IF condition
   AstNode* createNodeLet(char const*, size_t, AstNode const*, bool);
@@ -217,6 +225,9 @@ class Ast {
   /// @brief create an AST collection node
   AstNode* createNodeCollection(char const*, AccessMode::Type);
 
+  /// @brief create an AST view node
+  AstNode* createNodeView(char const*);
+
   /// @brief create an AST reference node
   AstNode* createNodeReference(char const*, size_t);
 
@@ -227,7 +238,12 @@ class Ast {
   AstNode* createNodeReference(Variable const*);
 
   /// @brief create an AST parameter node
-  AstNode* createNodeParameter(char const*, size_t);
+  AstNode* createNodeParameter(
+    char const* name,
+    size_t length
+  );
+  AstNode* createNodeParameterCollection(char const* name, size_t length);
+  AstNode* createNodeParameterView(char const* name, size_t length);
 
   /// @brief create an AST quantifier node
   AstNode* createNodeQuantifier(int64_t);
@@ -247,8 +263,27 @@ class Ast {
   AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*,
                                      AstNode const*);
 
+  /// @brief create an AST variable access
+  AstNode* createNodeAccess(Variable const*,
+                            std::vector<basics::AttributeName> const&);
+
   /// @brief create an AST attribute access node
+  /// note that the caller must make sure that char* data remains valid!
   AstNode* createNodeAttributeAccess(AstNode const*, char const*, size_t);
+
+
+  /// @brief create an AST attribute access node for multiple accesses
+  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string> const&);
+  AstNode* createNodeAttributeAccess(AstNode const* node, std::vector<basics::AttributeName> const& attrs) {
+    std::vector<std::string> vec; //change to std::string_view once available
+    std::transform(attrs.begin(),
+                   attrs.end(),
+                   std::back_inserter(vec),
+                   [](basics::AttributeName const& a) {
+                     return a.name;
+                   });
+    return createNodeAttributeAccess(node,vec);
+  }
 
   /// @brief create an AST attribute access node w/ bind parameter
   AstNode* createNodeBoundAttributeAccess(AstNode const*, AstNode const*);
@@ -303,7 +338,7 @@ class Ast {
 
   /// @brief create an AST collection pair node
   AstNode* createNodeCollectionPair(AstNode const*, AstNode const*);
- 
+
   /// @brief create an AST with collections node
   AstNode* createNodeWithCollections (AstNode const*);
 
@@ -344,7 +379,11 @@ class Ast {
                                   AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
-  AstNode* createNodeFunctionCall(char const*, AstNode const*);
+  AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments) {
+    return createNodeFunctionCall(functionName, strlen(functionName), arguments);
+  }
+
+  AstNode* createNodeFunctionCall(char const* functionName, size_t length, AstNode const* arguments);
 
   /// @brief create an AST range node
   AstNode* createNodeRange(AstNode const*, AstNode const*);
@@ -362,7 +401,10 @@ class Ast {
   AstNode* createNodeNaryOperator(AstNodeType, AstNode const*);
 
   /// @brief injects bind parameters into the AST
-  void injectBindParameters(BindParameters&);
+  void injectBindParameters(
+    BindParameters& parameters,
+    arangodb::CollectionNameResolver const& resolver
+  );
 
   /// @brief replace variables
   AstNode* replaceVariables(
@@ -387,15 +429,10 @@ class Ast {
   /// @brief determines the top-level attributes in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
-  
-  static bool populateSingleAttributeAccess(AstNode const* node,
-                                            Variable const* variable,
-                                            std::vector<std::string>& attributeName);
+  static std::unordered_set<std::string> getReferencedAttributesForKeep(AstNode const*, Variable const* searchVariable, bool&);
 
-  static bool variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
-                                                       Variable const* variable,
-                                                       std::vector<std::string> const& attributeName);
-  
+  static bool getReferencedAttributes(AstNode const*, Variable const*, std::unordered_set<std::string>&);
+
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node,
                                          Variable const* variable,
@@ -403,6 +440,9 @@ class Ast {
 
   /// @brief recursively clone a node
   AstNode* clone(AstNode const*);
+
+  /// @brief clone a node, but do not recursively clone subtree
+  AstNode* shallowCopyForModify(AstNode const*);
 
   /// @brief deduplicate an array
   /// will return the original node if no modifications were made, and a new
@@ -418,16 +458,17 @@ class Ast {
   /// @brief get the n-ary operator type equivalent for a binary operator type
   static AstNodeType NaryOperatorType(AstNodeType);
 
+  /// @brief return whether this is an `AND` operator
+  static bool IsAndOperatorType(AstNodeType);
+
+  /// @brief return whether this is an `OR` operator
+  static bool IsOrOperatorType(AstNodeType);
+
   /// @brief create an AST node from vpack
   AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);
-  
+
   /// @brief resolve an attribute access
   static AstNode const* resolveConstAttributeAccess(AstNode const*);
-
-  /// @brief traverse the AST using a depth-first visitor
-  static AstNode* traverseAndModify(AstNode*,
-                                    std::function<AstNode*(AstNode*, void*)>,
-                                    void*);
 
  private:
   /// @brief make condition from example
@@ -439,13 +480,9 @@ class Ast {
   /// @brief create a number node for an arithmetic result, double
   AstNode* createArithmeticResultNode(double);
 
-  /// @brief executes an expression with constant parameters in V8
-  AstNode* executeConstExpressionV8(AstNode const*);
-
   /// @brief optimizes the unary operators + and -
   /// the unary plus will be converted into a simple value node if the operand
-  /// of
-  /// the operation is a constant number
+  /// of the operation is a constant number
   AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
 
   /// @brief optimizes the unary operator NOT with a non-constant expression
@@ -494,27 +531,32 @@ class Ast {
   AstNode* optimizeObject(AstNode*);
 
 public:
+  /** Make sure to replace the AstNode* you pass into TraverseAndModify
+   *  if it was changed. This is necessary because the function itself
+   *  has only access to the node but not its parent / owner.
+   */
   /// @brief traverse the AST, using pre- and post-order visitors
   static AstNode* traverseAndModify(AstNode*,
-                                    std::function<bool(AstNode const*, void*)>,
-                                    std::function<AstNode*(AstNode*, void*)>,
-                                    std::function<void(AstNode const*, void*)>,
-                                    void*);
+                                    std::function<bool(AstNode const*)> const&,
+                                    std::function<AstNode*(AstNode*)> const&,
+                                    std::function<void(AstNode const*)> const&);
+
+  /// @brief traverse the AST using a depth-first visitor
+  static AstNode* traverseAndModify(AstNode*,
+                                    std::function<AstNode*(AstNode*)> const&);
 
   /// @brief traverse the AST, using pre- and post-order visitors
   static void traverseReadOnly(AstNode const*,
-                               std::function<void(AstNode const*, void*)>,
-                               std::function<void(AstNode const*, void*)>,
-                               std::function<void(AstNode const*, void*)>,
-                               void*);
+                               std::function<bool(AstNode const*)> const&,
+                               std::function<void(AstNode const*)> const&);
 
   /// @brief traverse the AST using a depth-first visitor, with const nodes
   static void traverseReadOnly(AstNode const*,
-                               std::function<void(AstNode const*, void*)>,
-                               void*);
-private:
+                               std::function<void(AstNode const*)> const&);
+
+ private:
   /// @brief normalize a function name
-  std::pair<std::string, bool> normalizeFunctionName(char const*);
+  std::pair<std::string, bool> normalizeFunctionName(char const* functionName, size_t length);
 
   /// @brief create a node of the specified type
   AstNode* createNode(AstNodeType);
@@ -546,7 +588,7 @@ private:
   std::vector<AstNode*> _queries;
 
   /// @brief which collection is going to be modified in the query
-  std::vector<AstNode const*> _writeCollections;
+  std::vector<std::pair<AstNode const*, bool>> _writeCollections;
 
   /// @brief whether or not function calls may access collection data
   bool _functionsMayAccessDocuments;
@@ -572,6 +614,7 @@ private:
   /// @brief a singleton empty string node instance
   static AstNode const EmptyStringNode;
 };
+
 }
 }
 

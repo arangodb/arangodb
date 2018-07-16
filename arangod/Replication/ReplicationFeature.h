@@ -24,11 +24,13 @@
 #define ARANGODB_REPLICATION_REPLICATION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/ServerState.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class GlobalReplicationApplier;
+class GeneralResponse;
 
 class ReplicationFeature final
     : public application_features::ApplicationFeature {
@@ -64,9 +66,16 @@ class ReplicationFeature final
   void stopApplier(TRI_vocbase_t* vocbase);
       
   /// @brief automatic failover of replication using the agency
-  bool isAutomaticFailoverEnabled() const {
-    return _enableReplicationFailover;
+  bool isActiveFailoverEnabled() const {
+    return _enableActiveFailover;
   }
+      
+  /// @brief set the x-arango-endpoint header
+  static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
+      
+  /// @brief fill a response object with correct response for a follower
+  static void prepareFollowerResponse(GeneralResponse*,
+                                      arangodb::ServerState::Mode);
  
  public:
   static ReplicationFeature* INSTANCE;
@@ -75,8 +84,8 @@ class ReplicationFeature final
       
   bool _replicationApplierAutoStart;
       
-  /// Enable the automatic failover
-  bool _enableReplicationFailover;
+  /// Enable the active failover
+  bool _enableActiveFailover;
       
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 };

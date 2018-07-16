@@ -40,8 +40,7 @@ FileDescriptorsFeature::FileDescriptorsFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(0) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void FileDescriptorsFeature::collectOptions(

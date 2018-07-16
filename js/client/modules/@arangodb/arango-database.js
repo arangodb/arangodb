@@ -59,6 +59,11 @@ function ArangoDatabase (connection) {
       delete this._viewList[name];
     }
   };
+  this._renameView = function (from, to) {
+    // store the view in our own list
+    this._viewList[to] = this._viewList[from];
+    delete this._viewList[from];
+  };
 }
 
 exports.ArangoDatabase = ArangoDatabase;
@@ -247,9 +252,11 @@ var helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help')
   '  _createStatement(<data>)              create and return AQL query       ' + '\n' +
   '                                                                          ' + '\n' +
   'View Functions:                                                           ' + '\n' +
-  '  _views()                                  list all views                ' + '\n' +
-  '  _view(<name>)                             get view by name              ' + '\n' +
-  '  _createView(<name>, <type>, <properties>) creates a new view            ';
+  '  _views()                              list all views                    ' + '\n' +
+  '  _view(<name>)                         get view by name                  ' + '\n' +
+  '  _createView(<name>, <type>,           creates a new view                ' + '\n' +
+  '              <properties>)                                               ' + '\n' +
+  '  _dropView(<name>)                     delete a view                     ';
 
 ArangoDatabase.prototype._help = function () {
   internal.print(helpArangoDatabase);
@@ -277,7 +284,7 @@ ArangoDatabase.prototype._collections = function () {
     var result = [];
     var i;
 
-    // add all collentions to object
+    // add all collections to object
     for (i = 0;  i < collections.length;  ++i) {
       var collection = new this._collectionConstructor(this, collections[i]);
       this._registerCollection(collection._name, collection);
@@ -318,7 +325,7 @@ ArangoDatabase.prototype._collection = function (id) {
   // return null in case of not found
   if (requestResult !== null
     && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+    && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 
@@ -951,6 +958,17 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief queryProfile execute a query with profiling information
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._profileQuery = function (query, bindVars, options) {
+  options = options || {};
+  options.profile = 2;
+  query = { query: query, bindVars: bindVars, options: options };
+  require('@arangodb/aql/explainer').profileQuery(query);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief explains a query
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1047,15 +1065,6 @@ ArangoDatabase.prototype._databases = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._useDatabase = function (name) {
-  if (internal.printBrowser) {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_NOT_IMPLEMENTED.code,
-      errorNum: internal.errors.ERROR_NOT_IMPLEMENTED.code,
-      errorMessage: '_useDatabase() is not supported in the web interface'
-    });
-  }
-
   var old = this._connection.getDatabaseName();
 
   // no change
@@ -1117,13 +1126,33 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     });
   }
 
-  if (!data.collections || typeof (data.collections) !== 'object') {
+  data = Object.assign({}, data);
+
+  if (!data.collections || typeof data.collections !== 'object') {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
       errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
       errorMessage: 'missing/invalid collections definition for transaction'
     });
+  }
+
+  data.collections = Object.assign({}, data.collections);
+  if (data.collections.read) {
+    if (!Array.isArray(data.collections.read)) {
+      data.collections.read = [data.collections.read];
+    }
+    data.collections.read = data.collections.read.map(
+      col => col.isArangoCollection ? col.name() : col
+    );
+  }
+  if (data.collections.write) {
+    if (!Array.isArray(data.collections.write)) {
+      data.collections.write = [data.collections.write];
+    }
+    data.collections.write = data.collections.write.map(
+      col => col.isArangoCollection ? col.name() : col
+    );
   }
 
   if (!data.action ||
@@ -1182,6 +1211,33 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief deletes a view
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._dropView = function (id) {
+  var name;
+
+  for (name in this._viewList) {
+    if (this._viewList.hasOwnProperty(name)) {
+      var view = this._viewList[name];
+
+      if (view instanceof this._viewConstructor) {
+        if (view._id === id || view._name === id) {
+          return view.drop();
+        }
+      }
+    }
+  }
+
+  var v = this._view(id);
+  if (v) {
+    return v.drop();
+  }
+
+  return undefined;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief return all views from the database
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1229,7 +1285,7 @@ ArangoDatabase.prototype._view = function (id) {
   // return null in case of not found
   if (requestResult !== null
     && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_VIEW_NOT_FOUND.code) {
+    && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 

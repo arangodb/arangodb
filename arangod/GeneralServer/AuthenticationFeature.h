@@ -24,9 +24,11 @@
 #define APPLICATION_FEATURES_AUTHENTICATION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "VocBase/AuthInfo.h"
+#include "Auth/TokenCache.h"
+#include "Auth/UserManager.h"
 
 namespace arangodb {
+  
 class AuthenticationFeature final
     : public application_features::ApplicationFeature {
  private:
@@ -35,7 +37,10 @@ class AuthenticationFeature final
  public:
   explicit AuthenticationFeature(application_features::ApplicationServer*);
   ~AuthenticationFeature();
-  static AuthenticationFeature* INSTANCE;
+      
+  static inline AuthenticationFeature* instance() {
+    return INSTANCE;
+  }
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -49,39 +54,37 @@ class AuthenticationFeature final
  public:
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
-  std::string jwtSecret() { return authInfo()->jwtSecret(); }
+  std::string jwtSecret() const { return _authCache->jwtSecret(); }
   bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
-
-  /// set new jwt secret, regenerate _jetToken
-  void setJwtSecret(std::string const& jwtSecret) {
-    authInfo()->setJwtSecret(jwtSecret);
-    generateJwtToken();
-  }
-
-  /// Get the jwt token, which should be used for communicatin
-  std::string const& jwtToken() const { return _jwtToken; }
       
-  double authenticationTimeout() const { return _authenticationTimeout; }
-  bool localAuthentication() const { return _localAuthentication; }
+  double authenticationTimeout() const noexcept { return _authenticationTimeout; }
+  /// Enable or disable standalone authentication
+  bool localAuthentication() const noexcept { return _localAuthentication; }
 
-  AuthInfo* authInfo() const;
+  /// @return Cache to deal with authentication tokens
+  inline auth::TokenCache* tokenCache() const noexcept {
+    TRI_ASSERT(_authCache);
+    return _authCache;
+  }
   
-private:
-
-  /// generate new _jwtToken
-  void generateJwtToken();
-
+  /// user manager may be null on DBServers and Agency
+  /// @return user manager singleton
+  inline auth::UserManager* userManager() const noexcept {
+    return _userManager;
+  }
+      
  private:
-  AuthInfo* _authInfo;
+  auth::UserManager* _userManager;
+  auth::TokenCache* _authCache;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
   double _authenticationTimeout;
   bool _localAuthentication;
 
   std::string _jwtSecretProgramOption;
-  std::string _jwtToken;
   bool _active;
 
+  static AuthenticationFeature* INSTANCE;
 
 };
 };

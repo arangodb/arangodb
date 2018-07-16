@@ -57,6 +57,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
@@ -72,6 +73,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   uint64_t _nrInflightContexts; // number of contexts currently in creation
   uint64_t _maxContextInvocations; // maximum number of V8 context invocations
   bool _allowAdminExecute;
+  bool _enableJS;
 
  public:
   JSLoader* startupLoader() { return &_startupLoader; };
@@ -83,9 +85,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   // the builder is not cleared and thus should be empty before the call.
   void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
                                        VPackBuilder* builder);
-  void loadJavaScriptFileInDefaultContext(TRI_vocbase_t*, std::string const& file,
-                                          VPackBuilder* builder);
-  void startGarbageCollection();
 
   /// @brief forceContext == -1 means that any free context may be
   /// picked, or a new one will be created if we have not exceeded
@@ -127,23 +126,22 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
  private:
   uint64_t nextId() { return _nextId++; }
+  void startGarbageCollection();
   V8Context* addContext();
   V8Context* buildContext(size_t id);
   V8Context* pickFreeContextForGc();
   void shutdownContext(V8Context* context);
-  void unblockContextsModification();
+  void unblockDynamicContextCreation();
   void loadJavaScriptFileInternal(std::string const& file, V8Context* context,
                                   VPackBuilder* builder);
   bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context, VPackBuilder* builder);
-  void enterContextInternal(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
-  void enterLockedContext(TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
+  void prepareLockedContext(TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
   void exitContextInternal(V8Context*);
-  void exitLockedContext(V8Context*);
+  void cleanupLockedContext(V8Context*);
   void applyContextUpdate(V8Context* context);
   void shutdownContexts();
 
  private:
-  std::atomic<bool> _ok;
   std::atomic<uint64_t> _nextId;
 
   std::unique_ptr<Thread> _gcThread;
@@ -152,10 +150,10 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   basics::ConditionVariable _contextCondition;
   std::vector<V8Context*> _contexts;
-  std::vector<V8Context*> _freeContexts;
+  std::vector<V8Context*> _idleContexts;
   std::vector<V8Context*> _dirtyContexts;
   std::unordered_set<V8Context*> _busyContexts;
-  size_t _contextsModificationBlockers;
+  size_t _dynamicContextCreationBlockers;
 
   JSLoader _startupLoader;
 
@@ -167,6 +165,23 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
       TRI_vocbase_t*>> _contextUpdates;
 };
+
+
+// enters and exits a context and provides an isolate
+// in case the passed in isolate is a nullptr
+class V8ContextDealerGuard {
+ public:
+  explicit V8ContextDealerGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, bool allowModification);
+  V8ContextDealerGuard(V8ContextDealerGuard const&) = delete;
+  V8ContextDealerGuard& operator=(V8ContextDealerGuard const&) = delete;
+  ~V8ContextDealerGuard();
+
+ private:
+  v8::Isolate*& _isolate;
+  V8Context* _context;
+  bool _active;
+};
+
 }
 
 #endif

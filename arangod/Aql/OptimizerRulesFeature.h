@@ -37,7 +37,8 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 
  public:
   void prepare() override final;
-  
+  void unprepare() override final;
+
   /// @brief translate a list of rule ids into rule name
   static std::vector<std::string> translateRules(std::vector<int> const&);
 

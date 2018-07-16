@@ -44,6 +44,7 @@ class VPackFeature final
   std::string _inputFile;
   std::string _outputFile;
   bool _prettyPrint;
+  bool _jsonInput;
   bool _hexInput;
   bool _printNonJson;
 };

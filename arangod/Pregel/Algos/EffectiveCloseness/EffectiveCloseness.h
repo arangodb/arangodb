@@ -40,11 +40,8 @@ struct EffectiveCloseness : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> 
   MessageFormat<HLLCounter>* messageFormat() const override;
   MessageCombiner<HLLCounter>* messageCombiner() const override;
 
-
   VertexComputation<ECValue, int8_t, HLLCounter>*
       createComputation(WorkerConfig const*) const override;
-
-  uint64_t maxGlobalSuperstep() const override { return 1000; }
 };
 }
 }

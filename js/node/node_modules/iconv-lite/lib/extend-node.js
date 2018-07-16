@@ -1,4 +1,5 @@
-"use strict"
+"use strict";
+var Buffer = require("buffer").Buffer;
 
 // == Extend Node primitives to use iconv-lite =================================
 

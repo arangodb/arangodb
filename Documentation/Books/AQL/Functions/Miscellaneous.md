@@ -153,7 +153,7 @@ Calculate a hash value for *value*.
 *value* is not required to be a string, but can have any data type. The calculated
 hash value will take the data type of *value* into account, so for example the
 number *1* and the string *"1"* will have different hash values. For arrays the
-hash values will be creared if the arrays contain exactly the same values
+hash values will be equal if the arrays contain exactly the same values
 (including value types) in the same order. For objects the same hash values will
 be created if the objects have exactly the same attribute names and values
 (including value types). The order in which attributes appear inside objects
@@ -186,6 +186,24 @@ APPLY( "SUBSTRING", [ "this is a test", 0, 7 ] )
 // "this is"
 ```
 
+### ASSERT() / WARN()
+
+`ASSERT(expression, message) → retVal`
+
+The 2 functions evaluate an expression. In case the expression evaluates to
+*true* both functions will return *true*. If the expression evaluates to
+*false* *ASSERT* will throw an error and *WARN* will issue a warning and return
+*false*. This behavior allows the use of *ASSERT* and *WARN* in *FILTER*
+conditions.
+
+- **expression** (AqlValue): AQL expression to be evaluated
+- **message** (string): message that will be used in exception or warning if expression evaluates to false
+- returns **retVal** (bool): returns true if expression evaluates to true
+
+```js
+FOR i IN 1..3 FILTER ASSERT(i > 0, "i is not greater 0") RETURN i
+FOR i IN 1..3 FILTER WARN(i < 2, "i is not smaller 2") RETURN i
+```
 ### CALL()
 
 `CALL(funcName, arg1, arg2, ... argN) → retVal`
@@ -240,7 +258,7 @@ can be forced to be evaluated at runtime with this.
 If there is a C++ implementation as well as a JavaScript implementation of an
 AQL function, then it will enforce the use of the C++ version.
 
-- **expression** (any): arbitray expression
+- **expression** (any): arbitrary expression
 - returns **retVal** (any): the return value of the *expression*
 
 ```js
@@ -284,7 +302,7 @@ No-operation that enforces the usage of the V8 JavaScript engine. If there is a
 JavaScript implementation of an AQL function, for which there is also a C++
 implementation, the JavaScript version will be used.
 
-- **expression** (any): arbitray expression
+- **expression** (any): arbitrary expression
 - returns **retVal** (any): the return value of the *expression*
 
 ```js

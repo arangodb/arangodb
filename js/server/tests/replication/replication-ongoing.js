@@ -34,6 +34,7 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 
 const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
 const console = require("console");
 const internal = require("internal");
 const masterEndpoint = arango.getEndpoint();
@@ -59,28 +60,6 @@ const collectionChecksum = function(name) {
 
 const collectionCount = function(name) {
   return db._collection(name).count();
-};
-
-const compareTicks = function(l, r) {
-  var i;
-  if (l === null) {
-    l = "0";
-  }
-  if (r === null) {
-    r = "0";
-  }
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
-  }
-
-  // length is equal
-  for (i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
-    }
-  }
-
-  return 0;
 };
 
 const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
@@ -180,6 +159,69 @@ function BaseTestConfig() {
   'use strict';
 
   return {
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test duplicate _key issue and replacement
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testPrimaryKeyConflict: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._drop(cn);
+          db._create(cn);
+        },
+
+        function(state) {
+          // insert same record on slave that we will insert on the master
+          connectToSlave();
+          db[cn].insert({ _key: "boom", who: "slave" });
+          connectToMaster();
+          db[cn].insert({ _key: "boom", who: "master" });
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          // master document version must have one
+          assertEqual("master", db[cn].document("boom").who);
+        }
+      );
+    },
+    
+    testSecondaryKeyConflict: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._drop(cn);
+          db._create(cn);
+          db[cn].ensureIndex({ type: "hash", fields: ["value"], unique: true });
+        },
+
+        function(state) {
+          // insert same record on slave that we will insert on the master
+          connectToSlave();
+          db[cn].insert({ _key: "slave", value: "one" });
+          connectToMaster();
+          db[cn].insert({ _key: "master", value: "one" });
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertNull(db[cn].firstExample({ _key: "slave" }));
+          assertNotNull(db[cn].firstExample({ _key: "master" }));
+          assertEqual("master", db[cn].toArray()[0]._key);
+          assertEqual("one", db[cn].toArray()[0].value);
+        }
+      );
+    },
    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection creation

@@ -38,8 +38,7 @@ ActionFeature::ActionFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Action"),
       _allowUseDatabase(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("ClusterPhase");
 }
 
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

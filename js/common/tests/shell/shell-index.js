@@ -207,7 +207,7 @@ function indexSuite() {
         fail();
       }
       catch (e1) {
-        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e1.errorNum);
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e1.errorNum);
       }
 
       try {
@@ -215,7 +215,7 @@ function indexSuite() {
         fail();
       }
       catch (e2) {
-        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e2.errorNum);
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e2.errorNum);
       }
     }
 
@@ -770,9 +770,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -791,9 +790,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -812,10 +810,9 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo1", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
       assertTrue(idx.geoJson);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -828,16 +825,15 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetGeoIndex1 : function () {
-      collection.ensureGeoIndex("lat", true, false);
+      collection.ensureGeoIndex("lat", true, true);
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo1", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
       assertTrue(idx.geoJson);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -856,9 +852,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -1084,7 +1079,7 @@ function multiIndexRollbackSuite() {
     testIndexRollback: function () {
       collection.ensureIndex({ type: "hash", fields: ["_from", "_to", "link"], unique: true });
       collection.ensureIndex({ type: "hash", fields: ["_to", "ext"], unique: true, sparse: true });
-      
+
       var res = collection.getIndexes();
 
       assertEqual(4, res.length);
@@ -1095,7 +1090,7 @@ function multiIndexRollbackSuite() {
 
       var docs = [
         {"_from": "fromC/a", "_to": "toC/1", "link": "one"},
-        {"_from": "fromC/b", "_to": "toC/1", "link": "two"}, 
+        {"_from": "fromC/b", "_to": "toC/1", "link": "two"},
         {"_from": "fromC/c", "_to": "toC/1", "link": "one"}
       ];
 
@@ -1126,4 +1121,3 @@ jsunity.run(getIndexesEdgesSuite);
 jsunity.run(multiIndexRollbackSuite);
 
 return jsunity.done();
-

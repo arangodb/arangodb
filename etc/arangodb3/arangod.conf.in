@@ -1,7 +1,7 @@
 # ArangoDB configuration file
 # 
 # Documentation: 
-# https://docs.arangodb.com/Manual/Administration/Configuration/
+# https://docs.arangodb.com/latest/Manual/Administration/Configuration/
 # 
 
 [database]

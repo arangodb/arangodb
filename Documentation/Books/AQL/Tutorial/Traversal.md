@@ -153,8 +153,8 @@ good excercise. Breakdown of the query:
   from `childId` to `parentId` and no other attributes
 - Return the new edge document (optional)
 
-Traversing to the parents
--------------------------
+Traverse to the parents
+-----------------------
 
 Now that edges link character documents (vertices), we have a graph we can
 query to find out who the parents are of another character &ndash; or in
@@ -269,14 +269,16 @@ Tywin <- Cersei <- Joffrey
 ```
 
 As a quick fix, change the last line of the query to `RETURN DISTINCT v.name`
-to return each value only once. Keep in mind though, that there are traversal
-options to suppress duplicate vertices early on.
+to return each value only once. Keep in mind though, that there are
+[traversal options](../Graphs/Traversals.md#syntax) to suppress duplicate
+vertices early on.
 
 Traverse with variable depth
 ----------------------------
 
-To return the parents and grandparents of Joffrey, we can adjust the traversal
-depth to go at least 1 step, and 2 at most:
+To return the parents and grandparents of Joffrey, we can walk edges in
+`OUTBOUND` direction and adjust the traversal depth to go at least 1 step,
+and 2 at most:
 
 ```js
 FOR c IN Characters
@@ -297,3 +299,4 @@ If we had deeper family trees, it would only be a matter of changing the depth
 values to query for great-grandchildren and similar relations.
 
 <!-- TODO: Add SQL examples for comparison (children's children) -->
+<!-- Dump path? -->

@@ -23,7 +23,9 @@
 
 #include "V8Context.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include <v8.h>
 #include "V8/v8-globals.h"
@@ -31,8 +33,8 @@
 using namespace arangodb;
 
 /// @brief create the context
-transaction::V8Context::V8Context(TRI_vocbase_t* vocbase, bool embeddable)
-    : Context(vocbase),
+transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
+  : Context(vocbase),
       _sharedTransactionContext(nullptr),
       _mainScope(nullptr),
       _currentTransaction(nullptr),
@@ -51,9 +53,11 @@ transaction::V8Context::orderCustomTypeHandler() {
     if (main != nullptr && main != this && !main->isGlobal()) {
       _customTypeHandler = main->orderCustomTypeHandler();
     } else {
-      _customTypeHandler.reset(
-          transaction::Context::createCustomTypeHandler(_vocbase, getResolver()));
+      _customTypeHandler.reset(transaction::Context::createCustomTypeHandler(
+        &_vocbase, &resolver()
+      ));
     }
+
     _options.customTypeHandler = _customTypeHandler.get();
     _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
@@ -61,16 +65,17 @@ transaction::V8Context::orderCustomTypeHandler() {
   TRI_ASSERT(_customTypeHandler != nullptr);
   TRI_ASSERT(_options.customTypeHandler != nullptr);
   TRI_ASSERT(_dumpOptions.customTypeHandler != nullptr);
+
   return _customTypeHandler;
 }
 
 /// @brief return the resolver
-CollectionNameResolver const* transaction::V8Context::getResolver() {
+CollectionNameResolver const& transaction::V8Context::resolver() {
   if (_resolver == nullptr) {
     transaction::V8Context* main = _sharedTransactionContext->_mainScope;
 
     if (main != nullptr && main != this && !main->isGlobal()) {
-      _resolver = main->getResolver();
+      _resolver = &(main->resolver());
     } else {
       TRI_ASSERT(_resolver == nullptr);
       _resolver = createResolver();
@@ -78,7 +83,8 @@ CollectionNameResolver const* transaction::V8Context::getResolver() {
   }
 
   TRI_ASSERT(_resolver != nullptr);
-  return _resolver;
+
+  return *_resolver;
 }
 
 /// @brief get parent transaction (if any)
@@ -134,6 +140,21 @@ bool transaction::V8Context::isEmbedded() {
 
 /// @brief create a context, returned in a shared ptr
 std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(
-    TRI_vocbase_t* vocbase, bool embeddable) {
+    TRI_vocbase_t& vocbase,
+    bool embeddable
+) {
   return std::make_shared<transaction::V8Context>(vocbase, embeddable);
+}
+
+std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
+    TRI_vocbase_t& vocbase,
+    bool embeddable
+) {
+  // is V8 enabled and are currently in a V8 scope ?
+  if (V8DealerFeature::DEALER != nullptr &&
+      v8::Isolate::GetCurrent() != nullptr) {
+    return Create(vocbase, embeddable);
+  }
+
+  return transaction::StandaloneContext::Create(vocbase);
 }

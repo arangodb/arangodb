@@ -1,0 +1,7 @@
+@Q:
+RETURN POP( [ <span class="hljs-number">1</span> ] )
+
+@R
+[
+  []
+]

@@ -39,9 +39,8 @@ ServerIdFeature::ServerIdFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
 }
 
 void ServerIdFeature::start() {
@@ -129,7 +128,7 @@ int ServerIdFeature::writeId() {
     TRI_ASSERT(SERVERID != 0);
     builder.add("serverId", VPackValue(std::to_string(SERVERID)));
 
-    time_t tt = time(0);
+    time_t tt = time(nullptr);
     struct tm tb;
     TRI_gmtime(tt, &tb);
     char buffer[32];

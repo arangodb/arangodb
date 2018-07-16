@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexNode.h"
 #include "Aql/Query.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
@@ -85,7 +86,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
   std::string idxId = read.copyString();
   auto trx = query->trx();
 
-  for (auto const& it : VPackArrayIterator(shards)) {
+  for (VPackSlice it : VPackArrayIterator(shards)) {
     if (!it.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "Shards have to be a list of strings");
@@ -289,7 +290,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
   std::unordered_set<size_t> toRemove;
-  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false);
+  aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false, false);
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.
@@ -368,7 +369,6 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
     return true;
   }
 
-  TRI_ASSERT(!expression->isV8());
   TRI_ASSERT(value.isObject() || value.isNull());
   expression->setVariable(_tmpVar, value);
   bool mustDestroy = false;
@@ -415,12 +415,15 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
       auto idNode = dirCmp->getMemberUnchecked(1);
       TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
       TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+      // must edit node inplace; TODO replace node?
+      TEMPORARILY_UNLOCK_NODE(idNode);
       idNode->setStringValue(vid.data(), vid.length());
     }
     std::vector<OperationCursor*> csrs;
     csrs.reserve(info.idxHandles.size());
+    IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
-      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, false));
+      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, opts));
     }
     opCursors.emplace_back(std::move(csrs));
   }

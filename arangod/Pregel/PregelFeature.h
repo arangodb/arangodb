@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 
 struct TRI_vocbase_t;
+
 namespace arangodb {
 namespace pregel {
 
@@ -48,10 +49,10 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override final;
 
   uint64_t createExecutionNumber();
-  void addConductor(Conductor* const exec, uint64_t executionNumber);
+  void addConductor(std::unique_ptr<Conductor>&&, uint64_t executionNumber);
   std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
 
-  void addWorker(IWorker* const worker, uint64_t executionNumber);
+  void addWorker(std::unique_ptr<IWorker>&&, uint64_t executionNumber);
   std::shared_ptr<IWorker> worker(uint64_t executionNumber);
 
   void cleanupConductor(uint64_t executionNumber);
@@ -69,10 +70,12 @@ class PregelFeature final : public application_features::ApplicationFeature {
   static void handleConductorRequest(std::string const& path,
                                      VPackSlice const& body,
                                      VPackBuilder& outResponse);
-  static void handleWorkerRequest(TRI_vocbase_t* vocbase,
-                                  std::string const& path,
-                                  VPackSlice const& body,
-                                  VPackBuilder& outBuilder);
+  static void handleWorkerRequest(
+    TRI_vocbase_t& vocbase,
+    std::string const& path,
+    VPackSlice const& body,
+    VPackBuilder& outBuilder
+  );
 
  private:
   Mutex _mutex;
@@ -80,6 +83,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   std::unordered_map<uint64_t, std::shared_ptr<Conductor>> _conductors;
   std::unordered_map<uint64_t, std::shared_ptr<IWorker>> _workers;
 };
+
 }
 }
 

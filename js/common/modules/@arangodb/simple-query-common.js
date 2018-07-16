@@ -27,7 +27,8 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require('@arangodb');
+const arangodb = require('@arangodb');
+const GeneralArrayCursor = require("@arangodb/arango-cursor").GeneralArrayCursor;
 
 var ArangoError = arangodb.ArangoError;
 
@@ -36,183 +37,6 @@ var SimpleQueryArray;
 var SimpleQueryNear;
 var SimpleQueryWithin;
 var SimpleQueryWithinRectangle;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief array query
-// //////////////////////////////////////////////////////////////////////////////
-
-function GeneralArrayCursor (documents, skip, limit, data) {
-  this._documents = documents;
-  this._countTotal = documents.length;
-  this._skip = skip;
-  this._limit = limit;
-  this._cached = false;
-  this._extra = { };
-
-  var self = this;
-  if (data !== null && data !== undefined && typeof data === 'object') {
-    [ 'stats', 'warnings', 'profile' ].forEach(function (d) {
-      if (data.hasOwnProperty(d)) {
-        self._extra[d] = data[d];
-      }
-    });
-    this._cached = data.cached || false;
-  }
-
-  this.execute();
-}
-
-GeneralArrayCursor.prototype.isArangoResultSet = true;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes an array query
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype.execute = function () {
-  if (this._skip === null) {
-    this._skip = 0;
-  }
-
-  var len = this._documents.length;
-  var s = 0;
-  var e = len;
-
-  // skip from the beginning
-  if (0 < this._skip) {
-    s = this._skip;
-
-    if (e < s) {
-      s = e;
-    }
-  }
-
-  // skip from the end
-  else if (this._skip < 0) {
-    var skip = -this._skip;
-
-    if (skip < e) {
-      s = e - skip;
-    }
-  }
-
-  // apply limit
-  if (this._limit !== null) {
-    if (s + this._limit < e) {
-      e = s + this._limit;
-    }
-  }
-
-  this._current = s;
-  this._stop = e;
-
-  this._countQuery = e - s;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief print an all query
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype._PRINT = function (context) {
-  var text;
-
-  text = 'GeneralArrayCursor([.. ' + this._documents.length + ' docs .., cached: ' + String(this._cached);
-
-  if (this.hasOwnProperty('_extra') &&
-    this._extra.hasOwnProperty('warnings') && this._extra.warnings.length > 0) {
-    text += ', warning(s): ';
-    var last = null;
-    for (var j = 0; j < this._extra.warnings.length; j++) {
-      if (this._extra.warnings[j].code !== last) {
-        if (last !== null) {
-          text += ', ';
-        }
-        text += '"' + this._extra.warnings[j].code + ' ' + this._extra.warnings[j].message + '"';
-        last = this._extra.warnings[j].code;
-      }
-    }
-  }
-  text += '])';
-
-  if (this._skip !== null && this._skip !== 0) {
-    text += '.skip(' + this._skip + ')';
-  }
-
-  if (this._limit !== null) {
-    text += '.limit(' + this._limit + ')';
-  }
-
-  context.output += text;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns all elements of the cursor
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype.toArray =
-  GeneralArrayCursor.prototype.elements = function () {
-    return this._documents;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the count of the cursor
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype.count = function () {
-  return this._countTotal;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return an extra value of the cursor
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype.getExtra = function () {
-  return this._extra || { };
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief checks if the cursor is exhausted
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype.hasNext = function () {
-  return this._current < this._stop;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns the next result document
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype.next = function () {
-  if (this._current < this._stop) {
-    return this._documents[this._current++];
-  }
-
-  return undefined;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns an iterator for the results
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype[Symbol.iterator] = function * () {
-  while (this._current < this._stop) {
-    yield this._documents[this._current++];
-  }
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief drops the result
-// //////////////////////////////////////////////////////////////////////////////
-
-GeneralArrayCursor.prototype.dispose = function () {
-  this._documents = null;
-  this._skip = null;
-  this._limit = null;
-  this._countTotal = null;
-  this._countQuery = null;
-  this._current = null;
-  this._stop = null;
-  this._extra = null;
-};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief simple query
@@ -750,7 +574,7 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
 
-      if (index.type === 'geo1' || index.type === 'geo2') {
+      if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
         }
@@ -856,7 +680,7 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
 
-      if (index.type === 'geo1' || index.type === 'geo2') {
+      if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
         }
@@ -966,7 +790,7 @@ SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitu
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
 
-      if (index.type === 'geo1' || index.type === 'geo2') {
+      if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
         }

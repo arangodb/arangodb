@@ -65,9 +65,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Config");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 
   _outputDirectory = FileUtils::buildFilename(
       FileUtils::currentDirectory().result(), "export");
@@ -75,8 +73,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
 
 void ExportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption(
-      "--collection",
+  options->addOption("--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
   
@@ -326,6 +323,9 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.add("bindVars", VPackValue(VPackValueType::Object));
     post.add("@collection", VPackValue(collection));
     post.close();
+    post.add("options", VPackValue(VPackValueType::Object));
+    post.add("stream", VPackSlice::trueSlice());
+    post.close();
     post.close();
 
     std::shared_ptr<VPackBuilder> parsedBody =
@@ -384,6 +384,9 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   VPackBuilder post;
   post.openObject();
   post.add("query", VPackValue(_query));
+  post.add("options", VPackValue(VPackValueType::Object));
+  post.add("stream", VPackSlice::trueSlice());
+  post.close();
   post.close();
 
   std::shared_ptr<VPackBuilder> parsedBody =
@@ -680,6 +683,9 @@ directed="1">
     post.add("bindVars", VPackValue(VPackValueType::Object));
     post.add("@collection", VPackValue(collection));
     post.close();
+    post.add("options", VPackValue(VPackValueType::Object));
+    post.add("stream", VPackSlice::trueSlice());
+    post.close();
     post.close();
 
     std::shared_ptr<VPackBuilder> parsedBody =
@@ -818,7 +824,7 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName,
         "  <att name=\"" + encode_char_entities(name) + "\" type=\"list\">\n";
     writeToFile(fd, xmlTag, fileName);
 
-    for (auto const& val : VPackArrayIterator(slice)) {
+    for (VPackSlice val : VPackArrayIterator(slice)) {
       xgmmlWriteOneAtt(fd, fileName, val, name, deep + 1);
     }
 

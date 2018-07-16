@@ -103,7 +103,7 @@ function withinRectangleSuite () {
         AQL_EXECUTE("RETURN WITHIN_RECTANGLE(unknown, -41, -41, -41, -41)");
         fail();
       } catch (e) {
-        assertTrue(e.errorNum === errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
+        assertTrue(e.errorNum === errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
       }
     },
 

@@ -24,7 +24,9 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
+#include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -53,7 +55,9 @@ int main(int argc, char* argv[]) {
 
     int ret;
 
-    server.addFeature(new ClientFeature(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(&server, true));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server, true));
+    server.addFeature(new ClientFeature(&server, false));
     server.addFeature(new ConfigFeature(&server, "arangoexport"));
     server.addFeature(new ExportFeature(&server, &ret));
     server.addFeature(new LoggerFeature(&server, false));

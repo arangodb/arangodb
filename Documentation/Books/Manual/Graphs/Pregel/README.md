@@ -1,5 +1,5 @@
 Distributed Iterative Graph Processing (Pregel)
-======
+===============================================
 
 Distributed graph processing enables you to do online analytical processing
 directly on graphs stored into arangodb. This is intended to help you gain analytical insights
@@ -11,7 +11,8 @@ These kind of tasks are better suited for AQL.
 The processing system inside ArangoDB is based on: [Pregel: A System for Large-Scale Graph Processing](http://www.dcs.bbk.ac.uk/~dell/teaching/cc/paper/sigmod10/p135-malewicz.pdf) – Malewicz et al. (Google) 2010
 This concept enables us to perform distributed graph processing, without the need for distributed global locking.
 
-# Prerequisites
+Prerequisites
+-------------
 
 If you are running a single ArangoDB instance in single-server mode, there are no requirements regarding the modeling 
 of your data. All you need is at least one vertex collection and one edge collection. Note that the performance may be
@@ -20,7 +21,7 @@ better, if the number of your shards / collections matches the number of CPU cor
 When you use ArangoDB Community edition in cluster mode, you might need to model your collections in a certain way to
 ensure correct results. For more information see the next section.
 
-## Requirements for Collections in a Cluster (Non Smart Graph)
+### Requirements for Collections in a Cluster (Non Smart Graph)
 
 To enable iterative graph processing for your data, you will need to ensure
 that your vertex and edge collections are sharded in a specific way.
@@ -71,9 +72,10 @@ This will ensure that outgoing edge documents will be placed on the same DBServe
 Without the correct placement of the edges, the pregel graph processing system will not work correctly, because
 edges will not load correctly.
 
-### Arangosh API
+Arangosh API
+------------
 
-#### Starting an Algorithm Execution
+### Starting an Algorithm Execution
 
 The pregel API is accessible through the `@arangodb/pregel` package.
 To start an execution you need to specify the **algorithm** name and the vertex and edge collections.
@@ -100,7 +102,7 @@ method changes in this case. The second argument must be an object with the keys
 The last argument is still the parameter object. See below for a list of algorithms and parameters.
 
 
-#### Status of an Algorithm Execution
+### Status of an Algorithm Execution
 
 The code returned by the `pregel.start(...)` method can be used to
 track the status of your algorithm.
@@ -140,7 +142,7 @@ The object returned by the `status` method might for example look something like
 ```
 
 
-#### Canceling an Execution / Discarding results
+### Canceling an Execution / Discarding results
 
 To cancel an execution which is still runnning, and discard any intermediare results you can use the `cancel` method.
 This will immediatly free all memory taken up by the execution, and will make you lose all intermediary data. 
@@ -156,7 +158,8 @@ var execution = pregel.start("sssp", "demograph", {source: "vertices/V"});
 pregel.cancel(execution);
 ```
 
-## AQL integration
+AQL integration
+---------------
 
 ArangoDB supports retrieving temporary pregel results through the ArangoDB query language (AQL). 
 When our graph processing subsystem finishes executing an algorithm, the result can either be written back into the 
@@ -168,7 +171,8 @@ only nodes with the most rank from the result set of a PageRank execution.
       FILTER v.value >= 0.01
       RETURN v._key
 
-## Available Algorithms
+Available Algorithms
+--------------------
 
 There are a number of general parameters which apply to almost all algorithms:
 * `store`: Is per default *true*, the pregel engine will write results back to the database.
@@ -180,7 +184,7 @@ There are a number of general parameters which apply to almost all algorithms:
   might lead to performance increases if you have load imbalances.
 * `resultField`: Most algorithms will write the result into this field
 
-#### Page Rank
+### Page Rank
 
 PageRank is a well known algorithm to rank documents in a graph. The algorithm will run until
 the execution converges. Specify a custom threshold with the parameter `threshold`, to run for a fixed
@@ -188,10 +192,22 @@ number of iterations use the `maxGSS` parameter.
 
 ```javascript
 var pregel = require("@arangodb/pregel");
-pregel.start("pagerank", "graphname", {maxGSS: 100, threshold:0.00000001})
+pregel.start("pagerank", "graphname", {maxGSS: 100, threshold:0.00000001, resultField:'rank'})
 ```
 
-#### Single-Source Shortest Path
+#### Seeded PageRank
+
+It is possible to specify an initial distribution for the vertex-documents in your graph. To define these
+seed ranks / centralities you can specify a `sourceField` in the properties for this algorithm.
+If the specified field is set on a document _and_ the value is numeric, then it will be
+used instead of the default initial rank of `1 / numVertices`.
+
+```javascript
+var pregel = require("@arangodb/pregel");
+pregel.start("pagerank", "graphname", {maxGSS: 20, threshold:0.00000001, sourceField:'seed', resultField:'rank'})
+```
+
+### Single-Source Shortest Path
 
 Calculates the distance of each vertex to a certain shortest path. The algorithm will run until it converges,
 the iterations are bound by the diameter (the longest shortest path) of your graph.
@@ -202,7 +218,7 @@ the iterations are bound by the diameter (the longest shortest path) of your gra
 ```
 
 
-#### Connected Components
+### Connected Components
 
 There are two algorithms to find connected components in a graph. To find weakly connected components (WCC)
 you can use the algorithm named "connectedcomponents", to find strongly connected components (SCC) you can use the algorithm
@@ -222,7 +238,7 @@ Consider using WCC if you think your data may be suitable for it.
   pregel.start("scc", "graphname")
 ```
 
-#### Hyperlink-Induced Topic Search (HITS)
+### Hyperlink-Induced Topic Search (HITS)
 
 HITS is a link analysis algorithm that rates Web pages, developed by Jon Kleinberg (The algorithm is also known as hubs and authorities).
 
@@ -245,7 +261,7 @@ The algorithm can be executed like this:
     var handle = pregel.start("hits", "yourgraph", {threshold:0.00001, resultField: "score"});
 ```
 
-#### Vertex Centrality
+### Vertex Centrality
 
 Centrality measures help identify the most important vertices in a graph. They can be used in a wide range of applications:
 For example they can be used to identify *influencers* in social networks, or *middle-men* in terrorist networks.
@@ -257,7 +273,7 @@ Fortunately there are scalable substitutions available, which should be equally 
 ![Illustration of an execution of different centrality measures (Freeman 1977)](centrality_visual.png)
 
 
-##### Effective Closeness
+#### Effective Closeness
 
 A common definitions of centrality is the **closeness centrality** (or closeness). 
 The closeness of a vertex in a graph is the inverse average length of the shortest path between the vertex 
@@ -280,7 +296,7 @@ algorithm. The algorithm can be used like this
     const handle = pregel.start("effectivecloseness", "yourgraph", {resultField: "closeness"});
 ```
 
-##### LineRank
+#### LineRank
 
 Another common measure is the [betweenness* centrality](https://en.wikipedia.org/wiki/Betweenness_centrality): 
 It measures the number of times a vertex is part  of shortest paths between any pairs of vertices. 
@@ -304,13 +320,13 @@ The algorithm is from the paper *Centralities in Large Networks: Algorithms and 
 ```
 
 
-#### Community Detection
+### Community Detection
 
 Graphs based on real world networks often have a community structure. This means it is possible to find groups of vertices such that each each vertex group is internally more densely connected than outside the group.
 This has many applications when you want to analyze your networks, for example
 Social networks include community groups (the origin of the term, in fact) based on common location, interests, occupation, etc.
 
-##### Label Propagation 
+#### Label Propagation 
 
 *Label Propagation* can be used to implement community detection on large graphs. The idea is that each
 vertex should be in the community that most of his neighbours are in. We iteratively detemine this by first
@@ -327,7 +343,7 @@ Should work best on undirected graphs, results on directed graphs might vary dep
     const handle = pregel.start("labelpropagation", "yourgraph", {maxGSS:100, resultField: "community"});
 ```
 
-##### Speaker-Listener Label Propagation
+#### Speaker-Listener Label Propagation
 
 
 The [Speaker-listener Label Propagation](https://arxiv.org/pdf/1109.5720.pdf) (SLPA) can be used to implement community detection. It works similar to the label propagation algorithm,

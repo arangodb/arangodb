@@ -37,7 +37,17 @@ class LogAppenderStream : public LogAppender {
 
   virtual std::string details() override = 0;
 
+  int fd() const { return _fd; }
+
  protected:
+  void updateFd(int fd) { _fd = fd; }
+
+  // determine the required length of the output buffer for the log message
+  size_t determineOutputBufferSize(std::string const& message) const;
+  
+  // write the log message into the already allocated output buffer
+  size_t writeIntoOutputBuffer(std::string const& message);
+
   virtual void writeLogMessage(LogLevel, char const*, size_t) = 0;
 
   /// @brief maximum size for reusable log buffer
@@ -58,6 +68,9 @@ class LogAppenderStream : public LogAppender {
   
   /// @brief whether or not we should use colors
   bool _useColors;
+
+  /// @brief whether or not to escape special chars in log output
+  bool const _escape;
 };
 
 class LogAppenderFile : public LogAppenderStream {
@@ -71,9 +84,12 @@ class LogAppenderFile : public LogAppenderStream {
  public:
   static void reopenAll();
   static void closeAll();
+  static std::vector<std::tuple<int, std::string, LogAppenderFile*>> getFds() { return _fds; }
+  static void setFds(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds) { _fds = fds; }
+  static void clear(); 
 
  private:
-  static std::vector<std::pair<int, std::string>> _fds;
+  static std::vector<std::tuple<int, std::string, LogAppenderFile*>> _fds;
 
   std::string _filename;
 };
@@ -91,13 +107,13 @@ class LogAppenderStdStream : public LogAppenderStream {
   void writeLogMessage(LogLevel, char const*, size_t) override final;
 };
 
-class LogAppenderStderr : public LogAppenderStdStream {
+class LogAppenderStderr final : public LogAppenderStdStream {
  public:
   explicit LogAppenderStderr(std::string const& filter)
       : LogAppenderStdStream("+", filter, STDERR_FILENO) {}
 };
 
-class LogAppenderStdout : public LogAppenderStdStream {
+class LogAppenderStdout final : public LogAppenderStdStream {
  public:
   explicit LogAppenderStdout(std::string const& filter)
       : LogAppenderStdStream("-", filter, STDOUT_FILENO) {}

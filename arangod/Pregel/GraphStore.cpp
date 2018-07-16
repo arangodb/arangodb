@@ -32,9 +32,9 @@
 #include "Pregel/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
@@ -43,8 +43,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#ifdef _MSC_VER
-#include <windows.h>
+#ifdef _WIN32
+#include <io.h>
 #else
 #include <unistd.h>
 #endif
@@ -55,7 +55,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 static uint64_t TRI_totalSystemMemory() {
-#ifdef _MSC_VER
+#ifdef _WIN32
   MEMORYSTATUSEX status;
   status.dwLength = sizeof(status);
   GlobalMemoryStatusEx(&status);
@@ -69,7 +69,7 @@ static uint64_t TRI_totalSystemMemory() {
 }
 
 template <typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
+GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb),
       _graphFormat(graphFormat),
       _localVerticeCount(0),
@@ -101,7 +101,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   // Allocating some memory
   uint64_t vCount = 0;
   for (auto const& shard : _config->localVertexShardIDs()) {
-    OperationResult opResult = countTrx->count(shard, true);
+    OperationResult opResult = countTrx->count(shard, false);
     if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
@@ -112,7 +112,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   
   uint64_t eCount = 0;
   for (auto const& shard : _config->localEdgeShardIDs()) {
-    OperationResult opResult = countTrx->count(shard, true);
+    OperationResult opResult = countTrx->count(shard, false);
     if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
@@ -246,7 +246,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
   Result res = trx->documentFastPathLocal(vertexShard, StringRef(_key),
                                           mmdr, true);
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   VPackSlice doc(mmdr.vpack());
@@ -333,16 +333,19 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
 
 template <typename V, typename E>
 std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
-  transaction::Options transactionOptions;
-  transactionOptions.waitForSync = false;
-  transactionOptions.allowImplicitCollections = true;
-  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
-  std::unique_ptr<transaction::Methods> trx(
-      new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
+  transaction::Options trxOpts;
+  trxOpts.waitForSync = false;
+  trxOpts.allowImplicitCollections = true;
+  auto ctx =
+    transaction::StandaloneContext::Create(_vocbaseGuard.database());
+  auto trx = std::unique_ptr<transaction::Methods>(
+                new transaction::Methods(ctx, {}, {}, {}, trxOpts));
   Result res = trx->begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   return trx;
 }
 
@@ -358,9 +361,8 @@ void GraphStore<V, E>::_loadVertices(size_t i,
   trx->pinData(cid);  // will throw when it fails
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
 
-  ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, &mmdr, false);
+    trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL);
 
   if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
@@ -494,7 +496,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
                                       RangeIterator<VertexEntry>& it) {
   // transaction on one shard
-  std::unique_ptr<transaction::UserTransaction> trx;
+  std::unique_ptr<transaction::Methods> trx;
   PregelShard currentShard = (PregelShard)-1;
   Result res = TRI_ERROR_NO_ERROR;
 
@@ -505,27 +507,39 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     if (it->shard() != currentShard) {
       if (trx) {
         res = trx->finish(res);
+
         if (!res.ok()) {
           THROW_ARANGO_EXCEPTION(res);
         }
       }
+
       currentShard = it->shard();
+
       ShardID const& shard = globalShards[currentShard];
       transaction::Options transactionOptions;
+
       transactionOptions.waitForSync = false;
       transactionOptions.allowImplicitCollections = false;
-      trx.reset(new transaction::UserTransaction(
-          transaction::StandaloneContext::Create(_vocbaseGuard.database()), {},
-          {shard}, {}, transactionOptions));
+      trx.reset(new transaction::Methods(
+        transaction::StandaloneContext::Create(_vocbaseGuard.database()),
+        {},
+        {shard},
+        {},
+        transactionOptions
+      ));
       res = trx->begin();
+
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
 
     transaction::BuilderLeaser b(trx.get());
+
     b->openArray();
+
     size_t buffer = 0;
+
     while (it != it.end() && it->shard() == currentShard && buffer < 1000) {
       // This loop will fill a buffer of vertices until we run into a new
       // collection

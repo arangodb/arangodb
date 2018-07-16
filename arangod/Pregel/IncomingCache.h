@@ -58,7 +58,7 @@ class InCache {
                     M const& data) = 0;
 
  public:
-  virtual ~InCache(){};
+  virtual ~InCache() {}
 
   MessageFormat<M> const* format() const { return _format; }
   uint64_t containedMessageCount() const { return _containedMessageCount; }

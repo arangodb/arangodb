@@ -58,9 +58,9 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(
   _cursors.reserve(nrCursors);
   _cache.reserve(1000);
   if (_opts->cache() == nullptr) {
-    throw;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no cache present for single server edge cursor");
   }
-};
+}
 
 SingleServerEdgeCursor::~SingleServerEdgeCursor() {
   for (auto& it : _cursors) {
@@ -85,7 +85,7 @@ static bool CheckInaccesible(transaction::Methods* trx,
 
 void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, Callback callback) {
   auto collection = cursor->collection();
-  EdgeDocumentToken etkn(collection->cid(), _cache[_cachePos++]);
+  EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
   if (collection->readDocument(_trx, etkn.localDocumentId(), *_mmdr)) {
     VPackSlice edgeDoc(_mmdr->vpack());
 #ifdef USE_ENTERPRISE
@@ -168,7 +168,7 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
             }
 #endif
             operationSuccessfull = true;
-            auto etkn = EdgeDocumentToken(cursor->collection()->cid(), token);
+            auto etkn = EdgeDocumentToken(cursor->collection()->id(), token);
             if (_internalCursorMapping != nullptr) {
               TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
               callback(std::move(etkn), edge, _internalCursorMapping->at(_currentCursor));
@@ -213,7 +213,7 @@ void SingleServerEdgeCursor::readAll(
     auto& cursorSet = _cursors[_currentCursor];
     for (auto& cursor : cursorSet) {
       LogicalCollection* collection = cursor->collection();
-      auto cid = collection->cid();
+      auto cid = collection->id();
       if (cursor->hasExtra()) {
         auto cb = [&](LocalDocumentId const& token, VPackSlice edge) {
 #ifdef USE_ENTERPRISE

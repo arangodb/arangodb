@@ -7,31 +7,33 @@ global.DEFINE_MODULE('internal', (function () {
 
   const exports = {};
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief module "internal"
-  // /
-  // / @file
-  // /
-  // / DISCLAIMER
-  // /
-  // / Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-  // /
-  // / Licensed under the Apache License, Version 2.0 (the "License")
-  // / you may not use this file except in compliance with the License.
-  // / You may obtain a copy of the License at
-  // /
-  // /     http://www.apache.org/licenses/LICENSE-2.0
-  // /
-  // / Unless required by applicable law or agreed to in writing, software
-  // / distributed under the License is distributed on an "AS IS" BASIS,
-  // / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  // / See the License for the specific language governing permissions and
-  // / limitations under the License.
-  // /
-  // / Copyright holder is triAGENS GmbH, Cologne, Germany
-  // /
-  // / @author Dr. Frank Celler
-  // / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+  ///////////////////////////////////////////////////////////////////////////////
+  // @brief module "internal"
+  //
+  // @file
+  //
+  // DISCLAIMER
+  //
+  // Copyright 2018 ArangoDB GmbH, Cologne, Germany
+  // Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+  //
+  // Licensed under the Apache License, Version 2.0 (the "License")
+  // you may not use this file except in compliance with the License.
+  // You may obtain a copy of the License at
+  //
+  //     http://www.apache.org/licenses/LICENSE-2.0
+  //
+  // Unless required by applicable law or agreed to in writing, software
+  // distributed under the License is distributed on an "AS IS" BASIS,
+  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  // See the License for the specific language governing permissions and
+  // limitations under the License.
+  //
+  // Copyright holder is ArangoDB GmbH, Cologne, Germany
+  //
+  // @author Dr. Frank Celler
+  // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+  // @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
   // //////////////////////////////////////////////////////////////////////////////
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -303,7 +305,7 @@ global.DEFINE_MODULE('internal', (function () {
     exports.download = global.SYS_DOWNLOAD;
     delete global.SYS_DOWNLOAD;
   }
-  
+
   if (global.SYS_CLUSTER_DOWNLOAD) {
     exports.clusterDownload = global.SYS_CLUSTER_DOWNLOAD;
     delete global.SYS_CLUSTER_DOWNLOAD;
@@ -462,7 +464,7 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief input 
+  // / @brief input
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.SYS_POLLSTDIN) {
@@ -595,6 +597,14 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_WAIT) {
     exports.wait = global.SYS_WAIT;
     delete global.SYS_WAIT;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief wait for index selectivity estimate sync
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
+    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
+    delete global.WAIT_FOR_ESTIMATOR_SYNC;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -741,6 +751,22 @@ global.DEFINE_MODULE('internal', (function () {
   };
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief unitFilterTests
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.unitTestFilter = function () {
+    return global.SYS_UNIT_FILTER_TEST;
+  };
+
+  // end process
+  if (global.SYS_EXIT) {
+    exports.exit = global.SYS_EXIT;
+    delete global.SYS_EXIT;
+  } else {
+    exports.exit = function() {};
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief structured to flat commandline arguments
   // / @param longOptsEqual whether long-options are in the type --opt=value
   // /                      or --opt value
@@ -775,7 +801,7 @@ global.DEFINE_MODULE('internal', (function () {
             if (structure[key] !== false) {
               if (structure[key] !== true) {
                 if (structure[key] !== null) {
-                  // The null case is for the case one wants to add an option 
+                  // The null case is for the case one wants to add an option
                   // with an equals sign all in the key, which is necessary if
                   // one wants to specify an option multiple times.
                   vec.push(structure[key]);
@@ -1248,7 +1274,7 @@ global.DEFINE_MODULE('internal', (function () {
             if (context.level > 0 && !showFunction) {
               var a = s.split('\n');
               var f = a[0].replace(/^(.*?\)).*$/, '$1');
-              
+
               var m = funcRE.exec(f);
 
               if (m !== null) {
@@ -1746,6 +1772,15 @@ global.DEFINE_MODULE('internal', (function () {
     exports.authenticationEnabled = global.AUTHENTICATION_ENABLED;
     delete global.AUTHENTICATION_ENABLED;
   }
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ldapEnabled
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (typeof LDAP_ENABLED !== 'undefined') {
+    exports.ldapEnabled = global.LDAP_ENABLED;
+    delete global.LDAP_ENABLED;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief options
@@ -1859,11 +1894,6 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_TERMINAL_SIZE) {
     exports.terminalSize = global.SYS_TERMINAL_SIZE;
     delete global.SYS_TERMINAL_SIZE;
-  }
-
-  if (global.SYS_START_FLUX) {
-    exports.startFlux = global.SYS_START_FLUX;
-    delete global.SYS_START_FLUX;
   }
 
   return exports;

@@ -113,6 +113,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
       end
   
       it "add function, update" do
@@ -123,12 +124,14 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
         
         doc = ArangoDB.log_post("#{prefix}-add-function2", api, :body => body)
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['isNewlyCreated'].should eq(false)
       end
       
       it "add function, delete" do
@@ -139,6 +142,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
         
         doc = ArangoDB.log_delete("#{prefix}-add-function3", api + "/UnitTests%3A%3Amytest")
         doc.code.should eq(200)
@@ -158,14 +162,17 @@ describe ArangoDB do
         body = "{ \"name\" : \"UnitTests::mytest::one\", \"code\": \"function () { return 1; }\" }"
         doc = ArangoDB.log_post("#{prefix}-add-function4", api, :body => body)
         doc.code.should eq(201)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
         
         body = "{ \"name\" : \"UnitTests::mytest::two\", \"code\": \"function () { return 1; }\" }"
         doc = ArangoDB.log_post("#{prefix}-add-function4", api, :body => body)
         doc.code.should eq(201)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
         
         body = "{ \"name\" : \"UnitTests::foo\", \"code\": \"function () { return 1; }\" }"
         doc = ArangoDB.log_post("#{prefix}-add-function4", api, :body => body)
         doc.code.should eq(201)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
         
         doc = ArangoDB.log_delete("#{prefix}-add-function4", api + "/UnitTests%3A%3Amytest?group=true")
         doc.code.should eq(200)
@@ -188,16 +195,19 @@ describe ArangoDB do
 
     context "retrieving functions" do
       before do
-        ArangoDB.delete("/_api/aqlfunction/UnitTests?group=true")
+        reply = ArangoDB.delete("/_api/aqlfunction/UnitTests?group=true")
+        reply.code.should eq(200)
       end
 
       after do
-        ArangoDB.delete("/_api/aqlfunction/UnitTests?group=true")
+        reply = ArangoDB.delete("/_api/aqlfunction/UnitTests?group=true")
+        reply.code.should eq(200)
       end
 
       it "add function and retrieve the list" do
         body = "{ \"name\" : \"UnitTests::mytest\", \"code\": \"function () { return 1; }\" }"
         doc = ArangoDB.log_post("#{prefix}-list-functions1", api, :body => body)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -207,22 +217,25 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-list-functions1", api + "?prefix=UnitTests")
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response.length.should eq(1)
-        doc.parsed_response[0]['name'].should eq("UnitTests::mytest")
-        doc.parsed_response[0]['code'].should eq("function () { return 1; }")
+        doc.parsed_response.length.should eq(3)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['result'][0]['name'].should eq("UnitTests::mytest")
+        doc.parsed_response['result'][0]['code'].should eq("function () { return 1; }")
       end
       
       it "add functions and retrieve the list" do
         body = "{ \"name\" : \"UnitTests::mytest1\", \"code\": \"function () { return 1; }\" }"
         doc = ArangoDB.log_post("#{prefix}-list-functions2", api, :body => body)
         doc.code.should eq(201)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
         
         doc = ArangoDB.log_get("#{prefix}-list-functions2", api + "?prefix=UnitTests")
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response.length.should eq(1)
-        doc.parsed_response[0]['name'].should eq("UnitTests::mytest1")
-        doc.parsed_response[0]['code'].should eq("function () { return 1; }")
+        doc.parsed_response.length.should eq(3)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['result'][0]['name'].should eq("UnitTests::mytest1")
+        doc.parsed_response['result'][0]['code'].should eq("function () { return 1; }")
 
         body = "{ \"name\" : \"UnitTests::mytest1\", \"code\": \"( function () { return   3 * 5; } ) \" }"
         doc = ArangoDB.log_post("#{prefix}-list-functions2", api, :body => body)
@@ -231,9 +244,10 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-list-functions2", api + "?prefix=UnitTests")
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response.length.should eq(1)
-        doc.parsed_response[0]['name'].should eq("UnitTests::mytest1")
-        doc.parsed_response[0]['code'].should eq("( function () { return   3 * 5; } )")
+        doc.parsed_response.length.should eq(3)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['result'][0]['name'].should eq("UnitTests::mytest1")
+        doc.parsed_response['result'][0]['code'].should eq("( function () { return   3 * 5; } )")
       end
   
     end

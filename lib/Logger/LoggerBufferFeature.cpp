@@ -33,7 +33,6 @@ using namespace arangodb::options;
 LoggerBufferFeature::LoggerBufferFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "LoggerBuffer") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 

@@ -4,7 +4,8 @@ Known Issues
 The following known issues are present in this version of ArangoDB and will be fixed
 in follow-up releases:
 
-### RocksDB storage engine
+RocksDB storage engine
+----------------------
 
 The RocksDB storage engine is intentionally missing the following features that 
 are present in the MMFiles engine:
@@ -75,27 +76,31 @@ The following known issues will be resolved in future releases:
 * AQL queries in the cluster still issue an extra locking HTTP request per shard though
   this would not be necessary for the RocksDB engine in most cases
 
-### Installer
+Installer
+---------
 
 * Upgrading from 3.1 to 3.2 on Windows requires the user to manually copy the database directory
   to the new location and run an upgrade on the database. Please consult the
-  [Documentation](../GettingStarted/Installing/Windows.md)
+  [Documentation](../Installation/Windows.md)
   for detailed instructions.
 
-### System Integration
+System Integration
+------------------
 
 * On some Linux systems systemd and system v might report that the arangodb
   service is in good condition when it could not be started. In this case the
   user needs to check `/var/log/arangodb3` for further information about the
   failed startup.
 
-### Mac OS X
+Mac OS X
+--------
 
  * Storage engine is not changeable on an existing database. Currently only the initial selection of the storage engine is supported.
    In order to use another storage engine, you have to delete your ArangoDB application (Mac Application Folder)
    and `/Users/<your_user_name>/Library/ArangoDB` folder.
 
-### OpenSSL 1.1
+OpenSSL 1.1
+-----------
 
- * ArangoDB has been tested with OpenSSL 1.0 only and won't build against 1.1 when compiling on your own. See [here](../../cookbook/Compiling/OpenSSL.html)
+ * ArangoDB has been tested with OpenSSL 1.0 only and won't build against 1.1 when compiling on your own. See [here](../../Cookbook/Compiling/OpenSSL.html)
    for how to compile on systems that ship OpenSSL 1.1 by default.

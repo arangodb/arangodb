@@ -68,6 +68,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() override final;
   char const* name() const override final { return "RestImportHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -185,6 +186,9 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   std::string _fromPrefix;
   std::string _toPrefix;
+
+  /// @brief whether or not we will tolerate missing values for the CSV import
+  bool _ignoreMissing;
 };
 }
 

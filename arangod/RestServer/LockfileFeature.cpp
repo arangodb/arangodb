@@ -35,8 +35,7 @@ LockfileFeature::LockfileFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Lockfile") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
 }
 
 void LockfileFeature::start() {

@@ -91,7 +91,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUndeclared : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "LET a = nonexisting + 1 RETURN 0"); 
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "LET a = nonexisting + 1 RETURN 0"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

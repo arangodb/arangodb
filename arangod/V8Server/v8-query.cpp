@@ -61,11 +61,27 @@ aql::QueryResultV8 AqlQuery(
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
-                             bindVars, nullptr, arangodb::aql::PART_MAIN);
+  // If we execute an AQL query from V8 we need to unset the nolock headers
+  arangodb::aql::Query query(
+    true,
+    col->vocbase(),
+    arangodb::aql::QueryString(aql),
+    bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
-  auto queryResult = query.executeV8(
-      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+  aql::QueryResultV8 queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.executeV8(isolate,
+        static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -202,9 +218,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::shared_ptr<transaction::V8Context> transactionContext =
       transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, collection->cid(),
-                                  AccessMode::Type::READ);
-
+  SingleCollectionTransaction trx(
+    transactionContext, collection, AccessMode::Type::READ
+  );
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -213,13 +229,13 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, nullptr, false);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   if (opCursor->fail()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
   }
 
-  OperationResult countResult = trx.count(collectionName, true);
+  OperationResult countResult = trx.count(collectionName, false);
 
   if (countResult.fail()) {
     TRI_V8_THROW_EXCEPTION(countResult.result);
@@ -243,7 +259,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   opCursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
-  });
+  }, 1000);
 
   resultBuilder.close();
   
@@ -293,9 +309,9 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::shared_ptr<transaction::V8Context> transactionContext =
       transaction::V8Context::Create(col->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, col->cid(),
-                                  AccessMode::Type::READ);
-
+  SingleCollectionTransaction trx(
+    transactionContext, col, AccessMode::Type::READ
+  );
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -487,9 +503,8 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   size_t ignored = 0;
   size_t removed = 0;
 
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
-
+  if (queryResult.extra) {
+    VPackSlice stats = queryResult.extra->slice().get("stats");
     if (!stats.isNone()) {
       TRI_ASSERT(stats.isObject());
       VPackSlice found = stats.get("writesIgnored");

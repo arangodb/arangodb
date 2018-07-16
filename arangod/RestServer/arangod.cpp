@@ -28,18 +28,27 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/AgencyPhase.h"
+#include "ApplicationFeatures/AQLPhase.h"
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/FinalPhase.h"
+#include "ApplicationFeatures/FoxxPhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/ServerPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -50,6 +59,8 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/EngineEqualityCheckFeature.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
@@ -65,8 +76,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LockfileFeature.h"
@@ -76,10 +87,8 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
-#include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RestServer/WorkMonitorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
@@ -97,7 +106,14 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
+#ifdef USE_IRESEARCH
+  #include "IResearch/IResearchAnalyzerFeature.h"
+  #include "IResearch/IResearchFeature.h"
+  #include "IResearch/SystemDatabaseFeature.h"
+#endif
+
 // storage engines
+#include "ClusterEngine/ClusterEngine.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
@@ -111,7 +127,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
   try {
     context.installSegv();
     context.runStartupChecks();
-    
+
     std::string name = context.binaryName();
 
     auto options = std::make_shared<options::ProgramOptions>(
@@ -121,41 +137,52 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
     std::vector<std::string> nonServerFeatures = {
-        "Action",        "Agency",
-        "Cluster",       "Daemon",
-        "FoxxQueues",    "GeneralServer", 
-        "Greetings",     "LoggerBufferFeature",
-        "Server",        "SslServer",
-        "Statistics",    "Supervisor"};
+        "Action",              "Agency",
+        "Cluster",             "Daemon",
+        "EngineEqualityCheck", "FoxxQueues",
+        "GeneralServer",       "Greetings",
+        "LoggerBufferFeature", "Server",
+        "SslServer",           "Statistics",
+        "Supervisor"};
 
     int ret = EXIT_FAILURE;
 
+    // Adding the Phases
+    server.addFeature(new application_features::AgencyFeaturePhase(&server));
+    server.addFeature(new application_features::AQLFeaturePhase(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(&server, false));
+    server.addFeature(new application_features::ClusterFeaturePhase(&server));
+    server.addFeature(new application_features::DatabaseFeaturePhase(&server));
+    server.addFeature(new application_features::FinalFeaturePhase(&server));
+    server.addFeature(new application_features::FoxxFeaturePhase(&server));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server, false));
+    server.addFeature(new application_features::ServerFeaturePhase(&server));
+    server.addFeature(new application_features::V8FeaturePhase(&server));
+
+    // Adding the features
     server.addFeature(new ActionFeature(&server));
     server.addFeature(new AgencyFeature(&server));
-    server.addFeature(new aql::AqlFunctionFeature(&server));
-    server.addFeature(new aql::OptimizerRulesFeature(&server));
-    server.addFeature(new AuthenticationFeature(&server));
     server.addFeature(new AqlFeature(&server));
+    server.addFeature(new AuthenticationFeature(&server));
     server.addFeature(new BootstrapFeature(&server));
     server.addFeature(new CacheManagerFeature(&server));
-    server.addFeature(
-        new CheckVersionFeature(&server, &ret, nonServerFeatures));
+    server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new ClusterFeature(&server));
     server.addFeature(new ConfigFeature(&server, name));
     server.addFeature(new ConsoleFeature(&server));
     server.addFeature(new DatabaseFeature(&server));
     server.addFeature(new DatabasePathFeature(&server));
     server.addFeature(new EndpointFeature(&server));
+    server.addFeature(new EngineEqualityCheckFeature(&server));
     server.addFeature(new EngineSelectorFeature(&server));
     server.addFeature(new EnvironmentFeature(&server));
-    server.addFeature(new FeatureCacheFeature(&server));
     server.addFeature(new FileDescriptorsFeature(&server));
+    server.addFeature(new FlushFeature(&server));
     server.addFeature(new FoxxQueuesFeature(&server));
     server.addFeature(new FrontendFeature(&server));
     server.addFeature(new GeneralServerFeature(&server));
     server.addFeature(new GreetingsFeature(&server));
     server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
-    server.addFeature(new JemallocFeature(&server));
     server.addFeature(new LanguageFeature(&server));
     server.addFeature(new LockfileFeature(&server));
     server.addFeature(new LoggerBufferFeature(&server));
@@ -163,31 +190,32 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new MaxMapCountFeature(&server));
     server.addFeature(new NonceFeature(&server));
     server.addFeature(new PageSizeFeature(&server));
-    server.addFeature(new pregel::PregelFeature(&server));
     server.addFeature(new PrivilegeFeature(&server));
+    server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new RandomFeature(&server));
     server.addFeature(new ReplicationFeature(&server));
-    server.addFeature(new QueryRegistryFeature(&server));
+    server.addFeature(new ReplicationTimeoutFeature(&server));
+    server.addFeature(new RocksDBOptionFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
     server.addFeature(new ServerIdFeature(&server));
     server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
+    server.addFeature(new ShutdownFeature(&server, {"Script"}));
     server.addFeature(new SslFeature(&server));
     server.addFeature(new StatisticsFeature(&server));
     server.addFeature(new StorageEngineFeature(&server));
     server.addFeature(new TempFeature(&server, name));
     server.addFeature(new TransactionManagerFeature(&server));
     server.addFeature(new TraverserEngineRegistryFeature(&server));
-    server.addFeature(new UnitTestsFeature(&server, &ret));
     server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(&server));
     server.addFeature(new V8PlatformFeature(&server));
     server.addFeature(new VersionFeature(&server));
     server.addFeature(new ViewTypesFeature(&server));
-    server.addFeature(new WorkMonitorFeature(&server));
-    server.addFeature(new RocksDBOptionFeature(&server));
+    server.addFeature(new aql::AqlFunctionFeature(&server));
+    server.addFeature(new aql::OptimizerRulesFeature(&server));
+    server.addFeature(new pregel::PregelFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK
     server.addFeature(new DaemonFeature(&server));
@@ -204,7 +232,14 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new SslServerFeature(&server));
 #endif
 
+#ifdef USE_IRESEARCH
+    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(&server));
+    server.addFeature(new arangodb::iresearch::IResearchFeature(&server));
+    server.addFeature(new arangodb::iresearch::SystemDatabaseFeature(&server));
+#endif
+
     // storage engines
+    server.addFeature(new ClusterEngine(&server));
     server.addFeature(new MMFilesEngine(&server));
     server.addFeature(new RocksDBEngine(&server));
 

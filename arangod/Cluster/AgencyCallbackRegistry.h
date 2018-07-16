@@ -21,8 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef CLUSTER_AGENCYCALLACKREGISTRY_H
-#define CLUSTER_AGENCYCALLACKREGISTRY_H 1
+#ifndef CLUSTER_AGENCY_CALLBACK_REGISTRY_H
+#define CLUSTER_AGENCY_CALLBACK_REGISTRY_H 1
 
 #include "Cluster/AgencyCallback.h"
 #include "Basics/ReadWriteLock.h"

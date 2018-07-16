@@ -20,15 +20,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -43,11 +41,11 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/v8-collection.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -101,21 +99,20 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName(collection->dbName());
-    //std::string const cid = collection->cid_as_string();
+    TRI_ASSERT(collection);
+    auto& databaseName = collection->vocbase().name();
     std::string const& cid = collection->name();
-
-    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
 
     // add code for estimates here
     std::unordered_map<std::string,double> estimates;
 
-    int rv = selectivityEstimatesOnCoordinator(databaseName,cid,estimates);
+    int rv = selectivityEstimatesOnCoordinator(databaseName, cid, estimates);
     if (rv != TRI_ERROR_NO_ERROR){
       return Result(rv, "could not retrieve estimates");
     }
 
     VPackBuilder tmpInner;
+    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
     c->getIndexesVPack(tmpInner, withFigures, false);
 
     tmp.openArray();
@@ -131,9 +128,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
         tmp.add(s); // just copy
       } else {
         tmp.openObject();
-        for(auto const& i : VPackObjectIterator(s)){
-          tmp.add(i.key.copyString(), i.value);
-        }
+        tmp.add(VPackObjectIterator(s, true));
         tmp.add("selectivityEstimate", VPackValue(found->second));
         tmp.close();
       }
@@ -141,21 +136,27 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     tmp.close();
 
   } else {
-    // add locks for consistency
-
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(collection->vocbase()),
-        collection->cid(), AccessMode::Type::READ);
+      transaction::StandaloneContext::Create(collection->vocbase()),
+      collection,
+      AccessMode::Type::READ
+    );
+
+    // we actually need this hint here, so that the collection is not
+    // loaded if it has status unloaded.
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
     Result res = trx.begin();
+
     if (!res.ok()) {
       return res;
     }
 
     // get list of indexes
     auto indexes = collection->getIndexes();
+
     tmp.openArray(true);
+
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
       idx->toVelocyPack(tmp, withFigures, false);
     }
@@ -168,39 +169,49 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
   VPackArrayBuilder a(&result);
   for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
-    VPackSlice type = index.get("type");
+    auto type = index.get(arangodb::StaticStrings::IndexType);
     std::string id = collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
-                     index.get("id").copyString();
+                     index.get(arangodb::StaticStrings::IndexId).copyString();
     VPackBuilder merge;
+
     merge.openObject(true);
-    merge.add("id", VPackValue(id));
+    merge.add(
+      arangodb::StaticStrings::IndexId,
+      arangodb::velocypack::Value(id)
+    );
 
     if (type.isString() && type.compareString("edge") == 0) {
       VPackSlice fields = index.get("fields");
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
-      if (fields.length() == 1) {  // merge indexes
 
+      if (fields.length() == 1) {  // merge indexes
         // read out relevant values
         VPackSlice val = index.get("selectivityEstimate");
+
         if (val.isNumber()) {
           selectivity += val.getNumber<double>();
         }
-        
+
         bool useCache = false;
         VPackSlice figures = index.get("figures");
+
         if (figures.isObject() && !figures.isEmptyObject()) {
           if ((val = figures.get("cacheInUse")).isBool()) {
             useCache = val.getBool();
           }
+
           if ((val = figures.get("memory")).isNumber()) {
             memory += val.getNumber<double>();
           }
+
           if ((val = figures.get("cacheSize")).isNumber()) {
             cacheSize += val.getNumber<double>();
           }
+
           if ((val = figures.get("cacheLifeTimeHitRate")).isNumber()) {
             cacheLifeTimeHitRate += val.getNumber<double>();
           }
+
           if ((val = figures.get("cacheWindowedHitRate")).isNumber()) {
             cacheWindowedHitRate += val.getNumber<double>();
           }
@@ -245,14 +256,15 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
                                VPackSlice const& definition, bool create,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
-  READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
+  READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(collection->vocbase()),
-      collection->cid(),
-      create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
-
+    transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
+    collection,
+    create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ
+  );
   Result res = trx.begin();
+
   if (!res.ok()) {
     return res;
   }
@@ -260,17 +272,12 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
   if (create) {
-    // TODO Encapsulate in try{}catch(){} instead of errno()
     try {
       idx = collection->createIndex(&trx, definition, created);
     } catch (arangodb::basics::Exception const& e) {
-      return Result(e.code());
+      return Result(e.code(), e.what());
     }
-    if (idx == nullptr) {
-      // something went wrong during creation
-      int res = TRI_errno();
-      return Result(res);
-    }
+    TRI_ASSERT(idx != nullptr);
   } else {
     idx = collection->lookupIndex(definition);
     if (idx == nullptr) {
@@ -278,6 +285,8 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
       return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
+    
+  TRI_ASSERT(idx != nullptr);
 
   VPackBuilder tmp;
   try {
@@ -306,12 +315,14 @@ Result Indexes::ensureIndexCoordinator(
     arangodb::LogicalCollection const* collection, VPackSlice const& indexDef,
     bool create, VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
-  std::string const dbName = collection->dbName();
-  std::string const cid = collection->cid_as_string();
+  auto& dbName = collection->vocbase().name();
+  auto cid = std::to_string(collection->id());
   std::string errorMsg;
+
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
       dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
-      errorMsg, 360.0);
+      errorMsg, cluster->indexCreationTimeout());
   return Result(res, errorMsg);
 }
 
@@ -321,14 +332,14 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    AuthLevel lvl = exec->databaseAuthLevel();
-    bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
-    bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
-    if ((create && (lvl != AuthLevel::RW || !canModify)) ||
-        (lvl == AuthLevel::NONE || !canRead)) {
+    auth::Level lvl = exec->databaseAuthLevel();
+    bool canModify = exec->canUseCollection(collection->name(), auth::Level::RW);
+    bool canRead = exec->canUseCollection(collection->name(), auth::Level::RO);
+    if ((create && (lvl != auth::Level::RW || !canModify)) ||
+        (lvl == auth::Level::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
-    if (create && !exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    if (create && !exec->isSuperuser() && ServerState::readOnly()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
@@ -336,25 +347,26 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
   VPackBuilder defBuilder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  int res = idxFactory->enhanceIndexDefinition(
-      definition, defBuilder, create, ServerState::instance()->isCoordinator());
+  int res = engine->indexFactory().enhanceIndexDefinition(
+    definition, defBuilder, create, ServerState::instance()->isCoordinator()
+  ).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res);
   }
 
-  std::string const dbname(collection->dbName());
+  TRI_ASSERT(collection);
+  auto& dbname = collection->vocbase().name();
   std::string const collname(collection->name());
   VPackSlice indexDef = defBuilder.slice();
+
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
-    auto c = ClusterInfo::instance()->getCollection(dbname, collname);
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
       Index::validateFields(indexDef);
-      VPackSlice v = indexDef.get("unique");
+      auto v = indexDef.get(arangodb::StaticStrings::IndexUnique);
 
       /* the following combinations of shardKeys and indexKeys are allowed/not
        allowed:
@@ -373,7 +385,9 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
-        VPackSlice flds = indexDef.get("fields");
+        auto c = ClusterInfo::instance()->getCollection(dbname, collname);
+        auto flds = indexDef.get(arangodb::StaticStrings::IndexFields);
+
         if (flds.isArray() && c->numberOfShards() > 1) {
           std::vector<std::string> const& shardKeys = c->shardKeys();
           std::unordered_set<std::string> indexKeys;
@@ -434,6 +448,40 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   } else {
     return EnsureIndexLocal(collection, indexDef, create, output);
   }
+}
+
+arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType type,
+                                     std::vector<std::string> const& fields,
+                                     bool unique, bool sparse) {
+  VPackBuilder props;
+
+  props.openObject();
+  props.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(Index::oldtypeName(type))
+  );
+  props.add(
+    arangodb::StaticStrings::IndexFields,
+    arangodb::velocypack::Value(VPackValueType::Array)
+  );
+
+  for (std::string const& field : fields) {
+    props.add(VPackValue(field));
+  }
+
+  props.close();
+  props.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(unique)
+  );
+  props.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(sparse)
+  );
+  props.close();
+  
+  VPackBuilder ignored;
+  return ensureIndex(coll, props.slice(), true, ignored);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -513,8 +561,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 arangodb::Result Indexes::drop(LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
   if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW ||
-        !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RW)) {
+    if (ExecContext::CURRENT->databaseAuthLevel() != auth::Level::RW ||
+        !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -523,6 +571,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
   if (ServerState::instance()->isCoordinator()) {
     CollectionNameResolver resolver(collection->vocbase());
     Result res = Indexes::extractHandle(collection, &resolver, indexArg, iid);
+
     if (!res.ok()) {
       return res;
     }
@@ -530,21 +579,24 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 #ifdef USE_ENTERPRISE
     return Indexes::dropCoordinatorEE(collection, iid);
 #else
-    std::string const databaseName(collection->dbName());
-    std::string const cid = collection->cid_as_string();
+    TRI_ASSERT(collection);
+    auto& databaseName = collection->vocbase().name();
+    auto cid = std::to_string(collection->id());
     std::string errorMsg;
     int r = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
                                                           iid, errorMsg, 0.0);
     return Result(r, errorMsg);
 #endif
   } else {
-    READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
+    READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(collection->vocbase()),
-        collection->cid(), AccessMode::Type::EXCLUSIVE);
-
+      transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
+      collection,
+      AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
+
     if (!res.ok()) {
       return res;
     }

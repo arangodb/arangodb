@@ -257,9 +257,16 @@
     },
 
     finishRender: function (permissions, open, error) {
+      // sort permission databases
+      var sortedArr = _.pairs(permissions);
+      sortedArr.sort();
+      sortedArr = _.object(sortedArr);
+
       $(this.el).html(this.template.render({
-        permissions: permissions
+        permissions: sortedArr
       }));
+      // * wildcard at the end
+      $('.noAction').first().appendTo('.pure-table-body');
       $('.pure-table-body').height(window.innerHeight - 200);
       if (open) {
         $('#' + open).click();
@@ -292,7 +299,6 @@
         _.each(permissions, function (perms, database) {
           if (perms.collections) {
             var defValue = perms.collections['*'];
-            // console.log(defValue);
             _.each(perms.collections, function (access, collection) {
               if (collection.charAt(0) !== '_' && collection.charAt(0) !== '*') {
                 if (access === 'undefined') {

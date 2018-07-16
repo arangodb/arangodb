@@ -35,7 +35,7 @@ using namespace arangodb;
 
 #if defined(TRI_HAVE_POSIX_THREADS)
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
 // initialize _holder to "maximum" thread id. this will work if the type of
 // _holder is numeric, but will not work if its type is more complex.
 Mutex::Mutex()
@@ -44,14 +44,6 @@ Mutex::Mutex()
 Mutex::Mutex() : _mutex() {
 #endif
   pthread_mutexattr_init(&_attributes);
-
-#ifdef __linux__
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // use an error checking mutex if available (only for LinuxThread) and only
-  // in maintainer mode
-  pthread_mutexattr_settype(&_attributes, PTHREAD_MUTEX_ERRORCHECK_NP);
-#endif
-#endif
 
   pthread_mutex_init(&_mutex, &_attributes);
 }
@@ -62,7 +54,7 @@ Mutex::~Mutex() {
 }
 
 void Mutex::lock() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
 #endif
@@ -79,13 +71,13 @@ void Mutex::lock() {
     FATAL_ERROR_ABORT();
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
   _holder = Thread::currentThreadId();
 #endif
 }
 
 bool Mutex::tryLock() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
 #endif
@@ -104,7 +96,7 @@ bool Mutex::tryLock() {
     FATAL_ERROR_ABORT();
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
   _holder = Thread::currentThreadId();
 #endif
 
@@ -112,7 +104,7 @@ bool Mutex::tryLock() {
 }
 
 void Mutex::unlock() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
   TRI_ASSERT(_holder == Thread::currentThreadId());
   _holder = 0;
 #endif
@@ -125,7 +117,7 @@ void Mutex::unlock() {
   }
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
 void Mutex::assertLockedByCurrentThread() {
   TRI_ASSERT(_holder == Thread::currentThreadId());
 }
@@ -150,7 +142,7 @@ bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
 
 void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
 void Mutex::assertLockedByCurrentThread() {}
 void Mutex::assertNotLockedByCurrentThread() {}
 #endif

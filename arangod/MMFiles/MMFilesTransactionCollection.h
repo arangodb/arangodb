@@ -45,13 +45,19 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   ~MMFilesTransactionCollection();
   
   /// @brief request a main-level lock for a collection
-  int lock() override;
+  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
+  /// returns any other error code otherwise
+  int lockRecursive() override;
  
   /// @brief request a lock for a collection
-  int lock(AccessMode::Type, int nestingLevel) override;
+  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
+  /// returns any other error code otherwise
+  int lockRecursive(AccessMode::Type, int nestingLevel) override;
 
   /// @brief request an unlock for a collection
-  int unlock(AccessMode::Type, int nestingLevel) override;
+  int unlockRecursive(AccessMode::Type, int nestingLevel) override;
 
   /// @brief check whether a collection is locked in a specific mode in a transaction
   bool isLocked(AccessMode::Type, int nestingLevel) const override;
@@ -74,6 +80,9 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   
  private:
   /// @brief request a lock for a collection
+  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
+  /// returns any other error code otherwise
   int doLock(AccessMode::Type, int nestingLevel);
 
   /// @brief request an unlock for a collection

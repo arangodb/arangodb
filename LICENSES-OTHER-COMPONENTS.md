@@ -1,3 +1,12 @@
+- [Other Licenses](#other-licenses)
+  * [C/C++ Libraries](#cc-libraries)
+  * [Programs](#programs)
+  * [Javascript](#javascript)
+    + [Node core modules](#node-core-modules)
+    + [Bundled NPM modules](#bundled-npm-modules)
+    + [Backend libraries](#backend-libraries)
+    + [Frontend libraries](#frontend-libraries)
+
 # Other Licenses
 
 ## C/C++ Libraries
@@ -16,6 +25,11 @@
 
 * Project Home: https://curl.haxx.se/
 * License: [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/curl/curl-7.50.3/COPYING)
+
+### date 2.4
+
+* Project Home: https://github.com/HowardHinnant/date
+* License: [free as-is license](https://github.com/HowardHinnant/date/blob/master/LICENSE.txt)
 
 ### fasthash
 
@@ -176,10 +190,10 @@ exception from the GPL license:
 * Project Home: https://github.com/chalk/ansi-styles#readme
 * License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/node_modules/ansi-styles/package.json)
 
-#### ansi-styles
+#### ansi_up
 
-* Project Home: https://github.com/chalk/ansi-styles#readme
-* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/ansi-styles/package.json)
+* Project Home: https://github.com/drudru/ansi_up
+* License: [MIT License](https://github.com/drudru/ansi_up#license)
 
 #### aqb
 
@@ -1386,3 +1400,8 @@ exception from the GPL license:
 
 * GitHub: https://github.com/evanplaice/jquery-csv
 * License: [MIT License](https://github.com/evanplaice/jquery-csv)
+
+#### randomColor
+
+* GitHub: https://github.com/davidmerfield/randomColor
+* License: [MIT License](https://github.com/davidmerfield/randomColor/blob/master/LICENSE.md)

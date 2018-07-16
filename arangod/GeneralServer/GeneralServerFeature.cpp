@@ -31,7 +31,6 @@
 #include "Aql/RestAqlHandler.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
@@ -46,16 +45,16 @@
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
+#include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
+#include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
-#include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
-#include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -70,17 +69,16 @@
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
+#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
-#include "RestHandler/WorkMonitorHandler.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -89,7 +87,6 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -105,17 +102,14 @@ GeneralServerFeature::GeneralServerFeature(
       _allowMethodOverride(false),
       _proxyCheck(true) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Agency");
-  startsAfter("Authentication");
-  startsAfter("CheckVersion");
-  startsAfter("Database");
+  startsAfter("AQLPhase");
+
   startsAfter("Endpoint");
-  startsAfter("FoxxQueues");
-  startsAfter("Random");
-  startsAfter("Scheduler");
-  startsAfter("Server");
   startsAfter("Upgrade");
+
+  // TODO The following features are too high
+  // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before
+  // startsAfter("FoxxQueues");
 }
 
 void GeneralServerFeature::collectOptions(
@@ -192,55 +186,8 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 }
 
-static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
-  auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
-
-  // get database name from request
-  std::string const& dbName = request->databaseName();
-
-  if (dbName.empty()) {
-    // if no databases was specified in the request, use system database name
-    // as a fallback
-    request->setDatabaseName(StaticStrings::SystemDatabase);
-    if (ServerState::instance()->isCoordinator()) {
-      return databaseFeature->useDatabaseCoordinator(
-          StaticStrings::SystemDatabase);
-    }
-    return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    return databaseFeature->useDatabaseCoordinator(dbName);
-  }
-  return databaseFeature->useDatabase(dbName);
-}
-
-static bool SetRequestContext(GeneralRequest* request, void* data) {
-  TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
-
-  // invalid database name specified, database not found etc.
-  if (vocbase == nullptr) {
-    return false;
-  }
-
-  TRI_ASSERT(!vocbase->isDangling());
-
-  // database needs upgrade
-  if (vocbase->state() == TRI_vocbase_t::State::FAILED_VERSION) {
-    request->setRequestPath("/_msg/please-upgrade");
-    vocbase->release();
-    return false;
-  }
-  
-  // the vocbase context is now responsible for releasing the vocbase
-  request->setRequestContext(VocbaseContext::create(request, vocbase), true);
-
-  // the "true" means the request is the owner of the context
-  return true;
-}
-
 void GeneralServerFeature::prepare() {
-  ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
+  ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
   GENERAL_SERVER = this;
 }
 
@@ -249,7 +196,7 @@ void GeneralServerFeature::start() {
 
   JOB_MANAGER = _jobManager.get();
 
-  _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext, nullptr));
+  _handlerFactory.reset(new RestHandlerFactory());
 
   HANDLER_FACTORY = _handlerFactory.get();
 
@@ -260,14 +207,11 @@ void GeneralServerFeature::start() {
     server->startListening();
   }
 
-  // populate the authentication cache. otherwise no one can access the new
-  // database
-  auto authentication =
-      FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(authentication != nullptr);
-  if (authentication->isActive()) {
-    authentication->authInfo()->outdate();
-    authentication->authInfo()->reloadAllUsers();
+  // initially populate the authentication cache. otherwise no one
+  // can access the new database
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->outdate();
   }
 }
 
@@ -338,6 +282,11 @@ void GeneralServerFeature::defineHandlers() {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto traverserEngineRegistry =
       TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+  if (_combinedRegistries == nullptr) {
+    _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   // ...........................................................................
   // /_msg
@@ -392,14 +341,17 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
-          aql::QueryRegistry*>,
-      queryRegistry);
+          aql::QueryRegistry*>, queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
-          aql::QueryRegistry*>,
-      queryRegistry);
+          aql::QueryRegistry*>, queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<
+      aql::QueryRegistry*>, queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
@@ -422,15 +374,25 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
-  
+
+  // This is the only handler were we need to inject
+  // more than one data object. So we created the combinedRegistries
+  // for it.
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+      RestHandlerCreator<aql::RestAqlHandler>::createData<
+          std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>*>,
+          _combinedRegistries.get());
 
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addPrefixHandler(
+        "/_api/aqlfunction",
+        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(
       "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
@@ -491,17 +453,15 @@ void GeneralServerFeature::defineHandlers() {
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
   
   _handlerFactory->addHandler(
-      "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _handlerFactory->addHandler(
-      "/_admin/demo-engine", RestHandlerCreator<RestDemoHandler>::createNoData);
-#endif
+    "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
   // ...........................................................................
   // /_admin
   // ...........................................................................
 
+  _handlerFactory->addHandler(
+      "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
+  
   _handlerFactory->addPrefixHandler(
       "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
@@ -515,21 +475,16 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_admin/routing",
-      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData);
-
-  _handlerFactory->addHandler(
-      "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addPrefixHandler(
+        "/_admin/routing",
+        RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+  }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler(
-      "/_admin/debug", RestHandlerCreator<RestDebugHandler>::createNoData);
+      "/_admin/debug", RestHandlerCreator<arangodb::RestDebugHandler>::createNoData);
 #endif
 
   _handlerFactory->addPrefixHandler(
@@ -545,16 +500,32 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
     "/_admin/server",
     RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+    "/_admin/statistics",
+    RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+    "/_admin/statistics-description",
+    RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+
+  if (cluster->isEnabled()) {
+    _handlerFactory->addPrefixHandler(
+      "/_admin/repair",
+      RestHandlerCreator<arangodb::RestRepairHandler>
+      ::createNoData
+    );
+  }
 
   // ...........................................................................
   // actions defined in v8
   // ...........................................................................
-
+  
   _handlerFactory->addPrefixHandler(
-      "/", RestHandlerCreator<RestActionHandler>::createNoData);
+     "/", RestHandlerCreator<RestActionHandler>::createNoData);
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addRestHandlers(_handlerFactory.get());
+  engine->addRestHandlers(*_handlerFactory);
 }

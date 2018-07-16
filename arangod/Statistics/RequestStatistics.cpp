@@ -62,8 +62,6 @@ void RequestStatistics::initialize() {
   }
 }
 
-void RequestStatistics::shutdown() {}
-
 size_t RequestStatistics::processAll() {
   RequestStatistics* statistics = nullptr;
   size_t count = 0;
@@ -130,26 +128,26 @@ void RequestStatistics::process(RequestStatistics* statistics) {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
 
-      TRI_TotalTimeDistributionStatistics->addFigure(totalTime);
+      TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
 
       double requestTime = statistics->_requestEnd - statistics->_requestStart;
-      TRI_RequestTimeDistributionStatistics->addFigure(requestTime);
+      TRI_RequestTimeDistributionStatistics.addFigure(requestTime);
 
       double queueTime = 0.0;
 
       if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
         queueTime = statistics->_queueEnd - statistics->_queueStart;
-        TRI_QueueTimeDistributionStatistics->addFigure(queueTime);
+        TRI_QueueTimeDistributionStatistics.addFigure(queueTime);
       }
 
       double ioTime = totalTime - requestTime - queueTime;
 
       if (ioTime >= 0.0) {
-        TRI_IoTimeDistributionStatistics->addFigure(ioTime);
+        TRI_IoTimeDistributionStatistics.addFigure(ioTime);
       }
 
-      TRI_BytesSentDistributionStatistics->addFigure(statistics->_sentBytes);
-      TRI_BytesReceivedDistributionStatistics->addFigure(
+      TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
+      TRI_BytesReceivedDistributionStatistics.addFigure(
           statistics->_receivedBytes);
     }
   }
@@ -205,12 +203,12 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
 
   MUTEX_LOCKER(mutexLocker, _dataLock);
 
-  totalTime = *TRI_TotalTimeDistributionStatistics;
-  requestTime = *TRI_RequestTimeDistributionStatistics;
-  queueTime = *TRI_QueueTimeDistributionStatistics;
-  ioTime = *TRI_IoTimeDistributionStatistics;
-  bytesSent = *TRI_BytesSentDistributionStatistics;
-  bytesReceived = *TRI_BytesReceivedDistributionStatistics;
+  totalTime = TRI_TotalTimeDistributionStatistics;
+  requestTime = TRI_RequestTimeDistributionStatistics;
+  queueTime = TRI_QueueTimeDistributionStatistics;
+  ioTime = TRI_IoTimeDistributionStatistics;
+  bytesSent = TRI_BytesSentDistributionStatistics;
+  bytesReceived = TRI_BytesReceivedDistributionStatistics;
 }
 
 std::string RequestStatistics::timingsCsv() {

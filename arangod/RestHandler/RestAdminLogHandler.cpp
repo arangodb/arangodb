@@ -40,8 +40,6 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestAdminLogHandler::isDirect() const { return true; }
-
 RestStatus RestAdminLogHandler::execute() {
   size_t const len = _request->suffixes().size();
 
@@ -280,7 +278,7 @@ void RestAdminLogHandler::setLogLevel() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::GET) {
-    // report loglevel
+    // report log level
     VPackBuilder builder;
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();
@@ -291,15 +289,13 @@ void RestAdminLogHandler::setLogLevel() {
 
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::PUT) { 
-    // set loglevel
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    // set log level
+    bool parseSuccess = false;
+    VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      // error message generated in parseVelocyPackBody
-      return;
+      return; // error message generated in parseVPackBody
     }
     
-    VPackSlice slice = parsedBody->slice();
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
@@ -311,7 +307,7 @@ void RestAdminLogHandler::setLogLevel() {
       }
     }
     
-    // now report current loglevel
+    // now report current log level
     VPackBuilder builder;
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();

@@ -71,5 +71,10 @@ ${Switch} $0
     ; fill me
   ${Break}
 
+  ${Case} 23 # EXIT_RECOVERY
+    MessageBox MB_ICONEXCLAMATION '$1:$\r$\nrecovery failed'
+    ; Will be returned if the recovery fails
+  ${Break}
+
 ${EndSwitch}
 FunctionEnd

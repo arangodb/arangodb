@@ -89,7 +89,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test http GET
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
     testGet : function () {
       var result, response = internal.download(buildUrl(""));
 
@@ -132,7 +132,7 @@ function DownloadSuite () {
       assertEqual("1", result.parameters["foo"]);
       assertEqual("baz", result.parameters["bar"]);
     },
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test http GET error
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +179,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test response headers
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
     testResponseHeaders : function () {
       var result, response = internal.download(buildUrl(""));
 
@@ -192,11 +192,11 @@ function DownloadSuite () {
       assertNotEqual(response.headers["connection"], "");
       assertEqual("200 OK", response.headers["http/1.1"]);
     },
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test request headers
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
     testRequestHeaders : function () {
       var result, response = internal.download(buildUrl(""),
                                                "I am broken", 
@@ -365,7 +365,7 @@ function DownloadSuite () {
         assertEqual(arangodb.ERROR_BAD_PARAMETER, err.errorNum);
       }
     }
-
+*/
   };
 }
 

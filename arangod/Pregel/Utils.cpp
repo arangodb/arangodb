@@ -112,11 +112,16 @@ int Utils::resolveShard(WorkerConfig const* config,
   auto const& it = planIDMap.find(collectionName);
   if (it != planIDMap.end()) {
     info = ci->getCollection(config->database(), it->second);  // might throw
+    if (info == nullptr) {
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    }
   } else {
     LOG_TOPIC(ERR, Logger::PREGEL)
         << "The collection could not be translated to a planID";
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
+
+  TRI_ASSERT(info != nullptr);
 
   bool usesDefaultShardingAttributes;
   VPackBuilder partial;

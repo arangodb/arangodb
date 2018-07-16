@@ -26,7 +26,7 @@
 #define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringRef.h"
 #include "Rest/HttpRequest.h"
 
 #include <v8.h>
@@ -38,7 +38,7 @@ namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
-}
+}  // namespace httpclient
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for http requests
@@ -47,6 +47,14 @@ class SimpleHttpResult;
 class V8ClientConnection {
   V8ClientConnection(V8ClientConnection const&) = delete;
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
+
+ public:
+  static void setJwtSecret(std::string const& jwtSecret) { JWT_SECRET = std::make_shared<std::string>(jwtSecret); }
+  static std::shared_ptr<std::string> jwtSecret() { return JWT_SECRET; }
+  static std::string jwtToken(std::string const& secret);
+
+ private:
+  static std::shared_ptr<std::string> JWT_SECRET;
 
  public:
   V8ClientConnection(
@@ -70,36 +78,31 @@ class V8ClientConnection {
   std::string endpointSpecification() const;
 
   v8::Handle<v8::Value> getData(
-      v8::Isolate* isolate, std::string const& location,
+      v8::Isolate* isolate, StringRef const& location,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> headData(
-      v8::Isolate* isolate, std::string const& location,
+      v8::Isolate* isolate, StringRef const& location,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> deleteData(
-      v8::Isolate* isolate, std::string const& location,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw,
-      std::string const& body);
+      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> optionsData(
-      v8::Isolate* isolate, std::string const& location,
-      std::string const& body,
+      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> postData(
-      v8::Isolate* isolate, std::string const& location,
-      std::string const& body,
+      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw = false);
 
   v8::Handle<v8::Value> putData(
-      v8::Isolate* isolate, std::string const& location,
-      std::string const& body,
+      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> patchData(
-      v8::Isolate* isolate, std::string const& location,
-      std::string const& body,
+      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context,
@@ -109,16 +112,17 @@ class V8ClientConnection {
   static std::string rewriteLocation(void*, std::string const&);
 
  private:
-  void init(std::unique_ptr<httpclient::GeneralClientConnection>&, std::string const&, std::string const&, std::string const&);
+  void init(std::unique_ptr<httpclient::GeneralClientConnection>&,
+            std::string const&, std::string const&, std::string const&);
 
   v8::Handle<v8::Value> requestData(
       v8::Isolate* isolate, rest::RequestType method,
-      std::string const& location, std::string const& body,
+      StringRef const& location, StringRef const& body,
       std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Handle<v8::Value> requestDataRaw(
       v8::Isolate* isolate, rest::RequestType method,
-      std::string const& location, std::string const& body,
+      StringRef const& location, StringRef const& body,
       std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Handle<v8::Value> handleResult(v8::Isolate* isolate);
@@ -137,6 +141,6 @@ class V8ClientConnection {
   std::string _version;
   std::string _mode;
 };
-}
+}  // namespace arangodb
 
 #endif

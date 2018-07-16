@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual */
+/*global assertTrue, assertEqual, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test moving shards in the cluster
@@ -131,7 +131,6 @@ function MovingShardsSuite () {
   }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,14 +218,33 @@ function MovingShardsSuite () {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var body = {"server": id};
+    var result;
     try {
-      return request({ method: "POST",
-                       url: url + "/_admin/cluster/cleanOutServer",
-                       body: JSON.stringify(body) });
+      result = request({ method: "POST",
+                         url: url + "/_admin/cluster/cleanOutServer",
+                         body: JSON.stringify(body) });
     } catch (err) {
       console.error(
         "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
       return false;
+    }
+    console.info("cleanOutServer job:", JSON.stringify(body));
+    console.info("result of request:", JSON.stringify(result.json));
+    // Now wait until the job we triggered is finished:
+    var count = 1200;   // seconds
+    while (true) {
+      var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
+      console.info("Status of cleanOutServer job:", job.status);
+      if (job.error === false && job.status === "Finished") {
+        return result;
+      }
+      if (count-- < 0) {
+        console.error(
+          "Timeout in waiting for cleanOutServer to complete: " 
+          + JSON.stringify(body));
+        return false;
+      }
+      require("internal").wait(1.0);
     }
   }
 
@@ -281,23 +299,73 @@ function MovingShardsSuite () {
 /// @brief move a single shard
 ////////////////////////////////////////////////////////////////////////////////
 
-  function moveShard(database, collection, shard, fromServer, toServer) {
+  function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var body = {database, collection, shard, fromServer, toServer};
+    var result;
     try {
-      return request({ method: "POST",
-                       url: url + "/_admin/cluster/moveShard",
-                       body: JSON.stringify(body) });
+      result = request({ method: "POST",
+                         url: url + "/_admin/cluster/moveShard",
+                         body: JSON.stringify(body) });
     } catch (err) {
       console.error(
-        "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
+        "Exception for PUT /_admin/cluster/moveShard:", err.stack);
       return false;
     }
+    if (dontwait) {
+      return result;
+    }
+    console.info("moveShard job:", JSON.stringify(body));
+    console.info("result of request:", JSON.stringify(result.json));
+    // Now wait until the job we triggered is finished:
+    var count = 600;   // seconds
+    while (true) {
+      var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
+      console.info("Status of moveShard job:", job.status);
+      if (job.error === false && job.status === "Finished") {
+        return result;
+      }
+      if (count-- < 0) {
+        console.error(
+          "Timeout in waiting for moveShard to complete: " 
+          + JSON.stringify(body));
+        return false;
+      }
+      require("internal").wait(1.0);
+    }
   }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Set supervision mode
+////////////////////////////////////////////////////////////////////////////////
+
+  function maintenanceMode(mode) {
+    console.log("Switching supervision maintenance " + mode);
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    var req;
+    try {      
+      req = request({ method: "PUT",
+                      url: url + "/_admin/cluster/maintenance",
+                      body: JSON.stringify(mode) });
+    } catch (err) {
+      console.error(
+        "Exception for PUT /_admin/cluster/maintenance:", err.stack);
+      return false;
+    }
+    console.log("Supervision maintenance is " + mode);
+    return true;
+  }
+
+  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
@@ -433,7 +501,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer));
+      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
     },
@@ -450,7 +518,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer));
+      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
     },
@@ -468,7 +536,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
@@ -486,7 +554,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
@@ -504,7 +572,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
@@ -522,7 +590,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
@@ -606,6 +674,41 @@ function MovingShardsSuite () {
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pausing supervision for a couple of seconds
+////////////////////////////////////////////////////////////////////////////////
+
+    testMaintenanceMode : function() {
+      createSomeCollections(1, 1, 3);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      assertTrue(maintenanceMode("on"));      
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, true));
+      var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+          arango.Supervision.State, state;
+      var waitUntil = new Date().getTime() + 30.0*1000;
+      while(true) {
+        state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+          arango.Supervision.State;
+        assertEqual(state.Timestamp, first.Timestamp);
+        wait(5.0);
+        if (new Date().getTime() > waitUntil) {
+          break;
+        }
+      }
+      assertTrue(maintenanceMode("off"));
+      state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+        arango.Supervision.State;
+      assertTrue(state.Timestamp !== first.Timestamp);
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
 

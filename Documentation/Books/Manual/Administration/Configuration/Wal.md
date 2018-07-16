@@ -13,7 +13,8 @@ might be transferred into collection journals and datafiles. Unneeded and alread
 garbage-collected logfiles will either be deleted or kept for the purpose of keeping
 a replication backlog.
 
-### Directory
+Directory
+---------
 
 <!-- arangod/Wal/LogfileManager.h -->
 
@@ -24,37 +25,44 @@ stored. If this option is not specified, it defaults to the subdirectory
 *journals* in the server's global database directory. If the directory is
 not present, it will be created.
 
-### Logfile size
+Logfile size
+------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSize
 
-### Allow oversize entries
+Allow oversize entries
+----------------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileAllowOversizeEntries
 
-### Number of reserve logfiles
+Number of reserve logfiles
+--------------------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileReserveLogfiles
 
-### Number of historic logfiles
+Number of historic logfiles
+---------------------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileHistoricLogfiles
 
-### Sync interval
+Sync interval
+-------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSyncInterval
 
-### Flush timeout
+Flush timeout
+-------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileFlushTimeout
 
-### Throttling
+Throttling
+----------
 
 <!-- arangod/Wal/LogfileManager.h -->
 
@@ -88,7 +96,8 @@ over, the operation will be aborted with an error.
 This option only has an effect if `--wal.throttle-when-pending` has a
 non-zero value, which is not the default.
 
-### Number of slots
+Number of slots
+---------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 
@@ -104,7 +113,8 @@ slots is thus determined by the parallelity of write operations and the
 disk synchronization speed. Slow disks probably need higher values, and
 fast disks may only require a value lower than the default.
 
-### Ignore logfile errors
+Ignore logfile errors
+---------------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 
@@ -124,7 +134,8 @@ procedure even in case it detects corrupt logfile entries. In this case it
 will stop at the first corrupted logfile entry and ignore all others, which
 might cause data loss.
 
-### Ignore recovery errors
+Ignore recovery errors
+----------------------
 
 <!-- arangod/Wal/LogfileManager.h -->
 
@@ -135,7 +146,8 @@ Ignores any recovery errors not caused by corrupted logfiles but by logical
 errors. Logical errors can occur if logfiles or any other server datafiles
 have been manually edited or the server is somehow misconfigured.
 
-### Ignore (non-WAL) datafile errors
+Ignore (non-WAL) datafile errors
+--------------------------------
 
 <!-- arangod/RestServer/ArangoServer.h -->
 
@@ -164,6 +176,10 @@ even if they are corrupted, but this will result in only a partial load
 of the original data and potential follow up errors. The WAL recovery
 will still abort when encountering a collection with a corrupted datafile,
 at least if `--wal.ignore-recovery-errors` is not set to `true`.
+
+Setting the option to `true` will also automaticall repair potentially 
+corrupted VERSION files of databases on startup, so that the startup can
+proceed.
 
 The default value is *false*, so collections with corrupted datafiles will
 not be loaded at all, preventing partial loads and follow up errors. However,

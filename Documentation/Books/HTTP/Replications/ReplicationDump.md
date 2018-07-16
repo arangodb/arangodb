@@ -8,17 +8,17 @@ to either start a full or a partial synchronization of data, e.g. to initiate a 
 or the incremental data synchronization.
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
-@startDocuBlock JSF_put_api_replication_inventory
+@startDocuBlock put_api_replication_inventory
 
 
 The *batch* method will create a snapshot of the current state that then can be
 dumped. A batchId is required when using the dump api with rocksdb.
 
-@startDocuBlock JSF_post_batch_replication
+@startDocuBlock post_batch_replication
 
-@startDocuBlock JSF_delete_batch_replication
+@startDocuBlock delete_batch_replication
 
-@startDocuBlock JSF_put_batch_replication
+@startDocuBlock put_batch_replication
 
 
 The *dump* method can be used to fetch data from a specific collection. As the
@@ -36,11 +36,11 @@ To get to an identical state of data, replication clients should apply the indiv
 parts of the dump results in the same order as they are provided.
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
-@startDocuBlock JSF_get_api_replication_dump
+@startDocuBlock get_api_replication_dump
 
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
-@startDocuBlock JSF_put_api_replication_synchronize
+@startDocuBlock put_api_replication_synchronize
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
-@startDocuBlock JSF_get_api_replication_cluster_inventory
+@startDocuBlock get_api_replication_cluster_inventory

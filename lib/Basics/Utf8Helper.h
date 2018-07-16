@@ -70,8 +70,6 @@ class Utf8Helper {
   ///  1 : left > right
   //////////////////////////////////////////////////////////////////////////////
 
-  int compareUtf8(char const* left, char const* right) const;
-
   int compareUtf8(char const* left, size_t leftLength, char const* right,
                   size_t rightLength) const;
 
@@ -195,20 +193,8 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
 /// @brief compare two utf8 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_compare_utf8(char const* left, char const* right) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf8 strings
-////////////////////////////////////////////////////////////////////////////////
-
 static inline int TRI_compare_utf8(char const* left, size_t leftLength, 
                                    char const* right, size_t rightLength) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
   return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, 
                                                                      right, rightLength);
 }

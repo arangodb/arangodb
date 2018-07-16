@@ -1,7 +1,8 @@
 shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction &lt;&lt;EOF
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"myfunctions::temperature::celsiustofahrenheit"</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-string">"function (celsius) { return celsius * 1.8 + 32; }"</span> 
+  <span class="hljs-string">"code"</span> : <span class="hljs-string">"function (celsius) { return celsius * 1.8 + 32; }"</span>, 
+  <span class="hljs-string">"isDeterministic"</span> : <span class="hljs-literal">true</span> 
 }
 EOF
 
@@ -11,5 +12,6 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
+  <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span> 
 }

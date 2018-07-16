@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_MMFILES_REPLICATION_COMMON_H 1
 
 #include "MMFiles/MMFilesDatafile.h"
-#include "VocBase/replication-common.h"
+#include "Replication/common-defines.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

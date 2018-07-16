@@ -3,8 +3,8 @@
      weekly
      compress
      delaycompress
-     create 640  arangodb adm
+     create 640  arangodb @LOGROTATE_GROUP@
      postrotate
-     systemctl -q is-active @SERVICE_NAME@ && systemctl kill --signal=SIGHUP arangoddb3
+     systemctl -q is-active @SERVICE_NAME@ && systemctl kill --signal=SIGHUP @SERVICE_NAME@
      endscript
      }

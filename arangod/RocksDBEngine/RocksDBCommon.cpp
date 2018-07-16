@@ -52,6 +52,12 @@ rocksdb::TransactionDB* globalRocksDB() {
   return rocks->db();
 }
 
+rocksdb::ColumnFamilyHandle* defaultCF() {
+  auto db = globalRocksDB();
+  TRI_ASSERT(db != nullptr);
+  return db->DefaultColumnFamily();
+}
+
 RocksDBEngine* globalRocksEngine() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
@@ -65,7 +71,7 @@ arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
   TRI_ASSERT(cf != nullptr);
   auto status = globalRocksDB()->Put(options, cf, key, val);
   return convertStatus(status);
-};
+}
 
 arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
                                      rocksdb::Slice const& key,
@@ -73,20 +79,11 @@ arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
   TRI_ASSERT(cf != nullptr);
   auto status = globalRocksDB()->Delete(options, cf, key);
   return convertStatus(status);
-};
+}
 
 uint64_t latestSequenceNumber() {
   auto seq = globalRocksDB()->GetLatestSequenceNumber();
   return static_cast<uint64_t>(seq);
-};
-
-void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
-                          TRI_voc_cid_t cid) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
-  TRI_ASSERT(rocks->db() != nullptr);
-  return rocks->addCollectionMapping(objectId, did, cid);
 }
 
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
@@ -96,6 +93,15 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
   RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
   TRI_ASSERT(rocks->db() != nullptr);
   return rocks->mapObjectToCollection(objectId);
+}
+  
+std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(
+                                                              uint64_t objectId) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
+  TRI_ASSERT(rocks->db() != nullptr);
+  return rocks->mapObjectToIndex(objectId);
 }
 
 /// @brief count all keys in the given column family
@@ -192,7 +198,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       ++total;
       ++counter;
       batch.Delete(cf, it->key());
-      if (counter == 1000) {
+      if (counter >= 1000) {
         LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
         // Persist deletes all 1000 documents
         rocksdb::Status status = bDB->Write(rocksdb::WriteOptions(), &batch);
@@ -206,7 +212,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       }
     }
   
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range deleted in total: " << total;
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range, deleted in total: " << total;
 
     if (counter > 0) {
       LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
@@ -234,34 +240,6 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
         << "caught unknown exception during RocksDB key prefix deletion";
     return TRI_ERROR_INTERNAL;
   }
-}
-
-std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
-    TRI_voc_tick_t databaseId) {
-  std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(databaseId);
-  iterateBounds(bounds,
-                [&rv](rocksdb::Iterator* it) {
-                  rv.emplace_back(
-                      RocksDBKey(it->key()),
-                      RocksDBValue(RocksDBEntryType::Collection, it->value()));
-                },
-                arangodb::RocksDBColumnFamily::definitions());
-  return rv;
-}
-
-std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
-    TRI_voc_tick_t databaseId) {
-  std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViews(databaseId);
-  iterateBounds(bounds,
-                [&rv](rocksdb::Iterator* it) {
-                  rv.emplace_back(
-                      RocksDBKey(it->key()),
-                      RocksDBValue(RocksDBEntryType::View, it->value()));
-                },
-                arangodb::RocksDBColumnFamily::definitions());
-  return rv;
 }
 
 }  // namespace rocksutils

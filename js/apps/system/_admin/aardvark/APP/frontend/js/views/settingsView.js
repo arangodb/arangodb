@@ -359,10 +359,10 @@
               if (error) {
                 arangoHelper.arangoError('Collection', 'Could not fetch properties');
               } else {
+                var wfs = data.waitForSync;
                 if (data.journalSize) {
                   var journalSize = data.journalSize / (1024 * 1024);
                   var indexBuckets = data.indexBuckets;
-                  var wfs = data.waitForSync;
 
                   tableContent.push(
                     window.modalView.createTextEntry(

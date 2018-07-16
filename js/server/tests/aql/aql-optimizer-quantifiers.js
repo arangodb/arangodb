@@ -60,9 +60,6 @@ function optimizerQuantifiersTestSuite () {
 
       result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
       assertEqual(true, result);
-      
-      result = AQL_EXECUTE("RETURN V8(" + query + ")").json[0];
-      assertEqual(true, result);
     },
     
     testAnyEmpty : function () {
@@ -73,9 +70,6 @@ function optimizerQuantifiersTestSuite () {
 
       result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
       assertEqual(false, result);
-      
-      result = AQL_EXECUTE("RETURN V8(" + query + ")").json[0];
-      assertEqual(false, result);
     },
 
     testNoneEmpty : function () {
@@ -85,9 +79,6 @@ function optimizerQuantifiersTestSuite () {
       assertEqual(true, result);
 
       result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
-      assertEqual(true, result);
-      
-      result = AQL_EXECUTE("RETURN V8(" + query + ")").json[0];
       assertEqual(true, result);
     },
 
@@ -104,15 +95,7 @@ function optimizerQuantifiersTestSuite () {
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ALL > doc.value SORT doc.value RETURN doc.value", [ 0, 0 ] ],
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ALL >= doc.value SORT doc.value RETURN doc.value", [ 0, 0, 1, 1 ] ],
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ALL < doc.value SORT doc.value RETURN doc.value", [ 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ALL <= doc.value SORT doc.value RETURN doc.value", [ 3, 3, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ALL IN [ doc.value ]) SORT doc.value RETURN doc.value", [ ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ALL NOT IN [ doc.value ]) SORT doc.value RETURN doc.value", [ 0, 0, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ALL == doc.value) SORT doc.value RETURN doc.value", [ ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ALL != doc.value) SORT doc.value RETURN doc.value", [ 0, 0, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ALL > doc.value) SORT doc.value RETURN doc.value", [ 0, 0 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ALL >= doc.value) SORT doc.value RETURN doc.value", [ 0, 0, 1, 1 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ALL < doc.value) SORT doc.value RETURN doc.value", [ 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ALL <= doc.value) SORT doc.value RETURN doc.value", [ 3, 3, 4, 4 ] ]
+        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ALL <= doc.value SORT doc.value RETURN doc.value", [ 3, 3, 4, 4 ] ]
       ];
 
       queries.forEach(function(query) {
@@ -134,15 +117,7 @@ function optimizerQuantifiersTestSuite () {
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ANY > doc.value SORT doc.value RETURN doc.value", [ 0, 0, 1, 1, 2, 2 ] ],
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ANY >= doc.value SORT doc.value RETURN doc.value", [ 0, 0, 1, 1, 2, 2, 3, 3 ] ],
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ANY < doc.value SORT doc.value RETURN doc.value", [ 2, 2, 3, 3, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ANY <= doc.value SORT doc.value RETURN doc.value", [ 1, 1, 2, 2, 3, 3, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ANY IN [ doc.value ]) SORT doc.value RETURN doc.value", [ 1, 1, 2, 2, 3, 3 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ANY NOT IN [ doc.value ]) SORT doc.value RETURN doc.value", [ 0, 0, 1, 1, 2, 2, 3, 3, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ANY == doc.value) SORT doc.value RETURN doc.value", [ 1, 1, 2, 2, 3, 3 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ANY != doc.value) SORT doc.value RETURN doc.value", [ 0, 0, 1, 1, 2, 2, 3, 3, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ANY > doc.value) SORT doc.value RETURN doc.value", [ 0, 0, 1, 1, 2, 2 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ANY >= doc.value) SORT doc.value RETURN doc.value", [ 0, 0, 1, 1, 2, 2, 3, 3 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ANY < doc.value) SORT doc.value RETURN doc.value", [ 2, 2, 3, 3, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] ANY <= doc.value) SORT doc.value RETURN doc.value", [ 1, 1, 2, 2, 3, 3, 4, 4 ] ]
+        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] ANY <= doc.value SORT doc.value RETURN doc.value", [ 1, 1, 2, 2, 3, 3, 4, 4 ] ]
       ];
 
       queries.forEach(function(query) {
@@ -164,15 +139,7 @@ function optimizerQuantifiersTestSuite () {
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] NONE > doc.value SORT doc.value RETURN doc.value", [ 3, 3, 4, 4 ] ],
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] NONE >= doc.value SORT doc.value RETURN doc.value", [ 4, 4 ] ],
         [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] NONE < doc.value SORT doc.value RETURN doc.value", [ 0, 0, 1, 1 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] NONE <= doc.value SORT doc.value RETURN doc.value", [ 0, 0 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] NONE IN [ doc.value ]) SORT doc.value RETURN doc.value", [ 0, 0, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] NONE NOT IN [ doc.value ]) SORT doc.value RETURN doc.value", [ ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] NONE == doc.value) SORT doc.value RETURN doc.value", [ 0, 0, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] NONE != doc.value) SORT doc.value RETURN doc.value", [ ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] NONE > doc.value) SORT doc.value RETURN doc.value", [ 3, 3, 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] NONE >= doc.value) SORT doc.value RETURN doc.value", [ 4, 4 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] NONE < doc.value) SORT doc.value RETURN doc.value", [ 0, 0, 1, 1 ] ],
-        [ "FOR doc IN " + c.name() + " FILTER V8([ 1, 2, 3 ] NONE <= doc.value) SORT doc.value RETURN doc.value", [ 0, 0 ] ]
+        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] NONE <= doc.value SORT doc.value RETURN doc.value", [ 0, 0 ] ]
       ];
 
       queries.forEach(function(query) {

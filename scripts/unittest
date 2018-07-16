@@ -26,15 +26,24 @@ if $(which numactl > /dev/null 2>&1); then
     NUMA="numactl --interleave=all"
 fi
 
+if [ `uname -s` == "Darwin" ]; then
+  EXEC_PATH="$(dirname "$(dirname "$0")")"
+else
+  EXEC_PATH="$(dirname "$(dirname "$(readlink -m "$0")")")"
+fi
+declare -a EXTRA_ARGS
+
 if [ -z "${ARANGOSH}" ];  then
     if [ -x build/bin/arangosh ];  then
         ARANGOSH="build/bin/arangosh${EXT}"
     elif [ -x bin/arangosh ];  then
         ARANGOSH="bin/arangosh${EXT}"
+    elif [ -x arangosh ]; then
+        ARANGOSH="arangosh${EXT}"
     elif [ -x usr/bin/arangosh ];  then
         ARANGOSH="usr/bin/arangosh${EXT}"
     else
-        ARANGOSH="$(find . -name "arangosh${EXT}" -executable -type f | head -n 1)"
+        ARANGOSH="$(find "${EXEC_PATH}" -name "arangosh${EXT}" -perm -001 -type f | head -n 1)"
         [ -x "${ARANGOSH}" ] || {
           echo "$0: cannot locate arangosh"
           exit 1
@@ -42,14 +51,8 @@ if [ -z "${ARANGOSH}" ];  then
     fi
 fi
 
-declare -a EXTRA_ARGS
-
-if [ `uname -s` == "Darwin" ]; then
-  EXEC_PATH="$(dirname "$(dirname "$0")")"
-else
-  EXEC_PATH="$(dirname "$(dirname "$(readlink -m "$0")")")"
-  [ -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
-fi
+[ "$(uname -s)" != "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
+[ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
 [[ " $@ " =~ "--build" ]] || {
   BUILD_PATH="$(dirname "$(dirname "${ARANGOSH}")")"

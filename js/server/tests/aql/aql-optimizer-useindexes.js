@@ -111,7 +111,6 @@ function useIndexesTestSuite() {
             var assertMessage;
             var bindvars = { '@col' : t.collection };
 
-            //db._explain(t.query , bindvars);
             let plan = AQL_EXPLAIN(t.query , bindvars);
 
             let sortNodes = findExecutionNodes(plan, "SortNode");

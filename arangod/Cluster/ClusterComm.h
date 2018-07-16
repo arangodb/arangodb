@@ -264,19 +264,22 @@ struct ClusterCommResult {
     // request => response we simulate the old behaviour now and fake a request
     // containing the body of our response
     // :snake: OPST_CIRCUS
-    answer_code = dynamic_cast<HttpResponse*>(response.get())->responseCode();
+    auto httpResponse = dynamic_cast<HttpResponse*>(response.get());
+    if (httpResponse == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+    }
+    answer_code = httpResponse->responseCode();
     HttpRequest* request = HttpRequest::createHttpRequest(
         ContentType::JSON,
-        dynamic_cast<HttpResponse*>(response.get())->body().c_str(),
-        dynamic_cast<HttpResponse*>(response.get())->body().length(), std::unordered_map<std::string,std::string>());
+        httpResponse->body().c_str(),
+        httpResponse->body().length(), std::unordered_map<std::string, std::string>());
 
-    auto headers = response->headers();
+    auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
       request->setHeader(StaticStrings::ErrorCodes, errorCodes->second);
     }
-    request->setHeader("x-arango-response-code",
-                       GeneralResponse::responseString(answer_code));
+    request->setHeader(StaticStrings::ResponseCode, GeneralResponse::responseString(answer_code));
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
     result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(
@@ -304,7 +307,7 @@ struct ClusterCommResult {
 
 struct ClusterCommCallback {
   ClusterCommCallback() {}
-  virtual ~ClusterCommCallback(){};
+  virtual ~ClusterCommCallback() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual callback function
@@ -345,28 +348,67 @@ struct ClusterCommOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommRequest {
+  static std::unordered_map<std::string, std::string> const noHeaders;
+  static std::string const noBody;
+  static std::shared_ptr<std::string const> const sharedNoBody;
+
   std::string destination;
   rest::RequestType requestType;
   std::string path;
+  ClusterCommResult result;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
-  ClusterCommResult result;
   bool done;
 
   ClusterCommRequest() : done(false) {}
 
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
-                     std::shared_ptr<std::string const> body)
+                     std::shared_ptr<std::string const> const& body)
       : destination(dest),
         requestType(type),
         path(path),
         body(body),
         done(false) {}
 
+  ClusterCommRequest(std::string const& dest, rest::RequestType type,
+                     std::string const& path,
+                     std::shared_ptr<std::string const> const& body,
+                     std::unique_ptr<std::unordered_map<std::string, std::string>> headers)
+      : destination(dest),
+        requestType(type),
+        path(path),
+        body(body),
+        headerFields(std::move(headers)),
+        done(false) {}
+
+  /// @brief "safe" accessor for header
+  std::unordered_map<std::string, std::string> const& getHeaders() const {
+    if (headerFields == nullptr) {
+      return noHeaders;
+    }
+    return *headerFields;
+  }
+  
   void setHeaders(
-      std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
+      std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
     headerFields = std::move(headers);
+  }
+ 
+  /// @brief "safe" accessor for body 
+  std::string const& getBody() const {
+    if (body == nullptr) {
+      return noBody;
+    }
+    return *body;
+  }
+  
+  /// @brief "safe" accessor for body 
+  std::shared_ptr<std::string const> getBodyShared() const {
+    if (body == nullptr) {
+      return sharedNoBody;
+    }
+    return body;
   }
 };
 
@@ -448,8 +490,7 @@ class ClusterComm {
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
-      std::unique_ptr<std::unordered_map<std::string, std::string>>&
-          headerFields,
+      std::unordered_map<std::string, std::string> const& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
       bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
@@ -524,6 +565,20 @@ class ClusterComm {
                          arangodb::LogTopic const& logTopic,
                          bool retryOnCollNotFound);
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief this method performs the given requests described by the vector
+  /// of ClusterCommRequest structs in the following way: 
+  /// Each request is done with asyncRequest.
+  /// After each request is successfully send out we drop all requests.
+  /// Hence it is guaranteed that all requests are send, but
+  /// we will not wait for answers of those requests.
+  /// Also all reporting for the responses is lost, because we do not care.
+  /// NOTE: The requests can be in any communication state after this function
+  /// and you should not read them. If you care for response use performRequests
+  /// instead.
+  ////////////////////////////////////////////////////////////////////////////////
+  void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
+ 
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
   }
@@ -539,7 +594,7 @@ class ClusterComm {
  protected:  // protected members are for unit test purposes
 
   /// @brief Constructor for test cases.
-  ClusterComm(bool);
+  explicit ClusterComm(bool);
 
   // code below this point used to be "private".  now "protected" to
   //  enable unit test wrapper class

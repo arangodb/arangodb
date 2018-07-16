@@ -33,9 +33,7 @@ TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
     ApplicationServer* server)
     : ApplicationFeature(server, "TraverserEngineRegistry") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("DatabasePath");
-  startsAfter("Database");
+  startsAfter("V8Phase");
 }
 
 void TraverserEngineRegistryFeature::collectOptions(

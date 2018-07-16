@@ -34,7 +34,7 @@ using namespace arangodb;
 /// @brief get information about current followers of a shard.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
+std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() const {
   MUTEX_LOCKER(locker, _mutex);
   return _followers;
 }
@@ -119,7 +119,7 @@ void FollowerInfo::add(ServerID const& sid) {
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
-  path += _docColl->vocbase()->name();
+  path += _docColl->vocbase().name();
   path += "/";
   path += std::to_string(_docColl->planId());
   path += "/";
@@ -134,7 +134,7 @@ void FollowerInfo::add(ServerID const& sid) {
       velocypack::Slice currentEntry =
           res.slice()[0].get(std::vector<std::string>(
               {AgencyCommManager::path(), "Current", "Collections",
-               _docColl->vocbase()->name(), std::to_string(_docColl->planId()),
+               _docColl->vocbase().name(), std::to_string(_docColl->planId()),
                _docColl->name()}));
 
       if (!currentEntry.isObject()) {
@@ -145,7 +145,7 @@ void FollowerInfo::add(ServerID const& sid) {
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, true);
-        std::string key = "Current/Collections/" + _docColl->vocbase()->name() +
+        std::string key = "Current/Collections/" + _docColl->vocbase().name() +
                           "/" + std::to_string(_docColl->planId()) + "/" +
                           _docColl->name();
         AgencyWriteTransaction trx;
@@ -223,7 +223,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
-  path += _docColl->vocbase()->name();
+  path += _docColl->vocbase().name();
   path += "/";
   path += std::to_string(_docColl->planId());
   path += "/";
@@ -237,7 +237,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
       velocypack::Slice currentEntry =
           res.slice()[0].get(std::vector<std::string>(
               {AgencyCommManager::path(), "Current", "Collections",
-               _docColl->vocbase()->name(), std::to_string(_docColl->planId()),
+               _docColl->vocbase().name(), std::to_string(_docColl->planId()),
                _docColl->name()}));
 
       if (!currentEntry.isObject()) {
@@ -248,7 +248,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, false);
-        std::string key = "Current/Collections/" + _docColl->vocbase()->name() +
+        std::string key = "Current/Collections/" + _docColl->vocbase().name() +
                           "/" + std::to_string(_docColl->planId()) + "/" +
                           _docColl->name();
         AgencyWriteTransaction trx;

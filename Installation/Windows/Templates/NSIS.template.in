@@ -4,7 +4,6 @@
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
 !addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
-!include "OpenLink.nsh"
 !include "exitcodes.nsh"
 
 ;--------------------------------
@@ -538,7 +537,7 @@ displayAgain:
   Pop $Dlg1_CB_keep_backup
   ${NSD_SetState} $Dlg1_CB_keep_backup ${BST_CHECKED}
 
-  ${NSD_CreateCheckBox} 0 -40 100% 6% "add @CPACK_PACKAGE_NAME@ to the Path"
+  ${NSD_CreateCheckBox} 0 -40 100% 6% "Add @CPACK_PACKAGE_NAME@ to the Path environment variable"
   Pop $Dlg1_CB_add_path
   ${NSD_SetState} $Dlg1_CB_add_path ${BST_CHECKED}
 
@@ -639,7 +638,7 @@ continueUI:
     IfFileExists "$DATADIR/engine-rocksdb" cleanupDBDirectory 0
     goto startDialog
     cleanupDBDirectory:
-      MessageBox MB_ICONEXCLAMATION "please clean up the previously existing incomplete database directory $\r$\n$DATADIR$\r$\n before continuing with the installation!"
+      MessageBox MB_ICONEXCLAMATION "Please clean up the previously existing incomplete database directory $\r$\n$DATADIR$\r$\n before continuing with the installation!"
     startDialog:
   ${Else}
     StrCpy $STORAGE_ENGINE "auto"
@@ -762,11 +761,11 @@ Function SetDBPassword
   ${If} $0 == 0
     return
   ${Else}
-    !insertmacro printExitCode $0 "Failed to initialize database password.$\r$\nPlease check the windows event log for more details$\r$\n"
+    !insertmacro printExitCode $0 "Failed to initialize database password.$\r$\nPlease check the Windows event log for more details$\r$\n"
     Abort
   ${EndIf}
   error:
-    MessageBox MB_OK "Failed to initialize database password.$\r$\nPlease check the windows event log for details."
+    MessageBox MB_OK "Failed to initialize database password.$\r$\nPlease check the Windows event log for details."
     Abort
 FunctionEnd
 
@@ -973,7 +972,8 @@ continueUI:
       StrCpy $ServiceUp "1"
     ${EndIf}
     ${If} $ServiceUp == 1
-      ${OpenURL} ${TRI_AARDVARK_URL}
+      ; open web ui in default browser
+      ExecShell "" "${TRI_AARDVARK_URL}"
     ${EndIf}
   ${EndIf}
 FunctionEnd
@@ -999,7 +999,7 @@ Function check_installation_directory
    StrCmp $1 "0" handle_error
    return
    handle_error:
-     MessageBox MB_YESNO "you aren't allowed to install arango in $INSTDIR do you want try once more?" IDNO no
+     MessageBox MB_YESNO "You aren't allowed to install ArangoDB in ${INSTDIR}$\r$\nDo you want try once more?" IDNO no
        Abort
      no: Quit
 FunctionEnd
@@ -1014,7 +1014,7 @@ Function insert_registration_keys
   ${EndIf}
   Return
 there_are_erros: ;nothing
-  MessageBox MB_OK "There was an error during adding the installation keys to the registry$\nArango will work fine but there may be trouble during the deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
+  MessageBox MB_OK "There was an error adding the installation keys to the registry.$\r$\nArangoDB will work fine, but there may be trouble during the uninstallation.$\r$\nPlease contact @CPACK_NSIS_CONTACT@"
 
 FunctionEnd
 
@@ -1029,8 +1029,8 @@ Function un.onInit
     StrCpy $AllowGlobalInstall "0"
   ${EndIf}
 
-; arango may be installed on diferent places
-; determine if the arango was installed for a local user
+; ArangoDB may be installed in different places
+; Determine if the ArangoDB was installed for a local user
   ${GetParameters} $R0
   ${GetOptions} $R0 "/PURGE_DB="    $PURGE_DB
   IfErrors 0 +2
@@ -1121,7 +1121,7 @@ Section "Uninstall"
     MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
   ${Else}
     IfFileExists "$DATADIR/LOCK" 0 +2
-    MessageBox MB_ICONEXCLAMATION "please stop the ArangoDB before continueing with the uninstallation!"
+    MessageBox MB_ICONEXCLAMATION "Please shut down ArangoDB before continuing with the uninstallation!"
   ${EndIf}
 Done:
   DetailPrint 'Removing files'
@@ -1131,7 +1131,7 @@ Done:
   StrCmp $PURGE_DB "0" dontDeleteDatabases
   DetailPrint 'Removing database files from $DATADIR: '
   RMDir /r "$DATADIR"
-  DetailPrint 'Removing foxx services files from $APPDIR: '
+  DetailPrint 'Removing Foxx services files from $APPDIR: '
   RMDir /r "$APPDIR"
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"
@@ -1203,7 +1203,7 @@ Done:
   secondStartMenuDeleteLoopDone:
 
   DeleteRegKey /ifempty SHCTX "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
-  ; Delete flag which controls if arango is started as service or no
+  ; Delete flag which controls if ArangoDB is started as service or not
   ${If} ${UAC_IsInnerInstance}
      DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@"
   ${Else}
@@ -1309,7 +1309,7 @@ noInstDir:
   StrCmp $0 "" inst
 
   MessageBox MB_YESNOCANCEL|MB_ICONEXCLAMATION \
-  "@CPACK_NSIS_PACKAGE_NAME@ is already installed. $\n$\nDo you want to uninstall the old version before installing the new one?" \
+  "@CPACK_NSIS_PACKAGE_NAME@ is already installed.$\r$\n$\r$\nDo you want to uninstall the old version before installing the new one?" \
   IDYES uninst IDNO inst
   Abort
 

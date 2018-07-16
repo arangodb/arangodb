@@ -49,6 +49,9 @@ def genJsFile(errors):
 
   out = out\
       + "  };\n"\
+      + "\n"\
+      + "  // For compatibility with <= 3.3\n"\
+      + "  internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;\n"\
       + "}());\n"\
       + "\n"
 
@@ -62,9 +65,12 @@ def genCFile(errors, filename):
 
   impl = prologue\
          + "#include \"Basics/Common.h\"\n"\
-         + "#include \"" + headerfile + "\"\n"\
+         + "#include \"Basics/voc-errors.h\"\n"\
          + "\n"\
-         + "void TRI_InitializeErrorMessages () {\n"
+         + "/// helper macro to define an error string\n"\
+         + "#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);\n"\
+         + "\n"\
+         + "void TRI_InitializeErrorMessages() {\n"
 
   # print individual errors
   for e in errors:
@@ -80,64 +86,37 @@ def genCFile(errors, filename):
 
 # generate C header file from errors
 def genCHeaderFile(errors):
-  wiki = "////////////////////////////////////////////////////////////////////////////////\n"\
-       + "/// Error codes and meanings\n"\
-       + "///\n"\
+  wiki = "/// Error codes and meanings\n"\
        + "/// The following errors might be raised when running ArangoDB:\n"\
-       + "///\n"
+       + "\n\n"
   
-  for e in errors:
-    wiki = wiki\
-         + "/// - " + e[1] + ": @LIT{" + e[2].replace("%", "\%").replace("<", "\<").replace(">", "\>") + "}\n"\
-         + wrap(e[3], 80, 0, 0, "///   ") + "\n"
-
-  wiki = wiki\
-       + "////////////////////////////////////////////////////////////////////////////////\n"
-
-  header = "\n"\
-           + "#ifndef TRIAGENS_BASICS_VOC_ERRORS_H\n"\
-           + "#define TRIAGENS_BASICS_VOC_ERRORS_H 1\n"\
+  header =   "#ifndef ARANGODB_BASICS_VOC_ERRORS_H\n"\
+           + "#define ARANGODB_BASICS_VOC_ERRORS_H 1\n"\
            + "\n"\
-           + wiki\
-           + "\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief helper macro to define an error string\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "\n"\
-           + "#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);\n"\
-           + "\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief register all errors for ArangoDB\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "\n"\
-           + "void TRI_InitializeErrorMessages ();\n"\
-           + "\n"
+           + wiki
  
   # print individual errors
   for e in errors:
     header = header\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief " + e[1] + ": " + e[0] + "\n"\
-           + "///\n"\
-           + wrap(e[2], 80, 0, 0, "/// ").replace("<", "\<").replace(">", "\>") + "\n"\
-           + "///\n"\
+           + "/// " + e[1] + ": " + e[0] + "\n"\
+           + wrap(e[2], 80, 0, 0, "/// \"") + "\"\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "\n"\
-           + "#define TRI_" + e[0].ljust(61) + " (" + e[1] + ")\n"\
+           + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"\
+           + "\n"
+           
+  header = header + "\n"\
+           + "/// register all errors for ArangoDB\n"\
+           + "void TRI_InitializeErrorMessages();\n"\
            + "\n"
 
   header = header\
-         + "#endif\n"\
-         + "\n"
+         + "#endif\n"
 
   return header
 
 
 # define some globals 
-prologue = "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @brief auto-generated file generated from errors.dat\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
+prologue = "/// auto-generated file generated from errors.dat\n"\
          + "\n"
   
 if len(sys.argv) < 3:

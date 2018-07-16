@@ -3,7 +3,8 @@ String functions
 
 For string processing, AQL offers the following functions:
 
-### CHAR_LENGTH()
+CHAR_LENGTH()
+-------------
 
 `CHAR_LENGTH(value) → length`
 
@@ -18,7 +19,8 @@ Return the number of characters in *value* (not byte length).
 |false| 5 |
 |null| 0 |
 
-### CONCAT()
+CONCAT()
+--------
 
 `CONCAT(value1, value2, ... valueN) → str`
 
@@ -47,7 +49,8 @@ CONCAT( [ "foo", "bar", "baz" ] ) // "foobarbaz"
 CONCAT( [1, 2, 3] ) // "123"
 ```
 
-### CONCAT_SEPARATOR()
+CONCAT_SEPARATOR()
+------------------
 
 `CONCAT_SEPARATOR(separator, value1, value2, ... valueN) → joinedString`
 
@@ -77,7 +80,8 @@ CONCAT_SEPARATOR("-", [1, 2, 3, null], [4, null, 5])
 // "1-2-3-4-5"
 ```
 
-### CONTAINS()
+CONTAINS()
+----------
 
 `CONTAINS(text, search, returnIndex) → match`
 
@@ -101,11 +105,26 @@ CONTAINS("foobarbaz", "ba", true) // 3
 CONTAINS("foobarbaz", "horse", true) // -1
 ```
 
-### COUNT()
+To determine if or at which position a value is included in an array, see the
+[POSITION() array function](Array.md#position).
+
+COUNT()
+-------
 
 This is an alias for [LENGTH()](#length).
 
-### FIND_FIRST()
+ENCODE_URI_COMPONENT()
+-----------
+
+`ENCODE_URI_COMPONENT(value) → encodedURIComponentString`
+
+Return the encoded uri component of *value*.
+
+- **value** (string): a string
+- returns **encodedURIComponentString** (string): an encoded uri component of *value*
+
+FIND_FIRST()
+------------
 
 `FIND_FIRST(text, search, start, end) → position`
 
@@ -119,7 +138,7 @@ string *text*. Positions start at 0.
 - **end** (number, *optional*): limit the search to a subset of the text,
   ending at *end*
 - returns **position** (number): the character position of the match. If *search*
-  is not contained in *text*, -1 is returned.
+  is not contained in *text*, -1 is returned. If **search** is empty, **start** is returned.
 
 ```js
 FIND_FIRST("foobarbaz", "ba") // 3
@@ -127,7 +146,8 @@ FIND_FIRST("foobarbaz", "ba", 4) // 6
 FIND_FIRST("foobarbaz", "ba", 0, 3) // -1
 ```
 
-### FIND_LAST()
+FIND_LAST()
+-----------
 
 `FIND_LAST(text, search, start, end) → position`
 
@@ -141,7 +161,8 @@ string *text*. Positions start at 0.
 - **end** (number, *optional*): limit the search to a subset of the text,
   ending at *end*
 - returns **position** (number): the character position of the match. If *search*
-  is not contained in *text*, -1 is returned.
+  is not contained in *text*, -1 is returned. 
+  If *search* is empty, the string length is returned, or *end* + 1.
 
 ```js
 FIND_LAST("foobarbaz", "ba") // 6
@@ -149,7 +170,8 @@ FIND_LAST("foobarbaz", "ba", 7) // -1
 FIND_LAST("foobarbaz", "ba", 0, 4) // 3
 ```
 
-### JSON_PARSE()
+JSON_PARSE()
+------------
 
 `JSON_PARSE(text) → value`
 
@@ -167,7 +189,8 @@ JSON_PARSE("{\\\"a\\\": 1}") // { a : 1 }
 JSON_PARSE("abc") // null
 ```
 
-### JSON_STRINGIFY()
+JSON_STRINGIFY()
+----------------
 
 `JSON_STRINGIFY(value) → text`
 
@@ -184,7 +207,8 @@ JSON_STRINGIFY("abc") // "\"abc\""
 JSON_STRINGIFY("[1, 2, 3]") // "[1,2,3]"
 ```
 
-### LEFT()
+LEFT()
+------
 
 `LEFT(value, length) → substring`
 
@@ -200,7 +224,8 @@ LEFT("foobar", 3) // "foo"
 LEFT("foobar", 10) // "foobar"
 ```
 
-### LENGTH()
+LENGTH()
+--------
 
 `LENGTH(str) → length`
 
@@ -218,7 +243,8 @@ LENGTH("电脑坏了") // 4
 the [number of attribute keys](Document.md#length) of an object / document and
 the [amount of documents](Miscellaneous.md#length) in a collection.
 
-### LIKE()
+LIKE()
+------
 
 `LIKE(text, search, caseInsensitive) → bool`
 
@@ -250,7 +276,8 @@ LIKE("FoO bAr BaZ", "fOo%bAz")       // false
 LIKE("FoO bAr BaZ", "fOo%bAz", true) // true
 ```
 
-### LOWER()
+LOWER()
+-------
 
 `LOWER(value) → lowerCaseString`
 
@@ -261,7 +288,8 @@ All other characters are returned unchanged.
 - returns **lowerCaseString** (string): *value* with upper-case characters converted
   to lower-case characters
 
-### LTRIM()
+LTRIM()
+-------
 
 `LTRIM(value, chars) → strippedString`
 
@@ -280,7 +308,8 @@ LTRIM("  foo bar  ") // "foo bar  "
 LTRIM("--==[foo-bar]==--", "-=[]") // "foo-bar]==--"
 ```
 
-### MD5()
+MD5()
+-----
 
 `MD5(text) → hash`
 
@@ -294,7 +323,8 @@ string representation.
 MD5("foobar") // "3858f62230ac3c915f300c664312c63f"
 ```
 
-### RANDOM_TOKEN()
+RANDOM_TOKEN()
+--------------
 
 `RANDOM_TOKEN(length) → randomString`
 
@@ -311,7 +341,8 @@ RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
-### REGEX_TEST()
+REGEX_TEST()
+------------
 
 `REGEX_TEST(text, search, caseInsensitive) → bool`
 
@@ -322,6 +353,8 @@ using regular expression matching.
 - **search** (string): a regular expression search pattern
 - returns **bool** (bool): *true* if the pattern is contained in *text*,
   and *false* otherwise
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
@@ -377,7 +410,8 @@ REGEX_TEST("the quick brown fox", "^(a|the)\s+(quick|slow).*f.x$") // true
 REGEX_TEST("the\nquick\nbrown\nfox", "^the(\n[a-w]+)+\nfox$") // true
 ```
 
-### REGEX_REPLACE()
+REGEX_REPLACE()
+---------------
 
 `REGEX_REPLACE(text, search, replacement, caseInsensitive) → string`
 
@@ -390,6 +424,8 @@ Replace the pattern *search* with the string *replacement* in the string
 - returns **string** (string): the string *text* with the *search* regex
   pattern replaced with the *replacement* string wherever the pattern exists
   in *text*
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 For more details about the rules for characters and sequences refer
 [REGEX_TEST()](#regextest).
@@ -402,7 +438,8 @@ REGEX_REPLACE("the quick brown fox", "the.*fox", "jumped over") // jumped over
 REGEX_REPLACE("the quick brown fox", "o", "i") // the quick briwn fix
 ```
 
-### REVERSE()
+REVERSE()
+---------
 
 `REVERSE(value) → reversedString`
 
@@ -417,7 +454,8 @@ REVERSE("foobar") // "raboof"
 REVERSE("电脑坏了") // "了坏脑电"
 ```
 
-### RIGHT()
+RIGHT()
+-------
 
 `RIGHT(value, length) → substring`
 
@@ -433,7 +471,8 @@ RIGHT("foobar", 3) // "bar"
 RIGHT("foobar", 10) // "foobar"
 ```
 
-### RTRIM()
+RTRIM()
+-------
 
 `RTRIM(value, chars) → strippedString`
 
@@ -452,7 +491,8 @@ RTRIM("  foo bar  ") // "  foo bar"
 RTRIM("--==[foo-bar]==--", "-=[]") // "--==[foo-bar"
 ```
 
-### SHA1()
+SHA1()
+------
 
 `SHA1(text) → hash`
 
@@ -466,7 +506,23 @@ string representation.
 SHA1("foobar") // "8843d7f92416211de9ebb963ff4ce28125932878"
 ```
 
-### SPLIT()
+SHA512()
+--------
+
+`SHA512(text) → hash`
+
+Calculate the SHA512 checksum for *text* and returns it in a hexadecimal
+string representation.
+
+- **text** (string): a string
+- returns **hash** (string): SHA512 checksum as hex string
+
+```js
+SHA512("foobar") // "0a50261ebd1a390fed2bf326f2673c145582a6342d523204973d0219337f81616a8069b012587cf5635f6925f1b56c360230c19b273500ee013e030601bf2425"
+```
+
+SPLIT()
+-------
 
 `SPLIT(value, separator, limit) → strArray`
 
@@ -486,7 +542,25 @@ SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo", "bar-baz" ]
 SPLIT( "foo, bar & baz", [ ", ", " & " ] ) // [ "foo", "bar", "baz" ]
 ```
 
-### SUBSTITUTE()
+SOUNDEX()
+-----------
+
+`SOUNDEX(value) → soundexString`
+
+Return the soundex fingerprint of *value*.
+
+- **value** (string): a string
+- returns **soundexString** (string): a soundex fingerprint of *value*
+
+```js
+SOUNDEX( "example" ) // "E251"
+SOUNDEX( "ekzampul")  // "E251"
+SOUNDEX( "soundex" ) // "S532"
+SOUNDEX( "sounteks" ) // "S532"
+```
+
+SUBSTITUTE()
+------------
 
 `SUBSTITUTE(value, search, replace, limit) → substitutedString`
 
@@ -531,6 +605,10 @@ Alternatively, *search* and *replace* can be specified in a combined value.
 - **value** (string): a string
 - **mapping** (object): a lookup map with search strings as keys and replacement
   strings as values. Empty strings and *null* as values remove matches.
+  Please note that no sequence of search strings can be warrantied by this; 
+  Means, if you have overlapping search results, one time the first may win, 
+  another time the second. If you need to ensure the precedence of the sequence
+  choose the array based invocation method.
 - **limit** (number, *optional*): cap the number of replacements to this value
 - returns **substitutedString** (string): a new string with matches replaced
   (or removed)
@@ -558,7 +636,8 @@ SUBSTITUTE("the quick brown foxx", {
 // "the small slow foxx"
 ```
 
-### SUBSTRING()
+SUBSTRING()
+-----------
 
 `SUBSTRING(value, offset, length) → substring`
 
@@ -570,7 +649,28 @@ Return a substring of *value*.
   substring from *offset* to the end of the string
 - returns **substring** (string): a substring of *value*
 
-### TRIM()
+TO_BASE64()
+-----------
+
+`TO_BASE64(value) → toBase64String`
+
+Return the base64 representation of *value*.
+
+- **value** (string): a string
+- returns **toBase64String** (string): a base64 representation of *value*
+
+TO_HEX()
+-----------
+
+`TO_HEX(value) → toHexString`
+
+Return the hex representation of *value*.
+
+- **value** (string): a string
+- returns **toHexString** (string): a hex representation of *value*
+
+TRIM()
+------
 
 `TRIM(value, type) → strippedString`
 
@@ -605,7 +705,8 @@ TRIM("  foobar\t \r\n ") // "foobar"
 TRIM(";foo;bar;baz, ", ",; ") // "foo;bar;baz"
 ```
 
-### UPPER()
+UPPER()
+-------
 
 `UPPER(value) → upperCaseString`
 
@@ -615,3 +716,12 @@ All other characters are returned unchanged.
 - **value** (string): a string
 - returns **upperCaseString** (string): *value* with lower-case characters converted
   to upper-case characters
+  
+  UUID()
+  -----------
+  
+  `UUID() → UUIDString`
+  
+  Return a random and uniquely generated UUID.
+
+  - returns **UUIDString** (string): a universally unique identifier

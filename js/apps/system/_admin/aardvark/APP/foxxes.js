@@ -29,10 +29,9 @@ const joi = require('joi');
 const dd = require('dedent');
 const internal = require('internal');
 const crypto = require('@arangodb/crypto');
-const marked = require('marked');
-const highlightAuto = require('highlightjs').highlightAuto;
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
+const store = require('@arangodb/foxx/store');
 const FoxxGenerator = require('./generator');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
@@ -68,11 +67,11 @@ foxxRouter.use(installer)
   Flag to install the service in legacy mode.
 `)
 .queryParam('upgrade', joi.boolean().default(false), dd`
-  Flag to upgrade the service installed at the mountpoint.
+  Flag to upgrade the service installed at the mount point.
   Triggers setup.
 `)
 .queryParam('replace', joi.boolean().default(false), dd`
-  Flag to replace the service installed at the mountpoint.
+  Flag to replace the service installed at the mount point.
   Triggers teardown and setup.
 `);
 
@@ -145,6 +144,18 @@ installer.put('/git', function (req) {
 .summary('Install a Foxx from Github')
 .description(dd`
   Install a Foxx with user/repository and version.
+`);
+
+installer.put('/url', function (req) {
+  req.body = `${req.body.url}`;
+})
+.body(joi.object({
+  url: joi.string().required(),
+  version: joi.string().default('master')
+}).required(), '')
+.summary('Install a Foxx from URL')
+.description(dd`
+  Install a Foxx from URL.
 `);
 
 installer.put('/generate', (req, res) => {
@@ -229,9 +240,7 @@ router.get('/', function (req, res) {
     config: service.getConfiguration(),
     deps: service.getDependencies(),
     scripts: service.getScripts(),
-    readme: service.readme && marked(service.readme, {
-      highlight: (code) => highlightAuto(code).value
-    })
+    readme: service.readme
   })));
 })
 .summary('List all Foxxes')
@@ -351,13 +360,13 @@ foxxRouter.patch('/devel', function (req, res) {
 
 router.get('/fishbowl', function (req, res) {
   try {
-    FoxxManager.update();
+    store.update();
   } catch (e) {
-    console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+    console.warn('Failed to update Foxx store from GitHub.');
   }
-  res.json(FoxxManager.availableJson());
+  res.json(store.availableJson());
 })
-.summary('List of all foxx services submitted to the Foxx store.')
+.summary('List of all Foxx services submitted to the Foxx store.')
 .description(dd`
   This function contacts the fishbowl and reports which services are available for install.
 `);
@@ -389,7 +398,7 @@ anonymousRouter.get('/download/zip', function (req, res) {
 .queryParam('nonce', joi.string().required(), 'Cryptographic nonce that authorizes the download.')
 .summary('Download a service as zip archive')
 .description(dd`
-  Download a foxx service packed in a zip archive.
+  Download a Foxx service packed in a zip archive.
 `);
 
 anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter((req, res) => {
@@ -407,6 +416,6 @@ anonymousRouter.use('/docs', module.context.createDocumentationRouter((req, res)
   }
   return {
     mount: decodeURIComponent(req.queryParams.mount),
-    indexFile: 'index-alt.html'
+    indexFile: 'index.html'
   };
 }));

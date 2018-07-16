@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleHttpResult.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 
@@ -180,7 +181,7 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
   else if (keyString[0] == 'c') {
     if (keyLength == strlen("content-length") &&
         keyString == "content-length") {
-      setContentLength((size_t)StringUtils::int64(value, valueLength));
+      setContentLength(NumberUtils::atoi_zero<size_t>(value, value + valueLength));
     } else if (keyLength == strlen("content-encoding") &&
                keyString == "content-encoding") {
       if (valueLength == strlen("deflate") &&

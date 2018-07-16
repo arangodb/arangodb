@@ -34,9 +34,11 @@
 
 namespace arangodb {
 namespace consensus {
-static std::string const pubApiPrefix = "/_api/agency/";
-static std::string const privApiPrefix = "/_api/agency_priv/";
-static std::string const NO_LEADER = "";
+
+// The following are instanciated in Agent.cpp:
+extern std::string const pubApiPrefix;
+extern std::string const privApiPrefix;
+extern std::string const NO_LEADER;
 
 enum role_t { FOLLOWER, CANDIDATE, LEADER };
 

@@ -708,23 +708,19 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
     return result;
   }
 
+  auto guard = scopeGuard([&d]() { closedir(d); });
+
   struct dirent* de = readdir(d);
 
-  try {
-    while (de != nullptr) {
-      if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
-        // may throw
-        result.emplace_back(std::string(de->d_name));
-      }
-
-      de = readdir(d);
+  while (de != nullptr) {
+    if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
+      // may throw
+      result.emplace_back(std::string(de->d_name));
     }
-    closedir(d);
-    return result;
-  } catch (...) {
-    closedir(d);
-    throw;
+
+    de = readdir(d);
   }
+  return result;
 }
 
 #endif
@@ -1154,20 +1150,9 @@ int TRI_VerifyLockFile(char const* filename) {
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
   ssize_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
-  if (n < 0) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-    return TRI_ERROR_NO_ERROR;
-  }
+  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
-  // pid too long
-  if (n == sizeof(buffer)) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // file empty
-  if (n == 0) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+  if (n <= 0 || n == sizeof(buffer)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -1175,25 +1160,27 @@ int TRI_VerifyLockFile(char const* filename) {
   int res = TRI_errno();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_TRACKED_CLOSE_FILE(fd);
+    // invalid pid value
     return TRI_ERROR_NO_ERROR;
   }
 
   TRI_pid_t pid = fc;
-  
-  if (pid == Thread::currentProcessId()) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-    return TRI_ERROR_NO_ERROR;
-  }
+    
+  // check for the existence of previous process via kill command
 
+  // from man 2 kill:
+  //   If sig is 0, then no signal is sent, but existence and permission checks are still performed; 
+  //   this can be used to check for the existence of a process ID or process group ID that the caller 
+  //   is permitted to signal.
   if (kill(pid, 0) == -1) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-    return TRI_ERROR_NO_ERROR;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "found existing lockfile '" << filename << "' of previous process with pid " << pid << ", but that process seems to be dead already";
+  } else { 
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "found existing lockfile '" << filename << "' of previous process with pid " << pid << ", and that process seems to be still running";
   }
 
 #ifdef TRI_HAVE_SETLK
   struct flock lock;
-
+  
   lock.l_start = 0;
   lock.l_len = 0;
   lock.l_type = F_WRLCK;
@@ -1203,21 +1190,19 @@ int TRI_VerifyLockFile(char const* filename) {
       
   // file was not yet locked; could be locked
   if (canLock == 0) {
-    lock.l_type = F_UNLCK;
+    //lock.l_type = F_UNLCK;
     res = fcntl(fd, F_GETLK, &lock);
-
+  
     if (res != TRI_ERROR_NO_ERROR) {
-      canLock = errno;
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "fcntl on lockfile '" << filename
-                << "' failed: " << TRI_errno_string(canLock) 
-                << ". a possible reason is that the filesystem does not support file-locking";
+                << "' failed: " << TRI_last_error();
     }
-
-    TRI_TRACKED_CLOSE_FILE(fd);
 
     return TRI_ERROR_NO_ERROR;
   }
 
+  // error!
   canLock = errno;
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
@@ -1230,8 +1215,6 @@ int TRI_VerifyLockFile(char const* filename) {
   }
 #endif
   
-  TRI_TRACKED_CLOSE_FILE(fd);
-
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
 
@@ -2019,13 +2002,11 @@ static std::string getTempPath() {
   return system;
 }
 
-static int mkDTemp(char* s, size_t bufferSize) {
+static int mkDTemp(char* s, size_t /*bufferSize*/) {
   if (mkdtemp(s) != nullptr) {
     return TRI_ERROR_NO_ERROR;
   }
-  else {
-    return errno;
-  }
+  return errno;
 }
 
 #endif
@@ -2040,14 +2021,14 @@ static void SystemTempPathCleaner(void) {
   char* path = SystemTempPath.get();
 
   if (path != nullptr) {
+    // delete directory iff directory is empty
     TRI_RMDIR(path);
   }
 }
 
+// The TempPath is set but not created
 void TRI_SetTempPath(std::string const& temp) {
   UserTempPath = temp;
-  // need to call TRI_GetTempPath to establish the path...
-  TRI_GetTempPath();
 }
 
 std::string TRI_GetTempPath() {

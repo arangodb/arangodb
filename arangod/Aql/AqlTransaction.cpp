@@ -72,10 +72,9 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
 
 Result AqlTransaction::processCollectionCoordinator(
     aql::Collection* collection) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->getName());
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->name());
 
-  return addCollection(cid, collection->getName().c_str(),
-                       collection->accessType);
+  return addCollection(cid, collection->name(), collection->accessType());
 }
 
 /// @brief add a regular collection to the transaction
@@ -84,25 +83,15 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   TRI_voc_cid_t cid = 0;
 
   arangodb::LogicalCollection const* col =
-      resolver()->getCollectionStruct(collection->getName());
-  /*if (col == nullptr) {
-    auto startTime = TRI_microtime();
-    auto endTime = startTime + 60.0;
-    do {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
-      if (TRI_microtime() > endTime) {
-        break;
-      }
-      col = this->resolver()->getCollectionStruct(collection->getName());
-    } while (col == nullptr);
-  }
-  */
+      resolver()->getCollectionStruct(collection->name());
   if (col != nullptr) {
-    cid = col->cid();
+    cid = col->id();
+  } else {
+    cid = resolver()->getCollectionId(collection->name());
   }
 
   Result res =
-      addCollection(cid, collection->getName(), collection->accessType);
+      addCollection(cid, collection->name(), collection->accessType());
 
   if (res.ok() && col != nullptr) {
     collection->setCollection(const_cast<arangodb::LogicalCollection*>(col));
@@ -125,3 +114,21 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 /// order via an HTTP call. This method is used to implement that HTTP action.
 
 int AqlTransaction::lockCollections() { return state()->lockCollections(); }
+
+/// @brief count the number of documents in a collection
+/// Handle locks based on the collections known to this transaction
+/// (Coordinator only)
+OperationResult AqlTransaction::count(std::string const& collectionName,
+                                      bool aggregate) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (_state->isCoordinator()) {
+    return countCoordinator(collectionName, aggregate);
+  }
+
+  return countLocal(collectionName);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

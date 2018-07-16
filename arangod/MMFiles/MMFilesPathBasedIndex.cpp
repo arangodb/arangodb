@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -45,20 +46,12 @@ MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
     : MMFilesIndex(iid, collection, info),
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),
-      _useExpansion(false),
       _allowPartialIndex(allowPartialIndex) {
   TRI_ASSERT(!_fields.empty());
 
   TRI_ASSERT(iid != 0);
       
   fillPaths(_paths, _expanding);
-
-  for (auto const& it : _fields) {
-    if (TRI_AttributeNamesHaveExpansion(it)) {
-      _useExpansion = true;
-      break;
-    }
-  }
 
   TRI_ASSERT(baseSize > 0);
   
@@ -81,8 +74,14 @@ void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
                                          bool forPersistence) const {
   builder.openObject();
   Index::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(_unique));
-  builder.add("sparse", VPackValue(_sparse));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(_unique)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(_sparse)
+  );
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }

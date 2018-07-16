@@ -34,8 +34,7 @@ using namespace arangodb::options;
 NonceFeature::NonceFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Nonce"), _size(4 * 1024 * 1024) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -46,9 +45,7 @@ void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void NonceFeature::prepare() {
-  if (0 < _size) {
-    Nonce::create(static_cast<size_t>(_size));
-  }
+  Nonce::setInitialSize(static_cast<size_t>(_size));
 }
 
 void NonceFeature::unprepare() {

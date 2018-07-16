@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false */
-/* global assertEqual, assertTrue, assertFalse, assertNotNull */
+/* global assertEqual, assertTrue, assertFalse, assertNotNull, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the document interface
@@ -309,97 +309,6 @@ function EdgeIndexSuite () {
       assertFalse(indexes[1].sparse);
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test index selectivity
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testIndexSelectivityEmpty: function () {
-      var edgeIndex = edge.getIndexes()[1];
-      assertTrue(edgeIndex.hasOwnProperty('selectivityEstimate'));
-      assertEqual(1, edgeIndex.selectivityEstimate);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test index selectivity
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testIndexSelectivityOneDoc: function () {
-      edge.save(v1, v2, { });
-      var edgeIndex = edge.getIndexes()[1];
-      assertTrue(edgeIndex.hasOwnProperty('selectivityEstimate'));
-      assertEqual(1, edgeIndex.selectivityEstimate);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test index selectivity
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testIndexSelectivityDuplicateDocs: function () {
-      var i, c, edgeIndex, expectedSelectivity;
-
-      for (i = 0; i < 1000; ++i) {
-        edge.save(v1, v2, { });
-        edgeIndex = edge.getIndexes()[1];
-        expectedSelectivity = 1 / (i + 1);
-        // allow for some floating-point deviations
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
-      }
-
-      var n = edge.count();
-      assertEqual(1000, n);
-
-      for (i = 0; i < n; ++i) {
-        var doc = edge.any();
-        assertNotNull(doc);
-        edge.remove(doc._key);
-
-        edgeIndex = edge.getIndexes()[1];
-        c = 1000 - (i + 1);
-        expectedSelectivity = (c === 0 ? 1 : 1 / c);
-        // allow for some floating-point deviations
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
-      }
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test index selectivity
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testIndexSelectivityUniqueDocs: function () {
-      for (var i = 0; i < 1000; ++i) {
-        edge.save(vn + '/from' + i, vn + '/to' + i, { });
-        var edgeIndex = edge.getIndexes()[1];
-        assertTrue(1, edgeIndex.selectivityEstimate);
-      }
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test index selectivity
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testIndexSelectivityUniqueDocsFrom: function () {
-      for (var i = 0; i < 1000; ++i) {
-        edge.save(vn + '/from' + i, vn + '/1', { });
-        var edgeIndex = edge.getIndexes()[1];
-        var expectedSelectivity = (1 + (1 / (i + 1))) * 0.5;
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
-      }
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test index selectivity
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testIndexSelectivityRepeatingDocs: function () {
-      for (var i = 0; i < 1000; ++i) {
-        if (i > 0) {
-          var edgeIndex = edge.getIndexes()[1];
-          var expectedSelectivity = (1 + (Math.min(i, 20) / i)) * 0.5;
-          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
-        }
-        edge.save(vn + '/from' + (i % 20), vn + '/to' + i, { });
-      }
-    }
   };
 }
 

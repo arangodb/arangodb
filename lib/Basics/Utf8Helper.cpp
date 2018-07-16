@@ -60,26 +60,6 @@ Utf8Helper::~Utf8Helper() {
   }
 }
 
-int Utf8Helper::compareUtf8(char const* left, char const* right) const {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-
-  if (!_coll) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "no Collator in Utf8Helper::compareUtf8()!";
-    return (strcmp(left, right));
-  }
-
-  UErrorCode status = U_ZERO_ERROR;
-  int result =
-      _coll->compareUTF8(StringPiece(left), StringPiece(right), status);
-  if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::compareUTF8(...): " << u_errorName(status);
-    return (strcmp(left, right));
-  }
-
-  return result;
-}
-
 int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
                             char const* right, size_t rightLength) const {
   TRI_ASSERT(left != nullptr);
@@ -480,8 +460,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
       char* utf8Word = TRI_UCharToUtf8(tempUtf16,
                                        chunkLength, &utf8WordLength);
       if (utf8Word != nullptr) {
-        std::string word(utf8Word, utf8WordLength);
-        words.emplace(word);
+        words.emplace(utf8Word, utf8WordLength);
         TRI_Free(utf8Word);
       }
     }

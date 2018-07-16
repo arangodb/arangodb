@@ -34,7 +34,6 @@ class RestBatchHandler;
 namespace rest {
 class GeneralCommTask;
 class HttpCommTask;
-class HttpsCommTask;
 }
 
 namespace velocypack {
@@ -44,7 +43,6 @@ struct Options;
 
 class HttpRequest final : public GeneralRequest {
   friend class rest::HttpCommTask;
-  friend class rest::HttpsCommTask;
   friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
@@ -85,7 +83,7 @@ class HttpRequest final : public GeneralRequest {
 
   std::string const& value(std::string const& key) const override;
   std::string const& value(std::string const& key, bool& found) const override;
-  std::unordered_map<std::string, std::string> values() const override {
+  std::unordered_map<std::string, std::string> const& values() const override {
     return _values;
   }
 

@@ -27,7 +27,6 @@
 #include "catch.hpp"
 #include "fakeit.hpp"
 
-#include "Agency/AddFollower.h"
 #include "Agency/FailedFollower.h"
 #include "Agency/MoveShard.h"
 #include "Agency/AgentInterface.h"
@@ -68,8 +67,8 @@ const char *agency =
 
 VPackBuilder createJob() {
   VPackBuilder builder;
-  VPackObjectBuilder a(&builder);
   {
+    VPackObjectBuilder a(&builder);
     builder.add("creator", VPackValue("1"));
     builder.add("type", VPackValue("failedFollower"));
     builder.add("database", VPackValue(DATABASE));
@@ -230,7 +229,7 @@ SECTION("if we want to start and the collection went missing from plan (our trut
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
@@ -290,7 +289,7 @@ SECTION("if we are supposed to fail a distributeShardsLike job we immediately fa
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
@@ -352,12 +351,14 @@ SECTION("if the follower is healthy again we fail the job") {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  REQUIRE_FALSE(failedFollower.start());
+  Verify(Method(mockAgent, transact));
+  Verify(Method(mockAgent, write));
 }
 
 SECTION("if there is no healthy free server when trying to start just wait") {
@@ -400,12 +401,12 @@ SECTION("if there is no healthy free server when trying to start just wait") {
   Mock<AgentInterface> mockAgent;
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  REQUIRE_FALSE(failedFollower.start());
 }
 
 SECTION("abort any moveShard job blocking the shard and start") {
@@ -427,7 +428,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
   When(Method(moveShardMockAgent, waitFor)).Return();
   AgentInterface &moveShardAgent = moveShardMockAgent.get();
   auto moveShard = MoveShard(
-    baseStructure("arango"), &moveShardAgent, "2", "strunz", DATABASE,
+    baseStructure(PREFIX), &moveShardAgent, "2", "strunz", DATABASE,
     COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true);
   moveShard.create();
 
@@ -489,12 +490,12 @@ SECTION("abort any moveShard job blocking the shard and start") {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  REQUIRE(failedFollower.start());
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write));
 }
@@ -567,7 +568,7 @@ SECTION("a successfully started job should finish immediately and set everything
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
@@ -669,7 +670,7 @@ SECTION("the job should handle distributeShardsLike") {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
@@ -736,7 +737,7 @@ SECTION("the job should timeout after a while") {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
@@ -791,7 +792,7 @@ SECTION("the job should be abortable when it is in todo") {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId

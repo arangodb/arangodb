@@ -24,7 +24,9 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
+#include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -58,11 +60,13 @@ int main(int argc, char* argv[]) {
 
     int ret;
 
-    server.addFeature(new ClientFeature(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(&server, true));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server, true));
+    server.addFeature(new ClientFeature(&server, false));
     server.addFeature(new ConfigFeature(&server, "arangorestore"));
     server.addFeature(new LoggerFeature(&server, false));
     server.addFeature(new RandomFeature(&server));
-    server.addFeature(new RestoreFeature(&server, &ret));
+    server.addFeature(new RestoreFeature(&server, ret));
     server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"Restore"}));
     server.addFeature(new SslFeature(&server));

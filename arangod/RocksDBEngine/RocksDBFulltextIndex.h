@@ -23,7 +23,6 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -80,8 +79,6 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   char const* typeName() const override { return "fulltext"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return true; }
@@ -101,9 +98,10 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   
   
   IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                      ManagedDocumentResult* mdr,
+                                      ManagedDocumentResult*,
                                       aql::AstNode const* condNode,
-                                      aql::Variable const* var, bool) override;
+                                      aql::Variable const* var,
+                                      IndexIteratorOptions const&) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,
@@ -136,16 +134,14 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
                                    std::set<LocalDocumentId>& resultSet);
 };
   
-
 /// El Cheapo index iterator
 class RocksDBFulltextIndexIterator : public IndexIterator {
 public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               ManagedDocumentResult* mmdr,
                                RocksDBFulltextIndex const* index,
                                std::set<LocalDocumentId>&& docs)
-  : IndexIterator(collection, trx, mmdr, index),
+  : IndexIterator(collection, trx, index),
   _docs(std::move(docs)),
   _pos(_docs.begin()) {}
   
@@ -157,7 +153,7 @@ public:
     TRI_ASSERT(limit > 0);
     while (_pos != _docs.end() && limit > 0) {
       cb(*_pos);
-      _pos++;
+      ++_pos;
       limit--;
     }
     return _pos != _docs.end();
@@ -166,8 +162,8 @@ public:
   void reset() override { _pos = _docs.begin(); }
   
   void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end()) {
-      _pos++;
+    while (_pos != _docs.end() && skipped < count) {
+      ++_pos;
       skipped++;
     }
   }

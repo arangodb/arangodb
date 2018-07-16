@@ -27,6 +27,54 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(400)
         doc.parsed_response['errorNum'].should eq(1502)
       end
+      
+      it "returns an error if query attribute is missing" do
+        cmd = api
+        body = "{ }"
+        doc = ArangoDB.log_post("#{prefix}-empty-query", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(600)
+      end
+      
+      it "returns an error if query is null" do
+        cmd = api
+        body = "{ \"query\" : null }"
+        doc = ArangoDB.log_post("#{prefix}-empty-query", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1502)
+      end
+      
+      it "returns an error if query string is empty" do
+        cmd = api
+        body = "{ \"query\" : \"\" }"
+        doc = ArangoDB.log_post("#{prefix}-empty-query", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1502)
+      end
+      
+      it "returns an error if query string is just whitespace" do
+        cmd = api
+        body = "{ \"query\" : \"    \" }"
+        doc = ArangoDB.log_post("#{prefix}-empty-query", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1501)
+      end
 
       it "returns an error if collection is unknown" do
         cmd = api

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,13 +24,11 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -52,9 +50,9 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
  public:
   RocksDBPrimaryIndexIterator(LogicalCollection* collection,
                               transaction::Methods* trx,
-                              ManagedDocumentResult* mmdr,
                               RocksDBPrimaryIndex* index,
-                              std::unique_ptr<VPackBuilder>& keys);
+                              std::unique_ptr<VPackBuilder> keys,
+                              bool allowCoveringIndexOptimization);
 
   ~RocksDBPrimaryIndexIterator();
 
@@ -62,12 +60,19 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
+
   void reset() override;
+
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return _allowCoveringIndexOptimization; }
 
  private:
   RocksDBPrimaryIndex* _index;
   std::unique_ptr<VPackBuilder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
+  bool const _allowCoveringIndexOptimization;
 };
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
@@ -88,16 +93,15 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   char const* typeName() const override { return "primary"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return false; }
+
+  bool hasCoveringIterator() const override { return true; } 
 
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override {
+  double selectivityEstimate(StringRef const* = nullptr) const override {
     return 1.0;
   }
 
@@ -116,7 +120,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
@@ -144,18 +148,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
- protected:
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
-
  private:
   /// @brief create the iterator, for a single attribute, IN operator
-  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createInIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*);
 
   /// @brief create the iterator, for a single attribute, EQ operator
-  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createEqIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*);
 

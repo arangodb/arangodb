@@ -57,23 +57,28 @@ void V8Context::lockAndEnter() {
   TRI_ASSERT(_locker == nullptr);
   _locker = new v8::Locker(_isolate);
   _isolate->Enter();
-      
-  TRI_ASSERT(_locker->IsLocked(_isolate));
-  TRI_ASSERT(v8::Locker::IsLocked(_isolate));
+     
+  assertLocked(); 
 
   ++_invocations;
   ++_invocationsSinceLastGc;
 }
 
 void V8Context::unlockAndExit() {
-  TRI_ASSERT(_locker != nullptr);
-  TRI_ASSERT(_isolate != nullptr);
+  assertLocked();
   
   _isolate->Exit();
   delete _locker;
   _locker = nullptr;
   
   TRI_ASSERT(!v8::Locker::IsLocked(_isolate));
+}
+
+void V8Context::assertLocked() const {
+  TRI_ASSERT(_locker != nullptr);
+  TRI_ASSERT(_isolate != nullptr);
+  TRI_ASSERT(_locker->IsLocked(_isolate));
+  TRI_ASSERT(v8::Locker::IsLocked(_isolate));
 }
   
 bool V8Context::hasGlobalMethodsQueued() {
@@ -192,10 +197,10 @@ void V8Context::handleCancelationCleanup() {
   }
 }
 
-V8ContextGuard::V8ContextGuard(V8Context* context) : _context(context) {
+V8ContextEntryGuard::V8ContextEntryGuard(V8Context* context) : _context(context) {
   _context->lockAndEnter();
 }
 
-V8ContextGuard::~V8ContextGuard() {
+V8ContextEntryGuard::~V8ContextEntryGuard() {
   _context->unlockAndExit();
 }

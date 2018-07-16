@@ -29,11 +29,9 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
@@ -45,6 +43,15 @@
 
 using namespace arangodb;
 using namespace arangodb::communicator;
+
+/// @brief empty map with headers
+std::unordered_map<std::string, std::string> const ClusterCommRequest::noHeaders;
+
+/// @brief empty body
+std::string const ClusterCommRequest::noBody;
+
+/// @brief empty body, as a shared ptr
+std::shared_ptr<std::string const> const ClusterCommRequest::sharedNoBody(new std::string());
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief the pointer to the singleton instance
@@ -224,12 +231,13 @@ ClusterComm::ClusterComm()
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(auth != nullptr);
-  if (auth->isActive()) {
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  if (af->isActive()) {
+    std::string token = af->tokenCache()->jwtToken();
+    TRI_ASSERT(!token.empty());
     _authenticationEnabled = true;
-
-    _jwtAuthorization = "bearer " + auth->jwtToken();
+    _jwtAuthorization = "bearer " + token;
   }
 
   _communicator = std::make_shared<communicator::Communicator>();
@@ -390,10 +398,10 @@ OperationID ClusterComm::asyncRequest(
     CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::rest::RequestType reqtype, std::string const& path,
     std::shared_ptr<std::string const> body,
-    std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
+    std::unordered_map<std::string, std::string> const& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
     bool singleRequest, ClusterCommTimeout initTimeout) {
-  auto prepared = prepareRequest(destination, reqtype, body.get(), *headerFields.get());
+  auto prepared = prepareRequest(destination, reqtype, body.get(), headerFields);
   std::shared_ptr<ClusterCommResult> result(prepared.first);
   result->clientTransactionID = clientTransactionID;
   result->coordTransactionID = coordTransactionID;
@@ -401,7 +409,7 @@ OperationID ClusterComm::asyncRequest(
 
   std::unique_ptr<HttpRequest> request;
   if (prepared.second == nullptr) {
-    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, std::unordered_map<std::string,std::string>()));
+    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, ClusterCommRequest::noHeaders));
     request->setRequestType(reqtype); // mop: a fake but a good one
   } else {
     request.reset(prepared.second);
@@ -632,15 +640,16 @@ ClusterCommResult const ClusterComm::wait(
 
   ResponseIterator i, i_erase;
   AsyncResponse response;
-  ClusterCommResult return_result;
   bool match_good, status_ready;
   ClusterCommTimeout endTime = TRI_microtime() + timeout;
 
   TRI_ASSERT(timeout >= 0.0);
 
-  // tell scheduler that we are waiting:
-  JobGuard guard{SchedulerFeature::SCHEDULER};
-  guard.block();
+  // if we cannot find the sought operation, we will return the status
+  // DROPPED. if we get into the timeout while waiting, we will still return
+  // CL_COMM_TIMEOUT.
+  ClusterCommResult return_result;
+  return_result.status = CL_COMM_DROPPED;
 
   do {
     CONDITION_LOCKER(locker, somethingReceived);
@@ -665,10 +674,12 @@ ClusterCommResult const ClusterComm::wait(
         responses.erase(i_erase);
       } // if
     } else {
+      TRI_ASSERT(ticketId != 0);
       i = responses.find(ticketId);
 
       if (i != responses.end()) {
         return_result = *i->second.result.get();
+        TRI_ASSERT(return_result.operationID == ticketId);
         status_ready = (CL_COMM_SUBMITTED != return_result.status);
         match_good = true;
         if (status_ready) {
@@ -889,9 +900,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
-  ClusterCommTimeout startTime = TRI_microtime();
+  ClusterCommTimeout const startTime = TRI_microtime();
+  ClusterCommTimeout const endTime = startTime + timeout;
   ClusterCommTimeout now = startTime;
-  ClusterCommTimeout endTime = startTime + timeout;
 
   std::vector<ClusterCommTimeout> dueTime;
   for (size_t i = 0; i < requests.size(); ++i) {
@@ -921,23 +932,20 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       for (size_t i = 0; i < requests.size(); i++) {
         if (!requests[i].done) {
           if (now >= dueTime[i]) {
-            if (requests[i].headerFields.get() == nullptr) {
-              requests[i].headerFields = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
-            }
             LOG_TOPIC(TRACE, logTopic)
                 << "ClusterComm::performRequests: sending request to "
                 << requests[i].destination << ":" << requests[i].path
-                << "body:" << requests[i].body;
+                << "body:" << requests[i].getBody();
 
             dueTime[i] = endTime + 10;
             double localTimeout = endTime - now;
             OperationID opId = asyncRequest(
                 "", coordinatorTransactionID, requests[i].destination,
-                requests[i].requestType, requests[i].path, requests[i].body,
-                requests[i].headerFields, nullptr, localTimeout, false,
+                requests[i].requestType, requests[i].path, requests[i].getBodyShared(),
+                requests[i].getHeaders(), nullptr, localTimeout, false,
                 2.0);
 
+            TRI_ASSERT(opId != 0);
             opIDtoIndex.insert(std::make_pair(opId, i));
             // It is possible that an error occurs right away, we will notice
             // below after wait(), though, and retry in due course.
@@ -947,6 +955,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         }
       }
 
+      TRI_ASSERT(actionNeeded >= now);
       auto res = wait("", coordinatorTransactionID, 0, "", actionNeeded - now);
       // wait could have taken some time, so we need to update now now
       now = TRI_microtime();
@@ -977,9 +986,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         if (res.status == CL_COMM_RECEIVED &&
             res.answer_code == rest::ResponseCode::NOT_FOUND) {
           VPackSlice payload = res.answer->payload();
-          VPackSlice errorNum = payload.get("errorNum");
+          VPackSlice errorNum = payload.get(StaticStrings::ErrorNum);
           if (errorNum.isInteger() &&
-              errorNum.getInt() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+              errorNum.getInt() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
             res.status = CL_COMM_BACKEND_UNAVAILABLE;
             // This is a fake, but it will lead to a retry. If we timeout
             // here and now, then the customer will get this result.
@@ -993,7 +1002,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         nrDone++;
         if (res.answer_code == rest::ResponseCode::OK ||
             res.answer_code == rest::ResponseCode::CREATED ||
-            res.answer_code == rest::ResponseCode::ACCEPTED) {
+            res.answer_code == rest::ResponseCode::ACCEPTED ||
+            res.answer_code == rest::ResponseCode::NO_CONTENT) {
           nrGood++;
         }
         LOG_TOPIC(TRACE, Logger::CLUSTER) << "ClusterComm::performRequests: "
@@ -1006,6 +1016,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // the operation, in which we have to flush ClusterInfo:
         ClusterInfo::instance()->loadCurrent();
         requests[index].result = res;
+        now = TRI_microtime();
 
         // In this case we will retry:
         double tryAgainAfter = now - startTime;
@@ -1047,6 +1058,37 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   return nrGood;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this method performs the given requests described by the vector
+/// of ClusterCommRequest structs in the following way:
+/// Each request is done with asyncRequest.
+/// After each request is successfully send out we drop all requests.
+/// Hence it is guaranteed that all requests are send, but
+/// we will not wait for answers of those requests.
+/// Also all reporting for the responses is lost, because we do not care.
+/// NOTE: The requests can be in any communication state after this function
+/// and you should not read them. If you care for response use performRequests
+/// instead.
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests) {
+  if (requests.empty()) {
+    return;
+  }
+
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+
+  constexpr double shortTimeout = 10.0; // Picked arbitrarily
+  for (auto const& req : requests) {
+    asyncRequest("", coordinatorTransactionID, req.destination, req.requestType,
+                 req.path, req.getBodyShared(), req.getHeaders(), nullptr, shortTimeout, false,
+                 2.0);
+  }
+  // Forget about it
+  drop("", coordinatorTransactionID, 0, "");
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief this is the fast path method for performRequests for the case
 /// of only a single request in the vector. In this case we can use a single
@@ -1060,19 +1102,10 @@ size_t ClusterComm::performSingleRequest(
     size_t& nrDone, arangodb::LogTopic const& logTopic) {
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   ClusterCommRequest& req(requests[0]);
-  if (req.headerFields.get() == nullptr) {
-    req.headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
-  }
-  if (req.body == nullptr) {
-    req.result = *syncRequest("", coordinatorTransactionID, req.destination,
-                              req.requestType, req.path, "",
-                              *(req.headerFields), timeout);
-  } else {
-    req.result = *syncRequest("", coordinatorTransactionID, req.destination,
-                              req.requestType, req.path, *(req.body),
-                              *(req.headerFields), timeout);
-  }
+  
+  req.result = *syncRequest("", coordinatorTransactionID, req.destination,
+                            req.requestType, req.path, req.getBody(),
+                            req.getHeaders(), timeout);
 
   // mop: helpless attempt to fix segfaulting due to body buffer empty
   if (req.result.status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -1099,16 +1132,6 @@ size_t ClusterComm::performSingleRequest(
   rest::ContentType type = rest::ContentType::JSON;
 
   basics::StringBuffer& buffer = req.result.result->getBody();
-
-  // PERFORMANCE TODO (fc) (max) (obi)
-  // body() could return a basic_string_ref
-
-  // The FakeRequest Replacement does a copy of the body and is not as fast
-  // as the original
-
-  // auto answer = new FakeRequest(type, buffer.c_str(),
-  //                              static_cast<int64_t>(buffer.length()));
-  // answer->setHeaders(req.result.result->getHeaderFields());
 
   auto answer = HttpRequest::createHttpRequest(
       type, buffer.c_str(), static_cast<int64_t>(buffer.length()),
@@ -1139,26 +1162,14 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
       arangodb::rest::RequestType reqtype, std::string const* body,
       std::unordered_map<std::string, std::string> const& headerFields) {
   HttpRequest* request = nullptr;
-  auto result = new ClusterCommResult();
+  auto result = std::make_unique<ClusterCommResult>();
   result->setDestination(destination, logConnectionErrors());
   if (result->endpoint.empty()) {
-    return std::make_pair(result, request);
+    return std::make_pair(result.release(), request);
   }
   result->status = CL_COMM_SUBMITTED;
 
   std::unordered_map<std::string, std::string> headersCopy(headerFields);
-  if (destination.substr(0, 6) == "shard:") {
-    if (CollectionLockState::_noLockHeaders != nullptr) {
-      // LOCKING-DEBUG
-      // std::cout << "Found Nolock header\n";
-      auto it = CollectionLockState::_noLockHeaders->find(result->shardID);
-      if (it != CollectionLockState::_noLockHeaders->end()) {
-        // LOCKING-DEBUG
-        // std::cout << "Found our shard\n";
-        headersCopy["X-Arango-Nolock"] = result->shardID;
-      }
-    }
-  }
   addAuthorization(&headersCopy);
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headersCopy[StaticStrings::HLCHeader] =
@@ -1187,19 +1198,21 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 #endif
 #endif
 
+  
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);
   } else {
-    request = HttpRequest::createHttpRequest(ContentType::JSON, body->c_str(), body->length(), headersCopy);
+    request = HttpRequest::createHttpRequest(ContentType::JSON, body->data(), body->size(), headersCopy);
   }
   request->setRequestType(reqtype);
 
-  return std::make_pair(result, request);
+  return std::make_pair(result.release(), request);
 }
 
 void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {
-  if (_authenticationEnabled) {
-    headers->emplace("Authorization", _jwtAuthorization);
+  if (_authenticationEnabled &&
+      headers->find(StaticStrings::Authorization) == headers->end()) {
+    headers->emplace(StaticStrings::Authorization, _jwtAuthorization);
   }
 }
 
@@ -1239,9 +1252,13 @@ void ClusterCommThread::abortRequestsToFailedServers() {
 void ClusterCommThread::run() {
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
 
+  auto lastAbortCheck = std::chrono::steady_clock::now();
   while (!isStopping()) {
     try {
-      abortRequestsToFailedServers();
+      if (std::chrono::steady_clock::now() - lastAbortCheck > std::chrono::duration<double>(3.0)) {
+        abortRequestsToFailedServers();
+        lastAbortCheck = std::chrono::steady_clock::now();
+      }
       _cc->communicator()->work_once();
       _cc->communicator()->wait();
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "done waiting in ClusterCommThread";

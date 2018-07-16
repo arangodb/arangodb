@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
@@ -55,7 +56,7 @@ class CollectionGuard {
     _collection = _vocbase->useCollection(id, _originalStatus);
 
     if (_collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
@@ -72,7 +73,7 @@ class CollectionGuard {
     }
 
     if (_collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
@@ -84,14 +85,14 @@ class CollectionGuard {
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(restoreOriginalStatus) {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
-      TRI_voc_cid_t id = arangodb::basics::StringUtils::uint64(name);
+      TRI_voc_cid_t id = NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
       _collection = _vocbase->useCollection(id, _originalStatus);
     } else {
       _collection = _vocbase->useCollection(name, _originalStatus);
     }
 
     if (_collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
@@ -102,7 +103,7 @@ class CollectionGuard {
         _restoreOriginalStatus(false) {
     int res = _vocbase->useCollection(collection, _originalStatus);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
@@ -121,6 +122,14 @@ class CollectionGuard {
   }
 
  public:
+  /// @brief prematurely release the usage lock
+  void release() {
+    if (_collection != nullptr) {
+      _vocbase->releaseCollection(_collection);
+      _collection = nullptr;
+    }
+  }
+
   /// @brief return the collection pointer
   inline arangodb::LogicalCollection* collection() const { return _collection; }
 

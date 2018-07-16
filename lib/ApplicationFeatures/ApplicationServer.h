@@ -30,8 +30,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
 namespace options {
+
 class ProgramOptions;
+
 }
 
 namespace application_features {
@@ -134,9 +137,13 @@ class ApplicationServer {
   }
 
   static bool isPrepared() {
-    return server != nullptr && (server->_state == ServerState::IN_START ||
-                                 server->_state == ServerState::IN_WAIT ||
-                                 server->_state == ServerState::IN_STOP);
+    if (server != nullptr) {
+      ServerState tmp = server->_state.load(std::memory_order_relaxed);
+      return tmp == ServerState::IN_START ||
+             tmp == ServerState::IN_WAIT ||
+             tmp == ServerState::IN_STOP;
+    }
+    return false;
   }
 
   // returns the feature with the given name if known
@@ -222,9 +229,20 @@ class ApplicationServer {
 
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
-  
+
+  template<typename T>
+  static T* lookupFeature(std::string const& name) {
+    typedef typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, T>::type type;
+    return dynamic_cast<type*>(lookupFeature(name));
+  }
+
+  template<typename T>
+  static T* lookupFeature() {
+    return lookupFeature<T>(T::name());
+  }
+
   char const* getBinaryPath() { return _binaryPath;}
-  
+
   void registerStartupCallback(std::function<void()> const& callback) {
     _startupCallbacks.emplace_back(callback);
   }
@@ -236,15 +254,16 @@ class ApplicationServer {
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
+  std::vector<ApplicationFeature*> const& getOrderedFeatures() { return _orderedFeatures; }
+
  private:
   // throws an exception that a requested feature was not found
-  static void throwFeatureNotFoundException(std::string const& name);
+  [[ noreturn ]] static void throwFeatureNotFoundException(std::string const& name);
 
   // throws an exception that a requested feature is not enabled
-  static void throwFeatureNotEnabledException(std::string const& name);
+  [[ noreturn ]] static void throwFeatureNotEnabledException(std::string const& name);
 
-  static void disableFeatures(std::vector<std::string> const& names,
-                              bool force);
+  static void disableFeatures(std::vector<std::string> const& names, bool force);
 
   // walks over all features and runs a callback function for them
   void apply(std::function<void(ApplicationFeature*)>, bool enabledOnly);
@@ -291,7 +310,7 @@ class ApplicationServer {
 
  private:
   // the current state
-  ServerState _state = ServerState::UNINITIALIZED;
+  std::atomic<ServerState> _state;
 
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;
@@ -314,6 +333,9 @@ class ApplicationServer {
   // whether or not to dump dependencies
   bool _dumpDependencies = false;
 
+  // whether or not to dump configuration options
+  bool _dumpOptions = false;
+
   // reporter for progress
   std::vector<ProgressHandler> _progressReports;
 
@@ -329,6 +351,7 @@ class ApplicationServer {
   // fail callback
   std::function<void(std::string const&)> fail;
 };
+
 }
 }
 

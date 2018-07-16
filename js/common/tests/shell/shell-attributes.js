@@ -33,8 +33,6 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 
 var db = arangodb.db;
-var wait = require("internal").wait;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test attributes
@@ -65,7 +63,6 @@ function AttributesSuite () {
       c.unload();
       c.drop();
       c = null;
-      wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -452,11 +449,6 @@ function AttributesSuite () {
       assertEqual("\u0000test\u0000test", result[0].def);
       assertEqual("abc\u0000", result[0]["123"]);
 
-
-      // now shape documents
-      require("internal").wal.flush(true, true);
-      wait(3, false);
-      
       var d3 = c.document(d1._id);
 
       assertEqual("foo\u0001bar\u0000baz", d3.abc);

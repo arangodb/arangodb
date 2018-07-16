@@ -40,6 +40,10 @@ class CalculationBlock final : public ExecutionBlock {
 
   ~CalculationBlock();
 
+  Type getType() const override final {
+    return Type::CALCULATION;
+  }
+
  private:
   /// @brief fill the target register in the item block with a reference to
   /// another variable
@@ -53,7 +57,8 @@ class CalculationBlock final : public ExecutionBlock {
 
  public:
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
 
  private:
   /// @brief we hold a pointer to the expression in the plan

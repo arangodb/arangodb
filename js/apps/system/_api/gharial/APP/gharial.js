@@ -26,6 +26,7 @@
 
 const _ = require('lodash');
 const joi = require('joi');
+const db = require('@arangodb').db;
 const dd = require('dedent');
 const statuses = require('statuses');
 const httperr = require('http-errors');
@@ -123,22 +124,35 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 function checkCollection (g, collection) {
   if (!g[collection]) {
     throw Object.assign(
-      new httperr.NotFound(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message),
-      {errorNum: errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code}
+      new httperr.NotFound(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message),
+      {errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code}
     );
   }
 }
 
-function setResponse (res, name, body, code) {
+function setResponse (res, name, body, code, returnOld, returnNew) {
   res.status(code);
   if (body._rev) {
     res.set('etag', body._rev);
   }
-  res.json({
-    error: false,
-    [name]: body,
-    code
-  });
+  let result = { error: false, code };
+  if (returnOld) {
+    result.old = body.old;
+    delete body.old;
+  } 
+  if (returnNew) {
+    result.new = body.new;
+    delete body.new;
+  } 
+  if (name === undefined) {
+    // special hack currently used for HTTP DELETE only
+    for (let att in body) {
+      result[att] = body[att];
+    }
+  } else {
+    result[name] = body;
+  }
+  res.json(result);
 }
 
 function matchVertexRevision (req, rev) {
@@ -204,6 +218,12 @@ const definitionEdgeCollectionName = joi.string()
 
 const waitForSyncFlag = phpCompatFlag
   .description('define if the request should wait until synced to disk.');
+
+const returnOldFlag = phpCompatFlag
+  .description('define if the request should wait return the old version of the updated document.');
+
+const returnNewFlag = phpCompatFlag
+  .description('define if the request should wait return the new version of the updated document.');
 
 const vertexKey = joi.string()
   .description('_key attribute of one specific vertex');
@@ -549,13 +569,14 @@ router.delete('/:graph/edge/:definition', function (req, res) {
 
 router.post('/:graph/vertex/:collection', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const g = loadGraph(name);
   checkCollection(g, collection);
   let meta;
   try {
-    meta = g[collection].save(req.body, {waitForSync});
+    meta = g[collection].save(req.body, {waitForSync, returnNew});
   } catch (e) {
     if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_INVALID_EDGE.code) {
       throw Object.assign(
@@ -565,11 +586,12 @@ router.post('/:graph/vertex/:collection', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'vertex', meta, waitForSync ? CREATED : ACCEPTED);
+  setResponse(res, 'vertex', meta, waitForSync ? CREATED : ACCEPTED, false, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnNew', returnNewFlag)
   .body(joi.any().required(), 'The document to be stored')
   .error('bad request', 'The edge definition is invalid.')
   .error('not found', 'Graph or collection not found.')
@@ -607,6 +629,8 @@ router.get('/:graph/vertex/:collection/:key', function (req, res) {
 
 router.put('/:graph/vertex/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -626,13 +650,15 @@ router.put('/:graph/vertex/:collection/:key', function (req, res) {
     throw e;
   }
   matchVertexRevision(req, doc._rev);
-  const meta = g[collection].replace(id, req.body, {waitForSync});
-  setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED);
+  const meta = g[collection].replace(id, req.body, {waitForSync, returnOld, returnNew});
+  setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED, returnOld, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
   .pathParam('key', vertexKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
+  .queryParam('returnNew', returnNewFlag)
   .body(joi.any().required(), 'The document to be stored')
   .error('bad request', 'The vertex is invalid.')
   .error('not found', 'The vertex does not exist.')
@@ -645,6 +671,8 @@ router.put('/:graph/vertex/:collection/:key', function (req, res) {
 router.patch('/:graph/vertex/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
   const keepNull = Boolean(req.queryParams.keepNull);
+  const returnOld = Boolean(req.queryParams.returnOld);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -664,13 +692,15 @@ router.patch('/:graph/vertex/:collection/:key', function (req, res) {
     throw e;
   }
   matchVertexRevision(req, doc._rev);
-  const meta = g[collection].update(id, req.body, {waitForSync, keepNull});
-  setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED);
+  const meta = g[collection].update(id, req.body, {waitForSync, keepNull, returnOld, returnNew});
+  setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED, returnOld, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
   .pathParam('key', vertexKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
+  .queryParam('returnNew', returnNewFlag)
   .queryParam('keepNull', keepNullFlag)
   .body(joi.any().required(), 'The values that should be modified')
   .error('bad request', 'The vertex is invalid.')
@@ -683,6 +713,7 @@ router.patch('/:graph/vertex/:collection/:key', function (req, res) {
 
 router.delete('/:graph/vertex/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -714,12 +745,17 @@ router.delete('/:graph/vertex/:collection/:key', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'removed', didRemove, waitForSync ? OK : ACCEPTED);
+  let meta = { removed: didRemove };
+  if (returnOld) {
+    meta.old = doc;
+  }
+  setResponse(res, undefined, meta, waitForSync ? OK : ACCEPTED, returnOld, false);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
   .pathParam('key', vertexKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
   .error('not found', 'The vertex does not exist.')
   .summary('Delete a vertex.')
   .description(dd`
@@ -730,19 +766,70 @@ router.delete('/:graph/vertex/:collection/:key', function (req, res) {
 // Edge Operations
 
 router.post('/:graph/edge/:collection', function (req, res) {
+  const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
+  const g = loadGraph(name);
+  checkCollection(g, collection);
+
   if (!req.body._from || !req.body._to) {
     throw Object.assign(
       new httperr.Gone(errors.ERROR_GRAPH_INVALID_EDGE.message),
       {errorNum: errors.ERROR_GRAPH_INVALID_EDGE.code}
     );
   }
-  const g = loadGraph(name);
-  checkCollection(g, collection);
+  // check existence of _from and _to vertices
+  // _from vertex
+  var found;
+  try {
+    found = db._exists({_id: req.body._from});
+    if (!found) {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code}
+      );
+    }
+  } catch (e) {
+    if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, cause: e}
+      );
+    } else {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, cause: e}
+      );
+    }
+  }
+
+  // _to vertex
+  try {
+    found = db._exists({_id: req.body._to});
+    if (!found) {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code}
+      );
+    }
+  } catch (e) {
+    if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, cause: e}
+      );
+    } else {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, cause: e}
+      );
+    }
+  }
+
   let meta;
   try {
-    meta = g[collection].save(req.body);
+    meta = g[collection].save(req.body, {waitForSync, returnNew});
   } catch (e) {
     if (e.errorNum !== errors.ERROR_GRAPH_INVALID_EDGE.code) {
       throw Object.assign(
@@ -752,10 +839,12 @@ router.post('/:graph/edge/:collection', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'edge', meta, ACCEPTED);
+  setResponse(res, 'edge', meta, waitForSync ? CREATED : ACCEPTED, false, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
+  .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnNew', returnNewFlag)
   .body(joi.object().required(), 'The edge to be stored. Has to contain _from and _to attributes.')
   .error('bad request', 'The edge is invalid.')
   .error('not found', 'Graph or collection not found.')
@@ -793,6 +882,8 @@ router.get('/:graph/edge/:collection/:key', function (req, res) {
 
 router.put('/:graph/edge/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -812,13 +903,15 @@ router.put('/:graph/edge/:collection/:key', function (req, res) {
     throw e;
   }
   matchVertexRevision(req, doc._rev);
-  const meta = g[collection].replace(id, req.body, {waitForSync});
-  setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED);
+  const meta = g[collection].replace(id, req.body, {waitForSync, returnOld, returnNew});
+  setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED, returnOld, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
   .pathParam('key', edgeKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
+  .queryParam('returnNew', returnNewFlag)
   .body(joi.any().required(), 'The document to be stored. _from and _to attributes are ignored')
   .error('bad request', 'The edge is invalid.')
   .error('not found', 'The edge does not exist.')
@@ -830,6 +923,8 @@ router.put('/:graph/edge/:collection/:key', function (req, res) {
 
 router.patch('/:graph/edge/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const keepNull = Boolean(req.queryParams.keepNull);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
@@ -850,13 +945,15 @@ router.patch('/:graph/edge/:collection/:key', function (req, res) {
     throw e;
   }
   matchVertexRevision(req, doc._rev);
-  const meta = g[collection].update(id, req.body, {waitForSync, keepNull});
-  setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED);
+  const meta = g[collection].update(id, req.body, {waitForSync, keepNull, returnOld, returnNew});
+  setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED, returnOld, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
   .pathParam('key', edgeKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
+  .queryParam('returnNew', returnNewFlag)
   .queryParam('keepNull', keepNullFlag)
   .body(joi.any().required(), 'The values that should be modified. _from and _to attributes are ignored')
   .error('bad request', 'The edge is invalid.')
@@ -869,6 +966,7 @@ router.patch('/:graph/edge/:collection/:key', function (req, res) {
 
 router.delete('/:graph/edge/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -900,12 +998,17 @@ router.delete('/:graph/edge/:collection/:key', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'removed', didRemove, waitForSync ? OK : ACCEPTED);
+  let meta = { removed: didRemove };
+  if (returnOld) {
+    meta.old = doc;
+  }
+  setResponse(res, undefined, meta, waitForSync ? OK : ACCEPTED, returnOld, false);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
   .pathParam('key', edgeKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
   .error('not found', 'The edge does not exist.')
   .summary('Delete an edge.')
   .description('Deletes an edge with the given id, if it is contained within the graph.');

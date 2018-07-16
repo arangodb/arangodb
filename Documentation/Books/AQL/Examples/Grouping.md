@@ -5,7 +5,8 @@ To group results by arbitrary criteria, AQL provides the *COLLECT* keyword.
 *COLLECT* will perform a grouping, but no aggregation. Aggregation can still be
 added in the query if required.
 
-### Ensuring uniqueness
+Ensuring uniqueness
+-------------------
 
 *COLLECT* can be used to make a result set unique. The following query will return each distinct
 `age` attribute value only once:
@@ -37,7 +38,8 @@ FOR u IN users
 
 Note: the order of results is undefined for *RETURN DISTINCT*.
 
-### Fetching group values
+Fetching group values
+---------------------
 
 To group users by age, and return the names of the users with the highest ages,
 we'll issue a query like this:
@@ -68,7 +70,8 @@ result document per distinct *age* value (let aside the *LIMIT*). For each group
 we have access to the matching document via the *usersByAge* variable introduced in
 the *COLLECT* statement.
 
-### Variable Expansion
+Variable Expansion
+------------------
 
 The *usersByAge* variable contains the full documents found, and as we're only
 interested in user names, we'll use the expansion operator <i>[\*]</i> to extract just the
@@ -85,7 +88,8 @@ a subquery:
 ( FOR temp IN usersByAge RETURN temp.u.name )
 ```
 
-### Grouping by multiple criteria
+Grouping by multiple criteria
+-----------------------------
 
 To group by multiple criteria, we'll use multiple arguments in the *COLLECT* clause.
 For example, to group users by *ageGroup* (a derived value we need to calculate first)
@@ -114,7 +118,8 @@ FOR u IN users
 ]
 ```
 
-### Counting group values
+Counting group values
+---------------------
 
 If the goal is to count the number of values in each group, AQL provides the special
 *COLLECT WITH COUNT INTO* syntax. This is a simple variant for grouping with an additional
@@ -144,7 +149,8 @@ FOR u IN users
 ]
 ```
 
-### Aggregation
+Aggregation
+-----------
 
 Adding further aggregation is also simple in AQL by using an *AGGREGATE* clause
 in the *COLLECT*:
@@ -189,8 +195,9 @@ FOR u IN users
 
 We have used the aggregate functions *LENGTH* here (it returns the length of an array).
 This is the equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`. In addition to
-*LENGTH* AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE*, *VARIANCE_POPULATION*,
-*VARIANCE_SAMPLE*, *STDDEV_POPULATION* and *STDDEV_SAMPLE* as basic aggregation functions.
+*LENGTH*, AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE*, *VARIANCE_POPULATION*,
+*VARIANCE_SAMPLE*, *STDDEV_POPULATION*, *STDDEV_SAMPLE*, *UNIQUE*, *SORTED_UNIQUE* and
+*COUNT_UNIQUE* as basic aggregation functions.
 
 In AQL all aggregation functions can be run on arrays only. If an aggregation function
 is run on anything that is not an array, a warning will be produced and the result will
@@ -201,7 +208,8 @@ in the collect operation. This is normally more efficient than collecting all gr
 for all groups and then doing a post-aggregation.
 
 
-### Post-aggregation
+Post-aggregation
+----------------
 
 Aggregation can also be performed after a *COLLECT* operation using other AQL constructs,
 though performance-wise this is often inferior to using *COLLECT* with *AGGREGATE*.
@@ -249,7 +257,8 @@ This is in constrast to the previous query that used an *AGGREGATE* clause to pe
 the aggregation during the collect operation, at the earliest possible stage.
 
 
-### Post-filtering aggregated data
+Post-filtering aggregated data
+------------------------------
 
 To filter the results of a grouping or aggregation operation (i.e. something
 similar to *HAVING* in SQL), simply add another *FILTER* clause after the *COLLECT*

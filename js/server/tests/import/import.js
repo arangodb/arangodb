@@ -214,6 +214,11 @@ function importTestSuite () {
       var actual = getQueryResults("FOR i IN UnitTestsImportJson5 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
+      
+    testCsvImportNonoCreate : function () {
+      assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code,
+                  getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsvNonoCreate RETURN i"); } ));
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
@@ -237,8 +242,8 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCsvImport2 : function () {
-      assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-                  getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i"); } ));
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsv2 RETURN i");
+      assertEqual([], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,6 +287,23 @@ function importTestSuite () {
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportCsv5 SORT i.name RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImport6 : function () {
+      var expected = [ 
+        { a: 1, b: 2, c: 3, d: 4, e: 5 },
+        { a: 1, b: 2, c: 3, d: 4 },
+        { a: 1, b: 2, c: 3 },
+        { a: 1, b: 2 },
+        { a: 1 }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsv6 SORT TO_NUMBER(i._key) RETURN i");
       assertEqual(expected, actual);
     },
 
@@ -424,6 +446,41 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test database creation
+////////////////////////////////////////////////////////////////////////////////
+    testCreateDatabase : function () {
+      var db = require("@arangodb").db;
+      try {
+        var testdb = db._useDatabase("UnitTestImportCreateDatabase");
+        var expected = [ { "id": 1,
+                           "one": 1,
+                           "three": 3,
+                           "two": 2 },
+                         { "a": 1234,
+                           "b": "the quick fox",
+                           "id": 2,
+                           "jumped":
+                           "over the fox",
+                           "null": null },
+                         { "id": 3,
+                           "not": "important",
+                           "spacing": "is" },
+                         { "  c  ": "h\"'ihi",
+                           "a": true,
+                           "b": false,
+                           "d": "",
+                           "id": 4 },
+                         { "id": 5 } ];
+
+        var actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
+        assertEqual(expected, actual);
+      } finally {
+        db._useDatabase("_system");
+      }
+    },
+
+// END OF TEST DEFINITIONS /////////////////////////////////////////////////////
   };
 }
 

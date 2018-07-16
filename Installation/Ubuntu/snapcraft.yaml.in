@@ -60,8 +60,8 @@ apps:
     plugs:               # enable interfaces
       - network
 
-  arangoimp:
-    command: arangoimp  \
+  arangoimport:
+    command: arangoimport  \
       --server.endpoint=tcp://127.0.0.1:@SNAP_PORT@ \
       --temp.path=${SNAP_DATA}
     plugs:               # enable interfaces

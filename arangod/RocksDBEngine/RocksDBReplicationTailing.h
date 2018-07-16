@@ -25,15 +25,16 @@
 #define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_TAILING_H 1
 
 #include "Basics/Common.h"
+#include "Replication/common-defines.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/replication-common.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace rocksutils {
 
 // iterates over WAL starting at 'from' and returns up to 'limit' documents
@@ -41,9 +42,9 @@ namespace rocksutils {
 RocksDBReplicationResult tailWal(TRI_vocbase_t* vocbase, uint64_t tickStart,
                                  uint64_t tickEnd, size_t chunkSize,
                                  bool includeSystem, TRI_voc_cid_t collectionId,
-                                 VPackBuilder& builder);
+                                 arangodb::velocypack::Builder& builder);
 
-TRI_replication_operation_e convertLogType(RocksDBLogType t);
+arangodb::TRI_replication_operation_e convertLogType(RocksDBLogType t);
 
 }  // namespace rocksutils
 }  // namespace arangodb

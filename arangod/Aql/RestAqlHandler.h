@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_REST_AQL_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Aql/QueryRegistry.h"
 #include "Aql/types.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
@@ -33,18 +32,26 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+namespace traverser {
+class TraverserEngineRegistry;
+}
+
 namespace aql {
+class Query;
+class QueryRegistry;
 
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(GeneralRequest*, GeneralResponse*, QueryRegistry*);
+  RestAqlHandler(GeneralRequest*, GeneralResponse*,
+                 std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>*);
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
-  bool isDirect() const override;
-  size_t queue() const override;
+  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
   RestStatus execute() override;
+  RestStatus continueExecute() override;
 
  public:
   // POST method for /_api/aql/instantiate
@@ -52,61 +59,74 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // "options" for the options, all exactly as in AQL_EXECUTEJSON.
   void createQueryFromVelocyPack();
 
-  // POST method for /_api/aql/parse
-  // The body is a Json with attributes "query" for the query string,
-  // "parameters" for the query parameters and "options" for the options.
-  // This does the same as AQL_PARSE with exactly these parameters and
-  // does not keep the query hanging around.
-  void parseQuery();
-
-  // POST method for /_api/aql/explain
-  // The body is a Json with attributes "query" for the query string,
-  // "parameters" for the query parameters and "options" for the options.
-  // This does the same as AQL_EXPLAIN with exactly these parameters and
-  // does not keep the query hanging around.
-  void explainQuery();
-
-  // POST method for /_api/aql/query
-  // The body is a Json with attributes "query" for the query string,
-  // "parameters" for the query parameters and "options" for the options.
-  // This sets up the query as as AQL_EXECUTE would, but does not use
-  // the cursor API yet. Rather, the query is stored in the query registry
-  // for later use by PUT requests.
-  void createQueryFromString();
-
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "getSome" or "skip".
   // The body must be a Json with the following attributes:
   // For the "getSome" operation one has to give:
-  //   "atLeast":
-  //   "atMost": both must be positive integers, the cursor returns never
-  //             more than "atMost" items and tries to return at least
-  //             "atLeast". Note that it is possible to return fewer than
-  //             "atLeast", for example if there are only fewer items
-  //             left. However, the implementation may return fewer items
-  //             than "atLeast" for internal reasons, for example to avoid
-  //             excessive copying. The result is the JSON representation of an
+  //   "atMost": must be a positiv integers, the cursor returns never
+  //             more than "atMost" items.
+  //             The result is the JSON representation of an
   //             AqlItemBlock.
   // For the "skip" operation one has to give:
   //   "number": must be a positive integer, the cursor skips as many items,
   //             possibly exhausting the cursor.
   //             The result is a JSON with the attributes "error" (boolean),
-  //             "errorMessage" (if applicable) and "exhausted" (boolean)
-  //             to indicate whether or not the cursor is exhausted.
-  void useQuery(std::string const& operation, std::string const& idString);
-
-  // GET method for /_api/aql/<queryId>
-  void getInfoQuery(std::string const& operation, std::string const& idString);
+  //             "errorMessage" (if applicable) and "exhausted" (boolean) [3.3 and earlier]
+  //             "done" (boolean) [3.4.0 and later] to indicate whether or not the cursor is exhausted.
+  RestStatus useQuery(std::string const& operation, std::string const& idString);
 
  private:
+
+  // POST method for /_api/aql/setup (internal)
+  // Only available on DBServers in the Cluster.
+  // This route sets-up all the query engines required
+  // for a complete query on this server.
+  // Furthermore it directly locks all shards for this query.
+  // So after this route the query is ready to go.
+  // NOTE: As this Route LOCKS the collections, the caller
+  // is responsible to destroy those engines in a timely
+  // manner, if the engines are not called for a period
+  // of time, they will be garbage-collected and unlocked.
+  // The body is a VelocyPack with the following layout:
+  //  {
+  //    lockInfo: {
+  //      READ: [<collections to read-lock],
+  //      WRITE: [<collections to write-lock]
+  //    },
+  //    options: { < query options > },
+  //    snippets: {
+  //      <queryId: {nodes: [ <nodes>]}>
+  //    },
+  //    variables: [ <variables> ]
+  //  }
+
+  void setupClusterQuery();
+
+  bool registerSnippets(arangodb::velocypack::Slice const snippets,
+                        arangodb::velocypack::Slice const collections,
+                        arangodb::velocypack::Slice const variables,
+                        std::shared_ptr<arangodb::velocypack::Builder> options,
+                        std::shared_ptr<transaction::Context> const& ctx,
+                        double const ttl,
+                        bool& needToLock,
+                        arangodb::velocypack::Builder& answer);
+
+  bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
+                                std::shared_ptr<transaction::Context> const& ctx,
+                                double const ttl,
+                                bool& needToLock,
+                                arangodb::velocypack::Builder& answer);
+
   // Send slice as result with the given response type.
   void sendResponse(rest::ResponseCode,
                     arangodb::velocypack::Slice const, transaction::Context*);
+  // Send slice as result with the given response type.
+  void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const);
 
   // handle for useQuery
-  void handleUseQuery(std::string const&, Query*,
-                      arangodb::velocypack::Slice const);
+  RestStatus handleUseQuery(std::string const&, Query*,
+                            arangodb::velocypack::Slice const);
 
   // parseVelocyPackBody, returns a nullptr and produces an error
   // response if
@@ -117,11 +137,11 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // dig out vocbase from context and query from ID, handle errors
   bool findQuery(std::string const& idString, Query*& query);
 
-  // name of the queue
-  static std::string const QUEUE_NAME;
-
   // our query registry
   QueryRegistry* _queryRegistry;
+
+  // our traversal engine registry
+  traverser::TraverserEngineRegistry* _traverserRegistry;
 
   // id of current query
   QueryId _qId;

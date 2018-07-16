@@ -58,8 +58,9 @@ class TailingSyncer : public Syncer {
  public:
   
   /// @brief run method, performs continuous synchronization
+  /// catches exceptions
   Result run();
-
+  
  protected:
   
   /// @brief decide based on _masterInfo which api to use
@@ -72,7 +73,7 @@ class TailingSyncer : public Syncer {
   void abortOngoingTransactions();
 
   /// @brief whether or not a collection should be excluded
-  bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&) const;
+  bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&);
 
   /// @brief whether or not a collection should be excluded
   bool isExcludedCollection(std::string const&) const;
@@ -121,15 +122,16 @@ class TailingSyncer : public Syncer {
   Result followMasterLog(TRI_voc_tick_t& fetchTick, TRI_voc_tick_t firstRegularTick,
                          uint64_t& ignoreCount, bool& worked, bool& masterActive);
   
-protected:
-  
   /// @brief save the current applier state
   virtual Result saveApplierState() = 0;
-  
-  /// @brief create correct initial syncer
-  virtual std::unique_ptr<InitialSyncer> initialSyncer() = 0;
+ 
+ private:
+  /// @brief run method, performs continuous synchronization
+  /// internal method, may throw exceptions
+  arangodb::Result runInternal();
 
  protected:
+  virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
   
   /// @brief pointer to the applier
   ReplicationApplier* _applier;

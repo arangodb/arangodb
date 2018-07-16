@@ -198,9 +198,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                   std::string const& startupPath, std::string const& modules) {
-  v8::HandleScope scope(isolate);
+void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
 
   v8::Handle<v8::ObjectTemplate> rt;

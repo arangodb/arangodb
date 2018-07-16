@@ -52,14 +52,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("WorkMonitor");
-  startsAfter("Logger");
-  startsAfter("Database");
-  startsAfter("Endpoint");
-  startsAfter("Cluster");
-  startsAfter("Server");
-  startsAfter("V8Dealer");
+  startsAfter("V8Phase");
 }
 
 PregelFeature::~PregelFeature() {
@@ -84,23 +77,8 @@ void PregelFeature::start() {
     return;
   }
 
-  // const size_t threadNum = PregelFeature::availableParallelism();
-  // LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel uses " << threadNum << "
-  // threads";
-  //_threadPool.reset(new ThreadPool(threadNum, "Pregel"));
-
   if (ServerState::instance()->isCoordinator()) {
     _recoveryManager.reset(new RecoveryManager());
-    //    ClusterFeature* cluster =
-    //    application_features::ApplicationServer::getFeature<ClusterFeature>(
-    //                                                                        "Cluster");
-    //    if (cluster != nullptr) {
-    //      AgencyCallbackRegistry* registry =
-    //      cluster->agencyCallbackRegistry();
-    //      if (registry != nullptr) {
-    //        _recoveryManager.reset(new RecoveryManager(registry));
-    //      }
-    //    }
   }
 }
 
@@ -109,10 +87,11 @@ void PregelFeature::beginShutdown() {
   Instance = nullptr;
 }
 
-void PregelFeature::addConductor(Conductor* const c, uint64_t executionNumber) {
+void PregelFeature::addConductor(std::unique_ptr<Conductor>&& c, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   //_executions.
-  _conductors.emplace(executionNumber, std::shared_ptr<Conductor>(c));
+  _conductors.emplace(executionNumber, std::shared_ptr<Conductor>(c.get()));
+  c.release();
 }
 
 std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
@@ -121,9 +100,10 @@ std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
   return it != _conductors.end() ? it->second : nullptr;
 }
 
-void PregelFeature::addWorker(IWorker* const w, uint64_t executionNumber) {
+void PregelFeature::addWorker(std::unique_ptr<IWorker>&& w, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
-  _workers.emplace(executionNumber, std::shared_ptr<IWorker>(w));
+  _workers.emplace(executionNumber, std::shared_ptr<IWorker>(w.get()));
+  w.release();
 }
 
 std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
@@ -167,6 +147,10 @@ void PregelFeature::cleanupAll() {
 void PregelFeature::handleConductorRequest(std::string const& path,
                                            VPackSlice const& body,
                                            VPackBuilder& outBuilder) {
+  if (SchedulerFeature::SCHEDULER->isStopping()) {
+    return; // shutdown ongoing
+  }
+  
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
   if (!sExecutionNum.isInteger()) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
@@ -187,41 +171,55 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   }
 }
 
-void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
-                                        std::string const& path,
-                                        VPackSlice const& body,
-                                        VPackBuilder& outBuilder) {
+/*static*/ void PregelFeature::handleWorkerRequest(
+    TRI_vocbase_t& vocbase,
+    std::string const& path,
+    VPackSlice const& body,
+    VPackBuilder& outBuilder
+) {
+  if (SchedulerFeature::SCHEDULER->isStopping()) {
+    return; // shutdown ongoing
+  }
+
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+
   if (!sExecutionNum.isInteger()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
   }
+
   uint64_t exeNum = sExecutionNum.getUInt();
+  std::shared_ptr<IWorker> w = Instance->worker(exeNum);
 
   // create a new worker instance if necessary
-  if (path == Utils::startExecutionPath || path == Utils::startRecoveryPath) {
-    std::shared_ptr<IWorker> w = Instance->worker(exeNum);
+  if (path == Utils::startExecutionPath) {
+    if (w) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+                                     TRI_ERROR_INTERNAL,
+                                     "Worker with this execution number already exists.");
+    }
+
+    Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
+    Instance->worker(exeNum)->setupWorker(); // will call conductor
+
+    return;
+  } else if (path == Utils::startRecoveryPath) {
     if (!w) {
       Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
-    } else if (path == Utils::startExecutionPath) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "Worker with this execution number already exists.");
     }
-    if (path == Utils::startRecoveryPath) {
-      w->startRecovery(body);
-    }
-  }
-  std::shared_ptr<IWorker> w = Instance->worker(exeNum);
-  if (!w) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Handling " << path << "worker "
-                                    << exeNum << " does not exist";
-    THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_INTERNAL,
-        "Handling request %s, but worker %lld does not exist.", path.c_str(),
-        exeNum);
-  }
 
+    Instance->worker(exeNum)->startRecovery(body);
+
+    return;
+  } else if (!w) {
+    // any other call should have a working worker instance
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Handling " << path << "worker "
+    << exeNum << " does not exist";
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
+                                  "Handling request %s, but worker %lld does not exist.", path.c_str(),
+                                  exeNum);
+  }
+  
   if (path == Utils::prepareGSSPath) {
     w->prepareGlobalStep(body, outBuilder);
   } else if (path == Utils::startGSSPath) {
@@ -241,6 +239,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    w->aqlResult(&outBuilder);
+    w->aqlResult(outBuilder);
   }
 }

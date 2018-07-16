@@ -60,11 +60,14 @@ std::shared_ptr<ShardDistributionReporter>
 //////////////////////////////////////////////////////////////////////////////
 
 static inline bool TestIsShardInSync(
-    std::vector<ServerID> const& plannedServers,
-    std::vector<ServerID> const& realServers) {
-  // TODO We need to verify that lists are identical despite ordering?
-  return plannedServers.at(0) == realServers.at(0) &&
-         plannedServers.size() == realServers.size();
+    std::vector<ServerID> plannedServers,
+    std::vector<ServerID> realServers) {
+  // The leader at [0] must be the same, while the order of the followers must
+  // be ignored.
+  std::sort(plannedServers.begin() + 1, plannedServers.end());
+  std::sort(realServers.begin() + 1, realServers.end());
+
+  return plannedServers == realServers;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -210,7 +213,8 @@ static void ReportOffSync(
     LogicalCollection const* col, ShardMap const* shardIds,
     std::unordered_map<ShardID, SyncCountInfo>& counters,
     std::unordered_map<ServerID, std::string> const& aliases,
-    VPackBuilder& result) {
+    VPackBuilder& result,
+    bool progress) {
   TRI_ASSERT(result.isOpenObject());
 
   result.add(VPackValue(col->name()));
@@ -224,11 +228,16 @@ static void ReportOffSync(
     for (auto const& s : *shardIds) {
       TRI_ASSERT(counters.find(s.first) != counters.end());
       auto const& c = counters[s.first];
+
       if (c.insync) {
         ReportShardNoProgress(s.first, s.second, aliases, result);
       } else {
-        ReportShardProgress(s.first, s.second, aliases, c.total,
-                              c.current, result);
+        if (progress) {
+          ReportShardProgress(s.first, s.second, aliases, c.total,
+                                c.current, result);
+        } else {
+          ReportShardNoProgress(s.first, s.second, aliases, result);
+        }
       }
     }
     result.close();
@@ -270,25 +279,13 @@ ShardDistributionReporter::instance() {
   return _theInstance;
 }
 
-void ShardDistributionReporter::getDistributionForDatabase(
-    std::string const& dbName, VPackBuilder& result) {
-
-  double endtime = TRI_microtime() + 2.0; // We add two seconds
-
-  result.openObject();
-
-  auto aliases = _ci->getServerAliases();
-  auto cols = _ci->getCollections(dbName);
-
-  std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
-  for (auto col : cols) {
-    auto allShards = col->shardIds();
-    if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
-      ReportInSync(col.get(), allShards.get(), aliases, result);
-    } else {
-      todoSyncStateCheck.push(col);
-    }
-  }
+void ShardDistributionReporter::helperDistributionForDatabase(
+    std::string const& dbName,
+    VPackBuilder& result,
+    std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
+    double endtime,
+    std::unordered_map<std::string, std::string>& aliases,
+    bool progress) {
 
   if (!todoSyncStateCheck.empty()) {
     CoordTransactionID coordId = TRI_NewTickServer();
@@ -296,10 +293,11 @@ void ShardDistributionReporter::getDistributionForDatabase(
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
       counters.clear();
-      auto const col = todoSyncStateCheck.front();
 
+      auto const col = todoSyncStateCheck.front();
       auto allShards = col->shardIds();
-      auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+      auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
@@ -318,8 +316,7 @@ void ShardDistributionReporter::getDistributionForDatabase(
 
             {
               // First Ask the leader
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
+              std::unordered_map<std::string, std::string> headers;
               leaderOpId = _cc->asyncRequest(
                   "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
                   path, body, headers, nullptr, timeleft);
@@ -340,9 +337,8 @@ void ShardDistributionReporter::getDistributionForDatabase(
             }
 
             // Ask them
+            std::unordered_map<std::string, std::string> headers;
             for (auto const& server : serversToAsk) {
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
               _cc->asyncRequest("", coordId, "server:" + server,
                                 rest::RequestType::GET, path, body, headers,
                                 nullptr, timeleft);
@@ -424,10 +420,59 @@ void ShardDistributionReporter::getDistributionForDatabase(
         }
       }
 
-      ReportOffSync(col.get(), allShards.get(), counters, aliases, result);
+      ReportOffSync(col.get(), allShards.get(), counters, aliases, result, progress);
       todoSyncStateCheck.pop();
     }
   }
+}
+
+void ShardDistributionReporter::getCollectionDistributionForDatabase(
+    std::string const& dbName, std::string const& colName, VPackBuilder& result) {
+
+  double endtime = TRI_microtime() + 2.0; // We add two seconds
+
+  result.openObject();
+
+  auto aliases = _ci->getServerAliases();
+  auto col = _ci->getCollection(dbName, colName);
+
+  std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
+
+  auto allShards = col->shardIds();
+  if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
+    ReportInSync(col.get(), allShards.get(), aliases, result);
+  } else {
+    todoSyncStateCheck.push(col);
+  }
+
+  const bool progress = true;
+  helperDistributionForDatabase(dbName, result, todoSyncStateCheck, endtime, aliases, progress);
+  result.close();
+}
+
+void ShardDistributionReporter::getDistributionForDatabase(
+    std::string const& dbName, VPackBuilder& result) {
+
+  double endtime = TRI_microtime() + 2.0; // We add two seconds
+
+  result.openObject();
+
+  auto aliases = _ci->getServerAliases();
+  auto cols = _ci->getCollections(dbName);
+
+  std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
+
+  for (auto col : cols) {
+    auto allShards = col->shardIds();
+    if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
+      ReportInSync(col.get(), allShards.get(), aliases, result);
+    } else {
+      todoSyncStateCheck.push(col);
+    }
+  }
+
+  const bool progress = false;
+  helperDistributionForDatabase(dbName, result, todoSyncStateCheck, endtime, aliases, progress);
   result.close();
 }
 
@@ -437,12 +482,15 @@ bool ShardDistributionReporter::testAllShardsInSync(
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(shardIds != nullptr);
 
-  auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+  auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+
   for (auto const& s : *shardIds) {
     auto curServers = cic->servers(s.first);
+
     if (!TestIsShardInSync(s.second, curServers)) {
       return false;
     }
   }
+
   return true;
 }

@@ -114,7 +114,7 @@ class V8Context {
 
   size_t id() const { return _id; }
   bool isDefault() const { return _id == 0; }
-  bool isUsed() const { return _locker != nullptr; }
+  void assertLocked() const;
   double age() const;
   void lockAndEnter();
   void unlockAndExit();
@@ -125,7 +125,6 @@ class V8Context {
   void setCleaned(double stamp);
 
   size_t const _id;
-
   v8::Persistent<v8::Context> _context;
   v8::Isolate* _isolate;
   v8::Locker* _locker;
@@ -144,10 +143,12 @@ class V8Context {
   void handleCancelationCleanup();
 };
 
-class V8ContextGuard {
+class V8ContextEntryGuard {
  public:
-  explicit V8ContextGuard(V8Context* context);
-  ~V8ContextGuard();
+  explicit V8ContextEntryGuard(V8Context* context);
+  V8ContextEntryGuard(V8ContextEntryGuard const&) = delete;
+  V8ContextEntryGuard& operator=(V8ContextEntryGuard const&) = delete;
+  ~V8ContextEntryGuard();
 
  private:
   V8Context* _context;

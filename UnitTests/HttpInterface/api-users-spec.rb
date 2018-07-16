@@ -601,7 +601,7 @@ describe ArangoDB do
       doc.code.should eq(200)
       doc.parsed_response['result'].should eq(true)
 
-      body = "{ \"grant\" : \"rw\"}"
+      body = "{ \"grant\" : \"ro\"}"
       doc = ArangoDB.log_put("#{prefix}-grant", api + "/users-1/database/test", :body => body)
       doc.code.should eq(200)
       doc.parsed_response['error'].should eq(false)
@@ -611,11 +611,11 @@ describe ArangoDB do
       doc.code.should eq(200)
       doc.parsed_response['error'].should eq(false)
       doc.parsed_response['code'].should eq(200)
-      doc.parsed_response['result'].should eq('rw')
+      doc.parsed_response['result'].should eq('ro')
     end
 
     it "granting collection" do
-      body = "{ \"grant\" : \"ro\"}"
+      body = "{ \"grant\" : \"rw\"}"
       doc = ArangoDB.log_put("#{prefix}-grant", api + "/users-1/database/test/test", :body => body)
       doc.code.should eq(200)
       doc.parsed_response['error'].should eq(false)
@@ -625,7 +625,7 @@ describe ArangoDB do
       doc.code.should eq(200)
       doc.parsed_response['error'].should eq(false)
       doc.parsed_response['code'].should eq(200)
-      doc.parsed_response['result'].should eq('ro')
+      doc.parsed_response['result'].should eq('rw')
     end
 
     it "revoking granted collection" do
@@ -638,7 +638,7 @@ describe ArangoDB do
       doc.code.should eq(200)
       doc.parsed_response['error'].should eq(false)
       doc.parsed_response['code'].should eq(200)
-      doc.parsed_response['result'].should eq('none')
+      doc.parsed_response['result'].should eq('ro')
     end
 
     it "revoking granted database" do
@@ -646,6 +646,12 @@ describe ArangoDB do
       doc.code.should eq(202)
       doc.parsed_response['error'].should eq(false)
       doc.parsed_response['code'].should eq(202)
+
+      doc = ArangoDB.log_get("#{prefix}-validate", api + "/users-1/database/test/test")
+      doc.code.should eq(200)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
+      doc.parsed_response['result'].should eq('none')
 
       doc = ArangoDB.log_get("#{prefix}-validate", api + "/users-1/database/test")
       doc.code.should eq(200)

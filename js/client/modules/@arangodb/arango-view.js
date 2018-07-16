@@ -178,19 +178,22 @@ ArangoView.prototype.type = function () {
 // / @brief gets or sets the properties of a view
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoView.prototype.properties = function (properties) {
+ArangoView.prototype.properties = function (properties, partialUpdate) {
   var requestResult;
+
   if (properties === undefined) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
-
-    arangosh.checkRequestResult(requestResult);
+  } else if (partialUpdate === undefined || partialUpdate === true) {
+    requestResult = this._database._connection.PATCH(
+      this._baseurl('properties'), JSON.stringify(properties)
+    );
   } else {
-    var body = properties;
-    requestResult = this._database._connection.PATCH(this._baseurl('properties'),
-      JSON.stringify(body));
-
-    arangosh.checkRequestResult(requestResult);
+    requestResult = this._database._connection.PUT(
+      this._baseurl('properties'), JSON.stringify(properties)
+    );
   }
+
+  arangosh.checkRequestResult(requestResult);
 
   return requestResult;
 };
@@ -204,10 +207,24 @@ ArangoView.prototype.drop = function () {
 
   if (requestResult !== null
     && requestResult.error === true
-    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_VIEW_NOT_FOUND.code) {
+    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "view not found"
     arangosh.checkRequestResult(requestResult);
   } else {
     this._database._unregisterView(this._name);
   }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief renames a view
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoView.prototype.rename = function (name) {
+  var body = { name: name };
+  var requestResult = this._database._connection.PUT(this._baseurl('rename'), JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  this._database._renameView(this._name, name);
+  this._name = name;
 };

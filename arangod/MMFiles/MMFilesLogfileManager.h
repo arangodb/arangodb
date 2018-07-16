@@ -76,10 +76,12 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   ~MMFilesLogfileManager();
 
   // get the logfile manager instance
-  static MMFilesLogfileManager* instance() {
+  static MMFilesLogfileManager* instance(bool preStart = false) {
     TRI_ASSERT(Instance != nullptr);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(SafeToUseInstance);
+    if (!preStart) {
+      TRI_ASSERT(SafeToUseInstance);
+    }
 #endif
     return Instance;
   }
@@ -183,13 +185,13 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // whether or not there was a SHUTDOWN file with a last tick at
   // server start
-  static bool hasFoundLastTick() { 
+  static bool hasFoundLastTick() {
     // validate that the value is already initialized
     // -1 = uninitialized
     //  0 = last tick not found
     //  1 = last tick found
     TRI_ASSERT(FoundLastTick != -1);
-    return (FoundLastTick == 1); 
+    return (FoundLastTick == 1);
   }
 
   // return the slots manager
@@ -260,14 +262,14 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // write data into the logfile, using database id and collection id
   /// this is a convenience function that combines allocate, memcpy and finalize
-  MMFilesWalSlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
-                                TRI_voc_cid_t collectionId, 
+  MMFilesWalSlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId,
+                                TRI_voc_cid_t collectionId,
                                 MMFilesWalMarker const*, bool wakeUpSynchronizer,
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write data into the logfile
   /// this is a convenience function that combines allocate, memcpy and finalize
-  MMFilesWalSlotInfoCopy allocateAndWrite(MMFilesWalMarker const* marker, bool wakeUpSynchronizer, 
+  MMFilesWalSlotInfoCopy allocateAndWrite(MMFilesWalMarker const* marker, bool wakeUpSynchronizer,
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write marker into the logfile
@@ -382,8 +384,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // get information about running transactions
   std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> runningTransactions();
-  
-  void waitForCollector();
+
+  void waitForCollectorOnShutdown();
 
   // execute a callback during a phase in which the collector has nothing
   // queued. This is used in the DatabaseManagerThread when dropping
@@ -477,7 +479,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   bool _allowOversizeEntries = true;
   bool _useMLock = false;
   std::string _directory;
-  uint32_t _historicLogfiles = 10; 
+  uint32_t _historicLogfiles = 10;
   bool _ignoreLogfileErrors = false;
   bool _ignoreRecoveryErrors = false;
   uint64_t _flushTimeout = 15000;
@@ -512,7 +514,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // the collector thread
   MMFilesCollectorThread* _collectorThread;
-  
+
   // lock protecting the destruction of the collector thread
   basics::ReadWriteLock _collectorThreadLock;
 

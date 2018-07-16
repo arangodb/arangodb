@@ -34,7 +34,7 @@
 namespace arangodb {
 namespace velocypack {
 
-enum class ValueType {
+enum class ValueType : uint8_t {
   None,    // not yet initialized
   Illegal, // illegal value
   Null,    // JSON null

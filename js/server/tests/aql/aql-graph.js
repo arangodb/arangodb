@@ -449,6 +449,20 @@ function ahuacatlQueryNeighborsTestSuite () {
       db._drop("UnitTestsAhuacatlEdge");
     },
 
+    testNeighborsEdgeFilter : function () {
+      // try with bfs/uniqueVertices first
+      let query1 = `WITH ${vn} FOR v, e, p IN 0..9 OUTBOUND "${vn}/v1" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} FILTER p.edges[*].what ALL != "v1->v2" && p.edges[*].what ALL != "v1->v3" RETURN v._key`;
+      
+      let actual = getQueryResults(query1);
+      assertEqual(actual, [ "v1" ]);
+
+      // now try without bfs/uniqueVertices
+      let query2 = `WITH ${vn} FOR v, e, p IN 0..9 OUTBOUND "${vn}/v1" UnitTestsAhuacatlEdge FILTER p.edges[*].what ALL != "v1->v2" && p.edges[*].what ALL != "v1->v3" RETURN v._key`;
+      
+      actual = getQueryResults(query2);
+      assertEqual(actual, [ "v1" ]);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks neighbors
 ////////////////////////////////////////////////////////////////////////////////
@@ -615,7 +629,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v6 = "UnitTestsAhuacatlVertex/v6";
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var createQuery = function (start, filter) {
-        return `WITH ${vn} FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true} ${filter} SORT n._id RETURN n._id`;
+        return `WITH ${vn} FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: true} ${filter} SORT n._id RETURN n._id`;
       };
 
       // An empty filter should let all edges through
@@ -642,7 +656,82 @@ function ahuacatlQueryNeighborsTestSuite () {
       // Should be able to handle internal attributes
       actual = getQueryResults(createQuery(v3, `FILTER e._to == "${v4}"`));
       assertEqual(actual, [ v4 ]);
+    },
+
+    testNeighborsWithVertexFilters : function () {
+      let actual;
+      const v1 = "UnitTestsAhuacatlVertex/v1";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var createQuery = function (start, filter) {
+        return `WITH ${vn} FOR n, e, p IN 2 OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: 'global'} ${filter} SORT n._id RETURN n._id`;
+      };
+
+      // It should filter on the start vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[0].name == 'v1'"));
+      assertEqual(actual, [v4, v6, v7]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[0].name != 'v1'"));
+      assertEqual(actual, []);
+
+      // It should filter on the first vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[1].name == 'v3'"));
+      assertEqual(actual, [v4, v6, v7]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[1].name != 'v3'"));
+      assertEqual(actual, [v3]);
+
+      // It should filter on the second vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[2].name == 'v4'"));
+      assertEqual(actual, [v4]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[2].name != 'v4'"));
+      assertEqual(actual, [v6, v7]);
+
+      // It should filter on all vertices
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[*].name ALL IN ['v1', 'v3', 'v4', 'v6']"));
+      assertEqual(actual, [v4, v6]);
+    },
+
+    testNonUniqueBFSWithVertexFilters : function () {
+      let actual;
+      const v1 = "UnitTestsAhuacatlVertex/v1";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var createQuery = function (start, filter) {
+        return `WITH ${vn} FOR n, e, p IN 2 OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true} ${filter} SORT n._id RETURN n._id`;
+      };
+
+      // It should filter on the start vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[0].name == 'v1'"));
+      assertEqual(actual, [v3, v4, v6, v7]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[0].name != 'v1'"));
+      assertEqual(actual, []);
+
+      // It should filter on the first vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[1].name == 'v3'"));
+      assertEqual(actual, [v4, v6, v7]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[1].name != 'v3'"));
+      assertEqual(actual, [v3]);
+
+      // It should filter on the second vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[2].name == 'v4'"));
+      assertEqual(actual, [v4]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[2].name != 'v4'"));
+      assertEqual(actual, [v3, v6, v7]);
+
+      // It should filter on all vertices
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[*].name ALL IN ['v1', 'v3', 'v4', 'v6']"));
+      assertEqual(actual, [v4, v6]);
     }
+
   };
 }
 
@@ -908,6 +997,27 @@ function ahuacatlQueryShortestPathTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path with a limit, skipping a result
+/// Regression test for missing skipSome implementation
+////////////////////////////////////////////////////////////////////////////////
+
+    testShortestPathDijkstraOutboundSkipFirst : function () {
+      const query = `WITH ${vn}
+        FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en}
+        LIMIT 1,4
+        RETURN v._id`;
+      const vertices = getQueryResults(query);
+
+      // vertex "A" should have been skipped
+      assertEqual([
+        vn + "/D",
+        vn + "/E",
+        vn + "/G",
+        vn + "/H"
+      ], vertices);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shortest path using dijkstra with includeData: true
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -988,95 +1098,6 @@ function ahuacatlQueryShortestPathTestSuite () {
       assertEqual([ ], actual);
     }
 
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for Neighbors with intentional failures
-////////////////////////////////////////////////////////////////////////////////
-
-function ahuacatlQueryNeighborsErrorsSuite () {
-  var vn = "UnitTestsTraversalVertices";
-  var en = "UnitTestsTraversalEdges";
-  var vertexCollection;
-  var edgeCollection;
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUpAll : function () {
-      db._drop(vn);
-      db._drop(en);
-      internal.debugClearFailAt();
-
-      vertexCollection = db._create(vn, {numberOfShards: 4});
-      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
-
-      [ "A", "B", "C", "D" ].forEach(function (item) {
-        vertexCollection.save({ _key: item, name: item });
-      });
-
-      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "C" ], [ "C", "A" ] ].forEach(function (item) {
-        var l = item[0];
-        var r = item[1];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
-      });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDownAll : function () {
-      db._drop(vn);
-      db._drop(en);
-      internal.debugClearFailAt();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks error handling for neighbors
-////////////////////////////////////////////////////////////////////////////////
-
-/* CodePath does not exist any more
-    testNeighborsDitchesOOM : function () {
-      var v1 = vn + "/A";
-      var v2 = vn + "/B";
-      var v3 = vn + "/D";
-
-      var queryStart = `FOR n IN OUTBOUND "`;
-      var queryEnd = `" ${en} SORT n._id RETURN n._id`;
-
-      var actual = getQueryResults(queryStart + v1 + queryEnd);
-      // Positive Check
-      assertEqual(actual, [ v2, v3 ]);
-
-      internal.debugClearFailAt();
-      internal.debugSetFailAt("EdgeCollectionInfoOOM1");
-
-      // Negative Check
-      try {
-        actual = getQueryResults(queryStart + v1 + queryEnd);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
-      }
-
-      internal.debugClearFailAt();
-      internal.debugSetFailAt("EdgeCollectionInfoOOM2");
-
-      // Negative Check
-      try {
-        actual = getQueryResults(queryStart + v1 + queryEnd);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
-      }
-      internal.debugClearFailAt();
-    }
-*/
   };
 }
 
@@ -1180,7 +1201,6 @@ jsunity.run(ahuacatlQueryNeighborsTestSuite);
 jsunity.run(ahuacatlQueryBreadthFirstTestSuite);
 jsunity.run(ahuacatlQueryShortestPathTestSuite);
 if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
-  jsunity.run(ahuacatlQueryNeighborsErrorsSuite);
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 return jsunity.done();

@@ -47,8 +47,7 @@ class CollectionKeys {
   CollectionKeys(CollectionKeys const&) = delete;
   CollectionKeys& operator=(CollectionKeys const&) = delete;
 
-  CollectionKeys(TRI_vocbase_t*, std::string const& name, 
-                 double ttl);
+  CollectionKeys(TRI_vocbase_t*, double ttl);
 
   virtual ~CollectionKeys() = default;
 
@@ -110,7 +109,6 @@ class CollectionKeys {
  protected:
   TRI_vocbase_t* _vocbase;
   arangodb::LogicalCollection* _collection;
-  std::string const _name;
   CollectionKeysId _id;
   double _ttl;
   double _expires;

@@ -13,7 +13,7 @@ Examples will explain the API on the [the city graph](../README.md#the-city-grap
 Definition of examples
 ----------------------
 
-@startDocuBlock JSF_general_graph_example_description
+@startDocuBlock general_graph_example_description
 
 Get vertices from edges.
 ------------------------

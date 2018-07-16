@@ -204,7 +204,7 @@ class AgencyOperation {
   AgencyOperationType type() const;
 
  public:
-  uint32_t _ttl = 0;
+  uint64_t _ttl = 0;
   VPackSlice _oldValue;
 
  private:
@@ -250,7 +250,7 @@ class AgencyCommResult {
   void clear();
 
   VPackSlice slice() const;
-  void setVPack(std::shared_ptr<velocypack::Builder> vpack) { _vpack = vpack; }
+  void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) { _vpack = vpack; }
 
  public:
   std::string _location;
@@ -292,7 +292,7 @@ public:
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
 
-struct AgencyGeneralTransaction : public AgencyTransaction {
+/*struct AgencyGeneralTransaction : public AgencyTransaction {
 
   typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
 
@@ -337,7 +337,7 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
   char const* typeName() const override { return "AgencyGeneralTransaction"; }
   std::string clientId;
 
-};
+};*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            AgencyWriteTransaction
@@ -370,6 +370,15 @@ public:
       operations.push_back(op);
     }
     preconditions.push_back(precondition);
+  }
+
+  AgencyWriteTransaction(AgencyOperation const& operation,
+                         std::vector<AgencyPrecondition> const& precs) :
+    clientId(to_string(boost::uuids::random_generator()())) {
+    operations.push_back(operation);
+    for (auto const& pre : precs) {
+      preconditions.push_back(pre);
+    }
   }
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,

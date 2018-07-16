@@ -103,7 +103,7 @@ void RocksDBRestWalHandler::flush() {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  double maxWaitTime = 60.0;
+  double maxWaitTime = 300.0;
 
   if (slice.isObject()) {
     // got a request body

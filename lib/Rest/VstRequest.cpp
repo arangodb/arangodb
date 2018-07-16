@@ -60,17 +60,14 @@ std::string const& lookupStringInMap(
 }
 
 VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
-                       VstInputMessage&& message, uint64_t messageId, bool isFake)
+                       VstInputMessage&& message, uint64_t messageId)
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
-      _headers(nullptr),
       _messageId(messageId) {
   _protocol = "vst";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
-  if(!isFake){
-    parseHeaderInformation();
-  }
+  parseHeaderInformation();
   _user = "root";
 }
 
@@ -86,7 +83,7 @@ std::unordered_map<std::string, std::string> const& VstRequest::headers()
     using namespace std;
     _headers = make_unique<unordered_map<string, string>>();
     VPackSlice meta = _message.header().at(6);  // get meta
-    for (auto const& it : VPackObjectIterator(meta)) {
+    for (auto const& it : VPackObjectIterator(meta, true)) {
       // must lower-case the header key
       _headers->emplace(StringUtils::tolower(it.key.copyString()),
                         it.value.copyString());
@@ -118,7 +115,7 @@ void VstRequest::parseHeaderInformation() {
     _requestPath = vHeader.at(4).copyString();  // request (path)
     VPackSlice params = vHeader.at(5);          // parameter
 
-    for (auto const& it : VPackObjectIterator(params)) {
+    for (auto const& it : VPackObjectIterator(params, true)) {
       if (it.value.isArray()) {
         vector<string> tmp;
         for (auto const& itInner : VPackArrayIterator(it.value)) {

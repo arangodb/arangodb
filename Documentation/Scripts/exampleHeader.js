@@ -41,9 +41,14 @@ var ignoreCollectionAlreadyThere = [];
 var rc;
 var j;
 
-var hljs = require('highlightjs');
+const exds = require("@arangodb/examples/examples").Examples;
 
-var MAP = {
+const AU = require('ansi_up');
+const ansi_up = new AU.default;
+
+const hljs = require('highlightjs');
+
+const MAP = {
     'py': 'python',
     'js': 'javascript',
     'json': 'javascript',
@@ -78,19 +83,25 @@ internal.stopColorPrint(true);
 var appender = function(text) {
   output += text;
 };
-var jsonAppender = function(text) {
+const ansiAppender = (text) => {
+  output += ansi_up.ansi_to_html(text);
+};
+const jsonAppender = function(text) {
   output += highlight("js", text);
 };
-var htmlAppender = function(text) {
+const jsonLAppender = function(text) {
+  output += highlight("js", text) + "&#x21A9;\n" ;
+};
+const htmlAppender = function(text) {
   output += highlight("html", text);
 };
-var rawAppender = function(text) {
+const rawAppender = function(text) {
   output += text;
 };
-var shellAppender = function(text) {
+const shellAppender = function(text) {
   output += highlight("shell", text);
 };
-var log = function (a) {
+const log = function (a) {
   internal.startCaptureMode();
   print(a);
   appender(internal.stopCaptureMode());
@@ -125,6 +136,7 @@ var curlRequest = function () {
   return rc
 };
 var logJsonResponse = internal.appendJsonResponse(rawAppender, jsonAppender);
+var logJsonLResponse = internal.appendJsonLResponse(rawAppender, jsonLAppender);
 var logHtmlResponse = internal.appendRawResponse(rawAppender, htmlAppender);
 var logRawResponse = internal.appendRawResponse(rawAppender, rawAppender);
 var logErrorResponse = function (response) {

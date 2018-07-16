@@ -133,10 +133,18 @@ function resultsToXml (results, baseName, cluster, isRocksDb) {
           }
 
           if (!seen) {
-            xml.elem('testcase', {
-              name: 'all_tests_in_' + xmlName,
-              time: 0 + current.duration
-            }, true);
+            if (failuresFound === 0) {
+              xml.elem('testcase', {
+                name: 'all_tests_in_' + xmlName,
+                time: 0 + current.duration
+              }, true);
+            } else {
+              xml.elem('testcase', {
+                name: 'all_tests_in_' + xmlName,
+                failures: failuresFound,
+                time: 0 + current.duration
+              }, true);
+            }
           }
 
           xml.elem('/testsuite');
@@ -201,7 +209,21 @@ function main (argv) {
   options.jsonReply = true;
 
   // create output directory
-  fs.makeDirectoryRecursive(testOutputDirectory);
+  try {
+    fs.makeDirectoryRecursive(testOutputDirectory);
+  } catch (x) {
+    print("failed to create test directory - " + x.message);
+    throw x;
+  }
+
+  // by default we set this to error, so we always have a proper result for the caller
+  try {
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', "false", true);
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', "true", true);
+  } catch (x) {
+    print('failed to write default test result: ' + x.message);
+    throw(x);
+  }
 
   if (options.hasOwnProperty('cluster') && options.cluster) {
     // cluster beats resilient single server
@@ -235,7 +257,12 @@ function main (argv) {
   });
 
   // whether or not there was an error
-  fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', String(r.status));
+  try {
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', String(r.status), true);
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', String(r.crashed), true);
+  } catch (x) {
+    print('failed to write test result: ' + x.message);
+  }
 
   if (options.writeXmlReport) {
     let j;
@@ -246,8 +273,7 @@ function main (argv) {
       j = inspect(r);
     }
 
-    fs.write(testOutputDirectory + '/UNITTEST_RESULT.json', j);
-    fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', String(r.crashed));
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT.json', j, true);
 
     try {
       let isCluster = false;

@@ -1,0 +1,215 @@
+stringescapes {}
+
+/* the 32 Cyrillic letters in Unicode */
+
+stringdef a    hex '430'
+stringdef b    hex '431'
+stringdef v    hex '432'
+stringdef g    hex '433'
+stringdef d    hex '434'
+stringdef e    hex '435'
+stringdef zh   hex '436'
+stringdef z    hex '437'
+stringdef i    hex '438'
+stringdef i`   hex '439'
+stringdef k    hex '43A'
+stringdef l    hex '43B'
+stringdef m    hex '43C'
+stringdef n    hex '43D'
+stringdef o    hex '43E'
+stringdef p    hex '43F'
+stringdef r    hex '440'
+stringdef s    hex '441'
+stringdef t    hex '442'
+stringdef u    hex '443'
+stringdef f    hex '444'
+stringdef kh   hex '445'
+stringdef ts   hex '446'
+stringdef ch   hex '447'
+stringdef sh   hex '448'
+stringdef shch hex '449'
+stringdef "    hex '44A'
+stringdef y    hex '44B'
+stringdef '    hex '44C'
+stringdef e`   hex '44D'
+stringdef iu   hex '44E'
+stringdef ia   hex '44F'
+
+routines ( mark_regions R2
+           perfective_gerund
+           adjective
+           adjectival
+           reflexive
+           verb
+           noun
+           derivational
+           tidy_up
+)
+
+externals ( stem )
+
+integers ( pV p2 )
+
+groupings ( v )
+
+define v '{a}{e}{i}{o}{u}{y}{e`}{iu}{ia}'
+
+define mark_regions as (
+
+    $pV = limit
+    $p2 = limit
+    do (
+        gopast v  setmark pV  gopast non-v
+        gopast v  gopast non-v  setmark p2
+       )
+)
+
+backwardmode (
+
+    define R2 as $p2 <= cursor
+
+    define perfective_gerund as (
+        [substring] among (
+            '{v}'
+            '{v}{sh}{i}'
+            '{v}{sh}{i}{s}{'}'
+                ('{a}' or '{ia}' delete)
+            '{i}{v}'
+            '{i}{v}{sh}{i}'
+            '{i}{v}{sh}{i}{s}{'}'
+            '{y}{v}'
+            '{y}{v}{sh}{i}'
+            '{y}{v}{sh}{i}{s}{'}'
+                (delete)
+        )
+    )
+
+    define adjective as (
+        [substring] among (
+            '{e}{e}' '{i}{e}' '{y}{e}' '{o}{e}' '{i}{m}{i}' '{y}{m}{i}'
+            '{e}{i`}' '{i}{i`}' '{y}{i`}' '{o}{i`}' '{e}{m}' '{i}{m}'
+            '{y}{m}' '{o}{m}' '{e}{g}{o}' '{o}{g}{o}' '{e}{m}{u}'
+            '{o}{m}{u}' '{i}{kh}' '{y}{kh}' '{u}{iu}' '{iu}{iu}' '{a}{ia}'
+            '{ia}{ia}'
+                        // and -
+            '{o}{iu}'   // - which is somewhat archaic
+            '{e}{iu}'   // - soft form of {o}{iu}
+                (delete)
+        )
+    )
+
+    define adjectival as (
+        adjective
+
+        /* of the participle forms, em, vsh, ivsh, yvsh are readily removable.
+           nn, {iu}shch, shch, u{iu}shch can be removed, with a small proportion of
+           errors. Removing im, uem, enn creates too many errors.
+        */
+
+        try (
+            [substring] among (
+                '{e}{m}'                  // present passive participle
+                '{n}{n}'                  // adjective from past passive participle
+                '{v}{sh}'                 // past active participle
+                '{iu}{shch}' '{shch}'     // present active participle
+                    ('{a}' or '{ia}' delete)
+
+     //but not  '{i}{m}' '{u}{e}{m}'      // present passive participle
+     //or       '{e}{n}{n}'               // adjective from past passive participle
+
+                '{i}{v}{sh}' '{y}{v}{sh}'// past active participle
+                '{u}{iu}{shch}'          // present active participle
+                    (delete)
+            )
+        )
+
+    )
+
+    define reflexive as (
+        [substring] among (
+            '{s}{ia}'
+            '{s}{'}'
+                (delete)
+        )
+    )
+
+    define verb as (
+        [substring] among (
+            '{l}{a}' '{n}{a}' '{e}{t}{e}' '{i`}{t}{e}' '{l}{i}' '{i`}'
+            '{l}' '{e}{m}' '{n}' '{l}{o}' '{n}{o}' '{e}{t}' '{iu}{t}'
+            '{n}{y}' '{t}{'}' '{e}{sh}{'}'
+
+            '{n}{n}{o}'
+                ('{a}' or '{ia}' delete)
+
+            '{i}{l}{a}' '{y}{l}{a}' '{e}{n}{a}' '{e}{i`}{t}{e}'
+            '{u}{i`}{t}{e}' '{i}{t}{e}' '{i}{l}{i}' '{y}{l}{i}' '{e}{i`}'
+            '{u}{i`}' '{i}{l}' '{y}{l}' '{i}{m}' '{y}{m}' '{e}{n}'
+            '{i}{l}{o}' '{y}{l}{o}' '{e}{n}{o}' '{ia}{t}' '{u}{e}{t}'
+            '{u}{iu}{t}' '{i}{t}' '{y}{t}' '{e}{n}{y}' '{i}{t}{'}'
+            '{y}{t}{'}' '{i}{sh}{'}' '{u}{iu}' '{iu}'
+                (delete)
+            /* note the short passive participle tests:
+               '{n}{a}' '{n}' '{n}{o}' '{n}{y}'
+               '{e}{n}{a}' '{e}{n}' '{e}{n}{o}' '{e}{n}{y}'
+            */
+        )
+    )
+
+    define noun as (
+        [substring] among (
+            '{a}' '{e}{v}' '{o}{v}' '{i}{e}' '{'}{e}' '{e}'
+            '{i}{ia}{m}{i}' '{ia}{m}{i}' '{a}{m}{i}' '{e}{i}' '{i}{i}'
+            '{i}' '{i}{e}{i`}' '{e}{i`}' '{o}{i`}' '{i}{i`}' '{i`}'
+            '{i}{ia}{m}' '{ia}{m}' '{i}{e}{m}' '{e}{m}' '{a}{m}' '{o}{m}'
+            '{o}' '{u}' '{a}{kh}' '{i}{ia}{kh}' '{ia}{kh}' '{y}' '{'}'
+            '{i}{iu}' '{'}{iu}' '{iu}' '{i}{ia}' '{'}{ia}' '{ia}'
+                (delete)
+            /* the small class of neuter forms '{e}{n}{i}' '{e}{n}{e}{m}'
+               '{e}{n}{a}' '{e}{n}' '{e}{n}{a}{m}' '{e}{n}{a}{m}{i}' '{e}{n}{a}{x}'
+               omitted - they only occur on 12 words.
+            */
+        )
+    )
+
+    define derivational as (
+        [substring] R2 among (
+            '{o}{s}{t}'
+            '{o}{s}{t}{'}'
+                (delete)
+        )
+    )
+
+    define tidy_up as (
+        [substring] among (
+
+            '{e}{i`}{sh}'
+            '{e}{i`}{sh}{e}'  // superlative forms
+               (delete
+                ['{n}'] '{n}' delete
+               )
+            '{n}'
+               ('{n}' delete) // e.g. -nno endings
+            '{'}'
+               (delete)  // with some slight false conflations
+        )
+    )
+)
+
+define stem as (
+
+    do mark_regions
+    backwards setlimit tomark pV for (
+        do (
+             perfective_gerund or
+             ( try reflexive
+               adjectival or verb or noun
+             )
+        )
+        try([ '{i}' ] delete)
+        // because noun ending -i{iu} is being treated as verb ending -{iu}
+
+        do derivational
+        do tidy_up
+    )
+)

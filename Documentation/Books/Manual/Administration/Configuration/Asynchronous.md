@@ -1,7 +1,8 @@
 Asynchronous Tasks
 ==================
 
-### maximal queue size
+Maximal queue size
+------------------
 
 Maximum size of the queue for requests: `--server.maximal-queue-size
 size`

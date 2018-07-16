@@ -37,9 +37,8 @@ using namespace arangodb;
 // ================= RocksDBSavePoint ==================
 
 RocksDBSavePoint::RocksDBSavePoint(
-    RocksDBMethods* trx, bool handled,
-    std::function<void()> const& rollbackCallback)
-    : _trx(trx), _rollbackCallback(rollbackCallback), _handled(handled) {
+    RocksDBMethods* trx, bool handled)
+    : _trx(trx), _handled(handled) {
   TRI_ASSERT(trx != nullptr);
   if (!_handled) {
     _trx->SetSavePoint();
@@ -61,7 +60,6 @@ void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
   _trx->RollbackToSavePoint();
   _handled = true;  // in order to not roll back again by accident
-  _rollbackCallback();
 }
 
 // =================== RocksDBMethods ===================
@@ -182,8 +180,8 @@ arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
   rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
-  if(!s.ok()){
-   rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");
+  if (!s.ok()) {
+    rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");
   }
   return rv;
 }

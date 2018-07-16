@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LocalTaskQueue.h"
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/asio-helper.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -44,7 +44,7 @@ LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue) : _queue(queu
 
 void LocalTask::dispatch() {
   auto self = shared_from_this();
-  SchedulerFeature::SCHEDULER->post([self, this]() {
+  _queue->post([self, this]() {
     _queue->startTask();
     try {
       run();
@@ -61,7 +61,7 @@ void LocalTask::dispatch() {
 ////////////////////////////////////////////////////////////////////////////////
 
 LocalCallbackTask::LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
-                                     std::function<void()> cb)
+                                     std::function<void()> const& cb)
     : _queue(queue), _cb(cb) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,15 +82,16 @@ void LocalCallbackTask::run() {
 
 void LocalCallbackTask::dispatch() {
   auto self = shared_from_this();
-  SchedulerFeature::SCHEDULER->post([self, this]() { run(); });
+  _queue->post([self, this]() { run(); });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::LocalTaskQueue()
-    : _queue(),
+LocalTaskQueue::LocalTaskQueue(PostFn poster)
+    : _poster(poster),
+      _queue(),
       _callbackQueue(),
       _condition(),
       _mutex(),
@@ -131,6 +132,15 @@ void LocalTaskQueue::enqueue(std::shared_ptr<LocalTask> task) {
 void LocalTaskQueue::enqueueCallback(std::shared_ptr<LocalCallbackTask> task) {
   MUTEX_LOCKER(locker, _mutex);
   _callbackQueue.push(task);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief post a function to the scheduler. Should only be used internally
+/// by task dispatch.
+//////////////////////////////////////////////////////////////////////////////
+
+void LocalTaskQueue::post(std::function<void()> fn) {
+  _poster(fn);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

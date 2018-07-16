@@ -137,9 +137,6 @@ describe('Rule optimize-traversals', () => {
       `FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '${graphName}'
       FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == " + edgeKey + " SORT v._key
       RETURN {v:v,e:e,p:p}`,
-      `FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '${graphName}'
-      FILTER NOOPT(V8(CONCAT(p.edges[0]._key, ''))) == " + edgeKey + " SORT v._key
-      RETURN {v:v,e:e,p:p}`,
       `FOR snippet IN ['a', 'b']
       FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}'
       FILTER p.edges[1].label == CONCAT(snippet, 'ar')
@@ -241,9 +238,6 @@ describe('Rule optimize-traversals', () => {
       SORT v._key RETURN v._key`,
       `WITH circles FOR v, e, p IN 2 OUTBOUND @start @@ecol
       FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == @edgeKey
-      SORT v._key RETURN v._key`,
-      `WITH circles FOR v, e, p IN 2 OUTBOUND @start @@ecol
-      FILTER NOOPT(V8(CONCAT(p.edges[0]._key, ''))) == @edgeKey
       SORT v._key RETURN v._key`
     ];
     const bindVars = {

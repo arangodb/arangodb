@@ -141,8 +141,8 @@ Node createAgency(TestStructureType const& createTestStructure) {
 
 VPackBuilder createJob(std::string const& server) {
   VPackBuilder builder;
-  VPackObjectBuilder a(&builder);
   {
+    VPackObjectBuilder a(&builder);
     builder.add("creator", VPackValue("unittest"));
     builder.add("type", VPackValue("cleanOutServer"));
     builder.add("server", VPackValue(server));

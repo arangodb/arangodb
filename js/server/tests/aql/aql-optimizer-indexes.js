@@ -63,15 +63,15 @@ function optimizerIndexesTestSuite () {
       var q1 = `RETURN (FOR item IN UnitTestsCollection FILTER (@doc.key == item._key) LIMIT 1 RETURN item)[0]`; 
       var q2 = `LET doc = @doc RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`; 
       var q3 = `LET doc = { key: "test1" } RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`;
-      
+
       var results = AQL_EXECUTE(q1, bind);
       assertEqual(1, results.json.length);
       assertEqual("test1", results.json[0]._key);
-      
+
       results = AQL_EXECUTE(q2, bind);
       assertEqual(1, results.json.length);
       assertEqual("test1", results.json[0]._key);
-      
+
       results = AQL_EXECUTE(q3);
       assertEqual(1, results.json.length);
       assertEqual("test1", results.json[0]._key);
@@ -91,7 +91,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 22 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -112,7 +112,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -129,14 +129,38 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertTrue(node.producesResult);
+        }
         return node.type;
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(4, results.stats.scannedIndex);
+    },
+
+    testUsePrimaryIdNoDocuments : function () {
+      var values = [ "UnitTestsCollection/test1", "UnitTestsCollection/test2", "UnitTestsCollection/test21", "UnitTestsCollection/test30" ];
+      var query = "FOR i IN " + c.name() + " FILTER i._id IN " + JSON.stringify(values) + " RETURN 1";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertFalse(node.producesResult);
+        }
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 1, 1, 1 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(4, results.stats.scannedIndex);
     },
@@ -151,19 +175,22 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertTrue(node.producesResult);
+        }
         return node.type;
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(4, results.stats.scannedIndex);
     },
 
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 /// @brief test _id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -173,12 +200,15 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertTrue(node.producesResult);
+        }
         return node.type;
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -194,14 +224,47 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertTrue(node.producesResult);
+        } else if (node.type === 'SingleRemoteOperationNode') {
+          assertTrue(node.producesResult);
+        }
         return node.type;
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+      assertTrue(
+        (
+          ( nodeTypes.indexOf("IndexNode") !== -1) ||
+          ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+        ), query);
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 6 ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(1, results.stats.scannedIndex);
+    },
+
+    testUsePrimaryKeyEqNoDocuments : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i._key == 'test6' RETURN 1";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertFalse(node.producesResult);
+        }
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertTrue(
+        (
+          ( nodeTypes.indexOf("IndexNode") !== -1) ||
+          ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+        ), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(1, results.stats.scannedIndex);
     },
@@ -219,8 +282,12 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+      assertTrue(
+        (
+          ( nodeTypes.indexOf("IndexNode") !== -1) ||
+          ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+        ), query);
+
       var results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -242,7 +309,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
       assertEqual(0, results.stats.scannedFull);
@@ -264,7 +331,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2, 21, 30 ], results.json.sort(), query);
       assertEqual(0, results.stats.scannedFull);
@@ -286,7 +353,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -306,8 +373,12 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+      assertTrue(
+        (
+          ( nodeTypes.indexOf("IndexNode") !== -1) ||
+          ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+        ), query);
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -328,7 +399,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -348,8 +419,12 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+      assertTrue(
+        (
+          ( nodeTypes.indexOf("IndexNode") !== -1) ||
+          ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+        ), query);
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -370,7 +445,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -390,8 +465,12 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+      assertTrue(
+        (
+          ( nodeTypes.indexOf("IndexNode") !== -1) ||
+          ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+        ), query);
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -412,7 +491,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -432,8 +511,12 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+      assertTrue(
+        (
+          ( nodeTypes.indexOf("IndexNode") !== -1) ||
+          ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+        ), query);
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -454,7 +537,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -474,7 +557,11 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      assertTrue(
+        (
+          ( nodeTypes.indexOf("IndexNode") !== -1) ||
+          ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+        ), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
@@ -496,7 +583,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -530,7 +617,7 @@ function optimizerIndexesTestSuite () {
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
-      
+
       results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertTrue(results.stats.scannedFull > 0);
@@ -564,7 +651,7 @@ function optimizerIndexesTestSuite () {
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
-      
+
       results = AQL_EXECUTE(query);
       assertEqual([ 'one', 'one' ], results.json, query);
       assertTrue(results.stats.scannedFull > 0);
@@ -595,11 +682,11 @@ function optimizerIndexesTestSuite () {
       assertEqual([ 'one', 'one' ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertTrue(results.stats.scannedIndex > 0);
-      
+
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
-      
+
       results = AQL_EXECUTE(query);
       assertEqual([ 'one', 'one' ], results.json, query);
       assertTrue(results.stats.scannedFull > 0);
@@ -630,11 +717,11 @@ function optimizerIndexesTestSuite () {
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(0, results.stats.scannedIndex);
-      
+
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
-      
+
       results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
@@ -654,6 +741,9 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertTrue(node.producesResult);
+        }
         return node.type;
       });
 
@@ -664,11 +754,11 @@ function optimizerIndexesTestSuite () {
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertTrue(results.stats.scannedIndex > 0);
-      
+
       // retry without index
       var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
       c.dropIndex(idx);
-      
+
       results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertTrue(results.stats.scannedFull > 0);
@@ -737,6 +827,28 @@ function optimizerIndexesTestSuite () {
       assertTrue(results.stats.scannedIndex > 0);
     },
 
+    testUseIndexSimpleNoDocuments : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.value >= 10 SORT i.value LIMIT 10 RETURN 1";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertFalse(node.producesResult);
+        }
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
@@ -766,6 +878,9 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === 'IndexNode') {
+          assertTrue(node.producesResult);
+        }
         return node.type;
       });
 
@@ -780,7 +895,7 @@ function optimizerIndexesTestSuite () {
       assertTrue(results.stats.scannedIndex > 0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -951,7 +1066,7 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
-      assertNotEqual(0, results.stats.scannedIndex); 
+      assertNotEqual(0, results.stats.scannedIndex);
       assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
     },
 
@@ -1007,7 +1122,7 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
-      assertNotEqual(0, results.stats.scannedIndex); 
+      assertNotEqual(0, results.stats.scannedIndex);
       assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
     },
 
@@ -1059,7 +1174,7 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
-      assertNotEqual(0, results.stats.scannedIndex); 
+      assertNotEqual(0, results.stats.scannedIndex);
       assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
     },
 
@@ -1106,7 +1221,7 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
-      assertNotEqual(0, results.stats.scannedIndex); 
+      assertNotEqual(0, results.stats.scannedIndex);
       assertEqual([ 'test0', 'test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8', 'test9' ], results.json);
     },
 
@@ -1145,7 +1260,7 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
-      assertNotEqual(0, results.stats.scannedIndex); 
+      assertNotEqual(0, results.stats.scannedIndex);
       assertEqual([ 'test0', 'test0', 'test1', 'test0', 'test1', 'test2', 'test0', 'test1', 'test2', 'test3' ], results.json);
     },
 
@@ -1196,7 +1311,7 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
-      assertNotEqual(0, results.stats.scannedIndex); 
+      assertNotEqual(0, results.stats.scannedIndex);
       assertEqual([ 'test0', 'test1', 'test2', 'test3' ], results.json);
     },
 
@@ -1220,7 +1335,7 @@ function optimizerIndexesTestSuite () {
 
       var explain = AQL_EXPLAIN(query);
       var plan = explain.plan;
-      
+
       var walker = function (nodes, func) {
         nodes.forEach(function(node) {
           if (node.type === "SubqueryNode") {
@@ -1231,7 +1346,7 @@ function optimizerIndexesTestSuite () {
       };
 
       var indexNodes = 0, collectionNodes = 0;
-        
+
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
@@ -1252,7 +1367,7 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
-      assertNotEqual(0, results.stats.scannedIndex); 
+      assertNotEqual(0, results.stats.scannedIndex);
       assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
     },
 
@@ -1275,6 +1390,32 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 9 ], results.json.sort(), query);
+      assertEqual(2, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+    testIndexOrHashNoDocuments : function () {
+      c.ensureHashIndex("value");
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN 1";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexNode") {
+          assertFalse(node.producesResult);
+          if (db._engine().name === "rocksdb") {
+            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          } else {
+            assertEqual("hash", node.indexes[0].type);
+          }
+          assertFalse(node.indexes[0].unique);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 1 ], results.json, query);
       assertEqual(2, results.stats.scannedIndex);
       assertEqual(0, results.stats.scannedFull);
     },
@@ -1312,7 +1453,7 @@ function optimizerIndexesTestSuite () {
         results.json.forEach(function(value) {
           assertNotEqual(-1, query[1].indexOf(value), query);
         });
-    
+
         assertTrue(results.stats.scannedIndex < 10);
         assertEqual(0, results.stats.scannedFull);
       });
@@ -1329,6 +1470,7 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
+          assertTrue(node.producesResult);
           if (db._engine().name === "rocksdb") {
             assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
           } else {
@@ -1382,6 +1524,7 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
+          assertTrue(node.producesResult);
           assertEqual("skiplist", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
@@ -1457,6 +1600,27 @@ function optimizerIndexesTestSuite () {
       assertEqual(0, results.stats.scannedFull);
     },
 
+    testIndexOrSkiplistNoDocuments : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN 1";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexNode") {
+          assertFalse(node.producesResult);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 1, 1 ], results.json.sort(), query);
+      assertEqual(2, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
@@ -1467,6 +1631,7 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
+          assertTrue(node.producesResult);
           assertEqual("skiplist", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
@@ -1823,11 +1988,11 @@ function optimizerIndexesTestSuite () {
       assertEqual(0, results.stats.scannedFull);
       assertTrue(results.stats.scannedIndex > 0);
     },
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testIndexOrNoIndexBecauseOfDifferentAttributes : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: 1 } IN " + c.name());
 
@@ -1852,7 +2017,7 @@ function optimizerIndexesTestSuite () {
 
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(2, results.json.length); 
+        assertEqual(2, results.json.length);
         assertTrue(results.stats.scannedFull > 0);
         assertEqual(0, results.stats.scannedIndex);
       });
@@ -1890,7 +2055,7 @@ function optimizerIndexesTestSuite () {
 
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length, query); 
+        assertEqual(1, results.json.length, query);
         assertTrue(results.stats.scannedFull > 0);
         assertEqual(0, results.stats.scannedIndex);
       });
@@ -1946,7 +2111,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
@@ -1996,7 +2161,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
@@ -2022,7 +2187,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
@@ -2075,16 +2240,16 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
     },
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
- 
+
     testIndexAndDespiteOr : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: 1 } IN " + c.name());
 
@@ -2104,7 +2269,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(2, results.json.length, query); 
+        assertEqual(2, results.json.length, query);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
@@ -2152,7 +2317,7 @@ function optimizerIndexesTestSuite () {
         // The condition is impossible. We do not care for indexes.
         // assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(0, results.json.length); 
+        assertEqual(0, results.json.length);
         assertTrue(results.stats.scannedIndex >= 0);
         assertEqual(0, results.stats.scannedFull);
       });
@@ -2191,7 +2356,7 @@ function optimizerIndexesTestSuite () {
 
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(2000, results.json.length); 
+        assertEqual(2000, results.json.length);
         assertEqual(0, results.stats.scannedIndex);
         assertTrue(results.stats.scannedFull > 0);
       });
@@ -2227,7 +2392,7 @@ function optimizerIndexesTestSuite () {
 
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(2000, results.json.length); 
+        assertEqual(2000, results.json.length);
         assertEqual(0, results.stats.scannedIndex);
         assertTrue(results.stats.scannedFull > 0);
       });
@@ -2251,7 +2416,7 @@ function optimizerIndexesTestSuite () {
 
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(2000, results.json.length); 
+        assertEqual(2000, results.json.length);
         assertEqual(0, results.stats.scannedIndex);
         assertTrue(results.stats.scannedFull > 0);
       });
@@ -2283,7 +2448,7 @@ function optimizerIndexesTestSuite () {
 
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(2000, results.json.length); 
+        assertEqual(2000, results.json.length);
         assertEqual(0, results.stats.scannedIndex);
         assertTrue(results.stats.scannedFull > 0);
       });
@@ -2316,7 +2481,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertEqual(2, results.json[0].value);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
@@ -2353,7 +2518,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertEqual(2, results.json[0].value);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
@@ -2390,7 +2555,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertEqual(2, results.json[0].value);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
@@ -2430,7 +2595,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertEqual(2, results.json[0].value);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
@@ -2467,7 +2632,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
-        assertEqual(1, results.json.length); 
+        assertEqual(1, results.json.length);
         assertEqual(2, results.json[0].value);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
@@ -2496,7 +2661,7 @@ function optimizerIndexesTestSuite () {
 
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query[0]);
-        assertEqual(query[1], results.json.length); 
+        assertEqual(query[1], results.json.length);
         assertTrue(results.stats.scannedFull > 0);
         assertEqual(0, results.stats.scannedIndex);
       });
@@ -2530,7 +2695,7 @@ function optimizerIndexesTestSuite () {
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query[0]);
-        assertEqual(query[1], results.json.length); 
+        assertEqual(query[1], results.json.length);
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
@@ -2543,7 +2708,7 @@ function optimizerIndexesTestSuite () {
     testIndexUsageIn : function () {
       c.ensureHashIndex("value2");
       c.ensureSkiplist("value3");
-      
+
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var queries = [
@@ -2586,14 +2751,11 @@ function optimizerIndexesTestSuite () {
         [ "LET a = PASSTHRU({ ids: ['test23', 'test42'] }) FOR i IN " + c.name() + " FILTER i._key IN a.ids RETURN i._key", [ 'test23', 'test42' ] ],
         [ "LET a = PASSTHRU({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value2 IN a.ids RETURN i.value2", [ 23, 42 ] ],
         [ "LET a = PASSTHRU({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value3 IN a.ids RETURN i.value2", [ 23, 42 ] ],
-        
+
         // non-arrays. should not fail but return no results
         [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
         [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
         [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ]
-        
-
-
       ];
 
       queries.forEach(function(query) {
@@ -2602,9 +2764,14 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        assertTrue(
+          (
+            ( nodeTypes.indexOf("IndexNode") !== -1) ||
+            ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+          ), query);
+
         var results = AQL_EXECUTE(query[0]);
-        assertEqual(query[1].length, results.json.length, query); 
+        assertEqual(query[1].length, results.json.length, query);
         assertEqual(query[1].sort(), results.json.sort(), query);
         assertTrue(results.stats.scannedIndex >= 0);
         assertEqual(0, results.stats.scannedFull);
@@ -2618,7 +2785,7 @@ function optimizerIndexesTestSuite () {
     testIndexUsageInNoIndex : function () {
       c.ensureHashIndex("value2");
       c.ensureSkiplist("value3");
-      
+
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var queries = [
@@ -2637,7 +2804,7 @@ function optimizerIndexesTestSuite () {
         assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
-        assertEqual(0, results.json.length); 
+        assertEqual(0, results.json.length);
         assertEqual(0, results.stats.scannedIndex);
         assertEqual(0, results.stats.scannedFull);
       });
@@ -3404,7 +3571,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       db._drop("UnitTestsCollection2");
       c1 = db._create("UnitTestsCollection1");
       c2 = db._create("UnitTestsCollection2");
- 
+
       var i;
       for (i = 0; i < 200; ++i) {
         c1.save({ _key: "test" + i, value: i });
@@ -3442,7 +3609,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
         return node.type;
       });
-      
+
       assertEqual("SingletonNode", subNodeTypes[0], query);
       var idx = subNodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, idx, query); // index used for inner query
@@ -3473,7 +3640,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
         return node.type;
       });
-      
+
       assertEqual("SingletonNode", subNodeTypes[0], query);
       var idx = subNodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, idx, query); // index used for inner query
@@ -3505,7 +3672,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
         return node.type;
       });
-      
+
       assertEqual("SingletonNode", subNodeTypes[0], query);
       var idx = subNodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, idx, query); // index used for inner query
@@ -3537,7 +3704,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
         return node.type;
       });
-      
+
       assertEqual("SingletonNode", subNodeTypes[0], query);
       var idx = subNodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, idx, query); // index used for inner query
@@ -3569,7 +3736,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
         return node.type;
       });
-      
+
       assertEqual("SingletonNode", subNodeTypes[0], query);
       var idx = subNodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, idx, query); // index used for inner query
@@ -3601,7 +3768,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
         return node.type;
       });
-      
+
       assertEqual("SingletonNode", subNodeTypes[0], query);
       var idx = subNodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, idx, query); // index used for inner query
@@ -3620,4 +3787,3 @@ jsunity.run(optimizerIndexesTestSuite);
 jsunity.run(optimizerIndexesMultiCollectionTestSuite);
 
 return jsunity.done();
-

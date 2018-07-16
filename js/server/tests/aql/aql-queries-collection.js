@@ -885,8 +885,6 @@ function ahuacatlQueryCollectionTestSuite () {
       ];
       var actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN HASH(UNSET(u, ['_key', '_rev', '_id']))");
       assertEqual(expected, actual);
-      actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN V8(HASH(UNSET(u, ['_key', '_rev', '_id'])))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -896,8 +894,6 @@ function ahuacatlQueryCollectionTestSuite () {
     testHashSubquery : function () {
       var expected = [ 1815371496337334 ];
       var actual = getQueryResults("RETURN HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id']))");
-      assertEqual(expected, actual);
-      actual = getQueryResults("RETURN V8(HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id'])))");
       assertEqual(expected, actual);
     }
 

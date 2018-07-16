@@ -191,22 +191,22 @@ WalAccessResult MMFilesWalAccess::openTransactions(
 
     MMFilesLogfileManagerState const state =
         MMFilesLogfileManager::instance()->state();
-    res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick,
+    res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick, 0,
               /*latest*/ state.lastCommittedTick);
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception while determining open transactions: "
         << ex.what();
-    res.reset(ex.code(), false, 0, 0);
+    res.reset(ex.code(), false, 0, 0, 0);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception while determining open transactions: "
         << ex.what();
-    res.reset(TRI_ERROR_INTERNAL, false, 0, 0);
+    res.reset(TRI_ERROR_INTERNAL, false, 0, 0, 0);
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught unknown exception while determining open transactions";
-    res.reset(TRI_ERROR_INTERNAL, false, 0, 0);
+    res.reset(TRI_ERROR_INTERNAL, false, 0, 0, 0);
   }
 
   return res;
@@ -306,31 +306,40 @@ struct MMFilesWalAccessContext : WalAccessContext {
     if (type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
+
       _builder.add("db", slice.get("name"));
     } else if (type == TRI_DF_MARKER_VPACK_DROP_COLLECTION) {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
+
       if (vocbase == nullptr) {
         // ignore markers from dropped dbs
         return TRI_ERROR_NO_ERROR;
       }
+
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
+
       _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("cuid", slice.get("cuid"));
     } else {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
+
       if (vocbase == nullptr) {
         return TRI_ERROR_NO_ERROR;  // ignore dropped dbs
       }
+
       _builder.add("db", VPackValue(vocbase->name()));
+
       if (collectionId > 0) {
         LogicalCollection* col = loadCollection(databaseId, collectionId);
+
         if (col == nullptr) {
           return TRI_ERROR_NO_ERROR;  // ignore dropped collections
         }
-        _builder.add("cuid", VPackValue(col->globallyUniqueId()));
+
+        _builder.add("cuid", VPackValue(col->guid()));
       }
     }
 
@@ -342,6 +351,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
       case TRI_DF_MARKER_VPACK_CREATE_INDEX:
       case TRI_DF_MARKER_VPACK_CREATE_VIEW:
       case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
+      case TRI_DF_MARKER_VPACK_RENAME_VIEW:
       case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
       case TRI_DF_MARKER_VPACK_DROP_INDEX:
@@ -362,9 +372,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
       }
 
       default: {
-        TRI_ASSERT(false);
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid marker of type "
                                                 << static_cast<int>(type);
+        TRI_ASSERT(false);
         return TRI_ERROR_INTERNAL;
       }
     }
@@ -392,6 +402,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
     // setup some iteration state
     int res = TRI_ERROR_NO_ERROR;
     TRI_voc_tick_t lastFoundTick = 0;
+    TRI_voc_tick_t lastScannedTick = 0;
     TRI_voc_tick_t lastDatabaseId = 0;
     TRI_voc_cid_t lastCollectionId = 0;
 
@@ -449,6 +460,10 @@ struct MMFilesWalAccessContext : WalAccessContext {
 
           // get the marker's tick and check whether we should include it
           TRI_voc_tick_t foundTick = marker->getTick();
+        
+          if (foundTick <= tickEnd) {
+            lastScannedTick = foundTick;
+          }
 
           if (foundTick <= tickStart) {
             // marker too old
@@ -513,7 +528,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
       res = TRI_ERROR_INTERNAL;
     }
 
-    return WalAccessResult(res, fromTickIncluded, lastFoundTick,
+    return WalAccessResult(res, fromTickIncluded, lastFoundTick, lastScannedTick,
                            state.lastCommittedTick);
   }
 };

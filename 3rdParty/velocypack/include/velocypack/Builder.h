@@ -28,6 +28,7 @@
 #define VELOCYPACK_BUILDER_H
 
 #include <vector>
+#include <string>
 #include <cstring>
 #include <cstdint>
 #include <algorithm>
@@ -59,23 +60,9 @@ class Builder {
     uint64_t offset;
   };
 
-  void reserve(ValueLength len) { reserveSpace(len); }
-
- private:
-  std::shared_ptr<Buffer<uint8_t>> _buffer;  // Here we collect the result
-  uint8_t* _start;                  // Always points to the start of _buffer
-  ValueLength _size;                // Always contains the size of _buffer
-  ValueLength _pos;                 // the append position, always <= _size
-  std::vector<ValueLength> _stack;  // Start positions of
-                                    // open objects/arrays
-  std::vector<std::vector<ValueLength>> _index;  // Indices for starts
-                                                 // of subindex
-  bool _keyWritten;  // indicates that in the current object the key
-                     // has been written but the value not yet
-
   // Here are the mechanics of how this building process works:
-  // The whole VPack being built starts at where _start points to
-  // and uses at most _size bytes. The variable _pos keeps the
+  // The whole VPack being built starts at where _start points to.
+  // The variable _pos keeps the
   // current write position. The method "set" simply writes a new
   // VPack subobject at the current write position and advances
   // it. Whenever one makes an array or object, a ValueLength for
@@ -94,28 +81,38 @@ class Builder {
   // buffer. Whenever the stack is empty, one can use the start,
   // size and slice methods to get out the ready built VPack
   // object(s).
+  void reserve(ValueLength len) {
+    VELOCYPACK_ASSERT(_start == _bufferPtr->data());
+    VELOCYPACK_ASSERT(_start + _pos >= _bufferPtr->data());
+    VELOCYPACK_ASSERT(_start + _pos <= _bufferPtr->data() + _bufferPtr->size());
 
-  void reserveSpace(ValueLength len) {
     // Reserves len bytes at pos of the current state (top of stack)
     // or throws an exception
-    if (_pos + len < _size) {
+    if (_pos + len < _bufferPtr->size()) {
       return;  // All OK, we can just increase tos->pos by len
     }
 
 #ifndef VELOCYPACK_64BIT
-    checkOverflow(_pos + len);
+    (void) checkOverflow(_pos + len);
 #endif
 
-    // copy builder pointer into local variable
-    // this avoids accessing the shared pointer repeatedly, which has
-    // a small but non-negligible cost
-    Buffer<uint8_t>* buffer = _buffer.get();
-    VELOCYPACK_ASSERT(buffer != nullptr);
-
-    buffer->prealloc(len);
-    _start = buffer->data();
-    _size = buffer->size();
+    _bufferPtr->reserve(len);
+    _start = _bufferPtr->data();
   }
+
+ private:
+  std::shared_ptr<Buffer<uint8_t>> _buffer;  // Here we collect the result
+  Buffer<uint8_t>* _bufferPtr;      // used for quicker access than shared_ptr
+  uint8_t* _start;                  // Always points to the start of _buffer
+  ValueLength _pos;                 // the append position
+  std::vector<ValueLength> _stack;  // Start positions of
+                                    // open objects/arrays
+  std::vector<std::vector<ValueLength>> _index;  // Indices for starts
+                                                 // of subindex
+  // temporary buffer used for sorting medium to big objects
+  std::vector<Builder::SortEntry> _sortEntries; 
+  bool _keyWritten;  // indicates that in the current object the key
+                     // has been written but the value not yet
 
   // Sort the indices by attribute name:
   static void doActualSort(std::vector<SortEntry>& entries);
@@ -126,14 +123,14 @@ class Builder {
   // of attribute names:
   static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len);
 
-  static void sortObjectIndexShort(uint8_t* objBase,
-                                   std::vector<ValueLength>& offsets);
+  void sortObjectIndexShort(uint8_t* objBase,
+                            std::vector<ValueLength>& offsets) const;
 
-  static void sortObjectIndexLong(uint8_t* objBase,
-                                  std::vector<ValueLength>& offsets);
+  void sortObjectIndexLong(uint8_t* objBase,
+                           std::vector<ValueLength>& offsets);
 
-  static void sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets);
+  void sortObjectIndex(uint8_t* objBase,
+                       std::vector<ValueLength>& offsets);
 
  public:
   Options const* options;
@@ -141,12 +138,11 @@ class Builder {
   // Constructor and destructor:
   explicit Builder(std::shared_ptr<Buffer<uint8_t>>& buffer,
                    Options const* options = &Options::Defaults)
-      : _buffer(buffer), _pos(0), _keyWritten(false), options(options) {
-    if (_buffer.get() == nullptr) {
+      : _buffer(buffer), _bufferPtr(_buffer.get()), _pos(0), _keyWritten(false), options(options) {
+    if (_bufferPtr == nullptr) {
       throw Exception(Exception::InternalError, "Buffer cannot be a nullptr");
     }
-    _start = _buffer->data();
-    _size = _buffer->size();
+    _start = _bufferPtr->data();
 
     if (options == nullptr) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
@@ -160,11 +156,11 @@ class Builder {
 
   explicit Builder(Options const* options = &Options::Defaults)
       : _buffer(new Buffer<uint8_t>()),
+        _bufferPtr(_buffer.get()),
         _pos(0),
         _keyWritten(false),
         options(options) {
-    _start = _buffer->data();
-    _size = _buffer->size();
+    _start = _bufferPtr->data();
 
     if (options == nullptr) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
@@ -173,24 +169,22 @@ class Builder {
   
   explicit Builder(Buffer<uint8_t>& buffer,
                    Options const* options = &Options::Defaults)
-      : _pos(buffer.size()), _keyWritten(false), options(options) {
+      : _bufferPtr(nullptr), _pos(buffer.size()), _keyWritten(false), options(options) {
     _buffer.reset(&buffer, BufferNonDeleter<uint8_t>());
-    _start = _buffer->data();
-    _size = _buffer->size();
+    _bufferPtr = _buffer.get();
+    _start = _bufferPtr->data();
 
     if (options == nullptr) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
   }
 
-  // The rule of five:
-
   ~Builder() {}
 
   Builder(Builder const& that)
       : _buffer(new Buffer<uint8_t>(*that._buffer)),
-        _start(_buffer->data()),
-        _size(_buffer->size()),
+        _bufferPtr(_buffer.get()),
+        _start(_bufferPtr->data()),
         _pos(that._pos),
         _stack(that._stack),
         _index(that._index),
@@ -202,31 +196,26 @@ class Builder {
   }
 
   Builder& operator=(Builder const& that) {
-    if (that.options == nullptr) {
-      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    if (this != &that) {
+      _buffer.reset(new Buffer<uint8_t>(*that._buffer));
+      _bufferPtr = _buffer.get();
+      _start = _bufferPtr->data();
+      _pos = that._pos;
+      _stack = that._stack;
+      _index = that._index;
+      _keyWritten = that._keyWritten;
+      options = that.options;
     }
-    _buffer.reset(new Buffer<uint8_t>(*that._buffer));
-    _start = _buffer->data();
-    _size = _buffer->size();
-    _pos = that._pos;
-    _stack = that._stack;
-    _index = that._index;
-    _keyWritten = that._keyWritten;
-    options = that.options;
     return *this;
   }
 
   Builder(Builder&& that) {
-    if (that.options == nullptr) {
-      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-    }
     if (!that.isClosed()) {
       throw Exception(Exception::InternalError, "Cannot move an open Builder");
     }
     _buffer = that._buffer;
-    that._buffer.reset(new Buffer<uint8_t>());
-    _start = _buffer->data();
-    _size = _buffer->size();
+    _bufferPtr = _buffer.get();
+    _start = _bufferPtr->data();
     _pos = that._pos;
     _stack.clear();
     _stack.swap(that._stack);
@@ -234,34 +223,28 @@ class Builder {
     _index.swap(that._index);
     _keyWritten = that._keyWritten;
     options = that.options;
-    that._start = that._buffer->data();
-    that._size = 0;
     that._pos = 0;
     that._keyWritten = false;
   }
 
   Builder& operator=(Builder&& that) {
-    if (that.options == nullptr) {
-      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-    }
     if (!that.isClosed()) {
       throw Exception(Exception::InternalError, "Cannot move an open Builder");
     }
-    _buffer = that._buffer;
-    that._buffer.reset(new Buffer<uint8_t>());
-    _start = _buffer->data();
-    _size = _buffer->size();
-    _pos = that._pos;
-    _stack.clear();
-    _stack.swap(that._stack);
-    _index.clear();
-    _index.swap(that._index);
-    _keyWritten = that._keyWritten;
-    options = that.options;
-    that._start = that._buffer->data();
-    that._size = 0;
-    that._pos = 0;
-    that._keyWritten = false;
+    if (this != &that) {
+      _buffer = that._buffer;
+      _bufferPtr = _buffer.get();
+      _start = _bufferPtr->data();
+      _pos = that._pos;
+      _stack.clear();
+      _stack.swap(that._stack);
+      _index.clear();
+      _index.swap(that._index);
+      _keyWritten = that._keyWritten;
+      options = that.options;
+      that._pos = 0;
+      that._keyWritten = false;
+    }
     return *this;
   }
 
@@ -274,11 +257,12 @@ class Builder {
     // After a steal the Builder is broken!
     std::shared_ptr<Buffer<uint8_t>> res = _buffer;
     _buffer.reset();
+    _bufferPtr = nullptr;
     _pos = 0;
     return res;
   }
 
-  uint8_t const* data() const { return _buffer.get()->data(); }
+  uint8_t const* data() const noexcept { return _bufferPtr->data(); }
 
   std::string toString() const;
 
@@ -296,18 +280,20 @@ class Builder {
   }
 
   // Clear and start from scratch:
-  void clear() {
+  void clear() noexcept {
     _pos = 0;
     _stack.clear();
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
+    _bufferPtr->reset();
     _keyWritten = false;
   }
 
   // Return a pointer to the start of the result:
   uint8_t* start() const {
-    if (!isClosed()) {
-      throw Exception(Exception::BuilderNotSealed);
+    if (isClosed()) {
+      return _start;
     }
-    return _start;
+    throw Exception(Exception::BuilderNotSealed);
   }
 
   // Return a Slice of the result:
@@ -347,27 +333,54 @@ class Builder {
   }
 
   // Add a subvalue into an object from a Value:
-  uint8_t* add(std::string const& attrName, Value const& sub);
-  uint8_t* add(char const* attrName, Value const& sub);
-  uint8_t* add(char const* attrName, size_t attrLength, Value const& sub);
+  inline uint8_t* add(std::string const& attrName, Value const& sub) {
+    return addInternal<Value>(attrName, sub);
+  }
 
+  inline uint8_t* add(char const* attrName, Value const& sub) {
+    return addInternal<Value>(attrName, sub);
+  }
+
+  inline uint8_t* add(char const* attrName, size_t attrLength, Value const& sub) {
+    return addInternal<Value>(attrName, attrLength, sub);
+  }
+ 
   // Add a subvalue into an object from a Slice:
-  uint8_t* add(std::string const& attrName, Slice const& sub);
-  uint8_t* add(char const* attrName, Slice const& sub);
-  uint8_t* add(char const* attrName, size_t attrLength, Slice const& sub);
-
+  inline uint8_t* add(std::string const& attrName, Slice const& sub) {
+    return addInternal<Slice>(attrName, sub);
+  }
+  inline uint8_t* add(char const* attrName, Slice const& sub) {
+    return addInternal<Slice>(attrName, sub);
+  }
+  inline uint8_t* add(char const* attrName, size_t attrLength, Slice const& sub) {
+    return addInternal<Slice>(attrName, attrLength, sub);
+  }
+ 
   // Add a subvalue into an object from a ValuePair:
-  uint8_t* add(std::string const& attrName, ValuePair const& sub);
-  uint8_t* add(char const* attrName, ValuePair const& sub);
-  uint8_t* add(char const* attrName, size_t attrLength, ValuePair const& sub);
-
-  // Add all subkeys and subvalues into an object from an ObjectIterator
-  // and leaves open the object intentionally
-  uint8_t* add(ObjectIterator& sub);
-  uint8_t* add(ObjectIterator&& sub);
-
+  inline uint8_t* add(std::string const& attrName, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, sub);
+  }
+  inline uint8_t* add(char const* attrName, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, sub);
+  }
+  inline uint8_t* add(char const* attrName, size_t attrLength, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, attrLength, sub);
+  }
+ 
   // Add a subvalue into an array from a Value:
-  uint8_t* add(Value const& sub);
+  inline uint8_t* add(Value const& sub) {
+    return addInternal<Value>(sub); 
+  }
+  
+  // Add a slice to an array
+  inline uint8_t* add(Slice const& sub) {
+    return addInternal<Slice>(sub); 
+  }
+
+  // Add a subvalue into an array from a ValuePair:
+  inline uint8_t* add(ValuePair const& sub) {
+    return addInternal<ValuePair>(sub);
+  }
 
   // Add an External slice to an array
   uint8_t* addExternal(uint8_t const* sub) {
@@ -387,11 +400,11 @@ class Builder {
     try {
       checkKeyIsString(Slice(sub).isString());
       auto oldPos = _pos;
-      reserveSpace(1 + sizeof(void*));
+      reserve(1 + sizeof(void*));
       // store pointer. this doesn't need to be portable
-      _start[_pos++] = 0x1d;
+      appendByteUnchecked(0x1d);
       memcpy(_start + _pos, &sub, sizeof(void*));
-      _pos += sizeof(void*);
+      advance(sizeof(void*));
       return _start + oldPos;
     } catch (...) {
       // clean up in case of an exception
@@ -401,12 +414,11 @@ class Builder {
       throw;
     }
   }
-
-  // Add a slice to an array
-  uint8_t* add(Slice const& sub);
-
-  // Add a subvalue into an array from a ValuePair:
-  uint8_t* add(ValuePair const& sub);
+  
+  // Add all subkeys and subvalues into an object from an ObjectIterator
+  // and leaves open the object intentionally
+  uint8_t* add(ObjectIterator& sub);
+  uint8_t* add(ObjectIterator&& sub);
 
   // Add all subvalues into an array from an ArrayIterator
   // and leaves open the array intentionally
@@ -480,39 +492,34 @@ class Builder {
   Builder& closeArray(ValueLength tos, std::vector<ValueLength>& index);
 
   void addNull() {
-    reserveSpace(1);
-    _start[_pos++] = 0x18;
+    appendByte(0x18);
   }
 
   void addFalse() {
-    reserveSpace(1);
-    _start[_pos++] = 0x19;
+    appendByte(0x19);
   }
 
   void addTrue() {
-    reserveSpace(1);
-    _start[_pos++] = 0x1a;
+    appendByte(0x1a);
   }
 
   void addDouble(double v) {
     uint64_t dv;
     ValueLength vSize = sizeof(double);
     memcpy(&dv, &v, vSize);
-    reserveSpace(1 + vSize);
-    _start[_pos++] = 0x1b;
+    reserve(1 + vSize);
+    appendByteUnchecked(0x1b);
     for (uint64_t x = dv; vSize > 0; vSize--) {
-      _start[_pos++] = x & 0xff;
+      appendByteUnchecked(x & 0xff);
       x >>= 8;
     }
   }
 
   void addInt(int64_t v) {
     if (v >= 0 && v <= 9) {
-      reserveSpace(1);
-      _start[_pos++] = static_cast<uint8_t>(0x30 + v);
+      appendByte(static_cast<uint8_t>(0x30 + v));
     } else if (v < 0 && v >= -6) {
-      reserveSpace(1);
-      _start[_pos++] = static_cast<uint8_t>(0x40 + v);
+      appendByte(static_cast<uint8_t>(0x40 + v));
     } else {
       appendInt(v, 0x1f);
     }
@@ -520,8 +527,7 @@ class Builder {
 
   void addUInt(uint64_t v) {
     if (v <= 9) {
-      reserveSpace(1);
-      _start[_pos++] = static_cast<uint8_t>(0x30 + v);
+      appendByte(static_cast<uint8_t>(0x30 + v));
     } else {
       appendUInt(v, 0x27);
     }
@@ -529,24 +535,9 @@ class Builder {
 
   void addUTCDate(int64_t v) {
     constexpr uint8_t vSize = sizeof(int64_t);  // is always 8
-    reserveSpace(1 + vSize);
-    _start[_pos++] = 0x1c;
-    appendLength<vSize>(toUInt64(v));
-  }
-
-  uint8_t* addString(uint64_t strLen) {
-    if (strLen > 126) {
-      // long string
-      _start[_pos++] = 0xbf;
-      // write string length
-      appendLength<8>(strLen);
-    } else {
-      // short string
-      _start[_pos++] = static_cast<uint8_t>(0x40 + strLen);
-    }
-    uint8_t* target = _start + _pos;
-    _pos += strLen;
-    return target;
+    reserve(1 + vSize);
+    appendByteUnchecked(0x1c);
+    appendLengthUnchecked<vSize>(toUInt64(v));
   }
 
  public:
@@ -557,21 +548,37 @@ class Builder {
   inline void openObject(bool unindexed = false) {
     openCompoundValue(unindexed ? 0x14 : 0x0b);
   }
+  
+  template <typename T>
+  uint8_t* addUnchecked(char const* attrName, size_t attrLength, T const& sub) {
+    bool haveReported = false;
+    if (!_stack.empty()) {
+      reportAdd();
+      haveReported = true;
+    }
+
+    try {
+      set(ValuePair(attrName, attrLength, ValueType::String));
+      _keyWritten = true;
+      return set(sub);
+    } catch (...) {
+      // clean up in case of an exception
+      if (haveReported) {
+        cleanupAdd();
+      }
+      throw;
+    }
+  }
 
  private:
   inline void checkKeyIsString(bool isString) {
     if (!_stack.empty()) {
       ValueLength const tos = _stack.back();
       if (_start[tos] == 0x0b || _start[tos] == 0x14) {
-        if (!_keyWritten) {
-          if (isString) {
-            _keyWritten = true;
-          } else {
-            throw Exception(Exception::BuilderKeyMustBeString);
-          }
-        } else {
-          _keyWritten = false;
+        if (!_keyWritten && !isString) {
+          throw Exception(Exception::BuilderKeyMustBeString);
         }
+        _keyWritten = !_keyWritten;
       }
     }
   }
@@ -628,9 +635,9 @@ class Builder {
         if (translated != nullptr) {
           Slice item(translated);
           ValueLength const l = item.byteSize();
-          reserveSpace(l);
+          reserve(l);
           memcpy(_start + _pos, translated, checkOverflow(l));
-          _pos += l;
+          advance(l);
           _keyWritten = true;
           return set(sub);
         }
@@ -678,9 +685,9 @@ class Builder {
         if (translated != nullptr) {
           Slice item(translated);
           ValueLength const l = item.byteSize();
-          reserveSpace(l);
+          reserve(l);
           memcpy(_start + _pos, translated, checkOverflow(l));
-          _pos += l;
+          advance(l);
           _keyWritten = true;
           return set(sub);
         }
@@ -698,18 +705,18 @@ class Builder {
       throw;
     }
   }
-
+  
   void addCompoundValue(uint8_t type) {
-    reserveSpace(9);
+    reserve(9);
     // an Array or Object is started:
     _stack.push_back(_pos);
     while (_stack.size() > _index.size()) {
       _index.emplace_back();
     }
     _index[_stack.size() - 1].clear();
-    _start[_pos++] = type;
+    appendByteUnchecked(type);
     memset(_start + _pos, 0, 8);
-    _pos += 8;  // Will be filled later with bytelength and nr subs
+    advance(8);  // Will be filled later with bytelength and nr subs
   }
 
   void openCompoundValue(uint8_t type) {
@@ -743,32 +750,39 @@ class Builder {
 
   uint8_t* set(Slice const& item);
 
-  void cleanupAdd() {
+  void cleanupAdd() noexcept {
     size_t depth = _stack.size() - 1;
+    VELOCYPACK_ASSERT(!_index[depth].empty());
     _index[depth].pop_back();
   }
 
-  void reportAdd() {
+  inline void reportAdd() {
     size_t depth = _stack.size() - 1;
     _index[depth].push_back(_pos - _stack[depth]);
   }
 
   template <uint64_t n>
   void appendLength(ValueLength v) {
-    reserveSpace(n);
+    reserve(n);
+    appendLengthUnchecked<n>(v);
+  }
+  
+  template <uint64_t n>
+  void appendLengthUnchecked(ValueLength v) {
     for (uint64_t i = 0; i < n; ++i) {
-      _start[_pos++] = v & 0xff;
+      appendByteUnchecked(v & 0xff);
       v >>= 8;
     }
   }
 
   void appendUInt(uint64_t v, uint8_t base) {
-    reserveSpace(9);
-    ValueLength save = _pos++;
+    reserve(9);
+    ValueLength save = _pos;
+    advance(1);
     uint8_t vSize = 0;
     do {
       vSize++;
-      _start[_pos++] = static_cast<uint8_t>(v & 0xff);
+      appendByteUnchecked(static_cast<uint8_t>(v & 0xff));
       v >>= 8;
     } while (v != 0);
     _start[save] = base + vSize;
@@ -800,12 +814,43 @@ class Builder {
       x = v >= 0 ? static_cast<uint64_t>(v)
                  : static_cast<uint64_t>(v + shift) + shift;
     }
-    reserveSpace(1 + vSize);
-    _start[_pos++] = base + vSize;
+    reserve(1 + vSize);
+    appendByteUnchecked(base + vSize);
     while (vSize-- > 0) {
-      _start[_pos++] = x & 0xff;
+      appendByteUnchecked(x & 0xff);
       x >>= 8;
     }
+  }
+  
+  inline void appendByte(uint8_t value) {
+    reserve(1);
+    appendByteUnchecked(value);
+  }
+  
+  inline void appendByteUnchecked(uint8_t value) {
+    _start[_pos++] = value;
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
+    _bufferPtr->advance();
+  }
+  
+  inline void resetTo(size_t value) {
+    _pos = value;
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
+    _bufferPtr->resetTo(value);
+  }
+
+  // move byte position x bytes ahead
+  inline void advance(size_t value) noexcept {
+    _pos += value;
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
+    _bufferPtr->advance(value);
+  }
+              
+  // move byte position x bytes back
+  inline void rollback(size_t value) noexcept {
+    _pos -= value;
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
+    _bufferPtr->rollback(value);
   }
 
   void checkAttributeUniqueness(Slice const& obj) const;

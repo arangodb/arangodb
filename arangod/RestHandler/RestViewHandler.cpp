@@ -26,13 +26,14 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Rest/GeneralResponse.h"
 #include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
+
+namespace arangodb {
 
 RestViewHandler::RestViewHandler(GeneralRequest* request,
                                  GeneralResponse* response)
@@ -44,31 +45,19 @@ RestStatus RestViewHandler::execute() {
 
   if (type == rest::RequestType::POST) {
     createView();
-    return RestStatus::DONE;
-  }
-
-  if (type == rest::RequestType::PUT) {
+  } else if (type == rest::RequestType::PUT) {
     modifyView(false);
-    return RestStatus::DONE;
-  }
-
-  if (type == rest::RequestType::PATCH) {
+  } else if (type == rest::RequestType::PATCH) {
     modifyView(true);
-    return RestStatus::DONE;
-  }
-
-  if (type == rest::RequestType::DELETE_REQ) {
+  } else if (type == rest::RequestType::DELETE_REQ) {
     deleteView();
-    return RestStatus::DONE;
-  }
-
-  if (type == rest::RequestType::GET) {
+  } else if (type == rest::RequestType::GET) {
     getViews();
-    return RestStatus::DONE;
+  } else {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -90,13 +79,12 @@ void RestViewHandler::createView() {
     return;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   auto badParamError = [&]() -> void {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
@@ -108,24 +96,33 @@ void RestViewHandler::createView() {
     badParamError();
     return;
   }
-  VPackSlice const nameSlice = body.get("name");
-  VPackSlice const typeSlice = body.get("type");
+
+  auto nameSlice = body.get(StaticStrings::DataSourceName);
+  auto typeSlice = body.get(StaticStrings::DataSourceType);
   VPackSlice const propertiesSlice = body.get("properties");
+
   if (!nameSlice.isString() || !typeSlice.isString() ||
       !propertiesSlice.isObject()) {
     badParamError();
     return;
   }
 
-  TRI_voc_cid_t id = 0;
-  std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
-  if (view != nullptr) {
-    VPackBuilder props;
-    props.openObject();
-    view->toVelocyPack(props);
-    props.close();
-    generateResult(rest::ResponseCode::CREATED, props.slice());
-  } else {
+  try {
+    auto view = _vocbase.createView(body);
+
+    if (view != nullptr) {
+      VPackBuilder props;
+      props.openObject();
+      view->toVelocyPack(props, true, false);
+      props.close();
+      generateResult(rest::ResponseCode::CREATED, props.slice());
+    } else {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "problem creating view");
+    }
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
+  } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem creating view");
   }
@@ -143,50 +140,60 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if ((suffixes.size() != 2) || (suffixes[1] != "properties")) {
+  if ((suffixes.size() != 2) || (suffixes[1] != "properties" && suffixes[1] != "rename")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting [PUT, PATCH] /_api/view/<view-name>/properties");
+                  "expecting [PUT, PATCH] /_api/view/<view-name>/properties or PUT /_api/view/<view-name>/rename");
     return;
   }
 
   std::string const& name = suffixes[0];
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
+
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 
   try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parseSuccess);
-
+    bool parseSuccess = false;
+    VPackSlice const body = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
       return;
     }
-    VPackSlice body = parsedBody.get()->slice();
 
-    auto result = view->updateProperties(body, partialUpdate,
-                                         true);  // TODO: not force sync?
+    // handle rename functionality
+    if (suffixes[1] == "rename") {
+      VPackSlice newName = body.get("name");
+      if (!newName.isString()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "expecting \"name\" parameter to be a string");
+        return;
+      }
+
+      int res = _vocbase.renameView(view, newName.copyString());
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        getSingleView(newName.copyString());
+      } else {
+        generateError(GeneralResponse::responseCode(res), res);
+      }
+      return;
+    }
+
+    auto const result = view->updateProperties(
+      body, partialUpdate, true
+    );  // TODO: not force sync?
+
     if (result.ok()) {
       VPackBuilder updated;
       updated.openObject();
-      view->getImplementation()->getPropertiesVPack(updated);
+      view->toVelocyPack(updated, false, false);
       updated.close();
       generateResult(rest::ResponseCode::OK, updated.slice());
       return;
     } else {
-      rest::ResponseCode httpCode;
-      switch (result.errorNumber()) {
-        case TRI_ERROR_BAD_PARAMETER:
-          httpCode = rest::ResponseCode::BAD;
-          break;
-        default:
-          httpCode = rest::ResponseCode::SERVER_ERROR;
-          break;
-      }
-      generateError(httpCode, result.errorNumber(), result.errorMessage());
+      generateError(GeneralResponse::responseCode(result.errorNumber()), result.errorNumber(), result.errorMessage());
       return;
     }
   } catch (...) {
@@ -205,18 +212,30 @@ void RestViewHandler::deleteView() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting DELETE /_api/view/<view-name>");
+
     return;
   }
 
   std::string const& name = suffixes[0];
+  auto allowDropSystem = _request->parsedValue("isSystem", false);
+  auto view = _vocbase.lookupView(name);
 
-  int res = _vocbase->dropView(name);
+  if (!view) {
+    generateError(
+      rest::ResponseCode::NOT_FOUND,
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+    );
+
+    return;
+  }
+
+  auto res = _vocbase.dropView(view->id(), allowDropSystem).errorNumber();
 
   if (res == TRI_ERROR_NO_ERROR) {
-    resetResponse(rest::ResponseCode::NO_CONTENT);
-  } else if (res == TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
+    generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
+  } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   } else {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem dropping view");
@@ -252,7 +271,8 @@ void RestViewHandler::getViews() {
 }
 
 void RestViewHandler::getListOfViews() {
-  std::vector<std::shared_ptr<LogicalView>> views = _vocbase->views();
+  auto views = _vocbase.views();
+
   std::sort(views.begin(), views.end(),
             [](std::shared_ptr<LogicalView> const& lhs,
                std::shared_ptr<LogicalView> const& rhs) -> bool {
@@ -265,7 +285,7 @@ void RestViewHandler::getListOfViews() {
   for (std::shared_ptr<LogicalView> view : views) {
     if (view.get() != nullptr) {
       props.openObject();
-      view->toVelocyPack(props);
+      view->toVelocyPack(props, true, false);
       props.close();
     }
   }
@@ -274,31 +294,33 @@ void RestViewHandler::getListOfViews() {
 }
 
 void RestViewHandler::getSingleView(std::string const& name) {
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
 
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->toVelocyPack(props);
+    view->toVelocyPack(props, true, false);
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 }
 
 void RestViewHandler::getViewProperties(std::string const& name) {
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
 
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->getImplementation()->getPropertiesVPack(props);
+    view->toVelocyPack(props, true, false);
     props.close();
-    generateResult(rest::ResponseCode::OK, props.slice());
+    generateResult(rest::ResponseCode::OK, props.slice().get("properties"));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 }
+
+} // arangodb

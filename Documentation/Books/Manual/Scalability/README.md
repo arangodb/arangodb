@@ -19,10 +19,13 @@ costs grow faster than linear with the size of the server, and
 none of the resilience and dynamical capabilities can be achieved 
 in this way.
 
-In this chapter we explain the distributed architecture of ArangoDB and
-discuss its scalability features and limitations:
+Options
+-------
 
-  - [ArangoDB's distributed architecture](Architecture.md)
-  - [Different data models and scalability](DataModels.md)
-  - [Limitations](Limitations.md)
+Several options are available to scale ArangoDB, each of them has its own pros and
+cons:
 
+- [Master/Slave](MasterSlave/README.md)
+- [Active Failover](ActiveFailover/README.md)
+- [Cluster](Cluster/README.md)
+- [Multiple Datacenters](DC2DC/README.md)

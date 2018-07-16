@@ -92,20 +92,16 @@ const executeJS = (code) => {
     httpOptions);
 };
 
-const switchUser = (user) => {
-  arango.reconnect(arango.getEndpoint(), '_system', user, '');
-};
 helper.removeAllUsers();
+helper.generateAllUsers();
 
 describe('User Rights Management', () => {
-  before(helper.generateAllUsers);
-  after(helper.removeAllUsers);
-
   it('should test rights for', () => {
+    expect(userSet.size).to.be.greaterThan(0); 
     for (let name of userSet) {
       let canUse = false;
       try {
-        switchUser(name);
+        helper.switchUser(name);
         canUse = true;
       } catch (e) {
         canUse = false;
@@ -115,7 +111,7 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           before(() => {
             // What are defaults if unchanged?
-            switchUser(name);
+            helper.switchUser(name);
             expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
           });
 
@@ -125,16 +121,16 @@ describe('User Rights Management', () => {
 
           describe('administrate on server level', () => {
             const rootTestUser = (switchBack = true) => {
-              switchUser('root');
+              helper.switchUser('root');
               try {
                 const u = users.document(testUser);
                 if (switchBack) {
-                  switchUser(name);
+                  helper.switchUser(name);
                 }
                 return u !== undefined;
               } catch (e) {
                 if (switchBack) {
-                  switchUser(name);
+                  helper.switchUser(name);
                 }
                 return false;
               }
@@ -144,7 +140,7 @@ describe('User Rights Management', () => {
               if (rootTestUser(false)) {
                 users.remove(testUser);
               }
-              switchUser(name);
+              helper.switchUser(name);
             };
 
             before(() => {

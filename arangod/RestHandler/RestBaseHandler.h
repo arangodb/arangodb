@@ -58,21 +58,14 @@ class RestBaseHandler : public rest::RestHandler {
   template <typename Payload>
   void generateResult(rest::ResponseCode, Payload&&,
                       std::shared_ptr<transaction::Context> context);
-  
+
   /// convenience function akin to generateError,
   /// renders payload in 'result' field
+  /// adds proper `error`, `code` fields
   void generateOk(rest::ResponseCode, velocypack::Slice const&);
-  
+
+  /// Add `error` and `code` fields into your response
   void generateOk(rest::ResponseCode, velocypack::Builder const&);
-
-  // generates an error
-  void generateError(rest::ResponseCode, int);
-
-  // generates an error
-  void generateError(rest::ResponseCode, int, std::string const&);
-  
-  // generates an error
-  void generateError(arangodb::Result const&);
 
   // generates a canceled message
   void generateCanceled();
@@ -80,6 +73,9 @@ class RestBaseHandler : public rest::RestHandler {
  protected:
   /// @brief parses the body as VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody(bool& success);
+
+  /// @brief parses the body as VelocyPack
+  arangodb::velocypack::Slice parseVPackBody(bool& success);
 
   template <typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);

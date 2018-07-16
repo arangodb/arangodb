@@ -17,6 +17,10 @@ PARALLEL=8
 SED=sed
 IS_MAC=0
 
+NOTIFY='if test -x /usr/games/oneko; then /usr/games/oneko& fi'
+trap "$NOTIFY"
+
+
 if test "$(uname)" == "Darwin"; then
     SED=gsed
     OSNAME=darwin
@@ -64,12 +68,12 @@ while [ "$#" -gt 0 ];  do
             PARALLEL=$1
             shift
             ;;
-        
+
         --force-tag)
             shift
             FORCE_TAG=1
             ;;
-        
+
         --no-lint)
             LINT=0
             shift
@@ -105,7 +109,7 @@ while [ "$#" -gt 0 ];  do
             DOWNLOAD_SYNCER_USER=$1
             shift
             ;;
-            
+
         --no-book)
             BOOK=0
             shift
@@ -139,7 +143,7 @@ if test "${FORCE_TAG}" == 0; then
 fi
 
 if fgrep -q "v$VERSION" CHANGELOG;  then
-    echo "version $VERSION defined in CHANGELOG" 
+    echo "version $VERSION defined in CHANGELOG"
 else
     echo "$0: version $VERSION not defined in CHANGELOG"
     exit 1
@@ -158,7 +162,7 @@ while test -z "${OAUTH_REPLY}"; do
              --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release-tag-${SEQNO}-${OSNAME}\"}"
                )
     if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
-        # retry with another number... 
+        # retry with another number...
         OAUTH_REPLY=""
         SEQNO=$((SEQNO + 1))
         count=$((count + 1))
@@ -178,7 +182,7 @@ OAUTH_ID=$(echo "$OAUTH_REPLY" | \
         )
 
 # shellcheck disable=SC2064
-trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
+trap "$NOTIFY; curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
 
 
 GET_SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}")
@@ -193,7 +197,7 @@ if test -z "${SYNCER_REV}"; then
     exit 1
 fi
 
-sed -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
+${SED} -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
 
 GITSHA=$(git log -n1 --pretty='%h')
 if git describe --exact-match --tags "${GITSHA}"; then
@@ -264,7 +268,7 @@ STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/rele
                          grep tag_name | \
                          head -n 1 | \
                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;')
-sed -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
+${SED} -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
 
 git add -f \
     README \
@@ -298,6 +302,15 @@ echo "GRUNT"
 
 git add -f Documentation/Examples/*.generated
 
+echo "MAN"
+(
+    cd build
+    make man
+)
+git add -f Documentation/man
+
+
+
 if [ "$BOOK" == "1" ];  then
     echo "DOCUMENTATION"
     (cd Documentation/Books; make)
@@ -324,7 +337,7 @@ if [ "$TAG" == "1" ];  then
     else
         git tag -f "v$VERSION"
         git push --tags -f
-    fi        
+    fi
 
     cd "${ENTERPRISE_SRC_DIR}"
     git commit --allow-empty -m "release version $VERSION enterprise" -a
@@ -337,7 +350,7 @@ if [ "$TAG" == "1" ];  then
         git tag -f "v$VERSION"
         git push --tags -f
     fi
-    
+
     echo
     echo "--------------------------------------------------"
     echo "Remember to update the VERSION in 'devel' as well."

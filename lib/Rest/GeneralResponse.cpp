@@ -349,7 +349,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION:
     case TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF:
     case TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED:
-    case TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION:
     case TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING:
     case TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT:
     case TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS:
@@ -366,8 +365,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
       return ResponseCode::FORBIDDEN;
 
     case TRI_ERROR_ARANGO_DATABASE_NOT_FOUND:
-    case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
-    case TRI_ERROR_ARANGO_VIEW_NOT_FOUND:
+    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
     case TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED:
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
     case TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND:
@@ -384,9 +382,9 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION:
     case TRI_ERROR_QUEUE_UNKNOWN:
       return ResponseCode::NOT_FOUND;
-    
+
     case TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION:
-    case TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION: 
+    case TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION:
       return ResponseCode::NOT_ACCEPTABLE;
 
     case TRI_ERROR_REQUEST_CANCELED:
@@ -412,16 +410,19 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_DEBUG:
     case TRI_ERROR_OUT_OF_MEMORY:
     case TRI_ERROR_INTERNAL:
+    case TRI_ERROR_TRANSACTION_INTERNAL:
       return ResponseCode::SERVER_ERROR;
 
     case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
     case TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED:
     case TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING:
     case TRI_ERROR_CLUSTER_NOT_LEADER:
+    case TRI_ERROR_SHUTTING_DOWN:
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED:
     case TRI_ERROR_NOT_IMPLEMENTED:
+    case TRI_ERROR_ONLY_ENTERPRISE:
       return ResponseCode::NOT_IMPLEMENTED;
 
     default:
@@ -431,9 +432,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
-      _headers(),
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::C_NONE),
-      _options(velocypack::Options::Defaults),
       _generateBody(false),
       _contentTypeRequested(ContentType::UNSET) {}
