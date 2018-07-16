@@ -37,8 +37,6 @@ const errors = arangodb.errors;
 const users = require('@arangodb/users');
 const _ = require('lodash');
 
-const GRAPH_PREFIX = '/api/gharial';
-
 let fixWeight = function (options) {
   if (!options.hasOwnProperty('weightAttribute') && options.hasOwnProperty('weight')) {
     options.weightAttribute = options.weight;
@@ -83,17 +81,9 @@ var findOrCreateCollectionByName = function (name, type, noCreate, options) {
   let res = false;
   if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
-      if (options) {
-        col = db._create(name, options);
-      } else {
-        col = db._create(name);
-      }
+      col = db._create(name, options);
     } else {
-      if (options) {
-        col = db._createEdgeCollection(name, options);
-      } else {
-        col = db._createEdgeCollection(name);
-      }
+      col = db._createEdgeCollection(name, options);
     }
     res = true;
   } else if (!(col instanceof ArangoCollection)) {
@@ -323,8 +313,8 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // //////////////////////////////////////////////////////////////////////////////
 
 var sortEdgeDefinition = function (edgeDefinition) {
-  edgeDefinition.from = edgeDefinition.from.sort();
-  edgeDefinition.to = edgeDefinition.to.sort();
+  edgeDefinition.from.sort();
+  edgeDefinition.to.sort();
   return edgeDefinition;
 };
 
@@ -1854,11 +1844,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     throw err;
   }
 
-  edgeDefinitions.forEach(
-    (eD, index) => {
-      edgeDefinitions[index] = _.clone(eD);
-    }
-  );
+  edgeDefinitions = _.cloneDeep(edgeDefinitions);
 
   // check, if a collection is already used in a different edgeDefinition
   let tmpCollections = [];
@@ -1924,9 +1910,8 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   );
 
   edgeDefinitions.forEach(
-    (eD, index) => {
-      var tmp = sortEdgeDefinition(eD);
-      edgeDefinitions[index] = tmp;
+    (eD) => {
+      sortEdgeDefinition(eD);
     }
   );
   orphanCollections = orphanCollections.sort();
@@ -1936,7 +1921,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     'edgeDefinitions': edgeDefinitions,
     '_key': graphName,
     'numberOfShards': options.numberOfShards || 1,
-    'replicationFactor': options.replicationFactor || 1
+    'replicationFactor': options.replicationFactor || 1,
   }, options);
   data.orphanCollections = orphanCollections;
   data.edgeDefinitions = edgeDefinitions;
