@@ -1,7 +1,14 @@
+v3.3.13 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #5827: Batch request handling incompatible with .NET's default 
+  ContentType format
+
+
 v3.3.12 (2018-07-12)
 --------------------
 
-* PR5854: rocksdb engine would frequently request a new DelayToken.  This caused
+* issue #5854: RocksDB engine would frequently request a new DelayToken.  This caused
   excessive write delay on the next Put() call.  Alternate approach taken.
 
 * fixed graph creation under some circumstances failing with 'edge collection
