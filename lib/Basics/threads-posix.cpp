@@ -103,8 +103,8 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   TRI_ASSERT(d != nullptr);
 
-  pthread_attr_t 	stackSizeAttribute;
-  size_t			stackSize = 0;
+  pthread_attr_t stackSizeAttribute;
+  size_t stackSize = 0;
 
   auto err = pthread_attr_init (&stackSizeAttribute);
   if (err) {
