@@ -621,12 +621,17 @@ function GeneralGraphCreationSuite() {
 
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
       g1._deleteEdgeDefinition(ec1);
-      g1 = graph._graph(gN1);
+      assertEqual([dr2, dr3], g1.__edgeDefinitions);
+      assertEqual([vc1, vc2], g1._orphanCollections());
+      g1 = graph._graph(gN1); // reload
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([vc1, vc2], g1._orphanCollections());
       assertTrue(db._collection(ec1) !== null);
 
       g1._deleteEdgeDefinition(ec2);
+      assertEqual([dr3], g1.__edgeDefinitions);
+      assertEqual([vc1, vc2, vc3].sort(), g1._orphanCollections().sort());
+      g1 = graph._graph(gN1); // reload
       assertEqual([dr3], g1.__edgeDefinitions);
       assertEqual([vc1, vc2, vc3].sort(), g1._orphanCollections().sort());
       assertTrue(db._collection(ec2) !== null);
@@ -643,9 +648,15 @@ function GeneralGraphCreationSuite() {
       g1._deleteEdgeDefinition(ec1, true);
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([vc1, vc2], g1._orphanCollections());
+      g1 = graph._graph(gN1); // reload
+      assertEqual([dr2, dr3], g1.__edgeDefinitions);
+      assertEqual([vc1, vc2], g1._orphanCollections());
       assertTrue(db._collection(ec1) === null);
 
       g1._deleteEdgeDefinition(ec2, true);
+      assertEqual([dr3], g1.__edgeDefinitions);
+      assertEqual([vc1, vc2, vc3].sort(), g1._orphanCollections().sort());
+      g1 = graph._graph(gN1); // reload
       assertEqual([dr3], g1.__edgeDefinitions);
       assertEqual([vc1, vc2, vc3].sort(), g1._orphanCollections().sort());
       assertTrue(db._collection(ec2) === null);
@@ -723,14 +734,20 @@ function GeneralGraphCreationSuite() {
         g1 = graph._create(gN1, [dr1]);
       graph._create(gN2, [dr2]);
 
+      const loadG1 = () => graph._graph(gN1);
+
       assertEqual([dr1], g1.__edgeDefinitions);
       g1._addVertexCollection(vc3);
       assertEqual([vc3], g1._orphanCollections());
+      assertEqual([vc3], loadG1()._orphanCollections());
       g1._extendEdgeDefinitions(dr3);
       assertEqual([dr1, dr3], g1.__edgeDefinitions);
+      assertEqual([dr1, dr3], loadG1().__edgeDefinitions);
       assertEqual([], g1._orphanCollections());
+      assertEqual([], loadG1()._orphanCollections());
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr3, dr2], g1.__edgeDefinitions);
+      assertEqual([dr1, dr3, dr2], loadG1().__edgeDefinitions);
     },
 
     test_extendEdgeDefinitionFromExistingGraph4: function() {
@@ -747,11 +764,17 @@ function GeneralGraphCreationSuite() {
         dr2 = graph._relation(ec2, [vc4, vc3, vc1, vc2], [vc4, vc3, vc1, vc2]),
         g1 = graph._create(gN1, [dr1]);
 
+      const loadG1 = () => graph._graph(gN1);
+
       g1._extendEdgeDefinitions(dr2);
       dr1 = sortEdgeDefinition(dr1);
       dr2 = sortEdgeDefinition(dr2);
-      assertEqual([dr1, dr2], g1.__edgeDefinitions); // TODO FIX ME <-- first param is not sorted!!!
-      var edgeDefinition = _.find(g1.__edgeDefinitions, {collection: ec2});
+      assertEqual([dr1, dr2], g1.__edgeDefinitions);
+      assertEqual([dr1, dr2], loadG1().__edgeDefinitions);
+      let edgeDefinition = _.find(g1.__edgeDefinitions, {collection: ec2});
+      assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
+      assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
+      edgeDefinition = _.find(loadG1().__edgeDefinitions, {collection: ec2});
       assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
       assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
     },
