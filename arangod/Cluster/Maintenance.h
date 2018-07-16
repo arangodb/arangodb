@@ -141,8 +141,6 @@ arangodb::Result phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, VPackBuilder& report);
 
-}}
-
 
 /**
  * @brief          Report local changes to current
@@ -157,11 +155,9 @@ arangodb::Result phaseTwo (
  */
 arangodb::Result reportInCurrent(
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId, VPackBuilder& report) {
-  arangodb::Result result;
-  return result;
-}
+  std::string const& serverId, VPackBuilder& report); 
 
+}}
 
 #endif
 

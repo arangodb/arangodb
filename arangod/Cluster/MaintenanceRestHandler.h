@@ -43,11 +43,10 @@ class MaintenanceRestHandler : public RestBaseHandler {
  public:
   char const* name() const override { return "MaintenanceRestHandler"; }
 
-  bool isDirect() const override;
+  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
 
   /// @brief Performs routing of request to appropriate subroutines
   RestStatus execute() override;
-
 
   //
   // Accessors

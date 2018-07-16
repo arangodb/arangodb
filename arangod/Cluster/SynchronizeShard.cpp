@@ -30,7 +30,6 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
@@ -57,6 +56,7 @@
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
+using namespace arangodb::transaction;
 using namespace arangodb;
 
 constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
@@ -149,19 +149,12 @@ arangodb::Result getReadLockId (
 
 arangodb::Result count(
   std::shared_ptr<arangodb::LogicalCollection> const col, uint64_t& c) {
-
+  
   std::string collectionName(col->name());
   auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
   SingleCollectionTransaction trx(
     ctx, collectionName, AccessMode::Type::READ);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders->find(collectionName) !=
-        CollectionLockState::_noLockHeaders->end()) {
-      trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-    }
-  }
-  
   Result res = trx.begin();
   if (!res.ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)

@@ -41,8 +41,6 @@ MaintenanceRestHandler::MaintenanceRestHandler(GeneralRequest* request,
 
 }
 
-bool MaintenanceRestHandler::isDirect() const { return true; }
-
 RestStatus MaintenanceRestHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

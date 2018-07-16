@@ -51,7 +51,7 @@ static std::string const planCollections("/arango/Plan/Collections");
 static std::string const PRIMARY("primary");
 static std::string const ERROR_MESSAGE("errorMessage");
 static std::string const ERROR_NUM("errorNum");
-
+static std::string const SERVERS("servers");
 
 std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
   auto builder = std::make_shared<VPackBuilder>();
@@ -354,7 +354,7 @@ arangodb::Result arangodb::maintenance::handleChange(
     report.add(VPackValue("Plan"));
     { VPackObjectBuilder p(&report);
       report.add("Version", plan.get("Version"));}
-    result = phaseTwo(plan, current, local, report);
+    result = phaseTwo(plan, current, local, serverId, report);
     if (result.ok()) {
       report.add(VPackValue("Current"));
       { VPackObjectBuilder p(&report);
@@ -393,7 +393,7 @@ VPackBuilder assembleLocalCollectioInfo(
 
   VPackBuilder ret;
   VPackObjectBuilder r(&ret);
-  auto const& name = info.getKey("name").copyString();
+  auto const& name = info.get("name").copyString();
   
   if (error.hasKey(COLLECTION)) {
     auto const& collection = error.get(COLLECTION);
@@ -409,7 +409,6 @@ VPackBuilder assembleLocalCollectioInfo(
     return ret;
   }
 
-  
 }
 
 // udateCurrentForCollections
@@ -421,7 +420,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
   arangodb::Result result;
 
   auto const& plannedCollections = plan.get("Collections");
-  auto const& currentCollections = current.get("Collections");
+  auto const& currentCollections = cur.get("Collections");
   
   for (auto const& database : VPackObjectIterator(local)) {
     
@@ -435,6 +434,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 arangodb::Result arangodb::maintenance::phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, VPackBuilder& report) {
+
 
   report.add(VPackValue("phaseTwo"));
   VPackObjectBuilder por(&report);
