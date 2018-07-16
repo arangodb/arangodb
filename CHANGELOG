@@ -9,8 +9,73 @@ devel
 * replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
   new optimizer rule.
 
-  - The NEAR function now does not default to a limit of 100 documents any more.
-  - "fulltext-index-optimizer" optimizer rule has been removed.
+* renamed MMFiles engine compactor thread from "Compactor" to "MMFilesCompactor".
+  
+  This change will be visible only on systems which allow assigning names to
+  threads.
+
+* added AQL functions `TO_BASE64`, `TO_HEX`, `ENCODE_URI_COMPONENT` and `SOUNDEX`
+
+* PR5857: rocksdb engine would frequently request a new DelayToken.  This caused
+  excessive write delay on the next Put() call.  Alternate approach taken.
+
+* changed the thread handling in the scheduler. `--server.threads` will be
+  the maximum number of threads for the scheduler.
+
+  The hidden option `--server.maximal-threads` is now obsolete.
+
+  The hidden options `--server.queue-size`, `--server.prioN-size` (N = 1 or 2)
+  control the size of the internal queues. The defaults are sensible, do not
+  change these settings.
+
+* use sparse indexes in more cases now, when it is clear that the index attribute
+  value cannot be null
+
+* introduce SingleRemoteOperationNode via "optimize-cluster-single-document-operations"
+  optimizer rule, which triggers single document operations directly from the coordinator 
+  instead of using a full-featured AQL setup. This saves cluster roundtrips.
+
+  Queries directly referencing the document key benefit from this:
+
+	    UPDATE {_key: '1'} WITH {foo: 'bar'} IN collection RETURN OLD
+
+* Added load balancer support and user-restriction to cursor API.
+
+  If a cursor is accessed on a different coordinator than where it was created,
+  the requests will be forwarded to the correct coordinator. If a cursor is
+  accessed by a different user than the one who created it, the request will
+  be denied.
+
+* if authentication is turned on requests to databases by users with insufficient rights
+ will be answered with the HTTP forbidden (401) response.
+
+* upgraded bundled RocksDB library version to 5.14
+
+* added key generators `uuid` and `padded`
+
+  The `uuid` key generator generates universally unique 128 bit keys, which are
+  stored in hexadecimal human-readable format.
+  The `padded` key generator generates keys of a fixed length (16 bytes) in
+  ascending lexicographical sort order.
+
+* The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
+  field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
+  the inverted meaning.
+
+* added `COUNT_DISTINCT` AQL function
+
+* make AQL optimizer rule `collect-in-cluster` optimize aggregation functions
+  `AVERAGE`, `VARIANCE`, `STDDEV`, `UNIQUE`, `SORTED_UNIQUE` and `COUNT_DISTINCT`
+  in a cluster by pushing parts of the aggregation onto the DB servers and only
+  doing the total aggregation on the coordinator
+
+* replace JavaScript functions FULLTEXT, NEAR, WITHIN and WITHIN_RECTANGLE with
+  regular AQL subqueries via a new optimizer rule "replace-function-with-index".
+
+* the existing "fulltext-index-optimizer" optimizer rule has been removed because its
+  duty is now handled by the "replace-function-with-index" rule.
+
+* The `NEAR` AQL function now does not default to a limit of 100 documents any more.
 
 * added option "--latency true" option to arangoimport. Lists microsecond latency
   statistics on 10 second intervals.
@@ -293,6 +358,11 @@ devel
 * Foxx manifest.json files can now contain a $schema key with the value
   of "http://json.schemastore.org/foxx-manifest" to improve tooling support.
 
+* fixed agency restart from compaction without data
+
+* fixed agency's log compaction for internal issue #2249 
+
+* only load Plan and Current from agency when actually needed
 
 v3.3.8 (XXXX-XX-XX)
 -------------------
@@ -384,7 +454,6 @@ v3.3.7 (2018-04-11)
   fully prepare before adding 10 second grace period after leadership change
 
 * fixed internal issue #2215's FailedLeader timeout bug
-
 
 v3.3.5 (2018-03-28)
 -------------------
@@ -634,7 +703,7 @@ v3.3.0 (2012-12-14)
 v3.3.rc8 (2017-12-12)
 ---------------------
 
-* UI: fixed broken foxx configuration keys. Some valid configuration values
+* UI: fixed broken Foxx configuration keys. Some valid configuration values
   could not be edited via the ui.
 
 * UI: pressing the return key inside a select2 box no longer triggers the modal's
@@ -2533,10 +2602,10 @@ v3.1.alpha2 (2016-09-01)
 
 * added experimental support for incoming gzip-compressed requests
 
-* added HTTP REST APIs for online loglevel adjustments:
+* added HTTP REST APIs for online log level adjustments:
 
-  - GET `/_admin/log/level` returns the current loglevel settings
-  - PUT `/_admin/log/level` modifies the current loglevel settings
+  - GET `/_admin/log/level` returns the current log level settings
+  - PUT `/_admin/log/level` modifies the current log level settings
 
 * PATCH /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
   - changed default value for keepNull to true
@@ -2770,7 +2839,7 @@ v3.0.4 (2016-08-01)
 
 * added missing lock for periodic jobs access
 
-* fix multiple foxx related cluster issues
+* fix multiple Foxx related cluster issues
 
 * fix handling of empty AQL query strings
 
@@ -5841,7 +5910,7 @@ v2.5.0-beta2 (2015-02-23)
   * Rewrite of Foxx routing
 
     The routing of Foxx has been exposed to major internal changes we adjusted because of user feedback.
-    This allows us to set the development mode per mountpoint without having to change paths and hold
+    This allows us to set the development mode per mount point without having to change paths and hold
     apps at separate locations.
 
   * Foxx Development mode
@@ -5861,8 +5930,8 @@ v2.5.0-beta2 (2015-02-23)
   * Foxx install process
 
     Installing Foxx apps has been a two step process: import them into ArangoDB and mount them at a
-    specific mountpoint. These operations have been joined together. You can install an app at one
-    mountpoint, that's it. No fetch, mount, unmount, purge cycle anymore. The commands have been
+    specific mount point. These operations have been joined together. You can install an app at one
+    mount point, that's it. No fetch, mount, unmount, purge cycle anymore. The commands have been
     simplified to just:
 
     * install: get your Foxx app up and running
@@ -10113,7 +10182,7 @@ v1.1.2 (2013-01-20)
 
 * started with issue #317: Feature Request (from Google Groups): DATE handling
 
-* backported issue #300: Extend arangoImp to Allow importing resultset-like
+* backported issue #300: Extend arangoImp to Allow importing result set-like
   (list of documents) formatted files
 
 * fixed issue #337: "WaitForSync" on new collection does not work on Win/X64

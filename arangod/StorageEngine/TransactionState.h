@@ -191,6 +191,30 @@ class TransactionState {
     return (_type == AccessMode::Type::READ);
   }
 
+  /**
+   * @brief Check if this shard is locked, used to send nolockheader
+   *
+   * @param shard The name of the shard
+   *
+   * @return True if locked by this transaction.
+   */
+  bool isLockedShard(std::string const& shard) const;
+
+  /**
+   * @brief Set that this shard is locked by this transaction
+   *        Used to define nolockheaders
+   *
+   * @param shard the shard name
+   */
+  void setLockedShard(std::string const& shard);
+
+  /**
+   * @brief Overwrite the entire list of locked shards.
+   *
+   * @param lockedShards The list of locked shards.
+   */
+  void setLockedShards(std::unordered_set<std::string> const& lockedShards);
+
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid,
@@ -236,6 +260,9 @@ class TransactionState {
  private:
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
+
+  /// the list of locked shards (cluster only)
+  std::unordered_set<std::string> _lockedShards;
 };
 
 }

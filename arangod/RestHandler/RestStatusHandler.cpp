@@ -52,8 +52,6 @@ RestStatusHandler::RestStatusHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestStatusHandler::isDirect() const { return true; }
-
 RestStatus RestStatusHandler::execute() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -71,7 +69,7 @@ RestStatus RestStatusHandler::execute() {
   if (application_features::ApplicationServer::server != nullptr) {
     auto server = application_features::ApplicationServer::server
                       ->getFeature<ServerFeature>("Server");
-    result.add("mode", VPackValue(server->operationModeString()));
+    result.add("operationMode", VPackValue(server->operationModeString()));
   }
 
   std::string host = ServerState::instance()->getHost();
@@ -92,9 +90,8 @@ RestStatus RestStatusHandler::execute() {
     result.add("serverInfo", VPackValue(VPackValueType::Object));
 
     result.add("maintenance", VPackValue(serverState->isMaintenance()));
-    result.add("role",
-               VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add("writeOpsEnabled", VPackValue(serverState->writeOpsEnabled()));
+    result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+    result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!serverState->isSingleServer()) {
       result.add("persistedId", VPackValue(serverState->getPersistedId()));

@@ -61,6 +61,7 @@ aql::QueryResultV8 AqlQuery(
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();
+  // If we execute an AQL query from V8 we need to unset the nolock headers
   arangodb::aql::Query query(
     true,
     col->vocbase(),
@@ -69,8 +70,18 @@ aql::QueryResultV8 AqlQuery(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryResult = query.executeV8(
-      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+
+  aql::QueryResultV8 queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.executeV8(isolate,
+        static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -224,7 +235,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
   }
 
-  OperationResult countResult = trx.count(collectionName, true);
+  OperationResult countResult = trx.count(collectionName, false);
 
   if (countResult.fail()) {
     TRI_V8_THROW_EXCEPTION(countResult.result);

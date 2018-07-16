@@ -52,11 +52,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
-  startsAfter("Logger");
-  startsAfter("Database");
-  startsAfter("Endpoint");
-  startsAfter("Cluster");
-  startsAfter("Server");
+  startsAfter("V8Phase");
 }
 
 PregelFeature::~PregelFeature() {
@@ -81,23 +77,8 @@ void PregelFeature::start() {
     return;
   }
 
-  // const size_t threadNum = PregelFeature::availableParallelism();
-  // LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel uses " << threadNum << "
-  // threads";
-  //_threadPool.reset(new ThreadPool(threadNum, "Pregel"));
-
   if (ServerState::instance()->isCoordinator()) {
     _recoveryManager.reset(new RecoveryManager());
-    //    ClusterFeature* cluster =
-    //    application_features::ApplicationServer::getFeature<ClusterFeature>(
-    //                                                                        "Cluster");
-    //    if (cluster != nullptr) {
-    //      AgencyCallbackRegistry* registry =
-    //      cluster->agencyCallbackRegistry();
-    //      if (registry != nullptr) {
-    //        _recoveryManager.reset(new RecoveryManager(registry));
-    //      }
-    //    }
   }
 }
 
@@ -258,6 +239,6 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    w->aqlResult(&outBuilder);
+    w->aqlResult(outBuilder);
   }
 }

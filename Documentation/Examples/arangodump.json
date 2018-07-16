@@ -108,6 +108,13 @@
     "section" : "log",
     "type" : "boolean"
   },
+  "log.escape" : {
+    "default" : true,
+    "description" : "escape characters when logging",
+    "hidden" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
   "log.file" : {
     "default" : "-",
     "description" : "shortcut for '--log.output file://<filename>'",
@@ -217,14 +224,14 @@
     "type" : "boolean"
   },
   "output-directory" : {
-    "default" : "C:\\Daten\\ArangoDB\\arangodb\\dump",
+    "default" : "/home/willi/src/devel3/dump",
     "description" : "output directory",
     "hidden" : false,
     "section" : "",
     "type" : "string"
   },
   "overwrite" : {
-    "default" : false,
+    "default" : true,
     "description" : "overwrite data in output directory",
     "hidden" : false,
     "section" : "",
@@ -243,10 +250,10 @@
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
-    "values" : "Possible values: 1, 5"
+    "values" : "Possible values: 1, 2, 3, 4"
   },
   "server.authentication" : {
-    "default" : false,
+    "default" : true,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
     "hidden" : false,
     "section" : "server",
@@ -267,7 +274,7 @@
     "type" : "string"
   },
   "server.endpoint" : {
-    "default" : "http+tcp://127.0.0.1:8529",
+    "default" : "tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
     "hidden" : false,
     "section" : "server",

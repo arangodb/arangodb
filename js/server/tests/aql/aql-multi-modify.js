@@ -479,7 +479,9 @@ function ahuacatlMultiModifySuite () {
     
     testInsertRemove2 : function () {
       AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i), value: i } INTO @@cn", { "@cn" : cn1 });
-      var actual = AQL_EXECUTE("FOR i IN @@cn1 INSERT { value: i } INTO @@cn2 LET x = i._key REMOVE x IN @@cn1", { "@cn1" : cn1, "@cn2": cn2 }).json;
+      assertEqual(2010, c1.count());
+      assertEqual(0, c2.count());
+      const actual = AQL_EXECUTE("FOR i IN @@cn1 INSERT { value: i } INTO @@cn2 LET x = i._key REMOVE x IN @@cn1", { "@cn1" : cn1, "@cn2": cn2 }).json;
       assertEqual([ ], actual);
       assertEqual(0, c1.count());
       assertEqual(2010, c2.count());

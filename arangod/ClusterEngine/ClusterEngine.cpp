@@ -172,7 +172,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
     VPackSlice const& info
 ) {
   return std::unique_ptr<PhysicalCollection>(
-    new ClusterCollection(&collection, engineType(), info)
+    new ClusterCollection(collection, engineType(), info)
   );
 }
 
@@ -230,12 +230,10 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
     int& status
 ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return VPackBuilder();
 }
 
 VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return VPackBuilder();
 }
 
 // database, collection and index management
@@ -258,13 +256,13 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
   status = TRI_ERROR_NO_ERROR;
 
   return std::make_unique<TRI_vocbase_t>(
-    TRI_VOCBASE_TYPE_NORMAL, id, args.get("name").copyString()
+    TRI_VOCBASE_TYPE_COORDINATOR, id, args.get("name").copyString()
   );
 }
 
 int ClusterEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                              VPackSlice const& slice) {
-  return id == 1 ? TRI_ERROR_NO_ERROR : TRI_ERROR_NOT_IMPLEMENTED;
+  return TRI_ERROR_NO_ERROR;
 }
 
 void ClusterEngine::prepareDropDatabase(
@@ -272,7 +270,7 @@ void ClusterEngine::prepareDropDatabase(
     bool useWriteMarker,
     int& status
 ) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  status = TRI_ERROR_NO_ERROR;
 }
 
 Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
@@ -288,7 +286,7 @@ void ClusterEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
 
 // wal in recovery
 bool ClusterEngine::inRecovery() {
-  return false;
+  return false; // never
 }
 
 void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
@@ -341,14 +339,6 @@ arangodb::Result ClusterEngine::renameCollection(
   std::string const& oldName
 ) {
   return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
-void ClusterEngine::createIndex(
-    TRI_vocbase_t& /*vocbase*/,
-    TRI_voc_cid_t /*collectionId*/,
-    TRI_idx_iid_t /*indexId*/,
-    arangodb::velocypack::Slice const& /*data*/
-) {
 }
 
 void ClusterEngine::unloadCollection(
@@ -464,8 +454,7 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
     bool wasCleanShutdown,
     bool isUpgrade
 ) {
-  // TODO make this a coordinator type vocbase
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
+  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
 }
 
 // -----------------------------------------------------------------------------

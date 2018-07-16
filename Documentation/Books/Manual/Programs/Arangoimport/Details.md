@@ -144,3 +144,40 @@ For CSV and TSV imports, the total number of input file lines read will also be 
 
 _arangoimport_ will also print out details about warnings and errors that happened on the
 server-side (if any).
+
+### Automatic pacing with busy or low throughput disk subsystems
+
+Arangoimport has an automatic pacing algorithm that limits how fast
+data is sent to the ArangoDB servers.  This pacing algorithm exists to
+prevent the import operation from failing due to slow responses.
+
+Google Compute and other VM providers limit the throughput of disk
+devices. Google's limit is more strict for smaller disk rentals, than
+for larger. Specifically, a user could choose the smallest disk space
+and be limited to 3 Mbytes per second.  Similarly, other users'
+processes on the shared VM can limit available throughput of the disk
+devices.
+
+The automatic pacing algorithm adjusts the transmit block size
+dynamically based upon the actual throughput of the server over the
+last 20 seconds. Further, each thread delivers its portion of the data
+in mostly non-overlapping chunks. The thread timing creates
+intentional windows of non-import activity to allow the server extra
+time for meta operations.
+
+Automatic pacing intentionally does not use the full throughput of a
+disk device.  An unlimited (really fast) disk device might not need
+pacing. Raising the number of threads via the `--threads X` command
+line to any value of `X` greater than 2 will increase the total
+throughput used.
+
+Automatic pacing frees the user from adjusting the throughput used to
+match available resources.  It is disabled by manually specifying any
+`--batch-size`. 16777216 was the previous default for *--batch-size*.
+Having *--batch-size* too large can lead to transmitted data backing-up
+on the server, resulting in a TimeoutError.
+
+The pacing algorithm works successfully with MMFiles with disks
+limited to read and write throughput as small as 1 Mbyte per
+second. The algorithm works successfully with RocksDB with disks
+limited to read and write throughput as small as 3 Mbyte per second.

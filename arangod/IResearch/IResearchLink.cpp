@@ -145,7 +145,8 @@ int IResearchLink::drop() {
   }
 
   // if the collection is in the process of being removed then drop it from the view
-  if (_collection->deleted()) {
+  if (_collection->deleted()
+      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection->status()) {
     auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
 
     if (!result.ok()) {
@@ -159,7 +160,18 @@ int IResearchLink::drop() {
 
   _dropCollectionInDestructor = false; // will do drop now
 
-  return _view->drop(_collection->id());
+  auto res = _view->drop(_collection->id());
+
+  // FIXME TODO this workaround should be in ClusterInfo when moving 'Plan' to 'Current', i.e. IResearchViewDBServer::drop
+  if (arangodb::ServerState::instance()->isDBServer()) {
+    auto id = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+
+    _view = nullptr; // mark as unassociated
+    _viewLock.unlock(); // release read-lock on the IResearch View
+    _collection->vocbase().dropView(id, true); // cluster-view in ClusterInfo should already not have cid-view
+  }
+
+  return res;
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -510,7 +522,8 @@ int IResearchLink::unload() {
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
-  if (_collection->deleted()) {
+  if (_collection->deleted()
+      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection->status()) {
     auto res = drop();
 
     if (TRI_ERROR_NO_ERROR != res) {

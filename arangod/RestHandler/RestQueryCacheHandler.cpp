@@ -34,8 +34,6 @@ RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request,
                                              GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-bool RestQueryCacheHandler::isDirect() const { return false; }
-
 RestStatus RestQueryCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();

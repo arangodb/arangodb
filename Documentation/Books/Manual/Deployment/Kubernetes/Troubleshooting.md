@@ -69,7 +69,7 @@ those replicas.
 There are two common causes for this.
 
 1) The `Pods` cannot be scheduled because there are not enough nodes available.
-   This is usally only the case with a `spec.environment` setting that has a value of `Production`.
+   This is usually only the case with a `spec.environment` setting that has a value of `Production`.
 
    Solution:
 Add more nodes.
@@ -107,7 +107,7 @@ those `PersistentVolumes`, it depends on the type of server that was using the v
 - If a `DBServer` was using the volume, and the replication factor of all database
   collections is 2 or higher, and the remaining dbservers are still healthy,
   the cluster will duplicate the remaining replicas to
-  bring the number of replicases back to the original number.
+  bring the number of replicas back to the original number.
 - If a `DBServer` was using the volume, and the replication factor of a database
   collection is 1 and happens to be stored on that dbserver, the data is lost.
 - If a single server of an `ActiveFailover` deployment was using the volume, and the

@@ -40,6 +40,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_ICU_ERROR, "icu error: %s");
   REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
   REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
+  REG_ERROR(ERROR_DISABLED, "disabled");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -186,6 +187,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
   REG_ERROR(ERROR_QUERY_SCRIPT, "runtime error '%s'");
   REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number out of range");
+  REG_ERROR(ERROR_QUERY_INVALID_GEO_VALUE, "invalid geo coordinate value");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID, "variable name '%s' has an invalid format");
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");

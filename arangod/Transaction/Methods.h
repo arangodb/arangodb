@@ -128,8 +128,6 @@ class Methods {
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
-  double const TRX_FOLLOWER_TIMEOUT = 3.0;
-
   /// @brief transaction::Methods
  private:
   Methods() = delete;
@@ -345,7 +343,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  virtual OperationResult count(std::string const& collectionName, bool aggregate);
+  virtual OperationResult count(std::string const& collectionName, bool details);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -408,6 +406,29 @@ class Methods {
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
                                 AccessMode::Type) const;
+  /**
+   * @brief Check if this shard is locked, used to send nolockheader
+   *
+   * @param shardName shard The name of the shard
+   *
+   * @return True if locked by this transaction.
+   */
+  bool isLockedShard(std::string const& shardName) const;
+
+  /**
+   * @brief Set that this shard is locked by this transaction
+   *        Used to define nolockheaders
+   *
+   * @param shardName shard the shard name
+   */
+  void setLockedShard(std::string const& shardName);
+
+  /**
+   * @brief Overwrite the entire list of locked shards.
+   *
+   * @param lockedShards The list of locked shards.
+   */
+  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards);
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
@@ -513,7 +534,7 @@ class Methods {
  protected:
 
   OperationResult countCoordinator(std::string const& collectionName,
-                                   bool aggregate, bool sendNoLockHeader);
+                                   bool details);
 
   OperationResult countLocal(std::string const& collectionName);
 

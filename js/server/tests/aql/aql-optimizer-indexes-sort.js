@@ -362,8 +362,14 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        assertTrue(
+          (
+            ( nodeTypes.indexOf("IndexNode") !== -1) ||
+              ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+          ), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(['test1'], results.json, query);
       });
     },
 

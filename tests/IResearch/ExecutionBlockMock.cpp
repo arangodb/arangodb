@@ -73,34 +73,39 @@ ExecutionBlockMock::ExecutionBlockMock(
     arangodb::aql::ExecutionEngine& engine,
     arangodb::aql::ExecutionNode const& node
 ) : arangodb::aql::ExecutionBlock(&engine, &node),
-    _data(&data) {
+    _data(&data),
+    _inflight(0) {
 }
 
-int ExecutionBlockMock::initializeCursor(
-    arangodb::aql::AqlItemBlock* items, size_t pos
-) {
+std::pair<arangodb::aql::ExecutionState, arangodb::Result>
+ExecutionBlockMock::initializeCursor(arangodb::aql::AqlItemBlock* items,
+                                     size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  const int res = ExecutionBlock::initializeCursor(items, pos);
+  const auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == arangodb::aql::ExecutionState::WAITING || !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   _pos_in_data = 0;
+  _upstreamState = arangodb::aql::ExecutionState::HASMORE;
+  _inflight = 0;
   DEBUG_END_BLOCK();
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
-arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
-    size_t atMost
-) {
+std::pair<arangodb::aql::ExecutionState,
+          std::unique_ptr<arangodb::aql::AqlItemBlock>>
+ExecutionBlockMock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == arangodb::aql::ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, arangodb::aql::ExecutionState::DONE);
+    return {arangodb::aql::ExecutionState::DONE, nullptr};
   }
 
   bool needMore;
@@ -112,9 +117,16 @@ arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
 
     if (_buffer.empty()) {
       size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch)) {
+      auto res = ExecutionBlock::getBlock(toFetch);
+      if (res.first == arangodb::aql::ExecutionState::WAITING) {
+        return {res.first, nullptr};
+      }
+      _upstreamState = res.first;
+      if (!res.second) {
         _done = true;
-        return nullptr;
+        TRI_ASSERT(getHasMoreState() == arangodb::aql::ExecutionState::DONE);
+        traceGetSomeEnd(nullptr, arangodb::aql::ExecutionState::DONE);
+        return {arangodb::aql::ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
     }
@@ -160,28 +172,32 @@ arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
 
-  traceGetSomeEnd(res.get());
-
-  return res.release();
+  traceGetSomeEnd(res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res)};
 
   DEBUG_END_BLOCK();
 }
 
-size_t ExecutionBlockMock::skipSome(size_t atMost) {
+std::pair<arangodb::aql::ExecutionState, size_t> ExecutionBlockMock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_done) {
-    return 0;
+    return {arangodb::aql::ExecutionState::DONE, 0};
   }
 
-  size_t skipped = 0;
-
-  while (skipped < atMost) {
+  while (_inflight < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch)) {
+      auto upstreamRes = getBlock(toFetch);
+      if (upstreamRes.first == arangodb::aql::ExecutionState::WAITING) {
+        return {upstreamRes.first, 0};
+      }
+      _upstreamState = upstreamRes.first;
+      if (!upstreamRes.second) {
         _done = true;
-        return skipped;
+        size_t skipped = _inflight;
+        _inflight = 0;
+        return {arangodb::aql::ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block
       _pos_in_data = 0;
@@ -191,10 +207,10 @@ size_t ExecutionBlockMock::skipSome(size_t atMost) {
     arangodb::aql::AqlItemBlock* cur = _buffer.front();
 
     TRI_ASSERT(_data->size() >= _pos_in_data);
-    skipped += std::min(_data->size() - _pos_in_data, atMost - skipped);
-    _pos_in_data += skipped;
+    _inflight += std::min(_data->size() - _pos_in_data, atMost - _inflight);
+    _pos_in_data += _inflight;
 
-    if (skipped < atMost) {
+    if (_inflight < atMost) {
       // not skipped enough re-initialize fetching of documents
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
@@ -208,8 +224,9 @@ size_t ExecutionBlockMock::skipSome(size_t atMost) {
     }
   }
 
-  // We skipped atLeast documents
-  return skipped;
+  size_t skipped = _inflight;
+  _inflight = 0;
+  return {getHasMoreState(), skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

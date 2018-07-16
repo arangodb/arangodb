@@ -61,9 +61,11 @@ using namespace arangodb::rest;
 State::State()
     : _agent(nullptr),
       _vocbase(nullptr),
+      _ready(false),
       _collectionsChecked(false),
       _collectionsLoaded(false),
       _nextCompactionAfter(0),
+      _lastCompactionAt(0),
       _queryRegistry(nullptr),
       _cur(0) {}
 
@@ -241,6 +243,11 @@ index_t State::logFollower(query_t const& transactions) {
   VPackSlice slices = transactions->slice();
   size_t nqs = slices.length();
 
+  while(!_ready && !_agent->isStopping()) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for state to get ready ...";
+    std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
+  }
+
   MUTEX_LOCKER(logLock, _logLock);
 
   // Check whether we have got a snapshot in the first position:
@@ -340,7 +347,14 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
   LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
   try {
 
-    // _log is never empty, but for now, we leave this Vorsichtsmassnahme:
+    // If we've got a snapshot anything we might have is obsolete, note that
+    // this happens if and only if we decided at the call site that we actually
+    // use the snapshot and we have erased our _log there (see
+    // storeLogFromSnapshot which was called above)!
+    if (_log.empty()) {
+      TRI_ASSERT(gotSnapshot);
+      return 1;
+    }
     index_t lastIndex = _log.back().index;
 
     while (ndups < slices.length()) {
@@ -351,11 +365,11 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
           << idx << " > " << lastIndex << " break.";
         break;
       }
-      term_t trm = slice.get("term").getUInt();
       if (idx < _cur) { // already compacted, treat as equal
         ++ndups;
         continue;
       }
+      term_t trm = slice.get("term").getUInt();
       size_t pos = idx - _cur;  // position in _log
       TRI_ASSERT(pos < _log.size());
       if (idx == _log.at(pos).index && trm != _log.at(pos).term) {
@@ -389,8 +403,7 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
           arangodb::aql::PART_MAIN
         );
 
-        auto queryResult = query.execute(_queryRegistry);
-
+        aql::QueryResult queryResult = query.executeSync(_queryRegistry);
         if (queryResult.code != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
                                          queryResult.details);
@@ -478,7 +491,7 @@ log_t State::atNoLock(index_t index) const {
     std::string excMessage = 
       std::string(
         "Access beyond the end of the log deque: (last, requested): (") +
-      std::to_string(_cur+_log.size()) + ", " + std::to_string(index);
+      std::to_string(_cur+_log.size()) + ", " + std::to_string(index) + ")";
     LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
     throw std::out_of_range(excMessage);
   }
@@ -495,6 +508,11 @@ int State::checkLog(index_t index, term_t term) const {
 
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
+  // If index above highest entry
+  if (_log.size() > 0 && index > _log.back().index) {
+    return -1;
+  }
+  
   // Catch exceptions and avoid overflow:
   if (index < _cur || index - _cur > _log.size()) {
     return 0;
@@ -581,6 +599,7 @@ log_t State::lastLog() const {
   return _log.back();  
 }
   
+  
 /// Configure with agent
 bool State::configure(Agent* agent) {
   _agent = agent;
@@ -633,6 +652,11 @@ bool State::createCollection(std::string const& name) {
   return true;
 }
 
+
+// Are we ready for action?
+bool State::ready() const { return _ready; }
+
+
 /// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase,
                             QueryRegistry* queryRegistry, bool waitForSync) {
@@ -656,6 +680,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
         log_t(index_t(0), term_t(0), buf, std::string()));
       persist(0, 0, value, std::string());
     }
+    _ready = true;
     return true;
   }
 
@@ -707,7 +732,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -763,7 +788,7 @@ bool State::loadCompacted() {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -782,6 +807,7 @@ bool State::loadCompacted() {
       _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();   // will be filled in loadRemaining
       // Schedule next compaction:
+      _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
@@ -812,7 +838,7 @@ bool State::loadOrPersistConfiguration() {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -924,7 +950,7 @@ bool State::loadRemaining() {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1011,16 +1037,23 @@ bool State::find(index_t prevIndex, term_t prevTerm) {
   return _log.at(prevIndex).term == prevTerm;
 }
 
+
+index_t State::lastCompactionAt() const {
+  return _lastCompactionAt;
+}
+
+
 /// Log compaction
-bool State::compact(index_t cind) {
-  // We need to compute the state at index cind and 
+bool State::compact(index_t cind, index_t keep) {
+  // We need to compute the state at index cind and use:
   //   cind <= _commitIndex
-  // and usually it is < because compactionKeepSize > 0. We start at the
-  // latest compaction state and advance from there:
+  // We start at the latest compaction state and advance from there:
+  // We keep at least `keep` log entries before the compacted state,
+  // for forensic analysis and such that the log is never empty.
   {
     MUTEX_LOCKER(_logLocker, _logLock);
     if (cind <= _cur) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Not compacting log at index " << cind
         << ", because we already have a later snapshot at index " << _cur;
       return true;
@@ -1029,7 +1062,9 @@ bool State::compact(index_t cind) {
 
   // Move next compaction index forward to avoid a compaction wakeup 
   // whilst we are working:
-  _nextCompactionAfter += _agent->config().compactionStepSize();
+  _nextCompactionAfter 
+      = (std::max)(_nextCompactionAfter.load(),
+                   cind + _agent->config().compactionStepSize());
 
   Store snapshot(_agent, "snapshot");
   index_t index;
@@ -1060,8 +1095,8 @@ bool State::compact(index_t cind) {
 
   // Now clean up old stuff which is included in the latest compaction snapshot:
   try {
-    compactVolatile(cind);
-    compactPersisted(cind);
+    compactVolatile(cind, keep);
+    compactPersisted(cind, keep);
     removeObsolete(cind);
   } catch (std::exception const& e) {
     if (!_agent->isStopping()) {
@@ -1076,31 +1111,46 @@ bool State::compact(index_t cind) {
 }
 
 /// Compact volatile state
-bool State::compactVolatile(index_t cind) {
-  // Note that we intentionally keep the index cind although it is, strictly
-  // speaking, no longer necessary. This is to make sure that _log does not
-  // become empty! DO NOT CHANGE! This is used elsewhere in the code!
+bool State::compactVolatile(index_t cind, index_t keep) {
+  // Note that we intentionally keep some log entries before cind
+  // although it is, strictly speaking, no longer necessary. This is to
+  // make sure that _log does not become empty! DO NOT CHANGE! This is
+  // used elsewhere in the code! Furthermore, it allows for forensic
+  // analysis in case of bad things having happened.
+  if (keep >= cind) {   // simply keep everything
+    return true;
+  }
+  TRI_ASSERT(keep < cind);
+  index_t cut = cind - keep;
   MUTEX_LOCKER(mutexLocker, _logLock);
-  if (!_log.empty() && cind > _cur && cind - _cur < _log.size()) {
-    _log.erase(_log.begin(), _log.begin() + (cind - _cur));
-    TRI_ASSERT(_log.begin()->index == cind);
+  if (!_log.empty() && cut > _cur && cut - _cur < _log.size()) {
+    _log.erase(_log.begin(), _log.begin() + (cut - _cur));
+    TRI_ASSERT(_log.begin()->index == cut);
     _cur = _log.begin()->index;
   }
   return true;
 }
 
 /// Compact persisted state
-bool State::compactPersisted(index_t cind) {
-  // Note that we intentionally keep the index cind although it is, strictly
-  // speaking, no longer necessary. This is to make sure that _log does not
-  // become empty! DO NOT CHANGE! This is used elsewhere in the code!
+bool State::compactPersisted(index_t cind, index_t keep) {
+  // Note that we intentionally keep some log entries before cind
+  // although it is, strictly speaking, no longer necessary. This is to
+  // make sure that _log does not become empty! DO NOT CHANGE! This is
+  // used elsewhere in the code! Furthermore, it allows for forensic
+  // analysis in case of bad things having happened.
+  if (keep >= cind) {   // simply keep everything
+    return true;
+  }
+  TRI_ASSERT(keep < cind);
+  index_t cut = cind - keep;
+
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
 
   std::stringstream i_str;
 
-  i_str << std::setw(20) << std::setfill('0') << cind;
+  i_str << std::setw(20) << std::setfill('0') << cut;
 
   std::string const aql(std::string("FOR l IN log FILTER l._key < \"") +
                         i_str.str() + "\" REMOVE l IN log");
@@ -1115,7 +1165,7 @@ bool State::compactPersisted(index_t cind) {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1126,14 +1176,14 @@ bool State::compactPersisted(index_t cind) {
 
 /// Remove outdated compaction snapshots
 bool State::removeObsolete(index_t cind) {
-  if (cind > 3 * _agent->config().compactionStepSize()) {
+  if (cind > 3 * _agent->config().compactionKeepSize()) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
     bindVars->close();
 
     std::stringstream i_str;
     i_str << std::setw(20) << std::setfill('0')
-          << -3 * _agent->config().compactionStepSize() + cind;
+          << -3 * _agent->config().compactionKeepSize() + cind;
 
     std::string const aql(std::string("FOR c IN compact FILTER c._key < \"") +
                           i_str.str() + "\" REMOVE c IN compact");
@@ -1148,7 +1198,7 @@ bool State::removeObsolete(index_t cind) {
       arangodb::aql::PART_MAIN
     );
 
-    auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+    aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1187,6 +1237,10 @@ bool State::persistCompactionSnapshot(index_t cind,
     auto result = trx.insert("compact", store.slice(), _options);
 
     res = trx.finish(result.result);
+
+    if (res.ok()) {
+      _lastCompactionAt = cind;
+    }
 
     return res.ok();
   }
@@ -1227,7 +1281,7 @@ bool State::storeLogFromSnapshot(Store& snapshot,
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
   // We ignore the result, in the worst case we have some log entries
   // too many.
@@ -1305,13 +1359,13 @@ query_t State::allLogs() const {
     arangodb::aql::PART_MAIN
   );
 
-  auto compqResult = compq.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult compqResult = compq.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (compqResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(compqResult.code, compqResult.details);
   }
 
-  auto logsqResult = logsq.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult logsqResult = logsq.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (logsqResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(logsqResult.code, logsqResult.details);
@@ -1379,6 +1433,13 @@ index_t State::lastIndex() const {
   return _log.back().index;
 }
 
+// Index of last log entry
+index_t State::firstIndex() const {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  TRI_ASSERT(!_log.empty());
+  return _cur;
+}
+
 /// @brief this method is intended for manual recovery only. It only looks
 /// at the persisted data structure and tries to recover the latest state.
 /// The returned builder has the complete state of the agency and index
@@ -1395,7 +1456,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
   arangodb::aql::Query query(false, vocbase, aql::QueryString(aql), nullptr,
                              nullptr, arangodb::aql::PART_MAIN);
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1422,7 +1483,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
   arangodb::aql::Query query2(false, vocbase, aql::QueryString(aql), nullptr,
                               nullptr, arangodb::aql::PART_MAIN);
 
-  auto queryResult2 = query2.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult2 = query2.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (queryResult2.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult2.code, queryResult2.details);

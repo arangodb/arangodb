@@ -82,11 +82,9 @@ class StorageEngine : public application_features::ApplicationFeature {
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
 
+    startsAfter("BasicsPhase");
     startsAfter("CacheManager");
-    startsAfter("DatabasePath");
-    startsAfter("FileDescriptors");
     startsBefore("StorageEngine");
-    startsAfter("Temp");
     startsAfter("TransactionManager");
     startsAfter("ViewTypes");
   }
@@ -222,16 +220,6 @@ class StorageEngine : public application_features::ApplicationFeature {
     velocypack::Slice const& args,
     int& status
   ) = 0;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(
-      TRI_voc_tick_t id,
-      velocypack::Slice const& args
-  ) {
-    int status;
-    auto rv = createDatabase(id, args, status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
-    TRI_ASSERT(rv != nullptr);
-    return rv;
-  }
 
   // @brief write create marker for database
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
@@ -402,22 +390,6 @@ class StorageEngine : public application_features::ApplicationFeature {
     TRI_vocbase_t& vocbase,
     LogicalView& view
   ) noexcept = 0;
-
-  // asks the storage engine to create an index as specified in the VPack
-  // Slice object and persist the creation info. The database id, collection id
-  // and index data are passed in the Slice object. Note that this function
-  // is not responsible for inserting the individual documents into the index.
-  // If this operation fails somewhere in the middle, the storage engine is required
-  // to fully clean up the creation and throw only then, so that subsequent index
-  // creation requests will not fail.
-  // the WAL entry for the index creation will be written *after* the call
-  // to "createIndex" returns
-  virtual void createIndex(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t collectionId,
-    TRI_idx_iid_t id,
-    arangodb::velocypack::Slice const& data
-  ) = 0;
 
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate

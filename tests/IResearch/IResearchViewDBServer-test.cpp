@@ -27,7 +27,11 @@
 #include "common.h"
 #include "AgencyMock.h"
 #include "StorageEngineMock.h"
-#include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
 #include "Agency/Store.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
@@ -70,7 +74,8 @@ struct IResearchViewDBServerSetup {
   GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
   IResearchViewDBServerSetup(): server(nullptr, nullptr) {
@@ -92,33 +97,49 @@ struct IResearchViewDBServerSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
-    // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
-    features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), false); // required for instantiating IResearchView*
-    features.emplace_back(new arangodb::AgencyFeature(&server), false);
-    features.emplace_back(new arangodb::ClusterFeature(&server), false);
-    features.emplace_back(new arangodb::V8DealerFeature(&server), false);
+    auto buildFeatureEntry = [&] (arangodb::application_features::ApplicationFeature* ftr, bool start) -> void {
+      std::string name = ftr->name();
+      features.emplace(name, std::make_pair(ftr, start));
+    };
 
-    for (auto& f: features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
+
+    // setup required application features
+    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
+    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
+    buildFeatureEntry(new arangodb::DatabasePathFeature(&server), false);
+    buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
+    buildFeatureEntry(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(&server), false); // required for instantiating IResearchView*
+    buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
+    buildFeatureEntry(new arangodb::V8DealerFeature(&server), false);
+
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.second.first);
     }
 
-    for (auto& f: features) {
-      f.first->prepare();
+    arangodb::application_features::ApplicationServer::server->setupDependencies(false);
+    orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
 
-      if (f.first->name() == "Authentication") {
-        f.first->forceDisable();
+    for (auto& f : orderedFeatures) {
+      if (f->name() == "Endpoint") {
+        // We need this feature to be there but do not use it.
+        continue;
+      }
+      f->prepare();
+      if (f->name() == "Authentication") {
+        f->forceDisable();
       }
     }
 
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->start();
+    for (auto& f : orderedFeatures) {
+      if (features.at(f->name()).second) {
+        f->start();
       }
     }
 
@@ -145,14 +166,14 @@ struct IResearchViewDBServerSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->stop();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      if (features.at((*f)->name()).second) {
+        (*f)->stop();
       }
     }
 
-    for (auto& f: features) {
-      f.first->unprepare();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      (*f)->unprepare();
     }
 
     ClusterCommControl::reset();
@@ -300,7 +321,7 @@ SECTION("test_ensure") {
   CHECK((std::string("_iresearch_123_1") == view->name()));
   CHECK((false == view->deleted()));
   CHECK((wiew->id() != view->id())); // must have unique ID
-  CHECK((view->id() == view->planId())); // same as view ID
+  CHECK((wiew->id() == view->planId())); // same as view ID
   CHECK((0 == view->planVersion()));
   CHECK((arangodb::iresearch::DATA_SOURCE_TYPE == view->type()));
   CHECK((&vocbase == &(view->vocbase())));
@@ -947,7 +968,7 @@ SECTION("test_updateProperties") {
   // update empty (partial)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } } }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -968,12 +989,14 @@ SECTION("test_updateProperties") {
       builder.close();
       auto slice = builder.slice().get("properties");
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
-      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 42 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 42 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"threadsMaxTotal\": 52 }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"commit\": { \"commitIntervalMsec\": 52 }, \"links\": { \"testCollection\": {} } }");
       CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
     }
 
@@ -985,9 +1008,11 @@ SECTION("test_updateProperties") {
       builder.close();
       auto slice = builder.slice().get("properties");
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
-      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
     }
 
     auto view = impl->ensure(123);
@@ -1002,15 +1027,17 @@ SECTION("test_updateProperties") {
     builder.close();
     auto slice = builder.slice().get("properties");
     CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+    CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+    auto tmpSlice = slice.get("commit");
+    CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+    CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
     CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
-    CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-    CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
   }
 
   // update empty (full)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } } }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1031,12 +1058,14 @@ SECTION("test_updateProperties") {
       builder.close();
       auto slice = builder.slice().get("properties");
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
-      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 42 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 42 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"threadsMaxTotal\": 52 }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
       CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
     }
 
@@ -1048,9 +1077,11 @@ SECTION("test_updateProperties") {
       builder.close();
       auto slice = builder.slice().get("properties");
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
-      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 5 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
     }
 
     auto view = impl->ensure(123);
@@ -1065,15 +1096,17 @@ SECTION("test_updateProperties") {
     builder.close();
     auto slice = builder.slice().get("properties");
     CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+    CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+    auto tmpSlice = slice.get("commit");
+    CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+    CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
     CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
-    CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 5 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-    CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
   }
 
   // update non-empty (partial)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } } }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1099,12 +1132,14 @@ SECTION("test_updateProperties") {
       builder.close();
       auto slice = builder.slice().get("properties");
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
-      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 42 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 42 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"threadsMaxTotal\": 52 }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
       CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
     }
 
@@ -1116,9 +1151,11 @@ SECTION("test_updateProperties") {
       builder.close();
       auto slice = builder.slice().get("properties");
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 2 == slice.get("collections").length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
-      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
     }
 
     CHECK((true == view->visitCollections(visitor))); // no collections in view
@@ -1130,16 +1167,18 @@ SECTION("test_updateProperties") {
     builder.close();
     auto slice = builder.slice().get("properties");
     CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+    CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+    auto tmpSlice = slice.get("commit");
+    CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+    CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
     CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
-    CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-    CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
   }
 
   // update non-empty (full)
   {
     auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": \"123\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } } }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1167,12 +1206,14 @@ SECTION("test_updateProperties") {
       builder.close();
       auto slice = builder.slice().get("properties");
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
-      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 42 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 42 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"threadsMaxTotal\": 52 }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
       CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
     }
 
@@ -1184,9 +1225,11 @@ SECTION("test_updateProperties") {
       builder.close();
       auto slice = builder.slice().get("properties");
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
-      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 5 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
     }
 
     CHECK((true == view->visitCollections(visitor))); // no collections in view
@@ -1198,9 +1241,11 @@ SECTION("test_updateProperties") {
     builder.close();
     auto slice = builder.slice().get("properties");
     CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+    CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+    auto tmpSlice = slice.get("commit");
+    CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+    CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
     CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
-    CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 5 == slice.get("threadsMaxIdle").getNumber<size_t>()));
-    CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
   }
 }
 

@@ -56,11 +56,11 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   std::string physicalPath;
   std::deque<std::pair<arangodb::velocypack::Builder, bool>> documents; // std::pair<jSON, valid>, deque -> pointers remain valid
 
-  PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info);
-  virtual PhysicalCollection* clone(arangodb::LogicalCollection*) const override;
+  PhysicalCollectionMock(arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info);
+  virtual PhysicalCollection* clone(arangodb::LogicalCollection& collection) const override;
   virtual int close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const& info, bool& created) override;
-  virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) override;
+  virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
   virtual bool dropIndex(TRI_idx_iid_t iid) override;
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(arangodb::transaction::Methods* trx) const override;
@@ -151,7 +151,6 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override;
   virtual std::string createCollection(TRI_vocbase_t& vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const& collection) override;
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override;
-  virtual void createIndex(TRI_vocbase_t& vocbase, TRI_voc_cid_t collectionId, TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info) override;
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;

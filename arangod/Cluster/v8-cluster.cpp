@@ -1115,6 +1115,10 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
     if (!result.successful()) {
       THROW_AGENCY_EXCEPTION(result);
     }
+    result = comm.increment("Current/Version");
+    if (!result.successful()) {
+      THROW_AGENCY_EXCEPTION(result);
+    }
   }
   
   TRI_V8_TRY_CATCH_END
@@ -1234,26 +1238,6 @@ static void JS_RoleServerState(
       ServerState::roleToString(ServerState::instance()->getRole());
 
   TRI_V8_RETURN_STD_STRING(role);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the server id (used for testing)
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetIdServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setId(<id>)");
-  }
-
-  std::string const id = TRI_ObjectToString(args[0]);
-  ServerState::instance()->setId(id);
-
-  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2117,8 +2101,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "role"),
                        JS_RoleServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setId"),
-                       JS_SetIdServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setRole"),
                        JS_SetRoleServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "redetermineRole"),

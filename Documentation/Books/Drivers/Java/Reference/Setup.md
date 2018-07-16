@@ -65,7 +65,8 @@ In addition to set the configuration for HTTP you have to add the apache httpcli
 
 ## SSL
 
-To use SSL, you have to set the configuration `useSsl` to `true` and set a `SSLContext`. (see [example code](../../../../src/test/java/com/arangodb/example/ssl/SslExample.java))
+To use SSL, you have to set the configuration `useSsl` to `true` and set a `SSLContext`
+(see [example code](https://github.com/arangodb/arangodb-java-driver/blob/master/src/test/java/com/arangodb/example/ssl/SslExample.java)).
 
 ```Java
   ArangoDB arangoDB = new ArangoDB.Builder().useSsl(true).sslContext(sc).build();

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_REPLICATION_GLOBAL_CONTINUOUS_SYNCER_H
-#define ARANGOD_REPLICATION_DATABASE_CONTINUOUS_SYNCER_H 1
+#define ARANGOD_REPLICATION_GLOBAL_CONTINUOUS_SYNCER_H 1
 
 #include "TailingSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
@@ -45,12 +45,19 @@ class GlobalTailingSyncer : public TailingSyncer {
   }
 
  protected:
-  
   /// @brief resolve to proper base url
   std::string tailingBaseUrl(std::string const& command) override;
 
   /// @brief save the current applier state
   Result saveApplierState() override;
+  
+  bool skipMarker(arangodb::velocypack::Slice const& slice) override;
+ 
+ private: 
+  /// @brief translation between globallyUniqueId and collection name
+  std::unordered_map<std::string, std::string> _translations;
+
+  bool _queriedTranslations;
 };
 }
 

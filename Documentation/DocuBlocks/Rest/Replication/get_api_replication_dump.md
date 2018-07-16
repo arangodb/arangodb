@@ -11,7 +11,7 @@ The name or id of the collection to dump.
 
 @RESTQUERYPARAM{chunkSize,number,optional} Approximate maximum size of the returned result.
 
-@RESTQUERYPARAM{batchId,string,required}
+@RESTQUERYPARAM{batchId,number,required}
 rocksdb only - The id of the snapshot to use
 
 @RESTQUERYPARAM{from,number,optional}
@@ -116,7 +116,7 @@ Empty collection:
     c.drop();
 @END_EXAMPLE_ARANGOSH_RUN
 
-Non-empty collection:
+Non-empty collection *(One JSON document per line)*:
 
 @EXAMPLE_ARANGOSH_RUN{RestReplicationDump}
     db._drop("testCollection");
@@ -132,7 +132,7 @@ Non-empty collection:
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 200);
-    logRawResponse(response);
+    logJsonLResponse(response);
 
     c.drop();
 @END_EXAMPLE_ARANGOSH_RUN

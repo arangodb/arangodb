@@ -177,41 +177,45 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 bool ConditionFinder::handleFilterCondition(
     ExecutionNode* en, std::unique_ptr<Condition> const& condition) {
   bool foundCondition = false;
+
   for (auto& it : _variableDefinitions) {
-    if (_filters.find(it.first) != _filters.end()) {
-      // a variable used in a FILTER
-      AstNode* var = const_cast<AstNode*>(it.second);
-      if (!var->canThrow() && var->isDeterministic() && var->isSimple()) {
-        // replace all variables inside the FILTER condition with the
-        // expressions represented by the variables
-        var = it.second->clone(_plan->getAst());
+    if (_filters.find(it.first) == _filters.end()) {
+      continue;
+    }
 
-        auto func = [&](AstNode* node) -> AstNode* {
-          if (node->type == NODE_TYPE_REFERENCE) {
-            auto variable = static_cast<Variable*>(node->getData());
+    // a variable used in a FILTER
+    AstNode* var = const_cast<AstNode*>(it.second);
+    if (!var->canThrow() && var->isDeterministic() && var->isSimple()) {
+      // replace all variables inside the FILTER condition with the
+      // expressions represented by the variables
+      var = it.second->clone(_plan->getAst());
 
-            if (variable != nullptr) {
-              auto setter = _plan->getVarSetBy(variable->id);
+      auto func = [&](AstNode* node) -> AstNode* {
+        if (node->type == NODE_TYPE_REFERENCE) {
+          auto variable = static_cast<Variable*>(node->getData());
 
-              if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-                auto s = ExecutionNode::castTo<CalculationNode*>(setter);
-                auto filterExpression = s->expression();
-                AstNode* inNode = filterExpression->nodeForModification();
-                if (!inNode->canThrow() && inNode->isDeterministic() &&
-                    inNode->isSimple()) {
-                  return inNode;
-                }
+          if (variable != nullptr) {
+            auto setter = _plan->getVarSetBy(variable->id);
+
+            if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+              auto s = ExecutionNode::castTo<CalculationNode*>(setter);
+              auto filterExpression = s->expression();
+              AstNode* inNode = filterExpression->nodeForModification();
+              if (!inNode->canThrow() && inNode->isDeterministic() &&
+                  inNode->isSimple()) {
+                return inNode;
               }
             }
           }
-          return node;
-        };
+        }
+        return node;
+      };
 
-        var = Ast::traverseAndModify(var, func);
-      }
-      condition->andCombine(var);
-      foundCondition = true;
+      var = Ast::traverseAndModify(var, func);
     }
+
+    condition->andCombine(var);
+    foundCondition = true;
   }
 
   // normalize the condition
@@ -234,14 +238,13 @@ bool ConditionFinder::handleFilterCondition(
   }
 
   auto const& varsValid = en->getVarsValid();
-
+  
   // remove all invalid variables from the condition
   if (condition->removeInvalidVariables(varsValid)) {
     // removing left a previously non-empty OR block empty...
     // this means we can't use the index to restrict the results
     return false;
   }
-
   return true;
 }
 

@@ -69,35 +69,6 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
   _sparse = true;  // always sparse
 }
 
-int IResearchLinkCoordinator::drop() {
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
-  }
-
-  if (!_view) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
-  }
-
-  // if the collection is in the process of being removed then drop it from the view
-  if (_collection->deleted()) {
-    // revalidate all links
-    auto const result = _view->updateProperties(
-      emptyObjectSlice(), true, false
-    );
-
-    if (!result.ok()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to force view link revalidation while unloading dropped IResearch link '" << id()
-        << "' for IResearch view '" << _view->id() << "'";
-
-      return result.errorNumber();
-    }
-  }
-
-  // drop it from view
-  return _view->drop(_collection->id()).errorNumber();
-}
-
 bool IResearchLinkCoordinator::operator==(LogicalView const& view) const noexcept {
   return _view && _view->id() == view.id();
 }
@@ -147,7 +118,14 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error finding view: '" << viewId << "' for link '" << id() << "'";
+        << "error finding view '" << viewId << "' for link '" << id() << "'";
+
+    return false;
+  }
+
+  if (!view->emplace(_collection->id(), _collection->name(), definition)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "error emplacing link to collection '" << _collection->name() << "' into IResearch view '" << viewId << "' link '" << id() << "'";
 
     return false;
   }

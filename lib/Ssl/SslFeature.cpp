@@ -47,8 +47,7 @@ const asio::ssl::detail::openssl_init<true> SslFeature::sslBase{};
 SslFeature::SslFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Ssl") {
   setOptional(true);
-  startsAfter("Logger");
-  startsAfter("Greetings");
+  startsAfter("GreetingsPhase");
 }
 
 void SslFeature::prepare() {

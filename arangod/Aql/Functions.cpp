@@ -32,6 +32,8 @@
 #include "Aql/RegexCache.h"
 #include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -48,6 +50,7 @@
 #include "Geo/ShapeContainer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Random/UniformCharacter.h"
@@ -61,6 +64,10 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <s2/s2loop.h>
 #include <date/date.h>
@@ -274,6 +281,9 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
         wrk.append(std::to_string(abs(yearnum)));
         return;
       }
+
+      TRI_ASSERT(yearnum >= 0);
+
       if (yearnum > 99999) {
         // intentionally nothing
       } else if (yearnum > 9999) {
@@ -284,10 +294,8 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
         wrk.append("+000");
       } else if (yearnum > 9) {
         wrk.append("+0000");
-      } else if (yearnum >= 0) {
-        wrk.append("+00000");
       } else {
-        wrk.append("+");
+        wrk.append("+00000");
       }
       wrk.append(std::to_string(yearnum));
     }},
@@ -309,12 +317,9 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
           wrk.append("-");
         }
         wrk.append(std::to_string(abs(yearnum)));
-      }
-      else {
-        if (yearnum < 0) {
-          wrk.append("0000");
-          wrk.append(std::to_string(yearnum));
-        } else if (yearnum < 9) {
+      } else {
+        TRI_ASSERT(yearnum >= 0);
+        if (yearnum < 9) {
           wrk.append("000");
           wrk.append(std::to_string(yearnum));
         } else if (yearnum < 99) {
@@ -1415,12 +1420,93 @@ AqlValue Functions::ToString(arangodb::aql::Query*,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+  ::appendAsString(trx, adapter, value);
+  return AqlValue(buffer->begin(), buffer->length());
+}
+
+/// @brief function TO_BASE64
+AqlValue Functions::ToBase64(arangodb::aql::Query*,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TO_BASE64", 1, 1);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   ::appendAsString(trx, adapter, value);
-  return AqlValue(buffer->begin(), buffer->length());
+  
+  std::string encoded = basics::StringUtils::encodeBase64(std::string(buffer->begin(), buffer->length()));
+    
+  return AqlValue(encoded);
+}
+
+/// @brief function TO_HEX
+AqlValue Functions::ToHex(arangodb::aql::Query*,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TO_HEX", 1, 1);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+  ::appendAsString(trx, adapter, value);
+    
+    std::string encoded = basics::StringUtils::encodeHex(std::string(buffer->begin(), buffer->length()));
+    
+  return AqlValue(encoded);
+}
+
+/// @brief function ENCODE_URI_COMPONENT
+AqlValue Functions::EncodeURIComponent(arangodb::aql::Query*,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+    ValidateParameters(parameters, "ENCODE_URI_COMPONENT", 1, 1);
+    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+    ::appendAsString(trx, adapter, value);
+    
+    std::string encoded = basics::StringUtils::encodeURIComponent(std::string(buffer->begin(), buffer->length()));
+    
+    return AqlValue(encoded);
+}
+
+/// @brief function UUID
+static Mutex theMutex;
+    
+AqlValue Functions::UUID(arangodb::aql::Query*,
+                        transaction::Methods* trx,
+                        VPackFunctionParameters const& parameters){
+    MUTEX_LOCKER(mutexLocker, theMutex);
+    
+    std::string uuid = boost::uuids::to_string(boost::uuids::random_generator()());
+    
+    return AqlValue(uuid);
+}
+
+/// @brief function SOUNDEX
+AqlValue Functions::Soundex(arangodb::aql::Query*,
+                                       transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters) {
+    ValidateParameters(parameters, "SOUNDEX", 1, 1);
+    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+    ::appendAsString(trx, adapter, value);
+    
+    std::string encoded = basics::StringUtils::soundex(basics::StringUtils::trim(basics::StringUtils::tolower(std::string(buffer->begin(), buffer->length()))));
+    
+    return AqlValue(encoded);
 }
 
 /// @brief function TO_BOOL
@@ -4158,7 +4244,40 @@ AqlValue Functions::IsKey(arangodb::aql::Query*,
 
   VPackValueLength l;
   char const* p = value.slice().getString(l);
-  return AqlValue(AqlValueHintBool(TraditionalKeyGenerator::validateKey(p, l)));
+  return AqlValue(AqlValueHintBool(KeyGenerator::validateKey(p, l)));
+}
+
+/// @brief function COUNT_DISTINCT
+AqlValue Functions::CountDistinct(arangodb::aql::Query* query,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "COUNT_DISTINCT";
+  ValidateParameters(parameters, AFN, 1, 1);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!value.isArray()) {
+    // not an array
+    ::registerWarning(query, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+
+  auto options = trx->transactionContextPtr()->getVPackOptions();
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
+             arangodb::basics::VelocyPackHelper::VPackEqual(options));
+
+  for (VPackSlice s : VPackArrayIterator(slice)) {
+    if (!s.isNone()) {
+      values.emplace(s.resolveExternal());
+    }
+  }
+
+  return AqlValue(AqlValueHintUInt(values.size()));
 }
 
 /// @brief function UNIQUE
@@ -6339,7 +6458,7 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query*,
 
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
-  OperationResult res = trx->count(collectionName, true);
+  OperationResult res = trx->count(collectionName, false);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }
@@ -6856,19 +6975,42 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query,
 
   uint64_t execNr = arg1.toInt64(trx);
   pregel::PregelFeature* feature = pregel::PregelFeature::instance();
-  if (feature) {
-    std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
-    if (!worker) {
-      ::registerWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
+  if (!feature) {
+    ::registerWarning(query, AFN, TRI_ERROR_FAILED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+    
+  auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
+  VPackBuilder builder(*buffer);
+  if (ServerState::instance()->isCoordinator()) {
+    std::shared_ptr<pregel::Conductor> c = feature->conductor(execNr);
+    if (!c) {
+      ::registerWarning(query, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
     }
-    transaction::BuilderLeaser builder(trx);
-    worker->aqlResult(builder.get());
-    return AqlValue(builder.get());
+    c->collectAQLResults(builder);
+    
+  } else {
+    std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
+    if (!worker) {
+      ::registerWarning(query, AFN, TRI_ERROR_HTTP_NOT_FOUND);
+      return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+    }
+    worker->aqlResult(builder);
   }
-
-  ::registerWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
-  return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  
+  if (builder.isEmpty()) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+  TRI_ASSERT(builder.slice().isArray());
+  
+  // move the buffer into
+  bool shouldDelete = true;
+  AqlValue val(buffer.get(), shouldDelete);
+  if (!shouldDelete) {
+    buffer.release();
+  }
+  return val;
 }
 
 AqlValue Functions::Assert(arangodb::aql::Query* query,
@@ -6951,18 +7093,8 @@ AqlValue Functions::DateFormat(arangodb::aql::Query* query,
   return AqlValue(::executeDateFormatRegex(formatString, tp));
 }
 
-AqlValue Functions::Near(arangodb::aql::Query* query, transaction::Methods*,
-              VPackFunctionParameters const& params){
-    ::registerError(query,"NEAR",TRI_ERROR_NOT_IMPLEMENTED);
-    return AqlValue(AqlValueHintNull());
-}
-AqlValue Functions::Within(arangodb::aql::Query* query, transaction::Methods*,
-              VPackFunctionParameters const& params){
-    ::registerError(query,"WITHIN",TRI_ERROR_NOT_IMPLEMENTED);
-    return AqlValue(AqlValueHintNull());
-}
-AqlValue Functions::Fulltext(arangodb::aql::Query* query, transaction::Methods*,
-                     VPackFunctionParameters const& params){
-    ::registerError(query,"FULLTEXT",TRI_ERROR_NOT_IMPLEMENTED);
-    return AqlValue(AqlValueHintNull());
+AqlValue Functions::NotImplemented(arangodb::aql::Query* query, transaction::Methods*,
+                                   VPackFunctionParameters const& params){
+  ::registerError(query, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
+  return AqlValue(AqlValueHintNull());
 }

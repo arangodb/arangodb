@@ -3,7 +3,7 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Spec for foxx manager
+// / @brief Spec for Foxx manager
 // /
 // / @file
 // /
@@ -41,11 +41,11 @@ var graphName = "UnitTest_pregel";
 var vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function testAlgo(a, p) {
-  var key = pregel.start(a, graphName, p);
+  var pid = pregel.start(a, graphName, p);
   var i = 10000;
   do {
     internal.wait(0.2);
-    var stats = pregel.status(key);
+    var stats = pregel.status(pid);
     if (stats.state !== "running") {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
@@ -155,6 +155,41 @@ function basicTestSuite () {
       testAlgo("pagerank", {maxGSS:1,  sourceField: "pagerank", resultField: "result"});
       // since we already use converged values this should not change anything
       testAlgo("pagerank", {maxGSS:5, sourceField: "pagerank", resultField: "result"});
+    },
+
+    // test the PREGEL_RESULT AQL function
+    testPageRankAQLResult: function() {
+      var pid = pregel.start("pagerank", graphName, {threshold:EPS / 10, store:false});
+      var i = 10000;
+      do {
+        internal.wait(0.2);
+        var stats = pregel.status(pid);
+        if (stats.state !== "running") {
+          assertEqual(stats.vertexCount, 11, stats);
+          assertEqual(stats.edgeCount, 17, stats);
+
+          let vertices = db._collection(vColl);
+          // no result was written to the default result field
+          vertices.all().toArray().forEach( d => assertTrue(!d.result));
+
+          let cursor = db._query("RETURN PREGEL_RESULT(@id)", {"id": pid});
+          let array = cursor.toArray();
+          assertEqual(array.length, 1);
+          let results = array[0];
+          assertEqual(results.length, 11);
+
+          // verify results
+          results.forEach(function(d) {
+            let v = vertices.document(d._key);
+            assertTrue(v !== null);
+            assertTrue(Math.abs(v.pagerank - d.result) < EPS);
+          });
+          break;
+        }
+      } while(i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in pregel execution");
+      }
     }
   };
 };
