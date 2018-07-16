@@ -20,9 +20,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_ENGINE_EQUALITY_CHECK_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_ENGINE_EQUALITY_CHECK_FEATURE_H
+#ifndef ARANGODB_CLUSTER_ENGINE_EQUALITY_CHECK_FEATURE_H
+#define ARANGODB_CLUSTER_ENGINE_EQUALITY_CHECK_FEATURE_H
 
+#include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {

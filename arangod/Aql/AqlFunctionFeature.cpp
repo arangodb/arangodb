@@ -196,6 +196,11 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SHA512", ".", true, false, true, &Functions::Sha512});
   add({"HASH", ".", true, false, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, &Functions::RandomToken});
+  add({"TO_BASE64", ".", true, false, true, &Functions::ToBase64});
+  add({"TO_HEX", ".", true, false, true, &Functions::ToHex});
+  add({"ENCODE_URI_COMPONENT", ".", true, false, true, &Functions::EncodeURIComponent});
+  add({"UUID", "", true, false, true, &Functions::UUID});
+  add({"SOUNDEX", ".", true, false, true, &Functions::Soundex});
   // FULLTEXT is replaced by the AQL optimizer with an index lookup
   add({"FULLTEXT", ".h,.,.|." , false, true, false, &Functions::NotImplemented});
 }

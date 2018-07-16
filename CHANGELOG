@@ -1,6 +1,13 @@
 devel
 -----
 
+* renamed MMFiles engine compactor thread from "Compactor" to "MMFilesCompactor".
+  
+  This change will be visible only on systems which allow assigning names to
+  threads.
+
+* added AQL functions `TO_BASE64`, `TO_HEX`, `ENCODE_URI_COMPONENT` and `SOUNDEX`
+
 * PR5857: rocksdb engine would frequently request a new DelayToken.  This caused
   excessive write delay on the next Put() call.  Alternate approach taken.
 
@@ -345,6 +352,8 @@ devel
 
 * fixed agency restart from compaction without data
 
+* fixed agency's log compaction for internal issue #2249 
+
 * only load Plan and Current from agency when actually needed
 
 v3.3.8 (XXXX-XX-XX)
@@ -437,7 +446,6 @@ v3.3.7 (2018-04-11)
   fully prepare before adding 10 second grace period after leadership change
 
 * fixed internal issue #2215's FailedLeader timeout bug
-
 
 v3.3.5 (2018-03-28)
 -------------------

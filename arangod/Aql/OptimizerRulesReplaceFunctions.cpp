@@ -572,9 +572,9 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt
       return astnode;
     };
 
-    CalculationNode* calc = static_cast<CalculationNode*>(node);
+    CalculationNode* calc = ExecutionNode::castTo<CalculationNode*>(node);
     auto* original = getAstNode(calc);
-    auto* replacement = Ast::traverseAndModify(original,visitor);
+    auto* replacement = Ast::traverseAndModify(original, visitor);
 
     // replace root node if it was modified
     // TraverseAndModify has no access to roots parent
