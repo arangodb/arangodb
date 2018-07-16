@@ -226,7 +226,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _check30Revisions("true"),
       _throwCollectionNotLoadedError(false),
       _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
@@ -282,18 +281,16 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "throw an error when accessing a collection that is still loading",
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError));
 
-  options->addHiddenOption(
-      "--database.check-30-revisions",
-      "check _rev values in collections created before 3.1",
-      new DiscreteValuesParameter<StringParameter>(
-          &_check30Revisions,
-          std::unordered_set<std::string>{"true", "false", "fail"}));
-
   // the following option was removed in 3.2
   // index-creation is now automatically parallelized via the Boost ASIO thread pool
   options->addObsoleteOption(
       "--database.index-threads",
       "threads to start for parallel background index creation", true);
+  
+  // the following hidden option was removed in 3.4
+  options->addObsoleteOption(
+      "--database.check-30-revisions",
+      "check for revision values from ArangoDB 3.0 databases", true);
 
   // the following options were removed in 3.2
   options->addObsoleteOption("--database.revision-cache-chunk-size",
