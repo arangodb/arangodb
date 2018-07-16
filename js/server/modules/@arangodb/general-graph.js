@@ -43,7 +43,7 @@ CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
 	this.__orphanCollections = orphans;
 };
 
-CommonGraph.prototype._deleteEdgeDefinition = function (edgeDefinition, dropCollection) {
+CommonGraph.prototype._deleteEdgeDefinition = function (edgeDefinition, dropCollection = false) {
 	let result = GeneralGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
 	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
@@ -58,18 +58,12 @@ CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinitions) {
 	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
-CommonGraph.prototype._addVertexCollection = function (vertexName, createCollection) {
-	if (createCollection === undefined) {
-		createCollection = true;
-	}
+CommonGraph.prototype._addVertexCollection = function (vertexName, createCollection = true) {
 	let result = GeneralGraph._addVertexCollection(this.__name, vertexName, createCollection);
 	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
-CommonGraph.prototype._removeVertexCollection = function (vertexName, dropCollection) {
-	if (dropCollection === undefined) {
-		dropCollection = false;
-	}
+CommonGraph.prototype._removeVertexCollection = function (vertexName, dropCollection = false) {
 	let result = GeneralGraph._removeVertexCollection(this.__name, vertexName, dropCollection);
 	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
