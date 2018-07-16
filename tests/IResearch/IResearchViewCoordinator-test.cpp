@@ -157,12 +157,12 @@ struct IResearchViewCoordinatorSetup {
     // We need this feature to be added now in order to create the system database
     arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
 
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-   buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-   buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(&server), true);
-   buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
-   buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
-   buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
+    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(&server), true);
+    buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
     #if USE_ENTERPRISE
       buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
