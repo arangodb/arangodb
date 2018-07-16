@@ -16,15 +16,20 @@ There are two main ways to upgrade ArangoDB:
 Before the Upgrade
 ------------------
 
-Before upgrading, it is suggested to:
+Before upgrading, it is reccomended to:
 
 - Check the [CHANGELOG](../../ReleaseNotes/README.md#changelogs) and the
   [list of incompatible changes](../../ReleaseNotes/README.md#incompatible-changes)
-  for API or other changes in the new version of ArangoDB and make sure your applications
+  for API or other changes in the new version of ArangoDB, and make sure your applications
   can deal with them.
-- As an extra precaution, you might want to take a backup, and also copy the entire
-  "old" data directory to a safe place (after stopping the ArangoDB Server running
-  on it). The backup from the "old" version is required in case a downgrade will be needed. 
+- As an extra precaution, and as a requirement if you want to [downgrade](../../Downgrading/README.md),
+  you might want to:
+  - Take a backup of the old ArangoDB database, using [Arangodump](../../Programs/Arangodump/README.md),
+    as well as
+  - Copy the entire "old" data directory to a safe place, after stopping the ArangoDB Server
+    running on it (if you are running an Active Failover, or a Cluster, you will need to take
+    a copy of their data directories, from all involved machines, after stopping all the running
+    ArangoDB processes).
 
 Upgrade Paths
 -------------
