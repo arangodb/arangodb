@@ -64,12 +64,18 @@ std::string const StaticStrings::ReplaceExisting("replaceExisting");
 std::string const StaticStrings::OverWrite("overwrite");
 
 // replication headers
-std::string const StaticStrings::ReplicationHeaderCheckMore("x-arango-replication-checkmore");
-std::string const StaticStrings::ReplicationHeaderLastIncluded("x-arango-replication-lastincluded");
-std::string const StaticStrings::ReplicationHeaderLastScanned("x-arango-replication-lastscanned");
-std::string const StaticStrings::ReplicationHeaderLastTick("x-arango-replication-lasttick");
-std::string const StaticStrings::ReplicationHeaderFromPresent("x-arango-replication-frompresent");
-std::string const StaticStrings::ReplicationHeaderActive("x-arango-replication-active");
+std::string const StaticStrings::ReplicationHeaderCheckMore(
+    "x-arango-replication-checkmore");
+std::string const StaticStrings::ReplicationHeaderLastIncluded(
+    "x-arango-replication-lastincluded");
+std::string const StaticStrings::ReplicationHeaderLastScanned(
+    "x-arango-replication-lastscanned");
+std::string const StaticStrings::ReplicationHeaderLastTick(
+    "x-arango-replication-lasttick");
+std::string const StaticStrings::ReplicationHeaderFromPresent(
+    "x-arango-replication-frompresent");
+std::string const StaticStrings::ReplicationHeaderActive(
+    "x-arango-replication-active");
 
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");
@@ -153,23 +159,26 @@ std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
+// collection attributes
+std::string const StaticStrings::NumberOfShards("numberOfShards");
+std::string const StaticStrings::ReplicationFactor("replicationFactor");
+std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
 std::string const StaticStrings::GraphIsSmart("isSmart");
 std::string const StaticStrings::GraphFrom("from");
 std::string const StaticStrings::GraphTo("to");
-std::string const StaticStrings::GraphSmartGraphAttribute("smartGraphAttribute");
+std::string const StaticStrings::GraphSmartGraphAttribute(
+    "smartGraphAttribute");
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
 
-// rest query parameter // todo rename to a general name
+// rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
 std::string const StaticStrings::GraphCreateCollections("createCollections");
 std::string const StaticStrings::GraphCreateCollection("createCollection");
-std::string const StaticStrings::GraphNumberOfShards("numberOfShards");
-std::string const StaticStrings::GraphReplicationFactor("replicationFactor");
-std::string const StaticStrings::GraphDistributeShardsLike("distributeShardsLike");
 
 // misc strings
-std::string const StaticStrings::LastValue("lastValue"); 
+std::string const StaticStrings::LastValue("lastValue");

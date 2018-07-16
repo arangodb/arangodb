@@ -213,11 +213,11 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
   }
   #endif
 
-  if (slice.hasKey(StaticStrings::GraphNumberOfShards)) {
-    setNumberOfShards(slice.get(StaticStrings::GraphNumberOfShards).getUInt());
+  if (slice.hasKey(StaticStrings::NumberOfShards)) {
+    setNumberOfShards(slice.get(StaticStrings::NumberOfShards).getUInt());
   }
-  if (slice.hasKey(StaticStrings::GraphReplicationFactor)) {
-    setReplicationFactor(slice.get(StaticStrings::GraphReplicationFactor).getUInt());
+  if (slice.hasKey(StaticStrings::ReplicationFactor)) {
+    setReplicationFactor(slice.get(StaticStrings::ReplicationFactor).getUInt());
   }
   setId(StaticStrings::GraphCollection + "/" + graphName_);
   setRev(slice.get(StaticStrings::RevString).copyString());
@@ -434,8 +434,8 @@ void Graph::graphToVpack(VPackBuilder& builder) const {
     builder.add(StaticStrings::GraphSmartGraphAttribute, VPackValue(smartGraphAttribute()));
   }
 
-  builder.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards()));
-  builder.add(StaticStrings::GraphReplicationFactor, VPackValue(replicationFactor()));
+  builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
+  builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
   builder.add(StaticStrings::RevString, VPackValue(rev()));
   builder.add(StaticStrings::IdString, VPackValue(id()));
 
@@ -478,8 +478,8 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   builder.openObject();
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   if (isCluster) {
-    builder.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards()));
-    builder.add(StaticStrings::GraphReplicationFactor, VPackValue(replicationFactor()));
+    builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
   }
   builder.close();
 }
@@ -490,11 +490,11 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync, VPa
   builder.openObject();
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   if (isCluster) {
-    builder.add(StaticStrings::GraphNumberOfShards,
-                VPackValue(options.get(StaticStrings::GraphNumberOfShards).getUInt()));
+    builder.add(StaticStrings::NumberOfShards,
+                VPackValue(options.get(StaticStrings::NumberOfShards).getUInt()));
     builder.add(
-            StaticStrings::GraphReplicationFactor,
-        VPackValue(options.get(StaticStrings::GraphReplicationFactor).getUInt()));
+            StaticStrings::ReplicationFactor,
+        VPackValue(options.get(StaticStrings::ReplicationFactor).getUInt()));
   }
   builder.close();
 }

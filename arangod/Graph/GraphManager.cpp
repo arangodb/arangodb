@@ -428,7 +428,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
     replicationFactor =
         document
             .get(std::vector<std::string>(
-                {"options", StaticStrings::GraphReplicationFactor}))
+                {"options", StaticStrings::ReplicationFactor}))
             .getUInt();
   } catch (...) {
     replicationFactor = 1;
@@ -438,7 +438,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   try {
     numberOfShards = document
                          .get(std::vector<std::string>(
-                             {"options", StaticStrings::GraphNumberOfShards}))
+                             {"options", StaticStrings::NumberOfShards}))
                          .getUInt();
   } catch (...) {
     numberOfShards = 1;
@@ -516,8 +516,8 @@ OperationResult GraphManager::createGraph(VPackSlice document,
       params.add(StaticStrings::GraphSmartGraphAttribute,
                  VPackValue(smartGraphAttribute));
     }
-    params.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards));
-    params.add(StaticStrings::GraphReplicationFactor,
+    params.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+    params.add(StaticStrings::ReplicationFactor,
                VPackValue(replicationFactor));
   }
   if (isSmart) {
@@ -531,8 +531,8 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   VPackBuilder params;
   {
     VPackObjectBuilder guard(&params);
-    params.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards));
-    params.add(StaticStrings::GraphReplicationFactor,
+    params.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+    params.add(StaticStrings::ReplicationFactor,
                VPackValue(replicationFactor));
   }
   Graph::createCollectionOptions(collectionsOptions, waitForSync,
@@ -583,9 +583,9 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   builder.add(StaticStrings::KeyString, graphName);
   builder.add(StaticStrings::GraphEdgeDefinitions, sortedEdgeDefinitionsSlice);
   builder.add(StaticStrings::GraphOrphans, orphanCollections);
-  builder.add(StaticStrings::GraphReplicationFactor,
+  builder.add(StaticStrings::ReplicationFactor,
               VPackValue(replicationFactor));
-  builder.add(StaticStrings::GraphNumberOfShards, VPackValue(numberOfShards));
+  builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
 
 #ifdef USE_ENTERPRISE
   builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart));
