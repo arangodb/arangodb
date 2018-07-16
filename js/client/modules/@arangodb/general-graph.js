@@ -42,25 +42,25 @@ exports._exists = ggc._exists;
 // _deleteEdgeDefinition
 
 exports._listObjects = function () {
-  var uri = GRAPH_PREFIX;
-  var requestResult = db._connection.GET(uri);
-  return arangosh.checkRequestResult(requestResult).graphs;
+  const uri = GRAPH_PREFIX;
+  const requestResult = arangosh.checkRequestResult(db._connection.GET(uri));
+  return requestResult.graphs;
 };
 
 exports._list = function () {
-  var uri = GRAPH_PREFIX;
-  var requestResult = db._connection.GET(uri);
-  arangosh.checkRequestResult(requestResult).graphs;
+  const uri = GRAPH_PREFIX;
+  const requestResult = arangosh.checkRequestResult(db._connection.GET(uri));
+  const graphs = requestResult.graphs;
 
-  var result = [];
-  _.each(requestResult.graphs, function (graph) {
+  const result = [];
+  _.each(graphs, function (graph) {
     result.push(graph._key);
   });
   return result;
 };
 
 // inherited graph class
-let CommonGraph = ggc.__GraphClass;
+const CommonGraph = ggc.__GraphClass;
 
 CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
   this.__edgeDefinitions = edgeDefs;
@@ -68,79 +68,71 @@ CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
 };
 
 CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition) {
-  var data = {};
-  if (edgeDefinition) {
-    data = edgeDefinition;
-  }
-  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge";
-  var requestResult = db._connection.POST(uri, JSON.stringify(data));
+  const data = edgeDefinition || {};
+  const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge";
+  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, JSON.stringify(data)));
+  const graph = requestResult.graph;
   try {
-    this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+    this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
   } catch (ignore) {
   }
-
-  return arangosh.checkRequestResult(requestResult);
 };
 
 CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinition) {
-  var data = {};
-  if (edgeDefinition) {
-    data = edgeDefinition;
-  }
-  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + edgeDefinition.collection;
-  var requestResult = db._connection.PUT(uri, JSON.stringify(data));
+  const data = edgeDefinition || {};
+  const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + edgeDefinition.collection;
+  const requestResult = arangosh.checkRequestResult(db._connection.PUT(uri, JSON.stringify(data)));
+  const graph = requestResult.graph;
   try {
-    this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+    this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
   } catch (ignore) {
   }
 };
 
 CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
-  var data = {};
+  const data = {};
   if (name) {
     data.collection = name;
   }
-  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex";
+  let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex";
   if (createCollection !== false) {
     uri += "?createCollection=true";
   } else {
     uri += "?createCollection=false";
   }
-  var requestResult = db._connection.POST(uri, JSON.stringify(data));
-  arangosh.checkRequestResult(requestResult);
+  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, JSON.stringify(data)));
+  const graph = requestResult.graph;
 
   try {
-    this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+    this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
   } catch (ignore) {
   }
 };
 
 CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) {
-  var uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex/" + encodeURIComponent(name);
-  console.log(uri);
+  let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex/" + encodeURIComponent(name);
   if (dropCollection === true) {
     uri += "?dropCollection=true";
   } else {
     uri += "?dropCollection=false";
   }
-  var requestResult = db._connection.DELETE(uri);
-  print(requestResult);
-  arangosh.checkRequestResult(requestResult);
+  const requestResult = arangosh.checkRequestResult(db._connection.DELETE(uri));
+  const graph = requestResult.graph;
 
   try {
-    this.__updateDefinitions(requestResult.graph.edgeDefinitions, requestResult.graph.orphanCollections);
+    this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
   } catch (ignore) {
   }
 };
 
 exports._graph = function (graphName) {
-  var uri = GRAPH_PREFIX + encodeURIComponent(graphName);
-  var requestResult = db._connection.GET(uri);
-  return new CommonGraph(arangosh.checkRequestResult(requestResult).graph);
+  const uri = GRAPH_PREFIX + encodeURIComponent(graphName);
+  const requestResult = arangosh.checkRequestResult(db._connection.GET(uri));
+  return new CommonGraph(requestResult.graph);
 };
 
 exports._create = function (name, edgeDefinitions, orphans, options) {
-  var data = {};
+  const data = {};
   if (name) {
     data.name = name;
   }
@@ -154,19 +146,19 @@ exports._create = function (name, edgeDefinitions, orphans, options) {
     data.options = options;
   }
 
-  var uri = GRAPH_PREFIX;
-  var requestResult = db._connection.POST(uri, JSON.stringify(data));
-  return new CommonGraph(arangosh.checkRequestResult(requestResult).graph);
+  const uri = GRAPH_PREFIX;
+  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, JSON.stringify(data)));
+  return new CommonGraph(requestResult.graph);
 };
 
 exports._drop = function (graphName, dropCollections) {
 
-  var uri = GRAPH_PREFIX + encodeURIComponent(graphName);
+  let uri = GRAPH_PREFIX + encodeURIComponent(graphName);
   if (dropCollections) {
     uri += "?dropCollections=true";
   }
-  var requestResult = db._connection.DELETE(uri);
-  return arangosh.checkRequestResult(requestResult).result;
+  const requestResult = arangosh.checkRequestResult(db._connection.DELETE(uri));
+  return requestResult.result;
 };
 
 // js based helper functions
