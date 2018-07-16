@@ -80,8 +80,8 @@ RocksDBLogValue RocksDBLogValue::ViewCreate(TRI_voc_tick_t dbid,
 
 RocksDBLogValue RocksDBLogValue::ViewDrop(TRI_voc_tick_t dbid,
                                           TRI_voc_cid_t vid,
-                                          VPackSlice const& viewInfo) {
-  return RocksDBLogValue(RocksDBLogType::ViewDrop, dbid, vid, viewInfo);
+                                          StringRef const& uuid) {
+  return RocksDBLogValue(RocksDBLogType::ViewDrop, dbid, vid, uuid);
 }
 
 RocksDBLogValue RocksDBLogValue::ViewChange(TRI_voc_tick_t dbid,
@@ -237,15 +237,16 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
                                  uint64_t cid, StringRef const& data)
     : _buffer() {
   switch (type) {
+
     case RocksDBLogType::CollectionDrop:
-    case RocksDBLogType::CollectionRename: {
+    case RocksDBLogType::CollectionRename:
+    case RocksDBLogType::ViewDrop:
+    case RocksDBLogType::ViewRename: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2 +
                       data.length());
       _buffer.push_back(static_cast<char>(type));
       uint64ToPersistent(_buffer, dbId);
       uint64ToPersistent(_buffer, cid);
-      // append primary key for SingleRemove, or
-      // collection name for CollectionRename, or
       // collection uuid for CollectionDrop
       _buffer.append(data.data(), data.length());
       break;

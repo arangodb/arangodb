@@ -1346,7 +1346,8 @@ arangodb::Result RocksDBEngine::dropView(
   builder.close();
 
   auto logValue =
-    RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), builder.slice());
+    RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
+                              StringRef(view.guid()));
   RocksDBKey key;
 
   key.constructView(vocbase.id(), view.id());

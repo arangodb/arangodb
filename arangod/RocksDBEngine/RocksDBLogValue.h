@@ -64,7 +64,7 @@ class RocksDBLogValue {
 
   static RocksDBLogValue ViewCreate(TRI_voc_tick_t, TRI_voc_cid_t);
   static RocksDBLogValue ViewDrop(TRI_voc_tick_t, TRI_voc_cid_t,
-                                  VPackSlice const& viewInfo);
+                                  StringRef const& uuid);
   static RocksDBLogValue ViewChange(TRI_voc_tick_t, TRI_voc_cid_t);
   static RocksDBLogValue ViewRename(TRI_voc_tick_t, TRI_voc_cid_t);
 
