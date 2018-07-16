@@ -503,8 +503,8 @@ void RestGraphHandler::generateModified(TRI_col_type_e colType,
     objectTypeName = "edge";
   }
 
-  VPackBuilder objectBuilder =
-      VPackCollection::remove(resultSlice, std::unordered_set{"old", "new"});
+  VPackBuilder objectBuilder = VPackCollection::remove(
+      resultSlice, std::unordered_set<std::string>{"old", "new"});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
   VPackSlice oldSlice = resultSlice.get("old");
@@ -545,8 +545,8 @@ void RestGraphHandler::generateCreated(TRI_col_type_e colType,
     objectTypeName = "edge";
   }
 
-  VPackBuilder objectBuilder =
-      VPackCollection::remove(resultSlice, std::unordered_set{"old", "new"});
+  VPackBuilder objectBuilder = VPackCollection::remove(
+      resultSlice, std::unordered_set<std::string>{"old", "new"});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
   VPackSlice newSlice = resultSlice.get("new");
