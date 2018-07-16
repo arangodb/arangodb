@@ -246,6 +246,9 @@ void checkAgainstExpectedOperations(
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
+  // Disable cluster logging
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
+  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT));
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager =
       std::move(AgencyCommManager::MANAGER);
@@ -437,6 +440,9 @@ SCENARIO("Broken distributeShardsLike collections",
 }
 
 SCENARIO("VersionSort", "[cluster][shards][repairs]") {
+  // Disable cluster logging
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
+  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT));
   GIVEN("Different version strings") {
     // General functionality check
     CHECK(VersionSort()("s2", "s10"));
@@ -467,6 +473,9 @@ SCENARIO("VersionSort", "[cluster][shards][repairs]") {
 }
 
 SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
+  // Disable cluster logging
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
+  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT));
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager =
       std::move(AgencyCommManager::MANAGER);
