@@ -29,7 +29,7 @@ devel
 
   Queries directly referencing the document key benefit from this:
 
-	    UPDATE {_key: '1'} WITH {foo: 'bar'} IN collection RETURN OLD
+      UPDATE {_key: '1'} WITH {foo: 'bar'} IN collection RETURN OLD
 
 * Added load balancer support and user-restriction to cursor API.
 
@@ -142,7 +142,7 @@ devel
   should change the protocol from SSLv2 to TLSv12 if possible, by adjusting
   the value of the `--ssl.protocol` startup option.
 
-* added `overwrite` option to the `document rest-handler` to allow for easier syncing.
+* added `overwrite` option to document insert operations to allow for easier syncing.
 
   This implements almost the much inquired UPSERT. In reality it is a REPSERT
   (replace/insert) because only replacement and not modification of documents
@@ -763,7 +763,7 @@ v3.3.rc2 (2017-11-22)
 
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
-	after a successful node/edge update.
+  after a successful node/edge update.
 
 * removed `--recycle-ids` option for arangorestore
 
