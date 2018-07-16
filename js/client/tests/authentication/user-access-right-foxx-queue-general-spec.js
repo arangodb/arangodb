@@ -84,7 +84,7 @@ describe('Foxx service', () => {
       FILTER queue._key != 'default'
       RETURN queue
     `).toArray();
-    expect(queuesAfter.length - queuesBefore.length).to.equal(1, 'Could not register foxx queue');
+    expect(queuesAfter.length - queuesBefore.length).to.equal(1, 'Could not register Foxx queue');
   });
 
   it('should not register a queue two times', () => {
@@ -107,7 +107,7 @@ describe('Foxx service', () => {
       method: 'post'
     });
     expect(res.code).to.equal(204);
-    expect(waitForJob()).to.equal(true, 'job from foxx queue did not run!');
+    expect(waitForJob()).to.equal(true, 'job from Foxx queue did not run!');
     const jobResult = db._query(aql`
       FOR i IN foxx_queue_test
         FILTER i.job == true

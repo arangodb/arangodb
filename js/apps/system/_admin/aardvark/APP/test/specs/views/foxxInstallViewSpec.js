@@ -87,7 +87,7 @@
         }, 'The Add App dialog should be hidden.', 750);
       });
 
-      it('should offer the mountpoint input but not the run teardown', function () {
+      it('should offer the mount point input but not the run teardown', function () {
         runs(function () {
           expect($('#new-app-mount').length).toEqual(1);
           expect($('#new-app-teardown').length).toEqual(0);
@@ -268,7 +268,7 @@
         }, 'The Add App dialog should be hidden.', 750);
       });
 
-      it('should not offer the mountpoint input but the run teardown', function () {
+      it('should not offer the mount point input but the run teardown', function () {
         runs(function () {
           expect($('#new-app-mount').length).toEqual(0);
           expect($('#new-app-teardown').length).toEqual(1);
@@ -438,7 +438,7 @@
         }, 'The Add App dialog should be hidden.', 750);
       });
 
-      it('should not offer the mountpoint input but the run teardown', function () {
+      it('should not offer the mount point input but the run teardown', function () {
         runs(function () {
           expect($('#new-app-mount').length).toEqual(0);
           expect($('#new-app-teardown').length).toEqual(1);

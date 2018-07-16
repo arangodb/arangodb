@@ -725,12 +725,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Logger");
-
-#ifdef USE_ENTERPRISE
-  startsAfter("Encryption");
-#endif
+  startsAfter("BasicsPhase");
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -827,8 +822,8 @@ void RestoreFeature::validateOptions(
     _options.chunkSize = 1024 * 128;
   }
 
-  auto clamped = boost::algorithm::clamp(_options.threadCount, 1,
-                                         4 * TRI_numberProcessors());
+  auto clamped = boost::algorithm::clamp(_options.threadCount, uint32_t(1),
+                                         uint32_t(4 * TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC(WARN, Logger::RESTORE) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;

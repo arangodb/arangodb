@@ -73,7 +73,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
     _vocbase(vocbase) {
   _bytesSentDistribution.openArray();
 
-  for (auto const& val : TRI_BytesSentDistributionVectorStatistics._value) {
+  for (auto const& val : TRI_BytesSentDistributionVectorStatistics) {
     _bytesSentDistribution.add(VPackValue(val));
   }
 
@@ -81,7 +81,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
 
   _bytesReceivedDistribution.openArray();
 
-  for (auto const& val : TRI_BytesReceivedDistributionVectorStatistics._value) {
+  for (auto const& val : TRI_BytesReceivedDistributionVectorStatistics) {
     _bytesReceivedDistribution.add(VPackValue(val));
   }
 
@@ -89,7 +89,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
 
   _requestTimeDistribution.openArray();
 
-  for (auto const& val : TRI_RequestTimeDistributionVectorStatistics._value) {
+  for (auto const& val : TRI_RequestTimeDistributionVectorStatistics) {
     _requestTimeDistribution.add(VPackValue(val));
   }
 

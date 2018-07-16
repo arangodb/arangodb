@@ -156,7 +156,7 @@ class Constituent : public Thread {
   std::string _id;       // My own id
 
   // Last time an AppendEntriesRPC message has arrived, this is used to
-  // organise out-of-patience in the follower:
+  // organize out-of-patience in the follower:
   std::atomic<double> _lastHeartbeatSeen;
 
   role_t _role;  // My role

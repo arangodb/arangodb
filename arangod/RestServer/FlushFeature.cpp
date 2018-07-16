@@ -44,9 +44,10 @@ FlushFeature::FlushFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Flush"),
       _flushInterval(1000000) {
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("StorageEngine");
   startsAfter("MMFilesLogfileManager");
-  // TODO: must start after storage engine
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -37,7 +37,6 @@ namespace arangodb {
 class RequestStatistics {
  public:
   static void initialize();
-  static void shutdown();
   static size_t processAll();
 
   static RequestStatistics* acquire();

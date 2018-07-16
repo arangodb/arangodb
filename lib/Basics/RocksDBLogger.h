@@ -39,7 +39,7 @@ class RocksDBLogger final : public rocksdb::Logger {
   void enable() { _enabled = true; }
   
   // intentionally do not log header information here
-  // as this does not seem to honor the loglevel correctly
+  // as this does not seem to honor the log level correctly
   void LogHeader(const char* format, va_list ap) override {}
 
   void Logv(char const* format, va_list ap) override;

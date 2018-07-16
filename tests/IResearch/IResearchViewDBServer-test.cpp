@@ -27,7 +27,11 @@
 #include "common.h"
 #include "AgencyMock.h"
 #include "StorageEngineMock.h"
-#include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
 #include "Agency/Store.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
@@ -70,7 +74,8 @@ struct IResearchViewDBServerSetup {
   GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
   IResearchViewDBServerSetup(): server(nullptr, nullptr) {
@@ -92,33 +97,49 @@ struct IResearchViewDBServerSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
-    // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
-    features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), false); // required for instantiating IResearchView*
-    features.emplace_back(new arangodb::AgencyFeature(&server), false);
-    features.emplace_back(new arangodb::ClusterFeature(&server), false);
-    features.emplace_back(new arangodb::V8DealerFeature(&server), false);
+    auto buildFeatureEntry = [&] (arangodb::application_features::ApplicationFeature* ftr, bool start) -> void {
+      std::string name = ftr->name();
+      features.emplace(name, std::make_pair(ftr, start));
+    };
 
-    for (auto& f: features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
+
+    // setup required application features
+    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
+    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
+    buildFeatureEntry(new arangodb::DatabasePathFeature(&server), false);
+    buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
+    buildFeatureEntry(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(&server), false); // required for instantiating IResearchView*
+    buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
+    buildFeatureEntry(new arangodb::V8DealerFeature(&server), false);
+
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.second.first);
     }
 
-    for (auto& f: features) {
-      f.first->prepare();
+    arangodb::application_features::ApplicationServer::server->setupDependencies(false);
+    orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
 
-      if (f.first->name() == "Authentication") {
-        f.first->forceDisable();
+    for (auto& f : orderedFeatures) {
+      if (f->name() == "Endpoint") {
+        // We need this feature to be there but do not use it.
+        continue;
+      }
+      f->prepare();
+      if (f->name() == "Authentication") {
+        f->forceDisable();
       }
     }
 
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->start();
+    for (auto& f : orderedFeatures) {
+      if (features.at(f->name()).second) {
+        f->start();
       }
     }
 
@@ -145,14 +166,14 @@ struct IResearchViewDBServerSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->stop();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      if (features.at((*f)->name()).second) {
+        (*f)->stop();
       }
     }
 
-    for (auto& f: features) {
-      f.first->unprepare();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      (*f)->unprepare();
     }
 
     ClusterCommControl::reset();

@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com//arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Option reference
 
 The ArangoDB Starter provides a lot of options to control various aspects
@@ -95,11 +95,14 @@ and pass it through the `--auth.jwt-secret-path` option.
 For example:
 
 ```bash
-echo "MakeThisSecretMuchStronger" > jwtSecret
+arangodb create jwt-secret --secret=jwtSecret
 arangodb --auth.jwt-secret=./jwtSecret
 ```
 
 All starters used in the cluster must have the same JWT secret.
+
+To use a JWT secret to access the database, use `arangodb auth header`.
+See [Using authentication tokens](./Security.md#using-authentication-tokens) for details.
 
 ## SSL options
 

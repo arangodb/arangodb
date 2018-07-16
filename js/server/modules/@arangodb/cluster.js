@@ -360,7 +360,7 @@ function getLocalCollections () {
   return result;
 }
 
-function organiseLeaderResign (database, collId, shardName) {
+function organizeLeaderResign (database, collId, shardName) {
   console.topic('heartbeat=info', "trying to withdraw as leader of shard '%s/%s' of '%s/%s'",
     database, shardName, database, collId);
   // This starts a write transaction, just to wait for any ongoing
@@ -1012,7 +1012,7 @@ function executePlanForCollections(plannedCollections) {
           if (shardMap.hasOwnProperty(collection) &&
               shardMap[collection][0] === '_' + ourselves) {
             if (collections[collection].theLeader === "") {
-              organiseLeaderResign(database, collections[collection].planId,
+              organizeLeaderResign(database, collections[collection].planId,
                 collection);
             }
           } else {
