@@ -64,6 +64,7 @@ SchedulerFeature::~SchedulerFeature() {}
 void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("scheduler", "Configure the I/O scheduler");
+  options->addSection("server", "Server features");
 
   options->addOption("--server.threads", "number of threads",
                      new UInt64Parameter(&_nrMaximalThreads));
