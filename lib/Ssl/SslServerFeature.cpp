@@ -46,8 +46,7 @@ SslServerFeature::SslServerFeature(
       _sslOptions(asio::ssl::context::default_workarounds | asio::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
-  startsAfter("Ssl");
-  startsAfter("Logger");
+  startsAfter("AQLPhase");
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

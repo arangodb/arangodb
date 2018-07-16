@@ -23,7 +23,6 @@
 
 #include "ClusterFeature.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -39,7 +38,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -56,12 +54,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
-  startsAfter("Authentication");
-  startsAfter("CacheManager");
-  startsAfter("Logger");
-  startsAfter("Database");
-  startsAfter("Scheduler");
-  startsAfter("V8Dealer");
+  startsAfter("DatabasePhase");
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -233,24 +226,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  if (_enableCluster &&
-      _requirePersistedId &&
-      !ServerState::instance()->hasPersistedId()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
-    FATAL_ERROR_EXIT();
-  }
-
-  auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  if (v8Dealer->isEnabled()) {
-    v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
-                           _systemReplicationFactor);
-  } else {
-    if (ServerState::isDBServer(_requestedRole)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cannot run DBServer with `--javascript.enabled false`";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
   // create callback registery
   _agencyCallbackRegistry.reset(
       new AgencyCallbackRegistry(agencyCallbacksPath()));
@@ -264,16 +239,13 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-  auto agency =
-    application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
-
 #ifdef DEBUG_SYNC_REPLICATION
   bool startClusterComm = true;
 #else
   bool startClusterComm = false;
 #endif
 
-  if (agency->isEnabled() || _enableCluster) {
+  if (ServerState::instance()->isAgent() || _enableCluster) {
     startClusterComm = true;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown

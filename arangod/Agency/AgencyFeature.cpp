@@ -57,13 +57,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false) {
   setOptional(true);
-  startsAfter("Cluster");
-  startsAfter("Database");
-  startsAfter("Endpoint");
-  startsAfter("QueryRegistry");
-  startsAfter("Random");
-  startsAfter("Scheduler");
-  startsAfter("Server");
+  startsAfter("FoxxPhase");
 }
 
 AgencyFeature::~AgencyFeature() {}
@@ -244,13 +238,11 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::prepare() {
-}
-
-void AgencyFeature::start() {
   if (!isEnabled()) {
     return;
   }
 
+  // Available after validateOptions of ClusterFeature
   // Find the agency prefix:
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (!feature->agencyPrefix().empty()) {
@@ -258,13 +250,13 @@ void AgencyFeature::start() {
       std::string("/") + feature->agencyPrefix());
     arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();;
   }
-  
-  // TODO: Port this to new options handling
+
   std::string endpoint;
 
   if (_agencyMyAddress.empty()) {
     std::string port = "8529";
 
+    // Available after prepare of EndpointFeature
     EndpointFeature* endpointFeature =
         ApplicationServer::getFeature<EndpointFeature>("Endpoint");
     auto endpoints = endpointFeature->httpEndpoints();
@@ -296,9 +288,15 @@ void AgencyFeature::start() {
         _waitForSync, _supervisionFrequency, _compactionStepSize,
         _compactionKeepSize, _supervisionGracePeriod, _cmdLineTimings,
         _maxAppendSize)));
-  
+
   AGENT = _agent.get();
-  
+}
+
+void AgencyFeature::start() {
+  if (!isEnabled()) {
+    return;
+  }
+ 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
   

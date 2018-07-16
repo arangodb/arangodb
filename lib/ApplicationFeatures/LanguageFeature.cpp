@@ -46,7 +46,7 @@ LanguageFeature::LanguageFeature(
       _icuDataPtr(nullptr) {
   Instance = this;
   setOptional(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 LanguageFeature::~LanguageFeature() {

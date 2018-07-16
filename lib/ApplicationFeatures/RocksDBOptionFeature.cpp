@@ -92,8 +92,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 #endif
 
   setOptional(true);
-  startsAfter("Daemon");
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
 }
 
 void RocksDBOptionFeature::collectOptions(
