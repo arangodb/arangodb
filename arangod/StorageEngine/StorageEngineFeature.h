@@ -37,6 +37,7 @@ class StorageEngineFeature : public application_features::ApplicationFeature {
   StorageEngineFeature(application_features::ApplicationServer* server)
       : application_features::ApplicationFeature(server, "StorageEngine") {
     setOptional(false);
+    startsAfter("BasicsPhase");
   }
 
 };

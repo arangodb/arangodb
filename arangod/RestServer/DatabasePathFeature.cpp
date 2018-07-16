@@ -39,11 +39,11 @@ DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
     : ApplicationFeature(server, "DatabasePath"),
       _requiredDirectoryState("any") {
   setOptional(false);
+  startsAfter("GreetingsPhase");
+
   startsAfter("FileDescriptors");
   startsAfter("Language");
-  startsAfter("Logger");
   startsAfter("PageSize");
-  startsAfter("Random");
   startsAfter("Temp");
 }
 

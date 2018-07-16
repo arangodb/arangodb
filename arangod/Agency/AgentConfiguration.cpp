@@ -39,8 +39,8 @@ config_t::config_t()
     _supervisionTouched(false),
     _waitForSync(true),
     _supervisionFrequency(5.0),
-    _compactionStepSize(2000),
-    _compactionKeepSize(500),
+    _compactionStepSize(1000),
+    _compactionKeepSize(50000),
     _supervisionGracePeriod(15.0),
     _cmdLineTimings(false),
     _version(0),
@@ -620,7 +620,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
       ss << _compactionStepSize << " (persisted)";
     } else {
-      _compactionStepSize = 2000;
+      _compactionStepSize = 1000;
       ss << _compactionStepSize << " (default)";
     }
   } else {
@@ -636,7 +636,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
       ss << _compactionKeepSize << " (persisted)";
     } else {
-      _compactionStepSize =  500;
+      _compactionKeepSize = 50000;
       ss << _compactionKeepSize << " (default)";
     }
   } else {

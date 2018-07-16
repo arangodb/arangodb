@@ -137,6 +137,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _pruneWaitTimeInitial(180.0),
       _releasedTick(0),
       _useThrottle(true) {
+  startsAfter("BasicsPhase");
+
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");

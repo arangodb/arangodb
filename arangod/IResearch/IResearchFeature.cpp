@@ -641,19 +641,10 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   : ApplicationFeature(server, IResearchFeature::name()),
     _running(false) {
   setOptional(true);
-  startsAfter("ViewTypes");
-  startsAfter("Logger");
-  startsAfter("Database");
+  startsAfter("V8Phase");
+
   startsAfter("IResearchAnalyzer"); // used for retrieving IResearch analyzers for functions
   startsAfter("AQLFunctions");
-  // TODO FIXME: we need the MMFilesLogfileManager to be available here if we
-  // use the MMFiles engine. But it does not feel right to have such storage engine-
-  // specific dependency here. Better create a "StorageEngineFeature" and make
-  // ourselves start after it!
-  startsAfter("MMFilesLogfileManager");
-  startsAfter("TransactionManager");
-
-  startsBefore("GeneralServer");
 }
 
 void IResearchFeature::async(

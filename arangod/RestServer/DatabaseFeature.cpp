@@ -234,12 +234,12 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _checkVersion(false),
       _upgrade(false) {
   setOptional(false);
+  startsAfter("BasicsPhase");
+
   startsAfter("Authentication");
   startsAfter("CacheManager");
-  startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("InitDatabase");
-  startsAfter("Scheduler");
   startsAfter("StorageEngine");
   
   DATABASE = nullptr;
