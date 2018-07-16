@@ -345,6 +345,8 @@ devel
 
 * fixed agency restart from compaction without data
 
+* only load Plan and Current from agency when actually needed
+
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
