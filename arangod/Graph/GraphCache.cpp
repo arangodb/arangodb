@@ -112,6 +112,8 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
     cacheResult = getGraphFromCache(_cache, name, maxAge);
   }
 
+  // TODO The cache saves the graph names globally, not per database!
+  // This must be addressed as soon as it is activated.
   /*
   if (typeid(Success) == cacheResult.type()) {
     LOG_TOPIC(TRACE, Logger::GRAPHS) << "GraphCache::getGraph('" << name

@@ -42,7 +42,8 @@ class GraphCache {
                               std::shared_ptr<const Graph>>;
   using CacheType = std::unordered_map<std::string, EntryType>;
 
-  // TODO HEIKO: DB is missing
+  // TODO The cache saves the graph names globally, not per database!
+  // This must be addressed as soon as it is activated.
   const std::shared_ptr<const Graph> getGraph(
       std::shared_ptr<transaction::Context> ctx, std::string const& name,
       std::chrono::seconds maxAge = std::chrono::seconds(60));
