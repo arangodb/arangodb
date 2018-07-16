@@ -993,6 +993,11 @@ constexpr int TRI_ERROR_QUERY_SCRIPT                                            
 /// Will be raised when a number is outside the expected range.
 constexpr int TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                               = 1504;
 
+/// 1505: ERROR_QUERY_INVALID_GEO_VALUE
+/// "invalid geo coordinate value"
+/// Will be raised when a geo index coordinate is invalid or out of range.
+constexpr int TRI_ERROR_QUERY_INVALID_GEO_VALUE                                 = 1505;
+
 /// 1510: ERROR_QUERY_VARIABLE_NAME_INVALID
 /// "variable name '%s' has an invalid format"
 /// Will be raised when an invalid variable name is used.
