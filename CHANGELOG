@@ -4,6 +4,8 @@ v3.3.13 (XXXX-XX-XX)
 * fixed issue #5827: Batch request handling incompatible with .NET's default 
   ContentType format
 
+* fixed agency's log compaction for internal issue #2249 
+
 
 v3.3.12 (2018-07-12)
 --------------------
@@ -338,8 +340,6 @@ v3.3.7 (2018-04-11)
   fully prepare before adding 10 second grace period after leadership change
 
 * fixed internal issue #2215's FailedLeader timeout bug
-
-* fixed agency's log compaction for internal issue #2249 
 
 v3.3.5 (2018-03-28)
 -------------------
