@@ -395,6 +395,7 @@ class IResearchFeature::Async {
 
   void emplace(std::shared_ptr<ResourceMutex> const& mutex, Fn &&fn); // add an asynchronous task
   void notify() const; // notify all tasks
+  void start();
 
  private:
   struct Pending {
@@ -587,10 +588,6 @@ IResearchFeature::Async::Async(): _terminate(false) {
     thread._terminate = &_terminate;
   }
 
-  // start threads
-  for (auto& thread: _pool) {
-    thread.start(&_join);
-  }
 }
 
 IResearchFeature::Async::~Async() {
@@ -601,8 +598,10 @@ IResearchFeature::Async::~Async() {
 
   // join with all threads in pool
   for (auto& thread: _pool) {
-    while(thread.isRunning()) {
-      _join.wait();
+    if (thread.hasStarted()) {
+      while(thread.isRunning()) {
+        _join.wait();
+      }
     }
   }
 }
@@ -628,6 +627,13 @@ void IResearchFeature::Async::notify() const {
     SCOPED_LOCK(thread._mutex);
     thread._cond.notify_all();
     thread._wasNotified = true;
+  }
+}
+
+void IResearchFeature::Async::start() {
+  // start threads
+  for (auto& thread: _pool) {
+    thread.start(&_join);
   }
 }
 
@@ -698,6 +704,9 @@ void IResearchFeature::prepare() {
   registerTransactionDataSourceRegistrationCallback();
 
   registerRecoveryHelper();
+
+  // start the async task thread pool
+  _async->start();
 }
 
 void IResearchFeature::start() {
