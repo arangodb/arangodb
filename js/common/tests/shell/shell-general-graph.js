@@ -81,8 +81,8 @@ function GeneralGraphCreationSuite() {
   var sortEdgeDefinition = function(edgeDefinition) {
     return {
       collection: edgeDefinition.collection,
-      from: edgeDefinition.from.sort(),
-      to: edgeDefinition.to.sort()
+      from: edgeDefinition.from.slice().sort(),
+      to: edgeDefinition.to.slice().sort()
     }
   };
 
