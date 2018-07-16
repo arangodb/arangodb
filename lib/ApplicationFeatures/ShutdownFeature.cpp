@@ -34,7 +34,7 @@ ShutdownFeature::ShutdownFeature(
     std::vector<std::string> const& features)
     : ApplicationFeature(server, "Shutdown") {
   setOptional(true);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 
   for (auto feature : features) {
     if (feature != "Logger") {

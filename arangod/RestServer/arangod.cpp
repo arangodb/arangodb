@@ -28,6 +28,16 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/AgencyPhase.h"
+#include "ApplicationFeatures/AQLPhase.h"
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/FinalPhase.h"
+#include "ApplicationFeatures/FoxxPhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/ServerPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
@@ -138,6 +148,19 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
 
     int ret = EXIT_FAILURE;
 
+    // Adding the Phases
+    server.addFeature(new application_features::AgencyFeaturePhase(&server));
+    server.addFeature(new application_features::AQLFeaturePhase(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(&server, false));
+    server.addFeature(new application_features::ClusterFeaturePhase(&server));
+    server.addFeature(new application_features::DatabaseFeaturePhase(&server));
+    server.addFeature(new application_features::FinalFeaturePhase(&server));
+    server.addFeature(new application_features::FoxxFeaturePhase(&server));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server, false));
+    server.addFeature(new application_features::ServerFeaturePhase(&server));
+    server.addFeature(new application_features::V8FeaturePhase(&server));
+
+    // Adding the features
     server.addFeature(new ActionFeature(&server));
     server.addFeature(new AgencyFeature(&server));
     server.addFeature(new AqlFeature(&server));

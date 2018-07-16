@@ -352,6 +352,10 @@ devel
 
 * fixed agency restart from compaction without data
 
+* fixed agency's log compaction for internal issue #2249 
+
+* only load Plan and Current from agency when actually needed
+
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
@@ -442,7 +446,6 @@ v3.3.7 (2018-04-11)
   fully prepare before adding 10 second grace period after leadership change
 
 * fixed internal issue #2215's FailedLeader timeout bug
-
 
 v3.3.5 (2018-03-28)
 -------------------

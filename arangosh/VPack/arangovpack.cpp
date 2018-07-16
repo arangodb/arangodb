@@ -24,6 +24,8 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -49,6 +51,9 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
 
     int ret;
+
+    server.addFeature(new application_features::BasicFeaturePhase(&server, true));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server, true));
 
     // default is to use no config file
     server.addFeature(new ConfigFeature(&server, "arangovpack", "none"));

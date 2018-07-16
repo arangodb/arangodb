@@ -725,12 +725,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Logger");
-
-#ifdef USE_ENTERPRISE
-  startsAfter("Encryption");
-#endif
+  startsAfter("BasicsPhase");
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;

@@ -23,7 +23,6 @@
 
 #include "ClusterFeature.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -39,7 +38,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -56,12 +54,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
-  startsAfter("Authentication");
-  startsAfter("CacheManager");
-  startsAfter("Logger");
-  startsAfter("Database");
-  startsAfter("Scheduler");
-  startsAfter("V8Dealer");
+  startsAfter("DatabasePhase");
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -233,24 +226,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  if (_enableCluster &&
-      _requirePersistedId &&
-      !ServerState::instance()->hasPersistedId()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
-    FATAL_ERROR_EXIT();
-  }
-
-  auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  if (v8Dealer->isEnabled()) {
-    v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
-                           _systemReplicationFactor);
-  } else {
-    if (ServerState::isDBServer(_requestedRole)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cannot run DBServer with `--javascript.enabled false`";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
   // create callback registery
   _agencyCallbackRegistry.reset(
       new AgencyCallbackRegistry(agencyCallbacksPath()));
@@ -264,16 +239,13 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-  auto agency =
-    application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
-
 #ifdef DEBUG_SYNC_REPLICATION
   bool startClusterComm = true;
 #else
   bool startClusterComm = false;
 #endif
 
-  if (agency->isEnabled() || _enableCluster) {
+  if (ServerState::instance()->isAgent() || _enableCluster) {
     startClusterComm = true;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown
@@ -445,31 +417,27 @@ void ClusterFeature::start() {
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
-  while (true) {
-    VPackBuilder builder;
-    try {
-      VPackObjectBuilder b(&builder);
-      builder.add("endpoint", VPackValue(_myAddress));
-      builder.add("host", VPackValue(ServerState::instance()->getHost()));
-    } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
-      FATAL_ERROR_EXIT();
-    }
-
-    result.clear();
-    result = comm.setValue("Current/ServersRegistered/" + myId,
-                           builder.slice(), 0.0);
-
-    if (!result.successful()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to register server in agency: http code: "
-                 << result.httpCode() << ", body: " << result.body();
-      FATAL_ERROR_EXIT();
-    } else {
-      break;
-    }
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+  VPackBuilder builder;
+  try {
+    VPackObjectBuilder b(&builder);
+    builder.add("endpoint", VPackValue(_myAddress));
+    builder.add("host", VPackValue(ServerState::instance()->getHost()));
+  } catch (...) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
+    FATAL_ERROR_EXIT();
   }
+
+  result.clear();
+  result = comm.setValue("Current/ServersRegistered/" + myId,
+                         builder.slice(), 0.0);
+
+  if (!result.successful()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to register server in agency: http code: "
+               << result.httpCode() << ", body: " << result.body();
+    FATAL_ERROR_EXIT();
+  }
+
+  comm.increment("Current/Version");
 
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
@@ -552,6 +520,8 @@ void ClusterFeature::unprepare() {
   unreg.operations.push_back(
       AgencyOperation("Current/ServersRegistered/" + me,
                       AgencySimpleOperationType::DELETE_OP));
+  unreg.operations.push_back(
+      AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
   comm.sendTransactionWithFailover(unreg, 120.0);
 
   while (_heartbeatThread->isRunning()) {
