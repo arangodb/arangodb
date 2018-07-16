@@ -354,6 +354,8 @@ devel
 
 * fixed agency's log compaction for internal issue #2249 
 
+* only load Plan and Current from agency when actually needed
+
 v3.3.8 (XXXX-XX-XX)
 -------------------
 

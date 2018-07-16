@@ -1115,6 +1115,10 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
     if (!result.successful()) {
       THROW_AGENCY_EXCEPTION(result);
     }
+    result = comm.increment("Current/Version");
+    if (!result.successful()) {
+      THROW_AGENCY_EXCEPTION(result);
+    }
   }
   
   TRI_V8_TRY_CATCH_END

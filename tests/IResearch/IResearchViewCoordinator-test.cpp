@@ -493,7 +493,7 @@ SECTION("test_create_drop_view") {
     ));
     CHECK(error.empty());
     CHECK(planVersion == arangodb::tests::getCurrentPlanVersion());
-    CHECK(view != ci->getView(vocbase->name(), view->name())); // FIXME by some reason???
+    CHECK(view == ci->getView(vocbase->name(), view->name()));
 
     // drop view
     CHECK(view->drop().ok());
@@ -542,7 +542,7 @@ SECTION("test_create_drop_view") {
     ));
     CHECK(error.empty());
     CHECK(planVersion == arangodb::tests::getCurrentPlanVersion());
-    CHECK(view != ci->getView(vocbase->name(), view->name())); // FIXME by some reason???
+    CHECK(view == ci->getView(vocbase->name(), view->name()));
 
     // drop view
     CHECK(view->drop().ok());
