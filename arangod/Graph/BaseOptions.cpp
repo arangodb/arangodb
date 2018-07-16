@@ -290,7 +290,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
   std::unordered_set<size_t> toRemove;
-  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false);
+  aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false, false);
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.

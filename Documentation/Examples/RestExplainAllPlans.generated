@@ -43,7 +43,7 @@ x-content-type-options: nosniff
           <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span>, 
           <span class="hljs-string">"indexes"</span> : [ 
             { 
-              <span class="hljs-string">"id"</span> : <span class="hljs-string">"12636"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-string">"12916"</span>, 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
               <span class="hljs-string">"fields"</span> : [ 
                 <span class="hljs-string">"id"</span> 
@@ -65,6 +65,7 @@ x-content-type-options: nosniff
                   { 
                     <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
                     <span class="hljs-string">"typeID"</span> : <span class="hljs-number">25</span>, 
+                    <span class="hljs-string">"excludesNull"</span> : <span class="hljs-literal">false</span>, 
                     <span class="hljs-string">"subNodes"</span> : [ 
                       { 
                         <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 

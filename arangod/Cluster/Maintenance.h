@@ -132,14 +132,36 @@ arangodb::Result phaseOne (
  * @param plan     Snapshot of agency's planned state
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
+ * @param serverId This server's UUID
+ * @param report   Report on what we did
  *
  * @return         Result
  */
 arangodb::Result phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  VPackBuilder& report);
+  std::string const& serverId, VPackBuilder& report);
 
 }}
+
+
+/**
+ * @brief          Report local changes to current
+ *
+ * @param plan     Snapshot of agency's planned state
+ * @param current  Snapshot of agency's current state
+ * @param local    Snapshot of local state
+ * @param serverId This server's UUID
+ * @param report   Report on what we did
+ *
+ * @return         Result
+ */
+arangodb::Result reportInCurrent(
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  std::string const& serverId, VPackBuilder& report) {
+  arangodb::Result result;
+  return result;
+}
+
 
 #endif
 

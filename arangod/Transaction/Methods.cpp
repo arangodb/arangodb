@@ -1437,6 +1437,7 @@ OperationResult transaction::Methods::documentCoordinator(
   int res = arangodb::getDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     value,
     options,
     std::move(headers),
@@ -1569,7 +1570,7 @@ OperationResult transaction::Methods::insertCoordinator(
   auto resultBody = std::make_shared<VPackBuilder>();
 
   Result res = arangodb::createDocumentOnCoordinator(
-      vocbase().name(), collectionName, options, value, responseCode,
+      vocbase().name(), collectionName, *this, options, value, responseCode,
       errorCounter, resultBody);
 
   if (res.ok()) {
@@ -1885,6 +1886,7 @@ OperationResult transaction::Methods::updateCoordinator(
   int res = arangodb::modifyDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     newValue,
     options,
     true /* isPatch */,
@@ -1943,6 +1945,7 @@ OperationResult transaction::Methods::replaceCoordinator(
   int res = arangodb::modifyDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     newValue,
     options,
     false /* isPatch */,
@@ -2258,6 +2261,7 @@ OperationResult transaction::Methods::removeCoordinator(
   int res = arangodb::deleteDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     value,
     options,
     responseCode,
@@ -2788,7 +2792,7 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, details, true);
+    return countCoordinator(collectionName, details);
   }
 
   return countLocal(collectionName);
@@ -2797,10 +2801,10 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::countCoordinator(
-    std::string const& collectionName, bool details, bool sendNoLockHeader) {
+    std::string const& collectionName, bool details) {
   std::vector<std::pair<std::string, uint64_t>> count;
   auto res = arangodb::countOnCoordinator(
-    vocbase().name(), collectionName, count, sendNoLockHeader
+    vocbase().name(), collectionName, *this, count 
   );
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2922,7 +2926,7 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
 
   auto indexes = indexesForCollection(collectionName);
 
-  // Const cast is save here. Giving computeSpecialisation == false
+  // Const cast is save here. Giving computeSpecialization == false
   // Makes sure node is NOT modified.
   return findIndexHandleForAndNode(indexes, node, reference, itemsInCollection,
                                    usedIndex);
@@ -3205,6 +3209,18 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
 Result transaction::Methods::addCollection(std::string const& name,
                                            AccessMode::Type type) {
   return addCollection(resolver()->getCollectionId(name), name, type);
+}
+
+bool transaction::Methods::isLockedShard(std::string const& shardName) const {
+  return _state->isLockedShard(shardName);
+}
+
+void transaction::Methods::setLockedShard(std::string const& shardName) {
+  _state->setLockedShard(shardName);
+}
+
+void transaction::Methods::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
+  _state->setLockedShards(lockedShards);
 }
 
 /// @brief test if a collection is already locked

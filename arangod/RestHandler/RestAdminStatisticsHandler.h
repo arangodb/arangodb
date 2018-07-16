@@ -33,7 +33,7 @@ class RestAdminStatisticsHandler : public RestBaseHandler {
 
  public:
   char const* name() const override final { return "RestAdminStatisticsHandler"; }
-  bool isDirect() const override final { return false; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override final;
 
  private:

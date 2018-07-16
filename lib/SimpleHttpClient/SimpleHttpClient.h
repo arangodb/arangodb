@@ -221,7 +221,7 @@ class SimpleHttpClient {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief close connection, go to state IN_CONNECT and clear the input
-  /// buffer. This is used to organise a retry of the connection.
+  /// buffer. This is used to organize a retry of the connection.
   //////////////////////////////////////////////////////////////////////////////
 
   void close();

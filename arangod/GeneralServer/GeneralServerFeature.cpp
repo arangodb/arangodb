@@ -490,7 +490,7 @@ void GeneralServerFeature::defineHandlers() {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler(
-      "/_admin/debug", RestHandlerCreator<RestDebugHandler>::createNoData);
+      "/_admin/debug", RestHandlerCreator<arangodb::RestDebugHandler>::createNoData);
 #endif
 
   _handlerFactory->addPrefixHandler(

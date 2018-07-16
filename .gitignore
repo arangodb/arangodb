@@ -67,7 +67,7 @@ arangod/Aql/grammar.output
 
 UnitTests/HttpInterface/logs/
 
-bin/
+/bin
 logs/
 out/
 

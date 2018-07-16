@@ -76,9 +76,9 @@ NS_LOCAL
 
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
-  IResearchLogTopic(std::string const& name, arangodb::LogLevel level)
-    : arangodb::LogTopic(name, level) {
-    setIResearchLogLevel(level);
+  IResearchLogTopic(std::string const& name)
+    : arangodb::LogTopic(name, DEFAULT_LEVEL) {
+    setIResearchLogLevel(DEFAULT_LEVEL);
   }
 
   virtual void setLogLevel(arangodb::LogLevel level) override {
@@ -87,12 +87,34 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 
  private:
+  static arangodb::LogLevel const DEFAULT_LEVEL= arangodb::LogLevel::INFO;
+
+  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
+  typedef std::underlying_type<arangodb::LogLevel>::type arangoLogLevelType;
+
+  static_assert(
+    static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) == static_cast<arangoLogLevelType>(arangodb::LogLevel::FATAL) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) == static_cast<arangoLogLevelType>(arangodb::LogLevel::ERR) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_WARN) == static_cast<arangoLogLevelType>(arangodb::LogLevel::WARN) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_INFO) == static_cast<arangoLogLevelType>(arangodb::LogLevel::INFO) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) == static_cast<arangoLogLevelType>(arangodb::LogLevel::DEBUG) - 1
+      && static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) == static_cast<arangoLogLevelType>(arangodb::LogLevel::TRACE) - 1,
+    "inconsistent log level mapping"
+  );
+
   static void setIResearchLogLevel(arangodb::LogLevel level) {
-    auto irsLevel = static_cast<irs::logger::level_t>(level);
+    if (level == arangodb::LogLevel::DEFAULT) {
+      level = DEFAULT_LEVEL;
+    }
+
+    auto irsLevel = static_cast<irs::logger::level_t>(
+      static_cast<arangoLogLevelType>(level) - 1
+    ); // -1 for DEFAULT
+
     irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
     irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
 
-    irs::logger::enabled(irsLevel);
+    irs::logger::output_le(irsLevel, stderr);
   }
 }; // IResearchLogTopic
 
@@ -347,7 +369,7 @@ void registerTransactionDataSourceRegistrationCallback() {
 }
 
 std::string const FEATURE_NAME("ArangoSearch");
-IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
+IResearchLogTopic LIBIRESEARCH("libiresearch");
 
 NS_END
 
@@ -371,11 +393,7 @@ class IResearchFeature::Async {
   Async();
   ~Async();
 
-  void emplace(
-    std::shared_ptr<ResourceMutex> const& mutex,
-    size_t timeoutMsec,
-    Fn &&fn
-  ); // add an asynchronous tasks
+  void emplace(std::shared_ptr<ResourceMutex> const& mutex, Fn &&fn); // add an asynchronous task
   void notify() const; // notify all tasks
 
  private:
@@ -384,29 +402,17 @@ class IResearchFeature::Async {
     std::shared_ptr<ResourceMutex> _mutex; // mutex for the task resources
     std::chrono::system_clock::time_point _timeout; // when the task should be notified (std::chrono::milliseconds::max() == disabled)
 
-    Pending(
-        std::shared_ptr<ResourceMutex> const& mutex,
-        size_t timeoutMsec,
-        Fn &&fn
-    ): _fn(std::move(fn)),
-       _mutex(mutex),
-       _timeout(
-         timeoutMsec
-         ? (std::chrono::system_clock::now() + std::chrono::milliseconds(timeoutMsec))
-         : std::chrono::system_clock::time_point::max()
-       ) {
+    Pending(std::shared_ptr<ResourceMutex> const& mutex,Fn &&fn)
+      : _fn(std::move(fn)),
+        _mutex(mutex),
+        _timeout(std::chrono::system_clock::time_point::max()) {
     }
   };
 
   struct Task: public Pending {
     std::unique_lock<ReadMutex> _lock; // prevent resource deallocation
 
-    Task(Pending&& pending): Pending(std::move(pending)) {
-      // lock resource mutex or ignore if none supplied
-      if(_mutex) {
-        _lock = std::unique_lock<ReadMutex>(_mutex->mutex());
-      }
-    }
+    Task(Pending&& pending): Pending(std::move(pending)) {}
   };
 
   struct Thread: public arangodb::Thread {
@@ -417,9 +423,14 @@ class IResearchFeature::Async {
     std::atomic<size_t> _size; // approximate size of the active+pending task list
     std::vector<Task> _tasks; // the tasks to perform
     std::atomic<bool>* _terminate; // trigger termination of this thread (need to store pointer for move-assignment)
+    mutable bool _wasNotified; // a notification was raised from another thread
 
-    Thread(std::string const& name): arangodb::Thread(name) {}
-    Thread(Thread&& other): arangodb::Thread(other.name()) {} // used in constructor before tasks are started
+    Thread(std::string const& name)
+      : arangodb::Thread(name), _wasNotified(false) {
+    }
+    Thread(Thread&& other) // used in constructor before tasks are started
+      : arangodb::Thread(other.name()), _wasNotified(false) {
+    }
     virtual bool isSystem() override { return true; } // or start(...) will fail
     virtual void run() override;
   };
@@ -430,11 +441,13 @@ class IResearchFeature::Async {
 };
 
 void IResearchFeature::Async::Thread::run() {
+  std::vector<Pending> pendingRedelegate;
   std::chrono::system_clock::time_point timeout;
   bool timeoutSet = false;
 
   for (;;) {
-    bool timeoutReached = false;
+    bool onlyPending;
+    auto pendingStart = _tasks.size();
 
     {
       SCOPED_LOCK_NAMED(_mutex, lock); // aquire before '_terminate' check so that don't miss notify()
@@ -449,28 +462,41 @@ void IResearchFeature::Async::Thread::run() {
 
         auto& task = _tasks.back();
 
-        if (task._mutex && !*(task._mutex)) {
-          _tasks.pop_back(); // resource no longer valid
-          continue;
-        }
+        if (task._mutex) {
+          task._lock =
+            std::unique_lock<ReadMutex>(task._mutex->mutex(), std::try_to_lock);
 
-        if (std::chrono::system_clock::time_point::max() != task._timeout) {
-          timeout =
-            timeoutSet ? std::min(timeout, task._timeout) : task._timeout;
-          timeoutSet = true;
+          if (!task._lock.owns_lock()) {
+            // if can't lock 'task._mutex' then reasign the task to the next worker
+            pendingRedelegate.emplace_back(std::move(task));
+          } else if (*(task._mutex)) {
+            continue; // resourceMutex acquisition successful
+          }
+
+          _tasks.pop_back(); // resource no longer valid
         }
       }
 
       _pending.clear();
       _size.store(_tasks.size());
 
+      // do not sleep if a notification was raised or pending tasks were added
+      if (_wasNotified
+          || pendingStart < _tasks.size()
+          || !pendingRedelegate.empty()) {
+        timeout = std::chrono::system_clock::now();
+        timeoutSet = true;
+      }
+
       // sleep until timeout
       if (!timeoutSet) {
         _cond.wait(lock); // wait forever
       } else {
-        timeoutReached =
-          std::cv_status::timeout ==_cond.wait_until(lock, timeout); // wait for timeout or notify
+        _cond.wait_until(lock, timeout); // wait for timeout or notify
       }
+
+      onlyPending = !_wasNotified && pendingStart < _tasks.size(); // process all tasks if a notification was raised
+      _wasNotified = false; // ignore notification since woke up
 
       if (_terminate->load()) { // check again after sleep
         return; // termination requested
@@ -480,25 +506,34 @@ void IResearchFeature::Async::Thread::run() {
     timeoutSet = false;
 
     // transfer some tasks to '_next' if have too many
-    while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
+    if (!pendingRedelegate.empty()
+        || (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1)) {
       SCOPED_LOCK(_next->_mutex);
-      _next->_pending.emplace_back(std::move(_tasks.back()));
-      _tasks.pop_back();
-      ++_next->_size;
-      --_size;
+
+      // reasign to '_next' tasks that failed resourceMutex aquisition
+      while (!pendingRedelegate.empty()) {
+        _next->_pending.emplace_back(std::move(pendingRedelegate.back()));
+        pendingRedelegate.pop_back();
+        ++_next->_size;
+      }
+
+      // transfer some tasks to '_next' if have too many
+      while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
+        _next->_pending.emplace_back(std::move(_tasks.back()));
+        _tasks.pop_back();
+        ++_next->_size;
+        --_size;
+      }
+
       _next->_cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
     }
 
-    for (size_t i = 0, count = _tasks.size(); i < count;) {
+    for (size_t i = onlyPending ? pendingStart : 0, count = _tasks.size(); // optimization to skip previously run tasks if a notificationw as not raised
+         i < count;
+        ) {
       auto& task = _tasks[i];
       auto exec = std::chrono::system_clock::now() >= task._timeout;
-      size_t timeoutMsec;
-
-      if (timeoutReached && !exec) {
-        ++i;
-
-        continue; // skip task if its time has not arrived and thread woken up by timeout
-      }
+      size_t timeoutMsec = 0; // by default reschedule for the same time span
 
       try {
         if (!task._fn(timeoutMsec, exec)) {
@@ -545,11 +580,15 @@ IResearchFeature::Async::Async(): _terminate(false) {
 
   auto* last = &(_pool.back());
 
-  // buld circular list and start threads
+  // buld circular list
   for (auto& thread: _pool) {
     last->_next = &thread;
     last = &thread;
     thread._terminate = &_terminate;
+  }
+
+  // start threads
+  for (auto& thread: _pool) {
     thread.start(&_join);
   }
 }
@@ -570,7 +609,6 @@ IResearchFeature::Async::~Async() {
 
 void IResearchFeature::Async::emplace(
     std::shared_ptr<ResourceMutex> const& mutex,
-    size_t timeoutMsec,
     Fn &&fn
 ) {
   if (!fn) {
@@ -579,7 +617,7 @@ void IResearchFeature::Async::emplace(
 
   auto& thread = _pool[0];
   SCOPED_LOCK(thread._mutex);
-  thread._pending.emplace_back(mutex, timeoutMsec, std::move(fn));
+  thread._pending.emplace_back(mutex, std::move(fn));
   ++thread._size;
   thread._cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
 }
@@ -589,6 +627,7 @@ void IResearchFeature::Async::notify() const {
   for (auto& thread: _pool) {
     SCOPED_LOCK(thread._mutex);
     thread._cond.notify_all();
+    thread._wasNotified = true;
   }
 }
 
@@ -614,10 +653,9 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
 
 void IResearchFeature::async(
     std::shared_ptr<ResourceMutex> const& mutex,
-    size_t timeoutMsec,
     Async::Fn &&fn
 ) {
-  _async->emplace(mutex, timeoutMsec, std::move(fn));
+  _async->emplace(mutex, std::move(fn));
 }
 
 void IResearchFeature::asyncNotify() const {

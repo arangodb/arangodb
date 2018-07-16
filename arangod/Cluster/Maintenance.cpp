@@ -49,6 +49,8 @@ static std::vector<std::string> cmp {
 static std::string const currentCollections("/arango/Current/Collections");
 static std::string const planCollections("/arango/Plan/Collections");
 static std::string const PRIMARY("primary");
+static std::string const ERROR_MESSAGE("errorMessage");
+static std::string const ERROR_NUM("errorNum");
 
 
 std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
@@ -289,7 +291,7 @@ arangodb::Result arangodb::maintenance::executePlan (
   
   // enact all
   for (auto const& action : actions) {
-    //registry->dispatch(action);
+    feature.addAction(std::make_shared<ActionDescription>(action), true);
   }
   
   return result;  
@@ -368,11 +370,63 @@ arangodb::Result arangodb::maintenance::phaseOne (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   VPackBuilder& report) {
+
   report.add(VPackValue("phaseOne"));
   VPackObjectBuilder por(&report);
-  arangodb::Result result;
+
   // Execute database changes
-  result = executePlan(plan, cur, local, serverId, feature);
+  arangodb::Result result;
+  try {
+    result = executePlan(plan, cur, local, serverId, feature);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "Error executing plan: " << e.what()
+      << ". " << __FILE__ << ":" << __LINE__;
+  }
+
+  return result;
+  
+}
+
+VPackBuilder assembleLocalCollectioInfo(
+  VPackSlice const& info, VPackSlice const& error, std::string const& ourselves) {
+
+  VPackBuilder ret;
+  VPackObjectBuilder r(&ret);
+  auto const& name = info.getKey("name").copyString();
+  
+  if (error.hasKey(COLLECTION)) {
+    auto const& collection = error.get(COLLECTION);
+    ret.add("error", VPackValue(true));
+    ret.add(ERROR_MESSAGE, collection.get(ERROR_MESSAGE));
+    ret.add(ERROR_NUM, collection.get(ERROR_NUM));
+    ret.add(VPackValue(INDEXES));
+    { VPackArrayBuilder a(&ret); }
+    ret.add(VPackValue(SERVERS));
+    { VPackArrayBuilder a(&ret);
+      ret.add(VPackValue(ourselves));
+    }
+    return ret;
+  }
+
+  
+}
+
+// udateCurrentForCollections
+// diff current and local and prepare agency transactions or whatever
+// to update current. Will report the errors created locally to the agency
+arangodb::Result arangodb::maintenance::reportInCurrent(
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  std::string const& serverId, VPackBuilder& report) {
+  arangodb::Result result;
+
+  auto const& plannedCollections = plan.get("Collections");
+  auto const& currentCollections = current.get("Collections");
+  
+  for (auto const& database : VPackObjectIterator(local)) {
+    
+  }
+  
   return result;
 }
 
@@ -380,15 +434,24 @@ arangodb::Result arangodb::maintenance::phaseOne (
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  VPackBuilder& report) {
-  arangodb::Result result;
-  report.add(VPackValue("phaseOne"));
+  std::string const& serverId, VPackBuilder& report) {
+
+  report.add(VPackValue("phaseTwo"));
   VPackObjectBuilder por(&report);
 
-  // Synchronise shards
-  //result = synchroniseShards(plan, cur, local);
+  // Update Current
+  arangodb::Result result;
+  try {
+    result = reportInCurrent(plan, cur, local, serverId, report);
+   
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "Error reporting in current: " << e.what() << ". "
+      << __FILE__ << ":" << __LINE__;
+  }
 
   return result;
+  
 }
 
 

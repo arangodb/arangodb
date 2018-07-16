@@ -93,7 +93,7 @@ std::vector<arangodb::iresearch::IResearchSort> buildSort(
     } else {
       auto const* setter = plan.getVarSetBy(varId);
       if (setter && EN::CALCULATION == setter->getType()) {
-        auto const* expr = static_cast<CalculationNode const*>(setter)->expression();
+        auto const* expr = ExecutionNode::castTo<CalculationNode const*>(setter)->expression();
 
         if (expr) {
           rootNode = expr->node();
@@ -510,7 +510,7 @@ void handleViewsRule(
 ////        if (!(*it)->isInInnerLoop()) {
 ////          toUnlink.emplace(node);
 ////        }
-//          static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
+//          ExecutionNode::castTo<CalculationNode*>(setter)->canRemoveIfThrows(true);
 //        }
 //      }
 //    }

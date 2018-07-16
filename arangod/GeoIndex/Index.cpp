@@ -114,8 +114,7 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
                                         lon.getNumericValue<double>());
     if (!ll.is_valid()) {
-      LOG_TOPIC(WARN, Logger::ENGINES) << "Invalid lat lng pair";
-      return TRI_ERROR_BAD_PARAMETER;
+      return TRI_ERROR_QUERY_INVALID_GEO_VALUE;
     }
     centroid = ll.ToPoint();
     cells.emplace_back(centroid);
@@ -193,18 +192,19 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
   }
 }
 
-// either GEO_DISTANCE or DISTANCE
+// either parses GEO_DISTANCE call argument values
 S2LatLng Index::parseDistFCall(aql::AstNode const* node,
-                                      aql::Variable const* ref) {
+                               aql::Variable const* ref) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   aql::AstNode* args = node->getMemberUnchecked(0);
-  aql::Function* func = static_cast<aql::Function*>(node->getData());
+  aql::Function const* func = static_cast<aql::Function const*>(node->getData());
   TRI_ASSERT(func != nullptr);
   if (func->name == "GEO_DISTANCE") {
     return Index::parseGeoDistance(args, ref);
-  } // no need to handle DISTANCE anymore
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+  } 
+  // we should not get here for any other functions, not even DISTANCE
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                                 std::string("parseDistFCall called for unexpected function '") + func->name + "'");
 }
 
 void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
@@ -257,7 +257,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
       if (!qp.origin.is_valid()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid coordinates");
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
 
       aql::AstNode const* max = node->getMemberUnchecked(1);
@@ -274,7 +274,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
       if (!qp.origin.is_valid()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid coordinates");
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
       // LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
 

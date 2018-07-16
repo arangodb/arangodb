@@ -107,6 +107,7 @@ let optionsDocumentation = [
   '   - `verbose`: if set to true, be more verbose',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
+  '   - `testCase`: filter a jsunity testsuite for one special test case',
   ''
 ];
 
@@ -160,7 +161,8 @@ const optionsDefaults = {
   'verbose': false,
   'walFlushTimeout': 30000,
   'writeXmlReport': true,
-  'testFailureText': 'testfailures.txt'
+  'testFailureText': 'testfailures.txt',
+  'testCase': undefined
 };
 
 const _ = require('lodash');

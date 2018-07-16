@@ -115,7 +115,6 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
-  ApplicationFeatures/EngineEqualityCheckFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp

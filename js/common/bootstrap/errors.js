@@ -187,6 +187,7 @@
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
     "ERROR_QUERY_SCRIPT"           : { "code" : 1503, "message" : "runtime error '%s'" },
     "ERROR_QUERY_NUMBER_OUT_OF_RANGE" : { "code" : 1504, "message" : "number out of range" },
+    "ERROR_QUERY_INVALID_GEO_VALUE" : { "code" : 1505, "message" : "invalid geo coordinate value" },
     "ERROR_QUERY_VARIABLE_NAME_INVALID" : { "code" : 1510, "message" : "variable name '%s' has an invalid format" },
     "ERROR_QUERY_VARIABLE_REDECLARED" : { "code" : 1511, "message" : "variable '%s' is assigned multiple times" },
     "ERROR_QUERY_VARIABLE_NAME_UNKNOWN" : { "code" : 1512, "message" : "unknown variable '%s'" },

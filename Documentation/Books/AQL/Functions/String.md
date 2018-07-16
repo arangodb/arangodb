@@ -113,6 +113,16 @@ COUNT()
 
 This is an alias for [LENGTH()](#length).
 
+ENCODE_URI_COMPONENT()
+-----------
+
+`ENCODE_URI_COMPONENT(value) → encodedURIComponentString`
+
+Return the encoded uri component of *value*.
+
+- **value** (string): a string
+- returns **encodedURIComponentString** (string): an encoded uri component of *value*
+
 FIND_FIRST()
 ------------
 
@@ -343,6 +353,8 @@ using regular expression matching.
 - **search** (string): a regular expression search pattern
 - returns **bool** (bool): *true* if the pattern is contained in *text*,
   and *false* otherwise
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
@@ -412,6 +424,8 @@ Replace the pattern *search* with the string *replacement* in the string
 - returns **string** (string): the string *text* with the *search* regex
   pattern replaced with the *replacement* string wherever the pattern exists
   in *text*
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 For more details about the rules for characters and sequences refer
 [REGEX_TEST()](#regextest).
@@ -528,6 +542,23 @@ SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo", "bar-baz" ]
 SPLIT( "foo, bar & baz", [ ", ", " & " ] ) // [ "foo", "bar", "baz" ]
 ```
 
+SOUNDEX()
+-----------
+
+`SOUNDEX(value) → soundexString`
+
+Return the soundex fingerprint of *value*.
+
+- **value** (string): a string
+- returns **soundexString** (string): a soundex fingerprint of *value*
+
+```js
+SOUNDEX( "example" ) // "E251"
+SOUNDEX( "ekzampul")  // "E251"
+SOUNDEX( "soundex" ) // "S532"
+SOUNDEX( "sounteks" ) // "S532"
+```
+
 SUBSTITUTE()
 ------------
 
@@ -618,6 +649,26 @@ Return a substring of *value*.
   substring from *offset* to the end of the string
 - returns **substring** (string): a substring of *value*
 
+TO_BASE64()
+-----------
+
+`TO_BASE64(value) → toBase64String`
+
+Return the base64 representation of *value*.
+
+- **value** (string): a string
+- returns **toBase64String** (string): a base64 representation of *value*
+
+TO_HEX()
+-----------
+
+`TO_HEX(value) → toHexString`
+
+Return the hex representation of *value*.
+
+- **value** (string): a string
+- returns **toHexString** (string): a hex representation of *value*
+
 TRIM()
 ------
 
@@ -665,3 +716,12 @@ All other characters are returned unchanged.
 - **value** (string): a string
 - returns **upperCaseString** (string): *value* with lower-case characters converted
   to upper-case characters
+  
+  UUID()
+  -----------
+  
+  `UUID() → UUIDString`
+  
+  Return a random and uniquely generated UUID.
+
+  - returns **UUIDString** (string): a universally unique identifier

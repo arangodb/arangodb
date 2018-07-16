@@ -49,8 +49,6 @@ RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
                                              Agent* agent)
     : RestBaseHandler(request, response), _agent(agent) {}
 
-bool RestAgencyPrivHandler::isDirect() const { return false; }
-
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Empty request to agency!";
   generateError(rest::ResponseCode::NOT_FOUND, 404);

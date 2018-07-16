@@ -105,6 +105,10 @@ function ahuacatlLegacyGeoTestSuite () {
       db._drop("UnitTestsAhuacatlLocationsNon");
     },
 
+    testNearInvalidCoordinate : function () {
+      assertQueryError(errors.ERROR_QUERY_INVALID_GEO_VALUE.code, "RETURN NEAR(" + locations.name() + ", 1000, 1000, 10)");
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test near function
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,6 +171,10 @@ function ahuacatlLegacyGeoTestSuite () {
       expected = [ { "latitude" : -40, "longitude" : 40 }, { "latitude" : -40, "longitude" : 39 } ];
       actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 2) SORT x.latitude, x.longitude DESC LIMIT 3 RETURN x");
       assertEqual(expected, actual);
+    },
+    
+    testWithinInvalidCoordinate : function () {
+      assertQueryError(errors.ERROR_QUERY_INVALID_GEO_VALUE.code, "RETURN WITHIN(" + locations.name() + ", 1000, 1000, 100000)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
