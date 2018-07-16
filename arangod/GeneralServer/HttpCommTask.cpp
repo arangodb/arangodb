@@ -128,9 +128,12 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
                                  StaticStrings::ExposedCorsHeaders);
   }
 
-  // use "IfNotSet"
-  response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
-                               StaticStrings::NoSniff);
+  if (!ServerState::instance()->isDBServer()) {
+    // DB server is not user-facing, and does not need to set this header
+    // use "IfNotSet" to not overwrite an existing response header
+    response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
+                                 StaticStrings::NoSniff);
+  }
 
   // set "connection" header, keep-alive is the default
   response.setConnectionType(_closeRequested
