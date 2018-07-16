@@ -105,8 +105,8 @@ struct IResearchViewCoordinatorSetup {
 
   IResearchViewCoordinatorSetup(): server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true);
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true); // need 2 connections or Agency callbacks will fail
+    // Do not activate callbacks
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::EngineSelectorFeature::ENGINE = &engine;
