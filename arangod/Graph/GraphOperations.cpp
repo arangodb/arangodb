@@ -22,7 +22,6 @@
 
 #include "GraphOperations.h"
 
-#include <enterprise/Enterprise/Aql/SmartGraph.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -47,6 +46,10 @@
 #include "VocBase/Graphs.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/SmartGraph.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::graph;
