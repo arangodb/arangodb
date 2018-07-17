@@ -75,7 +75,7 @@ class MMFilesEngine final : public StorageEngine {
   // inherited from ApplicationFeature
   // ---------------------------------
 
-  // add the storage engine's specifc options to the global list of options
+  // add the storage engine's specific options to the global list of options
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   // validate the storage engine's specific options
@@ -112,6 +112,7 @@ class MMFilesEngine final : public StorageEngine {
   ) override;
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
                                           bool doSync) override;
+  // TODO worker-safety
   Result handleSyncKeys(
     DatabaseInitialSyncer& syncer,
     LogicalCollection& col,
@@ -327,7 +328,7 @@ class MMFilesEngine final : public StorageEngine {
     TRI_voc_cid_t collectionId,
     TRI_idx_iid_t id,
     arangodb::velocypack::Slice const& data
-  ) override;
+  );
 
   // asks the storage engine to drop the specified index and persist the
   // deletion
@@ -434,13 +435,10 @@ class MMFilesEngine final : public StorageEngine {
 
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection,
                      bool ignoreErrors);
-
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() override;
-
+ 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules() override;
-
+ 
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
 
@@ -457,6 +455,10 @@ class MMFilesEngine final : public StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
+
+  void disableCompaction();
+  void enableCompaction();
+  bool isCompactionDisabled() const;
 
  private:
   velocypack::Builder getReplicationApplierConfiguration(std::string const& filename, int& status);
@@ -618,6 +620,11 @@ class MMFilesEngine final : public StorageEngine {
   std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCompactorThread>> _compactorThreads;
   // per-database cleanup threads, protected by _threadsLock
   std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCleanupThread>> _cleanupThreads;
+
+  // whether or not compaction is disabled (> 0) or not (== 0)
+  // can be called multiple times. the last one to set this to 0 again will
+  // enable compaction again
+  std::atomic<uint64_t> _compactionDisabled;
 };
 
 }

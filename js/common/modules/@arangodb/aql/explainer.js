@@ -13,7 +13,7 @@ const anonymize = function(doc) {
     return doc.map(anonymize);
   }
   if (typeof doc === 'string') {
-    return Array(doc.length + 1).join("X");
+    return Array(doc.length + 1).join('X');
   }
   if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
     return doc;
@@ -21,7 +21,7 @@ const anonymize = function(doc) {
   if (typeof doc === 'object') {
     let result = {};
     Object.keys(doc).forEach(function(key) {
-      if (key.startsWith("_") || key.startsWith("@")) {
+      if (key.startsWith('_') || key.startsWith('@')) {
         // This excludes system attributes in examples
         // and collections in bindVars
         result[key] = doc[key];
@@ -239,7 +239,7 @@ function printStats (stats) {
   var maxSILen = String('Scan Index').length;
   var maxFLen = String('Filtered').length;
   var maxETen = String('Exec Time [s]').length;
-  stats.executionTime = stats.executionTime.toFixed(5) + "s";
+  stats.executionTime = stats.executionTime.toFixed(5) + 's';
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
                            header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
                          
@@ -359,6 +359,7 @@ function printFunctions (functions) {
   if (funcArray.length === 0) {
     return;
   }
+  stringBuilder.appendLine();
   stringBuilder.appendLine(section('Functions used:'));
 
   let maxNameLen = String('Name').length;
@@ -471,7 +472,7 @@ function printTraversalDetails (traversals) {
       if (opts.length > maxOptionsLen) {
         maxOptionsLen = opts.length;
       }
-    } else if (node.hasOwnProperty("traversalFlags")) {
+    } else if (node.hasOwnProperty('traversalFlags')) {
       // Backwards compatibility for < 3.2
       let opts = optify(node.traversalFlags);
       if (opts.length > maxOptionsLen) {
@@ -605,7 +606,7 @@ function processQuery (query, explain) {
     stats = explain.stats;
 
   /// mode with actual runtime stats per node
-  let profileMode = stats && stats.hasOwnProperty("nodes");
+  let profileMode = stats && stats.hasOwnProperty('nodes');
 
   var isCoordinator = false;
   if (typeof ArangoClusterComm === 'object') {
@@ -1328,6 +1329,118 @@ function processQuery (query, explain) {
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
+      case 'SingleRemoteOperationNode': {
+        switch (node.mode) {
+          case "IndexNode": {
+            collectionVariables[node.outVariable.id] = node.collection;
+            let indexRef = `${variable(JSON.stringify(node.key))}`;
+            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variable('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
+            // `
+          }
+          case 'InsertNode': {
+            modificationFlags = node.modificationFlags;
+            collectionVariables[node.inVariable.id] = node.collection;
+            let indexRef = `${variableName(node.inVariable)}`;
+            if (node.hasOwnProperty('indexes')) {
+              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            }
+            return `${keyword('INSERT')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)}`;
+          }
+          case 'UpdateNode': {
+            modificationFlags = node.modificationFlags;
+            let OLD="";
+            if (node.hasOwnProperty('inVariable')) {
+              collectionVariables[node.inVariable.id] = node.collection;
+              OLD = `${keyword('WITH')} ${variableName(node.inVariable)} `;
+            }
+            let indexRef;
+            let keyCondition = "";
+            let filterCondition;
+            if (node.hasOwnProperty('key')) {
+              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              indexRef = `${variable(JSON.stringify(node.key))} `;
+              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+            } else if (node.hasOwnProperty('inVariable')) {
+              keyCondition = `${variableName(node.inVariable)} `;
+              indexRef = `${variableName(node.inVariable)}`;
+            } else {
+              keyCondition = "<UNSUPPORTED>";
+              indexRef = "<UNSUPPORTED>";
+            }
+            if (node.hasOwnProperty('indexes')) {
+              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            }
+            let forStatement = "";
+            if (node.replaceIndexNode) {
+              forStatement = `${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
+              keyCondition = `${variable('doc')} `;
+            }
+            return `${forStatement}${keyword('UPDATE')} ${keyCondition}${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          }
+          case 'ReplaceNode': {
+            modificationFlags = node.modificationFlags;
+            let OLD="";
+            if (node.hasOwnProperty('inVariable')) {
+              collectionVariables[node.inVariable.id] = node.collection;
+              OLD = `${keyword('WITH')} ${variableName(node.inVariable)} `;
+            }
+            let indexRef;
+            let keyCondition = "";
+            let filterCondition;
+            if (node.hasOwnProperty('key')) {
+              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              indexRef = `${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+            } else if (node.hasOwnProperty('inVariable')) {
+              keyCondition = `${variableName(node.inVariable)} `;
+              indexRef = `${variableName(node.inVariable)}`;
+            } else {
+              keyCondition = "<UNSUPPORTED>";
+              indexRef = "<UNSUPPORTED>";
+            }
+            if (node.hasOwnProperty('indexes')) {
+              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            }
+            let forStatement = "";
+            if (node.replaceIndexNode) {
+              forStatement = `${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
+              keyCondition = `${variable('doc')} `;
+            }
+            return `${forStatement}${keyword('REPLACE')} ${keyCondition}${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          }
+          case 'RemoveNode': {
+            modificationFlags = node.modificationFlags;
+            if (node.hasOwnProperty('inVariable')) {
+              collectionVariables[node.inVariable.id] = node.collection;
+            }
+            let indexRef;
+            let keyCondition;
+            let filterCondition;
+            if (node.hasOwnProperty('key')) {
+              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              indexRef = `${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+            } else if (node.hasOwnProperty('inVariable')) {
+              keyCondition = `${variableName(node.inVariable)} `;
+              indexRef = `${variableName(node.inVariable)}`;
+            } else {
+              keyCondition = "<UNSUPPORTED>";
+              indexRef = "<UNSUPPORTED>";
+            }
+            if (node.hasOwnProperty('indexes')) {
+              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            }
+            let forStatement = "";
+            if (node.replaceIndexNode) {
+              forStatement = `${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
+              keyCondition = `${variable('doc')} `;
+            }
+            return `${forStatement}${keyword('REMOVE')} ${keyCondition}${keyword('IN')} ${collection(node.collection)}`;
+          }
+        }
+      }
+      break;
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':

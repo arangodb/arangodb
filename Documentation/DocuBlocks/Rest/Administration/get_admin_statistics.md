@@ -66,14 +66,14 @@ VSS of the process
 
 
 @RESTREPLYBODY{client,object,required,client_statistics_struct}
-informations about the connected clients and their resource usage
+information about the connected clients and their resource usage
 
 
 @RESTSTRUCT{sum,setof_statistics_struct,number,required,}
-sumarized value of all counts
+summarized value of all counts
 
 @RESTSTRUCT{count,setof_statistics_struct,integer,required,}
-number of values sumarized
+number of values summarized
 
 @RESTSTRUCT{counts,setof_statistics_struct,array,required,integer}
 array containing the values
@@ -113,7 +113,7 @@ the numbers of requests by Verb
 total number of http requests
 
 @RESTSTRUCT{requestsAsync,http_statistics_struct,integer,required,}
-total number of asynchroneous http requests
+total number of asynchronous http requests
 
 @RESTSTRUCT{requestsGet,http_statistics_struct,integer,required,}
 No of requests using the GET-verb

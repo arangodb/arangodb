@@ -48,7 +48,7 @@ RestStatus RestRepairHandler::execute() {
   if (SchedulerFeature::SCHEDULER->isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                   TRI_ERROR_SHUTTING_DOWN);
-    return RestStatus::FAIL;
+    return RestStatus::DONE;
   }
 
   switch (_request->requestType()) {
@@ -62,7 +62,7 @@ RestStatus RestRepairHandler::execute() {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
 
-      return RestStatus::FAIL;
+      return RestStatus::DONE;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -71,7 +71,7 @@ RestStatus RestRepairHandler::execute() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Bad parameter: expected 'distributeShardsLike', got none");
 
-    return RestStatus::FAIL;
+    return RestStatus::DONE;
   }
 
   if (suffixes[0] != "distributeShardsLike") {
@@ -79,7 +79,7 @@ RestStatus RestRepairHandler::execute() {
                   "Bad parameter: expected 'distributeShardsLike', got '" +
                       suffixes[0] + "'");
 
-    return RestStatus::FAIL;
+    return RestStatus::DONE;
   }
 
   return repairDistributeShardsLike();
@@ -94,7 +94,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Only useful in cluster mode.");
 
-    return RestStatus::FAIL;
+    return RestStatus::DONE;
   }
 
   try {
@@ -108,7 +108,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       generateError(rest::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_HTTP_SERVER_ERROR);
 
-      return RestStatus::FAIL;
+      return RestStatus::DONE;
     }
 
     clusterInfo->loadPlan();
@@ -127,7 +127,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       generateError(rest::ResponseCode::SERVER_ERROR,
                     healthResult.errorNumber(), healthResult.errorMessage());
 
-      return RestStatus::FAIL;
+      return RestStatus::DONE;
     }
 
     VPackSlice supervisionHealth(healthResult.get()->data());
@@ -147,7 +147,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
                     repairOperationsByCollectionResult.errorNumber(),
                     repairOperationsByCollectionResult.errorMessage());
 
-      return RestStatus::FAIL;
+      return RestStatus::DONE;
     }
     std::map<CollectionID, ResultT<std::list<RepairOperation>>>&
         repairOperationsByCollection = repairOperationsByCollectionResult.get();
@@ -184,8 +184,6 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     generateResult(responseCode, response, errorOccurred);
 
     clusterInfo->loadPlan();
-
-    return RestStatus::DONE;
   } catch (basics::Exception const& e) {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
@@ -195,9 +193,8 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
       clusterInfo->loadPlan();
     }
-
-    return RestStatus::FAIL;
   }
+  return RestStatus::DONE;
 }
 
 bool RestRepairHandler::repairAllCollections(

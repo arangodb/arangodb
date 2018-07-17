@@ -343,6 +343,8 @@ The following execution node types will appear in the output of `explain`:
 
 For queries in the cluster, the following nodes may appear in execution plans:
 
+* *SingleRemoteOperationNode*: used on a coordinator to directly work with a single
+  document on a DB-Server that was referenced by its `_key`.
 * *ScatterNode*: used on a coordinator to fan-out data to one or multiple shards.
 * *GatherNode*: used on a coordinator to aggregate results from one or many shards
   into a combined stream of results.
@@ -423,8 +425,9 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a`
   would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a`
 * `geo-index-optimizer`: will appear when a geo index is utilized.
-* `replace-function-with-index`: will appear when a function like FULLTEXT is replaced
-   with an index.
+* `replace-function-with-index`: will appear when a deprecated index function such as
+   `FULLTEXT`, `NEAR`, `WITHIN` or `WITHIN_RECTANGLE` is replaced with a regular
+   subquery.
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
   is specific for the MMFiles storage engine.
@@ -441,6 +444,9 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
+* `optimize-cluster-single-document-operations`: it may appear if you directly reference
+  a document by its `_key`; in this case no AQL will be executed on the DB-Servers, instead
+  the coordinator will directly work with the documents on the DB-Servers.
 * `distribute-in-cluster`: will appear when query parts get distributed in a cluster.
   This is not an optimization rule, and it cannot be turned off.
 * `scatter-in-cluster`: will appear when scatter, gather, and remote nodes are inserted

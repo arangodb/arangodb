@@ -34,6 +34,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -60,8 +61,6 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 V8DealerFeature* V8DealerFeature::DEALER = nullptr;
-
-static thread_local bool alreadyLockedInThread = false;
 
 namespace {
 class V8GcThread : public Thread {
@@ -107,13 +106,10 @@ V8DealerFeature::V8DealerFeature(
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
   setOptional(true);
+  startsAfter("ClusterPhase");
+
   startsAfter("Action");
-  startsAfter("Authentication");
-  startsAfter("Database");
-  startsAfter("Random");
-  startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("Temp");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -178,8 +174,6 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     disable();
     application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
       "Script", "FoxxQueues", "Frontend"});
-    LOG_TOPIC(WARN, arangodb::Logger::V8) << "V8 JavaScript engine is disabled, this is an"
-      << " experimental option, some features may be missing or broken !";
     return;
   }
   
@@ -218,6 +212,12 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
   }
+}
+
+void V8DealerFeature::prepare() {
+  auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  TRI_ASSERT(cluster != nullptr);
+  defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM", cluster->systemReplicationFactor());
 }
 
 void V8DealerFeature::start() {
@@ -366,17 +366,8 @@ bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
     return result;
   };
 
-  if (alreadyLockedInThread) {
-    // the condition lock has already been acquired in this thread
-    // we cannot detect this easily here without a thread-local variable
-    // as we may be called from a JavaScript callback here
-    return cb();
-  } else {
-    // the condition lock has not been acquired in this thread, so
-    // we are responsible for locking properly!
-    CONDITION_LOCKER(guard, _contextCondition);
-    return cb();
-  }
+  CONDITION_LOCKER(guard, _contextCondition);
+  return cb();
 }
 
 void V8DealerFeature::collectGarbage() {
@@ -536,9 +527,6 @@ void V8DealerFeature::unblockDynamicContextCreation() {
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     std::string const& file, VPackBuilder* builder) {
    
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-  
   if (builder != nullptr) {
     builder->openArray();
   }

@@ -28,7 +28,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Context.h"
@@ -64,7 +63,7 @@ VPackSlice QueryResultCursor::extra() const {
   if (_result.extra) {
     _result.extra->slice();
   }
-  return VPackSlice();
+  return {};
 }
 
 /// @brief check whether the cursor contains more data
@@ -89,7 +88,13 @@ VPackSlice QueryResultCursor::next() {
 /// @brief return the cursor size
 size_t QueryResultCursor::count() const { return _iterator.size(); }
 
-Result QueryResultCursor::dump(VPackBuilder& builder) {
+std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder, std::function<void()>&) {
+  // This cursor cannot block, result already there.
+  auto res = dumpSync(builder);
+  return {ExecutionState::DONE, res};
+}
+
+Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
   try {
     size_t const n = batchSize();
     // reserve an arbitrary number of bytes for the result to save
@@ -98,6 +103,7 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
     builder.reserve(std::max<size_t>(1, std::min<size_t>(n, 10000)) * 32);
 
     VPackOptions const* oldOptions = builder.options;
+    TRI_DEFER(builder.options = oldOptions);
     builder.options = _result.context->getVPackOptionsForDump();
 
     builder.add("result", VPackValue(VPackValueType::Array));
@@ -119,7 +125,7 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    if (_result.extra.get() != nullptr) {
+    if (_result.extra != nullptr) {
       builder.add("extra", _result.extra->slice());
     }
 
@@ -129,7 +135,6 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
       // mark the cursor as deleted
       this->deleted();
     }
-    builder.options = oldOptions;
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -138,7 +143,7 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
     return Result(TRI_ERROR_INTERNAL,
                   "internal error during QueryResultCursor::dump");
   }
-  return TRI_ERROR_NO_ERROR;
+  return {TRI_ERROR_NO_ERROR};
 }
 
 QueryStreamCursor::QueryStreamCursor(
@@ -148,14 +153,12 @@ QueryStreamCursor::QueryStreamCursor(
     std::shared_ptr<VPackBuilder> bindVars,
     std::shared_ptr<VPackBuilder> opts,
     size_t batchSize,
-    double ttl
-)
+    double ttl)
     : Cursor(id, batchSize, ttl, /*hasCount*/ false),
       _guard(vocbase),
-      _exportCount(-1) {
+      _exportCount(-1),
+      _queryResultPos(0) {
   TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
-  auto prevLockHeaders = CollectionLockState::_noLockHeaders;
-  TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
   _query = std::make_unique<Query>(
     false,
@@ -167,108 +170,193 @@ QueryStreamCursor::QueryStreamCursor(
   );
   _query->prepare(QueryRegistryFeature::QUERY_REGISTRY, aql::Query::DontCache);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
-        
+
   // we replaced the rocksdb export cursor with a stream AQL query
   // for this case we need to support printing the collection "count"
   if (_query->optionsSlice().hasKey("exportCollection")) {
     std::string cname = _query->optionsSlice().get("exportCollection").copyString();
     TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
-    OperationResult opRes = _query->trx()->count(cname, true);
+    OperationResult opRes = _query->trx()->count(cname, false);
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
     _exportCount = opRes.slice().getInt();
     VPackSlice limit = _query->bindParameters()->slice().get("limit");
     if (limit.isInteger()) {
-      _exportCount = std::min(limit.getInt(), _exportCount);
+      _exportCount = (std::min)(limit.getInt(), _exportCount);
     }
-  }
-  
-  // If we have set _noLockHeaders, we need to unset it:
-  if (CollectionLockState::_noLockHeaders != nullptr &&
-      CollectionLockState::_noLockHeaders == _query->engine()->lockedShards()) {
-    CollectionLockState::_noLockHeaders = nullptr;
   }
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
-  if (_query) { // cursor is canceled or timed-out
-    auto prevLockHeaders = CollectionLockState::_noLockHeaders;
-    CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
-    TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
-    /*QueryResult result;
-    _query->finalize(result);*/
+  while (!_queryResults.empty()) {
+    _query->engine()->_itemBlockManager.returnBlock(
+        std::move(_queryResults.front()));
+    _queryResults.pop_front();
+  }
+
+  if (_query) {  // cursor is canceled or timed-out
     // Query destructor will  cleanup plan and abort transaction
     _query.reset();
   }
 }
 
-Result QueryStreamCursor::dump(VPackBuilder& builder) {
+std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder, std::function<void()>& continueHandler) {
   TRI_ASSERT(batchSize() > 0);
-  auto prevLockHeaders = CollectionLockState::_noLockHeaders;
-  // If we had set _noLockHeaders, we need to reset it:
-  CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
-  TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
-
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _query->queryString().extract(1024) << "'";
 
-  VPackOptions const* oldOptions = builder.options;
-  TRI_DEFER(builder.options = oldOptions);
-  VPackOptions options = VPackOptions::Defaults;
-  options.buildUnindexedArrays = true;
-  options.buildUnindexedObjects = true;
-  options.escapeUnicode = true;
-  builder.options = &options;
+  // We will get a different RestHandler on every dump, so we need to update the Callback
+  _query->setContinueHandler(continueHandler);
+
+  try {
+    ExecutionState state = prepareDump();
+
+    if (state == ExecutionState::WAITING) {
+      return  {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    }
+
+    Result res = writeResult(builder);
+    if (!res.ok()) {
+      return {ExecutionState::DONE, res};
+    }
+    return {state, res};
+  } catch (arangodb::basics::Exception const& ex) {
+    this->deleted();
+    return {ExecutionState::DONE, Result(ex.code(),
+                  "AQL: " + ex.message() +
+                      QueryExecutionState::toStringWithPrefix(_query->state()))};
+  } catch (std::bad_alloc const&) {
+    this->deleted();
+    return {ExecutionState::DONE, Result(TRI_ERROR_OUT_OF_MEMORY,
+                  TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
+                      QueryExecutionState::toStringWithPrefix(_query->state()))};
+  } catch (std::exception const& ex) {
+    this->deleted();
+    return {ExecutionState::DONE, Result(
+        TRI_ERROR_INTERNAL,
+        ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()))};
+  } catch (...) {
+    this->deleted();
+    return {ExecutionState::DONE, Result(TRI_ERROR_INTERNAL,
+                  TRI_errno_string(TRI_ERROR_INTERNAL) +
+                      QueryExecutionState::toStringWithPrefix(_query->state()))};
+  }
+}
+
+Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
+  TRI_ASSERT(batchSize() > 0);
+  LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
+                                    << _query->queryString().extract(1024) << "'";
+
+  // We will get a different RestHandler on every dump, so we need to update the Callback
+  auto continueCallback = [&]() { _query->tempSignalAsyncResponse(); };
+  _query->setContinueCallback(continueCallback);
 
   try {
     aql::ExecutionEngine* engine = _query->engine();
     TRI_ASSERT(engine != nullptr);
 
+    std::unique_ptr<AqlItemBlock> value;
+
+    ExecutionState state = ExecutionState::WAITING;
+
+    while (state == ExecutionState::WAITING) {
+      state = prepareDump();
+      if (state == ExecutionState::WAITING) {
+        _query->tempWaitForAsyncResponse();
+      }
+    }
+
+    return writeResult(builder);
+  } catch (arangodb::basics::Exception const& ex) {
+    this->deleted();
+    return Result(ex.code(),
+                  "AQL: " + ex.message() +
+                      QueryExecutionState::toStringWithPrefix(_query->state()));
+  } catch (std::bad_alloc const&) {
+    this->deleted();
+    return Result(TRI_ERROR_OUT_OF_MEMORY,
+                  TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
+                      QueryExecutionState::toStringWithPrefix(_query->state()));
+  } catch (std::exception const& ex) {
+    this->deleted();
+    return Result(
+        TRI_ERROR_INTERNAL,
+        ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()));
+  } catch (...) {
+    this->deleted();
+    return Result(TRI_ERROR_INTERNAL,
+                  TRI_errno_string(TRI_ERROR_INTERNAL) +
+                      QueryExecutionState::toStringWithPrefix(_query->state()));
+  }
+}
+
+Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
+  try {
+    VPackOptions const* oldOptions = builder.options;
+    TRI_DEFER(builder.options = oldOptions);
+    VPackOptions options = VPackOptions::Defaults;
+    options.buildUnindexedArrays = true;
+    options.buildUnindexedObjects = true;
+    options.escapeUnicode = true;
+    builder.options = &options;
+    // reserve some space in Builder to avoid frequent reallocs
+    builder.reserve(16 * 1024);
+    builder.add("result", VPackValue(VPackValueType::Array, true));
+
+    aql::ExecutionEngine* engine = _query->engine();
+    TRI_ASSERT(engine != nullptr);
     // this is the RegisterId our results can be found in
     RegisterId const resultRegister = engine->resultRegister();
-    AqlItemBlock* value = nullptr;
 
-    bool hasMore = true;
-    try {
-      // reserve some space in Builder to avoid frequent reallocs
-      builder.reserve(16 * 1024);
-      builder.add("result", VPackValue(VPackValueType::Array, true));
+    size_t rowsWritten = 0;
+    while(rowsWritten < batchSize() && !_queryResults.empty()) {
+      std::unique_ptr<AqlItemBlock>& block = _queryResults.front();
+      TRI_ASSERT(_queryResultPos < block->size());
+      AqlValue const& value
+        = block->getValueReference(_queryResultPos, resultRegister);
 
-      // get one batch
-      if ((value = engine->getSome(batchSize())) != nullptr) {
-        size_t const n = value->size();
-        for (size_t i = 0; i < n; ++i) {
-          AqlValue const& val = value->getValueReference(i, resultRegister);
+      TRI_ASSERT(!value.isEmpty());
+      value.toVelocyPack(_query->trx(), builder, false);
+      ++rowsWritten;
+      ++_queryResultPos;
 
-          if (!val.isEmpty()) {
-            val.toVelocyPack(_query->trx(), builder, false);
-          }
-        }
-        // return used block: this will reset value to a nullptr
-        engine->_itemBlockManager.returnBlock(value); 
-        hasMore = engine->hasMore();
-      } else {
-        hasMore = false;
+      // get next block
+      if (_queryResultPos == block->size()) {
+        engine->_itemBlockManager.returnBlock(std::move(block));
+        _queryResults.pop_front();
+        _queryResultPos = 0;
       }
-      builder.close();  // result
-
-      builder.add("hasMore", VPackValue(hasMore));
-      if (hasMore) {
-        builder.add("id", VPackValue(std::to_string(id())));
-      }
-      if (_exportCount >= 0) { // this is coming from /_api/export
-        builder.add("count", VPackValue(_exportCount));
-      }
-      builder.add("cached", VPackValue(false));
-    } catch (...) {
-      delete value;
-      throw;  // rethrow, is caught below
     }
+
+    TRI_ASSERT(_queryResults.empty() ||
+               _queryResultPos < _queryResults.front()->size());
+
+    builder.close();  // result
+
+    // If there is a block left, there's at least one row left in it. On the
+    // other hand, we rely on the caller to have fetched more than batchSize()
+    // result rows if possible!
+    bool hasMore = !_queryResults.empty();
+
+    builder.add("hasMore", VPackValue(hasMore));
+    if (hasMore) {
+      builder.add("id", VPackValue(std::to_string(id())));
+    }
+    if (_exportCount >= 0) { // this is coming from /_api/export
+      builder.add("count", VPackValue(_exportCount));
+    }
+    builder.add("cached", VPackValue(false));
 
     if (!hasMore) {
       QueryResult result;
-      _query->finalize(result); // will commit transaction
+      _query->setContinueCallback([&]() { _query->tempSignalAsyncResponse(); });
+      ExecutionState state = _query->finalize(result); // will commit transaction
+      while (state == ExecutionState::WAITING) {
+        _query->tempWaitForAsyncResponse();
+        state = _query->finalize(result);
+      }
       if (result.extra && result.extra->slice().isObject()) {
         builder.add("extra", result.extra->slice());
       }
@@ -303,4 +391,39 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
 
 std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
   return _query->trx()->transactionContext();
+}
+
+ExecutionState QueryStreamCursor::prepareDump() {
+  aql::ExecutionEngine* engine = _query->engine();
+  TRI_ASSERT(engine != nullptr);
+
+  size_t numBufferedRows = 0;
+  for (auto const& it : _queryResults) {
+    numBufferedRows += it->size();
+  }
+  numBufferedRows -= _queryResultPos;
+
+  ExecutionState state = ExecutionState::HASMORE;
+  // We want to fill a result of batchSize if possible and have at least
+  // one row left (or be definitively DONE) to set "hasMore" reliably.
+  while (state != ExecutionState::DONE && numBufferedRows <= batchSize()) {
+    std::unique_ptr<AqlItemBlock> resultBlock;
+    std::tie(state, resultBlock) = engine->getSome(batchSize());
+    if (state == ExecutionState::WAITING) {
+      break;
+    }
+    // resultBlock == nullptr => ExecutionState::DONE
+    TRI_ASSERT(resultBlock != nullptr || state == ExecutionState::DONE);
+
+    if (resultBlock != nullptr) {
+      numBufferedRows += resultBlock->size();
+      _queryResults.push_back(std::move(resultBlock));
+    }
+  }
+
+  if (state == ExecutionState::WAITING) {
+    // TODO add all results to the builder before going to sleep
+  }
+
+  return state;
 }

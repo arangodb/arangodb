@@ -96,7 +96,7 @@ The documentation and unit tests still require a [cygwin](https://www.cygwin.com
 
 You need at least `make` from cygwin. Cygwin also offers a `cmake`. Do **not** install the cygwin cmake.
 
-You should also issue these commands to generate user informations for the cygwin commands:
+You should also issue these commands to generate user information for the cygwin commands:
 
     mkpasswd > /etc/passwd
     mkgroup > /etc/group
@@ -154,7 +154,7 @@ right click on `This PC` in the tree on the left, choose `Properties` in the ope
 in the Popup `Environment Variables`, another popup opens, in the `System Variables` part you click `New`, 
 And variable name: `ICU_DATA` to the value: `c:\\Windows`
 
-![HowtoSetEnv](/assets/CompilingUnderWindows/SetEnvironmentVar.png)
+![HowtoSetEnv](../assets/CompilingUnderWindows/SetEnvironmentVar.png)
 
 Running Unit tests (Optional)
 ---------------------------

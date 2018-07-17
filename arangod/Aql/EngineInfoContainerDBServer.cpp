@@ -52,14 +52,6 @@ namespace {
 
 const double SETUP_TIMEOUT = 25.0;
 
-void injectQueryOptions(
-    Query& query,
-    VPackBuilder& infoBuilder
-) {
-  // the toVelocyPack will open & close the "options" object
-  query.queryOptions().toVelocyPack(infoBuilder, true);
-}
-
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
   StringRef key(keySlice);
@@ -561,7 +553,34 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   }
   infoBuilder.close();  // lockInfo
   infoBuilder.add(VPackValue("options"));
-  injectQueryOptions(query, infoBuilder);
+  
+  // toVelocyPack will open & close the "options" object
+#ifdef USE_ENTERPRISE
+  if (query.trx()->state()->options().skipInaccessibleCollections) {
+    
+    aql::QueryOptions opts = query.queryOptions();
+    TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
+    for (auto const& it : _engineInfos) {
+      TRI_ASSERT(it.first);
+      EngineInfo const& engine = *it.first;
+      std::vector<ShardID> const& shards = it.second;
+
+      if (engine.type() != ExecutionNode::ENUMERATE_IRESEARCH_VIEW &&
+          query.trx()->isInaccessibleCollectionId(engine.collection()->getPlanId())) {
+        for (ShardID sid : shards) {
+          opts.inaccessibleCollections.insert(sid);
+        }
+        opts.inaccessibleCollections.insert(std::to_string(engine.collection()->getPlanId()));
+      }
+    }
+    opts.toVelocyPack(infoBuilder, true);
+  } else {
+    query.queryOptions().toVelocyPack(infoBuilder, true);
+  }
+#else
+  query.queryOptions().toVelocyPack(infoBuilder, true);
+#endif
+  
   infoBuilder.add(VPackValue("variables"));
   // This will open and close an Object.
   query.ast()->variables()->toVelocyPack(infoBuilder);
@@ -570,12 +589,12 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
   for (auto const& it : _engineInfos) {
     TRI_ASSERT(it.first);
-    auto const& engine = *it.first;
-    auto const& shards = it.second;
+    EngineInfo const& engine = *it.first;
+    std::vector<ShardID> const& shards = it.second;
 
 #ifdef USE_IRESEARCH
     // serialize for the list of shards
-    if (it.first->type() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+    if (engine.type() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       engine.serializeSnippet(serverId, query, shards, infoBuilder);
 
       // register current DBServer for each scatter associated with the view
@@ -611,7 +630,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
   infoBuilder.openArray();
   for (auto const& it : _traverserEngineInfos) {
     GraphNode* en = it.first;
-    auto const& list = it.second;
+    TraverserEngineShardLists const& list = it.second;
     infoBuilder.openObject();
     {
       // Options
@@ -657,6 +676,17 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
       infoBuilder.close();
     }
     infoBuilder.close();  // edges
+    
+#ifdef USE_ENTERPRISE
+    if (!list.inaccessibleShards.empty()) {
+      infoBuilder.add(VPackValue("inaccessible"));
+      infoBuilder.openArray();
+      for (ShardID const& shard : list.inaccessibleShards) {
+        infoBuilder.add(VPackValue(shard));
+      }
+      infoBuilder.close(); // inaccessible
+    }
+#endif
     infoBuilder.close();  // shards
 
     en->enhanceEngineInfo(infoBuilder);
@@ -938,15 +968,12 @@ Result EngineInfoContainerDBServer::buildEngines(
     + "/_api/aql/setup?ttl="
     + std::to_string(ttl)
   );
-  bool needCleanup = true;
-  auto cleanup = [&]() {
-    if (needCleanup) {
-      cleanupEngines(
-        cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds
-      );
-    }
-  };
-  TRI_DEFER(cleanup());
+
+  auto cleanupGuard = scopeGuard([this, &cc, &queryIds]() {
+    cleanupEngines(
+      cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds
+    );
+  });
 
   std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
@@ -989,7 +1016,7 @@ Result EngineInfoContainerDBServer::buildEngines(
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query on all required "
               "servers. This can happen during "
-              "Failover. Please check: " +
+              "failover. Please check: " +
                   it.first};
     }
 
@@ -1001,7 +1028,7 @@ Result EngineInfoContainerDBServer::buildEngines(
         return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                 "Unable to deploy query on all required "
                 "servers. This can happen during "
-                "Failover. Please check: " +
+                "failover. Please check: " +
                     it.first};
       }
       size_t remoteId = 0;
@@ -1025,7 +1052,7 @@ Result EngineInfoContainerDBServer::buildEngines(
         return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                 "Unable to deploy query on all required "
                 "servers. This can happen during "
-                "Failover. Please check: " +
+                "failover. Please check: " +
                     it.first};
       }
 
@@ -1036,7 +1063,7 @@ Result EngineInfoContainerDBServer::buildEngines(
 #ifdef USE_ENTERPRISE
   resetSatellites();
 #endif
-  needCleanup = false;
+  cleanupGuard.cancel();
   return TRI_ERROR_NO_ERROR;
 }
 

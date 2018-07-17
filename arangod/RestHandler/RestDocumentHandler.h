@@ -38,7 +38,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() override;
+  void shutdownExecute(bool isFinalized) noexcept override;
 #endif
 
  protected:

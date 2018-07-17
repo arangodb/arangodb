@@ -16,7 +16,7 @@ therefore you have to dump all data using `arangodump` and then
 restore it to the new ArangoDB instance using `arangorestore`.
 
 General instructions for this procedure can be found 
-[in the manual](../../Manual/Administration/Upgrading/Upgrading30.html).
+[in the manual](../../Manual/Upgrading/VersionSpecific/Upgrading30.html).
 Here, we cover some additional details about the cluster case.
 
 ### Dumping the data in ArangoDB 2.8
@@ -46,14 +46,14 @@ your ArangoDB 3.0 distribution!):
     arangorestore --server.endpoint tcp://localhost:8530 --input-directory dump
 
 to import your data into your new ArangoDB 3.0 instance. See
-[this page](../../Manual/Administration/Arangorestore.html)
+[this page](../../Manual/Programs/Arangorestore/index.html)
 for details on the available command line options. If your ArangoDB 3.0
 instance is a cluster, then simply use one of the coordinators as
 `--server.endpoint`.
 
 That is it, your data is migrated.
 
-### Controling the number of shards and the replication factor
+### Controlling the number of shards and the replication factor
 
 This procedure works for all four combinations of single server and cluster
 for source and destination respectively. If the target is a single server
@@ -70,7 +70,7 @@ use replication factor 1 for all collections. If the source was a
 single server, the same will happen, additionally, `arangorestore`
 will always create collections with just a single shard.
 
-There are essentially 3 ways to change this behaviour:
+There are essentially 3 ways to change this behavior:
 
  1. The first is to create the collections explicitly on the
     ArangoDB 3.0 cluster, and then set the `--create-collection false` flag.
@@ -99,7 +99,7 @@ There are essentially 3 ways to change this behaviour:
 Note that you can remove individual collections from your dump by
 deleting their pair of structure and data file in the dump directory.
 In this way you can restore your data in several steps or even
-parallelise the restore operation by running multiple `arangorestore`
+parallelize the restore operation by running multiple `arangorestore`
 processes concurrently on different dump directories. You should
 consider using different coordinators for the different `arangorestore`
 processes in this case.

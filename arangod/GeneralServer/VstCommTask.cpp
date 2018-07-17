@@ -42,7 +42,6 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 
@@ -307,10 +306,10 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
     // obi: user who sends authentication expects a reply
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
-                     "authentication successful");
+                     "auth successful");
   } else {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
-                     TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed");
+                     TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 }
 

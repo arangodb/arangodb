@@ -406,6 +406,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
   builder.add("estimatedNrItems", VPackValue(nrItems));
   builder.add("initialize", VPackValue(_isResponsibleForInitialize));
+  builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
 
   builder.close();
 }
@@ -594,7 +595,7 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
 /// @brief get the output variable from a node
 Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   if (node->getType() == ExecutionNode::CALCULATION) {
-    // CalculationNode has an outVariale() method
+    // CalculationNode has an outVariable() method
     return ExecutionNode::castTo<CalculationNode const*>(node)->outVariable();
   }
 
@@ -613,9 +614,13 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
     TRI_ASSERT(v != nullptr);
     return v;
   }
+  
+  if (node->getType() == ExecutionNode::SUBQUERY) {
+    return ExecutionNode::castTo<SubqueryNode const*>(node)->outVariable();
+  }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid node type in getOutVariable");
+                                 std::string("invalid node type '") + node->getTypeString() + "' in getOutVariable");
 }
 
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
@@ -699,6 +704,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           options.exclusive = value->isTrue();
         } else if (name == "overwrite") {
           options.overwrite = value->isTrue();
+        } else if (name == "ignoreRevs") {
+          options.ignoreRevs = value->isTrue();
         }
       }
     }
@@ -1333,13 +1340,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
         // operand is a variable
         auto e = static_cast<Variable*>(arg->getData());
         aggregateVariables.emplace_back(
-            std::make_pair(v, std::make_pair(e, func->name)));
+            std::make_pair(v, std::make_pair(e, Aggregator::translateAlias(func->name))));
       } else {
         auto calc = createTemporaryCalculation(arg, previous);
         previous = calc;
 
         aggregateVariables.emplace_back(std::make_pair(
-            v, std::make_pair(getOutVariable(calc), func->name)));
+            v, std::make_pair(getOutVariable(calc), Aggregator::translateAlias(func->name))));
       }
     }
   }

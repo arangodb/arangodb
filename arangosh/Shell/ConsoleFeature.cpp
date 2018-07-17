@@ -68,7 +68,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
       _startTime(TRI_microtime()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 
   if (!_supportsColors) {
     _colors = false;

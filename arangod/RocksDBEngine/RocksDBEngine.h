@@ -55,6 +55,7 @@ class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
+class RocksDBSyncThread;
 class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
@@ -83,7 +84,7 @@ class RocksDBEngine final : public StorageEngine {
   // inherited from ApplicationFeature
   // ---------------------------------
 
-  // add the storage engine's specifc options to the global list of options
+  // add the storage engine's specific options to the global list of options
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   // validate the storage engine's specific options
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -173,6 +174,7 @@ class RocksDBEngine final : public StorageEngine {
   ) override;
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
                                           bool doSync) override;
+  // TODO worker-safety
   Result handleSyncKeys(
     DatabaseInitialSyncer& syncer,
     LogicalCollection& col,
@@ -262,13 +264,6 @@ class RocksDBEngine final : public StorageEngine {
     std::string const& oldName
   ) override;
 
-  void createIndex(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t collectionId,
-    TRI_idx_iid_t id,
-    arangodb::velocypack::Slice const& data
-  ) override;
-
   void unloadCollection(
     TRI_vocbase_t& vocbase,
     LogicalCollection& collection
@@ -322,9 +317,6 @@ class RocksDBEngine final : public StorageEngine {
 
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() override;
-
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules() override;
 
@@ -362,6 +354,8 @@ class RocksDBEngine final : public StorageEngine {
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
+  double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
+
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
@@ -398,6 +392,10 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+  
+  rocksdb::Options const& rocksDBOptions() const {
+    return _options;
+  }
 
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
@@ -409,6 +407,12 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBReplicationManager* replicationManager() const {
     TRI_ASSERT(_replicationManager);
     return _replicationManager.get();
+  }
+  
+  /// @brief returns a pointer to the sync thread
+  RocksDBSyncThread* syncThread() const {
+    TRI_ASSERT(_syncThread);
+    return _syncThread.get();
   }
 
   static arangodb::Result registerRecoveryHelper(
@@ -457,9 +461,19 @@ class RocksDBEngine final : public StorageEngine {
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
+  
+  // number of seconds to wait initially after server start before WAL file deletion
+  // kicks in
+  double _pruneWaitTimeInitial;
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
+  
+  /// Background thread handling WAL syncing
+  std::unique_ptr<RocksDBSyncThread> _syncThread;
+
+  // WAL sync interval, specified in milliseconds by end user, but uses microseconds internally
+  uint64_t _syncInterval;
 
   // use write-throttling
   bool _useThrottle;

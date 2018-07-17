@@ -26,6 +26,7 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/fasthash.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
@@ -159,7 +160,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _shardIds(new ShardMap()),  // Not needed
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(this)),
+      _physical(other.getPhysical()->clone(*this)),
       _clusterEstimateTTL(0) {
   TRI_ASSERT(_physical != nullptr);
 
@@ -906,7 +907,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // - _isVolatile
   // ... probably a few others missing here ...
 
-  WRITE_LOCKER(writeLocker, _infoLock);
+  MUTEX_LOCKER(guard, _infoLock); // prevent simultanious updates
   
   size_t rf = _replicationFactor;
   VPackSlice rfSl = slice.get("replicationFactor");
@@ -1067,7 +1068,7 @@ void LogicalCollection::persistPhysicalCollection() {
 ///        the collection and it is guaranteed that no one is using
 ///        it at that moment.
 void LogicalCollection::deferDropCollection(
-    std::function<bool(LogicalCollection*)> callback) {
+    std::function<bool(LogicalCollection&)> const& callback) {
   _physical->deferDropCollection(callback);
 }
 

@@ -16,7 +16,7 @@
       strong = document.createElement("strong");
     strong.appendChild(
       document.createTextNode(
-        "Sorry App not found. Please use the query param path and submit the urlEncoded mountpoint of an App."
+        "Sorry App not found. Please use the query param path and submit the urlEncoded mount point of an App."
       )
     );
     div.appendChild(strong);

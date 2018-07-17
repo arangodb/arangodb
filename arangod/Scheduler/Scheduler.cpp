@@ -99,8 +99,8 @@ class SchedulerThread : public Thread {
 
     // when we enter this method,
     // _nrRunning has already been increased for this thread
-    LOG_TOPIC(DEBUG, Logger::THREADS)
-        << "started thread: " << _scheduler->infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread: "
+                                      << _scheduler->infoStatus();
 
     // some random delay value to avoid all initial threads checking for
     // their deletion at the very same time
@@ -115,8 +115,8 @@ class SchedulerThread : public Thread {
       try {
         _service->run_one();
       } catch (std::exception const& ex) {
-        LOG_TOPIC(ERR, Logger::THREADS)
-            << "scheduler loop caught exception: " << ex.what();
+        LOG_TOPIC(ERR, Logger::THREADS) << "scheduler loop caught exception: "
+                                        << ex.what();
       } catch (...) {
         LOG_TOPIC(ERR, Logger::THREADS)
             << "scheduler loop caught unknown exception";
@@ -209,6 +209,17 @@ Scheduler::~Scheduler() {
 
   _serviceGuard.reset();
   _ioContext.reset();
+
+  FifoJob* job = nullptr;
+
+  for (int i = 0; i < NUMBER_FIFOS; ++i) {
+    _fifoSize[i] = 0;
+
+    while (_fifos[i]->pop(job) && job != nullptr) {
+      delete job;
+      job = nullptr;
+    }
+  }
 }
 
 // do not pass callback by reference, might get deleted before execution
@@ -252,9 +263,6 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
 
           return;
         }
-
-        JobGuard guard(this);
-        guard.work();
 
         decQueued();
 
@@ -557,9 +565,7 @@ void Scheduler::shutdown() {
     std::this_thread::yield();
     // we can be quite generous here with waiting...
     // as we are in the shutdown already, we do not care if we need to wait
-    // for
-    // a
-    // bit longer
+    // for a bit longer
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
   }
 

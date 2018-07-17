@@ -134,11 +134,21 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     GeneralRequest& req) {
-  if (!::resolveRequestContext(req)) {
+  if (!::resolveRequestContext(req)) { // false if db not found
+    if (_auth->isActive()) {
+      // prevent guessing database names (issue #5030)
+      auth::Level lvl = auth::Level::NONE;
+      if (req.authenticated()) {
+        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+      }
+      if (lvl == auth::Level::NONE) {
+        addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                         req.messageId(), TRI_ERROR_FORBIDDEN);
+        return RequestFlow::Abort;
+      }
+    }
     addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-
+                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return RequestFlow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
@@ -150,6 +160,59 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
   if (found) {
     LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
                                        << "\",\"" << source << "\"";
+  }
+  
+  std::string const& path = req.requestPath();
+  
+  // In the shutdown phase we simply return 503:
+  if (application_features::ApplicationServer::isStopping()) {
+    std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+    addResponse(*res, nullptr);
+    return RequestFlow::Abort;
+  }
+  
+  // In the bootstrap phase, we would like that coordinators answer the
+  // following endpoints, but not yet others:
+  ServerState::Mode mode = ServerState::mode();
+  switch (mode) {
+    case ServerState::Mode::MAINTENANCE: {
+      if ((!ServerState::instance()->isCoordinator() &&
+           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+           path.find("/_api/aql") == std::string::npos)) {
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+            std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+            addResponse(*res, nullptr);
+            return RequestFlow::Abort;
+          }
+      break;
+    }
+    case ServerState::Mode::REDIRECT:
+    case ServerState::Mode::TRYAGAIN: {
+      if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/cluster/health") == std::string::npos &&
+          path.find("/_admin/log") == std::string::npos &&
+          path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_admin/server/availability") == std::string::npos &&
+          path.find("/_admin/status") == std::string::npos &&
+          path.find("/_admin/statistics") == std::string::npos &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/cluster/") == std::string::npos &&
+          path.find("/_api/replication") == std::string::npos &&
+          path.find("/_api/version") == std::string::npos &&
+          path.find("/_api/wal") == std::string::npos) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Redirect/Try-again: refused path: " << path;
+        std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+        ReplicationFeature::prepareFollowerResponse(res.get(), mode);
+        addResponse(*res, nullptr);
+        return RequestFlow::Abort;
+      }
+      break;
+    }
+    case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::INVALID:
+      // no special handling required
+      break;
   }
 
   // now check the authentication will determine if the user can access
@@ -163,7 +226,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
                      "not authorized to execute this request");
     return RequestFlow::Abort;
   }
-  
+
   if (code == rest::ResponseCode::OK && req.authenticated()) {
     // check for an HLC time stamp only with auth
     std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
@@ -180,7 +243,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
 
 /// Must be called from addResponse, before response is rendered
 void GeneralCommTask::finishExecution(GeneralResponse& res) const {
-  ServerState::Mode mode = ServerState::serverMode();
+  ServerState::Mode mode = ServerState::mode();
   if (mode == ServerState::Mode::REDIRECT ||
       mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
@@ -223,6 +286,13 @@ void GeneralCommTask::executeRequest(
     return;
   }
 
+  // forward to correct server if necessary
+  bool forwarded = handler->forwardRequest();
+  if (forwarded) {
+    addResponse(*handler->response(), handler->stealStatistics());
+    return;
+  }
+
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
     RequestStatistics::SET_ASYNC(statistics(messageId));
@@ -252,8 +322,7 @@ void GeneralCommTask::executeRequest(
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        request->contentTypeResponse(), messageId,
-                       TRI_ERROR_QUEUE_FULL,
-                       TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+                       TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
@@ -337,6 +406,12 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
   addSimpleResponse(code, respType, messageId, std::move(buffer));
 }
 
+void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
+                                       rest::ContentType respType,
+                                       uint64_t messageId, int errorNum) {
+  addErrorResponse(code, respType, messageId, errorNum, TRI_errno_string(errorNum));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -358,8 +433,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
-                     TRI_ERROR_QUEUE_FULL,
-                     TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+                     TRI_ERROR_QUEUE_FULL);
   }
 
   return ok;
@@ -370,17 +444,18 @@ void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
-  handler->runHandler([this, doLock](rest::RestHandler* handler) {
+  auto self = shared_from_this();
+  handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
-    if (doLock) {
-      auto self = shared_from_this();
+    if (doLock || !_peer->runningInThisThread()) {
+      // Note that the latter is for the case that a handler was put to sleep
+      // and woke up in a different thread.
       auto h = handler->shared_from_this();
 
       _peer->post(
           [self, this, stat, h]() { addResponse(*(h->response()), stat); });
     } else {
-      TRI_ASSERT(_peer->runningInThisThread());
       addResponse(*handler->response(), stat);
     }
   });
@@ -419,7 +494,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
-  } else if (ServerState::serverMode() == ServerState::Mode::MAINTENANCE) {
+  } else if (ServerState::isMaintenance()) {
     return rest::ResponseCode::SERVICE_UNAVAILABLE;
   }
 

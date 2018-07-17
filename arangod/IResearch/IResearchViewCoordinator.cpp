@@ -40,7 +40,9 @@
 
 namespace {
 
-using namespace arangodb::basics;
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+
 using namespace arangodb::iresearch;
 
 arangodb::Result dropLink(
@@ -127,9 +129,10 @@ arangodb::Result updateLinks(
       return {
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for IResearch view '")
-          + StringUtils::itoa(view.id())
+          + view.name()
           + "' offset '"
-          + StringUtils::itoa(linksItr.index()) + '"'
+          + std::to_string(linksItr.index())
+          + '"'
       };
     }
 
@@ -208,8 +211,9 @@ arangodb::Result updateLinks(
         return {
           TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
           std::string("no link between view '")
-            + StringUtils::itoa(view.id())
-            + "' and collection '" + StringUtils::itoa(cid)
+            + view.name()
+            + "' and collection '"
+            + std::to_string(cid)
             + "' found"
         };
       }
@@ -221,7 +225,7 @@ arangodb::Result updateLinks(
       auto link = currentLinks.get(collection->name());
 
       if (!link.isObject()) {
-        auto const collectiondId = StringUtils::itoa(collection->id());
+        auto const collectiondId = std::to_string(collection->id());
         link = currentLinks.get(collectiondId);
 
         if (!link.isObject()) {
@@ -253,10 +257,9 @@ using namespace basics;
 
 namespace iresearch {
 
-arangodb::Result IResearchViewCoordinator::appendVelocyPack(
+arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
   arangodb::velocypack::Builder& builder,
-  bool detailed,
-  bool //forPersistence
+  bool forPersistence
 ) const {
   if (!builder.isOpenObject()) {
     return arangodb::Result(
@@ -266,30 +269,74 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
   }
 
   builder.add(
-    arangodb::StaticStrings::DataSourceType,
-    arangodb::velocypack::Value(type().name())
-  );
-
-  if (!detailed) {
-    return arangodb::Result();
-  }
-
-  builder.add(
     StaticStrings::PropertiesField,
     arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
   );
-  _meta.json(builder); // regular properites
-  _metaState.json(builder); // regular properites
 
-  auto links = _links.slice();
+  auto closePropertiesField = // close StaticStrings::PropertiesField
+    irs::make_finally([&builder]()->void { builder.close(); });
 
-  if (links.isObject() && links.length()) {
-    builder.add(StaticStrings::LinksField, links);
+  if (!_meta.json(builder)) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failure to generate definition while generating properties jSON for IResearch View in database '") + vocbase().name() + "'"
+    );
   }
 
-  builder.close(); // close PROPERTIES_FIELD
+  arangodb::velocypack::Builder links;
+
+  // links are not persisted, their definitions are part of the corresponding collections
+  if (!forPersistence) {
+    ReadMutex mutex(_mutex);
+    SCOPED_LOCK(mutex); // '_collections' can be asynchronously modified
+
+    links.openObject();
+
+    for (auto& entry: _collections) {
+      links.add(entry.second.first, entry.second.second.slice());
+    }
+
+    links.close();
+    builder.add(StaticStrings::LinksField, links.slice());
+  }
 
   return arangodb::Result();
+}
+
+bool IResearchViewCoordinator::emplace(
+    TRI_voc_cid_t cid,
+    std::string const& key,
+    arangodb::velocypack::Slice const& value
+) {
+  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+      irs::string_ref const& key
+  )->bool {
+    return key != arangodb::StaticStrings::IndexType
+      && key != StaticStrings::ViewIdField; // ignored fields
+  };
+  arangodb::velocypack::Builder builder;
+
+  builder.openObject();
+
+  // strip internal keys (added in createLink(...)) from externally visible link definition
+  if (!mergeSliceSkipKeys(builder, value, acceptor)) {
+    LOG_TOPIC(WARN, iresearch::TOPIC)
+      << "failed to generate externally visible link definition while emplacing link definition into IResearch view '"
+      << name() << "' collection '" << cid << "'";
+
+    return false;
+  }
+
+  builder.close();
+
+  WriteMutex mutex(_mutex);
+  SCOPED_LOCK(mutex); // '_collections' can be asynchronously read
+
+  return _collections.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(cid),
+    std::forward_as_tuple(key, std::move(builder))
+  ).second;
 }
 
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
@@ -307,51 +354,11 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
   auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'props' then assume defaults
   std::string error;
 
-  if (!view->_meta.init(properties, error)
-      || !view->_metaState.init(properties, error)) {
+  if (!view->_meta.init(properties, error)) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
         << "failed to initialize IResearch view from definition, error: " << error;
 
     return nullptr;
-  }
-
-  auto const links = properties.get(StaticStrings::LinksField);
-  IResearchLinkMeta linkMeta;
-
-  if (links.isObject()) {
-    auto& builder = view->_links;
-    VPackObjectBuilder guard(&builder);
-
-    size_t idx = 0;
-    for (auto link : velocypack::ObjectIterator(links)) {
-      auto const nameSlice = link.key;
-
-      if (!nameSlice.isString()) {
-        LOG_TOPIC(WARN, iresearch::TOPIC)
-            << "failed to initialize IResearch view link from definition at index " << idx
-            << ", link name is not string";
-
-        return nullptr;
-      }
-
-      if (!linkMeta.init(link.value, error)) {
-        LOG_TOPIC(WARN, iresearch::TOPIC)
-            << "failed to initialize IResearch view link from definition at index " << idx
-            << ", error: " << error;
-
-        return nullptr;
-      }
-
-      // append normalized link definition
-      {
-        VPackValueLength length;
-        char const* name = nameSlice.getString(length);
-
-        builder.add(name, length, VPackValue(VPackValueType::Object));
-        linkMeta.json(builder);
-        builder.close();
-      }
-    }
   }
 
   if (preCommit && !preCommit(view)) {
@@ -404,15 +411,18 @@ IResearchViewCoordinator::IResearchViewCoordinator(
     TRI_vocbase_t& vocbase,
     velocypack::Slice info,
     uint64_t planVersion
-) : LogicalView(vocbase, info, planVersion) {
+) : LogicalViewClusterInfo(vocbase, info, planVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
 bool IResearchViewCoordinator::visitCollections(
     CollectionVisitor const& visitor
 ) const {
-  for (auto& cid: _metaState._collections) {
-    if (!visitor(cid)) {
+  ReadMutex mutex(_mutex);
+  SCOPED_LOCK(mutex); // '_collections' can be asynchronously modified
+
+  for (auto& entry: _collections) {
+    if (!visitor(entry.first)) {
       return false;
     }
   }
@@ -427,7 +437,6 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 ) {
   try {
     IResearchViewMeta meta;
-    IResearchViewMetaState metaState;
     std::string error;
 
     auto const& defaults = partialUpdate
@@ -438,53 +447,85 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       return { TRI_ERROR_BAD_PARAMETER, error };
     }
 
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder const guard(&builder);
+    // only trigger persisting of properties if they have changed
+    if (_meta != meta) {
+      auto* engine = arangodb::ClusterInfo::instance();
 
-      // system properties
-      toVelocyPack(builder, false, true);
+      if (!engine) {
+        return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failure to get storage engine while updating IResearch View '") + name() + "'"
+        );
+      }
 
-      // properties
-      {
-        VPackObjectBuilder const guard(&builder, StaticStrings::PropertiesField);
+      arangodb::velocypack::Builder builder;
 
-        // links
-        {
-          VPackObjectBuilder const guard(&builder, StaticStrings::LinksField);
+      builder.openObject();
+        builder.add(
+          StaticStrings::PropertiesField,
+          arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+        );
+          meta.json(builder);
+        builder.close(); // close PROPERTIES_FIELD
 
-          bool modified = false;
-          auto const res = updateLinks(
-            properties.get(StaticStrings::LinksField),
-            _links.slice(),
-            *this,
-            partialUpdate,
-            _metaState._collections,
-            modified,
-            builder,
-            metaState._collections
-          );
+        auto result = toVelocyPack(builder, false, true);
 
-          if (!res.ok()) {
-            return res;
-          }
-
-          if (!modified && _meta == meta && _metaState == metaState) {
-            // nothing to do
-            return {};
-          }
+        if (!result.ok()) {
+          return result;
         }
 
-        // meta
-        meta.json(builder);
-        metaState.json(builder);
+      builder.close();
+      result = engine->setViewPropertiesCoordinator(
+        vocbase().name(), std::to_string(id()), builder.slice()
+      );
+
+      if (!result.ok()) {
+        return result;
       }
     }
 
-    return ClusterInfo::instance()->setViewPropertiesCoordinator(
-      vocbase().name(), // database name,
-      StringUtils::itoa(id()), // cluster-wide view id
-      builder.slice()
+    if (!properties.hasKey(StaticStrings::LinksField)) {
+      return arangodb::Result(); // nothing more to do
+    }
+
+    // ...........................................................................
+    // update links if requested (on a best-effort basis)
+    // indexing of collections is done in different threads so no locks can be held and rollback is not possible
+    // as a result it's also possible for links to be simultaneously modified via a different callflow (e.g. from collections)
+    // ...........................................................................
+
+    arangodb::velocypack::Builder currentLinks;
+    std::unordered_set<TRI_voc_cid_t> currentCids;
+
+    {
+      ReadMutex mutex(_mutex);
+      SCOPED_LOCK(mutex); // '_collections' can be asynchronously modified
+
+      currentLinks.openObject();
+
+      for (auto& entry: _collections) {
+        currentCids.emplace(entry.first);
+        currentLinks.add(entry.second.first, entry.second.second.slice());
+      }
+
+      currentLinks.close();
+    }
+
+    arangodb::velocypack::Builder viewNewProperties;
+    bool modified = false;
+    std::unordered_set<TRI_voc_cid_t> newCids;
+
+    viewNewProperties.openObject();
+
+    return updateLinks(
+      properties.get(StaticStrings::LinksField),
+      currentLinks.slice(),
+      *this,
+      partialUpdate,
+      currentCids,
+      modified,
+      viewNewProperties,
+      newCids
     );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
@@ -510,8 +551,22 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 Result IResearchViewCoordinator::drop() {
   // drop links first
   {
-    auto const res = updateProperties(
-      VPackSlice::emptyObjectSlice(), false, true
+    std::unordered_set<TRI_voc_cid_t> currentCids;
+
+    visitCollections([&currentCids](TRI_voc_cid_t cid)->bool { currentCids.emplace(cid); return true; });
+
+    arangodb::velocypack::Builder builder;
+    bool modified;
+    std::unordered_set<TRI_voc_cid_t> newCids;
+    auto res = updateLinks(
+      arangodb::velocypack::Slice::emptyObjectSlice(),
+      arangodb::velocypack::Slice::emptyObjectSlice(),
+      *this,
+      false,
+      currentCids,
+      modified,
+      builder,
+      newCids
     );
 
     if (!res.ok()) {
@@ -537,26 +592,6 @@ Result IResearchViewCoordinator::drop() {
   }
 
   return {};
-}
-
-Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
-  auto cid_itr = _metaState._collections.find(cid);
-
-  if (cid_itr == _metaState._collections.end()) {
-    // no such cid
-    return { TRI_ERROR_BAD_PARAMETER };
-  }
-
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder const guard(&builder);
-    {
-      VPackObjectBuilder const guard(&builder, StaticStrings::LinksField);
-      builder.add(StringUtils::itoa(cid), VPackSlice::nullSlice());
-    }
-  }
-
-  return updateProperties(builder.slice(), true, true);
 }
 
 } // iresearch

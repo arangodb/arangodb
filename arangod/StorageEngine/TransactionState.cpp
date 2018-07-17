@@ -313,6 +313,20 @@ void TransactionState::setType(AccessMode::Type type) {
   // all right
   _type = type;
 }
+
+bool TransactionState::isLockedShard(std::string const& shard) const {
+    auto it = _lockedShards.find(shard);
+    return it != _lockedShards.end();
+}
+
+void TransactionState::setLockedShard(std::string const& shard) {
+  _lockedShards.emplace(shard);
+}
+
+void TransactionState::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
+  // Explicitly copy!
+  _lockedShards = lockedShards;
+}
    
 bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
   return ((numCollections() == 1) && (_collections[0]->accessType() == AccessMode::Type::EXCLUSIVE));
@@ -326,7 +340,7 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec != nullptr && !exec->isSuperuser() && ExecContext::isAuthEnabled()) {
     // server is in read-only mode
-    if (accessType > AccessMode::Type::READ && !ServerState::writeOpsEnabled()) {
+    if (accessType > AccessMode::Type::READ && ServerState::readOnly()) {
       LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
 
       return TRI_ERROR_ARANGO_READ_ONLY;

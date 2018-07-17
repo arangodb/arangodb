@@ -46,17 +46,19 @@ static std::string const boostrapKey = "Bootstrap";
 BootstrapFeature::BootstrapFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
-  startsAfter("Authentication");
-  startsAfter("CheckVersion");
-  startsAfter("Cluster");
-  startsAfter("Database");
-  startsAfter("Endpoint");
+  startsAfter("ServerPhase");
+
+  // TODO: It is only in FoxxPhase because of:
   startsAfter("FoxxQueues");
+
+  // If this is Sorted out we can go down to ServerPhase
+  // And activate the following dependencies:
+  /*
+  startsAfter("Endpoint");
   startsAfter("GeneralServer");
-  startsAfter("Scheduler");
   startsAfter("Server");
   startsAfter("Upgrade");
-  startsAfter("V8Dealer");
+  */
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -144,9 +146,10 @@ void raceForClusterBootstrap() {
       continue;
     }
 
-    // become Foxxmater, ignore result
+    // become Foxxmaster, ignore result
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Write Foxxmaster";
     agency.setValue("Current/Foxxmaster", b.slice(), 0);
+    agency.increment("Current/Version");
 
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -299,10 +302,10 @@ void BootstrapFeature::start() {
   
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
-    ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
+    ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
   } else {
     // Start service properly:
-    ServerState::setServerMode(ServerState::Mode::DEFAULT);
+    ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
   }
   
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL

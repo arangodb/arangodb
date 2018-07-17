@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Builder.h>
@@ -42,6 +43,7 @@ class Slice;
 namespace aql {
 class Query;
 class QueryRegistry;
+struct QueryResult;
 }
 
 class Cursor;
@@ -55,31 +57,37 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RestCursorHandler(GeneralRequest*, GeneralResponse*,
                     arangodb::aql::QueryRegistry*);
 
+  ~RestCursorHandler();
+
  public:
   virtual RestStatus execute() override;
   char const* name() const override final { return "RestCursorHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() override;
+  void shutdownExecute(bool isFinalized) noexcept override;
 #endif
 
   bool cancel() override final;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief processes the query and returns the results/cursor
+  /// @brief register the query either as streaming cursor or in _query
+  /// the query is not executed here.
   /// this method is also used by derived classes
   //////////////////////////////////////////////////////////////////////////////
 
-  void processQuery(arangodb::velocypack::Slice const&);
+  bool registerQueryOrCursor(arangodb::velocypack::Slice const& body);
 
- private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief register the currently running query
+  /// @brief Process the query registered in _query.
+  /// The function is repeatable, so whenever we need to WAIT
+  /// in AQL we can post a handler calling this function again.
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerQuery(arangodb::aql::Query*);
+  RestStatus processQuery();
+
+  virtual uint32_t forwardingTarget() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the currently running query
@@ -88,10 +96,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void unregisterQuery();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief cancel the currently running query
+  /// @brief handle the result returned by the query. This function is guaranteed
+  ///        to not be interrupted and is guaranteed to get a complete queryResult.
   //////////////////////////////////////////////////////////////////////////////
-
-  bool cancelQuery();
+  virtual void handleQueryResult();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query was canceled
@@ -99,12 +107,25 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool wasCanceled();
 
+ private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief build options for the query as JSON
+  /// @brief register the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::velocypack::Builder buildOptions(
-      arangodb::velocypack::Slice const&) const;
+  void registerQuery(std::unique_ptr<arangodb::aql::Query> query);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief cancel the currently running query
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool cancelQuery();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief build options for the query as JSON
+  ///        Will fill the _options Builder
+  //////////////////////////////////////////////////////////////////////////////
+
+  void buildOptions(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
@@ -116,19 +137,33 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief create a cursor and return the first results
   //////////////////////////////////////////////////////////////////////////////
 
-  void createQueryCursor();
+  RestStatus createQueryCursor();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the next results from an existing cursor
   //////////////////////////////////////////////////////////////////////////////
 
-  void modifyQueryCursor();
+  RestStatus modifyQueryCursor();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispose an existing cursor
   //////////////////////////////////////////////////////////////////////////////
 
-  void deleteQueryCursor();
+  RestStatus deleteQueryCursor();
+
+ protected:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief currently running query
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::unique_ptr<arangodb::aql::Query> _query;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reference to a queryResult, which is reused after waiting.
+  //////////////////////////////////////////////////////////////////////////////
+
+  aql::QueryResult _queryResult;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -144,12 +179,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   Mutex _queryLock;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief currently running query
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::aql::Query* _query;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query has already started executing
   //////////////////////////////////////////////////////////////////////////////
 
@@ -160,14 +189,22 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _queryKilled;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the finalize operation is allowed to further process
   /// the request data. this will not work if the original request cannot be
   /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
   //////////////////////////////////////////////////////////////////////////////
-  
+
   bool _isValidForFinalize;
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief A shared pointer to the query options velocypack, s.t. we avoid
+  ///        to reparse and set default options
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<arangodb::velocypack::Builder> _options;
+
 };
 }
 

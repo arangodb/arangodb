@@ -202,7 +202,6 @@ void ensureLink(
 
   json.close();
 
-  static std::vector<std::string> const EMPTY;
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(*vocbase),
     col.get(),
@@ -353,7 +352,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       return;
     }
 
-    auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
+    auto docId = RocksDBKey::documentId(key);
     auto doc = RocksDBValue::data(value);
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()),
@@ -396,7 +395,7 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
       return;
     }
 
-    auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
+    auto docId = RocksDBKey::documentId(key);
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()),
       coll.get(),

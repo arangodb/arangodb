@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -87,7 +86,9 @@ void RestCollectionHandler::handleCommandGet() {
                     exec->canUseCollection(coll->name(), auth::Level::RO);
 
       if (canUse && (!excludeSystem || !coll->system())) {
-        collectionRepresentation(builder, coll,
+        // We do not need a transaction here
+        methods::Collections::Context ctxt(_vocbase, coll);
+        collectionRepresentation(builder, ctxt,
                                  /*showProperties*/ false,
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*detailedCount*/ false);
@@ -137,6 +138,8 @@ void RestCollectionHandler::handleCommandGet() {
             VPackObjectBuilder obj(&builder, true);
             obj->add("checksum", result.slice().get("checksum"));
             obj->add("revision", result.slice().get("revision"));
+            // We do not need a transaction here
+            methods::Collections::Context ctxt(_vocbase, coll);
             collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
                                      /*detailedCount*/ true);
@@ -161,10 +164,12 @@ void RestCollectionHandler::handleCommandGet() {
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*detailedCount*/ true);
         } else if (sub == "revision") {
+
+          methods::Collections::Context ctxt(_vocbase, coll);
           // /_api/collection/<identifier>/revision
           TRI_voc_rid_t revisionId;
           auto res =
-            methods::Collections::revisionId(_vocbase, coll, revisionId);
+            methods::Collections::revisionId(ctxt, revisionId);
 
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
@@ -173,7 +178,7 @@ void RestCollectionHandler::handleCommandGet() {
           VPackObjectBuilder obj(&builder, true);
 
           obj->add("revision", VPackValue(StringUtils::itoa(revisionId)));
-          collectionRepresentation(builder, coll, /*showProperties*/ true,
+          collectionRepresentation(builder, ctxt, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*detailedCount*/ true);
 
@@ -478,8 +483,8 @@ void RestCollectionHandler::collectionRepresentation(
     &_vocbase,
     name,
     [&](LogicalCollection* coll) {
-        collectionRepresentation(builder, coll, showProperties, showFigures,
-                                 showCount, detailedCount);
+      collectionRepresentation(builder, coll, showProperties, showFigures,
+                               showCount, detailedCount);
     }
   );
 
@@ -491,10 +496,35 @@ void RestCollectionHandler::collectionRepresentation(
 void RestCollectionHandler::collectionRepresentation(
     VPackBuilder& builder, LogicalCollection* coll, bool showProperties,
     bool showFigures, bool showCount, bool detailedCount) {
+  if (showProperties || showCount) {
+    // Here we need a transaction
+    auto trx = createTransaction(coll->name(), AccessMode::Type::READ);
+    Result res = trx->begin();
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    methods::Collections::Context ctxt(_vocbase, coll, trx.get());
+    collectionRepresentation(builder, ctxt, showProperties, showFigures,
+                             showCount, detailedCount);
+  } else {
+    // We do not need a transaction here
+    methods::Collections::Context ctxt(_vocbase, coll);
+    collectionRepresentation(builder, ctxt, showProperties, showFigures,
+                             showCount, detailedCount);
+  }
+}
+
+void RestCollectionHandler::collectionRepresentation(
+    VPackBuilder& builder, methods::Collections::Context& ctxt, bool showProperties,
+    bool showFigures, bool showCount, bool detailedCount) {
   bool wasOpen = builder.isOpenObject();
   if (!wasOpen) {
     builder.openObject();
   }
+
+  auto coll = ctxt.coll();
+  TRI_ASSERT(coll != nullptr);
 
   // `methods::Collections::properties` will filter these out
   builder.add("id", VPackValue(std::to_string(coll->id())));
@@ -506,8 +536,7 @@ void RestCollectionHandler::collectionRepresentation(
     builder.add("isSystem", VPackValue(coll->system()));
     builder.add("globallyUniqueId", VPackValue(coll->guid()));
   } else {
-    Result res = methods::Collections::properties(coll, builder);
-
+    Result res = methods::Collections::properties(ctxt, builder);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -519,19 +548,12 @@ void RestCollectionHandler::collectionRepresentation(
   }
 
   if (showCount) {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-    Result res = trx.begin();
-
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    OperationResult opRes = trx.count(coll->name(), detailedCount);
-
-    trx.finish(opRes.result);
+    auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+    TRI_ASSERT(trx != nullptr);
+    OperationResult opRes = trx->count(coll->name(), detailedCount);
 
     if (opRes.fail()) {
+      trx->finish(opRes.result);
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
 
@@ -541,4 +563,5 @@ void RestCollectionHandler::collectionRepresentation(
   if (!wasOpen) {
     builder.close();
   }
+
 }

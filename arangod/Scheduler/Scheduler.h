@@ -199,6 +199,7 @@ class Scheduler {
 
   uint64_t const _maxFifoSize[NUMBER_FIFOS];
   std::atomic<int64_t> _fifoSize[NUMBER_FIFOS];
+
   boost::lockfree::queue<FifoJob*> _fifo1;
   boost::lockfree::queue<FifoJob*> _fifo2;
   boost::lockfree::queue<FifoJob*> _fifo8;

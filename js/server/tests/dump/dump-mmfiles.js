@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -281,6 +281,48 @@ function dumpTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test keygen padded
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenPadded : function () {
+      var c = db._collection("UnitTestsDumpKeygenPadded");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertEqual("padded", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1000, c.count());
+
+      c.toArray().forEach(function(doc) {
+        assertMatch(/^[0-9a-f]{16}$/, doc._key);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test keygen uuid
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenUuid : function () {
+      var c = db._collection("UnitTestsDumpKeygenUuid");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertEqual("uuid", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1000, c.count());
+
+      c.toArray().forEach(function(doc) {
+        assertMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, doc._key);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -392,6 +434,28 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 10000 RETURN doc").toArray();
       assertEqual(0, res.length);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test view restoring
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testView : function () {
+      try {
+        db._createView("check", "arangosearch", {});
+      } catch (err) {}
+
+      let views = db._views();
+      if (views.length === 0) {
+        return; // arangosearch views are not supported
+      }
+
+      let view = db._view("UnitTestsDumpView");
+      assertTrue(view !== null);
+      let props = view.properties();
+      assertEqual(Object.keys(props.links).length, 1);
+      assertTrue(props.hasOwnProperty("links"));
+      assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
     }
 
   };

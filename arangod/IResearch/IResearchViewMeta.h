@@ -91,7 +91,6 @@ struct IResearchViewMeta {
 
     size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
     size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
-    size_t _commitTimeoutMsec; // try to commit as much as possible before <timeout> milliseconds (0 == disable)
     ConsolidationPolicies _consolidationPolicies;
 
     bool operator==(CommitMeta const& other) const noexcept;
@@ -223,7 +222,7 @@ struct IResearchViewMetaState {
     std::string& errorField,
     IResearchViewMetaState const& defaults = DEFAULT(),
     Mask* mask = nullptr
-  ) noexcept;
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object

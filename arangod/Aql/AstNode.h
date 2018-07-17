@@ -585,6 +585,24 @@ struct AstNode {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.clear();
   }
+  
+  /// @brief mark a < or <= operator to definitely exclude the "null" value
+  /// this is only for optimization purposes
+  inline void setExcludesNull(bool v = true) {
+    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || 
+               type == NODE_TYPE_OPERATOR_BINARY_LE || 
+               type == NODE_TYPE_OPERATOR_BINARY_EQ);
+    value.value._bool = v;
+  }
+  
+  /// @brief check if an < or <= operator definitely excludes the "null" value
+  /// this is only for optimization purposes
+  inline bool getExcludesNull() const noexcept {
+    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || 
+               type == NODE_TYPE_OPERATOR_BINARY_LE || 
+               type == NODE_TYPE_OPERATOR_BINARY_EQ);
+    return value.value._bool;
+  }
 
   /// @brief set the node's value type
   inline void setValueType(AstNodeValueType type) {
@@ -593,12 +611,12 @@ struct AstNode {
   }
 
   /// @brief check whether this node value is of expectedType
-  inline bool isValueType(AstNodeValueType expectedType) const {
+  inline bool isValueType(AstNodeValueType expectedType) const noexcept {
     return value.type == expectedType;
   }
 
   /// @brief return the bool value of a node
-  inline bool getBoolValue() const { return value.value._bool; }
+  inline bool getBoolValue() const noexcept { return value.value._bool; }
 
   /// @brief set the bool value of a node
   inline void setBoolValue(bool v) {
@@ -612,7 +630,7 @@ struct AstNode {
   int64_t getIntValue() const;
 
   /// @brief return the int value stored for a node, regardless of the node type
-  inline int64_t getIntValue(bool) const { return value.value._int; }
+  inline int64_t getIntValue(bool) const noexcept { return value.value._int; }
 
   /// @brief set the int value of a node
   inline void setIntValue(int64_t v) {

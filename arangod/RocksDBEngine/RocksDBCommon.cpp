@@ -242,33 +242,5 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
   }
 }
 
-std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
-    TRI_voc_tick_t databaseId) {
-  std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseCollections(databaseId);
-  iterateBounds(bounds,
-                [&rv](rocksdb::Iterator* it) {
-                  rv.emplace_back(
-                      RocksDBKey(it->key()),
-                      RocksDBValue(RocksDBEntryType::Collection, it->value()));
-                },
-                arangodb::RocksDBColumnFamily::definitions());
-  return rv;
-}
-
-std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
-    TRI_voc_tick_t databaseId) {
-  std::vector<std::pair<RocksDBKey, RocksDBValue>> rv;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::DatabaseViews(databaseId);
-  iterateBounds(bounds,
-                [&rv](rocksdb::Iterator* it) {
-                  rv.emplace_back(
-                      RocksDBKey(it->key()),
-                      RocksDBValue(RocksDBEntryType::View, it->value()));
-                },
-                arangodb::RocksDBColumnFamily::definitions());
-  return rv;
-}
-
 }  // namespace rocksutils
 }  // namespace arangodb
