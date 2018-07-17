@@ -46,6 +46,7 @@ collection and the "cookie" transport in a separate file, and add it
 to the service router:
 
 ```js
+// in util/sessions.js
 "use strict";
 const sessionsMiddleware = require("@arangodb/foxx/sessions");
 const sessions = sessionsMiddleware({
@@ -56,6 +57,7 @@ module.exports = sessions;
 ```
 
 ```js
+// in your main file
 // ...
 const sessions = require("./util/sessions");
 module.context.use(sessions);

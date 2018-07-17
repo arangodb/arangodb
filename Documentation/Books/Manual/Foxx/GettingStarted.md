@@ -1,6 +1,12 @@
 Getting Started
 ===============
 
+This practical introduction will take you from an empty folder to a first
+Foxx service querying data.
+
+Manifest
+--------
+
 We're going to start with an empty folder. This will be the root folder of our services. You can name it something clever but for the course of this guide we'll assume it's called the name of your service: `getting-started`.
 
 First we need to create a manifest. Create a new file called `manifest.json` and add the following content:
@@ -28,7 +34,12 @@ Next we'll need to specify an entry point to our service. This is the JavaScript
 }
 ```
 
-That's all we need in our manifest for now, so let's next create the `index.js` file:
+That's all we need in our manifest for now.
+
+Router
+------
+
+Let's next create the `index.js` file:
 
 ```js
 'use strict';
@@ -332,18 +343,14 @@ Next steps
 
 You now know how to create a Foxx service from scratch, how to handle user input and how to access the database from within your Foxx service to store, retrieve and query data you store inside ArangoDB. This should allow you to build meaningful APIs for your own applications but there are many more things you can do with Foxx:
 
-* Need to go faster? Turn on [development mode](README.md) and hack on your code right on the server.
+* Need to go faster? Turn on [development mode](Guides/DevelopmentMode.md) and hack on your code right on the server.
 
-* Concerned about security? You could add [authentication](Reference/Modules/Auth.md) to your service to protect access to the data before it even leaves the database.
+* Concerned about security? You could add [authentication](Guides/Auth.md) to your service to protect access to the data before it even leaves the database.
 
 * Writing a single page app? You could [store some basic assets](Guides/Files.md) right inside your Foxx service.
 
-<<<<<<< HEAD
-* Need to integrate external services? You can [make HTTP requests](Reference/Modules/README.md) from inside Foxx
-  and use [queued jobs](Reference/Scripts.md) to perform that work in the background.
-=======
-* Need to integrate external services? You can [make HTTP requests](Reference/Modules/README.md) from inside Foxx and use [queued jobs](Guides/Scripts.md) to perform that work in the background.
->>>>>>> Fix internal and cross links
+* Need to integrate external services? You can [make HTTP requests](Guides/MakingRequests.md)
+  from inside Foxx and use [queued jobs](Guides/Scripts.md) to perform that work in the background.
 
 * Tired of reinventing the wheel? Learn about [dependencies](Guides/Dependencies.md).
 

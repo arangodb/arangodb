@@ -3,7 +3,7 @@ Writing queries
 
 ArangoDB provides the `query` template string handler
 (or [template tag](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals))
-to make it easy to write an execute [AQL queries](../../../AQL/index.html)
+to make it easy to write and execute [AQL queries](../../../AQL/index.html)
 in your Foxx services:
 
 ```js

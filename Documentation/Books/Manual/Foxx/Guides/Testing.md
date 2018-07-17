@@ -28,12 +28,14 @@ it will only be executed once):
 To run a service's tests you can use
 the [web interface](../../Programs/WebInterface/Services.md),
 the [Foxx CLI](../../Programs/FoxxCLI/README.md) or
-the [Foxx HTTP API](../../../HTTP/Foxx/Miscellaneous.md).
+the [Foxx HTTP API](../../../HTTP/Foxx/Miscellaneous.html).
 Foxx will execute all test cases in the matching files and
 generate a report in the desired format.
 
-**Note**: Running tests in a production environment is not recommended and
+{% hint 'danger' %}
+Running tests in a production environment is not recommended and
 may result in data loss if the tests involve database access.
+{% endhint %}
 
 Writing tests
 -------------
@@ -251,6 +253,8 @@ router.get("/:name", (req, res) => {
 .response(["text/plain"]);
 ```
 
-**Note**: You should avoid running integration tests while a service
+{% hint 'warning' %}
+You should avoid running integration tests while a service
 is mounted in [development mode](DevelopmentMode.md) as each request
 will cause the service to be reloaded.
+{% endhint %}

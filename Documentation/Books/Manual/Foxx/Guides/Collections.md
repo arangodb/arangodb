@@ -21,7 +21,7 @@ Low-level collection access
 ArangoDB provides a
 [low-level API for managing collections](../../DataModeling/Collections/DatabaseMethods.md)
 via [the `db` object](../../Appendix/References/DBObject.md).
-These APIs are not very useful for most application logic but are allow you to
+These APIs are not very useful for most application logic but allow you to
 create and destroy collections in your
 [lifecycle scripts and migrations](Scripts.md#lifecycle-scripts).
 

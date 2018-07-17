@@ -3,8 +3,8 @@ Foxx in a cluster setup
 
 When running ArangoDB in a cluster the Foxx services will run on each
 coordinator. Installing, upgrading and uninstalling services on any coordinator
-will automatically distribute the service to the other coordinators, making
-deployments as easy as in single-server mode.
+will automatically distribute the changes to the service to the other coordinators,
+making deployments as easy as in single-server mode.
 
 The same considerations that apply to writing Foxx services for a
 standalone server also apply to writing services for a cluster:
@@ -61,7 +61,7 @@ and apply them anyway.
     is reloaded as in step 6 before.
 
 Note that this means that any service that passes the initial validation step
-will be complete the install, upgrade or replace process, even if any of the
+will complete the install, upgrade or replace process, even if any of the
 consecutive steps fail (e.g. due to a runtime error encountered while executing
 the service's main file or a syntax error in a required file not referenced
 from the manifest directly).

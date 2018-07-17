@@ -58,9 +58,9 @@ in legacy compatibility mode:
 
 The following methods are removed on the service context in legacy compatibility mode:
 
-* `use()` -- use `@arangodb/foxx/controller` instead
-* `apiDocumentation()` -- use `controller.apiDocumentation()` instead
-* `registerType()` -- not supported in legacy compatibility mode
+* `use()` – use `@arangodb/foxx/controller` instead
+* `apiDocumentation()` – use `controller.apiDocumentation()` instead
+* `registerType()` – not supported in legacy compatibility mode
 
 The following modules that have been removed or replaced in 3.0.0 are
 available in legacy compatibility mode:
@@ -89,5 +89,5 @@ Any feature not supported in 2.8 will also not work in legacy compatibility mode
 When migrating from an older version of ArangoDB it is a good idea to
 migrate to ArangoDB 2.8 first for an easier upgrade path.
 
-Additionally please note the differences laid out in the chapter on
+Additionally, please note the differences laid out in the chapter on
 [migrating from pre-2.8](../Migrating2x/Wayback.md) in the migration guide.

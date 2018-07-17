@@ -88,12 +88,12 @@ Like [configuration](../Reference/Configuration.md),
 dependencies can be assigned using
 the [web interface](../../Programs/WebInterface/Services.md),
 the [Foxx CLI](../../Programs/FoxxCLI/README.md) or
-the [Foxx HTTP API](../../../HTTP/Foxx/Configuration.md).
+the [Foxx HTTP API](../../../HTTP/Foxx/Configuration.html).
 
 The value for each dependency should be the database-relative mount path of
 the service (including the leading slash). Both services need to be mounted in
 the same database. The same service can be used to provide a dependency
-multiple services.
+for multiple services.
 
 Also as with configuration, a service that declares required dependencies which
 have not been assigned will not be mounted by Foxx until all required
@@ -104,7 +104,7 @@ Exporting a JS API
 ------------------
 
 In order to provide a JS API other services can consume as a dependency,
-the service's `main` file needs to export something other services can use.
+the service's _main_ file needs to export something other services can use.
 You can do this by assigning a value to the `module.exports` or properties
 of the `exports` object as with any other module export:
 
