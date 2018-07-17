@@ -202,7 +202,6 @@ void ensureLink(
 
   json.close();
 
-  static std::vector<std::string> const EMPTY;
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(*vocbase),
     col.get(),

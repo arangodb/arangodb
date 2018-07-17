@@ -174,12 +174,6 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     disable();
     application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
       "Script", "FoxxQueues", "Frontend"});
-    LOG_TOPIC(WARN, arangodb::Logger::V8) << "V8 JavaScript engine is disabled, this is an"
-      << " experimental option, some features may be missing or broken !";
-    if (ServerState::instance()->isDBServer()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cannot run DBServer with `--javascript.enabled false`";
-      FATAL_ERROR_EXIT();
-    }
     return;
   }
   

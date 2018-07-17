@@ -30,6 +30,10 @@ devel
   storage engine to work reliably. Using different storage engines in a cluster is
   unsupported.
 
+* added collection.indexes() as an alias for collection.getIndexes()
+
+* disable V8 engine and JavaScript APIs for agency nodes
+
 * renamed MMFiles engine compactor thread from "Compactor" to "MMFilesCompactor".
   
   This change will be visible only on systems which allow assigning names to
