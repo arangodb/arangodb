@@ -312,10 +312,18 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // / internal helper to sort a graph's edge definitions
 // //////////////////////////////////////////////////////////////////////////////
 
-var sortEdgeDefinition = function (edgeDefinition) {
+var sortEdgeDefinitionInplace = function (edgeDefinition) {
   edgeDefinition.from.sort();
   edgeDefinition.to.sort();
   return edgeDefinition;
+};
+
+var sortEdgeDefinition = function (edgeDefinition) {
+  return {
+    collection: edgeDefinition.collection,
+    from: edgeDefinition.from.slice().sort(),
+    to: edgeDefinition.to.slice().sort(),
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -723,6 +731,13 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
   return result;
 };
 
+const edgeDefinitionsEqual = function (leftEdgeDef, rightEdgeDef) {
+  leftEdgeDef = sortEdgeDefinition(leftEdgeDef);
+  rightEdgeDef = sortEdgeDefinition(rightEdgeDef);
+  const stringify = obj => JSON.stringify(obj, Object.keys(obj).sort());
+  return stringify(leftEdgeDef) === stringify(rightEdgeDef);
+};
+
 // @brief Class Graph. Defines a graph in the Database.
 class Graph {
   constructor (info) {
@@ -771,7 +786,7 @@ class Graph {
 
     // Create Hidden Functions
     createHiddenProperty(this, '__updateBindCollections', updateBindCollections);
-    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinition);
+    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinitionInplace);
     updateBindCollections(self);
   }
 
@@ -1872,7 +1887,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
         (sGED) => {
           var col = sGED.collection;
           if (tmpCollections.indexOf(col) !== -1) {
-            if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
+            if (!edgeDefinitionsEqual(sGED, tmpEdgeDefinitions[col])) {
               let err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col + ' ' +
@@ -1909,11 +1924,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     }
   );
 
-  edgeDefinitions.forEach(
-    (eD) => {
-      sortEdgeDefinition(eD);
-    }
-  );
+  edgeDefinitions.forEach(sortEdgeDefinitionInplace);
   orphanCollections = orphanCollections.sort();
 
   var data = gdb.save({
