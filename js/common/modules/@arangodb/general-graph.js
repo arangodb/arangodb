@@ -320,10 +320,18 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // / internal helper to sort a graph's edge definitions
 // //////////////////////////////////////////////////////////////////////////////
 
-var sortEdgeDefinition = function (edgeDefinition) {
-  edgeDefinition.from = edgeDefinition.from.sort();
-  edgeDefinition.to = edgeDefinition.to.sort();
+var sortEdgeDefinitionInplace = function (edgeDefinition) {
+  edgeDefinition.from.sort();
+  edgeDefinition.to.sort();
   return edgeDefinition;
+};
+
+var sortEdgeDefinition = function (edgeDefinition) {
+  return {
+    collection: edgeDefinition.collection,
+    from: edgeDefinition.from.slice().sort(),
+    to: edgeDefinition.to.slice().sort(),
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -729,6 +737,8 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
 };
 
 const edgeDefinitionsEqual = function (leftEdgeDef, rightEdgeDef) {
+  leftEdgeDef = sortEdgeDefinition(leftEdgeDef);
+  rightEdgeDef = sortEdgeDefinition(rightEdgeDef);
   const stringify = obj => JSON.stringify(obj, Object.keys(obj).sort());
   return stringify(leftEdgeDef) === stringify(rightEdgeDef);
 };
@@ -781,7 +791,7 @@ class Graph {
 
     // Create Hidden Functions
     createHiddenProperty(this, '__updateBindCollections', updateBindCollections);
-    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinition);
+    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinitionInplace);
     updateBindCollections(self);
   }
 
@@ -1558,7 +1568,7 @@ class Graph {
 // //////////////////////////////////////////////////////////////////////////////
 
   _extendEdgeDefinitions (edgeDefinition) {
-    edgeDefinition = sortEdgeDefinition(edgeDefinition);
+    sortEdgeDefinitionInplace(edgeDefinition);
     var self = this;
     var err;
     // check if edgeCollection not already used
@@ -1632,7 +1642,7 @@ class Graph {
 // //////////////////////////////////////////////////////////////////////////////
 
   _editEdgeDefinitions (edgeDefinition) {
-    edgeDefinition = sortEdgeDefinition(edgeDefinition);
+    sortEdgeDefinitionInplace(edgeDefinition);
     var self = this;
 
     // check, if in graphs edge definition
@@ -2078,12 +2088,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     }
   );
 
-  edgeDefinitions.forEach(
-    (eD, index) => {
-      var tmp = sortEdgeDefinition(eD);
-      edgeDefinitions[index] = tmp;
-    }
-  );
+  edgeDefinitions.forEach(sortEdgeDefinitionInplace);
   orphanCollections = orphanCollections.sort();
 
   var data = gdb.save({
