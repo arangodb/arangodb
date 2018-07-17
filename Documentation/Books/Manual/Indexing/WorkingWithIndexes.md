@@ -116,7 +116,7 @@ regardless of the value of this attribute.
 
 
 
-### Dropping an index
+### Dropping an index via a collection handle
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
@@ -206,7 +206,7 @@ Returns the index with *index-handle* or null if no such index exists.
     @endDocuBlock IndexHandle
 
 
-### Dropping an index
+### Dropping an index via a database handle
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
