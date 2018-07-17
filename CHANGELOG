@@ -55,14 +55,10 @@ devel
 * PR #5857: RocksDB engine would frequently request a new DelayToken.  This caused
   excessive write delay on the next Put() call.  Alternate approach taken.
 
-* changed the thread handling in the scheduler. `--server.threads` will be
+* changed the thread handling in the scheduler. `--server.maximal-threads` will be
   the maximum number of threads for the scheduler.
 
-* The hidden option `--server.maximal-threads` is now obsolete.
-
-* The hidden options `--server.queue-size`, `--server.prioN-size` (N = 1 or 2)
-  control the size of the internal queues. The defaults are sensible, do not
-  change these settings.
+* The option `--server.threads` is now obsolete.
 
 * use sparse indexes in more cases now, when it is clear that the index attribute
   value cannot be null
