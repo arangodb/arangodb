@@ -356,13 +356,6 @@ class StorageEngine : public application_features::ApplicationFeature {
      VPackBuilder& builder
   ) = 0;
 
-  // asks the storage engine to persist renaming of a view
-  virtual arangodb::Result renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& oldName
-  ) = 0;
-
   // asks the storage engine to drop the specified view and persist the
   // deletion info. Note that physical deletion of the view data must not
   // be carried out by this call, as there may

@@ -787,7 +787,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         break;
       }
 
-      case TRI_DF_MARKER_VPACK_RENAME_VIEW: {
+      /*case TRI_DF_MARKER_VPACK_RENAME_VIEW: {
         TRI_voc_tick_t const databaseId =
             MMFilesDatafileHelper::DatabaseId(marker);
         TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
@@ -865,7 +865,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return state->canContinue();
         }
         break;
-      }
+      }*/
 
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW: {
         TRI_voc_tick_t const databaseId =
@@ -911,12 +911,35 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         }
 
         // turn off sync temporarily if the database or collection are going to
-        // be
-        // dropped later
+        // be dropped later
         bool const forceSync = state->willViewBeDropped(databaseId, viewId);
+        
+        VPackSlice nameSlice = payloadSlice.get("name");
+        if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+          std::string name = nameSlice.copyString();
+          // check if other view exists with target name
+          std::shared_ptr<arangodb::LogicalView> other = vocbase->lookupView(name);
+          if (other != nullptr) {
+            if (other->id() == view->id()) {
+              LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+              << "view " << viewId << " in database " << databaseId
+              << " was already renamed; moving on";
+              break;
+            }
+            vocbase->dropView(other->id(), true);
+          }
+          int res = vocbase->renameView(view, name);
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+            << "cannot rename view " << viewId << " in database "
+            << databaseId << " to '" << name
+            << "': " << TRI_errno_string(res);
+            ++state->errorCount;
+            return state->canContinue();
+          }
+        }
 
-        arangodb::Result res =
-            view->updateProperties(payloadSlice.get("properties"), false, forceSync);
+        auto res = view->updateProperties(payloadSlice.get("properties"), false, forceSync);
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "cannot change properties for view " << viewId

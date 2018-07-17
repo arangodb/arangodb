@@ -89,11 +89,6 @@ RocksDBLogValue RocksDBLogValue::ViewChange(TRI_voc_tick_t dbid,
   return RocksDBLogValue(RocksDBLogType::ViewChange, dbid, vid);
 }
 
-RocksDBLogValue RocksDBLogValue::ViewRename(TRI_voc_cid_t cid,
-                                            TRI_idx_iid_t iid) {
-  return RocksDBLogValue(RocksDBLogType::ViewRename, cid, iid);
-}
-
 #ifdef USE_IRESEARCH
 RocksDBLogValue RocksDBLogValue::IResearchLinkDrop(TRI_voc_tick_t dbid,
                                                    TRI_voc_cid_t cid,
@@ -153,7 +148,6 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
   switch (type) {
     case RocksDBLogType::CollectionCreate:
     case RocksDBLogType::CollectionChange:
-    case RocksDBLogType::CollectionDrop:
     case RocksDBLogType::ViewCreate:
     case RocksDBLogType::ViewChange:
     case RocksDBLogType::BeginTransaction:
@@ -217,8 +211,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
                                  uint64_t cid, VPackSlice const& info)
     : _buffer() {
   switch (type) {
-    case RocksDBLogType::IndexCreate:
-    case RocksDBLogType::ViewDrop: {
+    case RocksDBLogType::IndexCreate: {
       _buffer.reserve(sizeof(RocksDBLogType) + (sizeof(uint64_t) * 2) +
                       info.byteSize());
       _buffer.push_back(static_cast<char>(type));
@@ -238,11 +231,9 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
                                  uint64_t cid, StringRef const& data)
     : _buffer() {
   switch (type) {
-
     case RocksDBLogType::CollectionDrop:
     case RocksDBLogType::CollectionRename:
-    case RocksDBLogType::ViewDrop:
-    case RocksDBLogType::ViewRename: {
+    case RocksDBLogType::ViewDrop: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2 +
                       data.length());
       _buffer.push_back(static_cast<char>(type));
@@ -390,7 +381,6 @@ bool RocksDBLogValue::containsDatabaseId(RocksDBLogType type) {
   type == RocksDBLogType::CollectionChange ||
   type == RocksDBLogType::ViewCreate ||
   type == RocksDBLogType::ViewDrop ||
-  type == RocksDBLogType::ViewRename ||
   type == RocksDBLogType::ViewChange ||
 #ifdef USE_IRESEARCH
   type == RocksDBLogType::IResearchLinkDrop ||
@@ -420,7 +410,6 @@ bool RocksDBLogValue::containsCollectionId(RocksDBLogType type) {
 bool RocksDBLogValue::containsViewId(RocksDBLogType type) {
   return type == RocksDBLogType::ViewCreate ||
   type == RocksDBLogType::ViewDrop ||
-  type == RocksDBLogType::ViewRename ||
   #ifdef USE_IRESEARCH
     type == RocksDBLogType::IResearchLinkDrop ||
   #endif

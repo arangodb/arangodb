@@ -66,7 +66,6 @@ class RocksDBLogValue {
   static RocksDBLogValue ViewDrop(TRI_voc_tick_t, TRI_voc_cid_t,
                                   StringRef const& uuid);
   static RocksDBLogValue ViewChange(TRI_voc_tick_t, TRI_voc_cid_t);
-  static RocksDBLogValue ViewRename(TRI_voc_tick_t, TRI_voc_cid_t);
 
 #ifdef USE_IRESEARCH
   static RocksDBLogValue IResearchLinkDrop(TRI_voc_tick_t, TRI_voc_cid_t,
@@ -96,6 +95,8 @@ class RocksDBLogValue {
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
   static velocypack::Slice viewSlice(rocksdb::Slice const&);
   static arangodb::StringRef collectionUUID(rocksdb::Slice const&);
+  
+  // deprecated method for old collection drop marker
   static arangodb::StringRef oldCollectionName(rocksdb::Slice const&);
 
   static bool containsDatabaseId(RocksDBLogType type);
@@ -107,10 +108,6 @@ class RocksDBLogValue {
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
   std::string const& string() const { return _buffer; }  // to be used with put
-  /*VPackSlice slice() const { return VPackSlice(
-      reinterpret_cast<uint8_t const*>(_buffer.data())
-  ); }*/                                                 // return a slice
-
   RocksDBLogType type() const {
     return static_cast<RocksDBLogType>(*(_buffer.data()));
   }

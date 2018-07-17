@@ -80,8 +80,6 @@ std::string ensureGuid(
     guid.push_back('/');
     guid.append(std::to_string(id));
   }
-  
-  LOG_DEVEL << "GUID: " << guid;
 
   return std::move(guid);
 }

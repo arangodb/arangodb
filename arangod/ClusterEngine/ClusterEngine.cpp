@@ -356,16 +356,6 @@ Result ClusterEngine::createView(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-// asks the storage engine to persist renaming of a view
-// This will write a renameMarker if not in recovery
-Result ClusterEngine::renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& /*oldName*/
-) {
-  return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
 arangodb::Result ClusterEngine::dropView(
     TRI_vocbase_t& vocbase,
     LogicalView& view
@@ -387,9 +377,9 @@ Result ClusterEngine::changeView(
 ) {
   if (inRecovery()) {
     // nothing to do
-    return;
+    return {};
   }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 void ClusterEngine::signalCleanup(TRI_vocbase_t&) {

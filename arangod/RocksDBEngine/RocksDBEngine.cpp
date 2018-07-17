@@ -1297,16 +1297,6 @@ Result RocksDBEngine::createView(
   auto res = _db->Write(wo, &batch);
   return rocksutils::convertStatus(res);
 }
-
-// asks the storage engine to persist renaming of a view
-// This will write a renameMarker if not in recovery
-Result RocksDBEngine::renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& /*oldName*/
-) {
-  return changeView(vocbase, view, false);
-}
   
 arangodb::Result RocksDBEngine::dropView(
     TRI_vocbase_t& vocbase,
@@ -1349,7 +1339,7 @@ Result RocksDBEngine::changeView(
 ) {
   if (inRecovery()) {
     // nothing to do
-    return;
+    return {};
   }
 
   auto db = rocksutils::globalRocksDB();

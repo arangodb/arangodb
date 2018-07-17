@@ -189,7 +189,6 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
   virtual int removeReplicationApplierConfiguration() override;
   virtual arangodb::Result renameCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection, std::string const& oldName) override;
-  virtual arangodb::Result renameView(TRI_vocbase_t& vocbase, arangodb::LogicalView const& view, std::string const& oldName) override;
   virtual int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice, bool doSync) override;
   virtual int saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) override;
   virtual int shutdownDatabase(TRI_vocbase_t& vocbase) override;

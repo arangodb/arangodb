@@ -143,6 +143,14 @@ class Syncer {
 
   /// @brief drops an index, based on the VelocyPack provided
   Result dropIndex(arangodb::velocypack::Slice const&);
+  
+  /// @brief creates a view, based on the VelocyPack provided
+  Result createView(TRI_vocbase_t& vocbase,
+                    arangodb::velocypack::Slice const& slice);
+  
+  /// @brief drops a collection, based on the VelocyPack provided
+  Result dropView(arangodb::velocypack::Slice const&, bool reportError);
+
 
   // TODO worker safety
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);

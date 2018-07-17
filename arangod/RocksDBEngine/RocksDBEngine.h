@@ -288,14 +288,6 @@ class RocksDBEngine final : public StorageEngine {
     // does nothing
   }
 
-  // asks the storage engine to persist renaming of a view
-  // This will write a renameMarker if not in recovery
-  arangodb::Result renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& oldName
-  ) override;
-
   arangodb::Result dropView(
     TRI_vocbase_t& vocbase,
     LogicalView& view

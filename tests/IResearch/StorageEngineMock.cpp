@@ -1365,23 +1365,6 @@ arangodb::Result StorageEngineMock::renameCollection(
   return arangodb::Result(TRI_ERROR_INTERNAL);
 }
 
-arangodb::Result StorageEngineMock::renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& newName
-) {
-  before();
-  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) != views.end());
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-  view.toVelocyPack(builder, true, true);
-  builder.close();
-  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
-
-  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view renames OK
-}
-
 int StorageEngineMock::saveReplicationApplierConfiguration(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice slice,

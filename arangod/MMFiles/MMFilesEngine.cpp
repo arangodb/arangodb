@@ -1239,7 +1239,7 @@ Result MMFilesEngine::renameCollection(
 
 // asks the storage engine to persist renaming of a view
 // This will write a renameMarker if not in recovery
-Result MMFilesEngine::renameView(
+/*Result MMFilesEngine::renameView(
     TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view,
     std::string const& oldName
@@ -1284,7 +1284,7 @@ Result MMFilesEngine::renameView(
   }
 
   return {res, TRI_errno_string(res)};
-}
+}*/
 
 Result MMFilesEngine::createView(
     TRI_vocbase_t& vocbase,
@@ -1450,10 +1450,9 @@ arangodb::Result MMFilesEngine::dropView(
 
   try {
     VPackBuilder builder;
-
     builder.openObject();
-    builder.add("id", velocypack::Value(std::to_string(view.id())));
-    builder.add("name", velocypack::Value(view.name()));
+    builder.add(StaticStrings::DataSourceId, velocypack::Value(std::to_string(view.id())));
+    builder.add("guid", velocypack::Value(std::to_string(view.id())));
     builder.close();
 
     MMFilesViewMarker marker(
@@ -1532,8 +1531,6 @@ Result MMFilesEngine::changeView(
     arangodb::LogicalView const& view,
     bool doSync
 ) {
-  // FIXME make noexcept and return Result???
-
   if (!inRecovery()) {
     VPackBuilder infoBuilder;
     infoBuilder.openObject();
@@ -1554,6 +1551,7 @@ Result MMFilesEngine::changeView(
   }
 
   saveViewInfo(&vocbase, &view, doSync);
+  return {};
 }
 
 // asks the storage engine to create an index as specified in the VPack

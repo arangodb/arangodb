@@ -372,11 +372,11 @@ class MMFilesEngine final : public StorageEngine {
 
   // asks the storage engine to persist renaming of a view
   // This will write a renameMarker if not in recovery
-  arangodb::Result renameView(
+  /*arangodb::Result renameView(
     TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view,
     std::string const& oldName
-  ) override;
+  ) override;*/
 
   arangodb::Result dropView(
     TRI_vocbase_t& vocbase,

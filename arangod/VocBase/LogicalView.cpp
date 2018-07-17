@@ -286,7 +286,8 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
 
     // store new view definition to disk
     if (!engine->inRecovery()) {
-      engine->changeView(vocbase(), *this, doSync);
+      // write WAL 'change' marker
+      return engine->changeView(vocbase(), *this, doSync);
     }
   } catch (basics::Exception const& ex) {
     name(std::move(oldName));
@@ -298,8 +299,7 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
     return TRI_ERROR_INTERNAL;
   }
 
-  // write WAL 'rename' marker
-  return engine->renameView(vocbase(), *this, oldName);
+  return TRI_ERROR_NO_ERROR;
 }
 
 arangodb::Result DBServerLogicalView::updateProperties(
