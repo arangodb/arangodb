@@ -508,7 +508,7 @@ describe ArangoDB do
       it "change properties" do
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
-                { "commit": { "commitIntervalMsec": 7 } }
+                { "properties": { "commit": { "commitIntervalMsec": 7 } } }
                 JSON
         doc1 = ArangoDB.log_put("#{prefix}-change-properties", cmd1, :body => body1)
         doc1.code.should eq(200)
@@ -527,7 +527,7 @@ describe ArangoDB do
       it "ignore extra properties" do
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
-                { "commit": { "commitIntervalMsec": 10 }, "extra": "foobar" }
+                { "properties": { "commit": { "commitIntervalMsec": 10 }, "extra": "foobar" } }
                 JSON
         doc1 = ArangoDB.log_put("#{prefix}-ignore-extra-properties", cmd1, :body => body1)
         doc1.code.should eq(200)

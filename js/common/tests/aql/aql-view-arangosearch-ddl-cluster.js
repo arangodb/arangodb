@@ -62,7 +62,7 @@ function IResearchFeatureDDLTestSuite () {
       db._dropView("TestView");
       db._create("TestCollection0");
 
-      var addLink = { links: { "TestCollection0": {} } };
+      var addLink = { properties: { links: { "TestCollection0": {} } } };
 
       for (let i = 0; i < 100; ++i) {
         var view = db._createView("TestView", "arangosearch", {});
@@ -88,8 +88,8 @@ function IResearchFeatureDDLTestSuite () {
       db._create("TestCollection0");
       var view = db._createView("TestView", "arangosearch", {});
 
-      var addLink = { links: { "TestCollection0": {} } };
-      var removeLink = { links: { "TestCollection0": null } };
+      var addLink = { properties: { links: { "TestCollection0": {} } } };
+      var removeLink = { properties: { links: { "TestCollection0": null } } };
 
       for (let i = 0; i < 100; ++i) {
         view.properties(addLink, true); // partial update
@@ -116,7 +116,7 @@ function IResearchFeatureDDLTestSuite () {
 
       var view = db._createView("TestView", "arangosearch", {});
       db._create("TestCollection0");
-      var addLink = { links: { "TestCollection0": {} } };
+      var addLink = { properties: { links: { "TestCollection0": {} } } };
       view.properties(addLink, true); // partial update
       let properties = view.properties().properties;
       assertTrue(Object === properties.links.constructor);
