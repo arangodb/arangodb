@@ -176,7 +176,6 @@ static void JS_CreateViewVocbase(
   header.openObject();
   header.add(arangodb::StaticStrings::DataSourceName, VPackValue(name));
   header.add(arangodb::StaticStrings::DataSourceType, VPackValue(type));
-  if (properties.slice().hasKey("properties")) header.add("properties", arangodb::velocypack::Slice::emptyObjectSlice()); // FIXME TODO remove
   header.close();
 
   // in basics::VelocyPackHelper::merge(...) values from rhs take precedence

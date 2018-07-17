@@ -649,11 +649,10 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   bool partialUpdate,
   bool doSync
 ) {
-  /*FIXME use
   if (slice.isObject() && !slice.hasKey(StaticStrings::PropertiesField)) {
     return arangodb::Result(); // nothing to update
   }
-  */
+
   auto properties = slice.get(StaticStrings::PropertiesField);
 
   if (!properties.isObject()) {
@@ -706,38 +705,6 @@ arangodb::Result IResearchViewDBServer::updateProperties(
 
   WriteMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // '_collections' can be asynchronously read
-
-  // ...........................................................................
-  // update per-cid views
-  // ...........................................................................
-// FIXME TODO is this required if the meta is shared anyway?
-  static const std::function<bool(irs::string_ref const& key)> infoAcceptor = [](
-      irs::string_ref const& key
-  )->bool {
-    return key != StaticStrings::PropertiesField; // ignored fields
-  };
-  arangodb::velocypack::Builder info;
-
-  info.openObject();
-
-  if (!mergeSliceSkipKeys(info, slice, infoAcceptor)) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failure to generate full definition while updating IResearch View in database '") + vocbase().name() + "'"
-    );
-  }
-
-  info.add(StaticStrings::PropertiesField, props.slice());
-  info.close();
-
-  for (auto& entry: _collections) {
-    auto res =
-      entry.second->updateProperties(info.slice(), partialUpdate, doSync);
-
-    if (!res.ok()) {
-      return res; // fail on first failure
-    }
-  }
 
   {
     SCOPED_LOCK(_meta->write());

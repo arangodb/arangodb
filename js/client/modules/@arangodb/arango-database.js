@@ -1198,10 +1198,6 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
   } else {
     body['type'] = type;
   }
-//FIXME TODO remove
-  if (body['properties'] === undefined) {
-    body['properties'] = {};
-  }
 
   var requestResult = this._connection.POST(this._viewurl(),
     JSON.stringify(body));

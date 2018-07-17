@@ -435,11 +435,10 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     bool partialUpdate,
     bool /*doSync*/
 ) {
-  /*FIXME use
   if (slice.isObject() && !slice.hasKey(StaticStrings::PropertiesField)) {
     return arangodb::Result(); // nothing to update
   }
-  */
+
   auto properties = slice.get(StaticStrings::PropertiesField);
 
   try {
