@@ -37,6 +37,13 @@ storage engine to work reliably. Using different storage engines in a cluster is
 unsupported.
 
 
+To validate that the different nodes in a cluster deployment use the same storage
+engine throughout the entire cluster, there is now a startup check performed by
+each coordinator. Each coordinator will contact all DB servers and check if the
+same engine on the DB server is the same as its local storage engine. In case 
+there is any discrepancy, the coordinator will abort its startup.
+
+
 Geo indexes
 -----------
 
