@@ -64,8 +64,6 @@ void ConnectionStatistics::initialize() {
   }
 }
 
-void ConnectionStatistics::shutdown() {}
-
 ConnectionStatistics* ConnectionStatistics::acquire() {
   ConnectionStatistics* statistics = nullptr;
 
@@ -96,7 +94,7 @@ void ConnectionStatistics::fill(StatisticsCounter& httpConnections,
   totalRequests = TRI_TotalRequestsStatistics;
   methodRequests = TRI_MethodRequestsStatistics;
   asyncRequests = TRI_AsyncRequestsStatistics;
-  connectionTime = *TRI_ConnectionTimeDistributionStatistics;
+  connectionTime = TRI_ConnectionTimeDistributionStatistics;
 }
 
 // -----------------------------------------------------------------------------
@@ -113,7 +111,7 @@ void ConnectionStatistics::release() {
 
     if (_connStart != 0.0 && _connEnd != 0.0) {
       double totalTime = _connEnd - _connStart;
-      TRI_ConnectionTimeDistributionStatistics->addFigure(totalTime);
+      TRI_ConnectionTimeDistributionStatistics.addFigure(totalTime);
     }
   }
 

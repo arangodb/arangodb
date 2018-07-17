@@ -134,12 +134,13 @@ class StaticStrings {
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const Queue;
+  static std::string const RequestServedBy;
   static std::string const ResponseCode;
   static std::string const Server;
-  static std::string const StartThread;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
+  static std::string const XArangoNoLock;
 
   // mime types
   static std::string const MimeTypeJson;
@@ -162,7 +163,7 @@ class StaticStrings {
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
   static std::string const GraphOrphans;
-  
+
   // misc strings
   static std::string const LastValue;
 };

@@ -36,8 +36,6 @@
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 
-#include <iostream>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -59,15 +57,7 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       _request(request),
       _response(response),
       _statistics(nullptr),
-      _state(HandlerState::PREPARE) {
-  bool found;
-  std::string const& startThread =
-      _request->header(StaticStrings::StartThread, found);
-
-  if (found) {
-    _needsOwnThread = StringUtils::boolean(startThread);
-  }
-}
+      _state(HandlerState::PREPARE) {}
 
 RestHandler::~RestHandler() {
   RequestStatistics* stat = _statistics.exchange(nullptr);
@@ -116,8 +106,6 @@ bool RestHandler::forwardRequest() {
   // TODO verify that vst -> http -> vst conversion works correctly
 
   // TODO verify that async requests work correctly
-
-  // TODO verify that user-JWT works correctly
 
   uint32_t shortId = forwardingTarget();
   if (shortId == 0) {
@@ -258,24 +246,34 @@ bool RestHandler::forwardRequest() {
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
+  _response->setHeader(StaticStrings::RequestServedBy, serverId);
   return true;
 }
 
 void RestHandler::runHandlerStateMachine() {
   TRI_ASSERT(_callback);
+  MUTEX_LOCKER(locker, _executionMutex);
 
   while (true) {
     switch (_state) {
       case HandlerState::PREPARE:
-        this->prepareEngine();
+        prepareEngine();
         break;
 
       case HandlerState::EXECUTE: {
-        int res = this->executeEngine();
-        if (res != TRI_ERROR_NO_ERROR) {
-          this->finalizeEngine();
-        }
+        executeEngine(false);
         if (_state == HandlerState::PAUSED) {
+          shutdownExecute(false);
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
+          return; // stop state machine
+        }
+        break;
+      }
+
+      case HandlerState::CONTINUED: {
+        executeEngine(true);
+        if (_state == HandlerState::PAUSED) {
+          shutdownExecute(false);
           LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution";
           return;  // stop state machine
@@ -286,17 +284,25 @@ void RestHandler::runHandlerStateMachine() {
       case HandlerState::PAUSED:
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "Resuming rest handler execution";
-        TRI_ASSERT(_response != nullptr);
-        _callback(this);
-        _state = HandlerState::FINALIZE;
+        _state = HandlerState::CONTINUED;
         break;
 
       case HandlerState::FINALIZE:
-        this->finalizeEngine();
+        RequestStatistics::SET_REQUEST_END(_statistics);
+        // Callback may stealStatistics!
+        _callback(this);
+        // Schedule callback BEFORE! finalize
+        shutdownEngine();
         break;
 
-      case HandlerState::DONE:
       case HandlerState::FAILED:
+        RequestStatistics::SET_REQUEST_END(_statistics);
+        // Callback may stealStatistics!
+        _callback(this);
+        // No need to finalize here!
+        return;
+
+      case HandlerState::DONE:
         return;
     }
   }
@@ -306,26 +312,24 @@ void RestHandler::runHandlerStateMachine() {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-int RestHandler::prepareEngine() {
+void RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
   RequestStatistics::SET_REQUEST_START_END(_statistics);
 
   if (_canceled) {
-    _state = HandlerState::DONE;
+    _state = HandlerState::FAILED;
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
     handleError(err);
-
-    _callback(this);
-    return TRI_ERROR_REQUEST_CANCELED;
+    return;
   }
 
   try {
-    prepareExecute();
+    prepareExecute(false);
     _state = HandlerState::EXECUTE;
-    return TRI_ERROR_NO_ERROR;
+    return;
   } catch (Exception const& ex) {
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
@@ -340,15 +344,31 @@ int RestHandler::prepareEngine() {
   }
 
   _state = HandlerState::FAILED;
-  _callback(this);
-  return TRI_ERROR_INTERNAL;
 }
 
-int RestHandler::finalizeEngine() {
+/// Execute the rest handler state machine
+void RestHandler::continueHandlerExecution() {
+  {
+    MUTEX_LOCKER(locker, _executionMutex);
+    TRI_ASSERT(_state == HandlerState::PAUSED);
+  }
+  runHandlerStateMachine();
+}
+
+void RestHandler::shutdownEngine() {
+  RestHandler::CURRENT_HANDLER = this;
+
+  // shutdownExecute is noexcept
+  shutdownExecute(true);
+  
+  RestHandler::CURRENT_HANDLER = nullptr;
+  _state = HandlerState::DONE;
+}
+  /* TODO REMOVE ME!
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    finalizeExecute();
+    shutdownExecute(true);
   } catch (Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception in " << name() << ": "
@@ -378,42 +398,43 @@ int RestHandler::finalizeEngine() {
     handleError(err);
     res = TRI_ERROR_INTERNAL;
   }
-
-  RequestStatistics::SET_REQUEST_END(_statistics);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _state = HandlerState::DONE;
-  } else {
-    _state = HandlerState::FAILED;
-    _callback(this);
-  }
-
   return res;
-}
+  */
 
-int RestHandler::executeEngine() {
+void RestHandler::executeEngine(bool isContinue) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
-  try {
-    RestStatus result = execute();
 
-    if (result == RestStatus::FAIL) {
-      LOG_TOPIC(WARN, Logger::REQUESTS) << "Rest handler reported fail";
-    } else if (result == RestStatus::WAITING) {
+  RestHandler::CURRENT_HANDLER = this;
+
+  try {
+    RestStatus result = RestStatus::DONE;
+    if (isContinue) {
+      // only need to run prepareExecute() again when we are continuing
+      // otherwise prepareExecute() was already run in the PREPARE phase
+      prepareExecute(true);
+      result = continueExecute();
+    } else {
+      result = execute();
+    }
+  
+    RestHandler::CURRENT_HANDLER = nullptr;
+
+    if (result == RestStatus::WAITING) {
       _state = HandlerState::PAUSED;  // wait for someone to continue the state
                                       // machine
-      return TRI_ERROR_NO_ERROR;
-    } else if (_response == nullptr) {
+      return;
+    }
+
+    if (_response == nullptr) {
       Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
                     __FILE__, __LINE__);
-
       handleError(err);
     }
 
     _state = HandlerState::FINALIZE;
-    _callback(this);
-    return TRI_ERROR_NO_ERROR;
+    return;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -460,9 +481,8 @@ int RestHandler::executeEngine() {
     handleError(err);
   }
 
+  RestHandler::CURRENT_HANDLER = nullptr;
   _state = HandlerState::FAILED;
-  _callback(this);
-  return TRI_ERROR_INTERNAL;
 }
 
 void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
@@ -484,15 +504,11 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = true;
 
-    try {
-      TRI_ASSERT(options.escapeUnicode);
-      if (_request != nullptr) {
-        _response->setContentType(_request->contentTypeResponse());
-      }
-      _response->setPayload(std::move(buffer), true, options);
-    } catch (...) {
-      // exception while generating error
+    TRI_ASSERT(options.escapeUnicode);
+    if (_request != nullptr) {
+      _response->setContentType(_request->contentTypeResponse());
     }
+    _response->setPayload(std::move(buffer), true, options);
   } catch (...) {
     // exception while generating error
   }

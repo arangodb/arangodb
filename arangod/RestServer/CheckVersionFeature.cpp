@@ -45,9 +45,10 @@ CheckVersionFeature::CheckVersionFeature(
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
   startsAfter("EngineSelector");
-  startsAfter("ServerId");
 }
 
 void CheckVersionFeature::collectOptions(

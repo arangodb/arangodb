@@ -324,6 +324,7 @@ bool byRange(
     return false;
   }
 
+  TRI_ASSERT(filter);
   auto& range = filter->add<irs::by_granular_range>();
 
   kludge::mangleNumeric(name);
@@ -1161,6 +1162,7 @@ bool fromFuncAnalyzer(
   if (!expressionArg) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "'ANALYZER' AQL function: 1st argument is invalid";
+    return false;
   }
 
   // 2nd argument defines a boost
@@ -1352,6 +1354,7 @@ bool fromFuncExists(
     if (!typeArg) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "'EXISTS' AQL function: 2nd argument is invalid";
+      return false;
     }
 
     irs::string_ref arg;
@@ -2051,18 +2054,6 @@ bool filter(
     default:
       return fromExpression(filter, queryCtx, filterCtx, node);
   }
-
-  auto const* typeName = arangodb::iresearch::getNodeTypeName(node.type);
-
-  if (typeName) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "Unable to process Ast node of type '" << *typeName << "'";
-  } else {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "Unable to process Ast node of type '" << node.type << "'";
-  }
-
-  return false; // unsupported node type
 }
 
 }

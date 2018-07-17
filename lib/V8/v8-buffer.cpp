@@ -534,11 +534,11 @@ class RetainedBufferInfo : public v8::RetainedObjectInfo {
   explicit RetainedBufferInfo(V8Buffer* buffer);
 
  public:
-  virtual void Dispose();
-  virtual bool IsEquivalent(RetainedObjectInfo* other);
-  virtual intptr_t GetHash();
-  virtual char const* GetLabel();
-  virtual intptr_t GetSizeInBytes();
+  virtual void Dispose() override;
+  virtual bool IsEquivalent(RetainedObjectInfo* other) override;
+  virtual intptr_t GetHash() override;
+  virtual char const* GetLabel() override;
+  virtual intptr_t GetSizeInBytes() override;
 
  private:
   static char const _label[];

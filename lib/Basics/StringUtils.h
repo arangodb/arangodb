@@ -208,6 +208,18 @@ std::string urlEncode(char const* src);
 
 /// @brief url encodes the string
 std::string urlEncode(char const* src, size_t const len);
+    
+/// @brief uri encodes the component string
+std::string encodeURIComponent(std:: string const& str);
+    
+/// @brief uri encodes the component string
+std::string encodeURIComponent(char const* src, size_t const len);
+  
+/// @brief converts input string to soundex code
+std::string soundex(std::string const& str);
+   
+/// @brief converts input string to soundex code
+std::string soundex(char const* src, size_t const len);
 
 /// @brief unicode hexidecmial characters to utf8
 bool unicodeToUTF8(char const* inputStr, size_t const& len,

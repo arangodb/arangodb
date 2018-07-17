@@ -37,6 +37,8 @@ std::unique_ptr<TransactionManager> TransactionManagerFeature::MANAGER;
 TransactionManagerFeature::TransactionManagerFeature(ApplicationServer* server)
     : ApplicationFeature(server, "TransactionManager") {
   setOptional(false);
+  startsAfter("BasicsPhase");
+
   startsAfter("EngineSelector");
 }
 

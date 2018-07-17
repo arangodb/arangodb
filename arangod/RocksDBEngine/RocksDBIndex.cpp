@@ -332,7 +332,7 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
       return RocksDBKeyBounds::GeoIndex(objectId);
 #ifdef USE_IRESEARCH
     case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
-      return RocksDBKeyBounds::Empty();
+      return RocksDBKeyBounds::DatabaseViews(objectId);
 #endif
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:

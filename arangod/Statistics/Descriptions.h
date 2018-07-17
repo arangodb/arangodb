@@ -23,6 +23,8 @@
 #ifndef ARANGOD_STATISTICS_DESCRIPTIONS_H
 #define ARANGOD_STATISTICS_DESCRIPTIONS_H 1
 
+#include "Basics/Common.h"
+
 #include <velocypack/Builder.h>
 #include <string>
 

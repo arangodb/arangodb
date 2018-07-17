@@ -575,20 +575,15 @@ function GeoIndexSimpleQueriesSuite() {
     internal.db._drop(cn);
     collection = internal.db._create(cn, { waitForSync : false });
 
-    try {
-      for (var i = -90;  i <= 90;  i += 10) {
-        for (var j = -180; j <= 180;  j+= 10) {
-          collection.save({
-            name : "Name/" + i + "/" + j,
-                vloc : [ i, j ],
-                gloc : [ j, i ],
-                aloc : { latitude : i, longitude : j }
-            });
-        }
+    for (var i = -90;  i <= 90;  i += 10) {
+      for (var j = -180; j <= 180;  j+= 10) {
+        collection.save({
+          name : "Name/" + i + "/" + j,
+              vloc : [ i, j ],
+              gloc : [ j, i ],
+              aloc : { latitude : i, longitude : j }
+          });
       }
-    }
-    catch (err) {
-      console.error("cannot create locations: " + err);
     }
   },
 
@@ -598,7 +593,6 @@ function GeoIndexSimpleQueriesSuite() {
 
   tearDown : function () {
     collection.drop();
-    internal.wait(0.0);
   },
 
 ////////////////////////////////////////////////////////////////////////////////

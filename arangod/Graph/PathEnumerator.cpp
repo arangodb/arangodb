@@ -182,8 +182,7 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastVertexToAqlValue() {
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
   if (_enumeratedPath.edges.empty()) {
-    return arangodb::aql::AqlValue(
-        arangodb::basics::VelocyPackHelper::NullValue());
+    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
   }
   // FIXME: add some asserts back into this
   //TRI_ASSERT(_enumeratedPath.edges.back() != nullptr);

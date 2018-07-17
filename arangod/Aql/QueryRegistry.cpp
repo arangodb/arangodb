@@ -26,7 +26,7 @@
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/CollectionLockState.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 
@@ -65,7 +65,6 @@ QueryRegistry::~QueryRegistry() {
   }
 }
 
-
 /// @brief insert
 void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared) {
   TRI_ASSERT(query != nullptr);
@@ -97,17 +96,6 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared
 
     m->second.emplace(id, p.get());
     p.release();
-  }
-
-  // If we have set _noLockHeaders, we need to unset it:
-  if (query->engine() != nullptr && CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders == query->engine()->lockedShards()) {
-      CollectionLockState::_noLockHeaders = nullptr;
-    }
-    // else {
-    // We have not set it, just leave it alone. This happens in particular
-    // on the DBServers, who do not set lockedShards() themselves.
-    // }
   }
 }
 
@@ -143,16 +131,6 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
     qi->_isPrepared = true;
   }
 
-  // If we had set _noLockHeaders, we need to reset it:
-  if (qi->_query->engine() != nullptr && qi->_query->engine()->lockedShards() != nullptr) {
-    if (CollectionLockState::_noLockHeaders == nullptr) {
-      // std::cout << "Setting _noLockHeaders\n";
-      CollectionLockState::_noLockHeaders = qi->_query->engine()->lockedShards();
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
-    }
-  }
-
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is now in use";
   return qi->_query;
 }
@@ -183,26 +161,6 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   if (!qi->_isPrepared) {
     qi->_isPrepared = true;
     qi->_query->prepare(this, 0);
-  }
-
-  // If we have set _noLockHeaders, we need to unset it:
-  if (qi->_query->engine() != nullptr && CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders ==
-        qi->_query->engine()->lockedShards()) {
-      // std::cout << "Resetting _noLockHeaders to nullptr\n";
-      CollectionLockState::_noLockHeaders = nullptr;
-    } else {
-      if (CollectionLockState::_noLockHeaders != nullptr) {
-        if (CollectionLockState::_noLockHeaders ==
-            qi->_query->engine()->lockedShards()) {
-          CollectionLockState::_noLockHeaders = nullptr;
-        }
-        // else {
-        // We have not set it, just leave it alone. This happens in particular
-        // on the DBServers, who do not set lockedShards() themselves.
-        // }
-      }
-    }
   }
 
   qi->_isOpen = false;
@@ -259,15 +217,6 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
   // If the query was open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
-  // If we had set _noLockHeaders, we need to reset it:
-  if (queryInfo->_query->engine() != nullptr && queryInfo->_query->engine()->lockedShards() != nullptr) {
-    if (CollectionLockState::_noLockHeaders == nullptr) {
-      CollectionLockState::_noLockHeaders = queryInfo->_query->engine()->lockedShards();
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
-    }
-  }
-
   if (errorCode == TRI_ERROR_NO_ERROR) {
     // commit the operation
     queryInfo->_query->trx()->commit();
@@ -284,6 +233,7 @@ void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
 void QueryRegistry::expireQueries() {
   double now = TRI_microtime();
   std::vector<std::pair<std::string, QueryId>> toDelete;
+  std::vector<QueryId> queriesLeft;
 
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -296,9 +246,15 @@ void QueryRegistry::expireQueries() {
         QueryInfo*& qi = y.second;
         if (!qi->_isOpen && now > qi->_expires) {
           toDelete.emplace_back(x.first, y.first);
+        } else {
+          queriesLeft.emplace_back(y.first);
         }
       }
     }
+  }
+
+  if (!queriesLeft.empty()) {
+    LOG_TOPIC(TRACE, Logger::QUERIES) << "queries left in QueryRegistry: " << queriesLeft;
   }
 
   for (auto& p : toDelete) {

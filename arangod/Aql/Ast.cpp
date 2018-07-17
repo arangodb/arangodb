@@ -705,17 +705,15 @@ AstNode* Ast::createNodeAccess(Variable const* variable,
                                std::vector<basics::AttributeName> const& field) {
   TRI_ASSERT(!field.empty());
   AstNode* node = createNodeReference(variable);
-  for (size_t i = field.size(); i != 0; i--) {
-    //if (field[i-1].shouldExpand) TODO not supported probably
-    node = createNodeAttributeAccess(node, field[i-1].name.c_str(),
-                                     field[i-1].name.length());
+  for (auto const& it : field) {
+    node = createNodeAttributeAccess(node, it.name.data(), it.name.size());
   }
   return node;
 }
 
-AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std::string> const& path){
+AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std::string> const& path) {
   AstNode* rv = refNode->clone(this);
-  for(auto const& part : path){
+  for (auto const& part : path) {
     char const* p = query()->registerString(part.data(), part.size());
     rv = createNodeAttributeAccess(rv, p, part.size());
   }
@@ -723,10 +721,7 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std:
 }
 
 /// @brief create an AST parameter node
-AstNode* Ast::createNodeParameter(
-    char const* name,
-    size_t length
-) {
+AstNode* Ast::createNodeParameter(char const* name, size_t length) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -742,23 +737,23 @@ AstNode* Ast::createNodeParameter(
 }
 
 AstNode* Ast::createNodeParameterCollection(char const* name, size_t length) {
-  auto node = createNodeParameter(name, length);
+  // prevent creating a collection node with a nullptr string
+  auto collection = createNode(NODE_TYPE_COLLECTION);
+  collection->setStringValue("", 0);
 
-  if (node) {
-    node->reserve(1);
-    node->addMember(createNode(NODE_TYPE_COLLECTION));
-  }
+  auto node = createNodeParameter(name, length);
+  node->addMember(collection);
 
   return node;
 }
 
 AstNode* Ast::createNodeParameterView(char const* name, size_t length) {
-  auto node = createNodeParameter(name, length);
+  // prevent creating a view node with a nullptr string
+  auto view = createNode(NODE_TYPE_VIEW);
+  view->setStringValue("", 0);
 
-  if (node) {
-    node->reserve(1);
-    node->addMember(createNode(NODE_TYPE_VIEW));
-  }
+  auto node = createNodeParameter(name, length);
+  node->addMember(view);
 
   return node;
 }
@@ -788,7 +783,9 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
   node->addMember(lhs);
   node->addMember(rhs);
 
-  // initialize sortedness information (currently used for the IN operator only)
+  // initialize sortedness information (currently used for the IN/NOT IN operators only)
+  // for nodes of type ==, < or <=, the bool means if the range definitely excludes the "null" value
+  // the default value for this is false.
   node->setBoolValue(false);
 
   return node;
@@ -2409,6 +2406,11 @@ AstNode* Ast::clone(AstNode const* node) {
     copy->setIntValue(node->getIntValue(true));
   } else if (type == NODE_TYPE_QUANTIFIER) {
     copy->setIntValue(node->getIntValue(true));
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LE ||
+             type == NODE_TYPE_OPERATOR_BINARY_LT ||
+             type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // copy "definitely is not null" information
+    copy->setExcludesNull(node->getExcludesNull());
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
              type == NODE_TYPE_OPERATOR_BINARY_NIN ||
              type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||

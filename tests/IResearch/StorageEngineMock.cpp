@@ -140,7 +140,7 @@ class EdgeIndexMock final : public arangodb::Index {
  public:
   static std::shared_ptr<arangodb::Index> make(
       TRI_idx_iid_t iid,
-      arangodb::LogicalCollection* collection,
+      arangodb::LogicalCollection& collection,
       arangodb::velocypack::Slice const& definition
   ) {
     auto const typeSlice = definition.get("type");
@@ -326,8 +326,11 @@ class EdgeIndexMock final : public arangodb::Index {
 
   EdgeIndexMock(
       TRI_idx_iid_t iid,
-      arangodb::LogicalCollection* collection
-  ) : arangodb::Index(iid, collection, {
+      arangodb::LogicalCollection& collection
+  ): arangodb::Index(
+      iid,
+      &collection,
+      {
         {arangodb::basics::AttributeName(arangodb::StaticStrings::FromString, false)},
         {arangodb::basics::AttributeName(arangodb::StaticStrings::ToString, false)}
       }, true, false) {
@@ -470,9 +473,9 @@ class AllIteratorMock final : public arangodb::IndexIterator {
  public:
   AllIteratorMock(
       uint64_t size,
-      arangodb::LogicalCollection* coll,
+      arangodb::LogicalCollection& coll,
       arangodb::transaction::Methods* trx)
-    : arangodb::IndexIterator(coll, trx, &EMPTY_INDEX),
+    : arangodb::IndexIterator(&coll, trx, &EMPTY_INDEX),
       _end(size) {
   }
 
@@ -527,11 +530,15 @@ bool ContextDataMock::isPinned(TRI_voc_cid_t cid) const {
 
 std::function<void()> PhysicalCollectionMock::before = []()->void {};
 
-PhysicalCollectionMock::PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info)
-  : PhysicalCollection(collection, info), lastId(0) {
+PhysicalCollectionMock::PhysicalCollectionMock(
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+): PhysicalCollection(collection, info), lastId(0) {
 }
 
-arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection*) const {
+arangodb::PhysicalCollection* PhysicalCollectionMock::clone(
+    arangodb::LogicalCollection& collection
+) const {
   before();
   TRI_ASSERT(false);
   return nullptr;
@@ -573,9 +580,13 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
 
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      index = arangodb::iresearch::IResearchLinkCoordinator::make(_logicalCollection, info, ++lastId, false);
+      index = arangodb::iresearch::IResearchLinkCoordinator::make(
+        &_logicalCollection, info, ++lastId, false
+      );
     } else {
-      index = arangodb::iresearch::IResearchMMFilesLink::make(_logicalCollection, info, ++lastId, false);
+      index = arangodb::iresearch::IResearchMMFilesLink::make(
+        &_logicalCollection, info, ++lastId, false
+      );
     }
 #endif
   }
@@ -604,7 +615,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   return _indexes.back();
 }
 
-void PhysicalCollectionMock::deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) {
+void PhysicalCollectionMock::deferDropCollection(
+    std::function<bool(arangodb::LogicalCollection&)> const& callback
+) {
   before();
 
   callback(_logicalCollection); // assume noone is using this collection (drop immediately)
@@ -648,7 +661,7 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   before();
 
   arangodb::velocypack::Builder builder;
-  auto isEdgeCollection = _logicalCollection->type() == TRI_COL_TYPE_EDGE;
+  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   TRI_voc_rid_t unused;
   auto res = newObjectForInsert(
@@ -760,7 +773,8 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
       continue;
     }
 
-    auto idx = idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
+    auto idx =
+      idxFactory.prepareIndexFromSlice(v, false, &_logicalCollection, true);
 
     if (!idx) {
       continue;
@@ -1065,7 +1079,7 @@ std::unique_ptr<arangodb::PhysicalCollection> StorageEngineMock::createPhysicalC
 ) {
   before();
   return std::unique_ptr<arangodb::PhysicalCollection>(
-    new PhysicalCollectionMock(&collection, info)
+    new PhysicalCollectionMock(collection, info)
   );
 }
 

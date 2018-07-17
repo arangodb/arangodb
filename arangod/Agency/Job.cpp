@@ -441,20 +441,20 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
 }
 
 void Job::doForAllShards(Node const& snapshot,
-	std::string& database,
-	std::vector<shard_t>& shards,
+  std::string& database,
+  std::vector<shard_t>& shards,
   std::function<void(Slice plan, Slice current, std::string& planPath)> worker) {
-	for (auto const& collShard : shards) {
-		std::string shard = collShard.shard;
-		std::string collection = collShard.collection;
+  for (auto const& collShard : shards) {
+    std::string shard = collShard.shard;
+    std::string collection = collShard.collection;
 
     std::string planPath =
       planColPrefix + database + "/" + collection + "/shards/" + shard;
     std::string curPath = curColPrefix + database + "/" + collection
-                          + "/" + shard + "/servers";
+      + "/" + shard + "/servers";
 
-		Slice plan = snapshot.hasAsSlice(planPath).first;
-		Slice current = snapshot.hasAsSlice(curPath).first;
+    Slice plan = snapshot.hasAsSlice(planPath).first;
+    Slice current = snapshot.hasAsSlice(curPath).first;
 
     worker(plan, current, planPath);
   }
@@ -509,10 +509,10 @@ void Job::addPreconditionCollectionStillThere(Builder& pre,
 }
 
 void Job::addPreconditionServerNotBlocked(Builder& pre, std::string const& server) {
-	pre.add(VPackValue(blockedServersPrefix + server));
-	{ VPackObjectBuilder serverLockEmpty(&pre);
-		pre.add("oldEmpty", VPackValue(true));
-	}
+  pre.add(VPackValue(blockedServersPrefix + server));
+  { VPackObjectBuilder serverLockEmpty(&pre);
+    pre.add("oldEmpty", VPackValue(true));
+  }
 }
 
 void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
@@ -524,10 +524,10 @@ void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
 }
 
 void Job::addPreconditionShardNotBlocked(Builder& pre, std::string const& shard) {
-	pre.add(VPackValue(blockedShardsPrefix + shard));
-	{ VPackObjectBuilder shardLockEmpty(&pre);
-		pre.add("oldEmpty", VPackValue(true));
-	}
+  pre.add(VPackValue(blockedShardsPrefix + shard));
+  { VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add("oldEmpty", VPackValue(true));
+  }
 }
 
 void Job::addPreconditionUnchanged(Builder& pre,

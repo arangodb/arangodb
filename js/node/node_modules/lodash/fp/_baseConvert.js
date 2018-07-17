@@ -1,6 +1,9 @@
 var mapping = require('./_mapping'),
     fallbackHolder = require('./placeholder');
 
+/** Built-in value reference. */
+var push = Array.prototype.push;
+
 /**
  * Creates a function, with an arity of `n`, that invokes `func` with the
  * arguments it receives.
@@ -58,6 +61,37 @@ function cloneArray(array) {
 function createCloner(func) {
   return function(object) {
     return func({}, object);
+  };
+}
+
+/**
+ * A specialized version of `_.spread` which flattens the spread array into
+ * the arguments of the invoked `func`.
+ *
+ * @private
+ * @param {Function} func The function to spread arguments over.
+ * @param {number} start The start position of the spread.
+ * @returns {Function} Returns the new function.
+ */
+function flatSpread(func, start) {
+  return function() {
+    var length = arguments.length,
+        lastIndex = length - 1,
+        args = Array(length);
+
+    while (length--) {
+      args[length] = arguments[length];
+    }
+    var array = args[start],
+        otherArgs = args.slice(0, start);
+
+    if (array) {
+      push.apply(otherArgs, array);
+    }
+    if (start != lastIndex) {
+      push.apply(otherArgs, args.slice(start + 1));
+    }
+    return func.apply(this, otherArgs);
   };
 }
 
@@ -141,7 +175,6 @@ function baseConvert(util, name, func, options) {
     'iteratee': util.iteratee,
     'keys': util.keys,
     'rearg': util.rearg,
-    'spread': util.spread,
     'toInteger': util.toInteger,
     'toPath': util.toPath
   };
@@ -155,7 +188,6 @@ function baseConvert(util, name, func, options) {
       isFunction = helpers.isFunction,
       keys = helpers.keys,
       rearg = helpers.rearg,
-      spread = helpers.spread,
       toInteger = helpers.toInteger,
       toPath = helpers.toPath;
 
@@ -282,7 +314,7 @@ function baseConvert(util, name, func, options) {
       var data = mapping.methodSpread[name],
           start = data && data.start;
 
-      return start  === undefined ? ary(func, n) : spread(func, start);
+      return start  === undefined ? ary(func, n) : flatSpread(func, start);
     }
     return func;
   }
@@ -452,8 +484,8 @@ function baseConvert(util, name, func, options) {
     each(aryMethodKeys, function(aryKey) {
       each(mapping.aryMethod[aryKey], function(otherName) {
         if (realName == otherName) {
-          var spreadData = mapping.methodSpread[realName],
-              afterRearg = spreadData && spreadData.afterRearg;
+          var data = mapping.methodSpread[realName],
+              afterRearg = data && data.afterRearg;
 
           result = afterRearg
             ? castFixed(realName, castRearg(realName, wrapped, aryKey), aryKey)

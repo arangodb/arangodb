@@ -105,18 +105,6 @@ bool initCommitMeta(
   }
 
   {
-    // optional size_t
-    static const std::string fieldName("commitTimeoutMsec");
-    bool tmpBool;
-
-    if (!arangodb::iresearch::getNumber(meta._commitTimeoutMsec, slice, fieldName, tmpBool, defaults._commitTimeoutMsec)) {
-      errorField = fieldName;
-
-      return false;
-    }
-  }
-
-  {
     // optional enum->{size_t,float} map
     static const std::string fieldName("consolidate");
 
@@ -209,7 +197,6 @@ bool jsonCommitMeta(
 
   builder.add("cleanupIntervalStep", arangodb::velocypack::Value(meta._cleanupIntervalStep));
   builder.add("commitIntervalMsec", arangodb::velocypack::Value(meta._commitIntervalMsec));
-  builder.add("commitTimeoutMsec", arangodb::velocypack::Value(meta._commitTimeoutMsec));
 
   typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
   struct ConsolidationPolicyHash { size_t operator()(ConsolidationPolicy::Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
@@ -394,7 +381,6 @@ bool IResearchViewMeta::CommitMeta::operator==(
 ) const noexcept {
   return _cleanupIntervalStep == other._cleanupIntervalStep
       && _commitIntervalMsec == other._commitIntervalMsec
-      && _commitTimeoutMsec == other._commitTimeoutMsec
       && equalConsolidationPolicies(_consolidationPolicies, other._consolidationPolicies);
 }
 
@@ -413,7 +399,6 @@ IResearchViewMeta::IResearchViewMeta()
   : _locale(std::locale::classic()) {
   _commit._cleanupIntervalStep = 10;
   _commit._commitIntervalMsec = 60 * 1000;
-  _commit._commitTimeoutMsec = 5 * 1000;
   _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::BYTES));
   _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::BYTES_ACCUM));
   _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::COUNT));
@@ -661,7 +646,7 @@ bool IResearchViewMetaState::init(
   std::string& errorField,
   IResearchViewMetaState const& defaults /*= DEFAULT()*/,
   Mask* mask /*= nullptr*/
-) noexcept {
+) {
   if (!slice.isObject()) {
     errorField = "not an object";
     return false;

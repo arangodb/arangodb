@@ -1,5 +1,13 @@
 # Rocksdb Change Log
-## Unreleased
+## 5.14.2 (7/3/2018)
+### Bug Fixes
+* Change default value of `bytes_max_delete_chunk` to 0 in NewSstFileManager() as it doesn't work well with checkpoints.
+* Set DEBUG_LEVEL=0 for RocksJava Mac Release build.
+
+## 5.14.1 (6/20/2018)
+### Bug Fixes
+* Fix block-based table reader pinning blocks throughout its lifetime, causing memory usage increase.
+* Fix bug with prefix search in partition filters where a shared prefix would be ignored from the later partitions. The bug could report an eixstent key as missing. The bug could be triggered if prefix_extractor is set and partition filters is enabled.
 
 ## 5.14.0 (5/16/2018)
 ### Public API Change
@@ -26,6 +34,7 @@
 * Fix `BackupableDBOptions::max_valid_backups_to_open` to not delete backup files when refcount cannot be accurately determined.
 * Fix memory leak when pin_l0_filter_and_index_blocks_in_cache is used with partitioned filters
 * Disable rollback of merge operands in WritePrepared transactions to work around an issue in MyRocks. It can be enabled back by setting TransactionDBOptions::rollback_merge_operands to true.
+* Fix bug with prefix search in partition filters where a shared prefix would be ignored from the later partitions. The bug could report an eixstent key as missing. The bug could be triggered if prefix_extractor is set and partition filters is enabled.
 
 ### Java API Changes
 * Add `BlockBasedTableConfig.setBlockCache` to allow sharing a block cache across DB instances.

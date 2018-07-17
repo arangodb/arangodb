@@ -121,9 +121,8 @@
     * [Example Data](Graphs/Traversals/ExampleData.md)
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
-* [Views](Views/README.md)
-  * [ArangoSearch](Views/ArangoSearch.md)
-    * [Analyzers](Views/ArangoSearch/Analyzers.md)
+* [ArangoSearch Views](Views/ArangoSearch/README.md)
+  * [Analyzers](Views/ArangoSearch/Analyzers.md)
 
 ## ADVANCED TOPICS
 
@@ -248,6 +247,10 @@
       * [TLS](Deployment/Kubernetes/Tls.md)
       * [Troubleshooting](Deployment/Kubernetes/Troubleshooting.md)
     * [Mesos, DC/OS](Deployment/DCOS/README.md)
+      * [Cluster Deployments](Deployment/DCOS/ClusterMesos.md)
+  * [In the Cloud](Deployment/Cloud/README.md)
+    * [AWS](Deployment/Cloud/AWS.md)
+    * [Azure](Deployment/Cloud/Azure.md)
 * [Upgrading](Upgrading/README.md)
   * [General Upgrade Information](Upgrading/GeneralInfo/README.md)
   * [OS-specific Information](Upgrading/OSSpecificInfo/README.md)
@@ -294,16 +297,19 @@
     * [Syncing Collections](Administration/MasterSlave/SyncingCollections.md)
   * [Active Failover](Administration/ActiveFailover/README.md)
   * [Cluster](Administration/Cluster/README.md)
-#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
+# https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  * [ArangoDB Starter Recovery Procedure](Administration/Starter/README.md)    
 * [Security](Security/README.md)
+  * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption](Administration/Encryption/README.md)
   * [Auditing](Administration/Auditing/README.md)
     * [Configuration](Administration/Auditing/AuditConfiguration.md)
     * [Events](Administration/Auditing/AuditEvents.md)
-  # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+# https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [Securing Starter Deployments](Security/Starter/README.md)
-  # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/

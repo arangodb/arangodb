@@ -31,8 +31,6 @@
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 
-#include <iostream>
-
 #if defined(TRI_HAVE_POSIX_THREADS)
 #include <unistd.h>
 #endif
@@ -51,8 +49,6 @@ using namespace arangodb::rest;
 RestStatusHandler::RestStatusHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestBaseHandler(request, response) {}
-
-bool RestStatusHandler::isDirect() const { return true; }
 
 RestStatus RestStatusHandler::execute() {
   VPackBuilder result;

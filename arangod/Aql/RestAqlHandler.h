@@ -49,9 +49,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
-  bool isDirect() const override;
-  size_t queue() const override;
+  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
   RestStatus execute() override;
+  RestStatus continueExecute() override;
 
  public:
   // POST method for /_api/aql/instantiate
@@ -72,12 +72,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //   "number": must be a positive integer, the cursor skips as many items,
   //             possibly exhausting the cursor.
   //             The result is a JSON with the attributes "error" (boolean),
-  //             "errorMessage" (if applicable) and "exhausted" (boolean)
-  //             to indicate whether or not the cursor is exhausted.
-  void useQuery(std::string const& operation, std::string const& idString);
-
-  // GET method for /_api/aql/<queryId>
-  void getInfoQuery(std::string const& operation, std::string const& idString);
+  //             "errorMessage" (if applicable) and "exhausted" (boolean) [3.3 and earlier]
+  //             "done" (boolean) [3.4.0 and later] to indicate whether or not the cursor is exhausted.
+  RestStatus useQuery(std::string const& operation, std::string const& idString);
 
  private:
 
@@ -128,8 +125,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const);
 
   // handle for useQuery
-  void handleUseQuery(std::string const&, Query*,
-                      arangodb::velocypack::Slice const);
+  RestStatus handleUseQuery(std::string const&, Query*,
+                            arangodb::velocypack::Slice const);
 
   // parseVelocyPackBody, returns a nullptr and produces an error
   // response if

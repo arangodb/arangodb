@@ -82,11 +82,11 @@ HTTP API changes
 
 ### APIs added
 
-The following HTTP REST APIs have been added for online loglevel adjustment of
+The following HTTP REST APIs have been added for online log level adjustment of
 the server:
 
-* GET `/_admin/log/level` returns the current loglevel settings
-* PUT `/_admin/log/level` modifies the current loglevel settings
+* GET `/_admin/log/level` returns the current log level settings
+* PUT `/_admin/log/level` modifies the current log level settings
 
 ### APIs changed
 

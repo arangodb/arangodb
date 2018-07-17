@@ -56,6 +56,7 @@ arangosh&gt; stmt.explain();
                 { 
                   <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
                   <span class="hljs-string">"typeID"</span> : <span class="hljs-number">25</span>, 
+                  <span class="hljs-string">"excludesNull"</span> : <span class="hljs-literal">false</span>, 
                   <span class="hljs-string">"subNodes"</span> : [ 
                     { 
                       <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 

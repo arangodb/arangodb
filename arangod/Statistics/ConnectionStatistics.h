@@ -36,7 +36,6 @@ namespace arangodb {
 class ConnectionStatistics {
  public:
   static void initialize();
-  static void shutdown();
 
   static ConnectionStatistics* acquire();
   void release();

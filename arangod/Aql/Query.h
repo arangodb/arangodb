@@ -25,11 +25,9 @@
 #define ARANGOD_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
-
-#include <velocypack/Builder.h>
-
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
@@ -39,9 +37,12 @@
 #include "Aql/RegexCache.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
 
@@ -70,11 +71,15 @@ class Query;
 struct QueryProfile;
 class QueryRegistry;
 
-/// @brief equery part
+/// @brief query part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
 
 /// @brief an AQL query
 class Query {
+
+ private:
+   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+
  private:
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
@@ -201,16 +206,20 @@ class Query {
   void prepare(QueryRegistry*, uint64_t queryHash);
 
   /// @brief execute an AQL query
-  QueryResult execute(QueryRegistry*);
+  aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
+
+  /// @brief execute an AQL query and block this thread in case we
+  ///        need to wait.
+  QueryResult executeSync(QueryRegistry*);
 
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
-  QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
+  aql::ExecutionState executeV8(v8::Isolate* isolate, QueryRegistry*, QueryResultV8&);
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
-  void finalize(QueryResult&);
+  ExecutionState finalize(QueryResult&);
 
   /// @brief parse an AQL query
   QueryResult parse();
@@ -283,6 +292,47 @@ class Query {
 
   QueryExecutionState::ValueType state() const { return _state; }
 
+  /// @brief continueAfterPause is to be called on the query object to
+  /// continue execution in this query part, if the query got paused
+  /// because it is waiting for network responses. The idea is that a
+  /// RemoteBlock that does an asynchronous cluster-internal request can
+  /// register a callback with the asynchronous request and then return
+  /// with the result `ExecutionState::WAITING`, which will bubble up
+  /// the stack and eventually lead to a suspension of the work on the
+  /// RestHandler. In the callback function one can first store the
+  /// results in the RemoteBlock object and can then call this method on
+  /// the query.
+  /// This will lead to the following: The original request that lead to
+  /// the network communication will be rescheduled on the ioservice and
+  /// continues its execution where it left off.
+  void continueAfterPause() {
+    TRI_ASSERT(!hasHandler());
+    _continueCallback();
+  }
+
+  std::function<void()> continueHandler() {
+    TRI_ASSERT(hasHandler());
+    return _continueCallback;
+  }
+
+  bool hasHandler() {
+    return _hasHandler;
+  }
+
+  /// @brief setter for the continue callback:
+  ///        We can either have a handler or a callback
+  void setContinueCallback(std::function<void()> const& cb) {
+    _continueCallback = cb;
+    _hasHandler = false;
+  }
+
+  /// @brief setter for the continue handler:
+  ///        We can either have a handler or a callback
+  void setContinueHandler(std::function<void()> const& handler) {
+    _continueCallback = handler;
+    _hasHandler = true;
+  }
+
  private:
   /// @brief initializes the query
   void init();
@@ -310,8 +360,12 @@ class Query {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query
-  void cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
+  /// @brief cleanup plan and engine for current query. Synchronous variant,
+  //         will block this thread in WAITING case.
+  void cleanupPlanAndEngineSync(int, VPackBuilder* statsBuilder = nullptr) noexcept;
+
+  /// @brief cleanup plan and engine for current query can issue WAITING
+  ExecutionState cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
@@ -409,6 +463,50 @@ class Query {
   /// once for this expression
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
+
+  /// @brief a callback function which is used to implement continueAfterPause.
+  /// Typically, the RestHandler using the Query object will put a closure
+  /// in here, which continueAfterPause simply calls.
+  std::function<void()> _continueCallback;
+
+  /// @brief decide if the _continueCallback needs to be pushed onto the ioservice
+  ///        or if it has to be executed in this thread.
+  bool _hasHandler;
+
+  /// Create the result in this builder. It is also used to determine
+  /// if we are continuing the query or of we called
+  std::shared_ptr<arangodb::velocypack::Builder> _resultBuilder;
+
+  /// Options for _resultBuilder. Optimally, it's lifetime should be linked to
+  /// it, but this is hard to do.
+  std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
+
+  /// Track in which phase of execution we are, in order to implement repeatability.
+  ExecutionPhase _executionPhase;
+
+  /// Temporary Section only used during the development of
+  /// async AQL
+  /// TODO REMOVE
+ private:
+  basics::ConditionVariable _tempWaitForAsyncResponse;
+  bool _wasNotified = false;
+
+ public:
+  void tempSignalAsyncResponse() {
+    CONDITION_LOCKER(guard, _tempWaitForAsyncResponse);
+    _wasNotified = true;
+    guard.signal();
+  }
+
+  /// TODO This has to stay for a backwards-compatible AQL HTTP API (hasMore).
+  /// So it needs to be renamed.
+  void tempWaitForAsyncResponse() {
+    CONDITION_LOCKER(guard, _tempWaitForAsyncResponse);
+    if (!_wasNotified) {
+      _tempWaitForAsyncResponse.wait();
+    }
+    _wasNotified = false;
+  }
 };
 
 }

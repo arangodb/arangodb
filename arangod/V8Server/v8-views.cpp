@@ -239,9 +239,9 @@ static void JS_DropViewVocbase(
   auto view = vocbase.lookupView(name);
 
   if (view) {
-    auto res = vocbase.dropView(view->id(), allowDropSystem).errorNumber();
+    auto res = vocbase.dropView(view->id(), allowDropSystem);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
@@ -285,11 +285,10 @@ static void JS_DropViewVocbaseObj(
     }
   }
 
-  auto res =
-    view->vocbase().dropView(view->id(), allowDropSystem).errorNumber();
+  auto res = view->vocbase().dropView(view->id(), allowDropSystem);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop view");
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_UNDEFINED();
