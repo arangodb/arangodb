@@ -519,6 +519,7 @@ void ClusterInfo::loadPlan() {
                 views.reserve(views.size() + 2);
                 views[viewId] = view;
                 views[view->name()] = view;
+                views[view->guid()] = view;
                 return true;
               };
 
