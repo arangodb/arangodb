@@ -291,10 +291,8 @@ bool RestAqlHandler::registerSnippets(
     // enables the query to get the correct transaction
     query->setTransactionContext(ctx);
 
-    bool prepared = false;
     try {
       query->prepare(_queryRegistry, 0);
-      prepared = true;
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::AQL)
           << "failed to instantiate the query: " << ex.what();
@@ -338,7 +336,7 @@ bool RestAqlHandler::registerSnippets(
         // No need to cleanup...
       }
 
-      _queryRegistry->insert(qId, query.get(), ttl, prepared);
+      _queryRegistry->insert(qId, query.get(), ttl, true);
       query.release();
       answerBuilder.add(it.key);
       answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
@@ -447,7 +445,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 
   _qId = TRI_NewTickServer();
   try {
-    _queryRegistry->insert(_qId, query.get(), ttl, false);
+    _queryRegistry->insert(_qId, query.get(), ttl, true);
     query.release();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -550,10 +548,6 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
 // executes the handler
 RestStatus RestAqlHandler::execute() {
-  // std::cout << "GOT INCOMING REQUEST: " <<
-  // GeneralRequest::translateMethod(_request->requestType()) << ",
-  // " << arangodb::ServerState::instance()->getId() << ": " <<
-  // _request->fullUrl() << ": " << _request->body() << "\n\n";
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   // extract the sub-request type
@@ -569,7 +563,7 @@ RestStatus RestAqlHandler::execute() {
       } else if (suffixes[0] == "setup") {
         setupClusterQuery();
       } else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown API";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown POST API";
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown API");
       }
       break;
@@ -587,9 +581,23 @@ RestStatus RestAqlHandler::execute() {
       break;
     }
     case rest::RequestType::GET: {
-      // Previously, the only GET API was /_api/aql/hasMore. Now, there is none.
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API";
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown GET API");
+      // in 3.3, the only GET API was /_api/aql/hasMore. Now, there is none in 3.4.
+      // we need to keep the old route for compatibility with 3.3 however.
+      if (suffixes.size() != 2 || suffixes[1] != "hasMore") {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API: " << suffixes;
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown GET API");
+      } else {
+        // for /_api/aql/hasMore, now always return with a hard-coded response
+        // that contains  "hasMore" : true. This seems good enough to ensure 
+        // compatibility with 3.3.
+        VPackBuilder answerBody;
+        {
+          VPackObjectBuilder guard(&answerBody);
+          answerBody.add("hasMore", VPackValue(true));
+          answerBody.add("error", VPackValue(false));
+        }
+        sendResponse(rest::ResponseCode::OK, answerBody.slice());
+      }
       break;
     }
     case rest::RequestType::DELETE_REQ:
@@ -605,11 +613,6 @@ RestStatus RestAqlHandler::execute() {
       break;
     }
   }
-
-  // std::cout << "REQUEST HANDLING DONE: " <<
-  // arangodb::ServerState::instance()->getId() << ": " <<
-  // _request->fullUrl() << ": " << _response->responseCode() << ",
-  // CONTENT-LENGTH: " << _response->contentLength() << "\n";
 
   return RestStatus::DONE;
 }
