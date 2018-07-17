@@ -59,26 +59,26 @@ function iResearchFeatureAqlTestSuite () {
       var view = db._createView("TestView", "arangosearch", {});
 
       var properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(0, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(0, Object.keys(properties.links).length);
 
       var meta = { links: { "TestCollection0": {} } };
       view.properties(meta, true); // partial update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(1, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
 
       meta = { links: { "TestCollection1": {} } };
       view.properties(meta, true); // partial update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(2, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(2, Object.keys(properties.links).length);
 
       meta = { links: { "TestCollection2": {} } };
       view.properties(meta, false); // full update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(1, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
 
 
       // commit

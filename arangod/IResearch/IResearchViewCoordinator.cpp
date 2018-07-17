@@ -257,9 +257,8 @@ using namespace basics;
 
 namespace iresearch {
 
-arangodb::Result IResearchViewCoordinator::appendVelocyPack(
+arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
   arangodb::velocypack::Builder& builder,
-  bool detailed,
   bool forPersistence
 ) const {
   if (!builder.isOpenObject()) {
@@ -270,24 +269,24 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
   }
 
   builder.add(
-    arangodb::StaticStrings::DataSourceType,
-    arangodb::velocypack::Value(type().name())
-  );
-
-  if (!detailed) {
-    return arangodb::Result();
-  }
-
-  builder.add(
     StaticStrings::PropertiesField,
     arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
   );
-  _meta.json(builder); // regular properites
+
+  auto closePropertiesField = // close StaticStrings::PropertiesField
+    irs::make_finally([&builder]()->void { builder.close(); });
+
+  if (!_meta.json(builder)) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failure to generate definition while generating properties jSON for IResearch View in database '") + vocbase().name() + "'"
+    );
+  }
 
   arangodb::velocypack::Builder links;
-  IResearchViewMetaState metaState;
 
-  {
+  // links are not persisted, their definitions are part of the corresponding collections
+  if (!forPersistence) {
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_collections' can be asynchronously modified
 
@@ -295,20 +294,11 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
 
     for (auto& entry: _collections) {
       links.add(entry.second.first, entry.second.second.slice());
-      metaState._collections.emplace(entry.first);
     }
 
     links.close();
-  }
-
-  metaState.json(builder); // FIXME TODO remove and fix JavaScript tests (no longer required)
-
-  // links are not persisted, their definitions are part of the corresponding collections
-  if (!forPersistence) {
     builder.add(StaticStrings::LinksField, links.slice());
   }
-
-  builder.close(); // close PROPERTIES_FIELD
 
   return arangodb::Result();
 }
@@ -421,7 +411,7 @@ IResearchViewCoordinator::IResearchViewCoordinator(
     TRI_vocbase_t& vocbase,
     velocypack::Slice info,
     uint64_t planVersion
-) : LogicalView(vocbase, info, planVersion) {
+) : LogicalViewClusterInfo(vocbase, info, planVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
