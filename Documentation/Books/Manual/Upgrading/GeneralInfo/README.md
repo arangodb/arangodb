@@ -16,7 +16,7 @@ There are two main ways to upgrade ArangoDB:
 Before the Upgrade
 ------------------
 
-Before upgrading, it is reccomended to:
+Before upgrading, it is recommended to:
 
 - Check the [CHANGELOG](../../ReleaseNotes/README.md#changelogs) and the
   [list of incompatible changes](../../ReleaseNotes/README.md#incompatible-changes)
