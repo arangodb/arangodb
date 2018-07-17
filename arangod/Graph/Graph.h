@@ -50,9 +50,14 @@ class EdgeDefinition {
   std::set<std::string> const& getFrom() const { return _from; }
   std::set<std::string> const& getTo() const { return _to; }
 
-  // TODO implement these
-  bool isFrom(std::string const& vertexCollection) const;
-  bool isTo(std::string const& vertexCollection) const;
+  /// @brief Adds the edge definition as a new object {collection, from, to}
+  /// to the builder.
+  void addToBuilder(velocypack::Builder& builder) const;
+
+  bool hasFrom(std::string const &vertexCollection) const;
+  bool hasTo(std::string const &vertexCollection) const;
+
+  bool hasVertexCollection(std::string const &vertexCollection) const;
 
   /// @brief validate the structure of edgeDefinition, i.e.
   /// that it contains the correct attributes, and that they contain the correct
@@ -81,6 +86,10 @@ class Graph {
       : Graph(std::string{graphName}, info) {}
 
   virtual ~Graph() = default;
+
+  /// @brief named constructor. extracts the graph's name from the _key
+  /// attribute.
+  static Graph fromSlice(const velocypack::Slice &info);
 
  private:
   /// @brief name of this graph
@@ -134,19 +143,20 @@ class Graph {
   std::unordered_set<std::string> const& vertexCollections() const;
 
   /// @brief get the cids of all orphanCollections
-	const std::set<std::string> & orphanCollections() const;
+  std::set<std::string> const& orphanCollections() const;
 
   /// @brief get the cids of all edgeCollections
   std::unordered_set<std::string> const& edgeCollections() const;
 
   /// @brief get the cids of all edgeCollections
-  std::map<std::string, EdgeDefinition> const& edgeDefinitions()
-      const;
+  std::map<std::string, EdgeDefinition> const& edgeDefinitions() const;
 
   /// @brief get the cids of all edgeCollections
   std::vector<std::string> const& edgeDefinitionNames() const;
 
   bool hasEdgeCollection(std::string const& collectionName) const;
+  bool hasVertexCollection(std::string const& collectionName) const;
+  bool hasOrphanCollection(std::string const& collectionName) const;
 
   boost::optional<EdgeDefinition const&> getEdgeDefinition(
       std::string const& collectionName) const;

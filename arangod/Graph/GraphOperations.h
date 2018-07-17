@@ -24,6 +24,7 @@
 #define ARANGOD_GRAPH_GRAPHOPERATIONS_H
 
 #include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
 #include <chrono>
 #include <utility>
 
@@ -47,9 +48,6 @@ class GraphOperations {
 
   Graph const& graph() const { return _graph; };
   std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
-
-  /// @brief edge definitions of this graph
-  std::unordered_map<std::string, EdgeDefinition> _edgeDefs;
 
  public:
   GraphOperations() = delete;
@@ -133,14 +131,6 @@ class GraphOperations {
                                       bool createCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief add an orphan to collection to an existing graph
-  ////////////////////////////////////////////////////////////////////////////////
-  OperationResult addOrphanCollectionByGraph(
-      std::unordered_set<std::string> collections, Graph const& graph,
-      std::unordered_set<std::string> graphCollections, bool waitForSync,
-      transaction::Methods* trx);
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an orphan collection from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult eraseOrphanCollection(bool waitForSync,
@@ -163,17 +153,18 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult editEdgeDefinition(VPackSlice edgeDefinition,
+  OperationResult editEdgeDefinition(VPackSlice edgeDefinitionSlice,
                                      bool waitForSync,
                                      const std::string& edgeDefinitionName);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief change the edge definition for a specified graph
+  /// if the graph doesn't already contain a definition for the same edge
+  /// collection, this does nothing and returns success.
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult changeEdgeDefinitionsForGraph(
-      VPackSlice graph, VPackSlice edgeDefinition,
-      std::unordered_set<std::string> possibleOrphans, bool waitForSync,
-      transaction::Methods& trx);
+  OperationResult changeEdgeDefinitionForGraph(
+      const Graph& graph, const EdgeDefinition& edgeDefinition,
+      bool waitForSync, transaction::Methods& trx);
 
   OperationResult pushCollectionIfMayBeDropped(
       const std::string& colName, const std::string& graphName,
@@ -203,10 +194,10 @@ class GraphOperations {
                                  VPackSlice document, bool waitForSync,
                                  bool returnNew);
 
-  OperationResult assertEdgeCollectionAvailability(
-      std::string edgeDefinitionName);
-  OperationResult assertVertexCollectionAvailability(
-      std::string VertexDefinitionName);
+  OperationResult checkEdgeCollectionAvailability(
+      std::string edgeCollectionName);
+  OperationResult checkVertexCollectionAvailability(
+      std::string vertexCollectionName);
 };
 }  // namespace graph
 }  // namespace arangodb

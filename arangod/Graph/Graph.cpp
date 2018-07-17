@@ -204,14 +204,15 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
     insertOrphanCollections(orphans);
   }
 
-  #ifdef USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
   if (slice.hasKey(StaticStrings::GraphIsSmart)) {
     setSmartState(slice.get(StaticStrings::GraphIsSmart).getBool());
   }
   if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute)) {
-    setSmartGraphAttribute(slice.get(StaticStrings::GraphSmartGraphAttribute).copyString());
+    setSmartGraphAttribute(
+        slice.get(StaticStrings::GraphSmartGraphAttribute).copyString());
   }
-  #endif
+#endif
 
   if (slice.hasKey(StaticStrings::NumberOfShards)) {
     setNumberOfShards(slice.get(StaticStrings::NumberOfShards).getUInt());
@@ -320,6 +321,38 @@ bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
          this->getFrom() != other.getFrom() || this->getTo() != other.getTo();
 }
 
+void EdgeDefinition::addToBuilder(VPackBuilder& builder) const {
+  builder.add(VPackValue(VPackValueType::Object));
+  builder.add("collection", VPackValue(getName()));
+
+  builder.add("from", VPackValue(VPackValueType::Array));
+  for (auto const& from : getFrom()) {
+    builder.add(VPackValue(from));
+  }
+  builder.close();  // from
+
+  // to
+  builder.add("to", VPackValue(VPackValueType::Array));
+  for (auto const& to : getTo()) {
+    builder.add(VPackValue(to));
+  }
+  builder.close();  // to
+
+  builder.close();  // obj
+}
+
+bool EdgeDefinition::hasFrom(std::string const &vertexCollection) const {
+  return getFrom().find(vertexCollection) != getFrom().end();
+}
+
+bool EdgeDefinition::hasTo(std::string const &vertexCollection) const {
+  return getTo().find(vertexCollection) != getTo().end();
+}
+
+bool EdgeDefinition::hasVertexCollection(const std::string &vertexCollection) const {
+  return hasFrom(vertexCollection) || hasTo(vertexCollection);
+}
+
 // validates the type:
 // orphanDefinition : string <collectionName>
 Result Graph::validateOrphanCollection(VPackSlice const& orphanCollection) {
@@ -335,7 +368,7 @@ Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
 
   TRI_ASSERT(res.ok());
   if (res.fail()) {
-    return res;
+    return res.copy_result();
   }
 
   EdgeDefinition const& edgeDefinition = res.get();
@@ -395,6 +428,14 @@ bool Graph::hasEdgeCollection(std::string const& collectionName) const {
       (edgeDefinitions().find(collectionName) != edgeDefinitions().end()) ==
       (edgeCollections().find(collectionName) != edgeCollections().end()));
   return edgeCollections().find(collectionName) != edgeCollections().end();
+}
+
+bool Graph::hasVertexCollection(std::string const& collectionName) const {
+  return vertexCollections().find(collectionName) != vertexCollections().end();
+}
+
+bool Graph::hasOrphanCollection(std::string const& collectionName) const {
+  return orphanCollections().find(collectionName) != orphanCollections().end();
 }
 
 void Graph::graphToVpack(VPackBuilder& builder) const {
@@ -510,4 +551,19 @@ boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(
 
   TRI_ASSERT(hasEdgeCollection(collectionName));
   return {it->second};
+}
+
+Graph Graph::fromSlice(velocypack::Slice const &info) {
+  if (!info.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_GRAPH_INVALID_GRAPH,
+      "invalid graph: expected an object");
+  }
+  if (!info.get(StaticStrings::KeyString).isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_GRAPH_INVALID_GRAPH,
+      "invalid graph: _key is not a string");
+  }
+
+  return Graph(info.get(StaticStrings::KeyString).copyString(), info);
 }

@@ -27,6 +27,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
+#include <boost/range/join.hpp>
 #include <boost/variant.hpp>
 #include <utility>
 
@@ -55,156 +56,118 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
-OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
-    VPackSlice graph, VPackSlice edgeDefinition,
-    std::unordered_set<std::string> possibleOrphans, bool waitForSync,
+template<class T, class C>
+void setUnion(std::set<T> &set, C const &container) {
+  for(auto const& it : container) {
+    set.insert(it);
+  }
+}
+
+template<class T, class C>
+void setMinus(std::set<T> &set, C const &container) {
+  for(auto const& it : container) {
+    set.erase(it);
+  }
+}
+
+OperationResult GraphOperations::changeEdgeDefinitionForGraph(
+    const Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
-  std::unordered_set<std::string> graphCollections;
-  std::string edgeDefinitionName =
-      edgeDefinition.get("collection").copyString();
-  bool gotAHit = false;
+  std::string const& edgeDefinitionName = newEdgeDef.getName();
 
-  VPackSlice eDs;
-
-  if (graph.get(StaticStrings::GraphEdgeDefinitions).isArray()) {
-    eDs = graph.get(StaticStrings::GraphEdgeDefinitions);
+  auto maybeOldEdgeDef = graph.getEdgeDefinition(edgeDefinitionName);
+  if (!maybeOldEdgeDef) {
+    // Graph doesn't contain this edge definition, no need to do anything.
+    return OperationResult{};
   }
-
-  OperationResult result;
-
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-
-  if (graph.isExternal()) {
-    graph = graph.resolveExternal();
-  }
-  Graph graphCurrent = arangodb::graph::Graph(
-      graph.get(StaticStrings::KeyString).copyString(), graph);
-
-  std::map<std::string, EdgeDefinition> edgeDefs =
-      graphCurrent.edgeDefinitions();
+  EdgeDefinition const& oldEdgeDef = maybeOldEdgeDef.get();
 
   // replace edgeDefinition
   VPackBuilder builder;
   builder.openObject();
   // build edge definitions start
-  builder.add(StaticStrings::KeyString,
-              VPackValue(graph.get(StaticStrings::KeyString).copyString()));
+  builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
   builder.add(StaticStrings::GraphEdgeDefinitions,
               VPackValue(VPackValueType::Array));
 
-  for (auto const& eD : VPackArrayIterator(eDs)) {
-    if (eD.get("collection").copyString() == edgeDefinitionName) {
-      gotAHit = true;
+  // now we have to build a new VPackObject for updating the
+  // edgeDefinition
+  for (auto const &it : graph.edgeDefinitions()) {
+    auto const& edgeDef = it.second;
+
+    if (edgeDef.getName() == newEdgeDef.getName()) {
+      newEdgeDef.addToBuilder(builder);
+    } else {
+      edgeDef.addToBuilder(builder);
     }
   }
-
-  if (gotAHit) {
-    for (auto const& eD : VPackArrayIterator(eDs)) {
-      if (eD.get("collection").copyString() == edgeDefinitionName) {
-        // now we have to build a new VPackObject for updating the
-        // edgeDefinition
-
-        for (auto const& it : edgeDefs) {
-          builder.add(VPackValue(VPackValueType::Object));
-          builder.add("collection", VPackValue(it.second.getName()));
-          if (it.second.getName() == edgeDefinitionName) {
-            builder.add("from", edgeDefinition.get("from"));
-            // add potentially unused vertex from collections back to graph
-            // collections
-            for (auto const& from : it.second.getFrom()) {
-              graphCollections.emplace(from);
-            }
-          } else {
-            // from
-            builder.add("from", VPackValue(VPackValueType::Array));
-            for (auto const& from : it.second.getFrom()) {
-              builder.add(VPackValue(from));
-              graphCollections.emplace(from);
-            }
-            builder.close();  // from
-          }
-          if (it.second.getName() == edgeDefinitionName) {
-            builder.add("to", edgeDefinition.get("to"));
-            // add potentially unused vertex to collections back to graph
-            // collections
-            for (auto const& to : it.second.getTo()) {
-              graphCollections.emplace(to);
-            }
-          } else {
-            // to
-            builder.add("to", VPackValue(VPackValueType::Array));
-            for (auto const& to : it.second.getTo()) {
-              builder.add(VPackValue(to));
-              graphCollections.emplace(to);
-            }
-            builder.close();  // to
-          }
-          builder.close();  // obj
-        }
-
-      } else {
-        // collect all used collections
-        for (auto const& from : VPackArrayIterator(eD.get("from"))) {
-          graphCollections.emplace(from.copyString());
-        }
-        for (auto const& to : VPackArrayIterator(eD.get("to"))) {
-          graphCollections.emplace(to.copyString());
-        }
-      }
-    }
-    builder.close();  // array
-    builder.close();  // object
-  } else {
-    return result;
-  }
+  builder.close();  // array 'edgeDefinitions'
 
   GraphManager gmngr{ctx()};
+
+  { // add orphans:
+
+    // previous orphans may still be orphans...
+    std::set<std::string> orphans{graph.orphanCollections()};
+
+    // previous vertex collections from the overwritten may be orphaned...
+    setUnion(orphans, oldEdgeDef.getFrom());
+    setUnion(orphans, oldEdgeDef.getTo());
+
+    // ...except they occur in any other edge definition, including the new one.
+    for (auto const &it : graph.edgeDefinitions()) {
+      std::string const &edgeCollection = it.first;
+
+      EdgeDefinition const &edgeDef =
+        edgeCollection == newEdgeDef.getName() ? newEdgeDef : it.second;
+
+      setMinus(orphans, edgeDef.getFrom());
+      setMinus(orphans, edgeDef.getTo());
+    }
+
+    builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
+    for (auto const &orphan : orphans) {
+      builder.add(VPackValue(orphan));
+    }
+    builder.close(); // array 'orphanCollections'
+  }
+
+  builder.close();  // object (the graph)
+
+  std::set<std::string> newCollections;
+
+  // add collections that didn't exist in the graph before to newCollections:
+  for (auto const &it : boost::join(newEdgeDef.getFrom(), newEdgeDef.getTo())) {
+    if (!graph.hasVertexCollection(it) && !graph.hasOrphanCollection(it)) {
+      newCollections.emplace(it);
+    }
+  }
+
   VPackBuilder collectionOptions;
   _graph.createCollectionOptions(collectionOptions, waitForSync);
-  for (auto const& po : possibleOrphans) {
-    gmngr.createVertexCollection(po, waitForSync, collectionOptions.slice());
-  }
-
-  VPackSlice newEdgeDefs =
-      builder.slice().get(StaticStrings::GraphEdgeDefinitions);
-
-  std::unordered_set<std::string> putToOrphan;
-  std::unordered_set<std::string> potentialOrphanCollections;
-  for (auto const& newEdgeDef : VPackArrayIterator(newEdgeDefs)) {
-    for (auto const& from :
-         VPackArrayIterator(newEdgeDef.get(StaticStrings::GraphFrom))) {
-      potentialOrphanCollections.emplace(from.copyString());
+  for (auto const& newCollection : newCollections) {
+    // While the collection is new in the graph, it may still already exist.
+    if (GraphManager::getCollectionByName(ctx()->vocbase(), newCollection)) {
+      continue;
     }
-    for (auto const& to :
-         VPackArrayIterator(newEdgeDef.get(StaticStrings::GraphTo))) {
-      potentialOrphanCollections.emplace(to.copyString());
-    }
-  }
-  for (auto const& gc : graphCollections) {
-    auto search = potentialOrphanCollections.find(gc);
-    if (search == potentialOrphanCollections.end()) {
-      // not found, add to orphans
-      putToOrphan.emplace(gc);
+
+    OperationResult result = gmngr.createVertexCollection(
+        newCollection, waitForSync, collectionOptions.slice());
+    if (result.fail()) {
+      return result;
     }
   }
 
-  result =
-      addOrphanCollectionByGraph(putToOrphan, graphCurrent, potentialOrphanCollections, waitForSync, &trx);
-  if (result.fail()) {
-    return result;
-  }
-
+  OperationOptions options;
+  options.waitForSync = waitForSync;
   // now write to database
-  result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
-
-  return result;
+  return trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 }
 
 OperationResult GraphOperations::eraseEdgeDefinition(
     bool waitForSync, std::string edgeDefinitionName, bool dropCollection) {
   // check if edgeCollection is available
-  OperationResult result = assertEdgeCollectionAvailability(edgeDefinitionName);
+  OperationResult result = checkEdgeCollectionAvailability(edgeDefinitionName);
   if (result.fail()) {
     return result;
   }
@@ -262,8 +225,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   }
 
   for (auto const& po : possibleOrphans) {
-    if (std::find(usedVertexCollections.begin(), usedVertexCollections.end(),
-                  po) == usedVertexCollections.end()) {
+    if (usedVertexCollections.find(po) == usedVertexCollections.end()) {
       newOrphColls.add(VPackValue(po));
     } else {
       collectionsToMayBeRemoved.emplace(po);
@@ -329,14 +291,10 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   return result;
 }
 
-OperationResult GraphOperations::assertEdgeCollectionAvailability(
-    std::string edgeDefinitionName) {
-  bool found = false;
-  for (auto const& edgeCollection : _graph.edgeCollections()) {
-    if (edgeCollection == edgeDefinitionName) {
-      found = true;
-    }
-  }
+OperationResult GraphOperations::checkEdgeCollectionAvailability(
+    std::string edgeCollectionName) {
+  bool found = _graph.edgeCollections().find(edgeCollectionName) !=
+               _graph.edgeCollections().end();
 
   if (!found) {
     return OperationResult(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
@@ -345,39 +303,50 @@ OperationResult GraphOperations::assertEdgeCollectionAvailability(
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-OperationResult GraphOperations::assertVertexCollectionAvailability(
-    std::string vertexDefinitionName) {
-  GraphManager gmngr{ctx()};
-
+OperationResult GraphOperations::checkVertexCollectionAvailability(
+    std::string vertexCollectionName) {
   std::shared_ptr<LogicalCollection> def =
-      gmngr.getCollectionByName(ctx()->vocbase(), vertexDefinitionName);
+      GraphManager::getCollectionByName(ctx()->vocbase(), vertexCollectionName);
+
   if (def == nullptr) {
-    return OperationResult(
-            Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
-                   vertexDefinitionName + " " +
-                   std::string{TRI_errno_string(
-                           TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
+    return OperationResult(Result(
+        TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+        vertexCollectionName + " " +
+            std::string{
+                TRI_errno_string(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
   }
 
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
 OperationResult GraphOperations::editEdgeDefinition(
-    VPackSlice edgeDefinition, bool waitForSync,
+    VPackSlice edgeDefinitionSlice, bool waitForSync,
     const std::string& edgeDefinitionName) {
   std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
-      EdgeDefinition::sortEdgeDefinition(edgeDefinition);
-  edgeDefinition = velocypack::Slice(buffer->data());
+      EdgeDefinition::sortEdgeDefinition(edgeDefinitionSlice);
+  edgeDefinitionSlice = velocypack::Slice(buffer->data());
+  if (!edgeDefinitionSlice.get("collection").isString()) {
+    return OperationResult(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
+  }
+  std::string currentEdgeDefinitionName =
+      edgeDefinitionSlice.get("collection").copyString();
+
+  auto maybeEdgeDef =
+    EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
+  if (!maybeEdgeDef) {
+    return OperationResult{maybeEdgeDef};
+  }
+  EdgeDefinition const& edgeDefinition = maybeEdgeDef.get();
 
   // check if edgeCollection is available
-  OperationResult result = assertEdgeCollectionAvailability(edgeDefinitionName);
+  OperationResult result = checkEdgeCollectionAvailability(edgeDefinitionName);
   if (result.fail()) {
     return result;
   }
 
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Array));
-  builder.add(edgeDefinition);
+  builder.add(edgeDefinitionSlice);
   builder.close();
 
   GraphManager gmngr{ctx()};
@@ -389,52 +358,18 @@ OperationResult GraphOperations::editEdgeDefinition(
     return result;
   }
 
-  std::unordered_set<std::string> possibleOrphans;
-  std::string currentEdgeDefinitionName;
-  for (auto const& ed : _graph.edgeCollections()) {
-    if (edgeDefinition.get("collection").isString()) {
-      if (edgeDefinition.get("collection").copyString() == ed) {
-        currentEdgeDefinitionName = ed;
-      }
-    }
-  }
-  if (currentEdgeDefinitionName.empty()) {
+  if (!_graph.hasEdgeCollection(currentEdgeDefinitionName)) {
     return OperationResult(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
   }
 
-  std::map<std::string, EdgeDefinition> edgeDefs =
-      _graph.edgeDefinitions();
-  EdgeDefinition const& currentEdgeDefinition =
-      edgeDefs.at(currentEdgeDefinitionName);
-
-  std::set<std::string> currentCollections;
-  std::set<std::string> newCollections;
-  for (auto const& from : currentEdgeDefinition.getFrom()) {
-    currentCollections.emplace(from);
-  }
-  for (auto const& to : currentEdgeDefinition.getTo()) {
-    currentCollections.emplace(to);
-  }
-  for (auto const& it : VPackArrayIterator(edgeDefinition.get("from"))) {
-    if (it.isString()) {
-      newCollections.emplace(it.copyString());
-    }
-  }
-  for (auto const& it : VPackArrayIterator(edgeDefinition.get("to"))) {
-    if (it.isString()) {
-      newCollections.emplace(it.copyString());
-    }
-  }
-
-  for (auto const& colName : currentCollections) {
-    if (newCollections.find(colName) == newCollections.end()) {
-      possibleOrphans.emplace(colName);
-    }
-  }
   // change definition for ALL graphs
   VPackBuilder graphsBuilder;
   gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
   VPackSlice graphs = graphsBuilder.slice();
+
+  if (!graphs.get("graphs").isArray()) {
+    return OperationResult{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+  }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
@@ -445,15 +380,13 @@ OperationResult GraphOperations::editEdgeDefinition(
     return OperationResult(res);
   }
 
-  if (graphs.get("graphs").isArray()) {
-    for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-      result = changeEdgeDefinitionsForGraph(singleGraph.resolveExternals(),
-                                             edgeDefinition, possibleOrphans,
-                                             waitForSync, trx);
-    }
-    if (result.fail()) {
-      return result;
-    }
+  for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
+    Graph graph = Graph::fromSlice(singleGraph.resolveExternals());
+    result =
+      changeEdgeDefinitionForGraph(graph, edgeDefinition, waitForSync, trx);
+  }
+  if (result.fail()) {
+    return result;
   }
 
   res = trx.finish(TRI_ERROR_NO_ERROR);
@@ -463,56 +396,9 @@ OperationResult GraphOperations::editEdgeDefinition(
   return result;
 };
 
-OperationResult GraphOperations::addOrphanCollectionByGraph(
-    std::unordered_set<std::string> collections, Graph const& graph,
-    std::unordered_set<std::string> graphCollections, bool waitForSync,
-    transaction::Methods* trx) {
-  GraphManager gmngr{ctx()};
-  std::shared_ptr<LogicalCollection> def;
-  OperationResult result;
-
-  VPackBuilder collectionsOptions;
-  graph.createCollectionOptions(collectionsOptions, waitForSync);
-  if (result.fail()) {
-    return result;
-  }
-
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
-  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-  for (auto const& orph : graph.orphanCollections()) {
-    bool found = false;
-    // only add, if they are not within the new edge definition
-    for (auto const& gc : graphCollections) {
-      if (gc == orph) { // TODO FIX ME, do not add orphs which are not included in the new edge definition
-        found = true;
-      }
-    }
-    if (!found) {
-      builder.add(VPackValue(orph));
-    }
-  }
-  for (auto const& collectionName : collections) {
-    builder.add(VPackValue(collectionName));
-  }
-  builder.close();  // array
-  builder.close();  // object
-
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-
-  result =
-      trx->update(StaticStrings::GraphCollection, builder.slice(), options);
-  if (result.fail()) {
-    return result;
-  }
-
-  return result;
-}
-
 OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
-                                                     bool waitForSync, bool createCollection) {
+                                                     bool waitForSync,
+                                                     bool createCollection) {
   GraphManager gmngr{ctx()};
   std::string collectionName = document.get("collection").copyString();
   std::shared_ptr<LogicalCollection> def;
@@ -523,7 +409,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   if (result.fail()) {
     return result;
   }
-  def = gmngr.getCollectionByName(ctx()->vocbase(), collectionName);
+  def = GraphManager::getCollectionByName(ctx()->vocbase(), collectionName);
   if (def == nullptr && createCollection) {
     result = gmngr.createVertexCollection(collectionName, waitForSync,
                                           collectionsOptions.slice());
@@ -611,7 +497,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   }
 
   // check if collection exists in the database
-  OperationResult result = assertVertexCollectionAvailability(collectionName);
+  OperationResult result = checkVertexCollectionAvailability(collectionName);
   if (result.fail()) {
     return result;
   }
@@ -699,7 +585,7 @@ OperationResult GraphOperations::addEdgeDefinition(
   // ... in different graph
   GraphManager gmngr{ctx()};
 
-  OperationResult result = OperationResult{gmngr.checkForEdgeDefinitionConflicts(edgeDefinition)};
+  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(edgeDefinition)};
   if (result.fail()) {
     return result;
   }
@@ -717,7 +603,7 @@ OperationResult GraphOperations::addEdgeDefinition(
   if (result.fail()) {
     return result;
   }
-  std::unordered_set<std::string> usedVertices;
+  std::unordered_set<std::string> usedVertexCollections;
 
   std::map<std::string, EdgeDefinition> edgeDefs =
       _graph.edgeDefinitions();
@@ -733,14 +619,14 @@ OperationResult GraphOperations::addEdgeDefinition(
     // from
     builder.add("from", VPackValue(VPackValueType::Array));
     for (auto const& from : it.second.getFrom()) {
-      usedVertices.emplace(from);
+      usedVertexCollections.emplace(from);
       builder.add(VPackValue(from));
     }
     builder.close();  // from
     // to
     builder.add("to", VPackValue(VPackValueType::Array));
     for (auto const& to : it.second.getTo()) {
-      usedVertices.emplace(to);
+      usedVertexCollections.emplace(to);
       builder.add(VPackValue(to));
     }
     builder.close();  // to
@@ -751,8 +637,8 @@ OperationResult GraphOperations::addEdgeDefinition(
 
   builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
   for (auto const& orphan : _graph.orphanCollections()) {
-    auto it = usedVertices.find(orphan);
-    if (it != usedVertices.end()) {
+    auto it = usedVertexCollections.find(orphan);
+    if (it != usedVertexCollections.end()) {
       // not found, so use in orphans
       builder.add(VPackValue(orphan));
     }
@@ -1101,7 +987,6 @@ OperationResult GraphOperations::createEdge(const std::string& definitionName,
   }
 
   OperationOptions options;
-  VPackSlice search;
 
   VPackBuilder bT;
   {
