@@ -121,7 +121,7 @@ If we use:
 
 then the commands you have to use are reported in the following subparagraphs.
 
-### Agency  
+### distributing the Agency
  
 On 192.168.1.1:
 
@@ -162,7 +162,7 @@ arangod --server.endpoint tcp://0.0.0.0:8531 \
 	--database.directory agent
 ```
 
-### Single Server Instances
+### distribute the Single Server Instances
 
 On 192.168.1.1:
 

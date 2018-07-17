@@ -165,7 +165,7 @@ If we use:
 
 then the commands you have to use are reported in the following subparagraphs.
 
-### Agency  
+### distributing the Agency
  
 On 192.168.1.1:
 
