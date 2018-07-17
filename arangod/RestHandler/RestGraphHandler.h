@@ -62,11 +62,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   char const* name() const final { return "RestGraphHandler"; }
 
-  bool isDirect() const override { return false; }
-
-  size_t queue() const override { return JobQueue::BACKGROUND_QUEUE; }
-
   RestStatus execute() override;
+
+  RequestLane lane() const override;
 
  private:
   boost::optional<RestStatus> executeGharial();

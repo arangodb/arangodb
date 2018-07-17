@@ -1118,3 +1118,7 @@ Result RestGraphHandler::graphActionReadConfig(
 
   return Result();
 }
+
+RequestLane RestGraphHandler::lane() const {
+  return RequestLane::CLIENT_SLOW;
+}

@@ -1122,7 +1122,7 @@ OperationResult GraphOperations::removeVertex(
       arangodb::aql::Query query(true, ctx()->vocbase(), queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
 
-      auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+      auto queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 
       if (queryResult.code != TRI_ERROR_NO_ERROR) {
         return OperationResult(queryResult.code);
