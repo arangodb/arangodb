@@ -63,8 +63,8 @@ Geo indexes
   `geo1`and `geo2`.
 
 
-RocksDB engine
---------------
+RocksDB engine data storage format
+----------------------------------
 
 Installations that start using ArangoDB 3.4 will use an optimized on-disk format
 for storing documents using the RocksDB storage engine. This format cannot be used
@@ -74,6 +74,11 @@ install to 3.3 or earlier when using the RocksDB engine.
 Installations that were originally set up with older versions of ArangoDB (e.g. 3.2
 or 3.3) will continue to use the existing on-disk format for the RocksDB engine
 even with ArangoDB 3.4.
+
+In order to use the new storage format when upgrading an existing 3.3 installation
+to 3.4, it is necessary to create a logical dump of the database(s) first, stop
+the ArangoDB instance, remove the database directory, and restore data from the
+logical dump into it.
 
 
 Threading and request handling
@@ -240,6 +245,11 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
 
   Due to internal changes in AQL this is not detected anymore in 3.4, so this 
   particular warning will not be raised.
+
+  Additionally, using collections in arbitrary AQL expressions as above is unsupported
+  in a mixed cluster that is running a 3.3 coordinator and 3.4 DB server(s). The
+  DB server(s) running 3.4 will in this case not be able to use a collection in an
+  arbitrary expression, and instead throw an error.
 
 - the undocumented built-in visitor functions for AQL traversals have been removed,
   as they were based on JavaScript implementations:
