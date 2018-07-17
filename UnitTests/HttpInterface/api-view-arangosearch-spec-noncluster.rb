@@ -548,7 +548,7 @@ describe ArangoDB do
       it "accept updates via PATCH as well" do
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
-                { "commit": { "commitIntervalMsec": 3 } }
+                { "properties": { "commit": { "commitIntervalMsec": 3 } } }
                 JSON
         doc1 = ArangoDB.log_patch("#{prefix}-accept-patch", cmd1, :body => body1)
         doc1.code.should eq(200)
