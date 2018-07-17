@@ -68,8 +68,8 @@ void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
 void FlushFeature::prepare() {
   // At least for now we need FlushThread for ArangoSearch views
   // on a DB/Single server only, so we avoid starting FlushThread on
-  // a coordinator.
-  setEnabled(!arangodb::ServerState::instance()->isCoordinator());
+  // a coordinator and on agency nodes.
+  setEnabled(!arangodb::ServerState::instance()->isCoordinator() && !arangodb::ServerState::instance()->isAgent());
 }
 
 void FlushFeature::start() {
