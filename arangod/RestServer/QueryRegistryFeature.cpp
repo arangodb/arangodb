@@ -46,9 +46,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
       _queryCacheEntries(128),
       _queryRegistryTTL(DefaultQueryTTL) {
   setOptional(false);
-  startsAfter("DatabasePath");
-  startsAfter("Database");
-  startsAfter("Cluster");
+  startsAfter("V8Phase");
 }
 
 void QueryRegistryFeature::collectOptions(

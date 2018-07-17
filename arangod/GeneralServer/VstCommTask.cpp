@@ -42,7 +42,6 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 

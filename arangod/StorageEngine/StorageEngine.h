@@ -82,11 +82,9 @@ class StorageEngine : public application_features::ApplicationFeature {
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
 
+    startsAfter("BasicsPhase");
     startsAfter("CacheManager");
-    startsAfter("DatabasePath");
-    startsAfter("FileDescriptors");
     startsBefore("StorageEngine");
-    startsAfter("Temp");
     startsAfter("TransactionManager");
     startsAfter("ViewTypes");
   }

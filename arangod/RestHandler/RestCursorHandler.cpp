@@ -439,6 +439,8 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   result.openObject();
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+  // TODO maybe pull out the actual block fetching, so that this just builds
+  // the result and we may wait before.
   Result r = cursor->dumpSync(result);
   result.close();
 

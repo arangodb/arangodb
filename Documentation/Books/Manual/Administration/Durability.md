@@ -15,6 +15,13 @@ specifying the following configuration options:
 
 @startDocuBlock WalLogfileSyncInterval
 
+`--rocksdb.sync-interval`
+
+The interval (in milliseconds) that ArangoDB will use to automatically
+synchronize data in RocksDB's write-ahead logs to disk. Automatic syncs will
+only be performed for not-yet synchronized data, and only for operations that
+have been executed without the *waitForSync* attribute.
+
 
 Per-collection configuration
 ----------------------------
@@ -33,16 +40,16 @@ Many data-modification operations and also ArangoDB's transactions allow to spec
 a *waitForSync* attribute, which when set ensures the operation data has been 
 synchronized to disk when the operation returns.
 
-Disk-Usage Configuration
-------------------------
+Disk-Usage Configuration (MMFiles engine)
+-----------------------------------------
 
-The amount of disk space used by ArangoDB is determined by a few configuration
+The amount of disk space used by the MMFiles engine is determined by a few configuration
 options. 
 
 Global Configuration
 --------------------
 
-The total amount of disk storage required by ArangoDB is determined by the size of
+The total amount of disk storage required by the MMFiles engine is determined by the size of
 the write-ahead logfiles plus the sizes of the collection journals and datafiles.
 
 There are the following options for configuring the number and sizes of the write-ahead

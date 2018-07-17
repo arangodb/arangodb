@@ -51,14 +51,11 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
       _result(res),
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
-  startsAfter("Authentication");
-  startsAfter("Cluster");
-  startsAfter("Database");
-  startsAfter("Scheduler");
+
+  startsAfter("AQLPhase");
+
   startsAfter("Statistics");
   startsAfter("Upgrade");
-  startsAfter("V8Dealer");
-  startsAfter("Temp");
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
