@@ -1,6 +1,10 @@
 v3.3.13 (XXXX-XX-XX)
 --------------------
 
+* fixed graph creation sometimes failing with 'edge collection
+  already used in edge def' when the edge definition contained multiple vertex
+  collections, despite the edge definitions being identical
+
 * inception could get caught in a trap, where agent configuration
   version and timeout multiplier lead to incapacitated agency
 
