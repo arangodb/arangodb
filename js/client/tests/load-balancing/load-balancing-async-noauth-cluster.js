@@ -143,37 +143,7 @@ function AsyncSuite () {
       assertEqual(result.status, 204);
       assertEqual(result.headers["x-arango-async-id"], undefined)
 
-      // TODO figure out cluster-wide list checks
-      /*url = `${baseJobUrl}/done`;
-      result = sendRequest('GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);
-
-      url = `${baseJobUrl}/pending`;
-      result = sendRequest('GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertTrue(result.body.indexOf(jobId) !== -1);*/
-
       require('internal').wait(11.0);
-
-      // TODO figure out cluster-wide list checks
-      /*url = `${baseJobUrl}/done`;
-      result = sendRequest('GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertTrue(result.body.indexOf(jobId) !== -1);
-
-      url = `${baseJobUrl}/pending`;
-      result = sendRequest('GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);*/
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest('PUT', url, {}, {}, false);
@@ -186,6 +156,71 @@ function AsyncSuite () {
       assertEqual(result.body.result[0], 42)
       assertFalse(result.body.hasMore);
     },
+
+    testAsyncCursorForwardingDelete: function() {
+      let url = baseCursorUrl;
+      const headers = {
+        "X-Arango-Async": "store"
+      };
+      const query = {
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`,
+      };
+      let result = sendRequest('POST', url, headers, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.body, {});
+      assertEqual(result.status, 202);
+      assertFalse(result.headers["x-arango-async-id"] === undefined)
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+
+      const jobId = result.headers["x-arango-async-id"];
+      url = `${baseJobUrl}/${jobId}`;
+      result = sendRequest('PUT', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 204);
+      assertEqual(result.headers["x-arango-async-id"], undefined)
+
+      url = `${baseJobUrl}/${jobId}`;
+      result = sendRequest('DELETE', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 200);
+      assertEqual(result.headers["x-arango-async-id"], undefined)
+    },
+
+    testAsyncCursorForwardingCancel: function() {
+      let url = baseCursorUrl;
+      const headers = {
+        "X-Arango-Async": "store"
+      };
+      const query = {
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`,
+      };
+      let result = sendRequest('POST', url, headers, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.body, {});
+      assertEqual(result.status, 202);
+      assertFalse(result.headers["x-arango-async-id"] === undefined)
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+
+      const jobId = result.headers["x-arango-async-id"];
+      url = `${baseJobUrl}/${jobId}`;
+      result = sendRequest('PUT', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 204);
+      assertEqual(result.headers["x-arango-async-id"], undefined)
+
+      url = `${baseJobUrl}/${jobId}/cancel`;
+      result = sendRequest('PUT', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 200);
+      assertEqual(result.headers["x-arango-async-id"], undefined)
+    },
+
   };
 }
 

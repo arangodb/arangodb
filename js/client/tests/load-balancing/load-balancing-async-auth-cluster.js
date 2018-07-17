@@ -166,37 +166,7 @@ function CursorSyncAuthSuite () {
       assertEqual(result.status, 204);
       assertEqual(result.headers["x-arango-async-id"], undefined)
 
-      // TODO figure out cluster-wide list checks
-      /*url = `${baseJobUrl}/done`;
-      result = sendRequest(users[0], 'GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);
-
-      url = `${baseJobUrl}/pending`;
-      result = sendRequest(users[0], 'GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);*/
-
       require('internal').wait(11.0);
-
-      // TODO figure out cluster-wide list checks
-      /*url = `${baseJobUrl}/done`;
-      result = sendRequest(users[0], 'GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);
-
-      url = `${baseJobUrl}/pending`;
-      result = sendRequest(users[0], 'GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);*/
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest(users[0], 'PUT', url, {}, {}, false);
@@ -210,7 +180,69 @@ function CursorSyncAuthSuite () {
       assertFalse(result.body.hasMore);
     },
 
-    testAsyncForwardingDifferentUser: function() {
+    testAsyncForwardingSameUserDelete: function() {
+      let url = baseCursorUrl;
+      const headers = {
+        "X-Arango-Async": "store"
+      };
+      const query = {
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
+      };
+      let result = sendRequest(users[0], 'POST', url, headers, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.body, {});
+      assertEqual(result.status, 202);
+      assertFalse(result.headers["x-arango-async-id"] === undefined)
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+
+      const jobId = result.headers["x-arango-async-id"];
+      url = `${baseJobUrl}/${jobId}`;
+      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 204);
+      assertEqual(result.headers["x-arango-async-id"], undefined)
+
+      require('internal').wait(11.0);
+
+      url = `${baseJobUrl}/${jobId}`;
+      result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.body.error);
+      assertEqual(result.status, 200);
+    },
+
+    testAsyncForwardingSameUserCancel: function() {
+      let url = baseCursorUrl;
+      const headers = {
+        "X-Arango-Async": "store"
+      };
+      const query = {
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
+      };
+      let result = sendRequest(users[0], 'POST', url, headers, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.body, {});
+      assertEqual(result.status, 202);
+      assertFalse(result.headers["x-arango-async-id"] === undefined)
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+
+      const jobId = result.headers["x-arango-async-id"];
+      url = `${baseJobUrl}/${jobId}`;
+      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+
+      url = `${baseJobUrl}/${jobId}/cancel`;
+      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.body.error);
+      assertEqual(result.status, 200);
+    },
+
+    testAsyncForwardingDifferentUserBasic: function() {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
@@ -234,31 +266,41 @@ function CursorSyncAuthSuite () {
       assertEqual(result.status, 404);
       assertEqual(result.headers["x-arango-async-id"], undefined)
 
-      url = `${baseJobUrl}/done`;
-      result = sendRequest(users[1], 'GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);
-
-      url = `${baseJobUrl}/pending`;
-      result = sendRequest(users[1], 'GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);
-
       require('internal').wait(11.0);
-
-      url = `${baseJobUrl}/done`;
-      result = sendRequest(users[1], 'GET', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertEqual(result.body, []);
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest(users[1], 'PUT', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 404);
+    },
+
+    testAsyncForwardingDifferentUserDelete: function() {
+      let url = baseCursorUrl;
+      const headers = {
+        "X-Arango-Async": "store"
+      };
+      const query = {
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
+      };
+      let result = sendRequest(users[0], 'POST', url, headers, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.body, {});
+      assertEqual(result.status, 202);
+      assertFalse(result.headers["x-arango-async-id"] === undefined)
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+
+      const jobId = result.headers["x-arango-async-id"];
+      url = `${baseJobUrl}/${jobId}`;
+      result = sendRequest(users[1], 'PUT', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 404);
+      assertEqual(result.headers["x-arango-async-id"], undefined)
+
+      url = `${baseJobUrl}/${jobId}`;
+      result = sendRequest(users[1], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 404);

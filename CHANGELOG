@@ -1,6 +1,13 @@
 devel
 -----
 
+* Added load balancer support and user-restriction to async jobs API.
+
+  If an async job is accessed on a different coordinator than where it was
+  created, the request(s) will be forwarded to the correct coordinator. If a
+  job is accessed by a different user than the one who created it, the request
+  will be denied.
+
 * changed the thread handling in the scheduler. `--server.threads` will be
   the maximum number of threads for the scheduler.
 
