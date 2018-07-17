@@ -1,6 +1,8 @@
 devel
 -----
 
+* disable V8 engine and JavaScript APIs for agency nodes
+
 * renamed MMFiles engine compactor thread from "Compactor" to "MMFilesCompactor".
   
   This change will be visible only on systems which allow assigning names to
