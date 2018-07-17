@@ -39,7 +39,7 @@ function runSetup () {
   db._dropView('UnitTestsRecoveryView');
   var view = db._createView('UnitTestsRecoveryView', 'arangosearch', {});
 
-  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
+  var meta = { properties: { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } } };
 
   for (let i = 0; i < 10000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
@@ -47,7 +47,7 @@ function runSetup () {
 
   view.properties(meta);
 
-  meta = {
+  meta = { properties: {
     commit: {
       commitIntervalMsec: 10000,
       consolidate: {
@@ -57,7 +57,7 @@ function runSetup () {
       }
     },
     locale: "de_DE.UTF-16"
-  };
+  } };
   view.properties(meta, true); // partial update
 
   c.save({ name: 'crashme' }, { waitForSync: true });
@@ -84,7 +84,7 @@ function recoverySuite () {
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().links;
+      var p = v.properties().properties.links;
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
@@ -92,7 +92,7 @@ function recoverySuite () {
       assertEqual(result[0], 10000);
 
       // validate state
-      var properties = v.properties();
+      var properties = v.properties().properties;
       assertEqual(10, properties.commit.cleanupIntervalStep);
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);

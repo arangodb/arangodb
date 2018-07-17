@@ -24,6 +24,7 @@
 #include "v8-views.h"
 #include "Basics/conversions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
@@ -161,17 +162,8 @@ static void JS_CreateViewVocbase(
   if (!args[2]->IsObject()) {
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
+
   v8::Handle<v8::Object> obj = args[2]->ToObject();
-
-  // fiddle "name" attribute into the object
-  obj->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name));
-
-  VPackBuilder full;
-  full.openObject();
-  full.add(arangodb::StaticStrings::DataSourceName, VPackValue(name));
-  full.add(arangodb::StaticStrings::DataSourceType, VPackValue(type));
-  VPackSlice infoSlice;
-
   VPackBuilder properties;
   int res = TRI_V8ToVPack(isolate, properties, obj, false);
 
@@ -179,12 +171,22 @@ static void JS_CreateViewVocbase(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  full.add("properties", properties.slice());
-  full.close();
-  infoSlice = full.slice();
+  arangodb::velocypack::Builder header;
+
+  header.openObject();
+  header.add(arangodb::StaticStrings::DataSourceName, VPackValue(name));
+  header.add(arangodb::StaticStrings::DataSourceType, VPackValue(type));
+  if (properties.slice().hasKey("properties")) header.add("properties", arangodb::velocypack::Slice::emptyObjectSlice()); // FIXME TODO remove
+  header.close();
+
+  // in basics::VelocyPackHelper::merge(...) values from rhs take precedence
+  // use same merge args as in methods::Collections::create(...)
+  auto builder = arangodb::basics::VelocyPackHelper::merge(
+    properties.slice(), header.slice(), false, true
+  );
 
   try {
-    auto view = vocbase.createView(infoSlice);
+    auto view = vocbase.createView(builder.slice());
 
     TRI_ASSERT(view != nullptr);
 
@@ -466,11 +468,7 @@ static void JS_PropertiesViewVocbase(
   builder.close();
 
   // return the current parameter set
-  // FIXME TODO this should be the full view representation similar to JS_PropertiesVocbaseCol(...), not just "properties"
-  auto result =
-    TRI_VPackToV8(isolate, builder.slice().get("properties")) ->ToObject();
-
-  TRI_V8_RETURN(result);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()) ->ToObject());
   TRI_V8_TRY_CATCH_END
 }
 

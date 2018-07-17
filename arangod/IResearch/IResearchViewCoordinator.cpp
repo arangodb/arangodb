@@ -431,10 +431,17 @@ bool IResearchViewCoordinator::visitCollections(
 }
 
 arangodb::Result IResearchViewCoordinator::updateProperties(
-    velocypack::Slice const& properties,
+    velocypack::Slice const& slice,
     bool partialUpdate,
     bool /*doSync*/
 ) {
+  /*FIXME use
+  if (slice.isObject() && !slice.hasKey(StaticStrings::PropertiesField)) {
+    return arangodb::Result(); // nothing to update
+  }
+  */
+  auto properties = slice.get(StaticStrings::PropertiesField);
+
   try {
     IResearchViewMeta meta;
     std::string error;

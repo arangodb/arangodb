@@ -56,7 +56,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = { 
+      var meta = { properties: {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
@@ -65,7 +65,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
             }
           }
         }
-      };
+      } };
       v.properties(meta);
 
       ac.save({ a: "foo", id : 0 });
@@ -90,7 +90,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     tearDown : function () {
-      var meta = { links : { "UnitTestsCollection": null } };
+      var meta = { properties: { links : { "UnitTestsCollection": null } } };
       v.properties(meta);
       v.drop();
       db._drop("UnitTestsCollection");

@@ -1185,13 +1185,21 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._createView = function (name, type, properties) {
-  var body = {
-    'name': name,
-    'type': type,
-    'properties': properties
-  };
+  var body = properties === undefined ? {} : properties;
 
-  if (properties === undefined) {
+  if (name === undefined) {
+    delete body['name'];
+  } else {
+    body['name'] = name;
+  }
+
+  if (type === undefined) {
+    delete body['type'];
+  } else {
+    body['type'] = type;
+  }
+//FIXME TODO remove
+  if (body['properties'] === undefined) {
     body['properties'] = {};
   }
 
@@ -1248,7 +1256,7 @@ ArangoDatabase.prototype._views = function () {
 
   var result = [];
   if (requestResult !== undefined) {
-    var views = requestResult;
+    var views = requestResult.result;
     var i;
 
     // add all views to object

@@ -642,7 +642,7 @@ SECTION("test_update_properties") {
 
     // update properties - full update
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"commit\": { \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 } } }");
       CHECK(view->updateProperties(props->slice(), false, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -693,7 +693,7 @@ SECTION("test_update_properties") {
 
     // partially update properties
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"commit\": { \"commitIntervalMsec\": 42 } } }");
       CHECK(fullyUpdatedView->updateProperties(props->slice(), true, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -847,11 +847,11 @@ SECTION("test_update_links_partial_remove") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"properties\": { \"links\" : {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
-    "} }"
+    "} } }"
   );
   CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // add links
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -1087,9 +1087,9 @@ SECTION("test_update_links_partial_remove") {
   }
 
   auto const updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"properties\": { \"links\" : {"
     "  \"2\" : null "
-    "} }"
+    "} } }"
   );
   CHECK(view->updateProperties(updateJson->slice(), true, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -1403,10 +1403,10 @@ SECTION("test_update_links_partial_add") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"properties\": { \"links\" : {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
-    "} }"
+    "} } }"
   );
   CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // add links
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -1581,9 +1581,9 @@ SECTION("test_update_links_partial_add") {
   }
 
   auto const updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"properties\": { \"links\" : {"
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
-    "} }"
+    "} } }"
   );
   CHECK(view->updateProperties(updateJson->slice(), true, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -1811,7 +1811,7 @@ SECTION("test_update_links_partial_add") {
 
   // partial update - empty delta
   {
-    auto const updateJson = arangodb::velocypack::Parser::fromJson("{ }");
+    auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": {} }");
     CHECK(view->updateProperties(updateJson->slice(), true, true).ok()); // empty properties -> should not affect plan version
     CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
   }
@@ -1969,10 +1969,10 @@ SECTION("test_update_links_replace") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"properties\": { \"links\" : {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
-    "} }"
+    "} } }"
   );
   CHECK(view->updateProperties(linksJson->slice(), false, true).ok()); // add link
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -2158,9 +2158,9 @@ SECTION("test_update_links_replace") {
   }
 
   auto updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"properties\": { \"links\" : {"
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
-    "} }"
+    "} } }"
   );
   CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -2278,10 +2278,10 @@ SECTION("test_update_links_replace") {
   }
 
   updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"properties\": { \"links\" : {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : null "
-    "} }"
+    "} } }"
   );
   CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -2536,11 +2536,11 @@ SECTION("test_update_links_clear") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"locale\": \"en\", \"links\" : {"
+    "{ \"properties\": { \"locale\": \"en\", \"links\" : {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
-    "} }"
+    "} } }"
   );
   CHECK(view->updateProperties(linksJson->slice(), false, true).ok()); // add link
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -2786,7 +2786,7 @@ SECTION("test_update_links_clear") {
     CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
   }
 
-  auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": {}}");
+  auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": {} } }");
   CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -2924,7 +2924,7 @@ SECTION("test_drop_link") {
       CHECK(arangodb::AgencyComm().setValue(currentCollectionPath, value->slice(), 0.0).successful());
     }
 
-    auto linksJson = arangodb::velocypack::Parser::fromJson("{ \"links\" : { \"testCollection\" : { \"includeAllFields\" : true } } }");
+    auto linksJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\" : { \"testCollection\" : { \"includeAllFields\" : true } } } }");
     CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // add link
     CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion();
