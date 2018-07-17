@@ -466,7 +466,7 @@ describe ArangoDB do
         doc3 = ArangoDB.log_get("#{prefix}-short-list", cmd3)
         doc3.code.should eq(200)
         doc3.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc3.parsed_response.length.should eq(2)
+        doc3.parsed_response.length.should eq(3)
         doc3.parsed_response[0]['name'].should eq("abc")
         doc3.parsed_response[1]['name'].should eq("def")
         doc3.parsed_response[0]['type'].should eq("arangosearch")
@@ -515,7 +515,7 @@ describe ArangoDB do
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
         doc1.parsed_response['name'].should eq('abc')
         doc1.parsed_response['type'].should eq('arangosearch')
-        doc1.parsed_response['properties'].should eq(nil)
+        doc1.parsed_response['properties'].should be_kind_of(Hash)
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-change-properties", cmd2)
@@ -534,7 +534,7 @@ describe ArangoDB do
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
         doc1.parsed_response['name'].should eq('abc')
         doc1.parsed_response['type'].should eq('arangosearch')
-        doc1.parsed_response['properties'].should eq(nil)
+        doc1.parsed_response['properties'].should be_kind_of(Hash)
         doc1.parsed_response['extra'].should eq(nil)
 
         cmd2 = api + '/abc/properties'
@@ -555,7 +555,7 @@ describe ArangoDB do
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
         doc1.parsed_response['name'].should eq('abc')
         doc1.parsed_response['type'].should eq('arangosearch')
-        doc1.parsed_response['properties'].should eq(nil)
+        doc1.parsed_response['properties'].should be_kind_of(Hash)
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-accept-patch", cmd2)
