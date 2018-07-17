@@ -8,7 +8,8 @@ It enables you to manage graphs at scale, it will give a vast performance benefi
 On a single server this feature is pointless, hence it is only available in a cluster mode.
 In terms of querying there is no difference between smart and General Graphs.
 The former are a transparent replacement for the latter.
-So for querying the graph please refer to [AQL Graph Operations](../../AQL/Graphs/index.html) and [Graph Functions](../GeneralGraphs/Functions.md) sections.
+So for querying the graph please refer to [AQL Graph Operations](../../AQL/Graphs/index.html) 
+and [Graph Functions](../GeneralGraphs/Functions.md) sections.
 The optimizer is clever enough to identify if we are on a SmartGraph or not.
 
 The difference is only in the management section: creating and modifying the underlying collections of the graph.
@@ -53,7 +54,8 @@ Getting started
 ---------------
 
 First of all SmartGraphs *cannot use existing collections*, when switching to SmartGraph from an existing data set you have to import the data into a fresh SmartGraph.
-This switch can be easily achieved with [arangodump](../../Programs/Arangodump/README.md) and [arangorestore](../../Programs/Arangorestore/README.md).
+This switch can be easily achieved with [arangodump](../../Programs/Arangodump/README.md)
+and [arangorestore](../../Programs/Arangorestore/README.md).
 The only thing you have to change in this pipeline is that you create the new collections with the SmartGraph before starting `arangorestore`.
 
 * Create a graph

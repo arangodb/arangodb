@@ -132,7 +132,8 @@ collection *data* nor create new collections in the database *example*.
 Granting Access Levels
 ----------------------
 
-Access levels can be managed via the [web interface](../../Programs/WebInterface/Users.md) or in [arangosh](InArangosh.md).
+Access levels can be managed via the [web interface](../../Programs/WebInterface/Users.md)
+or in [arangosh](InArangosh.md).
 
 In order to grant an access level to a user, you can assign one of
 three access levels for each database and one of three levels for each

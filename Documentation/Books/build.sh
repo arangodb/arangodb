@@ -200,7 +200,6 @@ function ppbook-check-directory-link()
 
 function book-check-markdown-leftovers()
 {
-    pwd
     NAME="$1"
     echo "${STD_COLOR}##### checking for remaining markdown snippets in the HTML output of ${NAME}${RESET}"
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep -- '^##' {} \; -print)
@@ -276,6 +275,41 @@ function book-check-markdown-leftovers()
         echo "${ERRORS}"
         echo "${RESET}"
         exit 1
+    fi
+}
+
+function ppbook-check-two-links()
+{
+    NAME="$1"
+    echo "${STD_COLOR}##### checking for two links in a single line in ${NAME}${RESET}"
+    find "ppbooks/${NAME}" \
+         -path "ppbooks/${NAME}/node_modules" \
+         -prune -o \
+         -name '*.md' \
+         -print | while IFS= read -r ppfile; do
+        ERR=$(grep -e '](.*](' "${ppfile}" | grep -v '|'||true)
+        if test -n "${ERR}"; then
+            echo "${ppfile}: \n ${ERR}"
+        fi
+    done
+
+    ERRORS=$(find "ppbooks/${NAME}" \
+                  -path "ppbooks/${NAME}/node_modules" \
+                  -prune -o \
+                  -name '*.md' \
+                  -print | while IFS= read -r ppfile; do
+                 ERR=$(grep -e '](.*](' "${ppfile}" | grep -v '|'||true)
+                 if test -n "${ERR}"; then
+                     printf "${ppfile}: \n ${ERR}"
+                 fi
+             done
+          )
+    if test "$(printf "${ERRORS}" | wc -l)" -gt 0; then
+        echo "${ERR_COLOR}";
+        echo "found these files with two links in one line: "
+        echo "${ERRORS}"
+        echo "${RESET}";
+        exit 1;
     fi
 }
 
@@ -471,6 +505,7 @@ function build-book()
     check-summary "${NAME}"
     book-check-leftover-docublocks "${NAME}"
     book-check-restheader-leftovers "${NAME}"
+    ppbook-check-two-links "${NAME}"
     ppbook-check-directory-link "${NAME}"
     book-check-images-referenced "${NAME}"
 
@@ -801,6 +836,7 @@ case "$VERB" in
         check-summary "${NAME}"
         book-check-leftover-docublocks "${NAME}"
         book-check-restheader-leftovers "${NAME}"
+        ppbook-check-two-links "${NAME}"
         ppbook-check-directory-link "${NAME}"
         book-check-images-referenced "${NAME}"
         book-check-markdown-leftovers "${NAME}"        
