@@ -71,7 +71,7 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
   bool dropCollections = false;
-  if (args.Length() == 2) {
+  if (args.Length() >= 2) {
     dropCollections = TRI_ObjectToBoolean(args[1]);
   }
 
@@ -86,19 +86,11 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   OperationResult result = gops.removeGraph(true, dropCollections);
 
   VPackBuilder obj;
-  if (result.fail()) {
-    obj.add(VPackValue(VPackValueType::Object, true));
-    obj.add("removed", VelocyPackHelper::BooleanValue(false));
-    obj.close();
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, obj.slice()));
-  }
+  obj.add(VPackValue(VPackValueType::Object, true));
+  obj.add("removed", VelocyPackHelper::BooleanValue(result.ok()));
+  obj.close();
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, obj.slice()));
 
-  if (result.ok()) {
-    obj.add(VPackValue(VPackValueType::Object, true));
-    obj.add("removed", VelocyPackHelper::BooleanValue(true));
-    obj.close();
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, obj.slice()));
-  }
   TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
 
   TRI_V8_RETURN_UNDEFINED();
@@ -114,11 +106,13 @@ static void JS_RenameGraphCollection(
     TRI_V8_THROW_EXCEPTION_USAGE("_renameCollection(oldName, newName)");
   } else if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+  } else if (!args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
   std::string oldName = TRI_ObjectToString(args[0]);
   std::string newName = TRI_ObjectToString(args[1]);
   if (oldName.empty() || newName.empty()) {
-    TRI_V8_RETURN(false);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -126,8 +120,7 @@ static void JS_RenameGraphCollection(
 
   ctx = transaction::V8Context::Create(vocbase, false);
   GraphManager gmngr{ctx};
-  bool r = false;
-  r = gmngr.renameGraphCollection(oldName, newName);
+  bool r = gmngr.renameGraphCollection(oldName, newName);
 
   TRI_V8_RETURN(r);
 
@@ -154,8 +147,7 @@ static void JS_GraphExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // check if graph already exists
   GraphManager gmngr{ctx};
-  bool r = false;
-  r = gmngr.graphExists(graphName);
+  bool r = gmngr.graphExists(graphName);
 
   TRI_V8_RETURN(r);
 
@@ -271,7 +263,7 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, builder, args[2], true, true);
     builder.close();
   }
-  if (args.Length() >= 4 && !args[2]->IsNullOrUndefined()) {
+  if (args.Length() >= 4 && !args[3]->IsNullOrUndefined()) {
     builder.add(VPackValue("options"));
     TRI_V8ToVPack(isolate, builder, args[3], true, true);
     builder.close();
@@ -317,11 +309,12 @@ static void JS_AddEdgeDefinitions(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
   std::string graphName = TRI_ObjectToString(args[0]);
+  if (graphName.empty()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+  }
 
   VPackBuilder edgeDefinition;
-  if (args.Length() == 2) {
-    TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
-  }
+  TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
 
   auto& vocbase = GetContextVocBase(isolate);
   auto ctx = transaction::V8Context::Create(vocbase, false);
@@ -331,9 +324,7 @@ static void JS_AddEdgeDefinitions(
 
   ctx = transaction::V8Context::Create(vocbase, false);
   GraphOperations gops{*graph, ctx};
-  OperationResult r;
-
-  r = gops.addEdgeDefinition(edgeDefinition.slice(), false);
+  OperationResult r = gops.addEdgeDefinition(edgeDefinition.slice(), false);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -365,11 +356,12 @@ static void JS_EditEdgeDefinitions(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
   std::string graphName = TRI_ObjectToString(args[0]);
+  if (graphName.empty()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+  }
 
   VPackBuilder edgeDefinition;
-  if (args.Length() == 2) {
-    TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
-  }
+  TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
 
   auto& vocbase = GetContextVocBase(isolate);
   auto ctx = transaction::V8Context::Create(vocbase, false);
@@ -379,9 +371,7 @@ static void JS_EditEdgeDefinitions(
 
   ctx = transaction::V8Context::Create(vocbase, false);
   GraphOperations gops{*graph, ctx};
-  OperationResult r;
-
-  r = gops.editEdgeDefinition(
+  OperationResult r = gops.editEdgeDefinition(
       edgeDefinition.slice(), false,
       edgeDefinition.slice().get("collection").copyString());
 
@@ -415,10 +405,21 @@ static void JS_RemoveVertexCollection(
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
+  if (!args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+      "_removeVertexCollection(vertexName, dropCollection)");
+  }
   std::string graphName = TRI_ObjectToString(args[0]);
   std::string vertexName = TRI_ObjectToString(args[1]);
+  if (graphName.empty()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+  }
+  if (vertexName.empty()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+      "_removeVertexCollection(vertexName, dropCollection)");
+  }
   bool dropCollection = false;
-  if (args.Length() == 3) {
+  if (args.Length() >= 3) {
     dropCollection = TRI_ObjectToBoolean(args[2]);
   }
 
@@ -469,10 +470,21 @@ static void JS_AddVertexCollection(
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
+  if (!args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+      "_addVertexCollection(vertexName, createCollection)");
+  }
   std::string graphName = TRI_ObjectToString(args[0]);
   std::string vertexName = TRI_ObjectToString(args[1]);
+  if (graphName.empty()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+  }
+  if (vertexName.empty()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+      "_addVertexCollection(vertexName, createCollection)");
+  }
   bool createCollection = true;
-  if (args.Length() == 3) {
+  if (args.Length() >= 3) {
     createCollection = TRI_ObjectToBoolean(args[2]);
   }
 
@@ -484,14 +496,14 @@ static void JS_AddVertexCollection(
 
   ctx = transaction::V8Context::Create(vocbase, false);
   GraphOperations gops{*graph, ctx};
-  OperationResult r;
 
   VPackBuilder builder;
   builder.openObject();
   builder.add("collection", VPackValue(vertexName));
   builder.close();
 
-  r = gops.addOrphanCollection(builder.slice(), false, createCollection);
+  OperationResult r =
+      gops.addOrphanCollection(builder.slice(), false, createCollection);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -523,11 +535,22 @@ static void JS_DropEdgeDefinition(
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
+  if (!args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+      "_deleteEdgeDefinitions(edgeCollection, dropCollection)");
+  }
   std::string graphName = TRI_ObjectToString(args[0]);
   std::string edgeDefinitionName = TRI_ObjectToString(args[1]);
+  if (graphName.empty()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
+  }
+  if (edgeDefinitionName.empty()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+      "_deleteEdgeDefinitions(edgeCollection, dropCollection)");
+  }
 
   bool dropCollections = false;
-  if (args.Length() == 3) {
+  if (args.Length() >= 3) {
     dropCollections = TRI_ObjectToBoolean(args[2]);
   }
 
@@ -539,9 +562,8 @@ static void JS_DropEdgeDefinition(
 
   ctx = transaction::V8Context::Create(vocbase, false);
   GraphOperations gops{*graph, ctx};
-  OperationResult r;
-
-  r = gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
+  OperationResult r =
+      gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
