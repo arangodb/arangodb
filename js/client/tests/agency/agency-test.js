@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:true */
-/*global assertEqual, ARGUMENTS */
+/*global assertEqual, assertTrue, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client-specific functionality
@@ -242,7 +242,7 @@ function agencyTestSuite () {
           // log entries before compaction index - compaction keep size
           // are dumped
           if (lcompi > keepsize) {
-            assertTrue(flogi == lcompi - keepsize)
+            assertTrue(flogi === lcompi - keepsize);
           } else {
             assertEqual(flogi, 0);
           }

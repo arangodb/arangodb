@@ -70,7 +70,7 @@ void SchedulerFeature::collectOptions(
 
   options->addHiddenOption(
       "--server.queue-size",
-      "number of simultaneously queues requests inside the scheduler",
+      "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize));
 
   options->addHiddenOption("--server.prio1-size", "size of the priority 1 fifo",

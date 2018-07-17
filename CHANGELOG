@@ -8,15 +8,15 @@ devel
 
 * added AQL functions `TO_BASE64`, `TO_HEX`, `ENCODE_URI_COMPONENT` and `SOUNDEX`
 
-* PR5857: rocksdb engine would frequently request a new DelayToken.  This caused
+* PR #5857: RocksDB engine would frequently request a new DelayToken.  This caused
   excessive write delay on the next Put() call.  Alternate approach taken.
 
 * changed the thread handling in the scheduler. `--server.threads` will be
   the maximum number of threads for the scheduler.
 
-  The hidden option `--server.maximal-threads` is now obsolete.
+* The hidden option `--server.maximal-threads` is now obsolete.
 
-  The hidden options `--server.queue-size`, `--server.prioN-size` (N = 1 or 2)
+* The hidden options `--server.queue-size`, `--server.prioN-size` (N = 1 or 2)
   control the size of the internal queues. The defaults are sensible, do not
   change these settings.
 
@@ -223,7 +223,7 @@ devel
 * fixed issue #3811: gharial api is now checking existence of `_from` and `_to` vertices
   during edge creation
 
-* There is new method `_profileQuery` on the database object to execute a query and
+* There is a new method `_profileQuery` on the database object to execute a query and
   print an explain with annotated runtime information.
 
 * Query cursors can now be created with option `profile`, with a value of 0, 1 or 2.
@@ -257,8 +257,6 @@ devel
 
 * removed remainders of dysfunctional `/_admin/cluster-test` and `/_admin/clusterCheckPort`
   API endpoints and removed them from documentation
-
-* remove `_admin/echo` handler
 
 * added new query option `stream` to enable streaming query execution via the
   `POST /_api/cursor` rest interface.
