@@ -32,9 +32,6 @@ Tutorials
 - [DC2DC on Kubernetes](Kubernetes/DC2DC.md):
   Start DC2DC between two ArangoDB clusters running in Kubernetes 
   
-
-Link languange tutorial (use a table?) https://www.arangodb.com/arangodb-training-center/
-
 - [ArangoSearch](https://www.arangodb.com/tutorials/arangosearch/):
   The implementation of ArangoDB's view engine
 
