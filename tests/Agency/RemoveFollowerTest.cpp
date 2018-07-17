@@ -121,7 +121,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
 
     std::string jobId = "1";
 
-    write_ret_t fakeWriteResult{true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    write_ret_t fakeWriteResult{true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
     trans_ret_t fakeTransResult{true, "", 1, 0, std::make_shared<Builder>()};
 
     SECTION("creating a job should create a job in todo") {
@@ -156,55 +156,11 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
         }
       );
 
-<<<<<<< HEAD
-  write_ret_t fakeWriteResult {true, "", {APPLIED}, {1}};
-  trans_ret_t fakeTransResult {true, "", 1, 0, std::make_shared<Builder>()};
-  
-  SECTION("creating a job should create a job in todo") {
-    Mock<AgentInterface> mockAgent;
-
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, AgentInterface::WriteMode const& d) -> write_ret_t {
-        INFO(q->slice().toJson());
-        auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
-        REQUIRE(typeName(q->slice()) == "array" );
-        REQUIRE(q->slice().length() == 1);
-        REQUIRE(typeName(q->slice()[0]) == "array");
-        REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
-        REQUIRE(typeName(q->slice()[0][0]) == "object");
-        REQUIRE(q->slice()[0][0].length() == 1); // should ONLY do an entry in todo
-        REQUIRE(typeName(q->slice()[0][0].get(expectedJobKey)) == "object");
-
-        auto job = q->slice()[0][0].get(expectedJobKey);
-        REQUIRE(typeName(job.get("creator")) == "string");
-        REQUIRE(typeName(job.get("type")) == "string");
-        CHECK(job.get("type").copyString() == "removeFollower");
-        REQUIRE(typeName(job.get("database")) == "string");
-        CHECK(job.get("database").copyString() == DATABASE);
-        REQUIRE(typeName(job.get("collection")) == "string");
-        CHECK(job.get("collection").copyString() == COLLECTION);
-        REQUIRE(typeName(job.get("shard")) == "string");
-        CHECK(job.get("shard").copyString() == SHARD);
-        CHECK(typeName(job.get("jobId")) == "string");
-        CHECK(typeName(job.get("timeCreated")) == "string");
-        
-        return fakeWriteResult;
-      });
-
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    auto  removeFollower = RemoveFollower(
-      baseStructure, &agent, jobId, "unittest", DATABASE, COLLECTION, SHARD);
-    
-    removeFollower.create();
-    
-  }
-=======
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
       auto &agent = mockAgent.get();
       auto removeFollower = RemoveFollower(
         baseStructure, &agent, jobId, "unittest", DATABASE, COLLECTION, SHARD
       );
->>>>>>> 8e06e2b6df4504c4a96b23c6ac7b3543b7a46d4f
 
       removeFollower.create();
 
@@ -221,59 +177,6 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
         if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION) {
           return builder;
         }
-<<<<<<< HEAD
-        builder->close();
-      } else {
-        builder->add(s);
-      }
-      
-      return builder;
-    };
-    
-    auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-    REQUIRE(builder);
-    Node agency = createNodeFromBuilder(*builder);
-    
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, AgentInterface::WriteMode const& d) -> write_ret_t {
-        INFO(q->slice().toJson());
-        REQUIRE(typeName(q->slice()) == "array" );
-        REQUIRE(q->slice().length() == 1);
-        REQUIRE(typeName(q->slice()[0]) == "array");
-        // we always simply override! no preconditions...
-        REQUIRE(q->slice()[0].length() == 1); 
-        REQUIRE(typeName(q->slice()[0][0]) == "object");
-        
-        auto writes = q->slice()[0][0];
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
-        CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
-        CHECK(typeName(writes.get("/arango/Target/Finished/1")) == "object");
-        return fakeWriteResult;
-      });
-    
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
-    
-  }
-  
-  
-  SECTION("if <collection> has a non-empty distributeShardsLike attribute, the "
-          "job immediately fails and is moved to Target/Failed") {
-
-    TestStructType createTestStructure = [&](
-      Slice const& s, std::string const& path) {
-
-      std::unique_ptr<Builder> builder = std::make_unique<Builder>();
-      if (s.isObject()) {
-        VPackObjectBuilder b(builder.get());
-        for (auto const& it: VPackObjectIterator(s)) {
-          auto childBuilder =
-            createTestStructure(it.value, path + "/" + it.key.copyString());
-          if (childBuilder) {
-            builder->add(it.key.copyString(), childBuilder->slice());
-=======
         builder = std::make_unique<Builder>();
 
         if (s.isObject()) {
@@ -283,7 +186,6 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
             if (childBuilder) {
               builder->add(it.key.copyString(), childBuilder->slice());
             }
->>>>>>> 8e06e2b6df4504c4a96b23c6ac7b3543b7a46d4f
           }
           if (path == "/arango/Target/ToDo") {
             builder->add(jobId, createBuilder(todo).slice());
@@ -318,40 +220,6 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
           CHECK(typeName(writes.get("/arango/Target/Finished/1")) == "object");
           return fakeWriteResult;
         }
-<<<<<<< HEAD
-      } else {
-        builder->add(s);
-      }
-      return builder;
-
-    };
-    
-    auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-    REQUIRE(builder);
-    auto agency = createNodeFromBuilder(*builder);
-
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, AgentInterface::WriteMode const& d) -> write_ret_t {
-        INFO(q->slice().toJson());
-        REQUIRE(typeName(q->slice()) == "array" );
-        REQUIRE(q->slice().length() == 1);
-        REQUIRE(typeName(q->slice()[0]) == "array");
-        REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
-        REQUIRE(typeName(q->slice()[0][0]) == "object");
-
-        auto writes = q->slice()[0][0];
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
-        CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
-        CHECK(typeName(writes.get("/arango/Target/Failed/1")) == "object");
-        return fakeWriteResult;
-      });
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
-    
-  }
-=======
       );
 
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
@@ -367,7 +235,6 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
       TestStructType createTestStructure = [&](
         Slice const &s, std::string const &path
       ) {
->>>>>>> 8e06e2b6df4504c4a96b23c6ac7b3543b7a46d4f
 
         std::unique_ptr<Builder> builder = std::make_unique<Builder>();
         if (s.isObject()) {
@@ -454,40 +321,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
             builder->add(s);
           }
         }
-<<<<<<< HEAD
-      }
-      return builder;
-
-    };
-    
-    auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-    REQUIRE(builder);
-    auto agency = createNodeFromBuilder(*builder);
-
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, AgentInterface::WriteMode const& d) -> write_ret_t {
-        INFO(q->slice().toJson());
-        REQUIRE(typeName(q->slice()) == "array" );
-        REQUIRE(q->slice().length() == 1);
-        REQUIRE(typeName(q->slice()[0]) == "array");
-        REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
-        REQUIRE(typeName(q->slice()[0][0]) == "object");
-
-        auto writes = q->slice()[0][0];
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
-        CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
-        CHECK(typeName(writes.get("/arango/Target/Finished/1")) == "object");
-        return fakeWriteResult;
-      });
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
-    
-  }
-=======
         return builder;
->>>>>>> 8e06e2b6df4504c4a96b23c6ac7b3543b7a46d4f
 
       };
 
@@ -613,43 +447,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
         } else {
           builder->add(s);
         }
-<<<<<<< HEAD
-      } else {
-        builder->add(s);
-      }
-      return builder;
-      
-    };
-    
-    auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-    REQUIRE(builder);
-    std::cout << builder->toJson() << std::endl;
-    Node agency = createNodeFromBuilder(*builder);
-    
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, AgentInterface::WriteMode const& d) -> write_ret_t {
-        INFO(q->slice().toJson());
-        REQUIRE(typeName(q->slice()) == "array" );
-        REQUIRE(q->slice().length() == 1);
-        REQUIRE(typeName(q->slice()[0]) == "array");
-        REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
-        REQUIRE(typeName(q->slice()[0][0]) == "object");
-        
-        auto writes = q->slice()[0][0];
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
-        CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
-        CHECK(writes.get("/arango/Target/Finished/1").get("collection").copyString() == COLLECTION);
-        CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-        CHECK(typeName(writes.get("/arango/Target/Failed/1")) == "none");
-        return fakeWriteResult;
-      });
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    AgentInterface &agent = mockAgent.get();
-    RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
-=======
         return builder;
->>>>>>> 8e06e2b6df4504c4a96b23c6ac7b3543b7a46d4f
 
       };
 
@@ -691,7 +489,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
 
     std::string jobId = "1";
 
-    write_ret_t fakeWriteResult{true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    write_ret_t fakeWriteResult{true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
     trans_ret_t fakeTransResult{true, "", 1, 0, std::make_shared<Builder>()};
 
 
@@ -808,43 +606,10 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
           REQUIRE(servers[49].copyString() == "follower-49-788d2a9b-6d56-42a7-bacb-1dafff7d58a9");
           return fakeWriteResult;
         }
-<<<<<<< HEAD
-      } else {
-        builder->add(s);
-      }
-      return builder;
-
-    };
-    
-    auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-    REQUIRE(builder);
-    auto agency = createNodeFromBuilder(*builder);
-
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, AgentInterface::WriteMode const& d) -> write_ret_t {
-        INFO(q->slice().toJson());
-        REQUIRE(typeName(q->slice()) == "array" );
-        REQUIRE(q->slice().length() == 1);
-        REQUIRE(typeName(q->slice()[0]) == "array");
-        REQUIRE(q->slice()[0].length() == 2); // we always simply override! no preconditions...
-        REQUIRE(typeName(q->slice()[0][0]) == "object");
-
-        auto writes = q->slice()[0][0];
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-        REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
-        CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
-        CHECK(typeName(writes.get("/arango/Target/Finished/1")) == "object");
-        return fakeWriteResult;
-      });
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
-=======
       );
       When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
       auto &agent = mockAgent.get();
       RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
->>>>>>> 8e06e2b6df4504c4a96b23c6ac7b3543b7a46d4f
 
       REQUIRE_NOTHROW(Verify(Method(mockAgent, write)));
     }

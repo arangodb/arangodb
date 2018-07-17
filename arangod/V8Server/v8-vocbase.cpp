@@ -1968,7 +1968,7 @@ static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   uint64_t index = 0;
   uint64_t term = 0;
-  auto b = arangodb::consensus::State::latestAgencyState(vocbase, index, term);
+  auto b = arangodb::consensus::State::latestAgencyState(&vocbase, index, term);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING(isolate, "index"),
