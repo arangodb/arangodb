@@ -34,6 +34,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -105,13 +106,10 @@ V8DealerFeature::V8DealerFeature(
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
   setOptional(true);
+  startsAfter("ClusterPhase");
+
   startsAfter("Action");
-  startsAfter("Authentication");
-  startsAfter("Database");
-  startsAfter("Random");
-  startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("Temp");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -178,6 +176,10 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       "Script", "FoxxQueues", "Frontend"});
     LOG_TOPIC(WARN, arangodb::Logger::V8) << "V8 JavaScript engine is disabled, this is an"
       << " experimental option, some features may be missing or broken !";
+    if (ServerState::instance()->isDBServer()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cannot run DBServer with `--javascript.enabled false`";
+      FATAL_ERROR_EXIT();
+    }
     return;
   }
   
@@ -216,6 +218,12 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
   }
+}
+
+void V8DealerFeature::prepare() {
+  auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  TRI_ASSERT(cluster != nullptr);
+  defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM", cluster->systemReplicationFactor());
 }
 
 void V8DealerFeature::start() {

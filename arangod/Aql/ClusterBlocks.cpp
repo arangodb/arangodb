@@ -198,7 +198,8 @@ class MinElementSorting final : public SortingStrategy, public OurLessThan {
       arangodb::transaction::Methods* trx,
       std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
       std::vector<SortRegister>& sortRegisters) noexcept
-    : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
+    : OurLessThan(trx, gatherBlockBuffer, sortRegisters),
+      _blockPos(nullptr) {
   }
 
   virtual ValueType nextValue() override {

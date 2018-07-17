@@ -299,6 +299,10 @@ bool ServerState::unregister() {
                                        AgencySimpleOperationType::DELETE_OP));
   operations.push_back(AgencyOperation("Current/" + agencyListKey + "/" + id,
                                        AgencySimpleOperationType::DELETE_OP));
+  operations.push_back(AgencyOperation(
+      "Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
+  operations.push_back(AgencyOperation(
+      "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
 
   AgencyWriteTransaction unregisterTransaction(operations);
   AgencyComm comm;
@@ -478,12 +482,14 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
   std::string currentUrl = "Current/" + agencyListKey + "/" + id;
 
   AgencyWriteTransaction preg(
-    AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
+    {AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
+     AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
     AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   comm.sendTransactionWithFailover(preg, 0.0);
   AgencyWriteTransaction creg(
-    AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
+    {AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
+     AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
     AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   comm.sendTransactionWithFailover(creg, 0.0);

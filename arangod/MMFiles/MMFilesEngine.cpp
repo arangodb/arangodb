@@ -168,6 +168,7 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
       _walAccess(new MMFilesWalAccess()),
       _releasedTick(0),
       _compactionDisabled(0) {
+  startsAfter("BasicsPhase");
   startsAfter("MMFilesPersistentIndex"); // yes, intentional!
 
   server->addFeature(new MMFilesWalRecoveryFeature(server));

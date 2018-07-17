@@ -426,10 +426,10 @@ class IResearchFeature::Async {
     mutable bool _wasNotified; // a notification was raised from another thread
 
     Thread(std::string const& name)
-      : arangodb::Thread(name), _wasNotified(false) {
+      : arangodb::Thread(name), _terminate(nullptr), _wasNotified(false) {
     }
     Thread(Thread&& other) // used in constructor before tasks are started
-      : arangodb::Thread(other.name()), _wasNotified(false) {
+      : arangodb::Thread(other.name()), _terminate(nullptr), _wasNotified(false) {
     }
     virtual bool isSystem() override { return true; } // or start(...) will fail
     virtual void run() override;
@@ -580,7 +580,7 @@ IResearchFeature::Async::Async(): _terminate(false) {
 
   auto* last = &(_pool.back());
 
-  // buld circular list
+  // build circular list
   for (auto& thread: _pool) {
     last->_next = &thread;
     last = &thread;
@@ -636,19 +636,10 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
     _async(std::make_unique<Async>()),
     _running(false) {
   setOptional(true);
-  startsAfter("ViewTypes");
-  startsAfter("Logger");
-  startsAfter("Database");
+  startsAfter("V8Phase");
+
   startsAfter("IResearchAnalyzer"); // used for retrieving IResearch analyzers for functions
   startsAfter("AQLFunctions");
-  // TODO FIXME: we need the MMFilesLogfileManager to be available here if we
-  // use the MMFiles engine. But it does not feel right to have such storage engine-
-  // specific dependency here. Better create a "StorageEngineFeature" and make
-  // ourselves start after it!
-  startsAfter("MMFilesLogfileManager");
-  startsAfter("TransactionManager");
-
-  startsBefore("GeneralServer");
 }
 
 void IResearchFeature::async(

@@ -24,7 +24,9 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
+#include "ApplicationFeatures/BasicPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -53,6 +55,9 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
 
     int ret;
+
+    server.addFeature(new application_features::BasicFeaturePhase(&server, true));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server, true));
 
     server.addFeature(new BenchFeature(&server, &ret));
     server.addFeature(new ClientFeature(&server, false));

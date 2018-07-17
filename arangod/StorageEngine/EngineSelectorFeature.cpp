@@ -44,9 +44,7 @@ EngineSelectorFeature::EngineSelectorFeature(
       _engine("auto"), 
       _hasStarted(false) {
   setOptional(false);
-  startsAfter("DatabasePath");
-  startsAfter("Greetings");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

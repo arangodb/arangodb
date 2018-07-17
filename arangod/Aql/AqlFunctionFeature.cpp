@@ -36,7 +36,8 @@ AqlFunctionFeature::AqlFunctionFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
-  startsAfter("EngineSelector");
+  startsAfter("V8Phase");
+
   startsAfter("Aql");
 }
 
