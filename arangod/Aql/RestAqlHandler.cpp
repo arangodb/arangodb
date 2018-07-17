@@ -583,7 +583,7 @@ RestStatus RestAqlHandler::execute() {
     case rest::RequestType::GET: {
       // in 3.3, the only GET API was /_api/aql/hasMore. Now, there is none in 3.4.
       // we need to keep the old route for compatibility with 3.3 however.
-      if (suffixes.size() != 2 || suffixes[1] != "hasMore") {
+      if (suffixes.size() != 2 || suffixes[0] != "hasMore") {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Unknown GET API: " << suffixes;
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown GET API");
       } else {
