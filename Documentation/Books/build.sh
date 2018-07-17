@@ -282,17 +282,6 @@ function ppbook-check-two-links()
 {
     NAME="$1"
     echo "${STD_COLOR}##### checking for two links in a single line in ${NAME}${RESET}"
-    find "ppbooks/${NAME}" \
-         -path "ppbooks/${NAME}/node_modules" \
-         -prune -o \
-         -name '*.md' \
-         -print | while IFS= read -r ppfile; do
-        ERR=$(grep -e '](.*](' "${ppfile}" | grep -v '|'||true)
-        if test -n "${ERR}"; then
-            echo "${ppfile}: \n ${ERR}"
-        fi
-    done
-
     ERRORS=$(find "ppbooks/${NAME}" \
                   -path "ppbooks/${NAME}/node_modules" \
                   -prune -o \
@@ -300,7 +289,7 @@ function ppbook-check-two-links()
                   -print | while IFS= read -r ppfile; do
                  ERR=$(grep -e '](.*](' "${ppfile}" | grep -v '|'||true)
                  if test -n "${ERR}"; then
-                     printf "${ppfile}: \n ${ERR}"
+                     printf "\n${ppfile}: \n ${ERR}"
                  fi
              done
           )
