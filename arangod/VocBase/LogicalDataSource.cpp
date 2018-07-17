@@ -23,6 +23,8 @@
 
 #include <mutex>
 
+#include "LogicalDataSource.h"
+
 #include "Basics/conversions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
@@ -33,7 +35,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-#include "LogicalDataSource.h"
+//
+#include "Logger/Logger.h"
 
 namespace {
 
@@ -54,6 +57,7 @@ std::string ensureGuid(
     TRI_ASSERT(planId);
     guid.append("c");
     guid.append(std::to_string(planId));
+    guid.push_back('/');
   } else if (arangodb::ServerState::instance()->isDBServer()) {
     TRI_ASSERT(planId);
     guid.append("c");
@@ -76,6 +80,8 @@ std::string ensureGuid(
     guid.push_back('/');
     guid.append(std::to_string(id));
   }
+  
+  LOG_DEVEL << "GUID: " << guid;
 
   return std::move(guid);
 }

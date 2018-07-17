@@ -81,7 +81,7 @@ arangodb::Result createLink(
     arangodb::velocypack::Value(IResearchLinkHelper::type())
   );
   builder.add(
-    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.id())
+    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.guid())
   );
 
   if (!mergeSliceSkipKeys(builder, link, acceptor)) {

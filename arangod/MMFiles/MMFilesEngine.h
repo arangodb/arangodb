@@ -352,14 +352,13 @@ class MMFilesEngine final : public StorageEngine {
     LogicalCollection& collection
   ) override;
 
-  void changeView(
+  arangodb::Result changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalView const&,
     bool doSync
   ) override;
 
-  void createView(
+  arangodb::Result createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
@@ -369,11 +368,6 @@ class MMFilesEngine final : public StorageEngine {
      TRI_vocbase_t& vocbase,
      LogicalView const& view,
      VPackBuilder& builder
-  ) override;
-
-  arangodb::Result persistView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view
   ) override;
 
   // asks the storage engine to persist renaming of a view
@@ -397,8 +391,7 @@ class MMFilesEngine final : public StorageEngine {
   std::string createViewDirectoryName(std::string const& basePath,
                                       TRI_voc_cid_t id);
 
-  void saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                    arangodb::LogicalView const*, bool forceSync) const;
+  void saveViewInfo(TRI_vocbase_t* vocbase, arangodb::LogicalView const*, bool sync) const;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 

@@ -186,7 +186,7 @@ namespace iresearch {
       );
       namedJson.add(
         StaticStrings::ViewIdField,
-        arangodb::velocypack::Value(view.id())
+        arangodb::velocypack::Value(view.guid())
       );
 
       if (!mergeSliceSkipKeys(namedJson, link, acceptor)) {

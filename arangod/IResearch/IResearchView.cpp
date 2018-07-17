@@ -314,7 +314,7 @@ arangodb::Result persistProperties(
   if (!engine->inRecovery()) {
     // change view throws exception on error
     try {
-      engine->changeView(view.vocbase(), view.id(), view, true);
+      engine->changeView(view.vocbase(), view, true);
     } catch (std::exception const& e) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
@@ -370,7 +370,7 @@ arangodb::Result persistProperties(
 
       // change view throws exception on error
       try {
-        engine->changeView(view.vocbase(), view.id(), view, true);
+        engine->changeView(view.vocbase(), view, true);
       } catch (std::exception const& e) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,

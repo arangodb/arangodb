@@ -155,6 +155,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
     case RocksDBLogType::CollectionChange:
     case RocksDBLogType::CollectionDrop:
     case RocksDBLogType::ViewCreate:
+    case RocksDBLogType::ViewChange:
     case RocksDBLogType::BeginTransaction:
     case RocksDBLogType::SinglePut:
     case RocksDBLogType::CommitTransaction: {

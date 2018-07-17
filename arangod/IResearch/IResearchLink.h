@@ -190,7 +190,7 @@ class IResearchLink {
   friend class IResearchView;
 
   LogicalCollection* _collection; // the linked collection
-  TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
+  std::string _defaultGuid; // the identifier of the desired view (iff _view == nullptr)
   bool _dropCollectionInDestructor; // collection should be dropped from view in the destructor (for the case where init(..) is called folowed by distructor)
   TRI_idx_iid_t const _id; // the index identifier
   IResearchLinkMeta _meta; // how this collection should be indexed

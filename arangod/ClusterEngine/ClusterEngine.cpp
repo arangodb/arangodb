@@ -348,7 +348,7 @@ void ClusterEngine::unloadCollection(
   collection.setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 }
 
-void ClusterEngine::createView(
+Result ClusterEngine::createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& /*view*/
@@ -362,13 +362,6 @@ Result ClusterEngine::renameView(
     TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view,
     std::string const& /*oldName*/
-) {
-  return persistView(vocbase, view);
-}
-
-arangodb::Result ClusterEngine::persistView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view
 ) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
@@ -387,9 +380,8 @@ void ClusterEngine::destroyView(
   // nothing to do here
 }
 
-void ClusterEngine::changeView(
+Result ClusterEngine::changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t /*id*/,
     arangodb::LogicalView const& view,
     bool /*doSync*/
 ) {
@@ -397,15 +389,7 @@ void ClusterEngine::changeView(
     // nothing to do
     return;
   }
-
-  auto const res = persistView(vocbase, view);
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      res.errorNumber(),
-      "could not save view properties"
-    );
-  }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 void ClusterEngine::signalCleanup(TRI_vocbase_t&) {

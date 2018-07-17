@@ -60,7 +60,7 @@ IResearchLink::IResearchLink(
   TRI_idx_iid_t iid,
   arangodb::LogicalCollection* collection
 ): _collection(collection),
-   _defaultId(0), // 0 is never a valid id
+   _defaultGuid(""), // "" is never a valid guid
    _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
@@ -205,7 +205,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   if (!_collection
       || !definition.isObject()
-      || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
+      || !(definition.get(StaticStrings::ViewIdField).isString() ||
+           definition.get(StaticStrings::ViewIdField).isNumber())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "error finding view for link '" << _id << "'";
     TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -213,8 +214,9 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false;
   }
 
-  auto identifier = definition.get(StaticStrings::ViewIdField);
-  auto viewId = identifier.getNumber<uint64_t>();
+  // we continue to support the old and new ID format
+  auto idSlice = definition.get(StaticStrings::ViewIdField);
+  std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
   auto& vocbase = _collection->vocbase();
   auto logicalView = vocbase.lookupView(viewId); // will only contain IResearchView (even for a DBServer)
 
@@ -230,7 +232,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       return false;
     }
 
-    auto logicalWiew = ci->getView(vocbase.name(), std::to_string(viewId));
+    auto logicalWiew = ci->getView(vocbase.name(), viewId);
     auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
 
     if (wiew) {
@@ -310,7 +312,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
     if (engine && engine->inRecovery()) {
-      _defaultId = _view->id();
+      _defaultGuid = _view->guid();
     }
   }
 
@@ -377,12 +379,12 @@ bool IResearchLink::json(
 
   if (_view) {
     builder.add(
-      StaticStrings::ViewIdField, arangodb::velocypack::Value(_view->id())
+      StaticStrings::ViewIdField, arangodb::velocypack::Value(_view->guid())
     );
-  } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
+  } else if (!_defaultGuid.empty()) { // '0' _defaultId == no view name in source jSON
   //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
     builder.add(
-      StaticStrings::ViewIdField, arangodb::velocypack::Value(_defaultId)
+      StaticStrings::ViewIdField, VPackValue(_defaultGuid)
     );
   }
 
@@ -403,11 +405,9 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
     }
 
     auto identifier = slice.get(StaticStrings::ViewIdField);
-
-    if (!identifier.isNumber()
-        || uint64_t(identifier.getInt()) != identifier.getUInt()
-        || identifier.getUInt() != _view->id()) {
-      return false; // iResearch View names of current object and slice do not match
+    if (!((identifier.isString() && identifier.isEqualString(_view->guid())) ||
+          (identifier.isInteger() && identifier.getUInt() != _view->id()))) {
+      return false;  // iResearch View names of current object and slice do not match
     }
   } else if (_view) {
     return false; // slice has no 'name' but the current object does
@@ -510,8 +510,9 @@ int IResearchLink::unload() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
-
+  // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  _defaultGuid = _view->guid();
+  
   if (!_collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed finding collection while unloading IResearch link '" << _id << "'";
