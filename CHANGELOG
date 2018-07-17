@@ -1,6 +1,8 @@
 v3.2.16 (2018-07-12)
 --------------------
 
+* upgraded arangodb starter version to 0.12.0
+
 * make edge cache initialization and invalidation more portable by avoiding memset
   on non-POD types
 
