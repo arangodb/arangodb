@@ -4,6 +4,8 @@ Durability Configuration
 Global Configuration
 --------------------
 
+**Pre-setting on database creation**
+
 There are global configuration values for durability, which can be adjusted by
 specifying the following configuration options:
 
@@ -16,31 +18,8 @@ specifying the following configuration options:
 @startDocuBlock WalLogfileSyncInterval
 
 
-Per-collection configuration
-----------------------------
 
-You can also configure the durability behavior on a per-collection basis.
-Use the ArangoDB shell to change these properties.
-
-
-@startDocuBlock collectionProperties
-
-
-Per-operation configuration
----------------------------
-
-Many data-modification operations and also ArangoDB's transactions allow to specify 
-a *waitForSync* attribute, which when set ensures the operation data has been 
-synchronized to disk when the operation returns.
-
-Disk-Usage Configuration
-------------------------
-
-The amount of disk space used by ArangoDB is determined by a few configuration
-options. 
-
-Global Configuration
---------------------
+**Adjusting at run-time**
 
 The total amount of disk storage required by ArangoDB is determined by the size of
 the write-ahead logfiles plus the sizes of the collection journals and datafiles.
@@ -72,8 +51,33 @@ are is determined by the following global configuration value:
 @startDocuBlock databaseMaximalJournalSize
 
 
+
 Per-collection configuration
 ----------------------------
+**Pre-setting during collection creation**
+
+You can also configure the durability behavior on a per-collection basis.
+Use the ArangoDB shell to change these properties.
+
+
+@startDocuBlock collectionProperties
+
+
+**Adjusting at run-time**
 
 The journal size can also be adjusted on a per-collection level using the collection's
 *properties* method.
+
+
+Per-operation configuration
+---------------------------
+
+Many data-modification operations and also ArangoDB's transactions allow to specify 
+a *waitForSync* attribute, which when set ensures the operation data has been
+synchronized to disk when the operation returns.
+
+Disk-Usage Configuration
+------------------------
+
+The amount of disk space used by ArangoDB is determined by a few configuration
+options.
