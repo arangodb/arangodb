@@ -353,60 +353,71 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
     VPackSlice threads = server.get("threads");
     VPackSlice v8Context = server.get("v8Context");
 
-    serverV8available += v8Context.get("availablePerSecond").getNumber<double>();
-    serverV8busy += v8Context.get("busyPerSecond").getNumber<double>();
-    serverV8dirty += v8Context.get("dirtyPerSecond").getNumber<double>();
-    serverV8free += v8Context.get("freePerSecond").getNumber<double>();
-    serverV8max += v8Context.get("maxPerSecond").getNumber<double>();
+    try {
+      serverV8available += v8Context.get("availablePerSecond").getNumber<double>();
+      serverV8busy += v8Context.get("busyPerSecond").getNumber<double>();
+      serverV8dirty += v8Context.get("dirtyPerSecond").getNumber<double>();
+      serverV8free += v8Context.get("freePerSecond").getNumber<double>();
+      serverV8max += v8Context.get("maxPerSecond").getNumber<double>();
 
-    serverThreadsRunning += threads.get("runningPerSecond").getNumber<double>();
-    serverThreadsWorking += threads.get("workingPerSecond").getNumber<double>();
-    serverThreadsBlocked += threads.get("blockedPerSecond").getNumber<double>();
-    serverThreadsQueued += threads.get("queuedPerSecond").getNumber<double>();
+      // in an environment that is mixing 3.4 and previous versions, the following
+      // attributes may not be present. we don't want the statistics to give up
+      // in this case, but simply ignore these errors
+      try {
+        serverThreadsRunning += threads.get("runningPerSecond").getNumber<double>();
+        serverThreadsWorking += threads.get("workingPerSecond").getNumber<double>();
+        serverThreadsBlocked += threads.get("blockedPerSecond").getNumber<double>();
+        serverThreadsQueued += threads.get("queuedPerSecond").getNumber<double>();
+      } catch (...) {}
 
-    systemMinorPageFaultsPerSecond +=
-        system.get("minorPageFaultsPerSecond").getNumber<double>();
-    systemMajorPageFaultsPerSecond +=
-        system.get("majorPageFaultsPerSecond").getNumber<double>();
-    systemUserTimePerSecond +=
-        system.get("userTimePerSecond").getNumber<double>();
-    systemSystemTimePerSecond +=
-        system.get("systemTimePerSecond").getNumber<double>();
-    systemResidentSize += system.get("residentSize").getNumber<double>();
-    systemVirtualSize += system.get("virtualSize").getNumber<double>();
-    systemNumberOfThreads += system.get("numberOfThreads").getNumber<double>();
+      systemMinorPageFaultsPerSecond +=
+          system.get("minorPageFaultsPerSecond").getNumber<double>();
+      systemMajorPageFaultsPerSecond +=
+          system.get("majorPageFaultsPerSecond").getNumber<double>();
+      systemUserTimePerSecond +=
+          system.get("userTimePerSecond").getNumber<double>();
+      systemSystemTimePerSecond +=
+          system.get("systemTimePerSecond").getNumber<double>();
+      systemResidentSize += system.get("residentSize").getNumber<double>();
+      systemVirtualSize += system.get("virtualSize").getNumber<double>();
+      systemNumberOfThreads += system.get("numberOfThreads").getNumber<double>();
 
-    httpRequestsTotalPerSecond +=
-        http.get("requestsTotalPerSecond").getNumber<double>();
-    httpRequestsAsyncPerSecond +=
-        http.get("requestsAsyncPerSecond").getNumber<double>();
-    httpRequestsGetPerSecond +=
-        http.get("requestsGetPerSecond").getNumber<double>();
-    httpRequestsHeadPerSecond +=
-        http.get("requestsHeadPerSecond").getNumber<double>();
-    httpRequestsPostPerSecond +=
-        http.get("requestsPostPerSecond").getNumber<double>();
-    httpRequestsPutPerSecond +=
-        http.get("requestsPutPerSecond").getNumber<double>();
-    httpRequestsPatchPerSecond +=
-        http.get("requestsPatchPerSecond").getNumber<double>();
-    httpRequestsDeletePerSecond +=
-        http.get("requestsDeletePerSecond").getNumber<double>();
-    httpRequestsOptionsPerSecond +=
-        http.get("requestsOptionsPerSecond").getNumber<double>();
-    httpRequestsOtherPerSecond +=
-        http.get("requestsOtherPerSecond").getNumber<double>();
+      httpRequestsTotalPerSecond +=
+          http.get("requestsTotalPerSecond").getNumber<double>();
+      httpRequestsAsyncPerSecond +=
+          http.get("requestsAsyncPerSecond").getNumber<double>();
+      httpRequestsGetPerSecond +=
+          http.get("requestsGetPerSecond").getNumber<double>();
+      httpRequestsHeadPerSecond +=
+          http.get("requestsHeadPerSecond").getNumber<double>();
+      httpRequestsPostPerSecond +=
+          http.get("requestsPostPerSecond").getNumber<double>();
+      httpRequestsPutPerSecond +=
+          http.get("requestsPutPerSecond").getNumber<double>();
+      httpRequestsPatchPerSecond +=
+          http.get("requestsPatchPerSecond").getNumber<double>();
+      httpRequestsDeletePerSecond +=
+          http.get("requestsDeletePerSecond").getNumber<double>();
+      httpRequestsOptionsPerSecond +=
+          http.get("requestsOptionsPerSecond").getNumber<double>();
+      httpRequestsOtherPerSecond +=
+          http.get("requestsOtherPerSecond").getNumber<double>();
 
-    clientHttpConnections += client.get("httpConnections").getNumber<double>();
-    clientBytesSentPerSecond +=
-        client.get("bytesSentPerSecond").getNumber<double>();
-    clientBytesReceivedPerSecond +=
-        client.get("bytesReceivedPerSecond").getNumber<double>();
-    clientAvgTotalTime += client.get("avgTotalTime").getNumber<double>();
-    clientAvgRequestTime += client.get("avgRequestTime").getNumber<double>();
-    clientAvgQueueTime += client.get("avgQueueTime").getNumber<double>();
-    clientAvgIoTime += client.get("avgIoTime").getNumber<double>();
+      clientHttpConnections += client.get("httpConnections").getNumber<double>();
+      clientBytesSentPerSecond +=
+          client.get("bytesSentPerSecond").getNumber<double>();
+      clientBytesReceivedPerSecond +=
+          client.get("bytesReceivedPerSecond").getNumber<double>();
+      clientAvgTotalTime += client.get("avgTotalTime").getNumber<double>();
+      clientAvgRequestTime += client.get("avgRequestTime").getNumber<double>();
+      clientAvgQueueTime += client.get("avgQueueTime").getNumber<double>();
+      clientAvgIoTime += client.get("avgIoTime").getNumber<double>();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "caught exception during statistics processing: " << ex.what();
+    }
   }
+
+  TRI_ASSERT(count > 0);
 
   serverV8available /= count;
   serverV8busy /= count;
