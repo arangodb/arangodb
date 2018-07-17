@@ -28,7 +28,7 @@ in the VERSION file will make the server refuse to start.
 
 ### Storage Engine
 ArangoDB's "traditional" storage engine is called `MMFiles`, which also was the 
-default storage engine up to including ArangoDB 3.4.
+default storage engine up to including ArangoDB 3.3.
 
 Since ArangoDB 3.2, an alternative engine based on [RocksDB](http://rocksdb.org) 
 is also provided and could be turned on manually. Since ArangoDB 3.4, the RocksDB
