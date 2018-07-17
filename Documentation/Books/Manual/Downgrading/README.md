@@ -1,10 +1,10 @@
 Downgrading
 ===========
 
-A direct, binary, downgrade of ArangoDB is **not** supported. If you have upgraded
+A direct, binary downgrade of ArangoDB is **not** supported. If you have upgraded
 your ArangoDB package, and then also upgraded your current data directory, it is
 not supported to downgrade the package and start an older ArangoDB version on a
-data directory that was upgrade already.
+data directory that was upgraded already.
 
 If you are using a standalone ArangoDB server, data directory could have been upgraded
 automatically during package upgrade. If you are using the _Starter_ to start your
@@ -28,16 +28,16 @@ ArangoDB version, before you upgraded it.
 
 1. Stop ArangoDB (if you are using an Active Failover, or a Cluster, stop all the needed
    processes on all the machines).
-1. As extra precaution, take a backup of your current data directory (at filesystem level).
+2. As extra precaution, take a backup of your current data directory (at filesystem level).
    If you are using an Active Failover or a Cluster, you will need to backup all the data
    directories of all the processes involved, from all machines. Make sure you move your
    data directory backup to a safe place.
-1. Uninstall the ArangoDB package (use appropriate _purge_ option so your current data
+3. Uninstall the ArangoDB package (use appropriate _purge_ option so your current data
    directory is deleted, if you are using a stand alone instance).
-1. Install the old version of ArangoDB.
-1. Start ArangoDB. If you are using the _Starter_, please make sure you use a new data
+4. Install the old version of ArangoDB.
+5. Start ArangoDB. If you are using the _Starter_, please make sure you use a new data
    directory for the _Starter_.
-1. Restore the _arangodump_ backup taken before upgrading.
+6. Restore the _arangodump_ backup taken before upgrading.
 
 ### Start the old package on the data directory backup
 
@@ -52,13 +52,13 @@ or Cluster setups (because in this case you do not have a copy of the data direc
 
 1. Stop ArangoDB (if you are using an Active Failover, or a Cluster, stop all the needed
    processes on all the machines).
-1. As extra precaution, take a backup of your data directory (at filesystem level). If
+2. As extra precaution, take a backup of your data directory (at filesystem level). If
    you are using an Active Failover or a Cluster, you will need to backup all the data
    directories of all the processes involved, from all machines. Make sure you move your
    backup to a safe place.
-1. Uninstall the ArangoDB package (use appropriate _purge_ option so your current data
+3. Uninstall the ArangoDB package (use appropriate _purge_ option so your current data
    directory is deleted, if you are using a stand alone instance).
-1. Install the old version of ArangoDB.
-1. Start ArangoDB on the data directory that you have backup-ed up (at filesystem level)
+4. Install the old version of ArangoDB.
+5. Start ArangoDB on the data directory that you have backup-ed up (at filesystem level)
    before the upgrade. As an extra precaution, please first take a new copy of this
    directory and move it to a safe place.
