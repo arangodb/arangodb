@@ -165,7 +165,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
   options->addHiddenOption(
       "--javascript.enabled",
-      "enable or disable the V8 JS engine entirely",
+      "enable the V8 JavaScript engine",
       new BooleanParameter(&_enableJS));
 }
 

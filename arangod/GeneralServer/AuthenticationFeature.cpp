@@ -84,7 +84,7 @@ void AuthenticationFeature::collectOptions(
   options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.authentication",
-                     "enable or disable authentication for ALL client requests",
+                     "enable authentication for ALL client requests",
                      new BooleanParameter(&_active));
 
   options->addOption(
@@ -94,7 +94,7 @@ void AuthenticationFeature::collectOptions(
 
   options->addOption(
       "--server.local-authentication",
-      "enable or disable authentication using the local user database",
+      "enable authentication using the local user database",
       new BooleanParameter(&_localAuthentication));
 
   options->addOption(

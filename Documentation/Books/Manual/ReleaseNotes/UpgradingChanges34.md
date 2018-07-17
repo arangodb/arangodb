@@ -55,17 +55,14 @@ be strictly bounded by configuration options.
 
 The number of server threads is now configured by the following startup options:
 
-- `--server.threads`: determines the maximum number of request processing threads
-  the server will start for request handling. If that number of threads is already
-  running, arangod will not start further threads for request handling
 - `--server.minimal-threads`: determines the minimum number of request processing
   threads the server will start and always keep around
+- `--server.maximal-threads`: determines the maximum number of request processing 
+  threads the server will start for request handling. If that number of threads is 
+  already running, arangod will not start further threads for request handling
 
 The actual number of request processing threads is adjusted dynamically at runtime
-and will float between `--server.minimal-threads` and `--server.threads`.
-
-To avoid overloading servers, the value of `--server.threads` should not exceed the 
-server's number of hardware threads in ArangoDB 3.4.
+and will float between `--server.minimal-threads` and `--server.maximal-threads`.
 
 
 HTTP REST API
@@ -248,24 +245,17 @@ less V8 contexts than 3.3.
 Startup option changes
 ----------------------
 
-The arangod, the following startup options have changed:
+For arangod, the following startup options have changed:
 
-- the hidden option `--server.maximal-threads` is now obsolete.
+- the number of server threads is now configured by the following startup options:
 
-  Setting the option will have no effect. 
-  The number of server threads is now configured by the following startup options:
-
-  - `--server.threads`: determines the maximum number of request processing threads
-    the server will start
   - `--server.minimal-threads`: determines the minimum number of request processing
+    threads the server will start
+  - `--server.maximal-threads`: determines the maximum number of request processing 
     threads the server will start
 
   The actual number of request processing threads is adjusted dynamically at runtime
-  and will float between `--server.minimal-threads` and `--server.threads`. Thus the
-  value configured for `--server.threads` should not greatly exceed the server's number
-  of hardware threads.
-
-- the option `--server.maximal-queue-size` has been renamed to `--server.queue-size`.
+  and will float between `--server.minimal-threads` and `--server.maximal-threads`. 
 
 - the default value for the existing startup option `--javascript.gc-interval`
   has been increased from every 1000 to every 2000 requests, and the default value
@@ -285,6 +275,9 @@ The arangod, the following startup options have changed:
 
   As direct upgrades from ArangoDB 3.0 to 3.4 or from 3.1 to 3.4 are not supported,
   this option has been removed in 3.4.
+
+- the startup option `--server.session-timeout` has been obsoleted. Setting this 
+  option will not have any effect.
 
 
 Permissions
