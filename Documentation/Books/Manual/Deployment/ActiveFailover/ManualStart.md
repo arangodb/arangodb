@@ -22,7 +22,7 @@ with 3 _Agents_, and two single server instances.
 We will assume that all processes runs on the same machine (127.0.0.1). Such scenario
 should be used for testing only.
 
-### Agency
+### Local Agency
 
 To start up an _Agency_ you first have to activate it. This is done by providing
 the option `--agency.activate true`.
