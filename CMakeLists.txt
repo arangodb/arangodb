@@ -114,15 +114,6 @@ if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 endif()
 
-# enable enterprise features
-set(ENTERPRISE_INCLUDE_DIR "enterprise")
-option(USE_ENTERPRISE "enable enterprise build" OFF)
-
-if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  add_subdirectory(enterprise)
-endif ()
-
 option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
 if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
