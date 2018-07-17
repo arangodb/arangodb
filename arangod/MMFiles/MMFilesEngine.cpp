@@ -168,6 +168,7 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
       _walAccess(new MMFilesWalAccess()),
       _releasedTick(0),
       _compactionDisabled(0) {
+  startsAfter("BasicsPhase");
   startsAfter("MMFilesPersistentIndex"); // yes, intentional!
 
   server->addFeature(new MMFilesWalRecoveryFeature(server));
@@ -214,7 +215,7 @@ Result MMFilesEngine::dropDatabase(TRI_vocbase_t& database) {
   return dropDatabaseDirectory(databaseDirectory(database.id()));
 }
 
-// add the storage engine's specifc options to the global list of options
+// add the storage engine's specific options to the global list of options
 void MMFilesEngine::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
 
 // validate the storage engine's specific options
@@ -318,7 +319,7 @@ std::unique_ptr<PhysicalCollection> MMFilesEngine::createPhysicalCollection(
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 
   return std::unique_ptr<PhysicalCollection>(
-    new MMFilesCollection(&collection, info)
+    new MMFilesCollection(collection, info)
   );
 }
 

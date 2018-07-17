@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var db = internal.db;
+const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -124,7 +125,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
   };
 
   const validatePlan = (query, nodeType, c) => {
-    const plan = AQL_EXPLAIN(query).plan;
+    const plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
     assertFalse(hasDistributeNode(plan.nodes));
     assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, nodeType, c));
   };
@@ -201,7 +202,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       for (const doc of sample) {
         const queryKey = `FOR doc IN ${cn} FILTER doc._key == "${doc._key}" RETURN doc`;
         validatePlan(queryKey, "IndexNode", collection);
-        let res = db._query(queryKey).toArray();
+        let res = db._query(queryKey, {}, disableSingleDocOp).toArray();
         assertEqual(1, res.length);
         assertEqual(doc._key, res[0]._key);
         assertEqual(doc._rev, res[0]._rev);

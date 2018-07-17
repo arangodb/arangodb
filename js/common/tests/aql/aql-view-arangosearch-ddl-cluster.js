@@ -68,8 +68,8 @@ function IResearchFeatureDDLTestSuite () {
         var view = db._createView("TestView", "arangosearch", {});
         view.properties(addLink, true); // partial update
         let properties = view.properties();
-        assertTrue(Array === properties.collections.constructor);
-        assertEqual(1, properties.collections.length);
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
         var indexes = db.TestCollection0.getIndexes();
         assertEqual(2, indexes.length);
         var link = indexes[1];
@@ -94,8 +94,8 @@ function IResearchFeatureDDLTestSuite () {
       for (let i = 0; i < 100; ++i) {
         view.properties(addLink, true); // partial update
         let properties = view.properties();
-        assertTrue(Array === properties.collections.constructor);
-        assertEqual(1, properties.collections.length);
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
         var indexes = db.TestCollection0.getIndexes();
         assertEqual(2, indexes.length);
         var link = indexes[1];
@@ -104,8 +104,8 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual("arangosearch", link.type);
         view.properties(removeLink, false);
         properties = view.properties();
-        assertTrue(Array === properties.collections.constructor);
-        assertEqual(0, properties.collections.length);
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(0, Object.keys(properties.links).length);
         assertEqual(1, db.TestCollection0.getIndexes().length);
       }
     },
@@ -119,12 +119,12 @@ function IResearchFeatureDDLTestSuite () {
       var addLink = { links: { "TestCollection0": {} } };
       view.properties(addLink, true); // partial update
       let properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(1, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
       db._drop("TestCollection0");
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(0, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(0, Object.keys(properties.links).length);
     },
 
     testViewDDL: function() {
@@ -139,26 +139,26 @@ function IResearchFeatureDDLTestSuite () {
       var view = db._createView("TestView", "arangosearch", {});
 
       var properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(0, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(0, Object.keys(properties.links).length);
 
       var meta = { links: { "TestCollection0": {} } };
       view.properties(meta, true); // partial update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(1, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
 
       meta = { links: { "TestCollection1": {} } };
       view.properties(meta, true); // partial update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(2, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(2, Object.keys(properties.links).length);
 
       meta = { links: { "TestCollection2": {} } };
       view.properties(meta, false); // full update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(1, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
 
 
       // commit

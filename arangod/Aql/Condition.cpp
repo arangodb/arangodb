@@ -581,11 +581,12 @@ void Condition::normalize() {
 #endif
 }
 
-void Condition::CollectOverlappingMembers(ExecutionPlan const* plan,
+void Condition::collectOverlappingMembers(ExecutionPlan const* plan,
                                           Variable const* variable,
                                           AstNode* andNode,
                                           AstNode* otherAndNode,
                                           std::unordered_set<size_t>& toRemove,
+                                          bool isSparse,
                                           bool isFromTraverser) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       result;
@@ -595,13 +596,33 @@ void Condition::CollectOverlappingMembers(ExecutionPlan const* plan,
   for (size_t i = 0; i < n; ++i) {
     auto operand = andNode->getMemberUnchecked(i);
     bool allowOps = operand->isComparisonOperator();
+
+    if (isSparse && allowOps && !isFromTraverser && 
+        (operand->type == NODE_TYPE_OPERATOR_BINARY_NE || operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
+      // look   for != null   and   > null
+      // these can be removed if we are working with a sparse index!
+      auto lhs = operand->getMember(0);
+      auto rhs = operand->getMember(1);
+        
+      clearAttributeAccess(result);
+
+      if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+          result.first == variable) {
+        if (rhs->isNullValue()) {
+          toRemove.emplace(i);
+          // removed, no need to go on below...
+          continue;
+        }
+      }
+    }
+
     if (isFromTraverser) {
       allowOps = allowOps || operand->isArrayComparisonOperator();
     } else {
       allowOps = allowOps && operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
                  operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
     }
-
+  
     if (allowOps) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
@@ -642,7 +663,8 @@ void Condition::CollectOverlappingMembers(ExecutionPlan const* plan,
 /// @brief removes condition parts from another
 AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
                                          Variable const* variable,
-                                         AstNode* other) {
+                                         AstNode const* other,
+                                         bool isSparse) {
   if (_root == nullptr || other == nullptr) {
     return _root;
   }
@@ -664,8 +686,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   std::unordered_set<size_t> toRemove;
-  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
-                            false);
+  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, isSparse, false);
 
   if (toRemove.empty()) {
     return _root;
@@ -715,8 +736,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   std::unordered_set<size_t> toRemove;
-  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
-                            true);
+  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, false, true);
 
   if (toRemove.empty()) {
     return _root;

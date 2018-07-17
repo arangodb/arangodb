@@ -220,6 +220,7 @@ SET(ARANGOD_SOURCES
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp
+  Aql/OptimizerRulesCluster.cpp
   Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OptimizerRulesFeature.cpp
   Aql/Parser.cpp
@@ -289,6 +290,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CriticalThread.cpp
+  Cluster/EngineEqualityCheckFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp

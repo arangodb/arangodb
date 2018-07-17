@@ -611,7 +611,6 @@ double Index::selectivityEstimate(StringRef const* extra) const {
     return 1.0;
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return 0;
 }
 
 /// @brief default implementation for implicitlyUnique

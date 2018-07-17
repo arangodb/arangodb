@@ -119,7 +119,7 @@ Slice Node::slice() const {
 }
 
 
-/// @brief Optimisation, which avoids recreating of Builder for output if
+/// @brief Optimization, which avoids recreating of Builder for output if
 /// changes have not happened since last call
 void Node::rebuildVecBuf() const {
   if (_vecBufDirty) {  // Dirty vector buffer

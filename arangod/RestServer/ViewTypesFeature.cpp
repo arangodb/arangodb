@@ -40,6 +40,7 @@ ViewTypesFeature::ViewTypesFeature(
   application_features::ApplicationServer* server
 ): application_features::ApplicationFeature(server, ViewTypesFeature::name()) {
   setOptional(false);
+  startsAfter("BasicsPhase");
 }
 
 arangodb::Result ViewTypesFeature::emplace(

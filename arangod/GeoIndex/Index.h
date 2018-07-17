@@ -86,10 +86,10 @@ struct Index {
 
  private:
   static S2LatLng parseGeoDistance(aql::AstNode const* node,
-                                          aql::Variable const* ref);
+                                   aql::Variable const* ref);
 
   static S2LatLng parseDistFCall(aql::AstNode const* node,
-                                        aql::Variable const* ref);
+                                 aql::Variable const* ref);
   static void handleNode(aql::AstNode const* node, aql::Variable const* ref,
                          geo::QueryParams& params);
 

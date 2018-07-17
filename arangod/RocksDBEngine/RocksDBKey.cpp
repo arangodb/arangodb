@@ -297,8 +297,9 @@ LocalDocumentId RocksDBKey::documentId(rocksdb::Slice const& slice) {
 
 LocalDocumentId RocksDBKey::indexDocumentId(RocksDBEntryType type,
                                             rocksdb::Slice const& slice) {
-  const char* data = slice.data();
-  const size_t size = slice.size();
+  char const* data = slice.data();
+  size_t const size = slice.size();
+
   switch (type) {
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::FulltextIndexValue:
@@ -314,12 +315,11 @@ LocalDocumentId RocksDBKey::indexDocumentId(RocksDBEntryType type,
       return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
     }
       
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+    default: {
+    }
   }
   
-  
-  return documentId(type, slice.data(), slice.size());
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
 }
 
 arangodb::StringRef RocksDBKey::primaryKey(RocksDBKey const& key) {

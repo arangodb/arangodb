@@ -30,6 +30,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } };
 
 function optimizerIndexOnlyPrimaryTestSuite () {
   let c;
@@ -59,7 +60,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       ];
      
       queries.forEach(function(query) {
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
         assertEqual([], nodes[0].projections, query);
@@ -80,7 +81,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       ];
     
       queries.forEach(function(query) { 
-        let plan = AQL_EXPLAIN(query[0]).plan;
+        let plan = AQL_EXPLAIN(query[0], {}, disableSingleDocOp).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
         assertEqual(query[1], nodes[0].projections.sort(), query);
@@ -90,11 +91,11 @@ function optimizerIndexOnlyPrimaryTestSuite () {
     
     testIndexCoveringProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._key == "test123" RETURN doc._key`;
-      let results = AQL_EXECUTE(query).json;
+      let results = AQL_EXECUTE(query, {}, disableSingleDocOp).json;
       assertEqual(1, results.length);
       assertEqual("test123", results[0]);
      
-      let plan = AQL_EXPLAIN(query).plan;
+      let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
       assertEqual(["_key"], nodes[0].projections);
@@ -103,10 +104,10 @@ function optimizerIndexOnlyPrimaryTestSuite () {
     
     testIndexCoveringInProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._key IN ["test123", "test124", "test125"] RETURN doc._key`;
-      let results = AQL_EXECUTE(query).json;
+      let results = AQL_EXECUTE(query, {}, disableSingleDocOp).json;
       assertEqual(3, results.length);
      
-      let plan = AQL_EXPLAIN(query).plan;
+      let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
       assertEqual(["_key"], nodes[0].projections);

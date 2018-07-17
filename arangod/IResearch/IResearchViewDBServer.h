@@ -50,7 +50,7 @@ namespace iresearch {
 class AsyncMeta;
 class PrimaryKeyIndexReader;
 
-class IResearchViewDBServer final: public arangodb::LogicalView {
+class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
  public:
   virtual ~IResearchViewDBServer();
 
@@ -112,9 +112,8 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ) const override;
 
  protected:
-  virtual arangodb::Result appendVelocyPack(
+  virtual arangodb::Result appendVelocyPackDetailed(
     arangodb::velocypack::Builder& builder,
-    bool detailed,
     bool forPersistence
   ) const override;
 

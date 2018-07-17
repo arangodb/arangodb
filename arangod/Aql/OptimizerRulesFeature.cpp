@@ -51,9 +51,9 @@ OptimizerRulesFeature::OptimizerRulesFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
-  startsAfter("EngineSelector");
+  startsAfter("V8Phase");
+
   startsAfter("Aql");
-  startsAfter("Cluster");
 }
 
 void OptimizerRulesFeature::prepare() {
@@ -267,6 +267,10 @@ void OptimizerRulesFeature::addRules() {
                                       OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
+
+    registerRule("optimize-cluster-single-document-operations", substituteClusterSingleDocumentOperations,
+                 OptimizerRule::substituteSingleDocumentOperations_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
 #if 0
     registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
                  OptimizerRule::optimizeClusterSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);

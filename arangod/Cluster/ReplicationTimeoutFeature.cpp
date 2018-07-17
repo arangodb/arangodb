@@ -35,8 +35,7 @@ double ReplicationTimeoutFeature::lowerLimit = 0.5;
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "ReplicationTimeout") {
   setOptional(true);
-  startsAfter("EngineSelector");
-  startsBefore("StorageEngine");
+  startsAfter("DatabasePhase");
 }
 
 void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

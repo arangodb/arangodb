@@ -49,7 +49,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @brief execute an asynchronous task
   /// @note each task will be invoked by its first of timeout or 'asyncNotify()'
   /// @param mutex a mutex to check/prevent resource deallocation (nullptr == not required)
-  /// @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until notification)
   /// @param fn the function to execute
   ///           @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until previously set timeout or until notification if first run)
   ///           @param timeout the timeout has been reached (false == triggered by notification)
@@ -57,7 +56,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
   void async(
     std::shared_ptr<ResourceMutex> const& mutex,
-    size_t timeoutMsec,
     std::function<bool(size_t& timeoutMsec, bool timeout)> &&fn
   );
 
@@ -65,6 +63,11 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @brief notify all currently running async tasks
   //////////////////////////////////////////////////////////////////////////////
   void asyncNotify() const;
+
+  /// @brief initialize _async variable and create thread pool
+  /// this should normally be a private method, however, it is also called
+  /// from the tests
+  void initializeAsync();
 
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;

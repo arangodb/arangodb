@@ -222,7 +222,7 @@ struct IResearchViewMetaState {
     std::string& errorField,
     IResearchViewMetaState const& defaults = DEFAULT(),
     Mask* mask = nullptr
-  ) noexcept;
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object

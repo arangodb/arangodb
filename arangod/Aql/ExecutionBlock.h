@@ -98,6 +98,7 @@ class ExecutionBlock {
     RETURN,
     SHORTEST_PATH,
     SINGLETON,
+    SINGLEOPERATION,
     SORT,
     SORTED_COLLECT,
     SORTING_GATHER,

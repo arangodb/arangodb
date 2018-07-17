@@ -1005,7 +1005,7 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
     if (prev != nullptr) {
       // check if current word has a shared/common prefix with the previous word
       // inserted
-      // in case this is true, we can use an optimisation and do not need to
+      // in case this is true, we can use an optimization and do not need to
       // traverse the
       // tree from the root again. instead, we just start at the node at the end
       // of the
@@ -1120,7 +1120,7 @@ int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
     if (prev != nullptr) {
       // check if current word has a shared/common prefix with the previous word
       // inserted
-      // in case this is true, we can use an optimisation and do not need to
+      // in case this is true, we can use an optimization and do not need to
       // traverse the
       // tree from the root again. instead, we just start at the node at the end
       // of the

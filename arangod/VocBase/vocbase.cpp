@@ -27,7 +27,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
-#include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
@@ -45,7 +44,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
-#include "Basics/locks.h"
 #include "Basics/memory-map.h"
 #include "Basics/threads.h"
 #include "Basics/tri-strings.h"
@@ -97,11 +95,11 @@ namespace {
         T& mutex,
         std::atomic<std::thread::id>& owner,
         arangodb::basics::LockerType type,
-        bool aquire,
+        bool acquire,
         char const* file,
         int line
     ): _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
-      if (aquire) {
+      if (acquire) {
         lock();
       }
     }
@@ -147,7 +145,7 @@ namespace {
   #define NAME_EXPANDER__(name, line) NAME__(name, line)
   #define NAME(name) NAME_EXPANDER__(name, __LINE__)
   #define RECURSIVE_READ_LOCKER(lock, owner) RecursiveReadLocker<typename std::decay<decltype (lock)>::type> NAME(RecursiveLocker)(lock, owner, __FILE__, __LINE__)
-  #define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, aquire) RecursiveWriteLocker<typename std::decay<decltype (lock)>::type> name(lock, owner, arangodb::basics::LockerType::BLOCKING, aquire, __FILE__, __LINE__)
+  #define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire) RecursiveWriteLocker<typename std::decay<decltype (lock)>::type> name(lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__)
   #define RECURSIVE_WRITE_LOCKER(lock, owner) RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
 
 }
@@ -429,28 +427,27 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 
 /// @brief drops a collection
 /*static */ bool TRI_vocbase_t::DropCollectionCallback(
-    arangodb::LogicalCollection* collection) {
-  std::string const name(collection->name());
-
+    arangodb::LogicalCollection& collection
+) {
   {
-    WRITE_LOCKER_EVENTUAL(statusLock, collection->_lock);
+    WRITE_LOCKER_EVENTUAL(statusLock, collection._lock);
 
-    if (collection->status() != TRI_VOC_COL_STATUS_DELETED) {
+    if (TRI_VOC_COL_STATUS_DELETED != collection.status()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "someone resurrected the collection '" << name << "'";
+          << "someone resurrected the collection '" << collection.name() << "'";
       return false;
     }
   }  // release status lock
 
   // remove from list of collections
-  auto& vocbase = collection->vocbase();
+  auto& vocbase = collection.vocbase();
 
   {
     RECURSIVE_WRITE_LOCKER(vocbase._dataSourceLock, vocbase._dataSourceLockWriteOwner);
     auto it = vocbase._collections.begin();
 
     for (auto end = vocbase._collections.end(); it != end; ++it) {
-      if (it->get() == collection) {
+      if (it->get() == &collection) {
         break;
       }
     }
@@ -468,7 +465,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
     }
   }
 
-  collection->drop();
+  collection.drop();
 
   return true;
 }
@@ -800,7 +797,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       TRI_ASSERT(engine != nullptr);
       engine->dropCollection(*this, *collection);
 
-      DropCollectionCallback(collection);
+      DropCollectionCallback(*collection);
       break;
     }
     case TRI_VOC_COL_STATUS_LOADED:
@@ -1326,7 +1323,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
 
     if (state == DROP_PERFORM) {
       if (engine->inRecovery()) {
-        DropCollectionCallback(collection);
+        DropCollectionCallback(*collection);
       } else {
         collection->deferDropCollection(DropCollectionCallback);
         engine->signalCleanup(collection->vocbase()); // wake up the cleanup thread
