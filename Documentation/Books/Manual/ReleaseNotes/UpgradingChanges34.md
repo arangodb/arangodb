@@ -6,6 +6,37 @@ upgrading to ArangoDB 3.4, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.4:
 
+Storage engine
+--------------
+
+In ArangoDB 3.4, the default storage engine for new installations is the RocksDB
+engine. This differs to previous versions (3.2 and 3.3), in which the default
+storage engine was the MMFiles engine.
+
+The MMFiles engine can still be explicitly selected as the storage engine for
+all new installations. It's only that the "auto" setting for selecting the storage
+engine will now use the RocksDB engine instead of MMFiles engine.
+
+In the following scenarios, the effectively selected storage engine for new
+installations will be RocksDB:
+
+* `--server.storage-engine rocksdb`
+* `--server.storage-engine auto`
+* `--server.storage-engine` option not specified
+
+The MMFiles storage engine will be selected for new installations only when 
+explicitly selected:
+
+* `--server.storage-engine mmfiles`
+
+On upgrade, any existing ArangoDB installation will keep its previously selected
+storage engine. The change of the default storage engine is thus only relevant
+for new ArangoDB installations and/or existing cluster setups for which new server 
+nodes get added later. All server nodes in a cluster setup should use the same
+storage engine to work reliably. Using different storage engines in a cluster is
+unsupported.
+
+
 Geo indexes
 -----------
 

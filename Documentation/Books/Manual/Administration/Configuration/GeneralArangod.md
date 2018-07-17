@@ -27,11 +27,12 @@ version check on startup. Running the server with a non-matching version number
 in the VERSION file will make the server refuse to start.
 
 ### Storage Engine
-As of ArangoDB 3.2 two storage engines are supported. The "traditional"
-engine is called `MMFiles`, which is also the default storage engine.
+ArangoDB's "traditional" storage engine is called `MMFiles`, which also was the 
+default storage engine up to including ArangoDB 3.4.
 
-An alternative engine based on [RocksDB](http://rocksdb.org) is also provided and
-can be turned on manually.
+Since ArangoDB 3.2, an alternative engine based on [RocksDB](http://rocksdb.org) 
+is also provided and could be turned on manually. Since ArangoDB 3.4, the RocksDB
+storage engine is the default storage engine for new installations.
 
 One storage engine type is supported per server per installation. 
 Live switching of storage engines on already installed systems isn't supported.
@@ -39,8 +40,11 @@ Configuring the wrong engine (not matching the previously used one) will result
 in the server refusing to start. You may however use `auto` to let ArangoDB choose 
 the previously used one. 
 
-
 `--server.storage-engine [auto|mmfiles|rocksdb]`
+
+Note that `auto` will default to `rocksdb` starting with ArangoDB 3.4, but in
+previous versions it defaulted to `mmfiles`.
+
 
 ### Daemon
 
@@ -327,16 +331,6 @@ handling. The default value is
 If this option is *value* is *false*, then ArangoDB's statistics gathering
 is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances a bit.
-
-### Session timeout
-
-time to live for server sessions
-`--server.session-timeout value`
-
-The timeout for web interface sessions, using for authenticating requests
-to the web interface (/_admin/aardvark) and related areas.
-
-Sessions are only used when authentication is turned on.
 
 ### Foxx queues
 @startDocuBlock foxxQueues
