@@ -48,8 +48,6 @@
 #include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
-#include <iostream>
-
 NS_LOCAL
 
 inline arangodb::aql::RegisterId getRegister(

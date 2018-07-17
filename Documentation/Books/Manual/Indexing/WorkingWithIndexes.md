@@ -43,6 +43,7 @@ returns information about the indexes
 `getIndexes()`
 
 Returns an array of all indexes defined for the collection.
+Since ArangoDB 3.4, `indexes()` is an alias for `getIndexes()`.
 
 Note that `_key` implicitly has an index assigned to it.
 
