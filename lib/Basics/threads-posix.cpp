@@ -109,7 +109,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
   auto err = pthread_attr_init (&stackSizeAttribute);
   if (err) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-      << "could not initialise stack size attribute.";
+      << "could not initialize stack size attribute.";
     return false;
   }
   err = pthread_attr_getstacksize(&stackSizeAttribute, &stackSize); 
@@ -181,14 +181,6 @@ int TRI_DetachThread(TRI_thread_t* thread) {
 
 bool TRI_IsSelfThread(TRI_thread_t* thread) {
   return pthread_self() == *thread;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allow cancelation
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AllowCancelation() {
-  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

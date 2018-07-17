@@ -1,10 +1,25 @@
 devel
 -----
 
+* added collection.indexes() as an alias for collection.getIndexes()
+
+* disable V8 engine and JavaScript APIs for agency nodes
+
 * renamed MMFiles engine compactor thread from "Compactor" to "MMFilesCompactor".
   
   This change will be visible only on systems which allow assigning names to
   threads.
+
+* added configuration option `--rocksdb.sync-interval`
+
+  This option specifies interval (in milliseconds) that ArangoDB will use to 
+  automatically synchronize data in RocksDB's write-ahead log (WAL) files to 
+  disk. Automatic syncs will only be performed for not-yet synchronized data, 
+  and only for operations that have been executed without the *waitForSync* 
+  attribute.
+
+  Automatic synchronization is performed by a background thread. The default
+  sync interval is 100 milliseconds.
 
 * added AQL functions `TO_BASE64`, `TO_HEX`, `ENCODE_URI_COMPONENT` and `SOUNDEX`
 

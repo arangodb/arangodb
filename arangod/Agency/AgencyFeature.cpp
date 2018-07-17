@@ -225,8 +225,10 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - ArangoSearch: not needed by agency even if MMFiles is the selected
   //   storage engine
   // - Statistics: turn off statistics gathering for agency
+  // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
+
   application_features::ApplicationServer::disableFeatures(
-      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics"}
+      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "V8Platform", "V8Dealer", "Action", "Script", "FoxxQueues", "Frontend"}
   );
 }
 

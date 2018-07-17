@@ -42,7 +42,6 @@ class GeneralServer {
 
  public:
   GeneralServer() = default;
-  virtual ~GeneralServer();
 
  public:
   void setEndpointList(EndpointList const* list);
