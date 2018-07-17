@@ -92,7 +92,7 @@ All non GRAPH_VERTICES functions will only explain the transformation for a sing
 
 ### Options used everywhere
 
-#### Option edgeCollectionRestriction
+**Option edgeCollectionRestriction**
 
 In order to use edge Collection restriction we just use the feature that the traverser
 can walk over a list of edge collections directly. So the edgeCollectionRestrictions
@@ -108,7 +108,7 @@ just form this list (exampleGraphEdges):
 
 Note: The `@graphName` bindParameter is not used anymore and probably has to be removed from the query.
 
-#### Option includeData
+**Option includeData**
 
 If we use the option includeData we simply return the object directly instead of only the _id
 
@@ -122,7 +122,7 @@ Example GRAPH_EDGES:
 [..] FOR v, e IN ANY @startId GRAPH @graphName RETURN DISTINCT e
 ```
 
-#### Option direction
+**Option direction**
 
 The direction has to be placed before the start id.
 Note here: The direction has to be placed as Word it cannot be handed in via a bindParameter
@@ -136,7 +136,7 @@ anymore:
 [..] FOR v, e IN INBOUND @startId GRAPH @graphName RETURN DISTINCT e._id
 ```
 
-#### Options minDepth, maxDepth
+**Options minDepth, maxDepth**
 
 If we use the options minDepth and maxDepth (both default 1 if not set) we can simply
 put them in front of the direction part in the Traversal statement.
@@ -151,7 +151,7 @@ Example GRAPH_EDGES:
 [..] FOR v, e IN 2..4 ANY @startId GRAPH @graphName RETURN DISTINCT e._id
 ```
 
-#### Option maxIteration
+**Option maxIteration**
 
 The option `maxIterations` is removed without replacement.
 Your queries are now bound by main memory not by an arbitrary number of iterations.
@@ -165,7 +165,7 @@ There we have three possibilities:
 2. The example is `null` or `{}`.
 3. The example is a non empty object or an array.
 
-#### Example is '_id' string
+**Example is '_id' string**
 
 This is the easiest replacement. In this case we simply replace the function with a call to `DOCUMENT`:
 
@@ -181,7 +181,7 @@ NOTE: The `@graphName` is not required anymore, we may have to adjust bindParame
 
 The AQL graph features can work with an id directly, no need to call `DOCUMENT` before if we just need this to find a starting point.
 
-#### Example is `null` or the empty object
+**Example is `null` or the empty object**
 
 This case means we use all documents from the graph.
 Here we first have to now the vertex collections of the graph.
@@ -225,7 +225,7 @@ collections are actually relevant as this `UNION` is a rather expensive operatio
 If we use the option `vertexCollectionRestriction` in the original query. The `UNION` has to be formed
 by the collections in this restriction instead of ALL collections.
 
-#### Example is a non-empty object
+**Example is a non-empty object**
 
 First we follow the instructions for the empty object above.
 In this section we will just focus on a single collection `vertices`, the UNION for multiple collections
@@ -248,7 +248,7 @@ Example:
 [..] 
 ```
 
-#### Example is an array
+**Example is an array**
 
 The idea transformation is almost identical to a single non-empty object.
 For each element in the array we create the filter conditions and than we
@@ -270,7 +270,7 @@ For each element in the array we create the filter conditions and than we
 
 The GRAPH_EDGES can be simply replaced by a call to the AQL traversal.
 
-#### No options
+**No options**
 
 The default options did use a direction `ANY` and returned a distinct result of the edges.
 Also it did just return the edges `_id` value.
@@ -283,7 +283,7 @@ Also it did just return the edges `_id` value.
 [..] FOR v, e IN ANY @startId GRAPH @graphName RETURN DISTINCT e._id
 ```
 
-#### Option edgeExamples.
+**Option edgeExamples.**
 
 See `GRAPH_VERTICES` on how to transform examples to AQL FILTER. Apply the filter on the edge variable `e`.
 
@@ -291,7 +291,7 @@ See `GRAPH_VERTICES` on how to transform examples to AQL FILTER. Apply the filte
 
 The GRAPH_NEIGHBORS is a breadth-first-search on the graph with a global unique check for vertices. So we can replace it by a an AQL traversal with these options.
 
-#### No options
+**No options**
 
 The default options did use a direction `ANY` and returned a distinct result of the neighbors.
 Also it did just return the neighbors `_id` value.
@@ -304,11 +304,11 @@ Also it did just return the neighbors `_id` value.
 [..] FOR n IN ANY @startId GRAPH @graphName OPTIONS {bfs: true, uniqueVertices: 'global'} RETURN n
 ```
 
-#### Option neighborExamples
+**Option neighborExamples**
 
 See `GRAPH_VERTICES` on how to transform examples to AQL FILTER. Apply the filter on the neighbor variable `n`.
 
-#### Option edgeExamples
+**Option edgeExamples**
 
 See `GRAPH_VERTICES` on how to transform examples to AQL FILTER. Apply the filter on the edge variable `e`.
 
@@ -334,7 +334,7 @@ If there may be multiple edges between the same pair of vertices we have to make
 [..] FOR n, e IN ANY @startId GRAPH @graphName OPTIONS {bfs: true} FILTER e.label == 'friend' RETURN DISTINCT n._id
 ```
 
-#### Option vertexCollectionRestriction
+**Option vertexCollectionRestriction**
 
 If we use the vertexCollectionRestriction we have to postFilter the neighbors based on their collection. Therefore we can make use of the function `IS_SAME_COLLECTION`:
 
@@ -398,7 +398,7 @@ This function computes all paths of the entire graph (with a given minDepth and 
 However paths can again be replaced by AQL traversal.
 Assume we only have one vertex collection `vertices` again.
 
-#### No options
+**No options**
 By default paths of length 0 to 10 are returned. And circles are not followed.
 
 ```
@@ -410,7 +410,7 @@ FOR start IN vertices
 FOR v, e, p IN 0..10 OUTBOUND start GRAPH 'graph' RETURN {source: start, destination: v, edges: p.edges, vertices: p.vertices}
 ```
 
-#### followCycles
+**followCycles**
 
 If this option is set we have to modify the options of the traversal by modifying the `uniqueEdges` property:
 
@@ -428,7 +428,7 @@ FOR v, e, p IN 0..10 OUTBOUND start GRAPH 'graph' OPTIONS {uniqueEdges: 'none'} 
 This feature involves several full-collection scans and therefore is extremely expensive.
 If you really need it you can transform it with the help of `ATTRIBUTES`, `KEEP` and `ZIP`.
 
-#### Start with single _id
+**Start with single _id**
 
 ```
 // OLD
@@ -445,7 +445,7 @@ FILTER LENGTH(shared) > 1 // Return them only if they share an attribute
 RETURN ZIP([left._id], [KEEP(right, shared)]) // Build the result
 ```
 
-#### Start with vertexExamples
+**Start with vertexExamples**
 
 Again we assume we only have a single collection `vertices`.
 We have to transform the examples into filters. Iterate
@@ -480,7 +480,7 @@ FOR left IN vertices
 
 A shortest path computation is now done via the new SHORTEST_PATH AQL statement.
 
-#### No options
+**No options**
 
 ```
 // OLD
@@ -500,7 +500,7 @@ RETURN { // We rebuild the old format
 }
 ```
 
-#### Options weight and defaultWeight
+**Options weight and defaultWeight**
 
 The new AQL SHORTEST_PATH offers the options `weightAttribute` and `defaultWeight`.
 
