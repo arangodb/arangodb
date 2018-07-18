@@ -1,3 +1,9 @@
+v3.2.16 (XXXX-XX-XX)
+--------------------
+
+* cluster nodes should retry registring in agency until successful
+
+
 v3.2.16 (2018-07-12)
 --------------------
 
