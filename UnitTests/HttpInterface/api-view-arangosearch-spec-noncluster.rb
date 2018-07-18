@@ -384,7 +384,7 @@ describe ArangoDB do
 
           cmd3 = api + '/lemon/properties'
           doc4 = ArangoDB.log_get("#{prefix}-modify-unacceptable", cmd3)
-          doc4.parsed_response['commit']['commitIntervalMsec'].should eq(17)
+          doc4.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(17)
 
           cmd4 = api + '/lemon'
           doc4 = ArangoDB.log_delete("#{prefix}-modify-unacceptable", cmd4)
