@@ -1155,7 +1155,7 @@ arangodb::Result IResearchView::dropImpl() {
   }
 
   // ArangoDB global consistency check, no known dangling links
-  if (!collectionsCount) {
+  if (collectionsCount) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("links still present while removing iResearch view '") + std::to_string(id()) + "'"
