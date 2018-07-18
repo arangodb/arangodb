@@ -206,7 +206,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   if (!_collection
       || !definition.isObject()
       || !(definition.get(StaticStrings::ViewIdField).isString() ||
-           definition.get(StaticStrings::ViewIdField).isNumber())) {
+           definition.get(StaticStrings::ViewIdField).isNumber<TRI_voc_cid_t>())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "error finding view for link '" << _id << "'";
     TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -381,7 +381,7 @@ bool IResearchLink::json(
     builder.add(
       StaticStrings::ViewIdField, arangodb::velocypack::Value(_view->guid())
     );
-  } else if (!_defaultGuid.empty()) { // '0' _defaultId == no view name in source jSON
+  } else if (!_defaultGuid.empty()) { // _defaultId.empty() == no view name in source jSON
   //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
     builder.add(
       StaticStrings::ViewIdField, VPackValue(_defaultGuid)
@@ -406,7 +406,7 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
 
     auto identifier = slice.get(StaticStrings::ViewIdField);
     if (!((identifier.isString() && identifier.isEqualString(_view->guid())) ||
-          (identifier.isInteger() && identifier.getUInt() != _view->id()))) {
+          (identifier.isNumber<TRI_voc_cid_t>() && identifier.getUInt() != _view->id()))) {
       return false;  // iResearch View names of current object and slice do not match
     }
   } else if (_view) {

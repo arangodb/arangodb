@@ -353,7 +353,7 @@ Result ClusterEngine::createView(
     TRI_voc_cid_t id,
     arangodb::LogicalView const& /*view*/
 ) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 arangodb::Result ClusterEngine::dropView(

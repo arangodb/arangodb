@@ -148,7 +148,7 @@ class Syncer {
   Result createView(TRI_vocbase_t& vocbase,
                     arangodb::velocypack::Slice const& slice);
   
-  /// @brief drops a collection, based on the VelocyPack provided
+  /// @brief drops a view, based on the VelocyPack provided
   Result dropView(arangodb::velocypack::Slice const&, bool reportError);
 
 

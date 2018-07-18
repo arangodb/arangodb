@@ -735,7 +735,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   return Result();
 }
 
-/// @brief drops a collection, based on the VelocyPack provided
+/// @brief drops a view, based on the VelocyPack provided
 Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
                         bool reportError) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);

@@ -2023,20 +2023,20 @@ function BaseTestConfig() {
       );
     },
 
-    testArangoSearchBasic: function() {
+    testViewBasic: function() {
       compare(
         function(state) {
           try {
-            db._create("UnitTestsSyncViewCollection");
+            db._create(cn);
             let view = db._createView("UnitTestsSyncView", "arangosearch", {});
-            view.properties({links: { 
-              "UnitTestsSyncViewCollection": { 
-                includeAllFields: true,
-                fields: {
-                  text: { analyzers: [ "text_en" ] }
-                }
+            let links = {};
+            links[cn] =  { 
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
               }
-            }});
+            };
+            view.properties({"links": links});
             state.arangoSearchEnabled = true;
           } catch (err) { }
         },
@@ -2050,7 +2050,7 @@ function BaseTestConfig() {
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty("links"));
-          assertTrue(props.links.hasOwnProperty("UnitTestsSyncViewCollection"));
+          assertTrue(props.links.hasOwnProperty(cn));
         }
       );
     }

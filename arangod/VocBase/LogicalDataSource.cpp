@@ -53,26 +53,29 @@ std::string ensureGuid(
 
   guid.reserve(64);
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {
+  // view GUIDs are added to the ClusterInfo. To avoid conflicts
+  // with collection names we always put in a '/' which is an illegal
+  // character for collection names. Stringified collection or view
+  // id numbers can also not conflict, first character is always 'h'
+  if (arangodb::ServerState::instance()->isCoordinator() ||
+      arangodb::ServerState::instance()->isDBServer()) {
     TRI_ASSERT(planId);
-    guid.append("c");
-    guid.append(std::to_string(planId));
+    char buf[sizeof(planId) * 2 + 1];
+    auto len = TRI_StringUInt64HexInPlace(planId, buf);
+    guid.append("h");
+    guid.append(buf, len);
+    TRI_ASSERT(guid.size() > 3);
     guid.push_back('/');
-  } else if (arangodb::ServerState::instance()->isDBServer()) {
-    TRI_ASSERT(planId);
-    guid.append("c");
-    // we add the shard name to the collection. If we ever
-    // replicate shards, we can identify them cluster-wide
-    guid.append(std::to_string(planId));
-    guid.push_back('/');
-    guid.append(name);
+    if (arangodb::ServerState::instance()->isDBServer()) {
+      // we add the shard name to the collection. If we ever
+      // replicate shards, we can identify them cluster-wide
+      guid.append(name);
+    }
   } else if (isSystem) {
     guid.append(name);
   } else {
     char buf[sizeof(TRI_server_id_t) * 2 + 1];
-    auto len =
-      TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
-
+    auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
     TRI_ASSERT(id);
     guid.append("h");
     guid.append(buf, len);

@@ -679,13 +679,13 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
 Result TailingSyncer::changeView(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "collection slice is no object");
+                  "view marker slice is no object");
   }
   
   VPackSlice data = slice.get("data");
   if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "data slice is no object");
+                  "data slice is no object in view change marker");
   }
   
   VPackSlice d = data.get("deleted");
@@ -825,7 +825,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   
   else if (type == REPLICATION_VIEW_CREATE) {
     if (_ignoreRenameCreateDrop) {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring collection marker";
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring view create marker";
       return TRI_ERROR_NO_ERROR;
     }
     
@@ -840,6 +840,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     return createView(*vocbase, slice.get("data"));
   } else if (type == REPLICATION_VIEW_DROP) {
     if (_ignoreRenameCreateDrop) {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring view drop marker";
       return TRI_ERROR_NO_ERROR;
     }
     
