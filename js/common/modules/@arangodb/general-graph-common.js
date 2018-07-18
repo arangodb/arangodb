@@ -1055,7 +1055,7 @@ class Graph {
           LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)
           FILTER LENGTH(neighbors) > 0 `;
     if (optionsVertex1.includeData === true || optionsVertex2.includeData === true) {
-      query += `RETURN {left : left, right: right, neighbors: neighbors}`;
+      query += `RETURN {left : left._id, right: right._id, neighbors: neighbors}`;
     } else {
       query += `RETURN {left : left._id, right: right._id, neighbors: neighbors[*]._id}`;
     }
