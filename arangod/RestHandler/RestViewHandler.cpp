@@ -55,7 +55,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   builder.openObject();
   view->toVelocyPack(builder, detailed, false);
   builder.close();
-  generateResult(rest::ResponseCode::OK, builder.slice());
+  generateOk(rest::ResponseCode::OK, builder.slice());
 }
 
 RestStatus RestViewHandler::execute() {

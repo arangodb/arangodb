@@ -384,7 +384,7 @@ describe ArangoDB do
 
           cmd3 = api + '/lemon/properties'
           doc4 = ArangoDB.log_get("#{prefix}-modify-unacceptable", cmd3)
-          doc4.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(17)
+          doc4.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(17)
 
           cmd4 = api + '/lemon'
           doc4 = ArangoDB.log_delete("#{prefix}-modify-unacceptable", cmd4)
@@ -431,14 +431,13 @@ describe ArangoDB do
     end
 
     context "retrieval:" do
-=begin
       it "empty list" do
         cmd = api
         doc = ArangoDB.log_get("#{prefix}-empty-list", cmd)
 
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response.should eq([])
+        doc.parsed_response['result'].should eq([])
       end
 
       it "short list" do
@@ -472,39 +471,39 @@ describe ArangoDB do
         doc3 = ArangoDB.log_get("#{prefix}-short-list", cmd3)
         doc3.code.should eq(200)
         doc3.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc3.parsed_response.length.should eq(3)
-        doc3.parsed_response[0]['name'].should eq("abc")
-        doc3.parsed_response[1]['name'].should eq("def")
-        doc3.parsed_response[0]['type'].should eq("arangosearch")
-        doc3.parsed_response[1]['type'].should eq("arangosearch")
+        doc3.parsed_response['result'].length.should eq(3)
+        doc3.parsed_response['result'][0]['name'].should eq("abc")
+        doc3.parsed_response['result'][1]['name'].should eq("def")
+        doc3.parsed_response['result'][0]['type'].should eq("arangosearch")
+        doc3.parsed_response['result'][1]['type'].should eq("arangosearch")
       end
-=end
+
       it "individual views" do
         cmd1 = api + '/abc'
         doc1 = ArangoDB.log_get("#{prefix}-individual-views", cmd1)
         doc1.code.should eq(200)
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc1.parsed_response['name'].should eq("abc")
-        doc1.parsed_response['type'].should eq("arangosearch")
+        doc1.parsed_response['result']['name'].should eq("abc")
+        doc1.parsed_response['result']['type'].should eq("arangosearch")
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-individual-views", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(10)
+        doc2.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(10)
 
         cmd3 = api + '/def'
         doc3 = ArangoDB.log_get("#{prefix}-individual-views", cmd3)
         doc3.code.should eq(200)
         doc3.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc3.parsed_response['name'].should eq("def")
-        doc3.parsed_response['type'].should eq("arangosearch")
+        doc3.parsed_response['result']['name'].should eq("def")
+        doc3.parsed_response['result']['type'].should eq("arangosearch")
 
         cmd4 = api + '/def/properties'
         doc4 = ArangoDB.log_get("#{prefix}-individual-views", cmd4)
         doc4.code.should eq(200)
         doc4.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc4.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(10)
+        doc4.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(10)
       end
 
     end
@@ -527,7 +526,7 @@ describe ArangoDB do
         doc2 = ArangoDB.log_get("#{prefix}-change-properties", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(7)
+        doc2.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(7)
       end
 
       it "ignore extra properties" do
@@ -547,8 +546,8 @@ describe ArangoDB do
         doc2 = ArangoDB.log_get("#{prefix}-ignore-extra-properties", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(10)
-        doc2.parsed_response['extra'].should eq(nil)
+        doc2.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(10)
+        doc2.parsed_response['result']['extra'].should eq(nil)
       end
 
       it "accept updates via PATCH as well" do
@@ -567,7 +566,7 @@ describe ArangoDB do
         doc2 = ArangoDB.log_get("#{prefix}-accept-patch", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(3)
+        doc2.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(3)
       end
 
     end
