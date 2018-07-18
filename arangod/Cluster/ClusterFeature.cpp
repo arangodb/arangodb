@@ -413,24 +413,29 @@ void ClusterFeature::start() {
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
-  VPackBuilder builder;
-  try {
-    VPackObjectBuilder b(&builder);
-    builder.add("endpoint", VPackValue(_myAddress));
-    builder.add("host", VPackValue(ServerState::instance()->getHost()));
-  } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
-    FATAL_ERROR_EXIT();
-  }
+  while (true) {
+    VPackBuilder builder;
+    try {
+      VPackObjectBuilder b(&builder);
+      builder.add("endpoint", VPackValue(_myAddress));
+      builder.add("host", VPackValue(ServerState::instance()->getHost()));
+    } catch (...) {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
+      FATAL_ERROR_EXIT();
+    }
 
-  result.clear();
-  result = comm.setValue("Current/ServersRegistered/" + myId,
-                         builder.slice(), 0.0);
+    result = comm.setValue("Current/ServersRegistered/" + myId,
+                           builder.slice(), 0.0);
 
-  if (!result.successful()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to register server in agency: http code: "
-               << result.httpCode() << ", body: " << result.body();
-    FATAL_ERROR_EXIT();
+    if (result.successful()) {
+      break;
+    } else {
+      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+        << "failed to register server in agency: http code: "	
+        << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
+    }
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   comm.increment("Current/Version");
