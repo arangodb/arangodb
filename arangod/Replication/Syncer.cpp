@@ -449,7 +449,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   bool forceRemoveCid = false;
   if (col != nullptr && _state.master.simulate32Client()) {
     forceRemoveCid = true;
-    LOG_TOPIC(TRACE, Logger::REPLICATION)
+    LOG_TOPIC(INFO, Logger::REPLICATION)
         << "would have got a wrong collection!";
     // go on now and truncate or drop/re-create the collection
   }
@@ -485,7 +485,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
     }
   }
 
-  VPackSlice uuid = slice.get("globallyUniqueId");
+  VPackSlice uuid = slice.get(StaticStrings::DataSourceGuid);
   // merge in "isSystem" attribute, doesn't matter if name does not start with
   // '_'
   VPackBuilder s;
@@ -498,7 +498,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
     // if we received a globallyUniqueId from the remote, then we will always
     // use this id so we can discard the "cid" and "id" values for the
     // collection
-    s.add("id", VPackSlice::nullSlice());
+    s.add(StaticStrings::DataSourceId, VPackSlice::nullSlice());
     s.add("cid", VPackSlice::nullSlice());
   }
 

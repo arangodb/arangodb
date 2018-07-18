@@ -695,12 +695,14 @@ function BaseTestConfig() {
             return;
           }
           // rename view on master
-          try {
-            let view = db._view("UnitTestsSyncView");
-            view.rename("UnitTestsSyncViewRenamed");
-            view = db._view("UnitTestsSyncViewRenamed");
-            assertTrue(view !== null);
-          } catch (err) {}
+          let view = db._view("UnitTestsSyncView");
+          view.rename("UnitTestsSyncViewRenamed");
+          view = db._view("UnitTestsSyncViewRenamed");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
         },
         function(state) {},
         function(state) {
