@@ -26,7 +26,7 @@ Solution 1: Quick and Dirty (not recommended)
 
 **When to use this solution**
 
-I am not willing to invest a lot if time into the upgrade process and i am
+I am not willing to invest a lot if time into the upgrade process and I am
 willing to surrender some performance in favor of less effort.
 Some constellations may not work with this solution due to the nature of
 user-defined functions.
@@ -49,7 +49,7 @@ These have registered all old `GRAPH_*` functions as user-defined functions agai
 **Modify the application code**
 
 Next we have to go through our application code and replace all calls to `GRAPH_*` by `arangodb::GRAPH_*`.
-Now run a testrun of our application and check if it worked.
+Perform a test run of the application and check if it worked.
 If it worked we are ready to go.
 
 **Important Information**
@@ -313,7 +313,7 @@ See `GRAPH_VERTICES` on how to transform examples to AQL FILTER. Apply the filte
 See `GRAPH_VERTICES` on how to transform examples to AQL FILTER. Apply the filter on the edge variable `e`.
 
 However this is a bit more complicated as it interferes with the global uniqueness check.
-For edgeExamples it is sufficent when any edge pointing to the neighbor matches the filter. Using `{uniqueVertices: 'global'}` first picks any edge randomly. Than it checks against this edge only.
+For edgeExamples it is sufficient when any edge pointing to the neighbor matches the filter. Using `{uniqueVertices: 'global'}` first picks any edge randomly. Than it checks against this edge only.
 If we know there are no vertex pairs with multiple edges between them we can use the simple variant which is save:
 
 ```
@@ -767,7 +767,7 @@ Path data (shortened):
 The first and second vertex of the nth path are connected by the first edge
 (`p[n].vertices[0]` ⟝ `p[n].edges[0]` → `p[n].vertices[1]`) and so on. This
 structure might actually be more convenient to process compared to a tree-like
-structure. Note that the edge documents are also included, in constrast to the
+structure. Note that the edge documents are also included, in contrast to the
 removed graph traversal function.
 
 Contact us via our social channels if you need further help.
