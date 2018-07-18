@@ -431,6 +431,7 @@ describe ArangoDB do
     end
 
     context "retrieval:" do
+=begin
       it "empty list" do
         cmd = api
         doc = ArangoDB.log_get("#{prefix}-empty-list", cmd)
@@ -477,7 +478,7 @@ describe ArangoDB do
         doc3.parsed_response[0]['type'].should eq("arangosearch")
         doc3.parsed_response[1]['type'].should eq("arangosearch")
       end
-
+=end
       it "individual views" do
         cmd1 = api + '/abc'
         doc1 = ArangoDB.log_get("#{prefix}-individual-views", cmd1)
