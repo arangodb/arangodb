@@ -446,16 +446,12 @@ void ClusterFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
-    result = comm.setValue("Current/ServersRegistered/" + _myId,
-                           builder.slice(), 0.0);
+    result = comm.setValue(
+      "Current/ServersRegistered/" + _myId, builder.slice(), 0.0);
 
-    if (!result.successful()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to register server in agency: http code: "
-                 << result.httpCode() << ", body: " << result.body();
-      FATAL_ERROR_EXIT();
-    } else {
+    if (result.successful()) {
       break;
-    }
+    } 
 
     sleep(1);
   }
