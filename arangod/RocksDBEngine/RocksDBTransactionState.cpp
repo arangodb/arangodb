@@ -406,24 +406,15 @@ void RocksDBTransactionState::prepareOperation(
     }
   }
   
-  // we need to log the remove log entry, if we don't have the single
-  // optimization
-  if (!singleOp && (
-    operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-    operationType == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
-    operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE
-  )) {
-    if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
-      _rocksTransaction->PutLogData(logValue.slice());
-    } else {
-      RocksDBLogValue logValue = RocksDBLogValue::DocumentRemoveAsPartOfUpdate(key);
-      _rocksTransaction->PutLogData(logValue.slice());
-    }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    ++_numLogdata;
-#endif
+  // we need to log the remove log entry, if we do not
+  // have the single operation optimization
+  if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
+    _rocksTransaction->PutLogData(logValue.slice());
   }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  ++_numLogdata;
+#endif
 }
 
 /// @brief add an operation for a transaction collection

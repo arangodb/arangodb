@@ -69,7 +69,6 @@ class RocksDBLogValue {
                                           TRI_voc_tid_t trxId);
   static RocksDBLogValue DocumentOpsPrologue(TRI_voc_cid_t cid);
   static RocksDBLogValue DocumentRemove(arangodb::StringRef const&);
-  static RocksDBLogValue DocumentRemoveAsPartOfUpdate(arangodb::StringRef const&);
 
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
   static RocksDBLogValue SingleRemove(TRI_voc_tick_t vocbaseId,
