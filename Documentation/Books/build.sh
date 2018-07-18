@@ -386,17 +386,21 @@ function check-dangling-anchors()
 function book-check-images-referenced()
 {
     NAME="$1"
-    set +e
-    find "${NAME}" -name \*.png | while IFS= read -r image; do
-        baseimage=$(basename "$image")
-        if ! grep -Rq "${baseimage}" "${NAME}"; then
-            echo "${ERR_COLOR}"
-            echo "$image is not used!"
-            echo "${RESET}"
-            exit "1"
-        fi
-    done
-    set -e
+    echo "${STD_COLOR}##### checking for unused image files ${NAME}${RESET}"
+    ERRORS=$(find "${NAME}" -name '*.png' | while IFS= read -r image; do
+            baseimage=$(basename "$image")
+            if ! grep -Rq "${baseimage}" "${NAME}"; then
+                printf "\n${image}"
+            fi
+        done
+    )
+    if test "$(printf "${ERRORS}" | wc -l)" -gt 0; then
+        echo "${ERR_COLOR}";
+        echo "the following images are not referenced by any page: "
+        echo "${ERRORS}"
+        echo "${RESET}";
+        exit 1;
+    fi
 }
 
 function build-book-symlinks()
