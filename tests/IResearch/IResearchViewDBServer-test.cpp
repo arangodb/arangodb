@@ -828,8 +828,7 @@ SECTION("test_toVelocyPack") {
     CHECK((slice.hasKey("properties")));
     auto props = slice.get("properties");
     CHECK((props.isObject()));
-    CHECK((1 == props.length()));
-    CHECK((props.hasKey("collections") && props.get("collections").isArray() && 0 == props.get("collections").length()));
+    CHECK((2U == props.length()));
   }
 
   // includeSystem
@@ -987,12 +986,17 @@ SECTION("test_updateProperties") {
       builder.openObject();
       wiew->toVelocyPack(builder, true, false);
       builder.close();
-      auto slice = builder.slice().get("properties");
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((2U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 42 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((!slice.hasKey("links")));
     }
 
     {
@@ -1006,8 +1010,12 @@ SECTION("test_updateProperties") {
       builder.openObject();
       wiew->toVelocyPack(builder, true, false);
       builder.close();
-      auto slice = builder.slice().get("properties");
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((2U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1020,18 +1028,47 @@ SECTION("test_updateProperties") {
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((true == view->visitCollections(visitor))); // no collections in view
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
-    auto slice = builder.slice().get("properties");
-    CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
-    CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
-    auto tmpSlice = slice.get("commit");
-    CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
-    CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
-    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((3U == slice.length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+    }
+
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      CHECK((8U == slice.length()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((3U == slice.length()));
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 
   // update empty (full)
@@ -1056,12 +1093,17 @@ SECTION("test_updateProperties") {
       builder.openObject();
       wiew->toVelocyPack(builder, true, false);
       builder.close();
-      auto slice = builder.slice().get("properties");
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((2U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 42 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((!slice.hasKey("links")));
     }
 
     {
@@ -1075,8 +1117,12 @@ SECTION("test_updateProperties") {
       builder.openObject();
       wiew->toVelocyPack(builder, true, false);
       builder.close();
-      auto slice = builder.slice().get("properties");
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((2U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1089,18 +1135,47 @@ SECTION("test_updateProperties") {
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((true == view->visitCollections(visitor))); // no collections in view
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
-    auto slice = builder.slice().get("properties");
-    CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
-    CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
-    auto tmpSlice = slice.get("commit");
-    CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
-    CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
-    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((3U == slice.length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+    }
+
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      CHECK((8U == slice.length()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((3U == slice.length()));
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 
   // update non-empty (partial)
@@ -1130,12 +1205,17 @@ SECTION("test_updateProperties") {
       builder.openObject();
       wiew->toVelocyPack(builder, true, false);
       builder.close();
-      auto slice = builder.slice().get("properties");
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((2U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 42 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((!slice.hasKey("links")));
     }
 
     {
@@ -1149,8 +1229,12 @@ SECTION("test_updateProperties") {
       builder.openObject();
       wiew->toVelocyPack(builder, true, false);
       builder.close();
-      auto slice = builder.slice().get("properties");
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 2 == slice.get("collections").length()));
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((2U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1160,18 +1244,47 @@ SECTION("test_updateProperties") {
 
     CHECK((true == view->visitCollections(visitor))); // no collections in view
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
-    auto slice = builder.slice().get("properties");
-    CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
-    CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
-    auto tmpSlice = slice.get("commit");
-    CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
-    CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
-    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((3U == slice.length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+    }
+
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      CHECK((8U == slice.length()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((3U == slice.length()));
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 
   // update non-empty (full)
@@ -1204,12 +1317,17 @@ SECTION("test_updateProperties") {
       builder.openObject();
       wiew->toVelocyPack(builder, true, false);
       builder.close();
-      auto slice = builder.slice().get("properties");
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((2U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 42 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((!slice.hasKey("links")));
     }
 
     {
@@ -1223,8 +1341,12 @@ SECTION("test_updateProperties") {
       builder.openObject();
       wiew->toVelocyPack(builder, true, false);
       builder.close();
-      auto slice = builder.slice().get("properties");
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((2U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1234,18 +1356,47 @@ SECTION("test_updateProperties") {
 
     CHECK((true == view->visitCollections(visitor))); // no collections in view
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
-    auto slice = builder.slice().get("properties");
-    CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
-    CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
-    auto tmpSlice = slice.get("commit");
-    CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
-    CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
-    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((3U == slice.length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+    }
+
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((slice.isObject()));
+      CHECK((8U == slice.length()));
+      slice = slice.get("properties");
+      CHECK((slice.isObject()));
+      CHECK((3U == slice.length()));
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+      CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
+      auto tmpSlice = slice.get("commit");
+      CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
+      CHECK((tmpSlice.hasKey("commitIntervalMsec") && tmpSlice.get("commitIntervalMsec").isNumber<size_t>() && 52 == tmpSlice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 }
 

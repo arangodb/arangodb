@@ -453,7 +453,7 @@ function dumpTestSuite () {
       let view = db._view("UnitTestsDumpView");
       assertTrue(view !== null);
       let props = view.properties();
-      assertEqual(props.collections.length, 1);
+      assertEqual(Object.keys(props.links).length, 1);
       assertTrue(props.hasOwnProperty("links"));
       assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
     }

@@ -24,7 +24,7 @@ Graph functions covered in this recipe:
 Solution 1: Quick and Dirty (not recommended)
 ---------------------------------------------
 
-### When to use solution 1
+**When to use this solution**
 
 I am not willing to invest a lot if time into the upgrade process and I am
 willing to surrender some performance in favor of less effort.
@@ -33,7 +33,7 @@ user-defined functions.
 Especially check for AQL queries that do both modifications
 and `GRAPH_*` functions.
 
-### Registering user-defined functions
+**Registering user-defined functions**
 
 This step has to be executed once on ArangoDB for every database we are using.
 
@@ -46,13 +46,13 @@ graphs._registerCompatibilityFunctions();
 
 These have registered all old `GRAPH_*` functions as user-defined functions again, with the prefix `arangodb::`.
 
-### Modify the application code
+**Modify the application code**
 
 Next we have to go through our application code and replace all calls to `GRAPH_*` by `arangodb::GRAPH_*`.
 Perform a test run of the application and check if it worked.
 If it worked we are ready to go.
 
-### Important Information
+**Important Information**
 
 The user defined functions will call translated subqueries (as described in Solution 2).
 The optimizer does not know anything about these subqueries beforehand and cannot optimize the whole plan.
@@ -62,14 +62,14 @@ a "really" translated query may work while the user-defined function work around
 Solution 2: Translating the queries (recommended)
 -------------------------------------------------
 
-### When to use solution 2
+**When to use this solution**
 
 I am willing to invest some time on my queries in order to get
 maximum performance, full query optimization and a better
 control of my queries. No forcing into the old layout
 any more.
 
-### Before you start
+**Before you start**
 
 If you are using `vertexExamples` which are not only `_id` strings do not skip
 the GRAPH_VERTICES section, because it will describe how to translate them to
@@ -90,7 +90,7 @@ FOR start GRAPH_VERTICES(@graph, @myExample)
 
 All non GRAPH_VERTICES functions will only explain the transformation for a single input document's `_id`.
 
-### Options used everywhere
+**Options used everywhere**
 
 **Option edgeCollectionRestriction**
 
