@@ -139,11 +139,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::vector<std::string> nonServerFeatures = {
         "Action",              "Agency",
         "Cluster",             "Daemon",
-        "EngineEqualityCheck", "FoxxQueues",
-        "GeneralServer",       "Greetings",
-        "LoggerBufferFeature", "Server",
-        "SslServer",           "Statistics",
-        "Supervisor"};
+        "Endpoint",            "EngineEqualityCheck", 
+        "FoxxQueues",          "GeneralServer",       
+        "Greetings",           "LoggerBufferFeature", 
+        "Server",              "SslServer",           
+        "Statistics",          "Supervisor"};
 
     int ret = EXIT_FAILURE;
 
