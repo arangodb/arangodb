@@ -208,7 +208,6 @@ class PhysicalCollection {
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx,
                             velocypack::Slice const& value,
-                            LocalDocumentId const& documentId,
                             bool isEdgeCollection, velocypack::Builder& builder,
                             bool isRestore,
                             TRI_voc_rid_t& revisionId) const;
@@ -216,7 +215,6 @@ class PhysicalCollection {
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
                           velocypack::Slice const& oldValue,
-                          LocalDocumentId const& documentId,
                           velocypack::Builder& builder,
                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
@@ -224,7 +222,7 @@ class PhysicalCollection {
   Result mergeObjectsForUpdate(transaction::Methods* trx,
                                velocypack::Slice const& oldValue,
                                velocypack::Slice const& newValue,
-                               bool isEdgeCollection, LocalDocumentId const& documentId,
+                               bool isEdgeCollection,
                                bool mergeObjects, bool keepNull,
                                velocypack::Builder& builder,
                                bool isRestore, TRI_voc_rid_t& revisionId) const;
@@ -233,7 +231,7 @@ class PhysicalCollection {
   Result newObjectForReplace(transaction::Methods* trx,
                              velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
-                             bool isEdgeCollection, LocalDocumentId const& documentId,
+                             bool isEdgeCollection,
                              velocypack::Builder& builder,
                              bool isRestore, TRI_voc_rid_t& revisionId) const;
 

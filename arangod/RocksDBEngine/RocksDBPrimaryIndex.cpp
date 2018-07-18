@@ -275,12 +275,13 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
 
 Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
-                                           LocalDocumentId const& oldDocumentId,
-                                           arangodb::velocypack::Slice const& oldDoc,
-                                           LocalDocumentId const& newDocumentId,
-                                           velocypack::Slice const& newDoc,
+                                           LocalDocumentId const& documentId,
+                                           VPackSlice const& oldDoc,
+                                           VPackSlice const& newDoc,
                                            OperationMode mode) {
-  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
+  // primary key cannot change
+  return {};
+  /*VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
@@ -290,7 +291,7 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
   blackListKey(key->string().data(),
               static_cast<uint32_t>(key->string().size()));
   Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
-  return IndexResult(status.errorNumber(), this);
+  return IndexResult(status.errorNumber(), this);*/
 }
 
 Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,

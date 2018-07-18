@@ -237,16 +237,15 @@ int RocksDBIndex::afterTruncate() {
 }
 
 Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
-                                    LocalDocumentId const& oldDocumentId,
+                                    LocalDocumentId const& documentId,
                                     arangodb::velocypack::Slice const& oldDoc,
-                                    LocalDocumentId const& newDocumentId,
                                     arangodb::velocypack::Slice const& newDoc,
                                     OperationMode mode) {
-  Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
+  Result res = removeInternal(trx, mthd, documentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
   }
-  return insertInternal(trx, mthd, newDocumentId, newDoc, mode);
+  return insertInternal(trx, mthd, documentId, newDoc, mode);
 }
 
 /// @brief return the memory usage of the index

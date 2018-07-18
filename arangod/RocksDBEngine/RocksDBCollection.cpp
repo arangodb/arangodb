@@ -838,8 +838,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   transaction::BuilderLeaser builder(trx);
   RocksDBOperationResult res(
-      newObjectForInsert(trx, slice, documentId,
-                         isEdgeCollection, *builder.get(), options.isRestore, revisionId));
+      newObjectForInsert(trx, slice, isEdgeCollection, *builder.get(),
+                         options.isRestore, revisionId));
   if (res.fail()) {
     return res;
   }
@@ -888,7 +888,6 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  ManagedDocumentResult& previous,
                                  arangodb::velocypack::Slice const key) {
   resultMarkerTick = 0;
-  LocalDocumentId const documentId = LocalDocumentId::create();
 
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
@@ -899,7 +898,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   }
 
   TRI_ASSERT(!previous.empty());
-  LocalDocumentId const oldDocumentId = previous.localDocumentId();
+  LocalDocumentId const documentId = previous.localDocumentId();
 
   VPackSlice oldDoc(previous.vpack());
   TRI_voc_rid_t oldRevisionId =
@@ -937,8 +936,8 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                              documentId, options.mergeObjects,
-                              options.keepNull, *builder.get(), options.isRestore, revisionId);
+                              options.mergeObjects, options.keepNull,
+                              *builder.get(), options.isRestore, revisionId);
 
   if (res.fail()) {
     return res;
@@ -964,7 +963,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc, options);
+  res = updateDocument(trx, documentId, oldDoc, newDoc, options);
 
   if (res.ok()) {
     if (options.silent) {
@@ -997,7 +996,6 @@ Result RocksDBCollection::replace(
     TRI_voc_tick_t& resultMarkerTick, bool /*lock*/, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
-  LocalDocumentId const documentId = LocalDocumentId::create();
 
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
@@ -1016,7 +1014,7 @@ Result RocksDBCollection::replace(
   }
 
   TRI_ASSERT(!previous.empty());
-  LocalDocumentId const oldDocumentId = previous.localDocumentId();
+  LocalDocumentId const documentId = previous.localDocumentId();
 
   VPackSlice oldDoc(previous.vpack());
   TRI_voc_rid_t oldRevisionId =
@@ -1040,7 +1038,7 @@ Result RocksDBCollection::replace(
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   res = newObjectForReplace(trx, oldDoc, newSlice,
-                            isEdgeCollection, documentId,
+                            isEdgeCollection,
                             *builder.get(), options.isRestore, revisionId);
 
   if (res.fail()) {
@@ -1069,7 +1067,7 @@ Result RocksDBCollection::replace(
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   RocksDBOperationResult opResult = updateDocument(
-      trx, oldDocumentId, oldDoc, documentId, newDoc, options);
+      trx, documentId, oldDoc, newDoc, options);
   if (opResult.ok()) {
     if (options.silent) {
       mdr.reset();
@@ -1504,9 +1502,9 @@ RocksDBOperationResult RocksDBCollection::lookupDocument(
 }
 
 RocksDBOperationResult RocksDBCollection::updateDocument(
-    transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
-    VPackSlice const& oldDoc, LocalDocumentId const& newDocumentId,
-    VPackSlice const& newDoc, OperationOptions& options) const {
+    transaction::Methods* trx, LocalDocumentId const& documentId,
+    VPackSlice const& oldDoc, VPackSlice const& newDoc,
+    OperationOptions& options) const {
   // keysize in return value is set by insertDocument
 
   // Coordinator doesn't know index internals
@@ -1518,7 +1516,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   
   // We NEED to do the PUT first, otherwise WAL tailing breaks
   RocksDBKeyLeaser newKey(trx);
-  newKey->constructDocument(_objectId, newDocumentId.id());
+  newKey->constructDocument(_objectId, documentId.id());
   // TODO: given that this should have a unique revision ID, do
   // we really need to blacklist the new key?
   blackListKey(newKey->string().data(),
@@ -1533,7 +1531,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     return res;
   }
   
-  RocksDBKeyLeaser oldKey(trx);
+  /*RocksDBKeyLeaser oldKey(trx);
   oldKey->constructDocument(_objectId, oldDocumentId.id());
   blackListKey(oldKey->string().data(),
                static_cast<uint32_t>(oldKey->string().size()));
@@ -1541,13 +1539,12 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
    res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
   if (!res.ok()) {
     return res;
-  }
+  }*/
 
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc,
-                                         newDocumentId, newDoc,
+    Result tmpres = rIdx->updateInternal(trx, mthd, documentId, oldDoc, newDoc,
                                          options.indexOperationMode);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
