@@ -202,6 +202,48 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow", "foo", "bar")');
     },
 
+
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test LevenshteinDistance
+// //////////////////////////////////////////////////////////////////////////////
+    testToLevenshteinDistanceValues: function () {
+      [ 
+        [ null, "", 0 ],
+        [ null, null, 0 ],
+        [ "", "", 0 ],
+        [ "", "foobar", 6 ],
+        [ "foobar", "", 6 ],
+        [ "foobar", "foo", 3 ],
+        [ "foo", "foobar", 3 ],
+        [ true, "foobar", 6 ],
+        [ false, "foobar", 6 ],
+        [ "foobar", true, 6 ],
+        [ "foobar", false, 6 ],
+        [ true, true, 0 ],
+        [ false, false, 0 ],
+        [ true, false, 4 ],
+        [ false, true, 4 ],
+        [ "", "", 0 ],
+        [ " ", "", 0 ],
+        [ "         ", "", 0 ],
+        [ "mötör", "M360" ],
+        [ "der mötör trötet", "der mötör trötet", 0 ],
+        [ "der mötör trötet", "der trötet", 6 ],
+        [ "der mötör trötet", "dertrötet", 7 ],
+        [ "Öööööö", "öö", 4 ],
+        [ "The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox", 13 ],
+      ].forEach(function(test) {
+        assertEqual([ test[2] ], getQueryResults('RETURN LEVENSHTEIN_DISTANCE(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1])')'), test);
+      });
+    },
+
+    testLevenshteinDistanceInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test", "meow", "foo", "bar")');
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test JSON_STRINGIFY
 // //////////////////////////////////////////////////////////////////////////////

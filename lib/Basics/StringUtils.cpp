@@ -25,6 +25,14 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include <vector>
+#include <bitset>
+#include <cstdint>
+#include <string>
+#include <iostream>
+#include <algorithm>
+#include <limits>
+#include <cassert>
 
 #include <math.h>
 #include <time.h>
@@ -1405,6 +1413,119 @@ std::string soundex(char const* src, size_t const len) {
   
   return result;
 }
+    
+    
+template<typename InputType>
+inline bool eq(InputType const& c1, InputType const& c2) {
+    return c1 == c2;
+}
+
+template<typename InputType, typename LengthType>
+LengthType impl(InputType const* lhs,
+                               InputType const* rhs,
+                               LengthType lhsSize,
+                               LengthType rhsSize) {
+    assert(lhsSize >= rhsSize);
+        
+    std::vector<LengthType> costs;
+    costs.resize(rhsSize + 1);
+        
+    for (LengthType i = 0; i < rhsSize; ++i) {
+        costs[i] = i;
+    }
+        
+    LengthType next = 0;
+        
+    for (LengthType i = 0; i < lhsSize; ++i) {
+        LengthType current = i + 1;
+            
+        for (LengthType j = 0; j < rhsSize; ++j) {
+            LengthType cost = !(eq<InputType>(lhs[i], rhs[j]) ||
+                                (i && j && eq<InputType>(lhs[i - 1], rhs[j]) && eq<InputType>(lhs[i], rhs[j - 1])));
+            next = std::min(std::min(costs[j + 1] + 1, current + 1), costs[j] + cost);
+            costs[j] = current;
+            current = next;
+        }
+        costs[rhsSize] = next;
+    }
+    return next;
+}
+    
+size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2){
+    
+    if (vect1.size() == 0 || vect2.size() == 0) {
+        return vect1.size() ? vect1.size() : vect2.size();
+    }
+    
+    if (vect1.size() < vect2.size()) {
+        vect1.swap(vect2);
+    }
+    
+    size_t lhsSize = vect1.size();
+    size_t rhsSize = vect2.size();
+    
+    uint32_t const* l = vect1.data();
+    uint32_t const* r = vect2.data();
+    
+    if (lhsSize < std::numeric_limits<uint8_t>::max()) {
+        return static_cast<size_t>(impl<uint32_t, uint8_t>(l, r, lhsSize, rhsSize));
+    } else if (lhsSize < std::numeric_limits<uint16_t>::max()) {
+        return static_cast<size_t>(impl<uint32_t, uint16_t>(l, r, lhsSize, rhsSize));
+    } else if (lhsSize < std::numeric_limits<uint32_t>::max()) {
+        return static_cast<size_t>(impl<uint32_t, uint32_t>(l, r, lhsSize, rhsSize));
+    }
+    return static_cast<size_t>(impl<uint32_t, uint64_t>(l, r, lhsSize, rhsSize));
+}
+
+int levenshteinDistance(std::string const& str1, std::string const& str2){
+    std::vector<uint32_t> vect1 = levenshteinDistance(str1);
+    std::vector<uint32_t> vect2 = levenshteinDistance(str2);
+    
+    return static_cast<int>(levenshteinDistance(vect1, vect2));
+}
+    
+unsigned char consume(char const*& s){
+    return *reinterpret_cast<unsigned char const*>(s++);
+}
+    
+std::vector<uint32_t> levenshteinDistance(std::string const& str){
+    char const* s = str.data();
+    char const* e = s + str.size();
+    
+    std::vector<uint32_t> charNums;
+    
+    while (s < e) {
+        unsigned char c = consume(s);
+        uint32_t n = uint32_t(c);
+        
+        if ((c & 0x80U) == 0U) {
+            charNums.push_back(n);
+        }
+        else if ((c & 0xE0U) == 0xC0U){
+            if (s + 1 == e) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
+            }
+            charNums.push_back((n << 8U) + uint32_t(consume(s)));
+        }
+        else if ((c & 0xF0U) == 0xE0U){
+            if (s + 2 == e) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
+            }
+            charNums.push_back((n << 16U) + (uint32_t(consume(s)) << 8U) + (uint32_t(consume(s))));
+        }
+        else if ((c & 0xF8U) == 0XF0U){
+            if (s + 3 == e) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
+            }
+            charNums.push_back((n << 24U) + (uint32_t(consume(s)) << 16U) + (uint32_t(consume(s)) << 8U) + (uint32_t(consume(s))));
+        }
+        else{
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
+        }
+    }
+    return charNums;
+}
+
     
 // .............................................................................
 // CONVERT TO STRING
