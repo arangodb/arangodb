@@ -11,6 +11,8 @@ v3.3.13 (XXXX-XX-XX)
 * fixed issue #5827: Batch request handling incompatible with .NET's default
   ContentType format
 
+* fixed agency's log compaction for internal issue #2249
+
 * cluster nodes should retry registring in agency until successful
 
 
