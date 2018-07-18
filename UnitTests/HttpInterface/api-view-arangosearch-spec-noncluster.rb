@@ -384,7 +384,7 @@ describe ArangoDB do
 
           cmd3 = api + '/lemon/properties'
           doc4 = ArangoDB.log_get("#{prefix}-modify-unacceptable", cmd3)
-          doc4.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(17)
+          doc4.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(17)
 
           cmd4 = api + '/lemon'
           doc4 = ArangoDB.log_delete("#{prefix}-modify-unacceptable", cmd4)
@@ -483,8 +483,8 @@ describe ArangoDB do
         doc1 = ArangoDB.log_get("#{prefix}-individual-views", cmd1)
         doc1.code.should eq(200)
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc1.parsed_response['result']['name'].should eq("abc")
-        doc1.parsed_response['result']['type'].should eq("arangosearch")
+        doc1.parsed_response['name'].should eq("abc")
+        doc1.parsed_response['type'].should eq("arangosearch")
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-individual-views", cmd2)
@@ -526,7 +526,7 @@ describe ArangoDB do
         doc2 = ArangoDB.log_get("#{prefix}-change-properties", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(7)
+        doc2.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(7)
       end
 
       it "ignore extra properties" do
@@ -546,8 +546,8 @@ describe ArangoDB do
         doc2 = ArangoDB.log_get("#{prefix}-ignore-extra-properties", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(10)
-        doc2.parsed_response['result']['extra'].should eq(nil)
+        doc2.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(10)
+        doc2.parsed_response['extra'].should eq(nil)
       end
 
       it "accept updates via PATCH as well" do
@@ -566,7 +566,7 @@ describe ArangoDB do
         doc2 = ArangoDB.log_get("#{prefix}-accept-patch", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(3)
+        doc2.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(3)
       end
 
     end
