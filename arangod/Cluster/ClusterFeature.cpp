@@ -455,6 +455,10 @@ void ClusterFeature::start() {
 
     if (result.successful()) {
       break;
+    } else {
+      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+        << "failed to register server in agency: http code: "	
+        << result.httpCode() << ", body: '" << result.body() << "' retrying ...";
     }
 
     sleep(1);
