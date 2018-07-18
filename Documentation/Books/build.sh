@@ -304,6 +304,7 @@ function ppbook-check-two-links()
 
 function check-dangling-anchors()
 {
+    rm -rf /tmp/tags/
     echo "${STD_COLOR}##### checking for dangling anchors${RESET}"
     find books/ -name '*.html' | while IFS= read -r htmlf; do
         fn=$(basename "${htmlf}")
@@ -330,7 +331,7 @@ function check-dangling-anchors()
     rm -f /tmp/sorted.txt /tmp/sortedunique.txt
     if test -f /tmp/failduplicatetags.txt; then
         echo "${ERR_COLOR}"
-        echo duplicate anchors detected - see above
+        echo "duplicate anchors detected - see above"
         echo "${RESET}"
         rm -f /tmp/failduplicatetags.txt
         exit 1

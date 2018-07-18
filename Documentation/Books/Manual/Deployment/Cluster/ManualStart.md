@@ -23,7 +23,7 @@ In this paragraph we will include commands to manually start a Cluster with 3 _A
 We will assume that all processes runs on the same machine (127.0.0.1). Such scenario
 should be used for testing only.
 
-### Local Agency
+### Local Test Agency
 
 To start up an _Agency_ you first have to activate it. This is done by providing
 the option `--agency.activate true`.
@@ -68,7 +68,7 @@ arangod --server.endpoint tcp://0.0.0.0:5003 \
 	--database.directory agent3 &
 ```
 
-### Local DBServers and Coordinators
+### Local Test DBServers and Coordinators
 
 These two roles share a common set of relevant options. First you should specify
 the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server)
@@ -165,7 +165,7 @@ If we use:
 
 then the commands you have to use are reported in the following subparagraphs.
 
-### distributing the Agency
+### Agency
  
 On 192.168.1.1:
 
