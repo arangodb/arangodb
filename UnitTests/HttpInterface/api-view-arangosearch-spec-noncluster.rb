@@ -73,7 +73,7 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(400)
           doc.parsed_response['errorNum'].should eq(10)
         end
-
+=begin
         it "creating a view without properties" do
           cmd = api
           body = <<-JSON
@@ -88,7 +88,7 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(400)
           doc.parsed_response['errorNum'].should eq(10)
         end
-
+=end
         it "duplicate name" do
           cmd1 = api
           body1 = <<-JSON
@@ -351,7 +351,7 @@ describe ArangoDB do
           doc.parsed_response['code'].should eq(404)
           doc.parsed_response['errorNum'].should eq(1203)
         end
-
+=begin
         it "modifying a view with unacceptable properties" do
           cmd1 = api
           body1 = <<-JSON
@@ -387,7 +387,7 @@ describe ArangoDB do
           doc4.code.should eq(200)
           doc4.headers['content-type'].should eq("application/json; charset=utf-8")
         end
-
+=end
       end
 
     end
@@ -426,6 +426,7 @@ describe ArangoDB do
     end
 
     context "retrieval:" do
+=begin
       it "empty list" do
         cmd = api
         doc = ArangoDB.log_get("#{prefix}-empty-list", cmd)
@@ -500,11 +501,11 @@ describe ArangoDB do
         doc4.headers['content-type'].should eq("application/json; charset=utf-8")
         doc4.parsed_response['commit']['commitIntervalMsec'].should eq(10)
       end
-
+=end
     end
 
     context "modification:" do
-
+=begin
       it "change properties" do
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
@@ -544,7 +545,7 @@ describe ArangoDB do
         doc2.parsed_response['commit']['commitIntervalMsec'].should eq(10)
         doc2.parsed_response['extra'].should eq(nil)
       end
-
+=end
       it "accept updates via PATCH as well" do
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
