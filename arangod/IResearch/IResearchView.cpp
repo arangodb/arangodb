@@ -1143,19 +1143,19 @@ arangodb::Result IResearchView::dropImpl() {
     _metaState._collections.begin(), _metaState._collections.end()
   );
 
-  for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
-    auto collection = vocbase().lookupCollection(*itr);
+  auto collectionsCount = collections.size();
+
+  for (auto& entry: collections) {
+    auto collection = vocbase().lookupCollection(entry);
 
     if (!collection
         || !arangodb::iresearch::IResearchLink::find(*collection, *this)) {
-      itr = collections.erase(itr);
-    } else {
-      ++itr;
+      --collectionsCount;
     }
   }
 
   // ArangoDB global consistency check, no known dangling links
-  if (!collections.empty()) {
+  if (!collectionsCount) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("links still present while removing iResearch view '") + std::to_string(id()) + "'"
