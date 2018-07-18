@@ -635,6 +635,47 @@ function BaseTestConfig() {
           assertEqual(state.count, collectionCount(cn));
         }
       );
+    },
+
+
+    testArangoSearchBasic: function() {
+      // stop and restart replication on the slave
+      assertTrue(replication.globalApplier.state().state.running);
+      replication.globalApplier.stop();
+      assertFalse(replication.globalApplier.state().state.running);
+
+      compare(
+        function() {},
+        function(state) {
+          try {
+            db._create(cn);
+            let view = db._createView(cn2, "arangosearch", {});
+            let links = {};
+            links[cn] =  { 
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
+            };
+            view.properties({"links": links});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {},
+        function() {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        {}
+      );
     }
 
   };

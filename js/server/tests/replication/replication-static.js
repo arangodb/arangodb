@@ -2021,6 +2021,38 @@ function BaseTestConfig() {
           restrictCollections: [cn2]
         }
       );
+    },
+
+    testArangoSearchBasic: function() {
+      compare(
+        function(state) {
+          try {
+            db._create("UnitTestsSyncViewCollection");
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            view.properties({links: { 
+              "UnitTestsSyncViewCollection": { 
+                includeAllFields: true,
+                fields: {
+                  text: { analyzers: [ "text_en" ] }
+                }
+              }
+            }});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty("UnitTestsSyncViewCollection"));
+        }
+      );
     }
   };
 }
