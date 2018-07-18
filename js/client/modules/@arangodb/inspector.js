@@ -625,7 +625,7 @@ function getServerData(arango) {
           }
           if (status.hasOwnProperty("datapath")) {
             tmp = executeExternalAndWait(
-              '/bin/bash', ['-c', 'du -sh ' + status.datapath + ' | tee /tmp/inspector-du.out > /dev/null']);
+              '/bin/bash', ['-c', 'du -sh \'' + status.datapath + '\' | tee /tmp/inspector-du.out > /dev/null']);
             du = fs.readFileSync('/tmp/inspector-du.out', 'utf8').slice(0,-1);
           }
 
