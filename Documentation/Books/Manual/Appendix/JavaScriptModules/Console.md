@@ -151,7 +151,8 @@ console.timeEnd("mytimer"); // this will print the elapsed time
 
 Stops a timer created by a call to *time* and logs the time elapsed. 
 
-### console.timeEnd
+console.trace
+-------------
 
 `console.trace()`
 

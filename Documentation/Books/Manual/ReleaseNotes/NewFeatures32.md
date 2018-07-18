@@ -361,8 +361,8 @@ Authorization
 Read more in the [overview](../Administration/ManagingUsers/README.md).
 
 
-Foxx
-----
+Foxx and authorization
+----------------------
 
 * the [cookie session transport](../Foxx/Sessions/Transports/Cookie.md) now
   supports all options supported by the [cookie method of the response object](../Foxx/Router/Response.md#cookie).
