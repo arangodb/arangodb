@@ -281,6 +281,7 @@ function book-check-markdown-leftovers()
 
 function check-dangling-anchors()
 {
+    rm -rf /tmp/tags/
     echo "${STD_COLOR}##### checking for dangling anchors${RESET}"
     find books/ -name '*.html' | while IFS= read -r htmlf; do
         fn=$(basename "${htmlf}")
