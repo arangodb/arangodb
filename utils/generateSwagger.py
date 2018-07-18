@@ -932,7 +932,7 @@ def restreplybody(cargo, r=Regexen()):
     if restReplyBodyParam == None:
         # https://github.com/swagger-api/swagger-ui/issues/1430
         # once this is solved we can skip this:
-        operation['description'] += '\n#### HTTP ' + currentReturnCode + '\n'
+        operation['description'] += '\n**HTTP ' + currentReturnCode + '**\n'
         operation['description'] += "*A json document with these Properties is returned:*\n"
         operation['responses'][currentReturnCode]['x-description-offset'] = len(operation['description'])
 

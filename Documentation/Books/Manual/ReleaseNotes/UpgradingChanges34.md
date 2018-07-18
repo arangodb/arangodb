@@ -286,6 +286,11 @@ The arangod, the following startup options have changed:
   As direct upgrades from ArangoDB 3.0 to 3.4 or from 3.1 to 3.4 are not supported,
   this option has been removed in 3.4.
 
+- the option `--replication.automatic-failover` was renamed to `--replication.active-failover`
+
+  Using the old option name will still work in ArangoDB 3.4, but support for the old 
+  option name will be removed in future versions of ArangoDB.
+
 
 Permissions
 -----------
