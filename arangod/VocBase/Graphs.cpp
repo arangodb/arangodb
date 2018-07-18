@@ -50,7 +50,7 @@ arangodb::graph::Graph* arangodb::lookupGraphByName(
 
   Result res = trx.begin();
 
-  if (!res.ok()) {
+  if (res.fail()) {
     std::stringstream ss;
     ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
     res.reset(res.errorNumber(), ss.str());
@@ -71,9 +71,14 @@ arangodb::graph::Graph* arangodb::lookupGraphByName(
   res = trx.finish(result.result);
 
   if (result.fail()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(result.errorNumber(),
-                                  "while looking up graph '%s'", name.c_str());
+    if (result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+    } else {
+      THROW_ARANGO_EXCEPTION_FORMAT(
+        result.errorNumber(), "while looking up graph '%s'", name.c_str());
+    }
   }
+
   if (res.fail()) {
     std::stringstream ss;
     ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
