@@ -716,6 +716,15 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   
+  
+  VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
+  if (!nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+    int res = vocbase->renameView(view, nameSlice.copyString());
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+  
   bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
   return view->updateProperties(slice.get("properties"), false, doSync);
 }
