@@ -718,15 +718,19 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   
   
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
-  if (!nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+  if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
     int res = vocbase->renameView(view, nameSlice.copyString());
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
   }
   
-  bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-  return view->updateProperties(slice.get("properties"), false, doSync);
+  VPackSlice properties = data.get("properties");
+  if (properties.isObject()) {
+    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
+    return view->updateProperties(properties, false, doSync);
+  }
+  return {};
 }
 
 /// @brief apply a single marker from the continuous log

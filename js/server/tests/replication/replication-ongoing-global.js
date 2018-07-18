@@ -638,17 +638,14 @@ function BaseTestConfig() {
     },
 
     testViewBasic: function() {
-      // stop and restart replication on the slave
-      assertTrue(replication.globalApplier.state().state.running);
-      replication.globalApplier.stop();
-      assertFalse(replication.globalApplier.state().state.running);
+      connectToMaster();
 
       compare(
         function() {},
         function(state) {
           try {
             db._create(cn);
-            let view = db._createView(cn2, "arangosearch", {});
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
             let links = {};
             links[cn] =  { 
               includeAllFields: true,
@@ -678,10 +675,7 @@ function BaseTestConfig() {
     },
 
     testViewRename: function() {
-      // stop and restart replication on the slave
-      assertTrue(replication.globalApplier.state().state.running);
-      replication.globalApplier.stop();
-      assertFalse(replication.globalApplier.state().state.running);
+      connectToMaster();
 
       compare(
         function(state) {
@@ -704,12 +698,14 @@ function BaseTestConfig() {
             return;
           }
           // rename view on master
-          try {
-            let view = db._view("UnitTestsSyncView");
-            view.rename("UnitTestsSyncViewRenamed")
-            view = db._view("UnitTestsSyncViewRenamed");
-            assertTrue(view !== null);
-          } catch (err) {}
+          let view = db._view("UnitTestsSyncView");
+          view.rename("UnitTestsSyncViewRenamed");
+          view = db._view("UnitTestsSyncViewRenamed");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
         },
         function(state) {},
         function(state) {
@@ -768,6 +764,7 @@ function ReplicationSuite() {
 
     db._drop(cn);
     db._drop(cn2);
+    db._dropView("UnitTestsSyncView");
 
     connectToSlave();
     replication.globalApplier.stop();
@@ -776,6 +773,7 @@ function ReplicationSuite() {
     db._drop(cn);
     db._drop(cn2);
     db._drop(cn + "Renamed");
+    db._dropView("UnitTestsSyncViewRenamed");
   };
 
   return suite;

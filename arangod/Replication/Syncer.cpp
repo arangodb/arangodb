@@ -701,12 +701,17 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   }
   
   auto view = vocbase.lookupView(guidSlice.copyString());
-  if (view) {
-    return {}; // view already exists. TODO: compare attributes
+  if (view) { // identical view already exists
+    VPackSlice properties = slice.get("properties");
+    if (properties.isObject()) {
+      bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
+      return view->updateProperties(properties, false, doSync);
+    }
+    return {};
   }
-  // resolve name conflicts by deleting existing
+  
   view = vocbase.lookupView(nameSlice.copyString());
-  if (view) {
+  if (view) { // resolve name conflict by deleting existing
     Result res = vocbase.dropView(view->id(), /*dropSytem*/false);
     if (res.fail()) {
       return res;
