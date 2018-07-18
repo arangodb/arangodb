@@ -593,6 +593,7 @@ function getServerData(arango) {
             agencyState = arango.GET('_api/agency/config');
           }
           const status = arango.GET('_admin/status');
+          const engine = arango.GET('_api/engine/stats');
           const time = require('internal').time();
 
           var tmp = executeExternalAndWait(
@@ -613,11 +614,19 @@ function getServerData(arango) {
           tmp = executeExternalAndWait(
             '/bin/bash', ['-c', 'uname -a | tee /tmp/inspector-uname.out > /dev/null']);
           const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8').slice(0,-1);
-          var top;
+          tmp = executeExternalAndWait(
+            '/bin/bash', ['-c', 'cat /etc/*-release | tee /tmp/inspector-release.txt > /dev/null']);
+          const release = fs.readFileSync('/tmp/inspector-release.txt', 'utf-8').slice(0,-1);
+          var top, du;
           if (status.pid !== undefined) {
             tmp = executeExternalAndWait(
               '/bin/bash', ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee /tmp/inspector-top.out > /dev/null']);
             top = fs.readFileSync('/tmp/inspector-top.out', 'utf8').slice(0,-1);
+          }
+          if (status.hasOwnProperty("datapath")) {
+            tmp = executeExternalAndWait(
+              '/bin/bash', ['-c', 'du -sh ' + status.datapath + ' | tee /tmp/inspector-du.out > /dev/null']);
+            du = fs.readFileSync('/tmp/inspector-du.out', 'utf8').slice(0,-1);
           }
 
           var local = {};
@@ -641,9 +650,8 @@ function getServerData(arango) {
           
           // report this server
           report[server] = {
-            version:version, log:log, dmesg:dmesg, statistics:statistics,
-            status:status, df:df, uptime:uptime, uname:uname, meminfo:meminfo,
-            local:local, date:date, time:time};
+            version, log, dmesg, statistics, status, df, uptime, uname, meminfo, local, date,
+            time, engine, release, du};
 
           if (agencyConfig !==  undefined) {
             report[server].config = agencyConfig;
