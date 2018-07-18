@@ -307,7 +307,7 @@ function check-dangling-anchors()
     rm -f /tmp/sorted.txt /tmp/sortedunique.txt
     if test -f /tmp/failduplicatetags.txt; then
         echo "${ERR_COLOR}"
-        echo duplicate anchors detected - see above
+        echo "duplicate anchors detected - see above"
         echo "${RESET}"
         rm -f /tmp/failduplicatetags.txt
         exit 1
