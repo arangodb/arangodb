@@ -114,7 +114,7 @@ If a server fails, this is detected automatically and one of the servers holding
 copies take over, usually without an error being reported.
 
 @RESTBODYPARAM{distributeShardsLike,string,optional,string}
-(The default is *""*): in an enterprise cluster, this attribute binds
+(The default is *""*): in an Enterprise Edition cluster, this attribute binds
 the specifics of sharding  for the newly created collection to follow that of a
 specified existing collection.
 **Note**: Using this parameter has consequences for the prototype
