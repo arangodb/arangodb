@@ -110,7 +110,8 @@ individually:
     Processed 1 collection(s), wrote 34217 byte(s) into datafiles, sent 1 batch(es)
 
 Note that in consequence, restoring such a collection without its prototype is
-affected. [arangorestore](../Arangorestore/README.md)
+affected. See documentation on [arangorestore](../Arangorestore/README.md) for
+more details about restoring the collection.
 
 Encryption
 ----------
