@@ -173,7 +173,7 @@ describe('User Rights Management', () => {
               expect(rootTestView()).to.equal(false, 'Precondition failed, the view still exists');
               if (dbLevel['rw'].has(name)) {
                 db._createView(testViewName, testViewType, {});
-                expect(rootTestView()).to.equal(true, 'Vew creation reported success, but view was not found afterwards');
+                expect(rootTestView()).to.equal(true, 'View creation reported success, but view was not found afterwards');
               } else {
                 try {
                   db._createView(testViewName, testViewType, {});
@@ -190,7 +190,7 @@ describe('User Rights Management', () => {
 
               rootCreateCollection(testColName);
               expect(rootTestView()).to.equal(false, 'Precondition failed, the view still exists');
-              expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
+              expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                 var view = db._createView(testViewName, testViewType, {});
                 view.properties({ links: { [testColName]: { includeAllFields: true } } }, true);

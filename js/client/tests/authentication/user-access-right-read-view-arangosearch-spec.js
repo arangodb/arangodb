@@ -226,7 +226,7 @@ describe('User Rights Management', () => {
               let query = `FOR d IN VIEW ${testView1Name} RETURN d`;
               if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 let result = db._query(query).toArray();
-                expect(result.length).to.equal(testNumDocs, 'Vew read failed');
+                expect(result.length).to.equal(testNumDocs, 'View read failed');
               } else {
                 try {
                   db._query(query);
@@ -242,7 +242,7 @@ describe('User Rights Management', () => {
               let query = `FOR d IN VIEW ${testView2Name} RETURN d`;
               if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 let result = db._query(query, null, { waitForSync: true }).toArray();
-                expect(result.length).to.equal(testNumDocs*2, 'Vew read failed');
+                expect(result.length).to.equal(testNumDocs*2, 'View read failed');
               } else {
                 try {
                   db._query(query);

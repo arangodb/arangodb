@@ -238,7 +238,7 @@ describe('User Rights Management', () => {
                 if (dbLevel['rw'].has(name)) {
                   tasks.register(task);
                   wait(keySpaceId, name);
-                  expect(rootTestView()).to.equal(true, 'Vew creation reported success, but view was not found afterwards');
+                  expect(rootTestView()).to.equal(true, 'View creation reported success, but view was not found afterwards');
                 } else {
                   try {
                     tasks.register(task);
@@ -256,7 +256,7 @@ describe('User Rights Management', () => {
 
                 rootCreateCollection(testColName);
                 expect(rootTestView()).to.equal(false, 'Precondition failed, the view still exists');
-                expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
+                expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
                 setKey(keySpaceId, name);
                 const taskId = 'task_create_view_with_links_existing_collections' + name;
                 const task = {
