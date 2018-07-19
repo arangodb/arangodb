@@ -18,9 +18,10 @@ view in ArangoDB.
 New geo index implementation
 ----------------------------
   
-The geo index in ArangoDB has been reimplemented based on S2 library functionality. 
-The new geo index allows indexing points, but also indexing of more complex geographical 
-objects. The new implementation is much faster than the previous one for the RocksDB engine.
+The geo index in ArangoDB has been reimplemented based on [S2 library](http://s2geometry.io/)
+functionality. The new geo index allows indexing points, but also indexing of more
+complex geographical objects. The new implementation is much faster than the previous one for
+the RocksDB engine.
 
 Additionally, several AQL functions have been added to facilitate working with
 geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING` and 
@@ -53,7 +54,7 @@ an order that RocksDB prefers. Using the new format will reduce the number
 of compactions that RocksDB needs to do for the ArangoDB documents stored,
 allowing for better long-term insertion performance.
 
-The new binary format will only be used for new installations that start with
+The new binary format will **only be used for new installations** that start with
 ArangoDB 3.4. Existing installations upgraded from previous versions will 
 continue to use the previous binary format. 
 
@@ -61,9 +62,12 @@ Note that there is no need to use the new binary format for installations upgrad
 from 3.3, as the old binary format will continue to work as before.
 In order to use the new binary format with existing data, it is required to 
 create a logical dump of the database data, shut down the server, erase the 
-database directory and restore the data from the logical dump. 
+database directory and restore the data from the logical dump. To minimize 
+downtime you can alternatively run a second arangod instance in your system,
+that replicates the original data; once the replication has reached completion, 
+you can switch the instances.
 
-### Better control of WAL sync interval
+### Better control of rocksdb WAL sync interval
 
 ArangoDB 3.4 also provides a new configuration option `--rocksdb.sync-interval`
 to control how frequently ArangoDB will automatically synchronize data in RocksDB's 
@@ -81,7 +85,7 @@ The catch-up time for comparing the contents of two collections (or shards) on t
 different hosts via the incremental replication protocol has been reduced when using
 the RocksDB storage engine.
 
-### Improved geo index performance
+### Improved rocksdb geo index performance
 
 The rewritten geo index implementation 3.4 speeds up the RocksDB-based geo index
 functionality by a factor of 3 to 6 for many common cases when compared to the
@@ -98,7 +102,7 @@ accessing a RocksDB collection with a geo index.
 The RocksDB engine now provides a new per-collection property `cacheEnabled` which 
 enables in-memory caching of documents and primary index entries. This can potentially 
 speed up point-lookups significantly, especially if collection have a subset of frequently 
-accessed documents. 
+accessed documents.
 
 The option can be enabled for a collection as follows:
 ```
@@ -115,7 +119,7 @@ command `db.<collection>.indexes(true)`, which will provide the attributes `cach
 
 Memory for the documents and primary index entries cache will be provided by ArangoDB's
 central cache facility, whose maximal size can be configured by adjusting the value of
-the startup option `--cache.size`. 
+the startup option `--cache.size`.
 
 Please note that caching may adversely affect the performance for collections that are
 frequently updated. This is because cache entries need to be invalidated whenever documents
@@ -143,12 +147,12 @@ exclusive access to a collection, and locks out all other writers.
 
 While making access to a collection exclusive is almost always undesired from the 
 throughput perspective, it can greatly simplify client application development. Therefore
-the RocksDB engine now provides optional exclusive access to collections on a 
+the RocksDB engine now provides optional exclusive access to collections on a
 per-query/per-transaction basis.
 
 For AQL queries, all data-modification operations now support the `exclusive` option, e.g.
 
-    FOR doc IN collection 
+    FOR doc IN collection
       UPDATE doc WITH { updated: true } OPTIONS { exclusive: true }
 
 JavaScript-based transactions can specify which collections to lock exclusively in the
@@ -161,7 +165,7 @@ db._executeTransaction({
   },
   ...
 });
-```     
+```
 
 Note that using exclusive access for RocksDB collections will serialize write operations
 to RocksDB collections, so it should be used with extreme care.
@@ -218,7 +222,7 @@ doc = { _key: "someKey", value1: 123, value2: "abc" };
 
 // insert the document if it does not exist yet, other replace
 // in case of a replace, previous will be populated, in case of an
-// insert, previous will be undefined 
+// insert, previous will be undefined
 previous = db.collection.insert(doc, { overwrite: true, returnOld: true }).old;
 ```
 
@@ -226,11 +230,18 @@ The same functionality is available for the document insert method in the
 HTTP REST API. The HTTP endpoint for `POST /_api/document` will now accept the
 optional URL parameters `overwrite` and `returnOld`.
 
-AQL also supports making an INSERT a conditional REPSERT, by setting the option
-`overwrite` for it:
+AQL also supports making an INSERT a conditional REPSERT. In contrast to regular
+INSERT it supports returning the OLD and the NEW document on disk to i.e. inspect
+the revision or the previous content of the document.
+AQL INSERT is switched to  REPSERT by setting the option `overwrite` for it:
 
 ```
-INSERT { _key: "someKey", value1: 123, value2: "abc" } INTO collection OPTIONS { overwrite: true }
+INSERT {
+ _key: "someKey",
+ value1: 123,
+ value2: "abc"
+} INTO collection OPTIONS { overwrite: true }
+RETURN OLD
 ```
 
 Please note that in a cluster setup the Repsert operation requires the collection
@@ -256,7 +267,7 @@ support `returnOld` because that would make the existing API incompatible.
 ### Additional key generators
 
 In addition to the existing key generators `traditional` (which is still the
-default key generator) and `autoincrement`, ArangoDB 3.4 adds the following key 
+default key generator) and `autoincrement`, ArangoDB 3.4 adds the following key
 generators:
 
 * `padded`:
@@ -267,7 +278,7 @@ generators:
 
 * `uuid`: the `uuid` key generator generates universally unique 128 bit keys, which 
   are stored in hexadecimal human-readable format. This key generator can be used
-  in a single-server or cluster to generate "seemingly random" keys. The keys 
+  in a single-server or cluster to generate "seemingly random" keys. The keys
   produced by this key generator are not lexicographically sorted.
 
 Example for the *padded* key generator:
@@ -275,17 +286,17 @@ Example for the *padded* key generator:
 db._create("padded", { keyOptions: { type: "padded" } });
 
 db.padded.insert({});
-{ 
-  "_id" : "padded/0000000009d0d1c0", 
-  "_key" : "0000000009d0d1c0", 
-  "_rev" : "_XI6VqNK--_" 
+{
+  "_id" : "padded/0000000009d0d1c0",
+  "_key" : "0000000009d0d1c0",
+  "_rev" : "_XI6VqNK--_"
 }
 
 db.padded.insert({});
-{ 
-  "_id" : "padded/0000000009d0d1c4", 
-  "_key" : "0000000009d0d1c4", 
-  "_rev" : "_XI6VquC--_" 
+{
+  "_id" : "padded/0000000009d0d1c4",
+  "_key" : "0000000009d0d1c4",
+  "_rev" : "_XI6VquC--_"
 }
 ```
 
@@ -356,22 +367,22 @@ coordinator to save the forwarding.
 
 ### Refusal to start mixed-engine clusters
 
-Starting a cluster with coordinators and DB servers using different storage 
-engines is not supported. Doing it anyway will now log an error and abort a 
+Starting a cluster with coordinators and DB servers using different storage
+engines is not supported. Doing it anyway will now log an error and abort a
 coordinator's startup.
 
 Previous versions of ArangoDB did not detect the usage of different storage
 engines in a cluster, but the runtime behavior of the cluster was undefined.
-  
+
 ### Startup safety checks
-                     
+
 The new option `--cluster.require-persisted-id` can be used to prevent the startup 
 of a cluster node using the wrong data directory.
 
-If the option is set to true, then the ArangoDB instance will only start if a 
-UUID file (containing the instance's cluster-wide ID) is found in the database 
+If the option is set to true, then the ArangoDB instance will only start if a
+UUID file (containing the instance's cluster-wide ID) is found in the database
 directory on startup. Setting this option will make sure the instance is started 
-using an already existing database directory and not a new one. 
+using an already existing database directory and not a new one.
 
 For the first start, the UUID file must either be created manually or the option 
 must be set to `false` for the initial startup and later be changed to `true`.
@@ -382,14 +393,14 @@ In previous versions of ArangoDB, cluster coordinator nodes used the storage
 engine selected by the database administrator (i.e. MMFiles or RocksDB).
 Although all database and document data was forwarded from coordinators to be
 stored on the database servers and not on the coordinator nodes, the storage
-engine used on the coordinator was checking and initializing its on-disk state 
+engine used on the coordinator was checking and initializing its on-disk state
 on startup.
 Especially because no "real" data was stored by the coordinator's storage engine,
-using a storage engine here did not provide any value but only introduced 
+using a storage engine here did not provide any value but only introduced
 unnecessary potential points of failure.
 
 As of ArangoDB 3.4, cluster coordinator nodes will now use an internal "cluster"
-storage engine, which actually does not store any data. That prevents 3.4 
+storage engine, which actually does not store any data. That prevents 3.4
 coordinators from creating any files or directories inside the database directory 
 except the meta data files such as `ENGINE`, `LOCK`, `SERVER`, `UUID` and `VERSION`.
 And as no files need to be read on coordinator startup except these mentioned
@@ -402,7 +413,7 @@ AQL
 ### AQL query profiling
 
 AQL queries can now be executed with optional profiling, using ArangoDB 3.4's new
-`db._queryProfile()` function. 
+`db._queryProfile()` function.
 
 This new function is a hybrid of the already existing `db._query()` and `db._explain()`
 functions:
@@ -415,14 +426,14 @@ functions:
   This is very useful for debugging AQL query performance and optimizing queries.
 
 ### Revised cluster-internal AQL protocol
-  
-When running an AQL query in a cluster, the coordinator has to distribute the 
+
+When running an AQL query in a cluster, the coordinator has to distribute the
 individual parts of the AQL query to the relevant shards that will participate
 in the execution of the query.
 
 Up to including ArangoDB 3.3, the coordinator has deployed the query parts to the 
 individual shards one by one. The more shards were involved in a query, the more 
-cluster-internal requests this required, and the longer the setup took. 
+cluster-internal requests this required, and the longer the setup took.
 
 In ArangoDB 3.4 the coordinator will now only send a single request to each of
 the involved database servers (in contrast to one request per shard involved).
@@ -455,8 +466,8 @@ The following AQL functions have been added in ArangoDB 3.4:
   comparison order
 * `SORTED_UNIQUE`: same as `SORTED`, but additionally removes duplicates
 * `COUNT_DISTINCT`: counts the number of distinct / unique items in an array
- 
-The following AQL functions have been added to make working with geographical 
+
+The following AQL functions have been added to make working with geographical
 data easier:
 
 * `GEO_POINT`
@@ -482,14 +493,14 @@ COLLECT statement:
 
 In the general case, AQL COLLECT operations are expensive to execute in a cluster, 
 because the database servers need to send all shard-local data to the coordinator 
-for a centralized aggregation. 
-  
+for a centralized aggregation.
+
 The AQL query optimizer can push some parts of certain COLLECT operations to the 
 database servers so they can do a per-shard aggregation. The database servers can
 then send only the already aggregated results to the coordinator for a final aggregation. 
 For several queries this will reduce the amount of data that has to be transferred 
 between the database servers servers and the coordinator by a great extent, and thus 
-will speed up these queries. Work on this has started with ArangoDB 3.3.5, but 
+will speed up these queries. Work on this has started with ArangoDB 3.3.5, but
 ArangoDB 3.4 allows more cases in which COLLECT operations can partially be pushed to
 the database servers.
 
@@ -617,9 +628,9 @@ The AQL query optimizer can now optimize certain subqueries automatically so tha
 they perform less work.
 
 The new optimizer rule `optimize-subqueries` will fire in the following situations:
-  
+
 * in case only a few results are used from a non-modifying subquery, the rule will
-  automatically add a LIMIT statement into the subquery. 
+  automatically add a LIMIT statement into the subquery.
   
   For example, the unbounded subquery
 
@@ -693,7 +704,7 @@ of the collections, the optimizer cannot prove that `value` can never be `null`:
 
 By adding an extra filter condition to the query that excludes `null` values explicitly,
 the optimizer in 3.4 will now be able to use a sparse index on `value`:
-    
+
     FOR doc1 IN collection1
       FOR doc2 IN collection2
         FILTER doc1.value == doc2.value
@@ -704,7 +715,7 @@ The optimizer in 3.3 was not able to detect this, and refused to use sparse inde
 for such queries.
 
 ### Miscellaneous changes
- 
+
 The `NEAR` AQL function now does not default to a limit of 100 documents any more
 when no limit value was specified. The previously used limit value of 100 was an 
 arbitrary limit that acted contrary to user expectations.
@@ -720,14 +731,14 @@ were sent back to the client application in chunks of configurable size.
 This approach was a good fit for the MMFiles engine with its collection-level locks,
 and usually smaller-than-RAM query results. For the RocksDB engine with its document-level 
 locks and lock-free reads and potentially huge query results, this approach does not always
-fit. 
+fit.
 
 ArangoDB 3.4 allows to optionally execute AQL queries initiated via the cursor API in a 
 streaming fashion. The query result will then be calculated on the fly, and results are 
 sent back to the client application as soon as they become available on the server, even
 if the query has not yet completed.
-  
-This is especially useful for queries that produce big result sets (e.g. 
+
+This is especially useful for queries that produce big result sets (e.g.
 `FOR doc IN collection RETURN doc` for big collections). Such queries will take very long
 to complete without streaming, because the entire query result will be computed first and
 stored in memory. Executing such queries in non-streaming fashion may lead to client 
@@ -744,7 +755,7 @@ This is especially important for the MMFiles engine, which uses collection-level
 Please note that the query options `cache`, `count` and `fullCount` will not work with streaming
 cursors. Additionally, the query statistics, warnings and profiling data will only be available
 when the last result batch for the query is sent.
- 
+
 By default, query cursors created via the cursor API are non-streaming in ArangoDB 3.4,
 but streaming can be turned on on a per-query basis by setting the `stream` attribute
 in the request to the cursor API at endpoint `/_api/cursor`.
@@ -753,8 +764,7 @@ However, streaming cursors are enabled for the following parts of ArangoDB in 3.
 
 * when exporting data from collections using the arangoexport binary
 * when using `db.<collection>.toArray()` from the Arango shell.
-  
-  
+
 Native implementations
 ----------------------
 
@@ -816,7 +826,7 @@ Client tools
 ### Arangodump
 
 Arangodump can now dump multiple collections in parallel. This can significantly 
-reduce the time required to take a backup. 
+reduce the time required to take a backup.
 
 By default, arangodump will use 2 threads for dumping collections. The number of 
 threads used by arangodump can be adjusted by using the `--threads` option when
@@ -849,7 +859,7 @@ any value for the `--batch-size` parameter.
 
 Arangoimport also got an extra option `--create-database` so that it can automatically
 create the target database should this be desired. Previous versions of arangoimp 
-provided options for creating the target collection only 
+provided options for creating the target collection only
 (`--create-collection`, `--create-collection-type`).
 
 Finally, arangoimport got an option `--latency` which can be used to print microsecond 
@@ -875,7 +885,7 @@ escaped:
 * any other characters with an ordinal value less than hex 20
 
 If the `--log.escape` option is set to `false` however, no characters are escaped
-when logging them. Characters with an ordinal value less than hex 20 (including 
+when logging them. Characters with an ordinal value less than hex 20 (including
 carriage return, newline and tabstop) will not be printed in this mode, but will
 be replaced with a space character (hex 20). This is because these characters are
 often undesired in logs anyway.
