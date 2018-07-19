@@ -439,7 +439,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['result'].should eq([])
       end
-
+=begin
       it "short list" do
         cmd1 = api
         body1 = <<-JSON
@@ -505,7 +505,7 @@ describe ArangoDB do
         doc4.headers['content-type'].should eq("application/json; charset=utf-8")
         doc4.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(10)
       end
-
+=end
     end
 
     context "modification:" do
