@@ -21,15 +21,16 @@ if [ -f $filename ]; then
         fi
 
         #dump agency
-        echo -n "  writing agency dump ... "
-        cat $filename | jq .agency | tee $outdir/agency.json > /dev/null
-        echo done
-        
-        #dump
-        echo -n "  writing agency analysis ... "
-        cat $filename | jq .analysis | tee $outdir/agency-analysis.json > /dev/null
-        echo done
-        
+        if [ $(cat $filename | jq .agency | grep -c Plan) -eq 1 ]; then 
+            echo -n "  writing agency dump ... "
+            cat $filename | jq .agency | tee $outdir/agency.json > /dev/null
+            echo done
+            
+            #dump
+            echo -n "  writing agency analysis ... "
+            cat $filename | jq .analysis | tee $outdir/agency-analysis.json > /dev/null
+            echo done
+        fi
         #servers
         echo "  writing servers ..."  
         for i in $(cat $filename | jq .servers | jq 'keys[]'); do
