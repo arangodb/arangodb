@@ -35,7 +35,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
-#include "Graph.h"
+#include "Graph/Graph.h"
 
 namespace arangodb {
 namespace graph {
@@ -138,6 +138,14 @@ class GraphManager {
   /// graph
   Result checkForEdgeDefinitionConflicts(
     arangodb::graph::EdgeDefinition const& edgeDefinition) const;
+
+  /// @brief Remove a graph and optional all connected collections
+  OperationResult removeGraph(Graph const& graph, bool waitForSync,
+                              bool dropCollections);
+
+  OperationResult pushCollectionIfMayBeDropped(
+      const std::string& colName, const std::string& graphName,
+      std::unordered_set<std::string>& toBeRemoved);
 
  private:
 

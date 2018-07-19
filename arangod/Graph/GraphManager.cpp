@@ -20,6 +20,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "GraphOperations.h"
 #include "GraphManager.h"
 
 #include <velocypack/Buffer.h>
@@ -797,4 +798,149 @@ Result GraphManager::checkCreateGraphPermissions(
 
 bool GraphManager::collectionExists(std::string const &collection) const {
   return getCollectionByName(ctx()->vocbase(), collection) != nullptr;
+}
+
+OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
+                                          bool dropCollections) {
+  std::unordered_set<std::string> collectionsToBeRemoved;
+  if (dropCollections) {
+    for (auto const& vertexCollection : graph.vertexCollections()) {
+      pushCollectionIfMayBeDropped(vertexCollection, graph.name(),
+                                   collectionsToBeRemoved);
+    }
+    for (auto const& orphanCollection : graph.orphanCollections()) {
+      pushCollectionIfMayBeDropped(orphanCollection, graph.name(),
+                                   collectionsToBeRemoved);
+    }
+    for (auto const& edgeCollection : graph.edgeCollections()) {
+      pushCollectionIfMayBeDropped(edgeCollection, graph.name(),
+                                   collectionsToBeRemoved);
+    }
+  }
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
+  }
+
+  OperationOptions options;
+  options.waitForSync = waitForSync;
+
+  Result res;
+  OperationResult result;
+  {
+    SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
+                                    AccessMode::Type::WRITE};
+
+    res = trx.begin();
+    if (!res.ok()) {
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    }
+    VPackSlice search = builder.slice();
+    result = trx.remove(StaticStrings::GraphCollection, search, options);
+
+    res = trx.finish(result.result);
+    if (result.fail()) {
+      return OperationResult(result.result);
+    }
+  }
+  // remove graph related collections
+  // we are not able to do this in a transaction, so doing it afterwards
+  if (dropCollections) {
+    for (auto const& collection : collectionsToBeRemoved) {
+      Result resIn;
+      Result found = methods::Collections::lookup(
+          &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
+            resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
+                                               -1.0);
+          });
+      // ignore found, if not found should just be skipped and continue to
+      // remove further graphs
+      if (resIn.fail()) {
+        return OperationResult(res);
+      }
+    }
+  }
+
+  if (result.ok() && res.fail()) {
+    return OperationResult(res);
+  }
+  return result;
+}
+
+OperationResult GraphManager::pushCollectionIfMayBeDropped(
+    const std::string& colName, const std::string& graphName,
+    std::unordered_set<std::string>& toBeRemoved) {
+  VPackBuilder graphsBuilder;
+  OperationResult result = readGraphs(graphsBuilder, aql::PART_DEPENDENT);
+  if (result.fail()) {
+    return result;
+  }
+
+  VPackSlice graphs = graphsBuilder.slice();
+
+  bool collectionUnused = true;
+  TRI_ASSERT(graphs.get("graphs").isArray());
+
+  if (!graphs.get("graphs").isArray()) {
+    return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+  }
+
+  for (auto graph : VPackArrayIterator(graphs.get("graphs"))) {
+    graph = graph.resolveExternals();
+    if (!collectionUnused) {
+      // Short circuit
+      continue;
+    }
+    if (graph.get("_key").copyString() == graphName) {
+      continue;
+    }
+
+    // check edge definitions
+    VPackSlice edgeDefinitions = graph.get(StaticStrings::GraphEdgeDefinitions);
+    if (edgeDefinitions.isArray()) {
+      for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
+        // edge collection
+        std::string collection =
+            edgeDefinition.get("collection").copyString();
+        if (collection == colName) {
+          collectionUnused = false;
+        }
+        // from's
+        for (auto const& from :
+             VPackArrayIterator(edgeDefinition.get(StaticStrings::GraphFrom))) {
+          if (from.copyString() == colName) {
+            collectionUnused = false;
+          }
+        }
+        // to's
+        for (auto const& to :
+             VPackArrayIterator(edgeDefinition.get(StaticStrings::GraphTo))) {
+          if (to.copyString() == colName) {
+            collectionUnused = false;
+          }
+        }
+      }
+    } else {
+      return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+    }
+
+    // check orphan collections
+    VPackSlice orphanCollections = graph.get(StaticStrings::GraphOrphans);
+    if (orphanCollections.isArray()) {
+      for (auto const& orphanCollection :
+           VPackArrayIterator(orphanCollections)) {
+        if (orphanCollection.copyString() == colName) {
+          collectionUnused = false;
+        }
+      }
+    }
+  }
+
+  if (collectionUnused) {
+    toBeRemoved.emplace(colName);
+  }
+
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }

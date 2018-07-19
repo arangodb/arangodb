@@ -1039,8 +1039,9 @@ Result RestGraphHandler::graphActionRemoveGraph(
       _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  GraphOperations gops{*graph, ctx};
-  OperationResult result = gops.removeGraph(waitForSync, dropCollections);
+  GraphManager gmngr{ctx};
+  OperationResult result =
+      gmngr.removeGraph(*graph, waitForSync, dropCollections);
 
   if (result.fail()) {
     generateTransactionError(result);
@@ -1048,7 +1049,7 @@ Result RestGraphHandler::graphActionRemoveGraph(
   }
 
   generateGraphRemoved(true, result._options.waitForSync,
-                  *ctx->getVPackOptionsForDump());
+                       *ctx->getVPackOptionsForDump());
 
   return Result();
 }

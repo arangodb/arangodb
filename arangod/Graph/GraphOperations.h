@@ -89,9 +89,6 @@ class GraphOperations {
                                boost::optional<TRI_voc_rid_t> rev,
                                bool waitForSync, bool returnOld);
 
-  /// @brief Remove a graph and optional all connected collections
-  OperationResult removeGraph(bool waitForSync, bool dropCollections);
-
   OperationResult updateEdge(const std::string& definitionName,
                              const std::string& key, VPackSlice document,
                              boost::optional<TRI_voc_rid_t> rev,
@@ -165,10 +162,6 @@ class GraphOperations {
   OperationResult changeEdgeDefinitionForGraph(
       const Graph& graph, const EdgeDefinition& edgeDefinition,
       bool waitForSync, transaction::Methods& trx);
-
-  OperationResult pushCollectionIfMayBeDropped(
-      const std::string& colName, const std::string& graphName,
-      std::unordered_set<std::string>& toBeRemoved);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;

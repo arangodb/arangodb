@@ -30,10 +30,10 @@
 #include "Graph/Graph.h"
 #include "Graph/GraphCache.h"
 #include "Graph/GraphManager.h"
+#include "Graph/GraphOperations.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
-
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -42,14 +42,11 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
+#include "VocBase/Graphs.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <arangod/Graph/GraphOperations.h>
-#include <arangod/VocBase/Graphs.h>
-#include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::velocypack;
@@ -82,8 +79,8 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   graph.reset(lookupGraphByName(ctx, graphName));
 
   ctx = transaction::V8Context::Create(vocbase, false);
-  GraphOperations gops{*graph, ctx};
-  OperationResult result = gops.removeGraph(true, dropCollections);
+  GraphManager gmngr{ctx};
+  OperationResult result = gmngr.removeGraph(*graph, true, dropCollections);
 
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));

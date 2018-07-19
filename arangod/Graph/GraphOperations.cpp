@@ -51,6 +51,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/SmartGraph.h"
+
 #endif
 
 using namespace arangodb;
@@ -246,12 +247,15 @@ OperationResult GraphOperations::eraseEdgeDefinition(
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
+    GraphManager gmngr{ctx()};
     for (auto const& col : collectionsToMayBeRemoved) {
-      pushCollectionIfMayBeDropped(col, _graph.name(), collectionsToBeRemoved);
+      gmngr.pushCollectionIfMayBeDropped(col, _graph.name(),
+                                         collectionsToBeRemoved);
     }
 
     // add also the edge collection itself for removal
-    pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(), collectionsToBeRemoved);
+    gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(),
+                                       collectionsToBeRemoved);
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
@@ -518,7 +522,8 @@ OperationResult GraphOperations::eraseOrphanCollection(
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
-    pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
+    GraphManager gmngr{ctx()};
+    gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
 
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
@@ -719,78 +724,6 @@ GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
   }
 
   return builder.buffer();
-}
-
-OperationResult GraphOperations::removeGraph(bool waitForSync,
-                                             bool dropCollections) {
-
-  std::vector<std::string> writeCollections;
-  writeCollections.emplace_back(StaticStrings::GraphCollection);
-
-  std::unordered_set<std::string> collectionsToBeRemoved;
-  if (dropCollections) {
-    for (auto const& vertexCollection : _graph.vertexCollections()) {
-      pushCollectionIfMayBeDropped(vertexCollection, _graph.name(),
-                                   collectionsToBeRemoved);
-    }
-    for (auto const& orphanCollection : _graph.orphanCollections()) {
-      pushCollectionIfMayBeDropped(orphanCollection, _graph.name(),
-                                   collectionsToBeRemoved);
-    }
-    for (auto const& edgeCollection : _graph.edgeCollections()) {
-      pushCollectionIfMayBeDropped(edgeCollection, _graph.name(),
-                                   collectionsToBeRemoved);
-    }
-  }
-
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder guard(&builder);
-    builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  }
-
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-
-  Result res;
-  OperationResult result;
-  {
-    SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
-                                    AccessMode::Type::WRITE};
-
-    res = trx.begin();
-    if (!res.ok()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    }
-    VPackSlice search = builder.slice();
-    result = trx.remove(StaticStrings::GraphCollection, search, options);
-
-    res = trx.finish(result.result);
-    if (result.fail()) {
-      return OperationResult(result.result);
-    }
-  }
-  // remove graph related collections
-  // we are not able to do this in a transaction, so doing it afterwards
-  if (dropCollections) {
-    for (auto const& collection : collectionsToBeRemoved) {
-      Result resIn;
-      Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
-            resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
-                                               -1.0);
-          });
-      // ignore found, if not found should just be skipped and continue to remove further graphs
-      if (resIn.fail()) {
-        return OperationResult(res);
-      }
-    }
-  }
-
-  if (result.ok() && res.fail()) {
-    return OperationResult(res);
-  }
-  return result;
 }
 
 OperationResult GraphOperations::removeEdge(const std::string& definitionName,
@@ -1125,77 +1058,3 @@ OperationResult GraphOperations::removeVertex(
   return result;
 }
 
-OperationResult GraphOperations::pushCollectionIfMayBeDropped(
-    const std::string& colName, const std::string& graphName,
-    std::unordered_set<std::string>& toBeRemoved) {
-  GraphManager gmngr{ctx()};
-  VPackBuilder graphsBuilder;
-  OperationResult result =
-      gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
-  if (result.fail()) {
-    return result;
-  }
-
-  VPackSlice graphs = graphsBuilder.slice();
-
-  bool collectionUnused = true;
-  TRI_ASSERT(graphs.get("graphs").isArray());
-
-  if (!graphs.get("graphs").isArray()) {
-    return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
-  }
-
-  for (auto graph : VPackArrayIterator(graphs.get("graphs"))) {
-    graph = graph.resolveExternals();
-    if (!collectionUnused) {
-      // Short circuit
-      continue;
-    }
-    if (graph.get("_key").copyString() == graphName) {
-      continue;
-    }
-
-    // check edge definitions
-    VPackSlice edgeDefinitions = graph.get(StaticStrings::GraphEdgeDefinitions);
-    if (edgeDefinitions.isArray()) {
-      for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
-        //edge collection
-        std::string collection = edgeDefinition.get("collection").copyString();
-        if (collection == colName) {
-          collectionUnused = false;
-        }
-        //from's
-        for (auto const& from : VPackArrayIterator(edgeDefinition.get(StaticStrings::GraphFrom))) {
-          if (from.copyString() == colName) {
-            collectionUnused = false;
-          }
-        }
-        //to's
-        for (auto const& to : VPackArrayIterator(edgeDefinition.get(StaticStrings::GraphTo))) {
-          if (to.copyString() == colName) {
-            collectionUnused = false;
-          }
-        }
-      }
-    } else {
-      return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
-    }
-
-    // check orphan collections
-    VPackSlice orphanCollections = graph.get(StaticStrings::GraphOrphans);
-    if (orphanCollections.isArray()) {
-      for (auto const& orphanCollection :
-           VPackArrayIterator(orphanCollections)) {
-        if (orphanCollection.copyString() == colName) {
-          collectionUnused = false;
-        }
-      }
-    }
-  }
-
-  if (collectionUnused) {
-    toBeRemoved.emplace(colName);
-  }
-
-  return OperationResult(TRI_ERROR_NO_ERROR);
-}
