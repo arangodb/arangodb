@@ -41,13 +41,11 @@ const db = require('@arangodb').db;
 const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
-const testView1Name = `${namePrefix}View1New`;
-const testView2Name = `${namePrefix}View2New`;
+const testViewName = `${namePrefix}ViewNew`;
 const testViewType = "arangosearch";
 const testCol1Name = `${namePrefix}Col1New`;
-const testCol2Name = `${namePrefix}Col2New`;
-const testNumDocs = 3;
-const keySpaceId = 'task_read_view_keyspace';
+const testCol2Name = `${namePrefix}Col1New`;
+const keySpaceId = 'task_drop_view_keyspace';
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
@@ -55,7 +53,6 @@ const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
-const tmp = require('internal');
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -79,14 +76,6 @@ const dropKeySpace = (keySpaceId) => {
 
 const getKey = (keySpaceId, key) => {
   return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
-};
-
-const getNumericKey = (keySpaceId, key, defaultValue = 0) => {
-  try {
-    return parseInt(executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body);
-  } catch(e) {
-    return defaultValue;
-  }
 };
 
 const setKey = (keySpaceId, name) => {
@@ -131,39 +120,18 @@ describe('User Rights Management', () => {
         canUse = false;
       }
 
-        if (canUse) {
-          describe(`user ${name}`, () => {
-            before(() => {
-              helper.switchUser(name, dbName);
-              expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
-            });
+      if (canUse) {
+        describe(`user ${name}`, () => {
+          before(() => {
+            helper.switchUser(name, dbName);
+            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+          });
 
           after(() => {
             dropKeySpace(keySpaceId);
           });
 
           describe('administrate on db level', () => {
-            before(() => {
-              db._useDatabase(dbName);
-              rootCreateCollection(testCol1Name);
-              rootCreateCollection(testCol2Name);
-              var properties = { };
-              properties['links'] = {};
-              properties['links'][testCol1Name] = { includeAllFields: true };
-              rootCreateView(testView1Name, properties);
-              properties['links'][testCol2Name] = { includeAllFields: true };
-              rootCreateView(testView2Name, properties);
-              rootPrepareCollection(testCol1Name, testNumDocs);
-              rootPrepareCollection(testCol2Name, testNumDocs, false);
-            });
-
-            after(() => {
-              rootDropView(testView1Name);
-              rootDropView(testView2Name);
-              rootDropCollection(testCol1Name);
-              rootDropCollection(testCol2Name);
-            });
-
             const rootTestCollection = (colName, switchBack = true) => {
               helper.switchUser('root', dbName);
               let col = db._collection(colName);
@@ -173,68 +141,30 @@ describe('User Rights Management', () => {
               return col !== null;
             };
 
-            const rootCreateCollection = (colName, explicitRight = '') => {
+            const rootCreateCollection = (colName) => {
               if (!rootTestCollection(colName, false)) {
                 db._create(colName);
-                if (explicitRight !== '' && rightLevels.has(explicitRight))
-                {
+                if (colLevel['none'].has(name)) {
                   if (helper.isLdapEnabledExternal()) {
-                    users.grantCollection(':role:' + name, dbName, colName, explicitRight);
+                    users.grantCollection(':role:' + name, dbName, colName, 'none');
                   } else {
-                    users.grantCollection(name, dbName, colName, explicitRight);
+                    users.grantCollection(name, dbName, colName, 'none');
                   }
-                } else {
-                  if (colLevel['none'].has(name)) {
-                    if (helper.isLdapEnabledExternal()) {
-                      users.grantCollection(':role:' + name, dbName, colName, 'none');
-                    } else {
-                      users.grantCollection(name, dbName, colName, 'none');
-                    }
-                  } else if (colLevel['ro'].has(name)) {
-                    if (helper.isLdapEnabledExternal()) {
-                      users.grantCollection(':role:' + name, dbName, colName, 'ro');
-                    } else {
-                      users.grantCollection(name, dbName, colName, 'ro');
-                    }
-                  } else if (colLevel['rw'].has(name)) {
-                    if (helper.isLdapEnabledExternal()) {
-                      users.grantCollection(':role:' + name, dbName, colName, 'rw');
-                    } else {
-                      users.grantCollection(name, dbName, colName, 'rw');
-                    }
+                } else if (colLevel['ro'].has(name)) {
+                  if (helper.isLdapEnabledExternal()) {
+                    users.grantCollection(':role:' + name, dbName, colName, 'ro');
+                  } else {
+                    users.grantCollection(name, dbName, colName, 'ro');
+                  }
+                } else if (colLevel['rw'].has(name)) {
+                  if (helper.isLdapEnabledExternal()) {
+                    users.grantCollection(':role:' + name, dbName, colName, 'rw');
+                  } else {
+                    users.grantCollection(name, dbName, colName, 'rw');
                   }
                 }
               }
               helper.switchUser(name, dbName);
-            };
-
-            const rootGrantCollection = (colName, user, explicitRight) => {
-              if (rootTestCollection(colName, false)) {
-                if (explicitRight !== '' && rightLevels.includes(explicitRight))
-                {
-                  if (helper.isLdapEnabledExternal()) {
-                    users.grantCollection(':role:' + user, dbName, colName, explicitRight);
-                  } else {
-                    users.grantCollection(user, dbName, colName, explicitRight);
-                  }
-                }
-              helper.switchUser(user, dbName);
-              }
-            };
-
-            const rootPrepareCollection = (colName, numDocs = 1, defKey = true) => {
-                if (rootTestCollection(colName, false)) {
-                  db._collection(colName).truncate({ compact: false });
-                  for(var i = 0; i < numDocs; ++i)
-                  {
-                    var doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i}
-                    if (!defKey) {
-                      doc._key = colName + i;
-                    }
-                    db._collection(colName).save(doc, {waitForSync: true});
-                  }
-                }
-                helper.switchUser(name, dbName);
             };
 
             const rootDropCollection = (colName) => {
@@ -245,16 +175,28 @@ describe('User Rights Management', () => {
               helper.switchUser(name, dbName);
             };
 
-            const rootTestView = (viewName, switchBack = true) => {
+            const rootGrantCollection = (colName, user, explicitRight) => {
+                if (rootTestCollection(colName, false)) {
+                  if (explicitRight !== '' && rightLevels.includes(explicitRight))
+                  {
+                    if (helper.isLdapEnabledExternal()) {
+                      users.grantCollection(':role:' + user, dbName, colName, explicitRight);
+                    } else {
+                      users.grantCollection(user, dbName, colName, explicitRight);
+                    }
+                  }
+                helper.switchUser(user, dbName);
+                }
+              };
+
+            const rootTestView = () => {
               helper.switchUser('root', dbName);
-              let view = db._view(viewName);
-              if (switchBack) {
-                  helper.switchUser(name, dbName);
-              }
+              const view = db._view(testViewName);
+              helper.switchUser(name, dbName);
               return view != null;
             };
 
-            const rootCreateView = (viewName, links = null) => {
+            const rootCreateView = (viewName = testViewName, links = null) => {
               if (rootTestView(viewName, false)) {
                 db._dropView(viewName);
               }
@@ -265,7 +207,7 @@ describe('User Rights Management', () => {
               helper.switchUser(name, dbName);
             };
 
-            const rootDropView = (viewName) => {
+            const rootDropView = (viewName = testViewName) => {
               helper.switchUser('root', dbName);
               try {
                 db._dropView(viewName);
@@ -273,24 +215,29 @@ describe('User Rights Management', () => {
               helper.switchUser(name, dbName);
             };
 
-            describe('read a view', () => {
+            describe('drop a', () => {
               before(() => {
                 db._useDatabase(dbName);
+                rootCreateView();
               });
 
-              it('by AQL with link to single collection', () => {
-                expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
+              after(() => {
+                rootDropView();
+                rootDropCollection(testCol1Name);
+                rootDropCollection(testCol2Name);
+              });
+
+              it('view without links', () => {
+                expect(rootTestView()).to.equal(true, 'Precondition failed, the view doesn not exist');
                 setKey(keySpaceId, name);
-                const taskId = 'task_read_view_single_collection_' + name;
+                const taskId = 'task_drop_view_without_links_' + name;
                 const task = {
                   id: taskId,
                   name: taskId,
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      let query = \"FOR d IN VIEW ${testView1Name} RETURN d\";
-                      let result = db._query(query, null, { waitForSync: true });
-                      global.KEY_SET('${keySpaceId}', '${name}_length', result.toArray().length);
+                      db._dropView(${testViewName});
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -300,17 +247,9 @@ describe('User Rights Management', () => {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name)))
-                  {
-                    tasks.register(task);
-                    wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not read the view with sufficient rights`);
-                    expect(getNumericKey(keySpaceId, `${name}_length`)).to.equal(testNumDocs, 'View read failed');
-                  } else {
-                    tasks.register(task);
-                    wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to read the view with insufficient rights`);
-                  }
+                  tasks.register(task);
+                  wait(keySpaceId, name);
+                  expect(rootTestView()).to.equal(false, 'View deletion reported success, but view was found afterwards');
                 } else {
                   try {
                     tasks.register(task);
@@ -321,67 +260,26 @@ describe('User Rights Management', () => {
                 }
               });
 
-              it('by AQL with links to multiple collections with same access level', () => {
-                expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
-                setKey(keySpaceId, name);
-                const taskId = 'task_read_view_multi_collections_same_access_' + name;
-                const task = {
-                  id: taskId,
-                  name: taskId,
-                  command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      let query = \"FOR d IN VIEW ${testView2Name} RETURN d\";
-                      let result = db._query(query, null, { waitForSync: true });
-                      global.KEY_SET('${keySpaceId}', '${name}_length', result.toArray().length);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
-                    }
-                  })(params);`
-                };
-                if (dbLevel['rw'].has(name)) {
-                  if((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name)))
-                  {
-                    tasks.register(task);
-                    wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not read the view with sufficient rights`);
-                    expect(getNumericKey(keySpaceId, `${name}_length`)).to.equal(testNumDocs*2, 'View read failed');
-                  } else {
-                    tasks.register(task);
-                    wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to read the view with insufficient rights`);
-                  }
-                } else {
-                  try {
-                    tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                  } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
-                  }
-                }
-              });
+              it('view with link to non-existing collection', () => {
+                rootDropView();
+                rootDropCollection(testCol1Name);
 
-              it('by AQL with links to multiple collections with none access level to one of them', () => {
-                expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
-                rootGrantCollection(testCol2Name, name, 'none');
+                rootCreateCollection(testCol1Name);
+                rootCreateView(testViewName, { links: { "NonExistentCol" : { includeAllFields: true } } });
+                expect(rootTestView()).to.equal(true, 'Precondition failed, the view doesn not exist');
                 setKey(keySpaceId, name);
-                const taskId = 'task_read_view_multi_collections_with_1of_none_access_' + name;
+                const taskId = 'task_drop_view_with_link_to_nonexist_col' + name;
                 const task = {
                   id: taskId,
                   name: taskId,
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      let query = \"FOR d IN VIEW ${testView2Name} RETURN d\";
-                      let result = db._query(query, null, { waitForSync: true });
-                      global.KEY_SET('${keySpaceId}', '${name}_length', result.toArray().length);
+                      db._dropView(${testViewName});
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
+                    } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
                   })(params);`
@@ -389,7 +287,98 @@ describe('User Rights Management', () => {
                 if (dbLevel['rw'].has(name)) {
                   tasks.register(task);
                   wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to read the view with insufficient rights`);
+                  expect(rootTestView()).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                } else {
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
+                  }
+                }
+              });
+
+              it('view with link to existing collection', () => {
+                rootDropView();
+                rootDropCollection(testCol1Name);
+
+                rootCreateCollection(testCol1Name);
+                rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true } } });
+                expect(rootTestView()).to.equal(true, 'Precondition failed, the view doesn not exist');
+                setKey(keySpaceId, name);
+                const taskId = 'task_drop_view_with_link_to_existing_col' + name;
+                const task = {
+                  id: taskId,
+                  name: taskId,
+                  command: `(function (params) {
+                    try {
+                      const db = require('@arangodb').db;
+                      db._dropView(${testViewName});
+                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                    } catch (e) {
+                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                    } finally {
+                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                    }
+                  })(params);`
+                };
+                if (dbLevel['rw'].has(name)) {
+                  if(colLevel['rw'].has(name)){
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(rootTestView()).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to drop the view with insufficient rights`);
+                  }
+                } else {
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
+                  }
+                }
+              });
+
+              it('view with links to multiple collections (switching 1 of them as RW during RO of a user collection level)', () => {
+                rootDropView();
+                rootDropCollection(testCol1Name);
+
+                rootCreateCollection(testCol1Name);
+                rootCreateCollection(testCol2Name);
+                rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } });
+                expect(rootTestView()).to.equal(true, 'Precondition failed, the view doesn not exist');
+                setKey(keySpaceId, name);
+                const taskId = 'task_drop_view_with_link_to_existing_diff_col' + name;
+                const task = {
+                  id: taskId,
+                  name: taskId,
+                  command: `(function (params) {
+                    try {
+                      const db = require('@arangodb').db;
+                      db._dropView(${testViewName});
+                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                    } catch (e) {
+                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                    } finally {
+                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                    }
+                  })(params);`
+                };
+                if (dbLevel['rw'].has(name)) {
+                  if(colLevel['rw'].has(name))
+                  {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(rootTestView()).to.equal(false, 'View deletion reported success, but view was found afterwards')
+                  } else {
+                    rootGrantCollection(testCol2Name, name, 'rw');
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to drop the view with insufficient rights`);
+                  }
                 } else {
                   try {
                     tasks.register(task);
