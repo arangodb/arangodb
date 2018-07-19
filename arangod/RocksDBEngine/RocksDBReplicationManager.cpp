@@ -300,7 +300,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
          /* no hoisting */) {
       auto context = it->second;
 
-      if (context->isUsed()) {
+      if (!force && context->isUsed()) {
         // must not physically destroy contexts that are currently used
         ++it;
         continue;
