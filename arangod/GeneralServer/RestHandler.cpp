@@ -48,11 +48,11 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 // -----------------------------------------------------------------------------
 
 RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
-    : _handlerId(0),
-      _canceled(false),
+    : _canceled(false),
       _request(request),
       _response(response),
       _statistics(nullptr),
+      _handlerId(0),
       _state(HandlerState::PREPARE) {}
 
 RestHandler::~RestHandler() {
