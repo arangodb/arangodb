@@ -728,6 +728,8 @@ bool RocksDBReplicationContext::use(double ttl, bool exclusive) {
 void RocksDBReplicationContext::release() {
   MUTEX_LOCKER(locker, _contextLock);
   TRI_ASSERT(_users > 0);
+  double ttl = _ttl > 0 ? _ttl : InitialSyncer::defaultBatchTimeout;
+  _expires = TRI_microtime() + ttl;
   --_users;
   if (0 == _users) {
     _exclusive = false;
