@@ -1,6 +1,9 @@
 v3.3.13 (XXXX-XX-XX)
 --------------------
 
+* fix assertion failure and undefined behavior in Unix domain socket connections,
+  introduced by 3.3.12
+
 * fixed graph creation sometimes failing with 'edge collection
   already used in edge def' when the edge definition contained multiple vertex
   collections, despite the edge definitions being identical
