@@ -28,6 +28,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
+#include <boost/range/join.hpp>
 #include <boost/variant.hpp>
 #include <utility>
 
@@ -802,19 +803,36 @@ bool GraphManager::collectionExists(std::string const &collection) const {
 
 OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
                                           bool dropCollections) {
-  std::unordered_set<std::string> collectionsToBeRemoved;
+
+  std::unordered_set<std::string> leadersToBeRemoved;
+  std::unordered_set<std::string> followersToBeRemoved;
+
   if (dropCollections) {
+    auto addToRemoveCollections = [this, &graph, &leadersToBeRemoved,
+                                   &followersToBeRemoved](
+        std::string const& colName) {
+      std::shared_ptr<LogicalCollection> col =
+          getCollectionByName(ctx()->vocbase(), colName);
+      if (col == nullptr) {
+        return;
+      }
+
+      if (col->distributeShardsLike().empty()) {
+        pushCollectionIfMayBeDropped(colName, graph.name(), leadersToBeRemoved);
+      } else {
+        pushCollectionIfMayBeDropped(colName, graph.name(),
+                                     followersToBeRemoved);
+      }
+    };
+
     for (auto const& vertexCollection : graph.vertexCollections()) {
-      pushCollectionIfMayBeDropped(vertexCollection, graph.name(),
-                                   collectionsToBeRemoved);
+      addToRemoveCollections(vertexCollection);
     }
     for (auto const& orphanCollection : graph.orphanCollections()) {
-      pushCollectionIfMayBeDropped(orphanCollection, graph.name(),
-                                   collectionsToBeRemoved);
+      addToRemoveCollections(orphanCollection);
     }
     for (auto const& edgeCollection : graph.edgeCollections()) {
-      pushCollectionIfMayBeDropped(edgeCollection, graph.name(),
-                                   collectionsToBeRemoved);
+      addToRemoveCollections(edgeCollection);
     }
   }
 
@@ -824,17 +842,18 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
   }
 
-  OperationOptions options;
-  options.waitForSync = waitForSync;
 
-  Result res;
-  OperationResult result;
-  {
+  {  // Remove from _graphs
+    OperationOptions options;
+    options.waitForSync = waitForSync;
+
+    Result res;
+    OperationResult result;
     SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
                                     AccessMode::Type::WRITE};
 
     res = trx.begin();
-    if (!res.ok()) {
+    if (res.fail()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
     VPackSlice search = builder.slice();
@@ -842,31 +861,50 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
 
     res = trx.finish(result.result);
     if (result.fail()) {
-      return OperationResult(result.result);
+      return result;
     }
+    if (res.fail()) {
+      return OperationResult{res};
+    }
+    TRI_ASSERT(res.ok() && result.ok());
   }
-  // remove graph related collections
-  // we are not able to do this in a transaction, so doing it afterwards
-  if (dropCollections) {
-    for (auto const& collection : collectionsToBeRemoved) {
-      Result resIn;
+
+  { // drop collections
+
+    Result firstDropError;
+    // remove graph related collections.
+    // we are not able to do this in a transaction, so doing it afterwards.
+    // there may be no collections to drop when dropCollections is false.
+    TRI_ASSERT(dropCollections ||
+               (leadersToBeRemoved.empty() && followersToBeRemoved.empty()));
+    // drop followers (with distributeShardsLike) first and leaders (which occur
+    // in some distributeShardsLike) second.
+    for (auto const& collection :
+         boost::join(followersToBeRemoved, leadersToBeRemoved)) {
+      Result dropResult;
       Result found = methods::Collections::lookup(
           &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
-            resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
-                                               -1.0);
+            dropResult = methods::Collections::drop(&ctx()->vocbase(), coll,
+                                                    false, -1.0);
           });
-      // ignore found, if not found should just be skipped and continue to
-      // remove further graphs
-      if (resIn.fail()) {
-        return OperationResult(res);
+      if (dropResult.fail()) {
+        LOG_TOPIC(WARN, Logger::GRAPHS)
+            << "While removing graph `" << graph.name() << "`: "
+            << "Dropping collection `" << collection << "` failed with error "
+            << dropResult.errorNumber() << ": " << dropResult.errorMessage();
+        // save the first error:
+        if (firstDropError.ok()) {
+          firstDropError = dropResult;
+        }
       }
+    }
+
+    if (firstDropError.fail()) {
+      return OperationResult{firstDropError};
     }
   }
 
-  if (result.ok() && res.fail()) {
-    return OperationResult(res);
-  }
-  return result;
+  return OperationResult{TRI_ERROR_NO_ERROR};
 }
 
 OperationResult GraphManager::pushCollectionIfMayBeDropped(

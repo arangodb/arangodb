@@ -527,14 +527,14 @@ static void JS_DropEdgeDefinition(
 
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "_deleteEdgeDefinitions(edgeCollection, dropCollection)");
+        "_deleteEdgeDefinition(edgeCollection, dropCollection)");
   }
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
   if (!args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-      "_deleteEdgeDefinitions(edgeCollection, dropCollection)");
+      "_deleteEdgeDefinition(edgeCollection, dropCollection)");
   }
   std::string graphName = TRI_ObjectToString(args[0]);
   std::string edgeDefinitionName = TRI_ObjectToString(args[1]);
@@ -543,7 +543,7 @@ static void JS_DropEdgeDefinition(
   }
   if (edgeDefinitionName.empty()) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-      "_deleteEdgeDefinitions(edgeCollection, dropCollection)");
+      "_deleteEdgeDefinition(edgeCollection, dropCollection)");
   }
 
   bool dropCollections = false;
