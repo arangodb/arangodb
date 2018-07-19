@@ -399,9 +399,9 @@ SECTION("test_drop_with_link") {
   CHECK((false == !vocbase.lookupView("testView")));
   CHECK((true == TRI_IsDirectory(dataPath.c_str())));
 
-  auto links = arangodb::velocypack::Parser::fromJson("{ \
+  auto links = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
     \"links\": { \"testCollection\": {} } \
-  }");
+  }}");
 
   arangodb::Result res = view->updateProperties(links->slice(), true, false);
   CHECK(true == res.ok());
@@ -1469,9 +1469,9 @@ SECTION("test_query") {
 
   // snapshot isolation
   {
-    auto links = arangodb::velocypack::Parser::fromJson("{ \
+    auto links = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \"testCollection\": { \"includeAllFields\" : true } } \
-    }");
+    }}");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
 
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1559,7 +1559,7 @@ SECTION("test_query") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": { \"includeAllFields\": true } } } }");
     auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::FlushFeature
     >("Flush");
@@ -1642,6 +1642,7 @@ SECTION("test_register_link") {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson0->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1697,6 +1698,7 @@ SECTION("test_register_link") {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson0->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1775,6 +1777,7 @@ SECTION("test_register_link") {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson1->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1908,9 +1911,9 @@ SECTION("test_unregister_link") {
       CHECK((trx.commit().ok()));
     }
 
-    auto links = arangodb::velocypack::Parser::fromJson("{ \
+    auto links = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \"testCollection\": {} } \
-    }");
+    }}");
 
     arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
     CHECK(true == res.ok());
@@ -2007,9 +2010,9 @@ SECTION("test_unregister_link") {
       CHECK((trx.commit().ok()));
     }
 
-    auto links = arangodb::velocypack::Parser::fromJson("{ \
+    auto links = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \"testCollection\": {} } \
-    }");
+    }}");
 
     arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
     CHECK(true == res.ok());
@@ -2084,9 +2087,9 @@ SECTION("test_unregister_link") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
 
-    auto links = arangodb::velocypack::Parser::fromJson("{ \
+    auto links = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \"testCollection\": {} } \
-    }");
+    }}");
 
     arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
     CHECK(true == res.ok());
@@ -2111,7 +2114,7 @@ SECTION("test_unregister_link") {
 
     {
       auto createJson = arangodb::velocypack::Parser::fromJson("{}");
-      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{  \"properties\": { \"links\": { \"testCollection\": {} } } }");
       auto logicalView = vocbase.createView(viewJson->slice());
       REQUIRE((false == !logicalView));
       auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -2192,7 +2195,7 @@ SECTION("test_tracked_cids") {
   // test add via link before open (TRI_vocbase_t::createView(...) will call open())
   {
     s.engine.views.clear();
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": { } } } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
@@ -2219,8 +2222,8 @@ SECTION("test_tracked_cids") {
   // test drop via link before open (TRI_vocbase_t::createView(...) will call open())
   {
     s.engine.views.clear();
-    auto updateJson0 = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
-    auto updateJson1 = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
+    auto updateJson0 = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": { } } } }");
+    auto updateJson1 = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": null } } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
@@ -2308,7 +2311,7 @@ SECTION("test_tracked_cids") {
   // test add via link after open (TRI_vocbase_t::createView(...) will call open())
   {
     s.engine.views.clear();
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": { } } } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
@@ -2333,8 +2336,8 @@ SECTION("test_tracked_cids") {
   // test drop via link after open (TRI_vocbase_t::createView(...) will call open())
   {
     s.engine.views.clear();
-    auto updateJson0 = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
-    auto updateJson1 = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
+    auto updateJson0 = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": { } } } }");
+    auto updateJson1 = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": null } } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
@@ -2385,7 +2388,7 @@ SECTION("test_transaction_registration") {
 
   // link collection to view
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } } }");
     CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
   }
 
@@ -2846,9 +2849,9 @@ SECTION("test_update_overwrite") {
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
-      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
         \"locale\": \"en\" \
-      }");
+      }}");
 
       expectedMeta._locale = irs::locale_utils::locale("en", true);
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
@@ -2909,9 +2912,9 @@ SECTION("test_update_overwrite") {
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
-      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
         \"locale\": \"ru\" \
-      }");
+      }}");
 
       expectedMeta._locale = irs::locale_utils::locale("ru", true);
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
@@ -2986,7 +2989,7 @@ SECTION("test_update_overwrite") {
 
     // initial creation
     {
-      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection0\": {} } } }");
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
@@ -3070,7 +3073,7 @@ SECTION("test_update_overwrite") {
 
     // update overwrite links
     {
-      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection1\": {} } }");
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection1\": {} } } }");
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
@@ -3166,7 +3169,7 @@ SECTION("test_update_overwrite") {
     // initial add of link
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }"
+        "{ \"properties\": { \"links\": { \"testCollection\": { \"includeAllFields\": true } } } }"
       );
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -3220,7 +3223,7 @@ SECTION("test_update_overwrite") {
     // update link
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": { \"testCollection\": { } } }"
+        "{ \"properties\": { \"links\": { \"testCollection\": { } } } }"
       );
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -3288,9 +3291,9 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"locale\": \"en\" \
-    }");
+    }}");
 
     expectedMeta._locale = irs::locale_utils::locale("en", true);
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3356,9 +3359,9 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
-    auto updateJson = arangodb::velocypack::Parser::fromJson(std::string() + "{ \
+    auto updateJson = arangodb::velocypack::Parser::fromJson(std::string() + "{ \"properties\": { \
       \"locale\": 123 \
-    }");
+    }}");
 
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
@@ -3425,7 +3428,7 @@ SECTION("test_update_partial") {
     REQUIRE(view->category() == arangodb::LogicalView::category());
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": { \"testCollection\": {} } }"
+      "{ \"properties\": { \"links\": { \"testCollection\": {} } } }"
     );
 
     auto before = StorageEngineMock::inRecoveryResult;
@@ -3492,10 +3495,10 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \
         \"testCollection\": {} \
-      }}");
+      }}}");
 
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
@@ -3603,10 +3606,10 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \
         \"testCollection\": {} \
-      }}");
+      }}}");
 
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
@@ -3692,10 +3695,10 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \
         \"testCollection\": {} \
-      }}");
+      }}}");
 
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
@@ -3761,7 +3764,7 @@ SECTION("test_update_partial") {
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": { \"testCollection\": {} } }"
+        "{ \"properties\": { \"links\": { \"testCollection\": {} } } }"
       );
       persisted = false;
       auto beforeRecovery = StorageEngineMock::inRecoveryResult;
@@ -3791,7 +3794,7 @@ SECTION("test_update_partial") {
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": { \"testCollection\": null } }"
+        "{ \"properties\": { \"links\": { \"testCollection\": null } } }"
       );
 
       auto before = StorageEngineMock::inRecoveryResult;
@@ -3836,10 +3839,10 @@ SECTION("test_update_partial") {
     expectedMetaState._collections.insert(logicalCollection->id());
 
     {
-      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
         \"links\": { \
           \"testCollection\": {} \
-      }}");
+      }}}");
 
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -3896,10 +3899,10 @@ SECTION("test_update_partial") {
     }
 
     {
-      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{  \"properties\": {\
         \"links\": { \
           \"testCollection\": null \
-      }}");
+      }}}");
 
       expectedMetaState._collections.clear();
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3965,10 +3968,10 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \
         \"testCollection\": null \
-      }}");
+      }}}");
 
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
@@ -4035,10 +4038,10 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \
         \"testCollection\": null \
-    }}");
+    }}}");
 
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -4106,7 +4109,7 @@ SECTION("test_update_partial") {
     // initial add of link
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": { \"testCollection\": {} } }"
+        "{ \"properties\": { \"links\": { \"testCollection\": {} } } }"
       );
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -4156,7 +4159,7 @@ SECTION("test_update_partial") {
     // add + remove
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": { \"testCollection\": null, \"testCollection\": {} } }"
+        "{ \"properties\": { \"links\": { \"testCollection\": null, \"testCollection\": {} } } }"
       );
       std::unordered_set<TRI_idx_iid_t> initial;
 
@@ -4231,7 +4234,7 @@ SECTION("test_update_partial") {
     // initial add of link
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }"
+        "{ \"properties\": { \"links\": { \"testCollection\": { \"includeAllFields\": true } } } }"
       );
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -4285,7 +4288,7 @@ SECTION("test_update_partial") {
     // update link
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": { \"testCollection\": { } } }"
+        "{ \"properties\": { \"links\": { \"testCollection\": { } } } }"
       );
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 

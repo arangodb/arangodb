@@ -20,7 +20,6 @@ It returns an object with the attributes
 - *name*: The new name of the view.
 - *type*: The view type. Valid types are:
   - arangosearch: ArangoSearch view
-- *properties* : The view properties.
 
 **Note**: this method is not available in a cluster. - ???
 
