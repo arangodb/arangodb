@@ -37,6 +37,13 @@ Installations that were originally set up with older versions of ArangoDB (e.g. 
 or 3.3) will continue to use the existing on-disk format for the RocksDB engine
 even with ArangoDB 3.4.
 
+In order to use the new binary format with existing data, it is required to 
+create a logical dump of the database data, shut down the server, erase the 
+database directory and restore the data from the logical dump. To minimize 
+downtime you can alternatively run a second arangod instance in your system,
+that replicates the original data; once the replication has reached completion, 
+you can switch the instances.
+
 
 Threading and request handling
 ------------------------------
