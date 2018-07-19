@@ -645,10 +645,16 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
 }
 
 arangodb::Result IResearchViewDBServer::updateProperties(
-  arangodb::velocypack::Slice const& properties,
+  arangodb::velocypack::Slice const& slice,
   bool partialUpdate,
   bool doSync
 ) {
+  if (slice.isObject() && !slice.hasKey(StaticStrings::PropertiesField)) {
+    return arangodb::Result(); // nothing to update
+  }
+
+  auto properties = slice.get(StaticStrings::PropertiesField);
+
   if (!properties.isObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
@@ -699,19 +705,6 @@ arangodb::Result IResearchViewDBServer::updateProperties(
 
   WriteMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // '_collections' can be asynchronously read
-
-  // ...........................................................................
-  // update per-cid views
-  // ...........................................................................
-
-  for (auto& entry: _collections) {
-    auto res =
-      entry.second->updateProperties(props.slice(), partialUpdate, doSync);
-
-    if (!res.ok()) {
-      return res; // fail on first failure
-    }
-  }
 
   {
     SCOPED_LOCK(_meta->write());

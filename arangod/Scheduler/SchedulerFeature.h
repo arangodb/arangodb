@@ -56,7 +56,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t _nrMinimalThreads = 2;
   uint64_t _nrMaximalThreads = 0;
   uint64_t _queueSize = 128;
-  uint64_t _fifo1Size = 16 * 4096;
+  uint64_t _fifo1Size = 1024 * 1024;
   uint64_t _fifo2Size = 4096;
 
  public:
@@ -65,6 +65,8 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void buildHangupHandler();
 
  private:
+  /// @brief return the default number of threads to use (upper bound)
+  size_t defaultNumberOfThreads() const;
   void buildScheduler();
 
  private:

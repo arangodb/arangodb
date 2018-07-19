@@ -137,13 +137,13 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
 
 /// @brief close
 void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Returning query with id " << id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "returning query with id " << id;
   WRITE_LOCKER(writeLocker, _lock);
 
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase->name(),
-                         std::unordered_map<QueryId, QueryInfo*>()).first;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "query with given vocbase and id not found");
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -153,7 +153,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   }
   QueryInfo* qi = q->second;
   if (!qi->_isOpen) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query id " << id << " was not open.";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "query id " << id << " was not open.";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "query with given vocbase and id is not open");
   }
@@ -165,7 +165,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   qi->_isOpen = false;
   qi->_expires = TRI_microtime() + qi->_timeToLive;
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is now returned.";
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now returned.";
 }
 
 /// @brief destroy
@@ -221,7 +221,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
     // commit the operation
     queryInfo->_query->trx()->commit();
   }
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is now destroyed";
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now destroyed";
 }
 
 /// @brief destroy
@@ -259,7 +259,7 @@ void QueryRegistry::expireQueries() {
 
   for (auto& p : toDelete) {
     try {  // just in case
-      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Timeout for query with id " << p.second;
+      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "timeout for query with id " << p.second;
       destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     } catch (...) {
     }
