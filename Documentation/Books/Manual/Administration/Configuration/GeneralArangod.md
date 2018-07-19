@@ -371,7 +371,7 @@ in a specific state on startup. the options for this value are:
 - any: any directory state allowed
 
 
-### Journal size
+### Journal size (MMFiles only)
 @startDocuBlock databaseMaximalJournalSize
 
 

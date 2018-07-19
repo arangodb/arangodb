@@ -1180,7 +1180,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
+      auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
       TRI_ASSERT(ep);
 
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);

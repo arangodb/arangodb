@@ -1,3 +1,4 @@
+<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 Using the ArangoDB Starter
 ==========================
 
@@ -67,4 +68,3 @@ The _Starter_ will decide on which 2 machines to run a single server instance.
 To override this decision (only valid while bootstrapping), add a
 `--cluster.start-single=false` to the machine where the single server
 instance should _not_ be started.
-

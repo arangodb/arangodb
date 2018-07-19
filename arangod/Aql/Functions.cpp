@@ -281,6 +281,9 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
         wrk.append(std::to_string(abs(yearnum)));
         return;
       }
+
+      TRI_ASSERT(yearnum >= 0);
+
       if (yearnum > 99999) {
         // intentionally nothing
       } else if (yearnum > 9999) {
@@ -291,10 +294,8 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
         wrk.append("+000");
       } else if (yearnum > 9) {
         wrk.append("+0000");
-      } else if (yearnum >= 0) {
-        wrk.append("+00000");
       } else {
-        wrk.append("+");
+        wrk.append("+00000");
       }
       wrk.append(std::to_string(yearnum));
     }},
@@ -316,12 +317,9 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
           wrk.append("-");
         }
         wrk.append(std::to_string(abs(yearnum)));
-      }
-      else {
-        if (yearnum < 0) {
-          wrk.append("0000");
-          wrk.append(std::to_string(yearnum));
-        } else if (yearnum < 9) {
+      } else {
+        TRI_ASSERT(yearnum >= 0);
+        if (yearnum < 9) {
           wrk.append("000");
           wrk.append(std::to_string(yearnum));
         } else if (yearnum < 99) {

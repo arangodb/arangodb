@@ -122,7 +122,7 @@ V8PlatformFeature::V8PlatformFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "V8Platform") {
   setOptional(true);
-  startsAfter("Logger");
+  startsAfter("ClusterPhase");
 }
 
 void V8PlatformFeature::collectOptions(

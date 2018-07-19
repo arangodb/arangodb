@@ -17,22 +17,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_ENGINE_EQUALITY_CHECK_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_ENGINE_EQUALITY_CHECK_FEATURE_H
+#ifndef ARANGODB_APPLICATION_FEATURES_V8SHELL_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_V8SHELL_FEATURE_PHASE_H 1
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeaturePhase.h"
 
 namespace arangodb {
-class EngineEqualityCheckFeature final : public application_features::ApplicationFeature {
+namespace application_features {
+class V8ShellFeaturePhase final : public ApplicationFeaturePhase {
  public:
-  explicit EngineEqualityCheckFeature(application_features::ApplicationServer* server);
-
- public:
-  void start() override final;
+  explicit V8ShellFeaturePhase(ApplicationServer* server);
 };
-}
+}  // namespace application_features
+}  // namespace arangodb
 
 #endif
+
+
