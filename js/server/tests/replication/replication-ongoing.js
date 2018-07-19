@@ -760,18 +760,20 @@ function ReplicationSuite() {
   suite.tearDown = function() {
     connectToMaster();
 
+    db._dropView("UnitTestsSyncView");
+    db._dropView("UnitTestsSyncViewRenamed");
     db._drop(cn);
     db._drop(cn2);
-    db._dropView("UnitTestsSyncView");
 
     connectToSlave();
     replication.applier.stop();
     replication.applier.forget();
 
+    db._dropView("UnitTestsSyncView");
+    db._dropView("UnitTestsSyncViewRenamed");
     db._drop(cn);
     db._drop(cn2);
     db._drop(cn + "Renamed");
-    db._dropView("UnitTestsSyncViewRenamed");
   };
 
   return suite;
