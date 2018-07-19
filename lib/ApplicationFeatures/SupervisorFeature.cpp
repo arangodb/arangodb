@@ -117,8 +117,9 @@ SupervisorFeature::SupervisorFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
   setOptional(true);
+  startsAfter("GreetingsPhase");
+
   startsAfter("Daemon");
-  startsAfter("Logger");
 }
 
 void SupervisorFeature::collectOptions(

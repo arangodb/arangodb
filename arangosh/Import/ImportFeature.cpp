@@ -68,9 +68,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Config");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 }
 
 void ImportFeature::collectOptions(

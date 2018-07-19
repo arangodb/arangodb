@@ -702,7 +702,6 @@ std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
   // to please compiler in non-maintainer mode
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                                    std::string("when converting ExecutionBlock::Type to string: got invalid type"));
-    return "";
   }
   return got->second;
 }

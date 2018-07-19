@@ -72,10 +72,12 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
       _db(nullptr),
       _inRecovery(true) {
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
   startsAfter("RocksDBEngine");
-  startsAfter("StorageEngine");
   startsAfter("ServerId");
+  startsAfter("StorageEngine");
 
   onlyEnabledWith("RocksDBEngine");
 }

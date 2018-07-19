@@ -38,8 +38,6 @@
 
 namespace arangodb {
 
-class ExecContext;
-
 namespace velocypack {
 class Builder;
 struct Options;
@@ -83,9 +81,9 @@ class GeneralRequest {
         _protocol(""),
         _connectionInfo(connectionInfo),
         _clientTaskId(0),
-        _authenticated(false),
         _requestContext(nullptr),
         _isRequestContextOwner(false),
+        _authenticated(false),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
         _contentTypeResponse(ContentType::UNSET) {}
@@ -220,12 +218,12 @@ class GeneralRequest {
   ConnectionInfo _connectionInfo;
   uint64_t _clientTaskId;
   std::string _databaseName;
-  bool _authenticated;
   std::string _user;
 
   // request context
   RequestContext* _requestContext;
   bool _isRequestContextOwner;
+  bool _authenticated;
 
   rest::AuthenticationMethod _authenticationMethod =
       rest::AuthenticationMethod::NONE;

@@ -501,7 +501,7 @@ WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationSe
   _progress = 2;
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("Version");
+  startsAfter("GreetingsPhase");
   ArangoInstance = this;
 
   if (!TRI_InitWindowsEventLog()) {

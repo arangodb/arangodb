@@ -242,20 +242,20 @@ LENGTH("电脑坏了") // 4
 LEVENSHTEIN_DISTANCE()
 ------
 
-`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistanceInt`
+`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
 
-Return the calculated levenshtein distance between the input strings *value1* and *value2*.
-
-- **value1** (string): a string
-- **value2** (string): a string
-
-`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistanceInt`
-
-Return the calculated levenshtein distance between the input strings *value1* and *value2*.
+Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
 
 - **value1** (string): a string
 - **value2** (string): a string
-- returns **levenshteinDistanceInt** (int): calculated levenshtein distance between the input strings *value1* and *value2*
+
+`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
+
+Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
+
+- **value1** (string): a string
+- **value2** (string): a string
+- returns **levenshteinDistance** (number): calculated Levenshtein distance between the input strings *value1* and *value2*
 
 ```js
 LEVENSHTEIN_DISTANCE("foobar", "bar") // 3
