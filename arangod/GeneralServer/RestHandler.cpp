@@ -257,7 +257,7 @@ bool RestHandler::forwardRequest() {
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
-  _response->setHeader(StaticStrings::RequestServedBy, serverId);
+  _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
 
   return true;
 }
