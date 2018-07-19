@@ -16,7 +16,7 @@ Name | Language | Repository | &nbsp;
 Name | Language | Repository | &nbsp;
 -----|----------|------------|-------
 [Spring Data](SpringData/README.md) | Java | https://github.com/arangodb/spring-data | [Changelog](https://github.com/arangodb/spring-data/blob/master/ChangeLog.md#readme)
-ArangoDB-Spark-Connector | Scala, Java | https://github.com/arangodb/arangodb-spark-connector | [Changelog](https://github.com/arangodb/arangodb-spark-connector/blob/master/ChangeLog.md#readme)
+[ArangoDB-Spark-Connector](SparkConnector/README.md) | Scala, Java | https://github.com/arangodb/arangodb-spark-connector | [Changelog](https://github.com/arangodb/arangodb-spark-connector/blob/master/ChangeLog.md#readme)
 
 **Community drivers**
 
