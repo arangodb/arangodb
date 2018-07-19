@@ -38,6 +38,36 @@ or 3.3) will continue to use the existing on-disk format for the RocksDB engine
 even with ArangoDB 3.4.
 
 
+Threading and request handling
+------------------------------
+
+The processing of incoming requests and the execution of requests by server threads
+has changed in 3.4.
+
+Previous ArangoDB versions had a hard-coded implicit lower bound of 64 running 
+threads, and up to which they would increase the number of running server threads.
+That value could be increased further by adjusting the option `--server.maximal-threads`.
+The configuration option `--server.threads` existed, but did not effectively set
+or limit the number of running threads.
+
+In ArangoDB 3.4, the number of threads ArangoDB uses for request handling can now 
+be strictly bounded by configuration options.
+
+The number of server threads is now configured by the following startup options:
+
+- `--server.threads`: determines the maximum number of request processing threads
+  the server will start for request handling. If that number of threads is already
+  running, arangod will not start further threads for request handling
+- `--server.minimal-threads`: determines the minimum number of request processing
+  threads the server will start and always keep around
+
+The actual number of request processing threads is adjusted dynamically at runtime
+and will float between `--server.minimal-threads` and `--server.threads`.
+
+To avoid overloading servers, the value of `--server.threads` should not exceed the 
+server's number of hardware threads in ArangoDB 3.4.
+
+
 HTTP REST API
 -------------
 
@@ -115,6 +145,19 @@ The following APIs have been added or augmented:
 
 - APIs for view management have been added at endpoint `/_api/view`.
 
+- The REST APIs for modifying graphs at endpoint `/_api/gharial` now support returning
+  the old revision of vertices / edges after modifying them. The APIs also supports 
+  returning the just-inserted vertex / edge. This is in line with the already existing 
+  single-document functionality provided at endpoint `/_api/document`.
+
+  The old/new revisions can be accessed by passing the URL parameters `returnOld` and
+  `returnNew` to the following endpoints:
+
+  * /_api/gharial/<graph>/vertex/<collection>
+  * /_api/gharial/<graph>/edge/<collection>
+
+  The exception from this is that the HTTP DELETE verb for these APIs does not
+  support `returnOld` because that would make the existing API incompatible.
 
 The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
 
@@ -185,6 +228,35 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   - `KEYVISITOR`
   - `COUNTINGVISITOR`        
 
+  Using any of these functions from inside AQL will now produce an error.
+
+
+Usage of V8
+-----------
+
+The internal usage of the V8 JavaScript for non-user actions has been reduced 
+in ArangoDB. Several APIs have been rewritten to not depend on V8 and thus do 
+not require using a V8 context for execution.
+
+Compared to ArangoDB 3.3, the following parts of ArangoDB can now be used 
+without requiring V8 contexts:
+
+- all of AQL (with the exception of user-defined functions)
+- the graph modification APIs at endpoint `/_api/gharial`
+- background server statistics gathering
+
+Reduced usage of V8 by ArangoDB may allow end users to lower the configured 
+numbers of V8 contexts to start. In terms of configuration options, these
+are:
+
+- `--javascript.v8-contexts`: the maximum number of V8 contexts to create
+- `--javascript.v8-contexts-minimim`: the minimum number of V8 contexts to 
+  create at server start and to keep around
+
+The default values for these startup options have not been changed in ArangoDB
+3.4, but depending on the actual workload, 3.4 ArangoDB instances may need
+less V8 contexts than 3.3.
+
 
 Startup option changes
 ----------------------
@@ -193,7 +265,18 @@ The arangod, the following startup options have changed:
 
 - the hidden option `--server.maximal-threads` is now obsolete.
 
-  Setting the option will have no effect.
+  Setting the option will have no effect. 
+  The number of server threads is now configured by the following startup options:
+
+  - `--server.threads`: determines the maximum number of request processing threads
+    the server will start
+  - `--server.minimal-threads`: determines the minimum number of request processing
+    threads the server will start
+
+  The actual number of request processing threads is adjusted dynamically at runtime
+  and will float between `--server.minimal-threads` and `--server.threads`. Thus the
+  value configured for `--server.threads` should not greatly exceed the server's number
+  of hardware threads.
 
 - the option `--server.maximal-queue-size` has been renamed to `--server.queue-size`.
 
@@ -208,6 +291,18 @@ The arangod, the following startup options have changed:
   server UUIDs.
 
   The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
+
+- the startup option `--database.check-30-revisions` was removed. It was used for
+  checking the revision ids of documents for having been created with ArangoDB 3.0,
+  which required a dump & restore migration of the data to 3.1.
+
+  As direct upgrades from ArangoDB 3.0 to 3.4 or from 3.1 to 3.4 are not supported,
+  this option has been removed in 3.4.
+
+- the option `--replication.automatic-failover` was renamed to `--replication.active-failover`
+
+  Using the old option name will still work in ArangoDB 3.4, but support for the old 
+  option name will be removed in future versions of ArangoDB.
 
 
 Permissions
@@ -248,6 +343,17 @@ should change the protocol from SSLv2 to TLSv12 if possible, by adjusting
 the value of the `--ssl.protocol` startup option.
 
 
+Mixed-engine clusters
+---------------------
+
+Starting a cluster with coordinators and DB servers using different storage 
+engines is not supported. Doing it anyway will now log an error and abort a 
+coordinator's startup.
+
+Previous versions of ArangoDB did not detect the usage of different storage
+engines in a cluster, but the runtime behavior of the cluster was undefined.
+
+
 Client tools
 ------------
 
@@ -261,8 +367,8 @@ ArangoDB 3.4.
 Miscellaneous changes
 ---------------------
 
-For the MMFiles engine, the compactor thread(s) were renamed from 
-"Compactor" to "MMFilesCompactor".
+For the MMFiles engine, the compactor thread(s) were renamed from "Compactor" 
+to "MMFilesCompactor".
 
 This change will be visible only on systems which allow assigning names to
 threads.

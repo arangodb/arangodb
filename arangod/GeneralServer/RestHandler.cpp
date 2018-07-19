@@ -36,8 +36,6 @@
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 
-#include <iostream>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;

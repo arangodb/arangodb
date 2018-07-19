@@ -64,9 +64,8 @@ void Compactor::run() {
     
     try {
       _agent->compact();  // Note that this checks nextCompactionAfter again!
-    }
-    catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "Expection during compaction, details: "
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Exception during compaction, details: "
         << e.what();
     }
   }

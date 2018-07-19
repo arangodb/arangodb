@@ -483,7 +483,6 @@ MMFilesCollection::MMFilesCollection(
     : PhysicalCollection(collection, info),
       _ditches(&collection),
       _initialCount(0),
-      _revisionError(false),
       _lastRevision(0),
       _uncollectedLogfileEntries(0),
       _nextCompactionStartIndex(0),
@@ -537,7 +536,6 @@ MMFilesCollection::MMFilesCollection(
   _persistentIndexes = mmfiles._persistentIndexes;
   _useSecondaryIndexes = mmfiles._useSecondaryIndexes;
   _initialCount = mmfiles._initialCount;
-  _revisionError = mmfiles._revisionError;
   _lastRevision = mmfiles._lastRevision;
   _nextCompactionStartIndex = mmfiles._nextCompactionStartIndex;
   _lastCompactionStatus = mmfiles._lastCompactionStatus;
@@ -1832,11 +1830,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
   }
 
   // successfully opened collection. now adjust version number
-  if (LogicalCollection::VERSION_31 != _logicalCollection.version() &&
-      !_revisionError &&
-      application_features::ApplicationServer::server
-          ->getFeature<DatabaseFeature>("Database")
-          ->check30Revisions()) {
+  if (LogicalCollection::VERSION_31 != _logicalCollection.version()) {
     _logicalCollection.setVersion(LogicalCollection::VERSION_31);
 
     bool const doSync =
@@ -1877,36 +1871,6 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
       << "found " << openState._documents << " document markers, "
       << openState._deletions << " deletion markers for collection '"
       << _logicalCollection.name() << "'";
-
-  if (LogicalCollection::VERSION_30 >= _logicalCollection.version() &&
-      _lastRevision >= static_cast<TRI_voc_rid_t>(2016ULL - 1970ULL) * 1000ULL *
-                           60ULL * 60ULL * 24ULL * 365ULL &&
-      application_features::ApplicationServer::server
-          ->getFeature<DatabaseFeature>("Database")
-          ->check30Revisions()) {
-    // a collection from 3.0 or earlier with a _rev value that is higher than we
-    // can handle safely
-    setRevisionError();
-
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "collection '" << _logicalCollection.name()
-        << "' contains _rev values that are higher than expected for an "
-           "ArangoDB 3.1 database. If this collection was created or used with "
-           "a pre-release or development version of ArangoDB 3.1, please "
-           "restart the server with option '--database.check-30-revisions "
-           "false' to suppress this warning. If this collection was created "
-           "with an ArangoDB 3.0, please dump the 3.0 database with arangodump "
-           "and restore it in 3.1 with arangorestore.";
-    if (application_features::ApplicationServer::server
-            ->getFeature<DatabaseFeature>("Database")
-            ->fail30Revisions()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-          std::string("collection '") + _logicalCollection.name() +
-              "' contains _rev values from 3.0 and needs to be migrated using "
-              "dump/restore");
-    }
-  }
 
   // update the real statistics for the collection
   try {

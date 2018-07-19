@@ -102,10 +102,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "if set to true, then the instance will only start if a UUID file is found in the database on startup. Setting this option will make sure the instance is started using an already existing database directory and not a new one. For the first start, the UUID file must either be created manually or the option must be set to false for the initial startup",
                      new BooleanParameter(&_requirePersistedId));
 
-  options->addOption("--cluster.require-persisted-id",
-                     "if set to true, then the instance will only start if a UUID file is found in the database on startup. Setting this option will make sure the instance is started using an already existing database directory and not a new one. For the first start, the UUID file must either be created manually or the option must be set to false for the initial startup",
-                     new BooleanParameter(&_requirePersistedId));
-
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));

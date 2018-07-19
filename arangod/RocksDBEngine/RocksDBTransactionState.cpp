@@ -34,7 +34,9 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionManager.h"
@@ -63,7 +65,6 @@ RocksDBTransactionState::RocksDBTransactionState(
 ): TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _snapshot(nullptr),
-      _rocksWriteOptions(),
       _rocksReadOptions(),
       _cacheTx(nullptr),
       _numCommits(0),
@@ -228,7 +229,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
-
+  
   Result result;
   if (hasOperations()) {
     // we are actually going to attempt a commit
@@ -261,12 +262,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     }
 #endif
     
-    // set wait for sync flag if required
-    if (waitForSync()) {
-      _rocksWriteOptions.sync = true;
-      _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
-    }
-
     // prepare for commit on each collection, e.g. place blockers for estimators
     rocksdb::SequenceNumber preCommitSeq =
         rocksutils::globalRocksDB()->GetLatestSequenceNumber();
@@ -301,6 +296,13 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         // index estimator updates are buffered
         collection->commitCounts(id(), latestSeq);
         committed = true;
+      }
+    
+      // wait for sync if required
+      if (waitForSync()) {
+        RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+        TRI_ASSERT(engine != nullptr);
+        result = engine->syncThread()->syncWal();
       }
     }
   } else {

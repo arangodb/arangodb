@@ -381,12 +381,14 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   // Else we want to indicate to the leader that we are behind and need data:
   // a single false will go back and trigger _confirmed[thisfollower] = 0
   if (nqs == 0) {
-    if (_state.lastIndex() > 0) {
+    auto lastIndex = _state.lastIndex();
+    if (lastIndex > 0) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Finished empty AppendEntriesRPC from " << leaderId << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
-        _commitIndex = leaderCommitIndex;
+        _commitIndex = std::max(
+          _commitIndex, std::min(leaderCommitIndex, lastIndex));
         if (_commitIndex >= _state.nextCompactionAfter()) {
           _compactor.wakeUp();
         }

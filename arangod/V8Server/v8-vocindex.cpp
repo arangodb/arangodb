@@ -334,4 +334,6 @@ void TRI_InitV8IndexCollection(v8::Isolate* isolate,
                        JS_LookupIndexVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getIndexes"),
                        JS_GetIndexesVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "indexes"),
+                       JS_GetIndexesVocbaseCol); // indexes() is an alias for getIndexes() now!
 }
