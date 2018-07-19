@@ -690,17 +690,15 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
 
 Result RocksDBVPackIndex::updateInternal(transaction::Methods* trx,
                                          RocksDBMethods* mthds,
-                                         LocalDocumentId const& oldDocumentId,
-                                         arangodb::velocypack::Slice const& oldDoc,
-                                         LocalDocumentId const& newDocumentId,
-                                         velocypack::Slice const& newDoc,
+                                         LocalDocumentId const& documentId,
+                                         VPackSlice const& oldDoc,
+                                         VPackSlice const& newDoc,
                                          OperationMode mode) {
 
-  if (!_unique || _useExpansion) {
-    // only unique index supports in-place updates
+  if (_useExpansion) {
     // lets also not handle the complex case of expanded arrays
-    return RocksDBIndex::updateInternal(trx, mthds, oldDocumentId, oldDoc,
-                                        newDocumentId, newDoc, mode);
+    return RocksDBIndex::updateInternal(trx, mthds, documentId,
+                                        oldDoc, newDoc, mode);
   } else {
 
     bool equal = true;
@@ -722,25 +720,25 @@ Result RocksDBVPackIndex::updateInternal(transaction::Methods* trx,
       }
     }
     if (!equal) {
-      // we can only use in-place updates if no indexed attributes changed
-      return RocksDBIndex::updateInternal(trx, mthds, oldDocumentId, oldDoc,
-                                          newDocumentId, newDoc, mode);
+      // we can only avoid writes if no indexed attributes changed
+      return RocksDBIndex::updateInternal(trx, mthds, documentId,
+                                          oldDoc, newDoc, mode);
     }
-
+    return {};
     // more expansive method to
-    std::vector<RocksDBKey> elements;
+    /*std::vector<RocksDBKey> elements;
     std::vector<uint64_t> hashes;
     int res = TRI_ERROR_NO_ERROR;
     {
       // rethrow all types of exceptions from here...
       transaction::BuilderLeaser leased(trx);
-      res = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
+      res = fillElement(*(leased.get()), documentId, newDoc, elements, hashes);
     }
     if (res != TRI_ERROR_NO_ERROR) {
       return IndexResult(res, this);
     }
 
-    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId.id());
+    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(documentId.id());
     size_t const count = elements.size();
     for (size_t i = 0; i < count; ++i) {
       RocksDBKey& key = elements[i];
@@ -760,7 +758,7 @@ Result RocksDBVPackIndex::updateInternal(transaction::Methods* trx,
       }
     }
 
-    return res;
+    return res;*/
   }
 }
 

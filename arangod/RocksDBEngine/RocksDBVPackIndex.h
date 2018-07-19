@@ -215,10 +215,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         OperationMode mode) override;
 
   Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
-                        LocalDocumentId const& oldDocumentId,
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const& oldDoc,
-                        LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const& newDoc,
+                        arangodb::velocypack::Slice const& newDoc,
                         OperationMode mode) override;
 
   Result removeInternal(transaction::Methods*, RocksDBMethods*,

@@ -73,7 +73,7 @@ enum class RocksDBLogType : char {
   DocumentRemove = '>',
   SinglePut = '?',
   SingleRemove = '@',
-  DocumentRemoveAsPartOfUpdate = 'A'
+  DocumentRemoveAsPartOfUpdate = 'A' // <- deprecated
 };
   
 enum class RocksDBSettingsType : char {

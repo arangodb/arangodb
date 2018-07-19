@@ -75,7 +75,7 @@ class JobQueueThread final
         idleTries = 0;
         std::shared_ptr<Job> job(jobPtr);
 
-        _scheduler->post([this, self, job]() {
+        _scheduler->post([self, job]() {
           RequestStatistics::SET_QUEUE_END(job->_handler->statistics());
 
           try {

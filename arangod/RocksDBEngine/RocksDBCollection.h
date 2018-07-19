@@ -239,9 +239,8 @@ class RocksDBCollection final : public PhysicalCollection {
       ManagedDocumentResult& result) const;
 
   arangodb::RocksDBOperationResult updateDocument(
-      transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
+      transaction::Methods* trx, LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& oldDoc,
-      LocalDocumentId const& newDocumentId,
       arangodb::velocypack::Slice const& newDoc, OperationOptions& options) const;
 
   arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,

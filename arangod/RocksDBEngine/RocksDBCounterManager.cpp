@@ -39,6 +39,7 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "Transaction/Helpers.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/ticks.h"
 
@@ -501,9 +502,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   // must be set by the counter manager
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqStart;
   std::unordered_map<uint64_t, RocksDBCounterManager::CounterAdjustment> deltas;
-  std::unordered_map<
-      uint64_t,
-      std::pair<uint64_t,
+  std::unordered_map<uint64_t, std::pair<uint64_t,
                 std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
       _estimators;
   std::unordered_map<uint64_t, uint64_t>* _generators;
@@ -641,33 +640,31 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     updateMaxTick(column_family_id, key, value);
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      uint64_t revisionId =
-          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
-
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
         it->second._sequenceNum = currentSeqNum;
         it->second._added++;
-        it->second._revisionId = revisionId;
+        it->second._revisionId = transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
       }
-    } else {
+    } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
+      
+    } else if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
+       // We have to adjust the estimate with an insert
+      uint64_t objectId = RocksDBKey::objectId(key);
+      auto it = _estimators->find(objectId);
+      if (it != _estimators->end() && it->second.first < currentSeqNum) {
+        // We track estimates for this index
+        uint64_t hash = RocksDBVPackIndex::HashForKey(key);
+        it->second.second->insert(hash);
+      }
+    } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
       // We have to adjust the estimate with an insert
-      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
-        uint64_t objectId = RocksDBKey::objectId(key);
-        auto it = _estimators->find(objectId);
-        if (it != _estimators->end() && it->second.first < currentSeqNum) {
-          // We track estimates for this index
-          uint64_t hash = RocksDBVPackIndex::HashForKey(key);
-          it->second.second->insert(hash);
-        }
-      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
-        uint64_t objectId = RocksDBKey::objectId(key);
-        auto it = _estimators->find(objectId);
-        if (it != _estimators->end() && it->second.first < currentSeqNum) {
-          // We track estimates for this index
-          uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
-          it->second.second->insert(hash);
-        }
+      uint64_t objectId = RocksDBKey::objectId(key);
+      auto it = _estimators->find(objectId);
+      if (it != _estimators->end() && it->second.first < currentSeqNum) {
+        // We track estimates for this index
+        uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
+        it->second.second->insert(hash);
       }
     }
     return rocksdb::Status();
@@ -677,33 +674,29 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
                            const rocksdb::Slice& key) override {
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      uint64_t revisionId =
-          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
         it->second._sequenceNum = currentSeqNum;
         it->second._removed++;
-        it->second._revisionId = revisionId;
       }
-    } else {
+    } else if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
       // We have to adjust the estimate with an remove
-      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
-        uint64_t objectId = RocksDBKey::objectId(key);
-        auto it = _estimators->find(objectId);
-        if (it != _estimators->end() && it->second.first < currentSeqNum) {
-          // We track estimates for this index
-          uint64_t hash = RocksDBVPackIndex::HashForKey(key);
-          it->second.second->remove(hash);
-        }
-      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
-        uint64_t objectId = RocksDBKey::objectId(key);
-        auto it = _estimators->find(objectId);
-        if (it != _estimators->end() && it->second.first < currentSeqNum) {
-          // We track estimates for this index
-          uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
-          it->second.second->remove(hash);
-        }
+      uint64_t objectId = RocksDBKey::objectId(key);
+      auto it = _estimators->find(objectId);
+      if (it != _estimators->end() && it->second.first < currentSeqNum) {
+        // We track estimates for this index
+        uint64_t hash = RocksDBVPackIndex::HashForKey(key);
+        it->second.second->remove(hash);
+      }
+    } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
+      // We have to adjust the estimate with an remove
+      uint64_t objectId = RocksDBKey::objectId(key);
+      auto it = _estimators->find(objectId);
+      if (it != _estimators->end() && it->second.first < currentSeqNum) {
+        // We track estimates for this index
+        uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
+        it->second.second->remove(hash);
       }
     }
     return rocksdb::Status();

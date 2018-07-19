@@ -109,7 +109,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(
     transaction::Methods* trx, VPackSlice const& oldValue,
-    VPackSlice const& newValue, bool isEdgeCollection, LocalDocumentId const& documentId,
+    VPackSlice const& newValue, bool isEdgeCollection,
     bool mergeObjects, bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
   b.openObject();
 
@@ -257,8 +257,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
 /// @brief new object for insert, computes the hash of the key
 Result PhysicalCollection::newObjectForInsert(
-    transaction::Methods* trx, VPackSlice const& value,
-    LocalDocumentId const& documentId, bool isEdgeCollection, 
+    transaction::Methods* trx, VPackSlice const& value, bool isEdgeCollection,
     VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
@@ -351,7 +350,6 @@ Result PhysicalCollection::newObjectForInsert(
 /// @brief new object for remove, must have _key set
 void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
                                             VPackSlice const& oldValue,
-                                            LocalDocumentId const& documentId,
                                             VPackBuilder& builder,
                                             bool isRestore, TRI_voc_rid_t& revisionId) const {
   // create an object consisting of _key and _rev (in this order)
@@ -372,7 +370,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
 /// set
 Result PhysicalCollection::newObjectForReplace(
     transaction::Methods* trx, VPackSlice const& oldValue,
-    VPackSlice const& newValue, bool isEdgeCollection, LocalDocumentId const& documentId,
+    VPackSlice const& newValue, bool isEdgeCollection, 
     VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
