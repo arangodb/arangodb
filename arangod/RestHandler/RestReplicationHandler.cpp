@@ -1736,43 +1736,47 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreView() {
-  
   bool parseSuccess = false;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
+
   if (!parseSuccess) {
     return; // error message generated in parseVPackBody
   }
+
   if (!slice.isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+
     return;
   }
-  
+
   bool force = _request->parsedValue<bool>("force", false);
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
-  
   auto nameSlice = slice.get(StaticStrings::DataSourceName);
   auto typeSlice = slice.get(StaticStrings::DataSourceType);
-  //VPackSlice const propertiesSlice = slice.get("properties");
-  //|| !propertiesSlice.isObject()
+
   if (!nameSlice.isString() || !typeSlice.isString()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
   
   auto view = _vocbase.lookupView(nameSlice.copyString());
+
   if (view) {
     if (overwrite) {
       Result res = _vocbase.dropView(view->id(), /*dropSytem*/force);
+
       if (res.fail()) {
         generateError(res);
+
         return;
       }
     } else {
       generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
       return;
     }
   }
-  
+
   try {
     view = _vocbase.createView(slice);
     if (view == nullptr) {
@@ -1786,8 +1790,9 @@ void RestReplicationHandler::handleCommandRestoreView() {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem creating view");
   }
-  
+
   VPackBuilder result;
+
   result.openObject();
   result.add("result", VPackValue(true));
   result.close();

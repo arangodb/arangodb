@@ -42,7 +42,7 @@ function runSetup () {
   var v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
 
   // setup link
-  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
+  var meta = { properties: { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } } };
   v.properties(meta);
 
   internal.wal.flush(true, true);
@@ -50,7 +50,7 @@ function runSetup () {
   internal.wait(2); // make sure failure point takes effect
 
   // remove link
-  v.properties({ links: { 'UnitTestsRecoveryDummy': null } });
+  v.properties({ properties: { links: { 'UnitTestsRecoveryDummy': null } } });
 
   c.save({ name: 'crashme' }, true);
 
@@ -75,7 +75,7 @@ function recoverySuite () {
 
     testIResearchLinkDropNoFlushThread: function () {
       var v1 = db._view('UnitTestsRecovery1');
-      assertEqual(v1.properties().links, {});
+      assertEqual(v1.properties().properties.links, {});
     }
 
   };

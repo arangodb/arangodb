@@ -527,14 +527,14 @@ void RestCollectionHandler::collectionRepresentation(
   TRI_ASSERT(coll != nullptr);
 
   // `methods::Collections::properties` will filter these out
-  builder.add("id", VPackValue(std::to_string(coll->id())));
-  builder.add("name", VPackValue(coll->name()));
+  builder.add(StaticStrings::DataSourceId, VPackValue(std::to_string(coll->id())));
+  builder.add(StaticStrings::DataSourceName, VPackValue(coll->name()));
   builder.add("status", VPackValue(coll->status()));
-  builder.add("type", VPackValue(coll->type()));
+  builder.add(StaticStrings::DataSourceType, VPackValue(coll->type()));
 
   if (!showProperties) {
-    builder.add("isSystem", VPackValue(coll->system()));
-    builder.add("globallyUniqueId", VPackValue(coll->guid()));
+    builder.add(StaticStrings::DataSourceSystem, VPackValue(coll->system()));
+    builder.add(StaticStrings::DataSourceGuid, VPackValue(coll->guid()));
   } else {
     Result res = methods::Collections::properties(ctxt, builder);
     if (res.fail()) {
