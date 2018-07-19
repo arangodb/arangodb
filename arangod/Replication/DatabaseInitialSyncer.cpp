@@ -196,11 +196,13 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       }
     }
     
-    r = handleViewCreation(views); // no requests to master
-    if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
-      << "Error during initial sync: " << r.errorMessage();
-      return r;
+    if (_config.applier._restrictCollections.empty()) {
+      r = handleViewCreation(views); // no requests to master
+      if (r.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "Error during initial sync: " << r.errorMessage();
+        return r;
+      }
     }
 
     // strip eventual objectIDs and then dump the collections
