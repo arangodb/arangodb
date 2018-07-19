@@ -233,7 +233,7 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "Öööööö", "öö", 4 ],
         [ "The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox", 13 ],
       ].forEach(function(test) {
-        assertEqual([ test[2] ], getQueryResults('RETURN LEVENSHTEIN_DISTANCE(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1])')'), test);
+        assertEqual([ test[2] ], getQueryResults('RETURN LEVENSHTEIN_DISTANCE(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ')'), test);
       });
     },
 
