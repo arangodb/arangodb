@@ -234,9 +234,16 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - Statistics: turn off statistics gathering for agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
-  application_features::ApplicationServer::disableFeatures(
-      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "V8Platform", "V8Dealer", "Action", "Script", "FoxxQueues", "Frontend"}
+  std::vector<std::string> disabledFeatures( 
+      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action", "Script", "FoxxQueues", "Frontend"}
   );
+  if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
+    // console mode inactive. so we can turn off V8
+    disabledFeatures.emplace_back("V8Platform");
+    disabledFeatures.emplace_back("V8Dealer");
+  }
+
+  application_features::ApplicationServer::disableFeatures(disabledFeatures);
 }
 
 void AgencyFeature::prepare() {
