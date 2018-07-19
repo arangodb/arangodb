@@ -26,13 +26,8 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <vector>
-#include <bitset>
-#include <cstdint>
-#include <string>
-#include <iostream>
 #include <algorithm>
 #include <limits>
-#include <cassert>
 
 #include <math.h>
 #include <time.h>
@@ -1414,42 +1409,45 @@ std::string soundex(char const* src, size_t const len) {
   return result;
 }
     
+namespace {
+    template<typename InputType>
+    inline bool isEqual(InputType const& c1, InputType const& c2) {
+        return c1 == c2;
+    }
     
-template<typename InputType>
-inline bool eq(InputType const& c1, InputType const& c2) {
-    return c1 == c2;
-}
-
-template<typename InputType, typename LengthType>
-LengthType impl(InputType const* lhs,
-                               InputType const* rhs,
-                               LengthType lhsSize,
-                               LengthType rhsSize) {
-    assert(lhsSize >= rhsSize);
+    template<typename InputType, typename LengthType>
+    LengthType levenshtein(InputType const* lhs,
+                           InputType const* rhs,
+                           LengthType lhsSize,
+                           LengthType rhsSize) {
+        TRI_ASSERT(lhsSize >= rhsSize);
         
-    std::vector<LengthType> costs;
-    costs.resize(rhsSize + 1);
+        std::vector<LengthType> costs;
+        costs.resize(rhsSize + 1);
         
-    for (LengthType i = 0; i < rhsSize; ++i) {
-        costs[i] = i;
-    }
-        
-    LengthType next = 0;
-        
-    for (LengthType i = 0; i < lhsSize; ++i) {
-        LengthType current = i + 1;
-            
-        for (LengthType j = 0; j < rhsSize; ++j) {
-            LengthType cost = !(eq<InputType>(lhs[i], rhs[j]) ||
-                                (i && j && eq<InputType>(lhs[i - 1], rhs[j]) && eq<InputType>(lhs[i], rhs[j - 1])));
-            next = std::min(std::min(costs[j + 1] + 1, current + 1), costs[j] + cost);
-            costs[j] = current;
-            current = next;
+        for (LengthType i = 0; i < rhsSize; ++i) {
+            costs[i] = i;
         }
-        costs[rhsSize] = next;
+        
+        LengthType next = 0;
+        
+        for (LengthType i = 0; i < lhsSize; ++i) {
+            LengthType current = i + 1;
+            
+            for (LengthType j = 0; j < rhsSize; ++j) {
+                LengthType cost = !(isEqual<InputType>(lhs[i], rhs[j]) ||
+                                    (i && j && isEqual<InputType>(lhs[i - 1], rhs[j]) && isEqual<InputType>(lhs[i], rhs[j - 1])));
+                next = std::min(std::min(costs[j + 1] + 1, current + 1), costs[j] + cost);
+                costs[j] = current;
+                current = next;
+            }
+            costs[rhsSize] = next;
+        }
+        return next;
     }
-    return next;
 }
+    
+
     
 size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2){
     
@@ -1468,27 +1466,27 @@ size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> ve
     uint32_t const* r = vect2.data();
     
     if (lhsSize < std::numeric_limits<uint8_t>::max()) {
-        return static_cast<size_t>(impl<uint32_t, uint8_t>(l, r, lhsSize, rhsSize));
+        return static_cast<size_t>(levenshtein<uint32_t, uint8_t>(l, r, lhsSize, rhsSize));
     } else if (lhsSize < std::numeric_limits<uint16_t>::max()) {
-        return static_cast<size_t>(impl<uint32_t, uint16_t>(l, r, lhsSize, rhsSize));
+        return static_cast<size_t>(levenshtein<uint32_t, uint16_t>(l, r, lhsSize, rhsSize));
     } else if (lhsSize < std::numeric_limits<uint32_t>::max()) {
-        return static_cast<size_t>(impl<uint32_t, uint32_t>(l, r, lhsSize, rhsSize));
+        return static_cast<size_t>(levenshtein<uint32_t, uint32_t>(l, r, lhsSize, rhsSize));
     }
-    return static_cast<size_t>(impl<uint32_t, uint64_t>(l, r, lhsSize, rhsSize));
+    return static_cast<size_t>(levenshtein<uint32_t, uint64_t>(l, r, lhsSize, rhsSize));
 }
 
-int levenshteinDistance(std::string const& str1, std::string const& str2){
-    std::vector<uint32_t> vect1 = levenshteinDistance(str1);
-    std::vector<uint32_t> vect2 = levenshteinDistance(str2);
+unsigned int levenshteinDistance(std::string const& str1, std::string const& str2){
+    std::vector<uint32_t> vect1 = characterCodes(str1);
+    std::vector<uint32_t> vect2 = characterCodes(str2);
     
-    return static_cast<int>(levenshteinDistance(vect1, vect2));
+    return static_cast<unsigned int>(levenshteinDistance(vect1, vect2));
 }
     
 unsigned char consume(char const*& s){
     return *reinterpret_cast<unsigned char const*>(s++);
 }
     
-std::vector<uint32_t> levenshteinDistance(std::string const& str){
+std::vector<uint32_t> characterCodes(std::string const& str){
     char const* s = str.data();
     char const* e = s + str.size();
     
