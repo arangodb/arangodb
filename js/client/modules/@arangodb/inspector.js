@@ -583,7 +583,8 @@ function getServerData(arango) {
               arango.reconnect(servers[server].endpoint, '_system');
             }
           }
-          
+
+          // Arango service/admin APIs
           const version = arango.GET('_api/version?details=true'); // version api
           const log = arango.GET('_admin/log'); // log api
           const statistics = arango.GET('_admin/statistics'); // statistics api
@@ -594,33 +595,116 @@ function getServerData(arango) {
             agencyState = arango.GET('_api/agency/state');
           }
           const status = arango.GET('_admin/status');
+          const engine = arango.GET('_api/engine/stats');
           const time = require('internal').time();
 
-          var tmp = executeExternalAndWait(
-            '/bin/bash', ['-c', 'date -u "+%Y-%m-%d %H:%M:%S %Z" | tee /tmp/inspector-date.out > /dev/null']);
-          const date = fs.readFileSync('/tmp/inspector-date.out', 'utf8').slice(0,-1);
-          tmp = executeExternalAndWait(
-            '/bin/bash', ['-c', 'dmesg | tee /tmp/inspector-dmesg.out > /dev/null']);
-          const dmesg = fs.readFileSync('/tmp/inspector-dmesg.out', 'utf8').slice(0,-1);
-          tmp = executeExternalAndWait(
-            '/bin/bash', ['-c', 'df -h | tee /tmp/inspector-df.out > /dev/null']);
-          const df = fs.readFileSync('/tmp/inspector-df.out', 'utf8').slice(0,-1);
-          tmp = executeExternalAndWait(
-            '/bin/bash', ['-c', 'cat /proc/meminfo | tee /tmp/inspector-meminfo.out > /dev/null']);
-          const meminfo = fs.readFileSync('/tmp/inspector-meminfo.out', 'utf8').slice(0,-1);
-          tmp = executeExternalAndWait(
-            '/bin/bash', ['-c', 'uptime | tee /tmp/inspector-uptime.out > /dev/null']);
-          const uptime = fs.readFileSync('/tmp/inspector-uptime.out', 'utf8').slice(0,-1);
-          tmp = executeExternalAndWait(
-            '/bin/bash', ['-c', 'uname -a | tee /tmp/inspector-uname.out > /dev/null']);
-          const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8').slice(0,-1);
-          var top;
-          if (status.pid !== undefined) {
-            tmp = executeExternalAndWait(
-              '/bin/bash', ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee /tmp/inspector-top.out > /dev/null']);
-            top = fs.readFileSync('/tmp/inspector-top.out', 'utf8').slice(0,-1);
-          }
+          var uname, date, dmesg, df, meminfo, cpuinfo, uptime, release, top, du,
+              docker = false; 
 
+          // Operating system calls
+
+          const prefix =
+                '/tmp/inspector-' +
+                Math.random().toString(36).substring(2, 15) +
+                Math.random().toString(36).substring(2, 15) + '-';
+          tmp = executeExternalAndWait(
+            '/bin/sh', ['-c', 'uname -a | tee ' + prefix + 'uname.out > /dev/null']);
+
+          var unix = tmp.exit === 0;
+          var linux = false, osx = false;
+          
+          if (unix) { // For unix falvours we can do better
+
+            var cli = '/bin/sh';
+            // OS name etc
+            uname = fs.readFileSync(prefix + 'uname.out', 'utf8').slice(0,-1);
+            linux = uname.split(' ')[0] === 'Linux';
+            osx = uname.split(' ')[0] === 'Darwin';
+
+            var tmp = executeExternalAndWait(
+              cli, ['-c', 'cat /proc/1/cgroup | grep "0::" | grep docker']);
+            docker = tmp.exit == 0;
+              
+            // System time
+            tmp = executeExternalAndWait(
+              cli, ['-c', 'date -u "+%Y-%m-%d %H:%M:%S %Z" | tee '
+                            + prefix + 'date.out > /dev/null']);
+            date = fs.readFileSync(prefix + 'date.out', 'utf8').slice(0,-1);
+
+            // Linux kernel messages
+            if (linux) {
+              tmp = executeExternalAndWait(
+                cli, ['-c', 'dmesg | tee ' + prefix + 'dmesg.out > /dev/null']);
+              dmesg = fs.readFileSync(prefix + 'dmesg.out', 'utf8').slice(0,-1);
+            }
+
+            // Disk fill status
+            tmp = executeExternalAndWait(
+              cli, ['-c', 'df -h | tee ' + prefix + 'df.out > /dev/null']);
+            df = fs.readFileSync(prefix + 'df.out', 'utf8').slice(0,-1);
+
+            if (linux) {
+              // RAM consumption
+              tmp = executeExternalAndWait(
+                cli, ['-c', 'cat /proc/meminfo | tee ' + prefix
+                      + 'meminfo.out > /dev/null']);
+              meminfo = fs.readFileSync(prefix + 'meminfo.out', 'utf8').slice(0,-1);
+              
+              // CPU architecture
+              tmp = executeExternalAndWait(
+                cli, ['-c', 'cat /proc/cpuinfo | tee ' + prefix
+                      + 'cpuinfo.out > /dev/null']);
+              cpuinfo = fs.readFileSync(prefix + 'cpuinfo.out', 'utf8').slice(0,-1);
+              
+              // Process stats
+              tmp = executeExternalAndWait(
+                cli, ['-c', 'cat /proc/stat | tee ' + prefix + 'stat.out > /dev/null']);
+              cpuinfo = fs.readFileSync(prefix + 'cpuinfo.out', 'utf8').slice(0,-1);
+            }
+
+            // Uptime
+            tmp = executeExternalAndWait(
+              cli, ['-c', 'uptime | tee ' + prefix + 'uptime.out > /dev/null']);
+            uptime = fs.readFileSync(prefix + 'uptime.out', 'utf8').slice(0,-1);
+            
+            // Release
+            if (linux) {
+              tmp = executeExternalAndWait(
+                cli, ['-c', 'cat /etc/*-release | tee ' + prefix
+                            + 'release.txt > /dev/null']);
+            } else if (osx) {
+              tmp = executeExternalAndWait(
+                cli, ['-c', 'sw_vers | tee ' + prefix + 'release.txt > /dev/null']);
+            }
+            release = fs.readFileSync(prefix + 'release.txt', 'utf-8').slice(0,-1);
+
+            // Top
+            if (linux) {
+              if (docker) {
+                tmp = executeExternalAndWait(
+                  cli, ['-c', 'cat /proc/1/task/*/stat ' + status.pid + ' -n 1 | tee '
+                        + prefix + 'top.out > /dev/null']);
+                top = fs.readFileSync(prefix + 'top.out', 'utf8').slice(0,-1);
+              } else if (status.pid !== undefined) {
+                tmp = executeExternalAndWait(
+                  cli, ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee '
+                        + prefix + 'top.out > /dev/null']);
+                top = fs.readFileSync(prefix + 'top.out', 'utf8').slice(0,-1);
+              }
+            }
+
+            // Data size
+            if (status.hasOwnProperty("datapath")) {
+              tmp = executeExternalAndWait(
+                cli, ['-c', 'du -sh \'' + status.datapath + '\' | tee '
+                            + prefix + 'du.out > /dev/null']);
+              du = fs.readFileSync(prefix + 'du.out', 'utf8').slice(0,-1);
+            }
+
+            // Remove temporary files
+            tmp = executeExternalAndWait(cli, ['-c', 'rm ' + prefix + '*']);
+            
+          }
           var local = {};
           try {
             var localDBs = db._databases();
@@ -642,11 +726,10 @@ function getServerData(arango) {
           
           // report this server
           report[server] = {
-            version:version, log:log, dmesg:dmesg, statistics:statistics,
-            status:status, df:df, uptime:uptime, uname:uname, meminfo:meminfo,
-            local:local, date:date, time:time};
+            version, log, dmesg, statistics, status, df, uptime, uname, meminfo,
+            cpuinfo, local, date, time, engine, release, du, docker};
 
-          if (agencyConfig !==  undefined) {
+          if (agencyConfig) {
             report[server].config = agencyConfig;
             report[server].state = agencyState;
           }
