@@ -13,8 +13,6 @@ authentication = true
 @DEFINEUID@uid = arangodb
 
 statistics = false
-# set number of threads to 1 so we don't have concurrency
-threads = 1
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

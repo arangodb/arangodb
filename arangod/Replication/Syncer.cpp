@@ -404,6 +404,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
         return res;
       }
 
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "got lock timeout while waiting for lock on collection '" << coll->name() << "', retrying...";
       std::this_thread::sleep_for(std::chrono::microseconds(50000));
       // retry
     }

@@ -64,6 +64,23 @@ namespace {
 
 /// @brief maximum internal value for chunkSize
 size_t const MaxChunkSize = 10 * 1024 * 1024;
+        
+std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
+  if (waitTime < 1.0) {
+    return std::chrono::milliseconds(100);
+  }
+  if (waitTime < 5.0) {
+    return std::chrono::milliseconds(200);
+  } 
+  if (waitTime < 20.0) {
+    return std::chrono::milliseconds(500);
+  }
+  if (waitTime < 60.0) {
+    return std::chrono::seconds(1);
+  }
+   
+  return std::chrono::seconds(2);
+}
 
 }  // namespace
 
@@ -577,20 +594,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
                   _config.master.endpoint);
         }
 
-        std::chrono::milliseconds sleepTime;
-        if (waitTime < 5.0) {
-          sleepTime = std::chrono::milliseconds(250);
-        } else if (waitTime < 20.0) {
-          sleepTime = std::chrono::milliseconds(500);
-        } else if (waitTime < 60.0) {
-          sleepTime = std::chrono::seconds(1);
-        } else {
-          sleepTime = std::chrono::seconds(2);
-        }
-
         if (isAborted()) {
           return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
         }
+        
+        std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
         std::this_thread::sleep_for(sleepTime);
       }
       // fallthrough here in case everything went well
@@ -805,20 +813,11 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
               _config.master.endpoint);
     }
 
-    std::chrono::milliseconds sleepTime;
-    if (waitTime < 5.0) {
-      sleepTime = std::chrono::milliseconds(250);
-    } else if (waitTime < 20.0) {
-      sleepTime = std::chrono::milliseconds(500);
-    } else if (waitTime < 60.0) {
-      sleepTime = std::chrono::seconds(1);
-    } else {
-      sleepTime = std::chrono::seconds(2);
-    }
-
     if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
+    
+    std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
     std::this_thread::sleep_for(sleepTime);
   }
 

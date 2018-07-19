@@ -129,6 +129,7 @@ class ServerState {
   bool isSingleServer() { return isSingleServer(loadRole()); }
 
   static bool isSingleServer(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_SINGLE);
   }
 
@@ -137,6 +138,7 @@ class ServerState {
 
   /// @brief check whether the server is a coordinator
   static bool isCoordinator(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_COORDINATOR);
   }
 
@@ -147,11 +149,13 @@ class ServerState {
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
   static bool isDBServer(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_PRIMARY);
   }
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_PRIMARY ||
             role == ServerState::ROLE_COORDINATOR);
   }
@@ -164,6 +168,7 @@ class ServerState {
 
   /// @brief check whether the server is an agent
   static bool isAgent(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_AGENT);
   }
 

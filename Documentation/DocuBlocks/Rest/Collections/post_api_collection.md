@@ -52,6 +52,18 @@ should be a JSON array containing the following attributes:
 specifies the type of the key generator. The currently available generators are
 *traditional*, *autoincrement*, *uuid* and *padded*.
 
+The *traditional* key generator generates numerical keys in ascending order.
+The *autoincrement* key generator generates numerical keys in ascending order, 
+the inital offset and the spacing can be configured
+The *padded* key generator generates keys of a fixed length (16 bytes) in
+ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
+engine, which will slightly benefit keys that are inserted in lexicographically
+ascending order. The key generator can be used in a single-server or cluster.
+The *uuid* key generator generates universally unique 128 bit keys, which 
+are stored in hexadecimal human-readable format. This key generator can be used
+in a single-server or cluster to generate "seemingly random" keys. The keys 
+produced by this key generator are not lexicographically sorted.
+
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}
 if set to *true*, then it is allowed to supply own key values in the
 *_key* attribute of a document. If set to *false*, then the key generator

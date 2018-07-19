@@ -398,9 +398,9 @@ void ProgramOptions::addOption(Option const& option) {
   auto it = _sections.find(option.section);
 
   if (it == _sections.end()) {
-    throw std::logic_error(
-        std::string("no section defined for program option ") +
-        option.displayName());
+    // add an anonymous section now...
+    addSection(option.section, "");
+    it = _sections.find(option.section);
   }
 
   if (!option.shorthand.empty()) {

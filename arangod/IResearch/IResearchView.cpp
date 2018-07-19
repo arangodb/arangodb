@@ -495,26 +495,6 @@ bool syncStore(
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove all cids from 'collections' that do not actually exist in
-///        'vocbase' for the specified 'view'
-////////////////////////////////////////////////////////////////////////////////
-void validateLinks(
-    std::unordered_set<TRI_voc_cid_t>& collections,
-    TRI_vocbase_t& vocbase,
-    arangodb::iresearch::IResearchView const& view
-) {
-  for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
-    auto collection = vocbase.lookupCollection(*itr);
-
-    if (!collection || !arangodb::iresearch::IResearchLink::find(*collection, view)) {
-      itr = collections.erase(itr);
-    } else {
-      ++itr;
-    }
-  }
-}
-
 NS_END
 
 NS_BEGIN(arangodb)
@@ -1162,10 +1142,20 @@ arangodb::Result IResearchView::dropImpl() {
   collections.insert(
     _metaState._collections.begin(), _metaState._collections.end()
   );
-  validateLinks(collections, vocbase(), *this);
+
+  auto collectionsCount = collections.size();
+
+  for (auto& entry: collections) {
+    auto collection = vocbase().lookupCollection(entry);
+
+    if (!collection
+        || !arangodb::iresearch::IResearchLink::find(*collection, *this)) {
+      --collectionsCount;
+    }
+  }
 
   // ArangoDB global consistency check, no known dangling links
-  if (!collections.empty()) {
+  if (collectionsCount) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("links still present while removing iResearch view '") + std::to_string(id()) + "'"
@@ -1854,6 +1844,11 @@ arangodb::Result IResearchView::updateProperties(
     arangodb::velocypack::Slice const& slice,
     bool partialUpdate
 ) {
+  if (slice.isObject() && !slice.hasKey(StaticStrings::PropertiesField)) {
+    return arangodb::Result(); // nothing to update
+  }
+
+  auto properties = slice.get(StaticStrings::PropertiesField);
   std::string error;
   IResearchViewMeta meta;
   WriteMutex mutex(_mutex); // '_metaState' can be asynchronously read
@@ -1866,7 +1861,7 @@ arangodb::Result IResearchView::updateProperties(
     IResearchViewMeta* metaPtr = viewMeta.get();
     auto& initialMeta = partialUpdate ? *metaPtr : IResearchViewMeta::DEFAULT();
 
-    if (!meta.init(slice, error, initialMeta)) {
+    if (!meta.init(properties, error, initialMeta)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
 
@@ -1880,7 +1875,7 @@ arangodb::Result IResearchView::updateProperties(
 
   mutex.unlock(true); // downgrade to a read-lock
 
-  if (!slice.hasKey(StaticStrings::LinksField)) {
+  if (!properties.hasKey(StaticStrings::LinksField)) {
     return res;
   }
 
@@ -1891,7 +1886,7 @@ arangodb::Result IResearchView::updateProperties(
   // ...........................................................................
 
   std::unordered_set<TRI_voc_cid_t> collections;
-  auto links = slice.get(StaticStrings::LinksField);
+  auto links = properties.get(StaticStrings::LinksField);
 
   if (partialUpdate) {
     mtx.unlock(); // release lock

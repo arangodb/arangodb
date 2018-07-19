@@ -676,18 +676,18 @@ void IResearchFeature::collectOptions(
   return FEATURE_NAME;
 }
 
-void IResearchFeature::initializeAsync() {
-  if (!_async) {
-    _async = std::make_unique<Async>();
-  }
-}
-
 void IResearchFeature::prepare() {
   if (!isEnabled()) {
     return;
   }
-  
-  initializeAsync(); 
+
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isAgent()) {  
+    // no need to start the thread pool on the coordinator or on an agent.
+    // threads are only needed on single server or DB servers
+    // in a cluster
+    _async = std::make_unique<Async>();
+  }
 
   _running = false;
   ApplicationFeature::prepare();
@@ -710,7 +710,10 @@ void IResearchFeature::prepare() {
   registerRecoveryHelper();
 
   // start the async task thread pool
-  _async->start();
+  if (!ServerState::instance()->isCoordinator() && 
+      !ServerState::instance()->isAgent()) {  
+    _async->start();
+  }
 }
 
 void IResearchFeature::start() {

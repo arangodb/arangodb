@@ -147,7 +147,7 @@ void GeneralServerFeature::collectOptions(
   options->addSection("frontend", "Frontend options");
 
   options->addOption("--frontend.proxy-request-check",
-                     "enable or disable proxy request checking",
+                     "enable proxy request checking",
                      new BooleanParameter(&_proxyCheck));
 
   options->addOption("--frontend.trusted-proxy",

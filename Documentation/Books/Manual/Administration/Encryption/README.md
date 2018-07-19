@@ -38,7 +38,7 @@ encryption key to the server.
 Make sure to pass this option the very first time you start your
 database.  You cannot encrypt a database that already exists.
 
-Note: You also have to activate the `rocksdb` storage engine.
+Note: You also have to activate the RocksDB storage engine.
 
 ### Encryption key stored in file
 

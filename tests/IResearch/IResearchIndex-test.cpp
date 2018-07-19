@@ -257,7 +257,7 @@ SECTION("test_analyzer") {
 
   // link collections with view
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \
       \"testCollection0\": { \"fields\": { \
         \"X\": { \"analyzers\": [ \"test_A\", \"test_B\" ] }, \
         \"Y\": { \"analyzers\": [ \"test_B\" ] } \
@@ -266,7 +266,7 @@ SECTION("test_analyzer") {
         \"X\": { \"analyzers\": [ \"test_A\" ] }, \
         \"Y\": { \"analyzers\": [ \"test_A\" ] } \
       } } \
-    } }");
+    } } }");
 
     CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
   }
@@ -491,7 +491,7 @@ SECTION("test_async_index") {
 
   // link collections with view
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \
       \"testCollection0\": { \"fields\": { \
         \"same\": { \"analyzers\": [ \"test_A\", \"test_B\" ] }, \
         \"duplicated\": { \"analyzers\": [ \"test_B\" ] } \
@@ -500,7 +500,7 @@ SECTION("test_async_index") {
         \"same\": { \"analyzers\": [ \"test_A\" ] }, \
         \"duplicated\": { \"analyzers\": [ \"test_A\" ] } \
       } } \
-    } }");
+    } } }");
 
     CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
   }
@@ -869,7 +869,7 @@ SECTION("test_fields") {
 
   // link collections with view
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \
       \"testCollection0\": { \"fields\": { \
         \"X\": { }, \
         \"Y\": { } \
@@ -877,7 +877,7 @@ SECTION("test_fields") {
       \"testCollection1\": { \"fields\": { \
         \"X\": { } \
       } } \
-    } }");
+    } } }");
 
     CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
   }
