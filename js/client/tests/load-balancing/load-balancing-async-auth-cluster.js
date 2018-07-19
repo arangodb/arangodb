@@ -155,8 +155,8 @@ function CursorSyncAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
       url = `${baseJobUrl}/${jobId}`;
@@ -164,9 +164,9 @@ function CursorSyncAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 204);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
 
-      require('internal').wait(11.0);
+      require('internal').wait(11.0, false);
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest(users[0], 'PUT', url, {}, {}, false);
@@ -174,9 +174,9 @@ function CursorSyncAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);
       assertEqual(result.status, 201);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertEqual(result.body.result.length, 1)
-      assertEqual(result.body.result[0], 42)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertEqual(result.body.result.length, 1);
+      assertEqual(result.body.result[0], 42);
       assertFalse(result.body.hasMore);
     },
 
@@ -193,8 +193,8 @@ function CursorSyncAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
       url = `${baseJobUrl}/${jobId}`;
@@ -202,9 +202,9 @@ function CursorSyncAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 204);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
 
-      require('internal').wait(11.0);
+      require('internal').wait(11.0, false);
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
@@ -227,8 +227,8 @@ function CursorSyncAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
       url = `${baseJobUrl}/${jobId}`;
@@ -255,8 +255,8 @@ function CursorSyncAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
       url = `${baseJobUrl}/${jobId}`;
@@ -264,9 +264,9 @@ function CursorSyncAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 404);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
 
-      require('internal').wait(11.0);
+      require('internal').wait(11.0, false);
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest(users[1], 'PUT', url, {}, {}, false);
@@ -288,8 +288,8 @@ function CursorSyncAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
       url = `${baseJobUrl}/${jobId}`;
@@ -297,7 +297,7 @@ function CursorSyncAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 404);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest(users[1], 'DELETE', url, {}, {}, false);

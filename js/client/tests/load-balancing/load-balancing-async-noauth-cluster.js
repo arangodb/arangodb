@@ -88,7 +88,7 @@ function AsyncSuite () {
 
     if (typeof res.body === "string") {
       if (res.body === "") {
-        res.body = {}
+        res.body = {};
       } else {
         res.body = JSON.parse(res.body);
       }
@@ -132,8 +132,8 @@ function AsyncSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
       url = `${baseJobUrl}/${jobId}`;
@@ -141,9 +141,9 @@ function AsyncSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 204);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
 
-      require('internal').wait(11.0);
+      require('internal').wait(11.0, false);
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest('PUT', url, {}, {}, false);
@@ -151,9 +151,9 @@ function AsyncSuite () {
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);
       assertEqual(result.status, 201);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertEqual(result.body.result.length, 1)
-      assertEqual(result.body.result[0], 42)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertEqual(result.body.result.length, 1);
+      assertEqual(result.body.result[0], 42);
       assertFalse(result.body.hasMore);
     },
 
@@ -170,8 +170,8 @@ function AsyncSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
       url = `${baseJobUrl}/${jobId}`;
@@ -179,14 +179,14 @@ function AsyncSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 204);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
 
       url = `${baseJobUrl}/${jobId}`;
       result = sendRequest('DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
     },
 
     testAsyncCursorForwardingCancel: function() {
@@ -202,8 +202,8 @@ function AsyncSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined)
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0)
+      assertFalse(result.headers["x-arango-async-id"] === undefined);
+      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
       url = `${baseJobUrl}/${jobId}`;
@@ -211,14 +211,14 @@ function AsyncSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 204);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
 
       url = `${baseJobUrl}/${jobId}/cancel`;
       result = sendRequest('PUT', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertEqual(result.headers["x-arango-async-id"], undefined)
+      assertEqual(result.headers["x-arango-async-id"], undefined);
     },
 
   };
