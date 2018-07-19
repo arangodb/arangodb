@@ -67,9 +67,9 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--server.rest-server", "start a rest-server",
                            new BooleanParameter(&_restServer));
 
-  options->addOption("--server.session-timeout",
-                     "timeout of web interface server sessions (in seconds)",
-                     new DoubleParameter(&VocbaseContext::ServerSessionTtl));
+  options->addObsoleteOption("--server.session-timeout",
+                             "timeout of web interface server sessions (in seconds)",
+                             true);
 
   options->addSection("javascript", "Configure the Javascript engine");
 

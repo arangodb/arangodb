@@ -78,7 +78,7 @@ void EngineSelectorFeature::prepare() {
   }
     
   if (_engine == "auto") {
-    _engine = MMFilesEngine::EngineName;
+    _engine = RocksDBEngine::EngineName;
   }
   
   TRI_ASSERT(_engine != "auto");
