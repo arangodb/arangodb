@@ -538,6 +538,8 @@ void RocksDBReplicationContext::use(double ttl) {
 
 void RocksDBReplicationContext::release() {
   TRI_ASSERT(_isUsed);
+  double ttl = _ttl > 0 ? _ttl : InitialSyncer::defaultBatchTimeout;
+  _expires = TRI_microtime() + ttl;
   _isUsed = false;
   if (_serverId != 0) {
     double ttl;
