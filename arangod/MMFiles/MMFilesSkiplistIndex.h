@@ -268,12 +268,14 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesSkiplistIndex() = delete;
 
-  MMFilesSkiplistIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  MMFilesSkiplistIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesSkiplistIndex();
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_SKIPLIST_INDEX; }
 
   char const* typeName() const override { return "skiplist"; }

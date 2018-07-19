@@ -111,7 +111,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -159,7 +159,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(
     TRI_idx_iid_t id,
-    LogicalCollection* collection
+    LogicalCollection& collection
   );
 
   ////////////////////////////////////////////////////////////////////////////////
