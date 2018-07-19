@@ -487,6 +487,9 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
+    case NODE_TYPE_COLLECTION:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'collection' is not supported in ArangoDB 3.4");
+
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());

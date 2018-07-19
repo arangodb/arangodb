@@ -10,6 +10,9 @@ as sole storage engine. Beginning with 3.2 ArangoDB has support for
 pluggable storage engines. The second supported engine is RocksDB from
 Facebook.
 
+Up to including versions 3.3, MMFiles was the default storage engine in
+ArangoDB. Since version 3.4, the default storage engine is RocksDB.
+
 | MMFiles | RocksDB |
 |---|---|
 | default | optional |
