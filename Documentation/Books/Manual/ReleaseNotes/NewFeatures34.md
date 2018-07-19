@@ -258,8 +258,8 @@ single-document functionality provided at endpoint `/_api/document`.
 The old/new revisions can be accessed by passing the URL parameters `returnOld` and
 `returnNew` to the following endpoints:
 
-* /_api/gharial/<graph>/vertex/<collection>
-* /_api/gharial/<graph>/edge/<collection>
+* /_api/gharial/&lt;graph>/vertex/&lt;collection>
+* /_api/gharial/&lt;graph>/edge/&lt;collection>
 
 The exception from this is that the HTTP DELETE verb for these APIs does not
 support `returnOld` because that would make the existing API incompatible.
@@ -281,7 +281,8 @@ generators:
   in a single-server or cluster to generate "seemingly random" keys. The keys
   produced by this key generator are not lexicographically sorted.
 
-Example for the *padded* key generator:
+Generators may be chosen with the creation of collections; here an example for
+the *padded* key generator:
 ```
 db._create("padded", { keyOptions: { type: "padded" } });
 
@@ -534,8 +535,7 @@ native format.
 
 As all AQL functions are now exclusively implemented in native C++, no more 
 conversions have to be performed to invoke any of the built-in AQL functions.
-This will speed considerably speed up the following AQL functions that had a 
-JavaScript implementation in previous versions of ArangoDB, and any AQL expression
+This will considerably speed up the following AQL functions and any AQL expression
 that uses any of these functions:
 
 * `APPLY`
@@ -581,7 +581,7 @@ these functions had native implementations for single-server setups only, but fe
 back to using the JavaScript variants in a cluster environment.
 
 Apart from saving conversion overhead, another side effect of adding native 
-implementations for all built-in AQL functions is that AQL does not require the usage 
+implementations for all built-in AQL functions is, that AQL does not require the usage 
 of V8 anymore, except for user-defined functions.
 
 If no user-defined functions are used in AQL, end users do not need to put aside 
@@ -594,6 +594,7 @@ In a cluster, the cost of setting up a distributed query can be considerable for
 trivial AQL queries that will only access a single document, e.g.
 
     FOR doc IN collection FILTER doc._key == ... RETURN doc
+    FOR doc IN collection FILTER doc._key == ... RETURN 1
 
     FOR doc IN collection FILTER doc._key == ... REMOVE doc IN collection
     FOR doc IN collection FILTER doc._key == ... REMOVE doc._key IN collection
@@ -616,11 +617,12 @@ server(s). This special code path bypasses the general AQL query cluster setup a
 shutdown, which would have prohibitive costs for these kinds of queries.
 
 In case the optimizer makes use of the special code path, the explain output will
-contain the rule `optimize-cluster-single-document-operations`.
+contain a node of the type `SingleRemoteOperationNode`, and the optimizer rules
+will contain `optimize-cluster-single-document-operations`.
 
 The optimization will fire automatically only for queries with the above patterns. 
-It will only fire when using `_key`, and will be most effective if `_key` is also used
-as the collection's shard key.
+It will only fire when using `_key` to identify a single document,
+and will be most effective if `_key` is also used as the collection's shard key.
 
 ### Subquery optimizations
 
@@ -672,24 +674,26 @@ The new optimizer rule `optimize-subqueries` will fire in the following situatio
             RETURN true
         )
 
-  This saves copying the document data from the subquery to the outer scope and 
-  may also enable follow-up optimizations.
+  This saves fetching the document data from disk in first place, and copying it
+  from the subquery to the outer scope.
+  There may be more follow-up optimizations.
 
 ### Fullcount changes
 
 The behavior of the `fullCount` option for AQL query cursors was adjusted to conform
 to users' demands. The value returned in the `fullCount` result attribute will now
-be produced only by the last `LIMIT` statement on the top level of the query.
+be produced only by the last `LIMIT` statement on the upper most level of the query - 
+hence `LIMIT` statements in subqueries will not have any effect on the
+`fullCount` results any more.
 
-`LIMIT` statements in subqueries will not have any effect on the `fullCount` results
-any more. This is a change to previous versions of ArangoDB, in which the `fullCount`
-value was produced by the last `LIMIT` statement in a query, regardless if the `LIMIT`
-was on the top level of the query or in a subquery.
+This is a change to previous versions of ArangoDB, in which the `fullCount`
+value was produced by the sequential last `LIMIT` statement in a query,
+regardless if the `LIMIT` was on the top level of the query or in a subquery.
 
 ### Improved sparse index support
 
-The AQL query optimizer can now use sparse indexes in more cases than it did in
-ArangoDB 3.3. If a sparse index is not used in a query because the query optimizer 
+The AQL query optimizer can now use sparse indexes in more cases than it was able to
+in ArangoDB 3.3. If a sparse index is not used in a query because the query optimizer 
 cannot prove itself that the index attribute value cannot be `null`, it is now often
 useful to add an extra filter condition to the query that requires the sparse index'
 attribute to be non-null.
@@ -746,18 +750,33 @@ applications timing out before receiving the first chunk of data from the server
 creating a huge query result set on the server may make it run out of memory, which is also 
 undesired. Creating a streaming cursor for such queries will solve both problems.
 
-Please be aware that long-running AQL queries will need to hold the collection locks for 
-as long as the query cursor exists when streaming is used. This is in contrast to the traditional,
-non-streaming variant that requires holding the collection locks only during the actual AQL query 
-execution, but not while results are sent back to the client application.
-This is especially important for the MMFiles engine, which uses collection-level locks.
+Please note that streaming cursors will use resources all the time till you 
+fetch the last chunk of results. 
+
+Depending on the storage engine you use this has different consequences:
+
+- **MMFiles**: While before collection locks would only be held during the creation of the cursor
+  (the first request) and thus until the result set was well prepared,
+  they will now be held until the last chunk requested
+  by the client through the cursor is processed. 
+  
+  While Multiple reads are possible, one write operation will effectively stop 
+  all other actions from happening on the collections in question.
+- **Rocksdb**: Reading occurs on the state of the data when the query 
+  was started. Writing however will happen during working with the cursor. 
+  Thus be prepared for possible conflicts if you have other writes on the collections, 
+  and probably overrule them by `ignoreErrors: True`, else the query
+  will abort by the time the conflict happenes.
+
+Taking into account the above consequences, you shouldn't use streaming
+cursors light minded for data modification queries.
 
 Please note that the query options `cache`, `count` and `fullCount` will not work with streaming
 cursors. Additionally, the query statistics, warnings and profiling data will only be available
 when the last result batch for the query is sent.
 
 By default, query cursors created via the cursor API are non-streaming in ArangoDB 3.4,
-but streaming can be turned on on a per-query basis by setting the `stream` attribute
+but streaming can be enabled on a per-query basis by setting the `stream` attribute
 in the request to the cursor API at endpoint `/_api/cursor`.
 
 However, streaming cursors are enabled for the following parts of ArangoDB in 3.4:
@@ -772,7 +791,11 @@ The following internal and external functionality has been ported from JavaScrip
 implementations to C++-based implementations in ArangoDB 3.4:
 
 * the statistics gathering background thread
-* the REST APIs for graph, vertex, and edge management at `/_api/gharial`
+* the REST APIs for 
+  - managing user defined AQL functions
+  - graph management  at `/_api/gharial` that also does:
+    - vertex management
+    - edge management
 * the implementations of all built-in AQL functions
 * all other parts of AQL except user-defined functions
 
@@ -847,7 +870,8 @@ Arangoimp was renamed to arangoimport for consistency.
 The 3.4 release packages will still install `arangoimp` as a symlink so user scripts
 invoking `arangoimp` do not need to be changed.
 
-Arangoimport now can pace the data load rate automatically based on the actual rate of 
+[Arangoimport now can pace the data load rate automatically](../Programs/Arangoimport/Details.md#automatic-pacing-with-busy-or-low-throughput-disk-subsystems)
+based on the actual rate of 
 data the server can handle. This is useful in contexts when the server has a limited 
 I/O bandwidth, which is often the case in cloud environments. Loading data too quickly 
 may lead to the server exceeding its provisioned I/O operations quickly, which will 
