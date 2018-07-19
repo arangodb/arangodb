@@ -149,7 +149,7 @@ per-query/per-transaction basis.
 For AQL queries, all data-modification operations now support the `exclusive` option, e.g.
 
     FOR doc IN collection 
-      UPDATE doc WITH { updated: true } OPTIONS { overwrite: true }
+      UPDATE doc WITH { updated: true } OPTIONS { exclusive: true }
 
 JavaScript-based transactions can specify which collections to lock exclusively in the
 `exclusive` sub-attribute of their `collections` attribute:
