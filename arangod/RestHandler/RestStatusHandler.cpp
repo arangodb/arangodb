@@ -29,6 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerFeature.h"
 
 #if defined(TRI_HAVE_POSIX_THREADS)
@@ -57,7 +58,11 @@ RestStatus RestStatusHandler::execute() {
   result.add("version", VPackValue(ARANGODB_VERSION));
 
   result.add("pid", VPackValue(Thread::currentProcessId()));
-  
+  result.add(
+    "datapath", VPackValue(
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+        "DatabasePath")->directory()));
+ 
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
 #else
