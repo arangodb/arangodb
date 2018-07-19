@@ -238,6 +238,71 @@ bool isLowSurrugate(uint32_t number) {
   return (number >= 0xDC00) && (number <= 0xDFFF);
 }
 
+unsigned char consume(char const*& s) {
+  return *reinterpret_cast<unsigned char const*>(s++);
+}
+    
+template<typename InputType>
+inline bool isEqual(InputType const& c1, InputType const& c2) {
+  return c1 == c2;
+}
+    
+template<typename InputType, typename LengthType>
+LengthType levenshtein(InputType const* lhs,
+                       InputType const* rhs,
+                       LengthType lhsSize,
+                       LengthType rhsSize) {
+  TRI_ASSERT(lhsSize >= rhsSize);
+
+  std::vector<LengthType> costs;
+  costs.resize(rhsSize + 1);
+
+  for (LengthType i = 0; i < rhsSize; ++i) {
+    costs[i] = i;
+  }
+
+  LengthType next = 0;
+
+  for (LengthType i = 0; i < lhsSize; ++i) {
+    LengthType current = i + 1;
+
+    for (LengthType j = 0; j < rhsSize; ++j) {
+      LengthType cost = !(::isEqual<InputType>(lhs[i], rhs[j]) ||
+          (i && j && ::isEqual<InputType>(lhs[i - 1], rhs[j]) && ::isEqual<InputType>(lhs[i], rhs[j - 1])));
+      next = std::min(std::min(costs[j + 1] + 1, current + 1), costs[j] + cost);
+      costs[j] = current;
+      current = next;
+    }
+    costs[rhsSize] = next;
+  }
+  return next;
+}
+
+size_t levenshteinDistance(std::vector<uint32_t>& vect1, std::vector<uint32_t>& vect2) {
+  if (vect1.empty() || vect2.empty()) {
+    return vect1.size() ? vect1.size() : vect2.size();
+  }
+
+  if (vect1.size() < vect2.size()) {
+    vect1.swap(vect2);
+  }
+
+  size_t lhsSize = vect1.size();
+  size_t rhsSize = vect2.size();
+
+  uint32_t const* l = vect1.data();
+  uint32_t const* r = vect2.data();
+
+  if (lhsSize < std::numeric_limits<uint8_t>::max()) {
+    return static_cast<size_t>(::levenshtein<uint32_t, uint8_t>(l, r, lhsSize, rhsSize));
+  } else if (lhsSize < std::numeric_limits<uint16_t>::max()) {
+    return static_cast<size_t>(::levenshtein<uint32_t, uint16_t>(l, r, lhsSize, rhsSize));
+  } else if (lhsSize < std::numeric_limits<uint32_t>::max()) {
+    return static_cast<size_t>(::levenshtein<uint32_t, uint32_t>(l, r, lhsSize, rhsSize));
+  }
+  return static_cast<size_t>(::levenshtein<uint32_t, uint64_t>(l, r, lhsSize, rhsSize));
+}
+
 } // namespace
 
 namespace arangodb {
@@ -1409,133 +1474,70 @@ std::string soundex(char const* src, size_t const len) {
   return result;
 }
     
-namespace {
-    template<typename InputType>
-    inline bool isEqual(InputType const& c1, InputType const& c2) {
-        return c1 == c2;
-    }
-    
-    template<typename InputType, typename LengthType>
-    LengthType levenshtein(InputType const* lhs,
-                           InputType const* rhs,
-                           LengthType lhsSize,
-                           LengthType rhsSize) {
-        TRI_ASSERT(lhsSize >= rhsSize);
-        
-        std::vector<LengthType> costs;
-        costs.resize(rhsSize + 1);
-        
-        for (LengthType i = 0; i < rhsSize; ++i) {
-            costs[i] = i;
-        }
-        
-        LengthType next = 0;
-        
-        for (LengthType i = 0; i < lhsSize; ++i) {
-            LengthType current = i + 1;
-            
-            for (LengthType j = 0; j < rhsSize; ++j) {
-                LengthType cost = !(isEqual<InputType>(lhs[i], rhs[j]) ||
-                                    (i && j && isEqual<InputType>(lhs[i - 1], rhs[j]) && isEqual<InputType>(lhs[i], rhs[j - 1])));
-                next = std::min(std::min(costs[j + 1] + 1, current + 1), costs[j] + cost);
-                costs[j] = current;
-                current = next;
-            }
-            costs[rhsSize] = next;
-        }
-        return next;
-    }
-}
-    
+unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
+  // convert input strings to vectors of (multi-byte) character numbers
+  std::vector<uint32_t> vect1 = characterCodes(str1);
+  std::vector<uint32_t> vect2 = characterCodes(str2);
 
-    
-size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2){
-    
-    if (vect1.size() == 0 || vect2.size() == 0) {
-        return vect1.size() ? vect1.size() : vect2.size();
-    }
-    
-    if (vect1.size() < vect2.size()) {
-        vect1.swap(vect2);
-    }
-    
-    size_t lhsSize = vect1.size();
-    size_t rhsSize = vect2.size();
-    
-    uint32_t const* l = vect1.data();
-    uint32_t const* r = vect2.data();
-    
-    if (lhsSize < std::numeric_limits<uint8_t>::max()) {
-        return static_cast<size_t>(levenshtein<uint32_t, uint8_t>(l, r, lhsSize, rhsSize));
-    } else if (lhsSize < std::numeric_limits<uint16_t>::max()) {
-        return static_cast<size_t>(levenshtein<uint32_t, uint16_t>(l, r, lhsSize, rhsSize));
-    } else if (lhsSize < std::numeric_limits<uint32_t>::max()) {
-        return static_cast<size_t>(levenshtein<uint32_t, uint32_t>(l, r, lhsSize, rhsSize));
-    }
-    return static_cast<size_t>(levenshtein<uint32_t, uint64_t>(l, r, lhsSize, rhsSize));
+  // calculate levenshtein distance on vectors of character numbers
+  return static_cast<unsigned int>(::levenshteinDistance(vect1, vect2));
 }
+    
+std::vector<uint32_t> characterCodes(std::string const& str) {
+  char const* s = str.data();
+  char const* e = s + str.size();
 
-unsigned int levenshteinDistance(std::string const& str1, std::string const& str2){
-    std::vector<uint32_t> vect1 = characterCodes(str1);
-    std::vector<uint32_t> vect2 = characterCodes(str2);
-    
-    return static_cast<unsigned int>(levenshteinDistance(vect1, vect2));
-}
-    
-unsigned char consume(char const*& s){
-    return *reinterpret_cast<unsigned char const*>(s++);
-}
-    
-std::vector<uint32_t> characterCodes(std::string const& str){
-    char const* s = str.data();
-    char const* e = s + str.size();
-    
-    std::vector<uint32_t> charNums;
-    
-    while (s < e) {
-        unsigned char c = consume(s);
-        uint32_t n = uint32_t(c);
-        
-        if ((c & 0x80U) == 0U) {
-            charNums.push_back(n);
-        }
-        else if ((c & 0xE0U) == 0xC0U){
-            if (s + 1 == e) {
-                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
-            }
-            charNums.push_back((n << 8U) + uint32_t(consume(s)));
-        }
-        else if ((c & 0xF0U) == 0xE0U){
-            if (s + 2 == e) {
-                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
-            }
-            charNums.push_back((n << 16U) + (uint32_t(consume(s)) << 8U) + (uint32_t(consume(s))));
-        }
-        else if ((c & 0xF8U) == 0XF0U){
-            if (s + 3 == e) {
-                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
-            }
-            charNums.push_back((n << 24U) + (uint32_t(consume(s)) << 16U) + (uint32_t(consume(s)) << 8U) + (uint32_t(consume(s))));
-        }
-        else{
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
-        }
-    }
-    return charNums;
-}
+  std::vector<uint32_t> charNums;
+  // be conservative, and reserve space for one number of input
+  // string byte. this may be too much, but it avoids later
+  // reallocation of the vector
+  charNums.reserve(str.size()); 
 
+  while (s < e) {
+    // note: consume advances the *s* pointer by one byte
+    unsigned char c = ::consume(s);
+    uint32_t n = uint32_t(c);
+
+    if ((c & 0x80U) == 0U) {
+      // single-byte character
+      charNums.push_back(n);
+    } else if ((c & 0xE0U) == 0xC0U) {
+      // two-byte character
+      if (s >= e) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
+      }
+      charNums.push_back((n << 8U) + uint32_t(::consume(s)));
+    } else if ((c & 0xF0U) == 0xE0U) {
+      // three-byte character
+      if (s + 1 >= e) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
+      }
+      charNums.push_back((n << 16U) + (uint32_t(::consume(s)) << 8U) + (uint32_t(::consume(s))));
+    } else if ((c & 0xF8U) == 0XF0U){
+      // four-byte character
+      if (s + 2 >= e) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
+      }
+      charNums.push_back((n << 24U) + (uint32_t(::consume(s)) << 16U) + (uint32_t(::consume(s)) << 8U) + (uint32_t(::consume(s))));
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid UTF-8 sequence");
+    }
+  }
+
+  return charNums;
+}
     
 // .............................................................................
 // CONVERT TO STRING
 // .............................................................................
 
 std::string itoa(int16_t attr) {
-  char buffer[7];
-  char* p = buffer;
-
   if (attr == INT16_MIN) {
     return "-32768";
   }
+  
+  char buffer[7];
+  char* p = buffer;
 
   if (attr < 0) {
     *p++ = '-';
@@ -1585,12 +1587,12 @@ std::string itoa(uint16_t attr) {
 }
 
 std::string itoa(int32_t attr) {
-  char buffer[12];
-  char* p = buffer;
-
   if (attr == INT32_MIN) {
     return "-2147483648";
   }
+  
+  char buffer[12];
+  char* p = buffer;
 
   if (attr < 0) {
     *p++ = '-';
@@ -1670,12 +1672,12 @@ std::string itoa(uint32_t attr) {
 }
 
 std::string itoa(int64_t attr) {
-  char buffer[21];
-  char* p = buffer;
-
   if (attr == INT64_MIN) {
     return "-9223372036854775808";
   }
+  
+  char buffer[21];
+  char* p = buffer;
 
   if (attr < 0) {
     *p++ = '-';
@@ -1829,9 +1831,8 @@ bool boolean(std::string const& str) {
   if (lower == "true" || lower == "yes" || lower == "on" || lower == "y" ||
       lower == "1" || lower == "✓") {
     return true;
-  } else {
-    return false;
   }
+  return false;
 }
 
 int64_t int64(std::string const& str) {
@@ -2117,9 +2118,7 @@ float floatDecimal(char const* value, size_t size) {
 bool unicodeToUTF8(char const* inputStr, size_t const& len,
                    std::string& outputStr) {
   uint32_t outputInt = 0;
-  bool ok;
-
-  ok = parseHexanumber(inputStr, len, &outputInt);
+  bool ok = parseHexanumber(inputStr, len, &outputInt);
   if (ok == false) {
     outputStr = std::string(inputStr, len);
     return false;
