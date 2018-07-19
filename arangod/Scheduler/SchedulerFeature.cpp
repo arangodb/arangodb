@@ -64,13 +64,14 @@ SchedulerFeature::~SchedulerFeature() {}
 void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("scheduler", "Configure the I/O scheduler");
+  options->addSection("server", "Server features");
 
   options->addOption("--server.threads", "number of threads",
                      new UInt64Parameter(&_nrMaximalThreads));
 
   options->addHiddenOption(
       "--server.queue-size",
-      "number of simultaneously queues requests inside the scheduler",
+      "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize));
 
   options->addHiddenOption("--server.prio1-size", "size of the priority 1 fifo",

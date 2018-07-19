@@ -155,8 +155,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   void setRevision(TRI_voc_rid_t revision, bool force);
 
-  void setRevisionError() { _revisionError = true; }
-
   size_t journalSize() const;
   bool isVolatile() const;
 
@@ -555,8 +553,6 @@ class MMFilesCollection final : public PhysicalCollection {
   arangodb::basics::ReadWriteLock _compactionLock;
 
   int64_t _initialCount;
-
-  bool _revisionError;
 
   MMFilesDatafileStatistics _datafileStatistics;
 

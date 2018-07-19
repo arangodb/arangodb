@@ -930,10 +930,10 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
     if (itr != serverAliases.end()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "serverName"),
-		  TRI_V8_STD_STRING(isolate, itr->second));
+                  TRI_V8_STD_STRING(isolate, itr->second));
     } else {
       result->Set(TRI_V8_ASCII_STRING(isolate, "serverName"),
-		  TRI_V8_STD_STRING(isolate, id));
+                  TRI_V8_STD_STRING(isolate, id));
     }
       
     l->Set((uint32_t)i, result);

@@ -64,6 +64,11 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
   void asyncNotify() const;
 
+  /// @brief initialize _async variable and create thread pool
+  /// this should normally be a private method, however, it is also called
+  /// from the tests
+  void initializeAsync();
+
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   static std::string const& name();

@@ -103,10 +103,8 @@ class GeneralCommTask : public SocketTask {
                                  uint64_t messageId, velocypack::Buffer<uint8_t>&&) = 0;
   
   /// @brief send the response to the client.
-  virtual void addResponse(GeneralResponse &, RequestStatistics *) = 0;
+  virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
   
-  virtual bool allowDirectHandling() const = 0;
-
  protected:
   
   enum class RequestFlow : bool {
