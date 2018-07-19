@@ -285,11 +285,8 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> EdgeDefinition::sortEdgeDefinition(
 }
 
 ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(
-    velocypack::Slice edgeDefinition) {
+    VPackSlice edgeDefinition) {
   Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
-  // should always be valid unless someone broke his _graphs collection
-  // manually
-  TRI_ASSERT(res.ok());
   if (res.fail()) {
     return res;
   }
