@@ -281,6 +281,7 @@ function book-check-markdown-leftovers()
 
 function check-dangling-anchors()
 {
+    rm -rf /tmp/tags/
     echo "${STD_COLOR}##### checking for dangling anchors${RESET}"
     find books/ -name '*.html' | while IFS= read -r htmlf; do
         fn=$(basename "${htmlf}")
@@ -289,6 +290,30 @@ function check-dangling-anchors()
         grep '<h. ' < "${htmlf}" | \
             sed -e 's;.*id=";;' -e 's;".*;;' > "/tmp/tags/${dir}/${fn}"
     done
+
+    fail=0
+    rm -f /tmp/failduplicatetags.txt
+    find /tmp/tags -type f | while IFS= read -r htmlf; do
+        sort "${htmlf}" |grep -v ^$ > /tmp/sorted.txt
+        sort -u "${htmlf}" |grep -v ^$ > /tmp/sortedunique.txt
+        if test "$(comm -3 /tmp/sorted.txt /tmp/sortedunique.txt|wc -l)" -ne 0; then
+            echo "${ERR_COLOR}"
+            echo "in ${htmlf}: "
+            comm -3 /tmp/sorted.txt /tmp/sortedunique.txt
+            echo "${RESET}"
+            touch /tmp/failduplicatetags.txt
+        fi       
+    done
+    
+    rm -f /tmp/sorted.txt /tmp/sortedunique.txt
+    if test -f /tmp/failduplicatetags.txt; then
+        echo "${ERR_COLOR}"
+        echo "duplicate anchors detected - see above"
+        echo "${RESET}"
+        rm -f /tmp/failduplicatetags.txt
+        exit 1
+    fi
+
     rm -f /tmp/anchorlist.txt
 
     echo "${STD_COLOR}##### fetching anchors from generated http files${RESET}"
@@ -361,17 +386,21 @@ function check-dangling-anchors()
 function book-check-images-referenced()
 {
     NAME="$1"
-    set +e
-    find "${NAME}" -name \*.png | while IFS= read -r image; do
-        baseimage=$(basename "$image")
-        if ! grep -Rq "${baseimage}" "${NAME}"; then
-            echo "${ERR_COLOR}"
-            echo "$image is not used!"
-            echo "${RESET}"
-            exit "1"
-        fi
-    done
-    set -e
+    echo "${STD_COLOR}##### checking for unused image files ${NAME}${RESET}"
+    ERRORS=$(find "${NAME}" -name '*.png' | while IFS= read -r image; do
+            baseimage=$(basename "$image")
+            if ! grep -Rq "${baseimage}" "${NAME}"; then
+                printf "\n${image}"
+            fi
+        done
+    )
+    if test "$(printf "${ERRORS}" | wc -l)" -gt 0; then
+        echo "${ERR_COLOR}";
+        echo "the following images are not referenced by any page: "
+        echo "${ERRORS}"
+        echo "${RESET}";
+        exit 1;
+    fi
 }
 
 function build-book-symlinks()

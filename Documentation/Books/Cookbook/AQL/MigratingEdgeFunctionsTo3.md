@@ -23,7 +23,7 @@ Solution
 
 The EDGES can be simply replaced by a call to the AQL traversal.
 
-#### No options
+**No options**
 
 The syntax is slightly different but mapping should be simple:
 
@@ -35,14 +35,14 @@ The syntax is slightly different but mapping should be simple:
 [..] FOR v, e IN OUTBOUND @startId @@edgeCollection RETURN e
 ```
 
-#### Using EdgeExamples
+**Using EdgeExamples**
 
 Examples have to be transformed into AQL filter statements.
 How to do this please read the GRAPH_VERTICES section
 in [Migrating GRAPH&#95;&#42; Functions from 2.8 or earlier to 3.0](MigratingGraphFunctionsTo3.md).
 Apply these filters on the edge variable `e`.
 
-#### Option incluceVertices
+**Option incluceVertices**
 
 In order to include the vertices you just use the vertex variable v as well:
 
@@ -62,7 +62,7 @@ The NEIGHBORS is a breadth-first-search on the graph with a global unique check 
 Due to syntax changes the vertex collection of the start vertex is no longer mandatory to be given.
 You may have to adjust bindParameteres for this query.
 
-#### No options
+**No options**
 
 The default options did just return the neighbors `_id` value.
 
@@ -76,7 +76,7 @@ The default options did just return the neighbors `_id` value.
 
 NOTE: The direction cannot be given as a bindParameter any more it has to be hard-coded in the query.
 
-#### Using edgeExamples
+**Using edgeExamples**
 
 Examples have to be transformed into AQL filter statements.
 How to do this please read the GRAPH_VERTICES section
@@ -109,7 +109,7 @@ FILTER e.label == 'friend'
 RETURN DISTINCT n._id
 ```
 
-#### Option includeData
+**Option includeData**
 
 If you want to include the data simply return the complete document instead of only the `_id`value.
 
@@ -126,7 +126,7 @@ If you want to include the data simply return the complete document instead of o
 This function computes all paths of the entire edge collection (with a given minDepth and maxDepth) as you can imagine this feature is extremely expensive and should never be used.
 However paths can again be replaced by AQL traversal.
 
-#### No options
+**No options**
 By default paths of length 0 to 10 are returned. And circles are not followed.
 
 ```
@@ -138,7 +138,7 @@ FOR start IN @@vertexCollection
 FOR v, e, p IN 0..10 OUTBOUND start @@edgeCollection RETURN {source: start, destination: v, edges: p.edges, vertices: p.vertices}
 ```
 
-#### followCycles
+**followCycles**
 
 If this option is set we have to modify the options of the traversal by modifying the `uniqueEdges` property:
 
@@ -151,7 +151,7 @@ FOR start IN @@vertexCollection
 FOR v, e, p IN 0..10 OUTBOUND start @@edgeCollection OPTIONS {uniqueEdges: 'none'} RETURN {source: start, destination: v, edges: p.edges, vertices: p.vertices}
 ```
 
-#### minDepth and maxDepth
+**minDepth and maxDepth**
 
 If this option is set we have to give these parameters directly before the direction.
 

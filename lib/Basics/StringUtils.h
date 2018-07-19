@@ -221,7 +221,7 @@ std::string soundex(std::string const& str);
 /// @brief converts input string to soundex code
 std::string soundex(char const* src, size_t const len);
 
-/// @brief unicode hexidecmial characters to utf8
+/// @brief unicode hexadecimal characters to utf8
 bool unicodeToUTF8(char const* inputStr, size_t const& len,
                    std::string& outputStr);
 
