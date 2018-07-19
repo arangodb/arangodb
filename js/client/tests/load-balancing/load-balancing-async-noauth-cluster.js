@@ -97,7 +97,7 @@ function AsyncSuite () {
   }
 
   return {
-    setUpAll: function() {
+    setUp: function() {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -114,9 +114,16 @@ function AsyncSuite () {
       }
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
+      const url = `${baseJobUrl}/all`;
+      const result = sendRequest('DELETE', url, {}, {}, true);
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 200);
+
       db._drop(cns[0]);
       db._drop(cns[1]);
+      cs = [];
+      coordinators = [];
     },
 
     testAsyncCursorForwardingBasic: function() {

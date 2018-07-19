@@ -102,7 +102,7 @@ function CursorSyncAuthSuite () {
   }
 
   return {
-    setUpAll: function() {
+    setUp: function() {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -118,6 +118,10 @@ function CursorSyncAuthSuite () {
         }
       }
 
+      try {
+        userModule.remove(users[0].username);
+        userModule.remove(users[1].username);
+      } catch (err) {}
       userModule.save(users[0].username, users[0].password);
       userModule.save(users[1].username, users[1].password);
 
@@ -129,11 +133,13 @@ function CursorSyncAuthSuite () {
       userModule.grantCollection(users[1].username, '_system', cns[1], 'none');
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cns[0]);
       db._drop(cns[1]);
       userModule.remove(users[0].username);
       userModule.remove(users[1].username);
+      cs = [];
+      coordinators = [];
     },
 
     testCursorForwardingSameUserBasic: function() {

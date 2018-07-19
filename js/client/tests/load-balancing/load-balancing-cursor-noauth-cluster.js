@@ -86,12 +86,15 @@ function CursorSyncSuite () {
     var resultBody = res.body;
     if (typeof resultBody === "string") {
       resultBody = JSON.parse(resultBody);
+      if (resultBody.error) {
+        require('internal').print(JSON.stringify(resultBody));
+      }
     }
     return resultBody;
   }
 
   return {
-    setUpAll: function() {
+    setUp: function() {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -108,9 +111,11 @@ function CursorSyncSuite () {
       }
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cns[0]);
       db._drop(cns[1]);
+      cs = [];
+      coordinators = [];
     },
 
     testCursorForwardingBasic: function() {
