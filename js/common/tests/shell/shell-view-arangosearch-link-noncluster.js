@@ -73,9 +73,9 @@ function IResearchLinkSuite () {
     /// @brief should ignore links specified at creation
     ////////////////////////////////////////////////////////////////////////////
     testHandlingCreateWithLinks : function () {
-      var meta = { links: { 'testCollection' : { includeAllFields: true } } };
+      var meta = { properties: { links: { 'testCollection' : { includeAllFields: true } } } };
       var view = db._createView("badView", "arangosearch", meta);
-      var links = view.properties().links;
+      var links = view.properties().properties.links;
       assertEqual(links['testCollection'], undefined);
       view.drop();
     },
@@ -84,17 +84,17 @@ function IResearchLinkSuite () {
     /// @brief create a view and add/drop link
     ////////////////////////////////////////////////////////////////////////////
     testAddDrop : function () {
-      var meta = { links: { 'testCollection' : { includeAllFields: true } } };
+      var meta = { properties: { links: { 'testCollection' : { includeAllFields: true } } } };
       var view = db._createView("testView", "arangosearch", {});
       view.properties(meta);
 
-      var links = view.properties().links;
+      var links = view.properties().properties.links;
       assertNotEqual(links['testCollection'], undefined);
       assertTrue(links['testCollection'].includeAllFields);
 
-      var newMeta = { links: { 'testCollection' : null } };
+      var newMeta = { properties: { links: { 'testCollection' : null } } };
       view.properties(newMeta);
-      links = view.properties().links;
+      links = view.properties().properties.links;
       assertEqual(links['testCollection'], undefined);
 
       view.drop();

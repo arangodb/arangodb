@@ -20,8 +20,6 @@ attributes:
 - *type*: The type of the view as string
   - arangosearch: ArangoSearch view
 
-- *properties* : The properties of the view.
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{404}

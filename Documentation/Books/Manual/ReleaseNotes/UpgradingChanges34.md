@@ -37,6 +37,13 @@ Installations that were originally set up with older versions of ArangoDB (e.g. 
 or 3.3) will continue to use the existing on-disk format for the RocksDB engine
 even with ArangoDB 3.4.
 
+In order to use the new binary format with existing data, it is required to 
+create a logical dump of the database data, shut down the server, erase the 
+database directory and restore the data from the logical dump. To minimize 
+downtime you can alternatively run a second arangod instance in your system,
+that replicates the original data; once the replication has reached completion, 
+you can switch the instances.
+
 
 Threading and request handling
 ------------------------------
@@ -145,6 +152,19 @@ The following APIs have been added or augmented:
 
 - APIs for view management have been added at endpoint `/_api/view`.
 
+- The REST APIs for modifying graphs at endpoint `/_api/gharial` now support returning
+  the old revision of vertices / edges after modifying them. The APIs also supports 
+  returning the just-inserted vertex / edge. This is in line with the already existing 
+  single-document functionality provided at endpoint `/_api/document`.
+
+  The old/new revisions can be accessed by passing the URL parameters `returnOld` and
+  `returnNew` to the following endpoints:
+
+  * /_api/gharial/<graph>/vertex/<collection>
+  * /_api/gharial/<graph>/edge/<collection>
+
+  The exception from this is that the HTTP DELETE verb for these APIs does not
+  support `returnOld` because that would make the existing API incompatible.
 
 The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
 
@@ -328,6 +348,17 @@ As it is not safe at all to use this protocol, the support for it has also
 been stopped in ArangoDB. End users that use SSLv2 for connecting to ArangoDB
 should change the protocol from SSLv2 to TLSv12 if possible, by adjusting
 the value of the `--ssl.protocol` startup option.
+
+
+Mixed-engine clusters
+---------------------
+
+Starting a cluster with coordinators and DB servers using different storage 
+engines is not supported. Doing it anyway will now log an error and abort a 
+coordinator's startup.
+
+Previous versions of ArangoDB did not detect the usage of different storage
+engines in a cluster, but the runtime behavior of the cluster was undefined.
 
 
 Client tools

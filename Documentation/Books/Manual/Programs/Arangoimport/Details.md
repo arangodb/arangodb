@@ -174,7 +174,7 @@ throughput used.
 Automatic pacing frees the user from adjusting the throughput used to
 match available resources.  It is disabled by manually specifying any
 `--batch-size`. 16777216 was the previous default for *--batch-size*.
-Having *--batch-size* too large can lead to transmitted data backing-up
+Having *--batch-size* too large can lead to transmitted data piling-up
 on the server, resulting in a TimeoutError.
 
 The pacing algorithm works successfully with MMFiles with disks
