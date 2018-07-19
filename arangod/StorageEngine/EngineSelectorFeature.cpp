@@ -78,7 +78,7 @@ void EngineSelectorFeature::prepare() {
   }
     
   if (_engine == "auto") {
-    _engine = RocksDBEngine::EngineName;
+    _engine = defaultEngine();
   }
   
   TRI_ASSERT(_engine != "auto");
@@ -166,4 +166,8 @@ std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEng
   
 char const* EngineSelectorFeature::engineName() {
   return ENGINE->typeName();
+}
+    
+std::string const& EngineSelectorFeature::defaultEngine() {
+  return RocksDBEngine::EngineName;
 }
