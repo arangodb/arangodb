@@ -16,6 +16,8 @@ v3.3.13 (XXXX-XX-XX)
 
 * fixed agency's log compaction for internal issue #2249 
 
+* inspector collects additionally disk data size and storage engine statistics
+
 
 v3.3.12 (2018-07-12)
 --------------------
