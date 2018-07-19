@@ -86,9 +86,6 @@ function CursorSyncSuite () {
     var resultBody = res.body;
     if (typeof resultBody === "string") {
       resultBody = JSON.parse(resultBody);
-      if (resultBody.error) {
-        require('internal').print(JSON.stringify(resultBody));
-      }
     }
     return resultBody;
   }
