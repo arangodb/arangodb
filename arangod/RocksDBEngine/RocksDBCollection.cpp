@@ -891,10 +891,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection.vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            _logicalCollection.planId()
-          ),
+          _logicalCollection,
           oldDoc,
           builder->slice(),
           false
@@ -1001,10 +998,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection.vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            _logicalCollection.planId()
-          ),
+          _logicalCollection,
           oldDoc,
           builder->slice(),
           false
