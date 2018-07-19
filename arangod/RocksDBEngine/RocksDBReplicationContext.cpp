@@ -714,9 +714,7 @@ bool RocksDBReplicationContext::use(double ttl, bool exclusive) {
 
   ++_users;
   _exclusive = exclusive;
-  if (ttl <= 0.0) {
-    ttl = _ttl;
-  }
+  ttl = std::max(std::max(_ttl, ttl), replutils::BatchInfo::DefaultTimeout);
   _expires = TRI_microtime() + ttl;
 
   if (_serverId != 0) {
@@ -728,7 +726,7 @@ bool RocksDBReplicationContext::use(double ttl, bool exclusive) {
 void RocksDBReplicationContext::release() {
   MUTEX_LOCKER(locker, _contextLock);
   TRI_ASSERT(_users > 0);
-  double ttl = _ttl > 0 ? _ttl : InitialSyncer::defaultBatchTimeout;
+  double ttl = std::max(_ttl, replutils::BatchInfo::DefaultTimeout);
   _expires = TRI_microtime() + ttl;
   --_users;
   if (0 == _users) {
