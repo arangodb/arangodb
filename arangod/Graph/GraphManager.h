@@ -60,6 +60,11 @@ class GraphManager {
   OperationResult createCollection(std::string const& name, TRI_col_type_e colType,
                           bool waitForSync, VPackSlice options);
 
+  Result checkCreateGraphPermissions(
+      std::string const& graphName,
+      std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+      std::set<std::string> const& orphanCollections) const;
+
  public:
   GraphManager() = delete;
 
@@ -96,7 +101,10 @@ class GraphManager {
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult findOrCreateCollectionsByEdgeDefinitions(
-      VPackSlice edgeDefinition, bool waitForSync, VPackSlice options);
+      VPackSlice edgeDefinitions, bool waitForSync, VPackSlice options);
+  OperationResult findOrCreateCollectionsByEdgeDefinitions(
+    std::map<std::string, EdgeDefinition> const& edgeDefinitions, bool waitForSync,
+      VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
@@ -117,13 +125,6 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   Result assertFeasibleEdgeDefinitions(VPackSlice edgeDefinitionsSlice) const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief check that the edge definition is valid and doesn't conflict with one
-  /// in an existing graph
-  ////////////////////////////////////////////////////////////////////////////////
-  Result assertFeasibleEdgeDefinition(std::string const& edgeDefinitionName,
-                                      VPackSlice edgeDefinitionSlice);
-
   /// @brief rename a collection used in an edge definition
   bool renameGraphCollection(std::string oldName, std::string newName);
 
@@ -138,6 +139,9 @@ class GraphManager {
   Result checkForEdgeDefinitionConflicts(
     arangodb::graph::EdgeDefinition const& edgeDefinition) const;
 
+ private:
+
+  bool collectionExists(std::string const& collection) const;
 };
 }  // namespace graph
 }  // namespace arangodb

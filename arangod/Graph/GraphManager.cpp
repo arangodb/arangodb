@@ -33,9 +33,9 @@
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -43,6 +43,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Graphs.h"
@@ -119,10 +120,10 @@ Result GraphManager::assertFeasibleEdgeDefinitions(
         tmpEdgeDefinitions.emplace(def.getName(), def);
 
     if (!inserted) {
-      return Result(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
-                 def.getName() + " " +
-                     std::string{TRI_errno_string(
-                         TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)});
+      return Result(
+          TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
+          def.getName() + " " + std::string{TRI_errno_string(
+                                    TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)});
     }
   }
 
@@ -316,6 +317,49 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
+OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
+  std::map<std::string, EdgeDefinition> const& edgeDefinitions, bool waitForSync,
+  VPackSlice options) {
+  std::shared_ptr<LogicalCollection> def;
+
+  for (auto const& it : edgeDefinitions) {
+    std::string const& edgeCollection = it.first;
+    EdgeDefinition const& edgeDefinition = it.second;
+
+    def = getCollectionByName(ctx()->vocbase(), edgeCollection);
+
+    if (def == nullptr) {
+      OperationResult res =
+        createEdgeCollection(edgeCollection, waitForSync, options);
+      if (res.fail()) {
+        return res;
+      }
+    }
+
+    std::unordered_set<std::string> vertexCollections;
+
+    // duplicates in from and to shouldn't occur, but are safely ignored here
+    for (auto const& colName : edgeDefinition.getFrom()) {
+      vertexCollections.emplace(colName);
+    }
+    for (auto const& colName : edgeDefinition.getTo()) {
+      vertexCollections.emplace(colName);
+    }
+    for (auto const& colName : vertexCollections) {
+      def = getCollectionByName(ctx()->vocbase(), colName);
+      if (def == nullptr) {
+        OperationResult res =
+            createVertexCollection(colName, waitForSync, options);
+        if (res.fail()) {
+          return res;
+        }
+      }
+    }
+  }
+
+  return OperationResult(TRI_ERROR_NO_ERROR);
+}
+
 /// @brief extract the collection by either id or name, may return nullptr!
 std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
     const TRI_vocbase_t& vocbase, std::string const& name) {
@@ -371,56 +415,56 @@ bool GraphManager::graphExists(std::string graphName) const {
 
 OperationResult GraphManager::createGraph(VPackSlice document,
                                           bool waitForSync) {
-  VPackSlice graphName = document.get("name");
-  if (graphName.isNone()) {
+  VPackSlice graphNameSlice = document.get("name");
+  if (graphNameSlice.isNone()) {
     return OperationResult(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
+  std::string const graphName {graphNameSlice.copyString()};
   OperationResult result;
 
   // validate edgeDefinitions
-  VPackSlice edgeDefinitions =
+  VPackSlice edgeDefinitionsSlice =
       document.get(StaticStrings::GraphEdgeDefinitions);
-  if (edgeDefinitions.isNull() || edgeDefinitions.isNone()) {
-    edgeDefinitions = VPackSlice::emptyArraySlice();
+  if (edgeDefinitionsSlice.isNull() || edgeDefinitionsSlice.isNone()) {
+    edgeDefinitionsSlice = VPackSlice::emptyArraySlice();
   }
 
-  if (!edgeDefinitions.isArray()) {
-    return OperationResult();
+  if (!edgeDefinitionsSlice.isArray()) {
+    return OperationResult{TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION};
   }
 
-  VPackBuilder sortedEdgeDefinitions;
-  sortedEdgeDefinitions.openObject();
-  sortedEdgeDefinitions.add(StaticStrings::GraphEdgeDefinitions, VPackValue(VPackValueType::Array));
-  for (auto const& def : VPackArrayIterator(edgeDefinitions)) {
-    Result res = EdgeDefinition::validateEdgeDefinition(def);
-    if (res.fail()) {
-      return OperationResult(res);
-    } else {
-      std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
-              EdgeDefinition::sortEdgeDefinition(def);
-      sortedEdgeDefinitions.add(velocypack::Slice(buffer->data()));
+  std::map<std::string, EdgeDefinition> edgeDefinitions;
 
+  for (auto const& def : VPackArrayIterator(edgeDefinitionsSlice)) {
+    auto maybeEdgeDefinition =
+        EdgeDefinition::createFromVelocypack(def);
+    if (!maybeEdgeDefinition) {
+      return OperationResult{maybeEdgeDefinition.copy_result()};
     }
+    EdgeDefinition& edgeDefinition = maybeEdgeDefinition.get();
+    // copy on purpose to avoid problems with move of edge definition
+    std::string name = edgeDefinition.getName();
+    edgeDefinitions.emplace(std::move(name), std::move(edgeDefinition));
   }
-  sortedEdgeDefinitions.close();
-  sortedEdgeDefinitions.close();
-  VPackSlice sortedEdgeDefinitionsSlice = sortedEdgeDefinitions.slice().get(StaticStrings::GraphEdgeDefinitions);
 
   // validate orphans
-  VPackSlice orphanCollections = document.get(StaticStrings::GraphOrphans);
-  if (orphanCollections.isNull() || orphanCollections.isNone()) {
-    orphanCollections = VPackSlice::emptyArraySlice();
+  VPackSlice orphanCollectionsSlice = document.get(StaticStrings::GraphOrphans);
+  if (orphanCollectionsSlice.isNull() || orphanCollectionsSlice.isNone()) {
+    orphanCollectionsSlice = VPackSlice::emptyArraySlice();
   }
 
-  if (!orphanCollections.isArray()) {
+  if (!orphanCollectionsSlice.isArray()) {
     return OperationResult(TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST);
   }
 
-  for (auto const& def : VPackArrayIterator(orphanCollections)) {
+  std::set<std::string> orphanCollections;
+
+  for (auto const& def : VPackArrayIterator(orphanCollectionsSlice)) {
     Result res = Graph::validateOrphanCollection(def);
     if (res.fail()) {
       return OperationResult(res);
     }
+    orphanCollections.emplace(def.copyString());
   }
 
   uint64_t replicationFactor;
@@ -444,9 +488,9 @@ OperationResult GraphManager::createGraph(VPackSlice document,
     numberOfShards = 1;
   }
 
+#ifdef USE_ENTERPRISE
   bool isSmart = false;
 
-#ifdef USE_ENTERPRISE
   try {
     isSmart = document.get(StaticStrings::GraphIsSmart).getBool();
   } catch (...) {
@@ -464,20 +508,18 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 
   arangodb::enterprise::graph::SmartGraphManager smartgmngr{ctx()};
   if (isSmart) {
-    result = smartgmngr.checkPrerequisites(sortedEdgeDefinitionsSlice, orphanCollections);
+    result =
+        smartgmngr.checkPrerequisites(edgeDefinitionsSlice, orphanCollections);
     if (result.fail()) {
       return result;
     }
   }
 #endif
 
-  // check for multiple collection graph usage
-
-  // check if graph already exists
-  VPackBuilder checkDocument;
-  {
-    VPackObjectBuilder guard(&checkDocument);
-    checkDocument.add(StaticStrings::KeyString, graphName);
+  Result permRes =
+    checkCreateGraphPermissions(graphName, edgeDefinitions, orphanCollections);
+  if (permRes.fail()) {
+    return OperationResult{std::move(permRes)};
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
@@ -485,18 +527,26 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
-
-  if (!res.ok()) {
-    return OperationResult(res);
+  if (res.fail()) {
+    return OperationResult{res};
   }
 
   OperationOptions options;
   options.waitForSync = waitForSync;
 
   // check, if a collection is already used in a different edgeDefinition
-  res = assertFeasibleEdgeDefinitions(sortedEdgeDefinitionsSlice);
-  if (!res.ok()) {
-    return OperationResult(res);
+  res = assertFeasibleEdgeDefinitions(edgeDefinitionsSlice);
+  if (res.fail()) {
+    return OperationResult{res};
+  }
+
+  // check for multiple collection graph usage
+
+  // check if graph already exists
+  VPackBuilder checkDocument;
+  {
+    VPackObjectBuilder guard(&checkDocument);
+    checkDocument.add(StaticStrings::KeyString, graphNameSlice);
   }
 
   OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
@@ -543,17 +593,18 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 
 #ifdef USE_ENTERPRISE
   if (isSmart) {
-    result = smartgmngr.satisfyPrerequisites(sortedEdgeDefinitionsSlice, orphanCollections,
-                                             collectionCreateOptionsSlice, waitForSync);
+    result = smartgmngr.satisfyPrerequisites(
+        edgeDefinitionsSlice, orphanCollections, collectionCreateOptionsSlice,
+        waitForSync);
   } else {
     // find or create the collections given by the edge definition
     result = findOrCreateCollectionsByEdgeDefinitions(
-        sortedEdgeDefinitionsSlice, waitForSync, collectionCreateOptionsSlice);
+        edgeDefinitions, waitForSync, collectionCreateOptionsSlice);
 
-    // find or create the oprhan collections
-    for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
-      result = findOrCreateVertexCollectionByName(
-          orphan.copyString(), waitForSync, collectionCreateOptionsSlice);
+    // find or create the orphan collections
+    for (auto const& orphan : orphanCollections) {
+      result = findOrCreateVertexCollectionByName(orphan, waitForSync,
+                                                  collectionCreateOptionsSlice);
       if (result.fail()) {
         return result;
       }
@@ -562,12 +613,12 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 #else
   // find or create the collections given by the edge definition
   result = findOrCreateCollectionsByEdgeDefinitions(
-      sortedEdgeDefinitionsSlice, waitForSync, collectionCreateOptionsSlice);
+      edgeDefinitions, waitForSync, collectionCreateOptionsSlice);
 
-  // find or create the oprhan collections
-  for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
-    result = findOrCreateVertexCollectionByName(
-        orphan.copyString(), waitForSync, collectionCreateOptionsSlice);
+  // find or create the orphan collections
+  for (auto const& orphan : orphanCollections) {
+    result = findOrCreateVertexCollectionByName(orphan, waitForSync,
+                                                collectionCreateOptionsSlice);
     if (result.fail()) {
       return result;
     }
@@ -580,11 +631,15 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   // finally save the graph
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Object));
-  builder.add(StaticStrings::KeyString, graphName);
-  builder.add(StaticStrings::GraphEdgeDefinitions, sortedEdgeDefinitionsSlice);
-  builder.add(StaticStrings::GraphOrphans, orphanCollections);
-  builder.add(StaticStrings::ReplicationFactor,
-              VPackValue(replicationFactor));
+  builder.add(StaticStrings::KeyString, graphNameSlice);
+  builder.add(StaticStrings::GraphEdgeDefinitions,
+              VPackValue(VPackValueType::Array));
+  for (auto const& it : edgeDefinitions) {
+    it.second.addToBuilder(builder);
+  }
+  builder.close(); // edge definitions
+  builder.add(StaticStrings::GraphOrphans, orphanCollectionsSlice);
+  builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
 
 #ifdef USE_ENTERPRISE
@@ -663,23 +718,83 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-Result GraphManager::assertFeasibleEdgeDefinition(
-    std::string const& edgeDefinitionName, VPackSlice edgeDefinitionSlice) {
-  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
-  TRI_ASSERT(res.ok());
-  if (res.fail()) {
-    return res.copy_result();
-  }
-
-  EdgeDefinition const& edgeDefinition = res.get();
-
-  return checkForEdgeDefinitionConflicts(edgeDefinition);
-}
-
 Result GraphManager::checkForEdgeDefinitionConflicts(
     arangodb::graph::EdgeDefinition const& edgeDefinition) const {
   std::unordered_map<std::string, EdgeDefinition> edgeDefs{
       std::make_pair(edgeDefinition.getName(), edgeDefinition)};
 
   return checkForEdgeDefinitionConflicts(edgeDefs);
+}
+
+Result GraphManager::checkCreateGraphPermissions(
+    std::string const& graphName,
+    std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+    std::set<std::string> const& orphanCollections) const {
+  std::string const& databaseName = ctx()->vocbase().name();
+
+  std::stringstream stringstream;
+  stringstream << "When creating graph " << databaseName << "." << graphName << ": ";
+  std::string const logprefix = stringstream.str();
+
+  ExecContext const* execContext = ExecContext::CURRENT;
+  if (execContext == nullptr) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix
+                                     << "Permissions are turned off.";
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // collect all used collections in one container
+  std::set<std::string> graphCollections;
+  for (auto const& it : edgeDefinitions) {
+    EdgeDefinition const &edgeDef = it.second;
+    setUnion(graphCollections, edgeDef.getFrom());
+    setUnion(graphCollections, edgeDef.getTo());
+  }
+  setUnion(graphCollections, orphanCollections);
+
+  bool canUseDatabaseRW = execContext->canUseDatabase(auth::Level::RW);
+  for (auto const& col : graphCollections) {
+    // We need RO on all collections. And, in case any collection does not
+    // exist, we need RW on the database.
+    if (!execContext->canUseCollection(col, auth::Level::RO)) {
+      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No read access to "
+                                       << databaseName << "." << col;
+      return TRI_ERROR_FORBIDDEN;
+    }
+    if (!collectionExists(col) && !canUseDatabaseRW) {
+      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Creation of "
+                                       << databaseName << "." << col
+                                       << " is not allowed.";
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
+
+  // We need RW on _graphs (which is the same as RW on the database). But in
+  // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
+  if (!execContext->canUseCollection(StaticStrings::GraphCollection,
+                                     auth::Level::RO)) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No read access to "
+                                     << databaseName << "."
+                                     << StaticStrings::GraphCollection;
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  // Note that this check includes the following check in the loop
+  //   if (!collectionExists(col) && !canUseDatabaseRW)
+  // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
+  // However, in case a collection has to be created but can't, we have to throw
+  // FORBIDDEN instead of READ_ONLY for backwards compatibility.
+  if (!execContext->canUseCollection(StaticStrings::GraphCollection,
+                                     auth::Level::RW)) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No write access to "
+                                     << databaseName << "."
+                                     << StaticStrings::GraphCollection;
+    return TRI_ERROR_ARANGO_READ_ONLY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+bool GraphManager::collectionExists(std::string const &collection) const {
+  return getCollectionByName(ctx()->vocbase(), collection) != nullptr;
 }

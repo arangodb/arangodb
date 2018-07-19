@@ -39,6 +39,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Graph/GraphManager.h"
+#include "Graph/Graph.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -55,20 +56,6 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
-
-template<class T, class C>
-void setUnion(std::set<T> &set, C const &container) {
-  for(auto const& it : container) {
-    set.insert(it);
-  }
-}
-
-template<class T, class C>
-void setMinus(std::set<T> &set, C const &container) {
-  for(auto const& it : container) {
-    set.erase(it);
-  }
-}
 
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
     const Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,

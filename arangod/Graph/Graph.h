@@ -80,9 +80,9 @@ class EdgeDefinition {
 
 class Graph {
  public:
-  explicit Graph(std::string&& graphName, velocypack::Slice const& info);
+  Graph(std::string&& graphName, velocypack::Slice const& info);
 
-  explicit Graph(std::string const& graphName, velocypack::Slice const& info)
+  Graph(std::string const& graphName, velocypack::Slice const& info)
       : Graph(std::string{graphName}, info) {}
 
   virtual ~Graph() = default;
@@ -220,6 +220,22 @@ class Graph {
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
 };
+
+// helper functions
+template<class T, class C>
+void setUnion(std::set<T> &set, C const &container) {
+  for(auto const& it : container) {
+    set.insert(it);
+  }
+}
+
+template<class T, class C>
+void setMinus(std::set<T> &set, C const &container) {
+  for(auto const& it : container) {
+    set.erase(it);
+  }
+}
+
 }  // namespace graph
 }  // namespace arangodb
 

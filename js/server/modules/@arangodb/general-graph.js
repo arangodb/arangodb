@@ -39,33 +39,33 @@ let CommonGraph = ggc.__GraphClass;
 
 // new c++ based
 CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
-	this.__edgeDefinitions = edgeDefs;
-	this.__orphanCollections = orphans;
+  this.__edgeDefinitions = edgeDefs;
+  this.__orphanCollections = orphans;
 };
 
 CommonGraph.prototype._deleteEdgeDefinition = function (edgeDefinition, dropCollection = false) {
-	let result = GeneralGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
-	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+  let result = GeneralGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinitions) {
-	let result = GeneralGraph._extendEdgeDefinitions(this.__name, edgeDefinitions);
-	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+  let result = GeneralGraph._extendEdgeDefinitions(this.__name, edgeDefinitions);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinitions) {
-	let result = GeneralGraph._editEdgeDefinitions(this.__name, edgeDefinitions);
-	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+  let result = GeneralGraph._editEdgeDefinitions(this.__name, edgeDefinitions);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 CommonGraph.prototype._addVertexCollection = function (vertexName, createCollection = true) {
-	let result = GeneralGraph._addVertexCollection(this.__name, vertexName, createCollection);
-	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+  let result = GeneralGraph._addVertexCollection(this.__name, vertexName, createCollection);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 CommonGraph.prototype._removeVertexCollection = function (vertexName, dropCollection = false) {
-	let result = GeneralGraph._removeVertexCollection(this.__name, vertexName, dropCollection);
-	this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+  let result = GeneralGraph._removeVertexCollection(this.__name, vertexName, dropCollection);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 exports._listObjects = GeneralGraph._listObjects;
