@@ -147,6 +147,8 @@ void AsyncJobManager::deleteJobs() {
         delete response;
       }
       _jobs.erase(it++);
+    } else {
+      ++it;
     }
   }
 }
