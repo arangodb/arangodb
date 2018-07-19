@@ -439,7 +439,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['result'].should eq([])
       end
-=begin
+
       it "short list" do
         cmd1 = api
         body1 = <<-JSON
@@ -471,7 +471,7 @@ describe ArangoDB do
         doc3 = ArangoDB.log_get("#{prefix}-short-list", cmd3)
         doc3.code.should eq(200)
         doc3.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc3.parsed_response['result'].length.should eq(3)
+        doc3.parsed_response.length.should eq(3)
         doc3.parsed_response['result'][0]['name'].should eq("abc")
         doc3.parsed_response['result'][1]['name'].should eq("def")
         doc3.parsed_response['result'][0]['type'].should eq("arangosearch")
@@ -490,22 +490,22 @@ describe ArangoDB do
         doc2 = ArangoDB.log_get("#{prefix}-individual-views", cmd2)
         doc2.code.should eq(200)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc2.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(10)
+        doc2.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(10)
 
         cmd3 = api + '/def'
         doc3 = ArangoDB.log_get("#{prefix}-individual-views", cmd3)
         doc3.code.should eq(200)
         doc3.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc3.parsed_response['result']['name'].should eq("def")
-        doc3.parsed_response['result']['type'].should eq("arangosearch")
+        doc3.parsed_response['name'].should eq("def")
+        doc3.parsed_response['type'].should eq("arangosearch")
 
         cmd4 = api + '/def/properties'
         doc4 = ArangoDB.log_get("#{prefix}-individual-views", cmd4)
         doc4.code.should eq(200)
         doc4.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc4.parsed_response['result']['properties']['commit']['commitIntervalMsec'].should eq(10)
+        doc4.parsed_response['properties']['commit']['commitIntervalMsec'].should eq(10)
       end
-=end
+
     end
 
     context "modification:" do
