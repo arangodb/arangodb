@@ -626,6 +626,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     // set to first chunk
     resetChunk();
 
+    // TODO: reuse builders here!
     std::function<void(std::string, std::uint64_t)> compareChunk =
         [&trx, &col, &options, &foundLowKey, &markers, &localHash, &hashString,
          &syncer, &currentChunkId, &numChunks, &keysId, &resetChunk,
@@ -650,7 +651,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
               foundLowKey = true;
             }
 
-            markers.emplace_back(docKey, docRev);  // revision as unit64
+            markers.emplace_back(docKey, docRev);  // revision as uint64
             // don't bother hashing if we have't found lower key
             if (foundLowKey) {
               VPackBuilder revBuilder;
