@@ -59,9 +59,9 @@ std::string ensureGuid(
   // id numbers can also not conflict, first character is always 'h'
   if (arangodb::ServerState::instance()->isCoordinator() ||
       arangodb::ServerState::instance()->isDBServer()) {
-    TRI_ASSERT(planId);
-    char buf[sizeof(planId) * 2 + 1];
-    auto len = TRI_StringUInt64HexInPlace(planId, buf);
+    char buf[sizeof(TRI_server_id_t) * 2 + 1];
+    auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
+    TRI_ASSERT(id);
     guid.append("h");
     guid.append(buf, len);
     TRI_ASSERT(guid.size() > 3);
