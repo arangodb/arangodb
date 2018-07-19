@@ -47,12 +47,10 @@ class RestViewHandler : public RestVocbaseBaseHandler {
   void createView();
   void modifyView(bool partialUpdate);
   void deleteView();
+  void getView(std::string const& nameOrId, bool detailed);
   void getViews();
-
-  void getSingleView(std::string const&);
-  void getViewProperties(std::string const&);
-  void getListOfViews();
 };
+
 }
 
 #endif

@@ -49,6 +49,8 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   bool hasStarted() const { return _hasStarted.load(); }
 
   static char const* engineName();
+  
+  static std::string const& defaultEngine();
 
  public:
   // selected storage engine. this will contain a pointer to the storage engine after

@@ -75,7 +75,7 @@ const validateDocsAreUpdated = function (docs, invalid, areUpdated) {
   for (let d of docs) {
     const nowStored = col.document(d._key);
     if (areUpdated) {
-      assertEqual(invalid, nowStored.val, `Did not updated ${JSON.stringify(d)} using wrong _rev value`);
+      assertEqual(invalid, nowStored.val, `Did not update ${JSON.stringify(d)} using wrong _rev value`);
     } else {
       assertNotEqual(invalid, nowStored.val, `Updated ${JSON.stringify(d)} using wrong _rev value`);
     }
@@ -447,7 +447,7 @@ function aqlUpsertOptionsSuite () {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
         }
       }
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
     },
 
@@ -462,7 +462,7 @@ function aqlUpsertOptionsSuite () {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
       }
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
     },
 
@@ -480,7 +480,7 @@ function aqlUpsertOptionsSuite () {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
       }
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
     },
 
@@ -492,7 +492,7 @@ function aqlUpsertOptionsSuite () {
       for (let d of docs) {
         db._query(q, {key: d._key});
       }
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -504,7 +504,7 @@ function aqlUpsertOptionsSuite () {
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -517,7 +517,7 @@ function aqlUpsertOptionsSuite () {
       let docs = buildSetOfDocs();
       db._query(q);
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -528,7 +528,7 @@ function aqlUpsertOptionsSuite () {
       for (let d of docs) {
         db._query(q, {key: d._key});
       }
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -539,7 +539,7 @@ function aqlUpsertOptionsSuite () {
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -552,7 +552,7 @@ function aqlUpsertOptionsSuite () {
       let docs = buildSetOfDocs();
       db._query(q);
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -570,7 +570,7 @@ function aqlUpsertOptionsSuite () {
           assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
         }
       }
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
     },
 
@@ -585,7 +585,7 @@ function aqlUpsertOptionsSuite () {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
       }
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
     },
 
@@ -603,7 +603,7 @@ function aqlUpsertOptionsSuite () {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
       }
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, false);
     },
 
@@ -615,7 +615,7 @@ function aqlUpsertOptionsSuite () {
       for (let d of docs) {
         db._query(q, {key: d._key});
       }
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -627,7 +627,7 @@ function aqlUpsertOptionsSuite () {
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -640,7 +640,7 @@ function aqlUpsertOptionsSuite () {
       let docs = buildSetOfDocs();
       db._query(q);
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -651,7 +651,7 @@ function aqlUpsertOptionsSuite () {
       for (let d of docs) {
         db._query(q, {key: d._key});
       }
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -662,7 +662,7 @@ function aqlUpsertOptionsSuite () {
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
 
@@ -675,7 +675,7 @@ function aqlUpsertOptionsSuite () {
       let docs = buildSetOfDocs();
       db._query(q);
 
-      assertEqual(2000, col.count(), `We falsly triggered an INSERT`);
+      assertEqual(2000, col.count(), `We falsely triggered an INSERT`);
       validateDocsAreUpdated(docs, invalid, true);
     },
     */
