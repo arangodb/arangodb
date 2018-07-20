@@ -112,6 +112,8 @@ function AsyncSuite () {
           cs[i].save({ _key: key });
         }
       }
+
+      require("internal").wait(2);
     },
 
     tearDown: function() {

@@ -131,6 +131,8 @@ function CursorSyncAuthSuite () {
       userModule.grantCollection(users[1].username, '_system', cns[0], 'ro');
       userModule.grantCollection(users[0].username, '_system', cns[1], 'ro');
       userModule.grantCollection(users[1].username, '_system', cns[1], 'none');
+
+      require("internal").wait(2);
     },
 
     tearDown: function() {
