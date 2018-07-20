@@ -62,9 +62,6 @@ endif()
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
-# use standalone boost asio
-add_definitions("-DARANGODB_STANDALONE_ASIO=1")
-
 # debug synchronous replication
 option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
 
