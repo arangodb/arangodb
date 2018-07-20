@@ -30,14 +30,9 @@
 
 using namespace arangodb;
 
-EngineEqualityCheckFeature::EngineEqualityCheckFeature(
-    application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "EngineEqualityCheck") {
-  setOptional(false);
-  startsAfter("DatabasePhase");
-}
+namespace {
 
-bool equalStorageEngines(){
+bool equalStorageEngines() {
   std::string engineName = EngineSelectorFeature::engineName();
   auto allEqual = true;
   auto ci = ClusterInfo::instance();
@@ -93,9 +88,25 @@ bool equalStorageEngines(){
   return allEqual;
 }
 
+} // namespace
+
+EngineEqualityCheckFeature::EngineEqualityCheckFeature(
+    application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "EngineEqualityCheck") {
+  setOptional(false);
+  startsAfter("DatabasePhase");
+  // this feature is supposed to run after the cluster is somewhat ready
+  startsAfter("ClusterPhase"); 
+  startsAfter("Bootstrap");
+}
+
 void EngineEqualityCheckFeature::start() {
-  if (ServerState::instance()->isCoordinator() && !equalStorageEngines()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES) << "the usage of different storage engines in the cluster is unsupported and may cause issues";
-    FATAL_ERROR_EXIT();
+  if (ServerState::instance()->isCoordinator()) {
+    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "running storage engine equality check";
+
+    if (!equalStorageEngines()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES) << "the usage of different storage engines in the cluster is unsupported and may cause issues";
+      FATAL_ERROR_EXIT();
+    }
   }
 }
