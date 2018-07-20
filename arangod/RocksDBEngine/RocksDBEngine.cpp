@@ -2013,8 +2013,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 Result RocksDBEngine::handleSyncKeys(
     DatabaseInitialSyncer& syncer,
     LogicalCollection& col,
-    std::string const& keysId
-) {
+    std::string const& keysId) {
   return handleSyncKeysRocksDB(syncer, &col, keysId);
 }
 
