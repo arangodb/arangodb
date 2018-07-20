@@ -75,7 +75,7 @@ const std::set<std::string> & Graph::orphanCollections() const {
   return _orphanColls;
 }
 
-std::unordered_set<std::string> const& Graph::edgeCollections() const {
+std::set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
 }
 

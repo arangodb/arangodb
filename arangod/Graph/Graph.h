@@ -102,7 +102,7 @@ class Graph {
   std::set<std::string> _orphanColls;
 
   /// @brief the cids of all edgeCollections
-  std::unordered_set<std::string> _edgeColls;
+  std::set<std::string> _edgeColls;
 
   /// @brief edge definition names of this graph, ordered as in the database
   std::vector<std::string> _edgeDefsNames;
@@ -146,7 +146,7 @@ class Graph {
   std::set<std::string> const& orphanCollections() const;
 
   /// @brief get the cids of all edgeCollections
-  std::unordered_set<std::string> const& edgeCollections() const;
+  std::set<std::string> const& edgeCollections() const;
 
   /// @brief get the cids of all edgeCollections
   std::map<std::string, EdgeDefinition> const& edgeDefinitions() const;
