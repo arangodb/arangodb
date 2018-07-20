@@ -262,13 +262,14 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     propSlice,
     createWaitsForSyncReplication,
     enforceReplicationFactor,
-    [&isolate, &result](LogicalCollection* coll) {
+    [&isolate, &result](LogicalCollection& coll)->void {
       if (ServerState::instance()->isCoordinator()) {
-        std::unique_ptr<LogicalCollection> cc = coll->clone();
+        std::unique_ptr<LogicalCollection> cc = coll.clone();
+
         result = WrapCollection(isolate, cc.get());
         cc.release();
       } else {
-        result = WrapCollection(isolate, coll);
+        result = WrapCollection(isolate, &coll);
       }
     }
   );
