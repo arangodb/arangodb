@@ -946,9 +946,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                   trx->resolver()->getCollectionNameCluster(
-                                       _logicalCollection->planId()),
+    if (arangodb::shardKeysChanged(_logicalCollection,
                                    oldDoc, builder->slice(), false)) {
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
@@ -1049,9 +1047,7 @@ Result RocksDBCollection::replace(
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                   trx->resolver()->getCollectionNameCluster(
-                                       _logicalCollection->planId()),
+    if (arangodb::shardKeysChanged(_logicalCollection,
                                    oldDoc, builder->slice(), false)) {
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }

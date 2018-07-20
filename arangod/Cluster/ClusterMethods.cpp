@@ -635,7 +635,7 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
 
-bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+bool shardKeysChanged(arangodb::LogicalCollection* collection,
                       VPackSlice const& oldValue, VPackSlice const& newValue,
                       bool isPatch) {
   if (!oldValue.isObject() || !newValue.isObject()) {
@@ -643,16 +643,12 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
     return true;
   }
 #ifdef DEBUG_SYNC_REPLICATION
-  if (dbname == "sync-replication-test") {
+  if (collection->vocbase()->name() == "sync-replication-test") {
     return false;
   }
 #endif
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> c = ci->getCollection(dbname, collname);
-
-  TRI_ASSERT(c != nullptr);
-  std::vector<std::string> const& shardKeys = c->shardKeys();
+  std::vector<std::string> const& shardKeys = collection->shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
     if (shardKeys[i] == StaticStrings::KeyString) {
@@ -666,21 +662,16 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
       continue;
     }
 
-    // a temporary buffer to hold a null value
-    char buffer[1];
-    VPackSlice nullValue =
-        arangodb::velocypack::buildNullValue(&buffer[0], sizeof(buffer));
-
     VPackSlice o = oldValue.get(shardKeys[i]);
 
     if (o.isNone()) {
       // if attribute is undefined, use "null" instead
-      o = nullValue;
+      o = arangodb::velocypack::Slice::nullSlice();
     }
 
     if (n.isNone()) {
       // if attribute is undefined, use "null" instead
-      n = nullValue;
+      n = arangodb::velocypack::Slice::nullSlice();
     }
 
     if (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0) {
