@@ -859,9 +859,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           }
         }
 
-        TRI_ASSERT(payloadSlice.isObject());
         auto res = view->updateProperties(payloadSlice, false, forceSync);
-
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "cannot change properties for view " << viewId
