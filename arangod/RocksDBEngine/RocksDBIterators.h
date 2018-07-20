@@ -86,10 +86,8 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
  private:
   bool outOfRange() const;
-  static uint64_t newOffset(LogicalCollection* collection,
-                            transaction::Methods* trx);
-
   bool checkIter();
+
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds const _bounds;

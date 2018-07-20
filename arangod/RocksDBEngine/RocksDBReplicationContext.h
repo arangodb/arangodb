@@ -159,9 +159,13 @@ class RocksDBReplicationContext {
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
   double const _ttl;
+  /// @brief expiration time, updated under lock by ReplicationManager
   double _expires;
+  /// @brief true if context is deleted, updated under lock by ReplicationManager
   bool _isDeleted;
+  /// @brief true if context cannot be used concurrently, updated under lock by ReplicationManager
   bool _exclusive;
+  /// @brief number of concurrent users, updated under lock by ReplicationManager
   size_t _users;
 };
 

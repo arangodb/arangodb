@@ -14,7 +14,7 @@ view in ArangoDB.
 
 [ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
 [ArangoSearch overview](../Views/ArangoSearch/README.md)
-[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/README.md)
+[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
 
 
 New geo index implementation

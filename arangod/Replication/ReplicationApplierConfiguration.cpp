@@ -93,6 +93,9 @@ void ReplicationApplierConfiguration::reset() {
   _verbose = false;
   _restrictType.clear();
   _restrictCollections.clear();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _force32mode = false; 
+#endif
 }
 
 /// @brief get a VelocyPack representation
