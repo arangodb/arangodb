@@ -1018,6 +1018,15 @@ Result GraphManager::checkDropGraphPermissions(
     return TRI_ERROR_FORBIDDEN;
   }
 
+  for (auto const& col : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
+    // We need RW to drop a collection.
+    if (!execContext->canUseCollection(col, auth::Level::RW)) {
+      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No write access to "
+                                       << databaseName << "." << col;
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
+
   // We need RW on _graphs (which is the same as RW on the database). But in
   // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
   if (!execContext->canUseCollection(StaticStrings::GraphCollection,
