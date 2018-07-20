@@ -30,6 +30,7 @@
 
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
+#include "Auth/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ResultT.h"
@@ -48,6 +49,7 @@ class GraphOperations {
 
   Graph const& graph() const { return _graph; };
   std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
+  std::shared_ptr<transaction::Context> const& ctx() const { return _ctx; };
 
  public:
   GraphOperations() = delete;
@@ -191,6 +193,16 @@ class GraphOperations {
       std::string edgeCollectionName);
   OperationResult checkVertexCollectionAvailability(
       std::string vertexCollectionName);
+
+  bool hasROPermissionsFor(std::string const& collection) const;
+  bool hasRWPermissionsFor(std::string const& collection) const;
+  bool hasPermissionsFor(std::string const& collection,
+                         auth::Level level) const;
+
+  Result checkEdgeDefinitionPermissions(
+      EdgeDefinition const& edgeDefinition) const;
+
+  bool collectionExists(std::string const& collection) const;
 };
 }  // namespace graph
 }  // namespace arangodb

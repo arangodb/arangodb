@@ -142,9 +142,9 @@ class GraphManager {
       const std::string& colName, const std::string& graphName,
       std::unordered_set<std::string>& toBeRemoved);
 
- private:
-
   bool collectionExists(std::string const& collection) const;
+
+ private:
 
   Result checkCreateGraphPermissions(
       std::string const& graphName,

@@ -38,11 +38,12 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Graph/GraphManager.h"
 #include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Graphs.h"
@@ -158,6 +159,10 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   OperationResult result = checkEdgeCollectionAvailability(edgeDefinitionName);
   if (result.fail()) {
     return result;
+  }
+
+  if (dropCollection && !hasRWPermissionsFor(edgeDefinitionName)) {
+    return OperationResult{TRI_ERROR_FORBIDDEN};
   }
 
   std::unordered_set<std::string> possibleOrphans;
@@ -335,6 +340,11 @@ OperationResult GraphOperations::editEdgeDefinition(
     return result;
   }
 
+  Result permRes = checkEdgeDefinitionPermissions(edgeDefinition);
+  if (permRes.fail()) {
+    return OperationResult{permRes};
+  }
+
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Array));
   builder.add(edgeDefinitionSlice);
@@ -493,6 +503,10 @@ OperationResult GraphOperations::eraseOrphanCollection(
     return result;
   }
 
+  if (!hasRWPermissionsFor(collectionName)) {
+    return OperationResult{TRI_ERROR_FORBIDDEN};
+  }
+
   VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
@@ -580,6 +594,11 @@ OperationResult GraphOperations::addEdgeDefinition(
   OperationResult result{gmngr.checkForEdgeDefinitionConflicts(edgeDefinition)};
   if (result.fail()) {
     return result;
+  }
+
+  Result permRes = checkEdgeDefinitionPermissions(edgeDefinition);
+  if (permRes.fail()) {
+    return OperationResult{permRes};
   }
 
   VPackBuilder builder;
@@ -1058,3 +1077,83 @@ OperationResult GraphOperations::removeVertex(
   return result;
 }
 
+bool GraphOperations::collectionExists(std::string const& collection) const {
+  GraphManager gmngr{ctx()};
+  return gmngr.collectionExists(collection);
+}
+
+bool GraphOperations::hasROPermissionsFor(std::string const& collection) const {
+  return hasPermissionsFor(collection, auth::Level::RO);
+}
+
+bool GraphOperations::hasRWPermissionsFor(std::string const& collection) const {
+  return hasPermissionsFor(collection, auth::Level::RW);
+}
+
+bool GraphOperations::hasPermissionsFor(std::string const& collection,
+                                        auth::Level level) const {
+  std::string const& databaseName = ctx()->vocbase().name();
+
+  std::stringstream stringstream;
+  stringstream << "When checking " << convertFromAuthLevel(level)
+               << " permissions for " << databaseName << "." << collection
+               << ": ";
+  std::string const logprefix = stringstream.str();
+
+  ExecContext const* execContext = ExecContext::CURRENT;
+  if (execContext == nullptr) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix
+                                     << "Permissions are turned off.";
+    return true;
+  }
+
+  if (execContext->canUseCollection(collection, level)) {
+    return true;
+  }
+
+  LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Not allowed.";
+  return false;
+}
+
+Result GraphOperations::checkEdgeDefinitionPermissions(
+    EdgeDefinition const& edgeDefinition) const {
+  std::string const& databaseName = ctx()->vocbase().name();
+
+  std::stringstream stringstream;
+  stringstream << "When checking permissions for edge definition `"
+               << edgeDefinition.getName() << "` of graph `" << databaseName
+               << "." << graph().name() << "`: ";
+  std::string const logprefix = stringstream.str();
+
+  ExecContext const* execContext = ExecContext::CURRENT;
+  if (execContext == nullptr) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix
+                                     << "Permissions are turned off.";
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // collect all used collections in one container
+  std::set<std::string> graphCollections;
+  setUnion(graphCollections, edgeDefinition.getFrom());
+  setUnion(graphCollections, edgeDefinition.getTo());
+  graphCollections.emplace(edgeDefinition.getName());
+
+  bool canUseDatabaseRW = execContext->canUseDatabase(auth::Level::RW);
+  for (auto const& col : graphCollections) {
+    // We need RO on all collections. And, in case any collection does not
+    // exist, we need RW on the database.
+    if (!execContext->canUseCollection(col, auth::Level::RO)) {
+      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No read access to "
+                                       << databaseName << "." << col;
+      return TRI_ERROR_FORBIDDEN;
+    }
+    if (!collectionExists(col) && !canUseDatabaseRW) {
+      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Creation of "
+                                       << databaseName << "." << col
+                                       << " is not allowed.";
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
