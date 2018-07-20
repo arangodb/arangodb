@@ -6,25 +6,31 @@ Upgrade Methods
 
 There are two main ways to upgrade ArangoDB:
 
-- _In-Place_ upgrade: this is a binary upgrade.
+- _In-Place_ upgrade: when the installed ArangoDB package is replaced with the new one, and
+  the new ArangoDB binary is started on the existing data directory.
 - _Logical_ upgrade: when the data is exported from the old ArangoDB version,
-   using [_arangodump_ ](..\..\Programs\Arangodump\README.md) and then restored in
-   the new ArangoDB version using [_arangorestore_ ](..\..\Programs\Arangorestore\README.md).
-   Depending on the size of your database, this strategy can be more time consuming,
-   but needed in some circumstances.
+  using [_arangodump_ ](..\..\Programs\Arangodump\README.md) and then restored in
+  the new ArangoDB version using [_arangorestore_ ](..\..\Programs\Arangorestore\README.md).
+  Depending on the size of your database, this strategy can be more time consuming,
+  but needed in some circumstances.
 
 Before the Upgrade
 ------------------
 
-Before upgrading, it is suggested to:
+Before upgrading, it is recommended to:
 
 - Check the [CHANGELOG](../../ReleaseNotes/README.md#changelogs) and the
   [list of incompatible changes](../../ReleaseNotes/README.md#incompatible-changes)
-  for API or other changes in the new version of ArangoDB and make sure your applications
+  for API or other changes in the new version of ArangoDB, and make sure your applications
   can deal with them.
-- As an extra precaution, you might want to take a backup, and also copy the entire
-  "old" data directory to a safe place (after stopping the ArangoDB Server running
-  on it). The backup from the "old" version is required in case a downgrade will be needed. 
+- As an extra precaution, and as a requirement if you want to [downgrade](../../Downgrading/README.md),
+  you might want to:
+  - Take a backup of the old ArangoDB database, using [Arangodump](../../Programs/Arangodump/README.md),
+    as well as
+  - Copy the entire "old" data directory to a safe place, after stopping the ArangoDB Server
+    running on it (if you are running an Active Failover, or a Cluster, you will need to take
+    a copy of their data directories, from all involved machines, after stopping all the running
+    ArangoDB processes).
 
 Upgrade Paths
 -------------

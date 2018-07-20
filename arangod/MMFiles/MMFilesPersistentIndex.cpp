@@ -295,8 +295,10 @@ bool MMFilesPersistentIndexIterator::nextDocument(DocumentCallback const& cb,
 
 /// @brief create the index
 MMFilesPersistentIndex::MMFilesPersistentIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& info)
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+)
     : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId),
                             true) {}
 
@@ -339,9 +341,9 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
-  auto prefix = buildPrefix(trx->vocbase().id(), _collection->id(), _iid);
+  auto prefix = buildPrefix(trx->vocbase().id(), _collection.id(), _iid);
   VPackBuilder builder;
   std::vector<std::string> values;
 
@@ -447,8 +449,9 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
         auto physical =
-            static_cast<MMFilesCollection*>(_collection->getPhysical());
+            static_cast<MMFilesCollection*>(_collection.getPhysical());
         TRI_ASSERT(physical != nullptr);
+
         if (!physical->useSecondaryIndexes()) {
           // suppress the error during recovery
           res = TRI_ERROR_NO_ERROR;
@@ -519,7 +522,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -539,7 +542,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
     std::string value;
 
     value.reserve(keyPrefixSize() + s.byteSize());
-    value.append(buildPrefix(trx->vocbase().id(), _collection->id(), _iid));
+    value.append(buildPrefix(trx->vocbase().id(), _collection.id(), _iid));
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }
@@ -568,7 +571,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 /// @brief called when the index is dropped
 int MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(
-    _collection->vocbase().id(), _collection->id(), _iid
+    _collection.vocbase().id(), _collection.id(), _iid
   );
 }
 
@@ -671,11 +674,12 @@ MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
   // Secured by trx. The shared_ptr index stays valid in
   // _collection at least as long as trx is running.
   // Same for the iterator
-  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  auto physical = static_cast<MMFilesCollection*>(_collection.getPhysical());
   auto idx = physical->primaryIndex();
   auto db = MMFilesPersistentIndexFeature::instance()->db();
   return new MMFilesPersistentIndexIterator(
-      _collection, trx, this, idx, db, reverse, leftBorder, rightBorder);
+    &_collection, trx, this, idx, db, reverse, leftBorder, rightBorder
+  );
 }
 
 bool MMFilesPersistentIndex::supportsFilterCondition(
@@ -885,7 +889,7 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
       }
       throw;
     }
-    return new MultiIndexIterator(_collection, trx, this, iterators);
+    return new MultiIndexIterator(&_collection, trx, this, iterators);
   }
 
   VPackSlice searchSlice = searchValues.slice();

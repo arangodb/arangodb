@@ -14,7 +14,7 @@ view in ArangoDB.
 
 [ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
 [ArangoSearch overview](../Views/ArangoSearch/README.md)
-[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/README.md)
+[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
 
 
 New geo index implementation
@@ -69,7 +69,7 @@ downtime you can alternatively run a second arangod instance in your system,
 that replicates the original data; once the replication has reached completion,
 you can switch the instances.
 
-### Better control of rocksdb WAL sync interval
+### Better control of RocksDB WAL sync interval
 
 ArangoDB 3.4 also provides a new configuration option `--rocksdb.sync-interval`
 to control how frequently ArangoDB will automatically synchronize data in RocksDB's
@@ -87,7 +87,7 @@ The catch-up time for comparing the contents of two collections (or shards) on t
 different hosts via the incremental replication protocol has been reduced when using
 the RocksDB storage engine.
 
-### Improved rocksdb geo index performance
+### Improved RocksDB geo index performance
 
 The rewritten geo index implementation 3.4 speeds up the RocksDB-based geo index
 functionality by a factor of 3 to 6 for many common cases when compared to the

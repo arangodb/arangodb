@@ -83,12 +83,13 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  public:
   RocksDBPrimaryIndex() = delete;
 
-  RocksDBPrimaryIndex(arangodb::LogicalCollection*,
-                      VPackSlice const& info);
+  RocksDBPrimaryIndex(
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~RocksDBPrimaryIndex();
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
 
   char const* typeName() const override { return "primary"; }
