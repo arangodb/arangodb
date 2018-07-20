@@ -54,7 +54,6 @@ CreateCollection::CreateCollection(
   
   TRI_ASSERT(desc.has(COLLECTION));
   TRI_ASSERT(desc.has(DATABASE));
-  TRI_ASSERT(desc.has(ID));
   TRI_ASSERT(desc.has(LEADER));
   TRI_ASSERT(properties().hasKey(TYPE));
   TRI_ASSERT(properties().get(TYPE).isInteger());  
@@ -68,7 +67,7 @@ bool CreateCollection::first() {
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
-  auto const& planId = _description.get(ID);
+  auto const& planId = collection;
   auto const& leader = _description.get(LEADER);
   auto const& props = properties();
 
@@ -101,19 +100,20 @@ bool CreateCollection::first() {
   TRI_col_type_e type(props.get(TYPE).getNumber<TRI_col_type_e>());
   
   VPackBuilder docket;
-  for (auto const& i : VPackObjectIterator(props)) {
-    auto const& key = i.key.copyString();
-    if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
-      if (key == GLOB_UID || key == OBJECT_ID) {
-        LOG_TOPIC(WARN, Logger::MAINTENANCE)
-          << "unexpected " << key << " in " << props.toJson();
-      } else if (key == ID) {
-        docket.add("planId", i.value);
+  { VPackObjectBuilder d(&docket);
+    for (auto const& i : VPackObjectIterator(props)) {
+      auto const& key = i.key.copyString();
+      if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
+        if (key == GLOB_UID || key == OBJECT_ID) {
+          LOG_TOPIC(WARN, Logger::MAINTENANCE)
+            << "unexpected " << key << " in " << props.toJson();
+        } else if (key == ID) {
+          docket.add("planId", VPackValue(planId));
+        }
+        continue;
       }
-      continue;
-    }
-    docket.add(key, i.value);
-  }
+      docket.add(key, i.value);
+    }}
   
   _result = Collections::create(
     vocbase, collection, type, docket.slice(), waitForRepl, enforceReplFact,

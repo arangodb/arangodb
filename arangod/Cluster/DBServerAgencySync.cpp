@@ -105,9 +105,7 @@ Result getLocalCollections(VPackBuilder& collections) {
       collection->toVelocyPack(collections,true,false);
       collections.add(
         "theLeader", VPackValue(collection->followers()->getLeader()));
-      
-    }    
-    
+    }        
   }
 
   return Result();

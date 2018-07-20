@@ -46,12 +46,16 @@ using namespace arangodb::methods;
 
 static std::vector<std::string> cmp {
   "journalSize", "waitForSync", "doCompact", "indexBuckets"};
-static std::string const currentCollections("/arango/Current/Collections");
-static std::string const planCollections("/arango/Plan/Collections");
-static std::string const PRIMARY("primary");
+static std::string const CURRENT_COLLECTIONS("Current/Collections");
 static std::string const ERROR_MESSAGE("errorMessage");
 static std::string const ERROR_NUM("errorNum");
+static std::string const ERROR("error");
+static std::string const PLAN_COLLECTIONS("Plan/Collections");
+static std::string const PLAN_ID("planId");
+static std::string const PRIMARY("primary");
 static std::string const SERVERS("servers");
+static std::string const SELECTIVITY_ESTIMATE("selectivityEstimate");
+
 
 std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
   auto builder = std::make_shared<VPackBuilder>();
@@ -303,7 +307,7 @@ void addDatabaseToTransactions(
 
   // [ {"dbPath":{}}, {"dbPath":{"oldEmpty":true}} ]
   
-  std::string dbPath = currentCollections + "/" + name;
+  std::string dbPath = CURRENT_COLLECTIONS + "/" + name;
   VPackBuilder operation; // create database in current
   { VPackObjectBuilder b(&operation);
     operation.add(dbPath, VPackSlice::emptyObjectSlice()); }
@@ -371,6 +375,8 @@ arangodb::Result arangodb::maintenance::phaseOne (
   std::string const& serverId, MaintenanceFeature& feature,
   VPackBuilder& report) {
 
+  LOG_TOPIC(ERR, Logger::FIXME) << local.toJson();
+
   report.add(VPackValue("phaseOne"));
   VPackObjectBuilder por(&report);
 
@@ -388,27 +394,50 @@ arangodb::Result arangodb::maintenance::phaseOne (
   
 }
 
+VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
+  VPackBuilder ret;
+  VPackObjectBuilder o(&ret);
+  for (auto const& i : VPackObjectIterator(index)) {
+    auto const& key = i.key.copyString();
+    if (key != SELECTIVITY_ESTIMATE) {
+      ret.add(key, i.value);
+    }
+  }
+  return ret;
+}
+
 VPackBuilder assembleLocalCollectioInfo(
   VPackSlice const& info, VPackSlice const& error, std::string const& ourselves) {
 
   VPackBuilder ret;
-  VPackObjectBuilder r(&ret);
-  auto const& name = info.get("name").copyString();
-  
-  if (error.hasKey(COLLECTION)) {
-    auto const& collection = error.get(COLLECTION);
-    ret.add("error", VPackValue(true));
-    ret.add(ERROR_MESSAGE, collection.get(ERROR_MESSAGE));
-    ret.add(ERROR_NUM, collection.get(ERROR_NUM));
-    ret.add(VPackValue(INDEXES));
-    { VPackArrayBuilder a(&ret); }
-    ret.add(VPackValue(SERVERS));
-    { VPackArrayBuilder a(&ret);
-      ret.add(VPackValue(ourselves));
-    }
-    return ret;
-  }
 
+  { VPackObjectBuilder r(&ret);
+    if (error.hasKey(COLLECTION)) {            // Error
+      auto const& collection = error.get(COLLECTION);
+      ret.add(ERROR, VPackValue(true));
+      ret.add(ERROR_MESSAGE, collection.get(ERROR_MESSAGE));
+      ret.add(ERROR_NUM, collection.get(ERROR_NUM));
+      ret.add(VPackValue(INDEXES));
+      { VPackArrayBuilder a(&ret); }
+      ret.add(VPackValue(SERVERS));
+      { VPackArrayBuilder a(&ret);
+        ret.add(VPackValue(ourselves)); }
+    } else {                                  // Success
+      ret.add(ERROR, VPackValue(false));
+      ret.add(ERROR_MESSAGE, VPackValue(std::string()));
+      ret.add(ERROR_NUM, VPackValue(0));
+      ret.add(VPackValue(INDEXES));
+      { VPackArrayBuilder ixs(&ret);
+        for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
+          ret.add(removeSelectivityEstimate(index).slice());
+        }}
+      ret.add(VPackValue(SERVERS));
+      { VPackArrayBuilder a(&ret);
+        ret.add(VPackValue(ourselves)); }
+    }
+  }  
+  return ret;
+  
 }
 
 // udateCurrentForCollections
@@ -419,12 +448,33 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
   std::string const& serverId, VPackBuilder& report) {
   arangodb::Result result;
 
-  auto const& plannedCollections = plan.get("Collections");
-  auto const& currentCollections = cur.get("Collections");
+  std::vector<AgencyOperation> trxs;
   
   for (auto const& database : VPackObjectIterator(local)) {
+    auto const dbName = database.key.copyString();
+    for (auto const& shard : VPackObjectIterator(database.value)) {
+      auto const shName = shard.key.copyString();
+      auto const colName = shard.value.get(PLAN_ID).copyString();
+      VPackBuilder error;
+      auto const localCollectionInfo =
+        assembleLocalCollectioInfo(shard.value, error.slice(), serverId);
+      VPackSlice currentCollectionInfo;
+      
+      auto cp = std::vector<std::string> {dbName, colName, shName};
+      if (cur.hasKey(cp)) {
+        if (!VPackNormalizedCompare::equals(
+              localCollectionInfo.slice(), cur.get(cp))) {
+          trxs.push_back(
+            AgencyOperation(
+              CURRENT_COLLECTIONS + dbName + colName + shName,
+              AgencyValueOperationType::SET, localCollectionInfo.slice()));
+        }
+      }
+    }
     
   }
+
+  
   
   return result;
 }

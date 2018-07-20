@@ -90,7 +90,6 @@ class ActionBase {
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
   ActionState state() const {
-    #warning assumes WRITE lock on _actionRegistryLock
     return _state;
   }
 
@@ -111,13 +110,11 @@ class ActionBase {
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
   ActionState getState() const {
-    #warning check that lock is held
     return _state;
   }
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
   void setState(ActionState state) {
-#warning check that lock is held
     _state = state;
   }
 

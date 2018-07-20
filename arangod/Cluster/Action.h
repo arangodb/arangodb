@@ -89,9 +89,8 @@ public:
   std::shared_ptr<VPackBuilder> const properties() const;
 
   ActionState getState() const;
-  
+
   void setState(ActionState state) {
-#warning check that lock is held
     _action->setState(state);
   }
   
