@@ -8,7 +8,10 @@ Usage: `arangodump [<options>]`
 Encryption Options
 ------------------
 
-**The following options are only available in the Enterprise Edition.**
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
  
 *--encryption.keyfile path-of-keyfile*
 
