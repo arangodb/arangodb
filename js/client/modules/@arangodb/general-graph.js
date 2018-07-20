@@ -28,10 +28,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const db = internal.db;
 const arangosh = require('@arangodb/arangosh');
 const ggc = require('@arangodb/general-graph-common');
 const _ = require('lodash');
+
+const db = internal.db;
 
 const GRAPH_PREFIX = '_api/gharial/';
 
@@ -107,6 +108,10 @@ CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
     this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
   } catch (ignore) {
   }
+
+  if (createCollection !== false) {
+    db._flushCache();
+  }
 };
 
 CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) {
@@ -122,6 +127,10 @@ CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) 
   try {
     this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
   } catch (ignore) {
+  }
+
+  if (dropCollection === true) {
+    db._flushCache();
   }
 };
 
@@ -148,6 +157,7 @@ exports._create = function (name, edgeDefinitions, orphans, options) {
 
   const uri = GRAPH_PREFIX;
   const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, JSON.stringify(data)));
+  db._flushCache();
   return new CommonGraph(requestResult.graph);
 };
 
@@ -158,6 +168,9 @@ exports._drop = function (graphName, dropCollections) {
     uri += "?dropCollections=true";
   }
   const requestResult = arangosh.checkRequestResult(db._connection.DELETE(uri));
+  if (dropCollections) {
+    db._flushCache();
+  }
   return requestResult.result;
 };
 
