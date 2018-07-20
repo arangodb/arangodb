@@ -55,7 +55,8 @@ Key features include:
  
 If you have questions regarding ArangoDB, Foxx, drivers, or this documentation don't hesitate to contact us on:
 
-- [GitHub](https://github.com/arangodb/arangodb/issues) for issues and misbehavior or [pull requests](https://www.arangodb.com/community/)
+- [GitHub](https://github.com/arangodb/arangodb/issues) for issues
+  and misbehavior or [pull requests](https://www.arangodb.com/community/)
 - [Google Groups](https://groups.google.com/forum/?hl=de#!forum/arangodb) for discussions about ArangoDB in general or to announce your new Foxx App
 - [StackOverflow](http://stackoverflow.com/questions/tagged/arangodb) for questions about AQL, usage scenarios etc.
 - [Slack](http://slack.arangodb.com), our community chat
