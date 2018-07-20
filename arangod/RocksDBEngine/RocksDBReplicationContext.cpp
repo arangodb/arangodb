@@ -525,11 +525,7 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
-  if (_ttl > 0.0) {
-    ttl = _ttl;
-  } else {
-    ttl = InitialSyncer::defaultBatchTimeout;
-  }
+  ttl = std::max(std::max(_ttl, ttl), 300.0);
   _expires = TRI_microtime() + ttl;
   if (_serverId != 0) {
     _vocbase->updateReplicationClient(_serverId, ttl);
@@ -538,6 +534,8 @@ void RocksDBReplicationContext::use(double ttl) {
 
 void RocksDBReplicationContext::release() {
   TRI_ASSERT(_isUsed);
+  double ttl = std::max(_ttl, 300.0);
+  _expires = TRI_microtime() + ttl;
   _isUsed = false;
   if (_serverId != 0) {
     double ttl;

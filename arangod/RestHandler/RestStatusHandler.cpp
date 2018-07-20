@@ -30,6 +30,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 
 #include <iostream>
 
@@ -52,10 +53,13 @@ bool RestStatusHandler::isDirect() const { return true; }
 
 RestStatus RestStatusHandler::execute() {
   VPackBuilder result;
+  ;
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
-
+  result.add(
+    "datapath", VPackValue(
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath")->directory()));
   result.add("pid", VPackValue(Thread::currentProcessId()));
 
 #ifdef USE_ENTERPRISE
