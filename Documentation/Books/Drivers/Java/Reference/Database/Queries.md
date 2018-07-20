@@ -70,7 +70,7 @@ Performs a database query using the given _query_ and _bindVars_, then returns a
 
   - **satelliteSyncWait**: `Double`
 
-    This enterprise parameter allows to configure how long a DBServer will have time to bring the satellite collections involved in the query into sync. The default value is 60.0 (seconds). When the max time has been reached the query will be stopped.
+    This Enterprise Edition parameter allows to configure how long a DBServer will have time to bring the satellite collections involved in the query into sync. The default value is 60.0 (seconds). When the max time has been reached the query will be stopped.
 
   - **skipInaccessibleCollections**
 
