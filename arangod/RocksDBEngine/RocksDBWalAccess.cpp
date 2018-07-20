@@ -247,7 +247,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
       }
       case RocksDBLogType::ViewCreate:
         resetTransientState(); // finish ongoing trx
-        if (shouldHandleDB(RocksDBLogValue::databaseId(blob))) {
+        if (shouldHandleView(RocksDBLogValue::databaseId(blob),
+                             RocksDBLogValue::viewId(blob))) {
           _state = VIEW_CREATE;
         }
         // wait for marker data in Put entry
@@ -256,7 +257,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
       case RocksDBLogType::ViewDrop: {
         resetTransientState(); // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        if (shouldHandleDB(dbid)) {
+        TRI_voc_cid_t vid = RocksDBLogValue::viewId(blob);
+        if (shouldHandleView(dbid, vid)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             { // tick number
@@ -281,7 +283,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         
       case RocksDBLogType::ViewChange:
         resetTransientState(); // finish ongoing trx
-        if (shouldHandleDB(RocksDBLogValue::databaseId(blob))) {
+        if (shouldHandleView(RocksDBLogValue::databaseId(blob),
+                             RocksDBLogValue::viewId(blob))) {
           _state = VIEW_CHANGE;
         }
         // wait for marker data in Put entry
@@ -464,8 +467,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         TRI_voc_tick_t dbid = RocksDBKey::databaseId(key);
         TRI_voc_cid_t vid = RocksDBKey::viewId(key);
         
-        if (shouldHandleDB(dbid) && (_state == VIEW_CREATE ||
-                                     _state == VIEW_CHANGE)) {
+        if (shouldHandleView(dbid, vid) && (_state == VIEW_CREATE ||
+                                            _state == VIEW_CHANGE)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           TRI_ASSERT(vocbase != nullptr);
           auto view = vocbase->lookupView(vid);
