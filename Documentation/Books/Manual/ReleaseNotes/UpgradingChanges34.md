@@ -55,7 +55,7 @@ Geo indexes
   indexes using the new on-disk format.
 
   The on-disk format for geo indexes is incompatible with the on-disk format used
-  in 3.3 and 3.2, so downgrading from 3.4 to 3.3 is not supported.
+  in 3.3 and 3.2, so an in-place downgrade from 3.4 to 3.3 is not supported.
 
 - Geo indexes will now be reported no longer as _geo1_ or _geo2_ but as type `geo`. 
   The two previously known geo index types (`geo1`and `geo2`) are **deprecated**. 
@@ -68,12 +68,15 @@ RocksDB engine data storage format
 
 Installations that start using ArangoDB 3.4 will use an optimized on-disk format
 for storing documents using the RocksDB storage engine. This format cannot be used
-ArangoDB 3.3 or before, meaning it is not possible to downgrade from a fresh 3.4
-install to 3.3 or earlier when using the RocksDB engine.
+on ArangoDB 3.3 or before, meaning it is not possible to perform an in-place downgrade
+from a fresh 3.4 install to 3.3 or earlier when using the RocksDB engine. For more
+information on how to downgrade, please refer to the [Downgrading](../Downgrading/README.md)
+chapter.
 
 Installations that were originally set up with older versions of ArangoDB (e.g. 3.2
 or 3.3) will continue to use the existing on-disk format for the RocksDB engine
-even with ArangoDB 3.4.
+even with ArangoDB 3.4 (unless you install a fresh 3.4 package and restore a backup
+of your data on this fresh installation).
 
 In order to use the new binary format with existing data, it is required to 
 create a logical dump of the database data, shut down the server, erase the 
