@@ -117,12 +117,15 @@ more details about restoring the collection.
 Encryption
 ----------
 
-**This feature is only available in the Enterprise Edition.**
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
-Starting form version ??? encryption of the dump is supported.
+Starting form version 3.3 encryption of the dump is supported.
 
-The dump is encrypted using an encryption keyfile, which must contain 32 bytes of
-random data.
+The dump is encrypted using an encryption keyfile, which must contain exactly 32
+bytes of random data (required by the AES block cipher).
 
 The kyfile can be created by an external program, or by using a command like the
 following:
@@ -135,4 +138,44 @@ For security reasons, it is best to create these keys offline (away from your
 database servers) and directly store them in you secret management
 tool.
 
---> put use case / example here and also say something about restore. <--
+
+In order to create an encrypted backup, add the `--encryption.keyfile`
+option when invoking _arangodump_, in addition to any other option you
+are already using. The following example assumes that your secret key
+is stored in ~/SECRET-KEY:
+
+```
+arangodump --collection "secret-collection" dump --encryption.keyfile ~/SECRET-KEY
+```
+
+Note that _arangodump_ will not store the key anywhere. It is the responsibility
+of the user to find a safe place for the key. However, _arangodump_ will store
+the used encryption method in a file named `ENCRYPTION` in the dump directory.
+That way _arangorestore_ can later find out whether it is dealing with an
+encrypted dump or not.
+
+Trying to restore the encrypted dump without specifying the key will fail:
+
+```
+arangorestore --collection "secret-collection" dump --create-collection true
+```
+
+and _arangorestore_ will report the following error:
+
+> the dump data seems to be encrypted with aes-256-ctr, but no key information
+> was specified to decrypt the dump it is recommended to specify either
+> `--encryption.key-file` or `--encryption.key-generator` when invoking
+> arangorestore with an encrypted dump
+
+It is required to use the exact same key when restoring the data. Again this is
+done by providing the `--encryption.keyfile` parameter:
+
+```
+arangorestore --collection "secret-collection" dump --create-collection true --encryption.keyfile ~/SECRET-KEY
+```
+
+Using a different key will lead to the backup being non-recoverable.
+
+Note that encrypted backups can be used together with the already existing 
+RocksDB encryption-at-rest feature, but they can also be used for the MMFiles
+engine, which does not have encryption-at-rest.
