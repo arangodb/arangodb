@@ -275,50 +275,6 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
   return {TRI_ERROR_NO_ERROR};
 }
 
-// TODO replace the slice argument with an actual EdgeDefinition
-OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-    VPackSlice edgeDefinitions, bool waitForSync, VPackSlice options) {
-  std::shared_ptr<LogicalCollection> def;
-
-  for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
-    std::string edgeCollection = edgeDefinition.get("collection").copyString();
-    VPackSlice from = edgeDefinition.get(StaticStrings::GraphFrom);
-    VPackSlice to = edgeDefinition.get(StaticStrings::GraphTo);
-
-    def = getCollectionByName(ctx()->vocbase(), edgeCollection);
-
-    if (def == nullptr) {
-      OperationResult res =
-          createEdgeCollection(edgeCollection, waitForSync, options);
-      if (res.fail()) {
-        return res;
-      }
-    }
-
-    std::unordered_set<std::string> vertexCollections;
-
-    // duplicates in from and to shouldn't occur, but are safely ignored here
-    for (auto const& colName : VPackArrayIterator(from)) {
-      vertexCollections.emplace(colName.copyString());
-    }
-    for (auto const& colName : VPackArrayIterator(to)) {
-      vertexCollections.emplace(colName.copyString());
-    }
-    for (auto const& colName : vertexCollections) {
-      def = getCollectionByName(ctx()->vocbase(), colName);
-      if (def == nullptr) {
-        OperationResult res =
-            createVertexCollection(colName, waitForSync, options);
-        if (res.fail()) {
-          return res;
-        }
-      }
-    }
-  }
-
-  return OperationResult(TRI_ERROR_NO_ERROR);
-}
-
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     std::map<std::string, EdgeDefinition> const& edgeDefinitions,
     bool waitForSync, VPackSlice options) {
