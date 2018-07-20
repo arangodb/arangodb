@@ -209,7 +209,6 @@ OperationResult GraphOperations::eraseEdgeDefinition(
 
   newEdgeDefs.close();  // array
 
-  std::unordered_set<std::string> collectionsToMayBeRemoved;
   // build orphan array
   VPackBuilder newOrphColls;
   newOrphColls.add(VPackValue(VPackValueType::Array));
@@ -220,8 +219,6 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   for (auto const& po : possibleOrphans) {
     if (usedVertexCollections.find(po) == usedVertexCollections.end()) {
       newOrphColls.add(VPackValue(po));
-    } else {
-      collectionsToMayBeRemoved.emplace(po);
     }
   }
   newOrphColls.close();  // array
@@ -253,12 +250,8 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
     GraphManager gmngr{ctx()};
-    for (auto const& col : collectionsToMayBeRemoved) {
-      gmngr.pushCollectionIfMayBeDropped(col, _graph.name(),
-                                         collectionsToBeRemoved);
-    }
 
-    // add also the edge collection itself for removal
+    // add the edge collection itself for removal
     gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(),
                                        collectionsToBeRemoved);
     for (auto const& collection : collectionsToBeRemoved) {
@@ -318,17 +311,7 @@ OperationResult GraphOperations::checkVertexCollectionAvailability(
 OperationResult GraphOperations::editEdgeDefinition(
     VPackSlice edgeDefinitionSlice, bool waitForSync,
     const std::string& edgeDefinitionName) {
-  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
-      EdgeDefinition::sortEdgeDefinition(edgeDefinitionSlice);
-  edgeDefinitionSlice = velocypack::Slice(buffer->data());
-  if (!edgeDefinitionSlice.get("collection").isString()) {
-    return OperationResult(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
-  }
-  std::string currentEdgeDefinitionName =
-      edgeDefinitionSlice.get("collection").copyString();
-
-  auto maybeEdgeDef =
-    EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
+  auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
   if (!maybeEdgeDef) {
     return OperationResult{maybeEdgeDef};
   }
@@ -345,21 +328,16 @@ OperationResult GraphOperations::editEdgeDefinition(
     return OperationResult{permRes};
   }
 
-  VPackBuilder builder;
-  builder.add(VPackValue(VPackValueType::Array));
-  builder.add(edgeDefinitionSlice);
-  builder.close();
-
   GraphManager gmngr{ctx()};
   VPackBuilder collectionsOptions;
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
-  result = gmngr.findOrCreateCollectionsByEdgeDefinitions(
-      builder.slice(), waitForSync, collectionsOptions.slice());
+  result = gmngr.findOrCreateCollectionsByEdgeDefinition(
+      edgeDefinition, waitForSync, collectionsOptions.slice());
   if (result.fail()) {
     return result;
   }
 
-  if (!_graph.hasEdgeCollection(currentEdgeDefinitionName)) {
+  if (!_graph.hasEdgeCollection(edgeDefinition.getName())) {
     return OperationResult(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
   }
 
@@ -384,7 +362,7 @@ OperationResult GraphOperations::editEdgeDefinition(
   for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
     Graph graph = Graph::fromSlice(singleGraph.resolveExternals());
     result =
-      changeEdgeDefinitionForGraph(graph, edgeDefinition, waitForSync, trx);
+        changeEdgeDefinitionForGraph(graph, edgeDefinition, waitForSync, trx);
   }
   if (result.fail()) {
     return result;
@@ -563,9 +541,9 @@ OperationResult GraphOperations::eraseOrphanCollection(
 
 OperationResult GraphOperations::addEdgeDefinition(
     VPackSlice edgeDefinitionSlice, bool waitForSync) {
-	std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
-					EdgeDefinition::sortEdgeDefinition(edgeDefinitionSlice);
-	edgeDefinitionSlice = velocypack::Slice(buffer->data());
+  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
+      EdgeDefinition::sortEdgeDefinition(edgeDefinitionSlice);
+  edgeDefinitionSlice = velocypack::Slice(buffer->data());
 
   auto edgeDefOrError = ResultT<EdgeDefinition>{
       EdgeDefinition::createFromVelocypack(edgeDefinitionSlice)};
@@ -583,9 +561,8 @@ OperationResult GraphOperations::addEdgeDefinition(
   if (_graph.hasEdgeCollection(edgeCollection)) {
     return OperationResult(Result(
         TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
-        edgeCollection + " " +
-            std::string{
-                TRI_errno_string(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)}));
+        edgeCollection + " " + std::string{TRI_errno_string(
+                                   TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)}));
   }
 
   // ... in different graph
@@ -601,25 +578,19 @@ OperationResult GraphOperations::addEdgeDefinition(
     return OperationResult{permRes};
   }
 
-  VPackBuilder builder;
-  builder.add(VPackValue(VPackValueType::Array));
-  builder.add(edgeDefinitionSlice);
-  builder.close();
-
   VPackBuilder collectionsOptions;
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
 
-  result = gmngr.findOrCreateCollectionsByEdgeDefinitions(
-      builder.slice(), waitForSync, collectionsOptions.slice());
+  result = gmngr.findOrCreateCollectionsByEdgeDefinition(
+      edgeDefinition, waitForSync, collectionsOptions.slice());
   if (result.fail()) {
     return result;
   }
   std::unordered_set<std::string> usedVertexCollections;
 
-  std::map<std::string, EdgeDefinition> edgeDefs =
-      _graph.edgeDefinitions();
+  std::map<std::string, EdgeDefinition> edgeDefs = _graph.edgeDefinitions();
   // build the updated document, reuse the builder
-  builder.clear();
+  VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
   builder.add(StaticStrings::GraphEdgeDefinitions,
@@ -643,7 +614,7 @@ OperationResult GraphOperations::addEdgeDefinition(
     builder.close();  // to
     builder.close();  // obj
   }
-  builder.add(edgeDefinitionSlice);
+  edgeDefinition.addToBuilder(builder);
   builder.close();  // array
 
   builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));

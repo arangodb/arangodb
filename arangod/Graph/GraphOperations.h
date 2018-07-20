@@ -42,6 +42,8 @@
 namespace arangodb {
 namespace graph {
 
+// TODO rename to GraphMethods
+
 class GraphOperations {
  private:
   Graph const& _graph;

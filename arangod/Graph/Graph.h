@@ -41,8 +41,7 @@ namespace graph {
 
 class EdgeDefinition {
  public:
-  EdgeDefinition(std::string edgeCollection_,
-                 std::set<std::string>&& from_,
+  EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
                  std::set<std::string>&& to_)
       : _edgeCollection(std::move(edgeCollection_)), _from(from_), _to(to_) {}
 
@@ -54,10 +53,10 @@ class EdgeDefinition {
   /// to the builder.
   void addToBuilder(velocypack::Builder& builder) const;
 
-  bool hasFrom(std::string const &vertexCollection) const;
-  bool hasTo(std::string const &vertexCollection) const;
+  bool hasFrom(std::string const& vertexCollection) const;
+  bool hasTo(std::string const& vertexCollection) const;
 
-  bool hasVertexCollection(std::string const &vertexCollection) const;
+  bool hasVertexCollection(std::string const& vertexCollection) const;
 
   /// @brief validate the structure of edgeDefinition, i.e.
   /// that it contains the correct attributes, and that they contain the correct

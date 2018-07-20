@@ -96,9 +96,15 @@ class GraphManager {
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult findOrCreateCollectionsByEdgeDefinitions(
-      VPackSlice edgeDefinitions, bool waitForSync, VPackSlice options);
+      std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+      bool waitForSync, VPackSlice options);
+
+  /// @deprecated remove this version
   OperationResult findOrCreateCollectionsByEdgeDefinitions(
-    std::map<std::string, EdgeDefinition> const& edgeDefinitions, bool waitForSync,
+      VPackSlice edgeDefinitions, bool waitForSync, VPackSlice options);
+
+  OperationResult findOrCreateCollectionsByEdgeDefinition(
+      EdgeDefinition const& edgeDefinition, bool waitForSync,
       VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////

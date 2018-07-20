@@ -320,46 +320,57 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-  std::map<std::string, EdgeDefinition> const& edgeDefinitions, bool waitForSync,
-  VPackSlice options) {
-  std::shared_ptr<LogicalCollection> def;
-
+    std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+    bool waitForSync, VPackSlice options) {
   for (auto const& it : edgeDefinitions) {
-    std::string const& edgeCollection = it.first;
     EdgeDefinition const& edgeDefinition = it.second;
+    OperationResult res = findOrCreateCollectionsByEdgeDefinition(
+        edgeDefinition, waitForSync, options);
 
-    def = getCollectionByName(ctx()->vocbase(), edgeCollection);
+    if (res.fail()) {
+      return res;
+    }
+  }
 
+  return OperationResult{TRI_ERROR_NO_ERROR};
+}
+
+OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
+    EdgeDefinition const& edgeDefinition, bool waitForSync,
+    VPackSlice const options) {
+  std::string const& edgeCollection = edgeDefinition.getName();
+  std::shared_ptr<LogicalCollection> def =
+      getCollectionByName(ctx()->vocbase(), edgeCollection);
+
+  if (def == nullptr) {
+    OperationResult res =
+        createEdgeCollection(edgeCollection, waitForSync, options);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  std::unordered_set<std::string> vertexCollections;
+
+  // duplicates in from and to shouldn't occur, but are safely ignored here
+  for (auto const& colName : edgeDefinition.getFrom()) {
+    vertexCollections.emplace(colName);
+  }
+  for (auto const& colName : edgeDefinition.getTo()) {
+    vertexCollections.emplace(colName);
+  }
+  for (auto const& colName : vertexCollections) {
+    def = getCollectionByName(ctx()->vocbase(), colName);
     if (def == nullptr) {
       OperationResult res =
-        createEdgeCollection(edgeCollection, waitForSync, options);
+          createVertexCollection(colName, waitForSync, options);
       if (res.fail()) {
         return res;
       }
     }
-
-    std::unordered_set<std::string> vertexCollections;
-
-    // duplicates in from and to shouldn't occur, but are safely ignored here
-    for (auto const& colName : edgeDefinition.getFrom()) {
-      vertexCollections.emplace(colName);
-    }
-    for (auto const& colName : edgeDefinition.getTo()) {
-      vertexCollections.emplace(colName);
-    }
-    for (auto const& colName : vertexCollections) {
-      def = getCollectionByName(ctx()->vocbase(), colName);
-      if (def == nullptr) {
-        OperationResult res =
-            createVertexCollection(colName, waitForSync, options);
-        if (res.fail()) {
-          return res;
-        }
-      }
-    }
   }
 
-  return OperationResult(TRI_ERROR_NO_ERROR);
+  return OperationResult{TRI_ERROR_NO_ERROR};
 }
 
 /// @brief extract the collection by either id or name, may return nullptr!

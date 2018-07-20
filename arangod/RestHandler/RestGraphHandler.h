@@ -129,7 +129,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                              const std::string& collectionName);
 
   // GET /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-  void edgeActionRead(const std::shared_ptr<const graph::Graph> graph,
+  void edgeActionRead(std::shared_ptr<const graph::Graph> graph,
                       const std::string &definitionName,
                       const std::string &key);
 
