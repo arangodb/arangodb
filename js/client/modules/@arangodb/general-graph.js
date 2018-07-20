@@ -39,8 +39,10 @@ const GRAPH_PREFIX = '_api/gharial/';
 // remove me later
 exports._exists = ggc._exists;
 
-// missing
-// _deleteEdgeDefinition
+// TODO There are several db._flushCache() calls here, whenever gharial might
+// have added or dropped collections. Maybe this should be called even when
+// the request has failed (in which case now it isn't, because an exception is
+// thrown first).
 
 exports._listObjects = function () {
   const uri = GRAPH_PREFIX;
@@ -121,6 +123,27 @@ CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) 
   } else {
     uri += "?dropCollection=false";
   }
+  const requestResult = arangosh.checkRequestResult(db._connection.DELETE(uri));
+  const graph = requestResult.graph;
+
+  try {
+    this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
+  } catch (ignore) {
+  }
+
+  if (dropCollection === true) {
+    db._flushCache();
+  }
+};
+
+CommonGraph.prototype._deleteEdgeDefinition = function (name, dropCollection = false) {
+  let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + encodeURIComponent(name);
+  if (dropCollection === true) {
+    uri += "?dropCollection=true";
+  } else {
+    uri += "?dropCollection=false";
+  }
+
   const requestResult = arangosh.checkRequestResult(db._connection.DELETE(uri));
   const graph = requestResult.graph;
 
