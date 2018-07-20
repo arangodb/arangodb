@@ -380,6 +380,7 @@ class Regexen:
         self.RESTSTRUCT = re.compile('.*@RESTSTRUCT')
         self.RESTALLBODYPARAM = re.compile('.*@RESTALLBODYPARAM')
         self.RESTDESCRIPTION = re.compile('.*@RESTDESCRIPTION')
+        self.HINT = re.compile('.*@HINT')
         self.RESTDONE = re.compile('.*@RESTDONE')
         self.RESTHEADER = re.compile('.*@RESTHEADER{')
         self.RESTHEADERPARAM = re.compile('.*@RESTHEADERPARAM{')
@@ -417,6 +418,7 @@ def next_step(fp, line, r):
     elif r.RESTSTRUCT.match(line):            return reststruct, (fp, line)
     elif r.RESTALLBODYPARAM.match(line):      return restallbodyparam, (fp, line)
     elif r.RESTDESCRIPTION.match(line):       return restdescription, (fp, line)
+    elif r.HINT.match(line):                  return hint, (fp, line)
     elif r.RESTHEADER.match(line):            return restheader, (fp, line)
     elif r.RESTHEADERPARAM.match(line):       return restheaderparam, (fp, line)
     elif r.RESTHEADERPARAMETERS.match(line):  return restheaderparameters, (fp, line)
@@ -893,6 +895,25 @@ def restdescription(cargo, r=Regexen()):
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @RESTDESCRIPTION in file %s' % (fp.name)
+        exit(1)
+
+    return ret
+
+################################################################################
+### @brief hint
+################################################################################
+
+def hint(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method
+    swagger['paths'][httpPath][method]['x-hint'] += '\n\n'
+
+    ret = generic_handler_desc(cargo, r, "hint", None,
+                                swagger['paths'][httpPath][method],
+                                'hint')
+
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hint']):
+        (fp, last) = cargo
+        print >> sys.stderr, 'remove newline after @HINT in file %s' % (fp.name)
         exit(1)
 
     return ret

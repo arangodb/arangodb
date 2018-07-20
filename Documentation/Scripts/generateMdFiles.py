@@ -151,6 +151,15 @@ def getRestDescription():
     else:
         #print >> sys.stderr, "ELSE"
         return ""
+
+def getHint():
+    #print >>sys.stderr, "HINT"
+    if thisVerb['x-hint']:
+        #print >> sys.stderr, thisVerb['x-hint']
+        return thisVerb['x-hint'])
+    else:
+        #print >> sys.stderr, "ELSE"
+        return ""
         
 def getRestReplyBodyParam(param):
     rc = "\n**Response Body**\n"
@@ -214,6 +223,7 @@ SIMPL_REPL_VALIDATE_DICT = {
 SIMPL_REPL_DICT = {
     "\\"                    : "\\\\",
     "@RESTDESCRIPTION"      : getRestDescription,
+    "@HINT"                 : getHint,
     "@RESTURLPARAMETERS"    : "\n**Path Parameters**\n",
     "@RESTQUERYPARAMETERS"  : "\n**Query Parameters**\n",
     "@RESTHEADERPARAMETERS" : "\n**Header Parameters**\n",
@@ -235,6 +245,7 @@ SIMPLE_RX = re.compile(
 r'''
 \\|                                 # the backslash...
 @RESTDESCRIPTION|                   # -> <empty>
+@HINT|                              # -> <inject hint box below headline>
 @RESTURLPARAMETERS|                 # -> \n**Path Parameters**\n
 @RESTQUERYPARAMETERS|               # -> \n**Query Parameters**\n
 @RESTHEADERPARAMETERS|              # -> \n**Header Parameters**\n
