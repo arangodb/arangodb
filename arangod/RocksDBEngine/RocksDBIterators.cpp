@@ -206,7 +206,6 @@ bool RocksDBAnyIndexIterator::checkIter() {
   return true;
 }
 
-
 bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
@@ -334,7 +333,6 @@ void RocksDBSortedAllIterator::reset() {
   _iterator->Seek(_bounds.start());
 }
 
-
 RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options
                                               ,RocksDBKeyBounds const& bounds
                                               ,bool reverse)
@@ -342,10 +340,9 @@ RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options
     , _bounds(bounds)
     , _options(options)
     , _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options, _bounds.columnFamily()))
-    , _cmp(_bounds.columnFamily()->GetComparator())
-  {
-    reset();
-  };
+    , _cmp(_bounds.columnFamily()->GetComparator()) {
+  reset();
+}
 
 bool RocksDBGenericIterator::hasMore() const {
   return _iterator->Valid() && !outOfRange();
@@ -381,10 +378,8 @@ bool RocksDBGenericIterator::seek(rocksdb::Slice const& key) {
   } else {
     _iterator->Seek(key);
   }
-  //TRI_ASSERT(_iterator->Valid()); - can be empty
   return hasMore();
 }
-
 
 bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
   // @params
@@ -415,9 +410,8 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
   return hasMore();
 }
 
-RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods* trx
-                                                          ,LogicalCollection* col
-                                                          ){
+RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods* trx,
+                                                            LogicalCollection* col) {
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(trx != nullptr);
 
@@ -441,9 +435,8 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   return iterator;
 }
 
-RocksDBGenericIterator arangodb::createDocumentIterator(transaction::Methods* trx
-                                                          ,LogicalCollection* col
-                                                          ){
+RocksDBGenericIterator arangodb::createDocumentIterator(transaction::Methods* trx,
+                                                        LogicalCollection* col) {
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(trx != nullptr);
 
