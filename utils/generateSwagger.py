@@ -905,11 +905,11 @@ def restdescription(cargo, r=Regexen()):
 
 def hint(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
-    swagger['paths'][httpPath][method]['x-hint'] += '\n\n'
+    swagger['paths'][httpPath][method]['x-hint'] = '\n\n'
 
     ret = generic_handler_desc(cargo, r, "hint", None,
                                 swagger['paths'][httpPath][method],
-                                'hint')
+                                'x-hint')
 
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hint']):
         (fp, last) = cargo
@@ -1189,6 +1189,7 @@ automat.add_state(restbodyparam)
 automat.add_state(reststruct)
 automat.add_state(restallbodyparam)
 automat.add_state(restdescription)
+automat.add_state(hint)
 automat.add_state(restheader)
 automat.add_state(restheaderparam)
 automat.add_state(restheaderparameters)

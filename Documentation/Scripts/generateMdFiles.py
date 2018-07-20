@@ -156,7 +156,7 @@ def getHint():
     #print >>sys.stderr, "HINT"
     if thisVerb['x-hint']:
         #print >> sys.stderr, thisVerb['x-hint']
-        return thisVerb['x-hint'])
+        return RX4.sub(thisVerb['x-hint'], r'')
     else:
         #print >> sys.stderr, "ELSE"
         return ""
@@ -347,6 +347,8 @@ RX2 = [
 ]
 
 RX3 = (re.compile(r'\*\*Example:\*\*((?:.|\n)*?)</code></pre>'), r"")
+
+RX4 = re.compile(r'@HINT')
 
 match_RESTHEADER = re.compile(r"@RESTHEADER\{(.*)\}")
 match_RESTRETURNCODE = re.compile(r"@RESTRETURNCODE\{(.*)\}")
