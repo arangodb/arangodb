@@ -153,7 +153,7 @@ Datacenter to datacenter replication (DC2DC) requires a normal ArangoDB cluster 
 and one or more (`arangosync`) syncmasters & syncworkers in both data centers.
 The starter enables you to run these syncmasters & syncworkers in combination with your normal
 cluster.
-Note: Datacenter to datacenter replication is an ArangoDB Enterprise feature.
+Note: Datacenter to datacenter replication is an ArangoDB Enterprise Edition feature.
 
 To run a starter with DC2DC support you add the following arguments to the starters command line:
 

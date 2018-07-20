@@ -1,6 +1,11 @@
 <!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Monitoring datacenter to datacenter replication
 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
 This section includes information related to the monitoring of the _datacenter
 to datacenter replication_.
 
