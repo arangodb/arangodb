@@ -24,6 +24,9 @@
 
 #ifdef _WIN32
 #include <DbgHelp.h>
+#if ARANGODB_ENABLE_BACKTRACE
+#include <iostream>
+#endif
 #endif
 
 #include "Basics/FileUtils.h"
