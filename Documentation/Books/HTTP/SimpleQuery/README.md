@@ -31,6 +31,7 @@ dispose the server-side cursor afterwards.
 @startDocuBlock JSA_put_api_simple_all
 
 {% hint 'warning' %} Only till ArangoDB **v3.3.7**. From **v3.3.8** and above the internal implementation of this API has changed - V8 is not used anymore. {% endhint %}
+
 <!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_by_example
 
