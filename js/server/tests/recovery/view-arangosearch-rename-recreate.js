@@ -73,13 +73,12 @@ function recoverySuite () {
 
     testViewRenameRecreate: function () {
       var v, prop;
-/*
+
       v = db._view('UnitTestsRecovery1');
       assertEqual(v.properties().properties.commit.commitIntervalMsec, 7);
 
       v = db._view('UnitTestsRecovery2');
       assertEqual(v.properties().properties.commit.commitIntervalMsec, 17);
-*/
     }
 
   };
