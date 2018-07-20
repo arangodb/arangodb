@@ -209,10 +209,10 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   // add link to collection
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\" : {"
+      "{ \"properties\": { \"links\" : {"
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
-      "}}"
+      "}}}"
     );
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 

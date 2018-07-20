@@ -132,7 +132,8 @@ collection *data* nor create new collections in the database *example*.
 Granting Access Levels
 ----------------------
 
-Access levels can be managed via the [web interface](../../Programs/WebInterface/Users.md) or in [arangosh](InArangosh.md).
+Access levels can be managed via the [web interface](../../Programs/WebInterface/Users.md)
+or in [arangosh](InArangosh.md).
 
 In order to grant an access level to a user, you can assign one of
 three access levels for each database and one of three levels for each
@@ -287,7 +288,10 @@ database. All changes to the access levels must be done using the
 
 ### LDAP Users
 
-__This feature is only available in the Enterprise Edition.__
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
 ArangoDB supports LDAP as an external authentication system. For detailed information please have look into
 the [LDAP configuration guide](../Configuration/Ldap.md).

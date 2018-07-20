@@ -230,8 +230,9 @@ Syncer::SyncerState::SyncerState(
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
-  TRI_ASSERT(ServerState::instance()->isSingleServer() ||
-             ServerState::instance()->isDBServer());
+  if (!ServerState::instance()->isSingleServer() && !ServerState::instance()->isDBServer()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "the replication functionality is supposed to be invoked only on a single server or DB server");
+  }
   if (!_state.applier._database.empty()) {
     // use name from configuration
     _state.databaseName = _state.applier._database;
@@ -403,6 +404,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
         return res;
       }
 
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "got lock timeout while waiting for lock on collection '" << coll->name() << "', retrying...";
       std::this_thread::sleep_for(std::chrono::microseconds(50000));
       // retry
     }

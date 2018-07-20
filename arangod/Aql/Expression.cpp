@@ -487,6 +487,9 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
+    case NODE_TYPE_COLLECTION:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'collection' is not supported in ArangoDB 3.4");
+
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
@@ -873,8 +876,8 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   parameters.reserve(n);
   destroyParameters.reserve(n);
 
-  auto guard = scopeGuard([&destroyParameters, &parameters, &n]() {
-    for (size_t i = 0; i < n; ++i) {
+  auto guard = scopeGuard([&destroyParameters, &parameters]() {
+    for (size_t i = 0; i < destroyParameters.size(); ++i) {
       if (destroyParameters[i]) {
         parameters[i].destroy();
       }

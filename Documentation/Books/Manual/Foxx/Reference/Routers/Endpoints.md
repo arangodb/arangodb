@@ -1,7 +1,10 @@
 Endpoints
 =========
 
-Endpoints are returned by the `use`, `all` and HTTP verb (e.g. `get`, `post`) methods of [routers](./README.md) as well as the `use` method of the [service context](../Context.md). They can be used to attach metadata to mounted routes, middleware and child routers that affects how requests and responses are processed or provides API documentation.
+Endpoints are returned by the `use`, `all`
+and HTTP verb (e.g. `get`, `post`) methods of [routers](./README.md)
+as well as the `use` method of the [service context](../Context.md).
+They can be used to attach metadata to mounted routes, middleware and child routers that affects how requests and responses are processed or provides API documentation.
 
 Endpoints should only be used to invoke the following methods. Endpoint methods can be chained together (each method returns the endpoint itself).
 

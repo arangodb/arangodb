@@ -520,9 +520,9 @@ SECTION("test_query") {
 
   // snapshot isolation
   {
-    auto links = arangodb::velocypack::Parser::fromJson("{ \
+    auto links = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
       \"links\": { \"testCollection\": { \"includeAllFields\" : true } } \
-    }");
+    }}");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\":442 }");
 
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
@@ -620,7 +620,7 @@ SECTION("test_query") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": { \"includeAllFields\": true } } } }");
     auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::FlushFeature
     >("Flush");
@@ -1002,7 +1002,7 @@ SECTION("test_updateProperties") {
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"commit\": { \"commitIntervalMsec\": 52 }, \"links\": { \"testCollection\": {} } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"collections\": [ 6, 7, 8, 9 ], \"commit\": { \"commitIntervalMsec\": 52 }, \"links\": { \"testCollection\": {} } } }");
       CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
     }
 
@@ -1109,7 +1109,7 @@ SECTION("test_updateProperties") {
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } } }");
       CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
     }
 
@@ -1221,7 +1221,7 @@ SECTION("test_updateProperties") {
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } } }");
       CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
     }
 
@@ -1333,7 +1333,7 @@ SECTION("test_updateProperties") {
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } } }");
       CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
     }
 

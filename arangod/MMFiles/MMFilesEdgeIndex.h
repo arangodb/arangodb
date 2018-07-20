@@ -146,7 +146,7 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
  public:
   MMFilesEdgeIndex() = delete;
 
-  MMFilesEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
+  MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }

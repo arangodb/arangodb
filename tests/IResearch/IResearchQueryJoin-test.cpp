@@ -354,10 +354,10 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
   // add link to collection
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": {"
+      "{ \"properties\": { \"links\": {"
       "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true },"
       "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
-      "}}"
+      "}}}"
     );
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -532,10 +532,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // add link to collection
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": {"
+      "{ \"properties\": { \"links\": {"
       "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true },"
       "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
-      "}}"
+      "}}}"
     );
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 

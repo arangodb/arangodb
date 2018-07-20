@@ -298,7 +298,7 @@ SECTION("test_create_drop") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      logicalCollection.get(), json->slice(), 1, true
+      *logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
   }
@@ -307,7 +307,7 @@ SECTION("test_create_drop") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
     auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      logicalCollection.get(), json->slice(), 1, true
+      *logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
   }
