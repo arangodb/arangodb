@@ -1,14 +1,7 @@
-/* lib/Basics/local-configuration.h.  Generated from local-configuration.h.in by
- * configure.  */
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,16 +17,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LOCAL__CONFIGURATION__WIN_H
-#define ARANGODB_BASICS_LOCAL__CONFIGURATION__WIN_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_V8SHELL_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_V8SHELL_FEATURE_PHASE_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
+#include "ApplicationFeaturePhase.h"
+
+namespace arangodb {
+namespace application_features {
+class V8ShellFeaturePhase final : public ApplicationFeaturePhase {
+ public:
+  explicit V8ShellFeaturePhase(ApplicationServer* server);
+};
+}  // namespace application_features
+}  // namespace arangodb
+
 #endif
 
-#endif
+

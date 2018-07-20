@@ -646,7 +646,7 @@ bool IResearchViewMetaState::init(
   std::string& errorField,
   IResearchViewMetaState const& defaults /*= DEFAULT()*/,
   Mask* mask /*= nullptr*/
-) noexcept {
+) {
   if (!slice.isObject()) {
     errorField = "not an object";
     return false;

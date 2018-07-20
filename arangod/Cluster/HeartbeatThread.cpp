@@ -797,7 +797,7 @@ void HeartbeatThread::runCoordinator() {
             // We won the race we are the master
             ServerState::instance()->setFoxxmaster(state->getId());
           }
-
+          _agency.increment("Current/Version");
         }
 
         VPackSlice versionSlice =
@@ -1131,8 +1131,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
 void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   bool shouldUpdate = false;
-  bool becauseOfPlan = false;
-  bool becauseOfCurrent = false;
 
   MUTEX_LOCKER(mutexLocker, *_statusLock);
 
@@ -1141,14 +1139,12 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
         << "Plan version " << _currentVersions.plan
         << " is lower than desired version " << _desiredVersions->plan;
     shouldUpdate = true;
-    becauseOfPlan = true;
   }
   if (_desiredVersions->current > _currentVersions.current) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
         << "Current version " << _currentVersions.current
         << " is lower than desired version " << _desiredVersions->current;
     shouldUpdate = true;
-    becauseOfCurrent = true;
   }
 
   // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
@@ -1164,10 +1160,10 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
-  if (becauseOfPlan) {
+  if (_desiredVersions->plan > ci->getPlanVersion()) {
     ci->invalidatePlan();
   }
-  if (becauseOfCurrent) {
+  if (_desiredVersions->current > ci->getCurrentVersion()) {
     ci->invalidateCurrent();
   }
 

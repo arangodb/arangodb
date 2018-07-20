@@ -31,8 +31,6 @@
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 
-#include <iostream>
-
 #if defined(TRI_HAVE_POSIX_THREADS)
 #include <unistd.h>
 #endif

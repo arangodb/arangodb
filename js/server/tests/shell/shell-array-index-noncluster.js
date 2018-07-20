@@ -1,4 +1,4 @@
-/*global assertEqual, fail, print*/
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the array index
@@ -166,7 +166,6 @@ function arrayHashIndexSuite () {
       // occurred with exactly this value and no others
 
       if (db._engine().name === "rocksdb") {
-        print("FIXME -- fix performance for rockdsdb and remove adjustment in test");
         n = 1000;
       }
 

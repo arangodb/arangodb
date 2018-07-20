@@ -27,7 +27,6 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -433,6 +432,16 @@ void ClusterInfo::loadPlan() {
           << "Attention: /arango/Plan/Version in the agency is not set or not "
              "a positive number.";
       }
+      {
+        READ_LOCKER(guard, _planProt.lock);
+        if (_planProt.isValid && newPlanVersion <= _planVersion) {
+          LOG_TOPIC(DEBUG, Logger::CLUSTER)
+            << "We already know this or a later version, do not update. "
+            << "newPlanVersion=" << newPlanVersion << " _planVersion="
+            << _planVersion;
+          return;
+        }
+      }
       decltype(_plannedDatabases) newDatabases;
       decltype(_plannedCollections) newCollections; // map<string /*database id*/
                                                     //    ,map<string /*collection id*/
@@ -829,6 +838,16 @@ void ClusterInfo::loadCurrent() {
         LOG_TOPIC(WARN, Logger::CLUSTER)
           << "Attention: /arango/Current/Version in the agency is not set or "
              "not a positive number.";
+      }
+      { 
+        READ_LOCKER(guard, _currentProt.lock);
+        if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
+          LOG_TOPIC(DEBUG, Logger::CLUSTER)
+            << "We already know this or a later version, do not update. "
+            << "newCurrentVersion=" << newCurrentVersion << " _currentVersion="
+            << _currentVersion;
+          return;
+        }
       }
 
       decltype(_currentDatabases) newDatabases;
@@ -2228,8 +2247,10 @@ Result ClusterInfo::setCollectionStatusCoordinator(
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
       AgencyValueOperationType::SET, builder.slice());
+  AgencyOperation incrementVersion(
+      "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  AgencyWriteTransaction trans(setColl, databaseExists);
+  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
 
   res = ac.sendTransactionWithFailover(trans);
 

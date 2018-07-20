@@ -188,7 +188,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   }
 }
 
-bool RocksDBAnyIndexIterator::checkIter(){
+bool RocksDBAnyIndexIterator::checkIter() {
   if ( /* not  valid */            !_iterator->Valid() ||
        /* out of range forward */  ( _forward && _cmp->Compare(_iterator->key(), _bounds.end())   > 0) ||
        /* out of range backward */ (!_forward && _cmp->Compare(_iterator->key(), _bounds.start()) < 0)  ) {
@@ -199,7 +199,7 @@ bool RocksDBAnyIndexIterator::checkIter(){
       _iterator->SeekForPrev(_bounds.end());
     }
 
-    if(!_iterator->Valid()){
+    if(!_iterator->Valid()) {
       return false;
     }
   }

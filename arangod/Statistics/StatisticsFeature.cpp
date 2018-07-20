@@ -123,8 +123,7 @@ StatisticsFeature::StatisticsFeature(
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
       _descriptions(new stats::Descriptions()) {
-  startsAfter("Logger");
-  startsAfter("Aql");
+  startsAfter("AQLPhase");
   setOptional(true);
 }
 

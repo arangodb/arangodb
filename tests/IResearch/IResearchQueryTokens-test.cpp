@@ -260,10 +260,10 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
     REQUIRE((false == !impl));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": {"
+      "{ \"properties\": { \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
-      "}}"
+      "}}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
     std::set<TRI_voc_cid_t> cids;

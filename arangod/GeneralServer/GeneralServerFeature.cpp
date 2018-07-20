@@ -103,16 +103,14 @@ GeneralServerFeature::GeneralServerFeature(
       _allowMethodOverride(false),
       _proxyCheck(true) {
   setOptional(true);
-  startsAfter("Agency");
-  startsAfter("Authentication");
-  startsAfter("CheckVersion");
-  startsAfter("Database");
+  startsAfter("AQLPhase");
+
   startsAfter("Endpoint");
-  startsAfter("FoxxQueues");
-  startsAfter("Random");
-  startsAfter("Scheduler");
-  startsAfter("Server");
   startsAfter("Upgrade");
+
+  // TODO The following features are too high
+  // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before
+  // startsAfter("FoxxQueues");
 }
 
 void GeneralServerFeature::collectOptions(
@@ -150,7 +148,7 @@ void GeneralServerFeature::collectOptions(
   options->addSection("frontend", "Frontend options");
 
   options->addOption("--frontend.proxy-request-check",
-                     "enable or disable proxy request checking",
+                     "enable proxy request checking",
                      new BooleanParameter(&_proxyCheck));
 
   options->addOption("--frontend.trusted-proxy",

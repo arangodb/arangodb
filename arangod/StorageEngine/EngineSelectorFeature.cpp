@@ -44,9 +44,7 @@ EngineSelectorFeature::EngineSelectorFeature(
       _engine("auto"), 
       _hasStarted(false) {
   setOptional(false);
-  startsAfter("DatabasePath");
-  startsAfter("Greetings");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -80,7 +78,7 @@ void EngineSelectorFeature::prepare() {
   }
     
   if (_engine == "auto") {
-    _engine = MMFilesEngine::EngineName;
+    _engine = defaultEngine();
   }
   
   TRI_ASSERT(_engine != "auto");
@@ -168,4 +166,8 @@ std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEng
   
 char const* EngineSelectorFeature::engineName() {
   return ENGINE->typeName();
+}
+    
+std::string const& EngineSelectorFeature::defaultEngine() {
+  return RocksDBEngine::EngineName;
 }

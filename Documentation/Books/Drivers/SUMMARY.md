@@ -1,6 +1,10 @@
 
 # Summary
+
 * [Introduction](README.md)
+
+## Official Drivers
+
 #   https://@github.com/arangodb/arangodb-java-driver.git;arangodb-java-driver;docs/Drivers;;/ 
 * [Java Driver](Java/README.md)
   * [Getting Started](Java/GettingStarted/README.md)
@@ -55,10 +59,6 @@
       * [VertexCollection](JS/Reference/Graph/VertexCollection.md)
       * [EdgeCollection](JS/Reference/Graph/EdgeCollection.md)
     * [Route](JS/Reference/Route.md) 
-#   https://@github.com/arangodb/spring-data.git;spring-data;docs/Drivers;;/ 
-* [Spring Data ArangoDB](SpringData/README.md)
-  * [Getting Started](SpringData/GettingStarted/README.md)
-  * [Reference](SpringData/Reference/README.md)
 #   https://@github.com/arangodb/arangodb-php.git;arangodb-php;docs/Drivers;;/
 * [ArangoDB-PHP](PHP/README.md)
   * [Getting Started](PHP/GettingStarted/README.md)
@@ -68,3 +68,16 @@
   * [Getting Started](GO/GettingStarted/README.md)
   * [Example Requests](GO/ExampleRequests/README.md)
   * [Connection Management](GO/ConnectionManagement/README.md)
+
+## Integrations
+
+#   https://@github.com/arangodb/spring-data.git;spring-data;docs/Drivers;;/ 
+* [Spring Data ArangoDB](SpringData/README.md)
+  * [Getting Started](SpringData/GettingStarted/README.md)
+  * [Reference](SpringData/Reference/README.md)
+#   https://@github.com/arangodb/arangodb-spark-connector.git;arangodb-spark-connector;docs/Drivers;;/
+* [ArangoDB Spark Connector](SparkConnector/README.md)
+  * [Getting Started](SparkConnector/GettingStarted/README.md)
+  * [Reference](SparkConnector/Reference/README.md)
+    * [Java](SparkConnector/Reference/Java.md)
+    * [Scala](SparkConnector/Reference/Scala.md)

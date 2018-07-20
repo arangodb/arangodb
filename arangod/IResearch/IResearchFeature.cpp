@@ -395,6 +395,7 @@ class IResearchFeature::Async {
 
   void emplace(std::shared_ptr<ResourceMutex> const& mutex, Fn &&fn); // add an asynchronous task
   void notify() const; // notify all tasks
+  void start();
 
  private:
   struct Pending {
@@ -426,10 +427,10 @@ class IResearchFeature::Async {
     mutable bool _wasNotified; // a notification was raised from another thread
 
     Thread(std::string const& name)
-      : arangodb::Thread(name), _wasNotified(false) {
+      : arangodb::Thread(name), _terminate(nullptr), _wasNotified(false) {
     }
     Thread(Thread&& other) // used in constructor before tasks are started
-      : arangodb::Thread(other.name()), _wasNotified(false) {
+      : arangodb::Thread(other.name()), _terminate(nullptr), _wasNotified(false) {
     }
     virtual bool isSystem() override { return true; } // or start(...) will fail
     virtual void run() override;
@@ -580,17 +581,13 @@ IResearchFeature::Async::Async(): _terminate(false) {
 
   auto* last = &(_pool.back());
 
-  // buld circular list
+  // build circular list
   for (auto& thread: _pool) {
     last->_next = &thread;
     last = &thread;
     thread._terminate = &_terminate;
   }
 
-  // start threads
-  for (auto& thread: _pool) {
-    thread.start(&_join);
-  }
 }
 
 IResearchFeature::Async::~Async() {
@@ -601,8 +598,10 @@ IResearchFeature::Async::~Async() {
 
   // join with all threads in pool
   for (auto& thread: _pool) {
-    while(thread.isRunning()) {
-      _join.wait();
+    if (thread.hasStarted()) {
+      while(thread.isRunning()) {
+        _join.wait();
+      }
     }
   }
 }
@@ -631,34 +630,33 @@ void IResearchFeature::Async::notify() const {
   }
 }
 
+void IResearchFeature::Async::start() {
+  // start threads
+  for (auto& thread: _pool) {
+    thread.start(&_join);
+  }
+}
+
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
-    _async(std::make_unique<Async>()),
     _running(false) {
   setOptional(true);
-  startsAfter("ViewTypes");
-  startsAfter("Logger");
-  startsAfter("Database");
+  startsAfter("V8Phase");
+
   startsAfter("IResearchAnalyzer"); // used for retrieving IResearch analyzers for functions
   startsAfter("AQLFunctions");
-  // TODO FIXME: we need the MMFilesLogfileManager to be available here if we
-  // use the MMFiles engine. But it does not feel right to have such storage engine-
-  // specific dependency here. Better create a "StorageEngineFeature" and make
-  // ourselves start after it!
-  startsAfter("MMFilesLogfileManager");
-  startsAfter("TransactionManager");
-
-  startsBefore("GeneralServer");
 }
 
 void IResearchFeature::async(
     std::shared_ptr<ResourceMutex> const& mutex,
     Async::Fn &&fn
 ) {
+  TRI_ASSERT(_async);
   _async->emplace(mutex, std::move(fn));
 }
 
 void IResearchFeature::asyncNotify() const {
+  TRI_ASSERT(_async);
   _async->notify();
 }
 
@@ -679,6 +677,18 @@ void IResearchFeature::collectOptions(
 }
 
 void IResearchFeature::prepare() {
+  if (!isEnabled()) {
+    return;
+  }
+
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isAgent()) {  
+    // no need to start the thread pool on the coordinator or on an agent.
+    // threads are only needed on single server or DB servers
+    // in a cluster
+    _async = std::make_unique<Async>();
+  }
+
   _running = false;
   ApplicationFeature::prepare();
 
@@ -698,9 +708,19 @@ void IResearchFeature::prepare() {
   registerTransactionDataSourceRegistrationCallback();
 
   registerRecoveryHelper();
+
+  // start the async task thread pool
+  if (!ServerState::instance()->isCoordinator() && 
+      !ServerState::instance()->isAgent()) {  
+    _async->start();
+  }
 }
 
 void IResearchFeature::start() {
+  if (!isEnabled()) {
+    return;
+  }
+
   ApplicationFeature::start();
 
   // register IResearchView filters
@@ -724,11 +744,17 @@ void IResearchFeature::start() {
 }
 
 void IResearchFeature::stop() {
+  if (!isEnabled()) {
+    return;
+  }
   _running = false;
   ApplicationFeature::stop();
 }
 
 void IResearchFeature::unprepare() {
+  if (!isEnabled()) {
+    return;
+  }
   _running = false;
   ApplicationFeature::unprepare();
 }

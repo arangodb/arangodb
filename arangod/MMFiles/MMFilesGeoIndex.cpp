@@ -207,10 +207,12 @@ struct NearIterator final : public IndexIterator {
 };
 typedef NearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
-                                 LogicalCollection* collection,
-                                 VPackSlice const& info,
-                                 std::string const& typeName)
+MMFilesGeoIndex::MMFilesGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+)
     : MMFilesIndex(iid, collection, info),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
@@ -415,10 +417,12 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   // why does this have to be shit?
   if (params.ascending) {
     return new NearIterator<geo_index::DocumentsAscending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, mmdr, this, std::move(params)
+    );
   } else {
     return new NearIterator<geo_index::DocumentsDescending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, mmdr, this, std::move(params)
+    );
   }
 }
 

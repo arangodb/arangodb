@@ -514,10 +514,12 @@ uint64_t RocksDBEdgeIndex::HashForKey(const rocksdb::Slice& key) {
   return static_cast<uint64_t>(hasher(tmp));
 }
 
-RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
-                                   arangodb::LogicalCollection* collection,
-                                   VPackSlice const& info,
-                                   std::string const& attr)
+RocksDBEdgeIndex::RocksDBEdgeIndex(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& attr
+)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                         {{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
@@ -598,7 +600,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(trx)->trackIndexInsert(
-      _collection->id(), id(), hash
+      _collection.id(), id(), hash
     );
 
     return IndexResult();
@@ -632,7 +634,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(trx)->trackIndexRemove(
-      _collection->id(), id(), hash
+      _collection.id(), id(), hash
     );
 
     return IndexResult();
@@ -715,13 +717,13 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx, this);
     }
     return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx, this);
 }
 
 /// @brief specializes the condition for use with the index
@@ -770,7 +772,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // prepare transaction for parallel read access
   RocksDBTransactionState::toState(trx)->prepareForParallelReads();
 
-  auto rocksColl = toRocksDBCollection(_collection);
+  auto rocksColl = toRocksDBCollection(&_collection);
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
 
@@ -849,7 +851,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice const& lower,
                                       rocksdb::Slice const& upper) {
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto rocksColl = toRocksDBCollection(_collection);
+  auto rocksColl = toRocksDBCollection(&_collection);
   ManagedDocumentResult mmdr;
   bool needsInsert = false;
   std::string previous = "";
@@ -1007,7 +1009,9 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, this, std::move(keys), _cache);
+  return new RocksDBEdgeIndexIterator(
+    &_collection, trx, this, std::move(keys), _cache
+  );
 }
 
 /// @brief create the iterator
@@ -1033,7 +1037,9 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, this, std::move(keys), _cache);
+  return new RocksDBEdgeIndexIterator(
+    &_collection, trx, this, std::move(keys), _cache
+  );
 }
 
 /// @brief add a single value node to the iterator's keys

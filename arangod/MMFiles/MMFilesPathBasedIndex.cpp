@@ -40,9 +40,13 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute
      {arangodb::basics::AttributeName("_key", false)};
 
 /// @brief create the index
-MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
-                               arangodb::LogicalCollection* collection,
-                               VPackSlice const& info, size_t baseSize, bool allowPartialIndex)
+MMFilesPathBasedIndex::MMFilesPathBasedIndex(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    size_t baseSize,
+    bool allowPartialIndex
+)
     : MMFilesIndex(iid, collection, info),
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),

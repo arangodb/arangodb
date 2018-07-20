@@ -240,7 +240,7 @@ class Agent final : public arangodb::Thread,
   query_t allLogs() const;
 
   /// @brief Last contact with followers
-  query_t lastAckedAgo() const;
+  void lastAckedAgo(Builder&) const;
 
   /// @brief Am I active agent
   bool active() const;

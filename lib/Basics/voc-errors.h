@@ -1147,11 +1147,6 @@ constexpr int TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              
 /// options specification.
 constexpr int TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 = 1576;
 
-/// 1577: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
-/// "collection '%s' used as expression operand"
-/// Will be raised when a collection is used as an operand in an AQL expression.
-constexpr int TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     = 1577;
-
 /// 1578: ERROR_QUERY_DISALLOWED_DYNAMIC_CALL
 /// "disallowed dynamic call to '%s'"
 /// Will be raised when a dynamic function call is made to a function that
