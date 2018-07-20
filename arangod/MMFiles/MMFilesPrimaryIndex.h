@@ -172,9 +172,8 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
  public:
   MMFilesPrimaryIndex() = delete;
 
-  explicit MMFilesPrimaryIndex(arangodb::LogicalCollection*);
+  explicit MMFilesPrimaryIndex(arangodb::LogicalCollection& collection);
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
 
   char const* typeName() const override { return "primary"; }

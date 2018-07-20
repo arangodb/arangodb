@@ -1012,8 +1012,9 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
     s.slice(),
     false,
     true,
-      [&](LogicalCollection* coll) {
+    [&](LogicalCollection& coll)->void {
         VPackBuilder t;
+
         t.openObject();
         t.add("collection", VPackValue(collection));
         t.add("type", VPackValue("skiplist"));
@@ -1027,14 +1028,16 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
         VPackBuilder output;
         Result idxRes =
-            methods::Indexes::ensureIndex(coll, t.slice(), true, output);
+          methods::Indexes::ensureIndex(&coll, t.slice(), true, output);
+
         if (!idxRes.ok()) {
           LOG_TOPIC(WARN, Logger::STATISTICS)
               << "Can't create the skiplist index for collection " << collection
               << " please create it manually; error: "
               << idxRes.errorMessage();
         }
-      });
+    }
+  );
 }
 
 void StatisticsWorker::beginShutdown() {
