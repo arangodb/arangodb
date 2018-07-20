@@ -62,7 +62,7 @@ namespace iresearch {
 
 IResearchLinkCoordinator::IResearchLinkCoordinator(
     TRI_idx_iid_t id,
-    LogicalCollection* collection
+    LogicalCollection& collection
 ): arangodb::Index(id, collection, IResearchLinkHelper::emptyIndexSlice()) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false; // cannot be unique since multiple fields are indexed
@@ -84,8 +84,7 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false; // failed to parse metadata
   }
 
-  if (!_collection
-      || !definition.isObject()
+  if (!definition.isObject()
       || !(definition.get(StaticStrings::ViewIdField).isString() ||
            definition.get(StaticStrings::ViewIdField).isNumber())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -97,7 +96,7 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
 
   auto idSlice = definition.get(StaticStrings::ViewIdField);
   std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
-  auto& vocbase = _collection->vocbase();
+  auto& vocbase = _collection.vocbase();
 
   TRI_ASSERT(ClusterInfo::instance());
   auto logicalView  = ClusterInfo::instance()->getView(vocbase.name(), viewId);
@@ -122,9 +121,9 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false;
   }
 
-  if (!view->emplace(_collection->id(), _collection->name(), definition)) {
+  if (!view->emplace(_collection.id(), _collection.name(), definition)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error emplacing link to collection '" << _collection->name() << "' into IResearch view '" << viewId << "' link '" << id() << "'";
+        << "error emplacing link to collection '" << _collection.name() << "' into IResearch view '" << viewId << "' link '" << id() << "'";
 
     return false;
   }
@@ -135,7 +134,7 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
 }
 
 /*static*/ IResearchLinkCoordinator::ptr IResearchLinkCoordinator::make(
-  arangodb::LogicalCollection* collection,
+  arangodb::LogicalCollection& collection,
   arangodb::velocypack::Slice const& definition,
   TRI_idx_iid_t id,
   bool // isClusterConstructor

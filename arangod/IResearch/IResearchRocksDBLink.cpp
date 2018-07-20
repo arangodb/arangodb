@@ -37,7 +37,9 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchRocksDBLink::IResearchRocksDBLink(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection
+)
     : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
                    RocksDBColumnFamily::invalid(), false),
       IResearchLink(iid, collection) {
@@ -51,7 +53,7 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
 }
 
 /*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -101,17 +103,19 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
 
 void IResearchRocksDBLink::writeRocksWalMarker() {
   RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
-      Index::_collection->vocbase().id(),
-      Index::_collection->id(),
-      view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
-      Index::_iid);
-
+    Index::_collection.vocbase().id(),
+    Index::_collection.id(),
+    view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
+    Index::_iid
+  );
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
   auto db = rocksutils::globalRocksDB();
 
   batch.PutLogData(logValue.slice());
+
   auto status = rocksutils::convertStatus(db->Write(wo, &batch));
+
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }

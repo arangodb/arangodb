@@ -1379,17 +1379,20 @@ static void JS_PropertiesVocbaseCol(
   // in the cluster the collection object might contain outdated
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
+
   methods::Collections::lookup(
     &(consoleColl->vocbase()),
     consoleColl->name(),
-    [&](LogicalCollection* coll) {
+    [&](LogicalCollection& coll)->void {
     VPackObjectBuilder object(&builder, true);
-    methods::Collections::Context ctxt(coll->vocbase(), coll);
+    methods::Collections::Context ctxt(coll.vocbase(), &coll);
     Result res = methods::Collections::properties(ctxt, builder);
+
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   });
+
   // return the current parameter set
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject());
   TRI_V8_TRY_CATCH_END

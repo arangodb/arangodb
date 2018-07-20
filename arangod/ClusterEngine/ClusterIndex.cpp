@@ -50,9 +50,13 @@ std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 };
 
-ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           ClusterEngineType engineType, Index::IndexType itype,
-                           VPackSlice const& info)
+ClusterIndex::ClusterIndex(
+    TRI_idx_iid_t id,
+    LogicalCollection& collection,
+    ClusterEngineType engineType,
+    Index::IndexType itype,
+    arangodb::velocypack::Slice const& info
+)
     : Index(id, collection, info),
       _engineType(engineType),
       _indexType(itype),

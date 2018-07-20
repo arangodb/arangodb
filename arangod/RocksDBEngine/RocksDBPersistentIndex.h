@@ -31,11 +31,13 @@ class RocksDBPersistentIndex final : public RocksDBVPackIndex {
  public:
   RocksDBPersistentIndex() = delete;
 
-  RocksDBPersistentIndex(TRI_idx_iid_t iid, LogicalCollection* coll,
-                         arangodb::velocypack::Slice const& info)
+  RocksDBPersistentIndex(
+      TRI_idx_iid_t iid,
+      LogicalCollection& coll,
+      arangodb::velocypack::Slice const& info
+  )
       : RocksDBVPackIndex(iid, coll, info) {}
 
- public:
   IndexType type() const override {
     return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
@@ -44,6 +46,7 @@ class RocksDBPersistentIndex final : public RocksDBVPackIndex {
 
   bool isSorted() const override { return true; }
 };
+
 }
 
 #endif
