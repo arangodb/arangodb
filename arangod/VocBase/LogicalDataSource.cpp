@@ -59,12 +59,9 @@ std::string ensureGuid(
   // id numbers can also not conflict, first character is always 'h'
   if (arangodb::ServerState::instance()->isCoordinator() ||
       arangodb::ServerState::instance()->isDBServer()) {
-    char buf[sizeof(TRI_server_id_t) * 2 + 1];
-    auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
-    TRI_ASSERT(id);
-    guid.append("h");
-    guid.append(buf, len);
-    TRI_ASSERT(guid.size() > 3);
+    TRI_ASSERT(planId);
+    guid.append("c");
+    guid.append(std::to_string(planId));
     guid.push_back('/');
     if (arangodb::ServerState::instance()->isDBServer()) {
       // we add the shard name to the collection. If we ever
