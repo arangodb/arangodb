@@ -392,6 +392,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   }
   _collection->setSorted(true, _trx.get());
   TRI_ASSERT(_collection->sorted() && _lastIteratorOffset == 0);
+  
+  // reserve some space in the result builder to avoid frequent reallocations
+  b.reserve(8192);
+  // temporary buffer for stringifying revision ids
+  char ridBuffer[21];
 
   std::string lowKey;
   std::string highKey;  // needs to be a string (not ref) as the rocksdb slice will not be valid outside the callback
@@ -399,13 +404,14 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   uint64_t hash = 0x012345678;
 
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-    highKey = RocksDBKey::primaryKey(rocksKey).toString();
+    StringRef key = RocksDBKey::primaryKey(rocksKey);
+    highKey.assign(key.data(), key.size());
 
     TRI_voc_rid_t docRev;
-    if(!RocksDBValue::revisionId(rocksValue, docRev)){
+    if (!RocksDBValue::revisionId(rocksValue, docRev)) {
       // for collections that do not have the revisionId in the value
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
-      if(_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
+      if (_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
         TRI_ASSERT(false);
         return;
       }
@@ -415,21 +421,22 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
 
     // set type
     if (lowKey.empty()) {
-      lowKey = highKey;
+      lowKey.assign(key.data(), key.size());
     }
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
 
     builder.clear();
-    builder.add(VPackValue(highKey));
+    builder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
     hash ^= builder.slice().hashString();
     builder.clear();
-    builder.add(VPackValue(TRI_RidToString(docRev)));
-    hash ^= builder.slice().hash();
+    auto positions = TRI_RidToString(docRev, &ridBuffer[0]);
+    builder.add(velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
+    hash ^= builder.slice().hashString();
   }; //cb
 
-  b.openArray();
+  b.openArray(true);
   while (_collection->hasMore) {
     try {
       _collection->hasMore = _collection->iter->next(cb, chunkSize);
@@ -445,8 +452,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       b.close();
       lowKey.clear();      // reset string
       hash = 0x012345678;  // the next block ought to start with a clean sheet
-    } catch (std::exception const&) {
-      return rv.reset(TRI_ERROR_INTERNAL);
+    } catch (std::exception const& ex) {
+      return rv.reset(TRI_ERROR_INTERNAL, ex.what());
     }
   }
 
@@ -514,12 +521,17 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
   }
 
+  // reserve some space in the result builder to avoid frequent reallocations
+  b.reserve(8192);
+  // temporary buffer for stringifying revision ids
+  char ridBuffer[21];
+
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     TRI_voc_rid_t docRev;
-    if(!RocksDBValue::revisionId(rocksValue, docRev)){
+    if (!RocksDBValue::revisionId(rocksValue, docRev)) {
       // for collections that do not have the revisionId in the value
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
-      if(_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
+      if (_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
         TRI_ASSERT(false);
         return;
       }
@@ -528,19 +540,20 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
 
     StringRef docKey(RocksDBKey::primaryKey(rocksKey));
-    b.openArray();
+    b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
-    b.add(VPackValue(TRI_RidToString(docRev)));
+    auto positions = TRI_RidToString(docRev, &ridBuffer[0]);
+    b.add(velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
     b.close();
   };
 
-  b.openArray();
+  b.openArray(true);
   // chunkSize is going to be ignored here
   try {
     _collection->hasMore = primary->next(cb, chunkSize);
     _lastIteratorOffset++;
-  } catch (std::exception const&) {
-    return rv.reset(TRI_ERROR_INTERNAL);
+  } catch (std::exception const& ex) {
+    return rv.reset(TRI_ERROR_INTERNAL, ex.what());
   }
   b.close();
 

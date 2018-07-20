@@ -214,7 +214,7 @@ Result syncChunkRocksDB(
           currentRevisionId = transaction::helpers::extractRevFromDocument(
               VPackSlice(mmdr.vpack()));
         }
-        if (TRI_RidToString(currentRevisionId) != pair.at(1).copyString()) {
+        if (!pair.at(1).isEqualString(TRI_RidToString(currentRevisionId))) {
           // key found, but revision id differs
           toFetch.emplace_back(i);
           ++nextStart;
@@ -235,7 +235,7 @@ Result syncChunkRocksDB(
     if (localKey.compare(highString) > 0) {
       // we have a local key that is not present remotely
       keyBuilder->clear();
-      keyBuilder->openObject();
+      keyBuilder->openObject(true);
       keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
       keyBuilder->close();
 
@@ -689,10 +689,13 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             // don't bother hashing if we have't found lower key
             if (foundLowKey) {
               localHash ^= docKeySlice.hashString();
-              
+  
               tempBuilder.clear();
-              tempBuilder.add(VPackValue(TRI_RidToString(docRev)));
-              localHash ^= tempBuilder.slice().hash();  // revision as string
+              // use a temporary char buffer for building to rid string
+              char ridBuffer[21];
+              auto positions = TRI_RidToString(docRev, &ridBuffer[0]);
+              tempBuilder.add(VPackValuePair(&ridBuffer[0] + positions.first, positions.second, VPackValueType::String));
+              localHash ^= tempBuilder.slice().hashString();  // revision as string
 
               if (cmp2 == 0) {  // found highKey
                 rangeUnequal = std::to_string(localHash) != hashString;

@@ -194,8 +194,11 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    b.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    auto positions = TRI_RidToString(revisionId, &ridBuffer[0]);
+    b.add(StaticStrings::RevString, velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
   }
 
   // add other attributes after the system attributes
@@ -350,8 +353,11 @@ Result PhysicalCollection::newObjectForInsert(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    auto positions = TRI_RidToString(revisionId, &ridBuffer[0]);
+    builder.add(StaticStrings::RevString, velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
   }
 
   // add other attributes after the system attributes
@@ -375,8 +381,12 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
     TRI_ASSERT(s.isString());
     builder.add(StaticStrings::KeyString, s);
   }
+    
+  // temporary buffer for stringifying revision ids
+  char ridBuffer[21];
   revisionId = newRevisionId();
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+  auto positions = TRI_RidToString(revisionId, &ridBuffer[0]);
+  builder.add(StaticStrings::RevString, velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
   builder.close();
 }
 
