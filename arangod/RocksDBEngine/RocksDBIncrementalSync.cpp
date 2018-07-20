@@ -693,8 +693,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
               tempBuilder.clear();
               // use a temporary char buffer for building to rid string
               char ridBuffer[21];
-              auto positions = TRI_RidToString(docRev, &ridBuffer[0]);
-              tempBuilder.add(VPackValuePair(&ridBuffer[0] + positions.first, positions.second, VPackValueType::String));
+              tempBuilder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
               localHash ^= tempBuilder.slice().hashString();  // revision as string
 
               if (cmp2 == 0) {  // found highKey

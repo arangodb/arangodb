@@ -197,8 +197,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     // temporary buffer for stringifying revision ids
     char ridBuffer[21];
     revisionId = newRevisionId();
-    auto positions = TRI_RidToString(revisionId, &ridBuffer[0]);
-    b.add(StaticStrings::RevString, velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
+    b.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -356,8 +355,7 @@ Result PhysicalCollection::newObjectForInsert(
     // temporary buffer for stringifying revision ids
     char ridBuffer[21];
     revisionId = newRevisionId();
-    auto positions = TRI_RidToString(revisionId, &ridBuffer[0]);
-    builder.add(StaticStrings::RevString, velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
+    builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -385,8 +383,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
   // temporary buffer for stringifying revision ids
   char ridBuffer[21];
   revisionId = newRevisionId();
-  auto positions = TRI_RidToString(revisionId, &ridBuffer[0]);
-  builder.add(StaticStrings::RevString, velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
+  builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   builder.close();
 }
 
@@ -443,8 +440,10 @@ Result PhysicalCollection::newObjectForReplace(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes

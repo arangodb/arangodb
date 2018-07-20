@@ -431,8 +431,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
     builder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
     hash ^= builder.slice().hashString();
     builder.clear();
-    auto positions = TRI_RidToString(docRev, &ridBuffer[0]);
-    builder.add(velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
+    builder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
     hash ^= builder.slice().hashString();
   }; //cb
 
@@ -542,8 +541,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     StringRef docKey(RocksDBKey::primaryKey(rocksKey));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
-    auto positions = TRI_RidToString(docRev, &ridBuffer[0]);
-    b.add(velocypack::ValuePair(&ridBuffer[0] + positions.first, positions.second, velocypack::ValueType::String));
+    b.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
     b.close();
   };
 
