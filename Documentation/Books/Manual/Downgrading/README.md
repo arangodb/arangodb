@@ -1,7 +1,7 @@
 Downgrading
 ===========
 
-A direct, binary downgrade of ArangoDB is **not** supported. If you have upgraded
+A direct, in-place downgrade of ArangoDB is **not** supported. If you have upgraded
 your ArangoDB package, and then also upgraded your current data directory, it is
 not supported to downgrade the package and start an older ArangoDB version on a
 data directory that was upgraded already.
