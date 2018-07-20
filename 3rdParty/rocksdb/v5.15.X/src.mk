@@ -25,6 +25,7 @@ LIB_SOURCES =                                                   \
   db/db_info_dumper.cc                                          \
   db/db_iter.cc                                                 \
   db/dbformat.cc                                                \
+  db/error_handler.cc						\
   db/event_helpers.cc                                           \
   db/experimental.cc                                            \
   db/external_sst_file_ingestion_job.cc                         \
@@ -37,7 +38,6 @@ LIB_SOURCES =                                                   \
   db/log_reader.cc                                              \
   db/log_writer.cc                                              \
   db/malloc_stats.cc                                            \
-  db/managed_iterator.cc                                        \
   db/memtable.cc                                                \
   db/memtable_list.cc                                           \
   db/merge_helper.cc                                            \
@@ -129,6 +129,7 @@ LIB_SOURCES =                                                   \
   util/coding.cc                                                \
   util/compaction_job_stats_impl.cc                             \
   util/comparator.cc                                            \
+  util/compression_context_cache.cc                             \
   util/concurrent_arena.cc                                      \
   util/crc32c.cc                                                \
   util/delete_scheduler.cc                                      \
@@ -208,6 +209,8 @@ LIB_SOURCES =                                                   \
   utilities/transactions/transaction_util.cc                    \
   utilities/transactions/write_prepared_txn.cc                  \
   utilities/transactions/write_prepared_txn_db.cc               \
+  utilities/transactions/write_unprepared_txn.cc                \
+  utilities/transactions/write_unprepared_txn_db.cc             \
   utilities/ttl/db_ttl_impl.cc                                  \
   utilities/write_batch_with_index/write_batch_with_index.cc    \
   utilities/write_batch_with_index/write_batch_with_index_internal.cc    \
@@ -250,6 +253,8 @@ MAIN_SOURCES =                                                          \
   cache/cache_bench.cc                                                  \
   cache/cache_test.cc                                                   \
   db/column_family_test.cc                                              \
+  db/compact_files_test.cc                                              \
+  db/compaction_iterator_test.cc                                        \
   db/compaction_job_stats_test.cc                                       \
   db/compaction_job_test.cc                                             \
   db/compaction_picker_test.cc                                          \
@@ -257,6 +262,7 @@ MAIN_SOURCES =                                                          \
   db/corruption_test.cc                                                 \
   db/cuckoo_table_db_test.cc                                            \
   db/db_basic_test.cc                                                   \
+  db/db_blob_index_test.cc                                              \
   db/db_block_cache_test.cc                                             \
   db/db_bloom_filter_test.cc                                            \
   db/db_compaction_filter_test.cc                                       \
@@ -273,33 +279,51 @@ MAIN_SOURCES =                                                          \
   db/db_memtable_test.cc                                                \
   db/db_merge_operator_test.cc                                          \
   db/db_options_test.cc                                                 \
+  db/db_properties_test.cc                                              \
   db/db_range_del_test.cc                                               \
   db/db_sst_test.cc                                                     \
   db/db_statistics_test.cc                                              \
   db/db_table_properties_test.cc                                        \
   db/db_tailing_iter_test.cc                                            \
   db/db_test.cc                                                         \
+  db/db_test2.cc                                                        \
   db/db_universal_compaction_test.cc                                    \
   db/db_wal_test.cc                                                     \
   db/db_write_test.cc                                                   \
   db/dbformat_test.cc                                                   \
   db/deletefile_test.cc                                                 \
-  db/obsolete_files_test.cc						\
+  db/env_timed_test.cc                                                  \
+  db/error_handler_test.cc                                        	\
   db/external_sst_file_basic_test.cc                                    \
   db/external_sst_file_test.cc                                          \
   db/fault_injection_test.cc                                            \
   db/file_indexer_test.cc                                               \
+  db/file_reader_writer_test.cc                                         \
   db/filename_test.cc                                                   \
   db/flush_job_test.cc                                                  \
+  db/hash_table_test.cc                                                 \
+  db/hash_test.cc                                                       \
+  db/heap_test.cc                                                       \
   db/listener_test.cc                                                   \
   db/log_test.cc                                                        \
+  db/lru_cache_test.cc                                                  \
   db/manual_compaction_test.cc                                          \
+  db/memtable_list_test.cc                                              \
+  db/merge_helper_test.cc                                               \
   db/merge_test.cc                                                      \
+  db/obsolete_files_test.cc						\
+  db/options_settable_test.cc                                           \
   db/options_file_test.cc                                               \
+  db/partitioned_filter_block_test.cc                                   \
   db/perf_context_test.cc                                               \
+  db/persistent_cache_test.cc                                           \
   db/plain_table_db_test.cc                                             \
   db/prefix_test.cc                                                     \
+  db/redis_test.cc                                                      \
+  db/repair_test.cc                                                     \
+  db/range_del_aggregator_test.cc                                       \
   db/table_properties_collector_test.cc                                 \
+  db/util_merge_operators_test.cc                                       \
   db/version_builder_test.cc                                            \
   db/version_edit_test.cc                                               \
   db/version_set_test.cc                                                \
@@ -375,6 +399,7 @@ MAIN_SOURCES =                                                          \
   utilities/transactions/optimistic_transaction_test.cc                 \
   utilities/transactions/transaction_test.cc                            \
   utilities/transactions/write_prepared_transaction_test.cc             \
+  utilities/transactions/write_unprepared_transaction_test.cc           \
   utilities/ttl/ttl_test.cc                                             \
   utilities/write_batch_with_index/write_batch_with_index_test.cc       \
 

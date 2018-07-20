@@ -170,6 +170,8 @@ class DB {
                      const std::vector<ColumnFamilyDescriptor>& column_families,
                      std::vector<ColumnFamilyHandle*>* handles, DB** dbptr);
 
+  virtual Status Resume() { return Status::NotSupported(); }
+
   // Close the DB by releasing resources, closing files etc. This should be
   // called before calling the destructor so that the caller can get back a
   // status in case there are any errors. This will not fsync the WAL files.
@@ -621,6 +623,10 @@ class DB {
     // "rocksdb.block-cache-pinned-usage" - returns the memory size for the
     //      entries being pinned.
     static const std::string kBlockCachePinnedUsage;
+
+    // "rocksdb.options-statistics" - returns multi-line string
+    //      of options.statistics
+    static const std::string kOptionsStatistics;
   };
 #endif /* ROCKSDB_LITE */
 

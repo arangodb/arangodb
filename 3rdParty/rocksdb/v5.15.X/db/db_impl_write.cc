@@ -12,6 +12,7 @@
 #define __STDC_FORMAT_MACROS
 #endif
 #include <inttypes.h>
+#include "db/error_handler.h"
 #include "db/event_helpers.h"
 #include "monitoring/perf_context_imp.h"
 #include "options/options_helper.h"
@@ -211,6 +212,7 @@ Status DBImpl::WriteImpl(const WriteOptions& write_options,
   // and protects against concurrent loggers and concurrent writes
   // into memtables
 
+  TEST_SYNC_POINT("DBImpl::WriteImpl:BeforeLeaderEnters");
   last_batch_group_size_ =
       write_thread_.EnterAsBatchGroupLeader(&w, &write_group);
 
@@ -675,16 +677,7 @@ void DBImpl::WriteStatusCheck(const Status& status) {
   if (immutable_db_options_.paranoid_checks && !status.ok() &&
       !status.IsBusy() && !status.IsIncomplete()) {
     mutex_.Lock();
-    if (bg_error_.ok()) {
-      Status new_bg_error = status;
-      // may temporarily unlock and lock the mutex.
-      EventHelpers::NotifyOnBackgroundError(immutable_db_options_.listeners,
-                                            BackgroundErrorReason::kWriteCallback,
-                                            &new_bg_error, &mutex_);
-      if (!new_bg_error.ok()) {
-        bg_error_ = new_bg_error;  // stop compaction & fail any further writes
-      }
-    }
+    error_handler_.SetBGError(status, BackgroundErrorReason::kWriteCallback);
     mutex_.Unlock();
   }
 }
@@ -697,15 +690,8 @@ void DBImpl::MemTableInsertStatusCheck(const Status& status) {
   // ignore_missing_column_families.
   if (!status.ok()) {
     mutex_.Lock();
-    assert(bg_error_.ok());
-    Status new_bg_error = status;
-    // may temporarily unlock and lock the mutex.
-    EventHelpers::NotifyOnBackgroundError(immutable_db_options_.listeners,
-                                          BackgroundErrorReason::kMemTable,
-                                          &new_bg_error, &mutex_);
-    if (!new_bg_error.ok()) {
-      bg_error_ = new_bg_error;  // stop compaction & fail any further writes
-    }
+    assert(!error_handler_.IsBGWorkStopped());
+    error_handler_.SetBGError(status, BackgroundErrorReason::kMemTable);
     mutex_.Unlock();
   }
 }
@@ -735,8 +721,8 @@ Status DBImpl::PreprocessWrite(const WriteOptions& write_options,
     status = HandleWriteBufferFull(write_context);
   }
 
-  if (UNLIKELY(status.ok() && !bg_error_.ok())) {
-    status = bg_error_;
+  if (UNLIKELY(status.ok())) {
+    status = error_handler_.GetBGError();
   }
 
   if (UNLIKELY(status.ok() && !flush_scheduler_.Empty())) {
@@ -1175,7 +1161,7 @@ Status DBImpl::DelayWrite(uint64_t num_bytes,
       mutex_.Lock();
     }
 
-    while (bg_error_.ok() && write_controller_.IsStopped()) {
+    while (!error_handler_.IsDBStopped() && write_controller_.IsStopped()) {
       if (write_options.no_slowdown) {
         return Status::Incomplete();
       }
@@ -1191,7 +1177,7 @@ Status DBImpl::DelayWrite(uint64_t num_bytes,
     RecordTick(stats_, STALL_MICROS, time_delayed);
   }
 
-  return bg_error_;
+  return error_handler_.GetBGError();
 }
 
 Status DBImpl::ThrottleLowPriWritesIfNeeded(const WriteOptions& write_options,
@@ -1280,7 +1266,11 @@ Status DBImpl::SwitchMemtable(ColumnFamilyData* cfd, WriteContext* context,
   // In case of pipelined write is enabled, wait for all pending memtable
   // writers.
   if (immutable_db_options_.enable_pipelined_write) {
+    // Memtable writers may call DB::Get in case max_successive_merges > 0,
+    // which may lock mutex. Unlocking mutex here to avoid deadlock.
+    mutex_.Unlock();
     write_thread_.WaitForMemTableWriters();
+    mutex_.Lock();
   }
 
   // Attempt to switch to a new memtable and trigger flush of old.

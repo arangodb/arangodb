@@ -1,13 +1,33 @@
 # Rocksdb Change Log
-## 5.14.2 (7/3/2018)
+## Unreleased
+### Public API Change
+### New Features
 ### Bug Fixes
-* Change default value of `bytes_max_delete_chunk` to 0 in NewSstFileManager() as it doesn't work well with checkpoints.
-* Set DEBUG_LEVEL=0 for RocksJava Mac Release build.
 
-## 5.14.1 (6/20/2018)
+## 5.15.0 (7/17/2018)
+### Public API Change
+* Remove managed iterator. ReadOptions.managed is not effective anymore.
+* For bottommost_compression, a compatible CompressionOptions is added via `bottommost_compression_opts`. To keep backward compatible, a new boolean `enabled` is added to CompressionOptions. For compression_opts, it will be always used no matter what value of `enabled` is. For bottommost_compression_opts, it will only be used when user set `enabled=true`, otherwise, compression_opts will be used for bottommost_compression as default.
+* With LRUCache, when high_pri_pool_ratio > 0, midpoint insertion strategy will be enabled to put low-pri items to the tail of low-pri list (the midpoint) when they first inserted into the cache. This is to make cache entries never get hit age out faster, improving cache efficiency when large background scan presents.
+* For users of `Statistics` objects created via `CreateDBStatistics()`, the format of the string returned by its `ToString()` method has changed.
+* The "rocksdb.num.entries" table property no longer counts range deletion tombstones as entries.
+
+### New Features
+* Changes the format of index blocks by storing the key in their raw form rather than converting them to InternalKey. This saves 8 bytes per index key. The feature is backward compatbile but not forward compatible. It is disabled by default unless format_version 3 or above is used.
+* Avoid memcpy when reading mmap files with OpenReadOnly and max_open_files==-1.
+* Support dynamically changing `ColumnFamilyOptions::ttl` via `SetOptions()`.
+* Add a new table property, "rocksdb.num.range-deletions", which counts the number of range deletion tombstones in the table.
+* Improve the performance of iterators doing long range scans by using readahead, when using direct IO.
+* pin_top_level_index_and_filter (default true) in BlockBasedTableOptions can be used in combination with cache_index_and_filter_blocks to prefetch and pin the top-level index of partitioned index and filter blocks in cache. It has no impact when cache_index_and_filter_blocks is false.
+
 ### Bug Fixes
-* Fix block-based table reader pinning blocks throughout its lifetime, causing memory usage increase.
+* Fix deadlock with enable_pipelined_write=true and max_successive_merges > 0
+* Check conflict at output level in CompactFiles.
+* Fix corruption in non-iterator reads when mmap is used for file reads
 * Fix bug with prefix search in partition filters where a shared prefix would be ignored from the later partitions. The bug could report an eixstent key as missing. The bug could be triggered if prefix_extractor is set and partition filters is enabled.
+* Change default value of `bytes_max_delete_chunk` to 0 in NewSstFileManager() as it doesn't work well with checkpoints.
+* Fix a bug caused by not copying the block trailer with compressed SST file, direct IO, prefetcher and no compressed block cache.
+* Fix write can stuck indefinitely if enable_pipelined_write=true. The issue exists since pipelined write was introduced in 5.5.0.
 
 ## 5.14.0 (5/16/2018)
 ### Public API Change
@@ -19,6 +39,7 @@
 * Now, `DBOptions::use_direct_io_for_flush_and_compaction` only applies to background writes, and `DBOptions::use_direct_reads` applies to both user reads and background reads. This conforms with Linux's `open(2)` manpage, which advises against simultaneously reading a file in buffered and direct modes, due to possibly undefined behavior and degraded performance.
 * Iterator::Valid() always returns false if !status().ok(). So, now when doing a Seek() followed by some Next()s, there's no need to check status() after every operation.
 * Iterator::Seek()/SeekForPrev()/SeekToFirst()/SeekToLast() always resets status().
+* Introduced `CompressionOptions::kDefaultCompressionLevel`, which is a generic way to tell RocksDB to use the compression library's default level. It is now the default value for `CompressionOptions::level`. Previously the level defaulted to -1, which gave poor compression ratios in ZSTD.
 
 ### New Features
 * Introduce TTL for level compaction so that all files older than ttl go through the compaction process to get rid of old data.
@@ -27,6 +48,7 @@
 * Add `Env::LowerThreadPoolCPUPriority(Priority)` method, which lowers the CPU priority of background (esp. compaction) threads to minimize interference with foreground tasks.
 * Fsync parent directory after deleting a file in delete scheduler.
 * In level-based compaction, if bottom-pri thread pool was setup via `Env::SetBackgroundThreads()`, compactions to the bottom level will be delegated to that thread pool.
+* `prefix_extractor` has been moved from ImmutableCFOptions to MutableCFOptions, meaning it can be dynamically changed without a DB restart.
 
 ### Bug Fixes
 * Fsync after writing global seq number to the ingestion file in ExternalSstFileIngestionJob.
@@ -34,7 +56,7 @@
 * Fix `BackupableDBOptions::max_valid_backups_to_open` to not delete backup files when refcount cannot be accurately determined.
 * Fix memory leak when pin_l0_filter_and_index_blocks_in_cache is used with partitioned filters
 * Disable rollback of merge operands in WritePrepared transactions to work around an issue in MyRocks. It can be enabled back by setting TransactionDBOptions::rollback_merge_operands to true.
-* Fix bug with prefix search in partition filters where a shared prefix would be ignored from the later partitions. The bug could report an eixstent key as missing. The bug could be triggered if prefix_extractor is set and partition filters is enabled.
+* Fix wrong results by ReverseBytewiseComparator::FindShortSuccessor()
 
 ### Java API Changes
 * Add `BlockBasedTableConfig.setBlockCache` to allow sharing a block cache across DB instances.

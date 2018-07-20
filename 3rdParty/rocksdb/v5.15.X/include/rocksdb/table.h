@@ -77,6 +77,13 @@ struct BlockBasedTableOptions {
   // evicted from cache when the table reader is freed.
   bool pin_l0_filter_and_index_blocks_in_cache = false;
 
+  // If cache_index_and_filter_blocks is true and the below is true, then
+  // the top-level index of partitioned filter and index blocks are stored in
+  // the cache, but a reference is held in the "table reader" object so the
+  // blocks are pinned and only evicted from cache when the table reader is
+  // freed. This is not limited to l0 in LSM tree.
+  bool pin_top_level_index_and_filter = true;
+
   // The index type that will be used for this table.
   enum IndexType : char {
     // A space efficient index block that is optimized for
@@ -214,8 +221,11 @@ struct BlockBasedTableOptions {
   // encode compressed blocks with LZ4, BZip2 and Zlib compression. If you
   // don't plan to run RocksDB before version 3.10, you should probably use
   // this.
-  // This option only affects newly written tables. When reading existing tables,
-  // the information about version is read from the footer.
+  // 3 -- Can be read by RocksDB's versions since 5.15. Changes the way we
+  // encode the keys in index blocks. If you don't plan to run RocksDB before
+  // version 5.15, you should probably use this.
+  // This option only affects newly written tables. When reading existing
+  // tables, the information about version is read from the footer.
   uint32_t format_version = 2;
 
   // Store index blocks on disk in compressed format. Changing this option to

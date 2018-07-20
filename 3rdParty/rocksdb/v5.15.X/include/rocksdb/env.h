@@ -42,7 +42,7 @@ class SequentialFile;
 class Slice;
 class WritableFile;
 class RandomRWFile;
-struct MemoryMappedFileBuffer;
+class MemoryMappedFileBuffer;
 class Directory;
 struct DBOptions;
 struct ImmutableDBOptions;
@@ -287,6 +287,12 @@ class Env {
   virtual Status LinkFile(const std::string& /*src*/,
                           const std::string& /*target*/) {
     return Status::NotSupported("LinkFile is not supported for this Env");
+  }
+
+  virtual Status NumFileLinks(const std::string& /*fname*/,
+                              uint64_t* /*count*/) {
+    return Status::NotSupported(
+        "Getting number of file links is not supported for this Env");
   }
 
   virtual Status AreFilesSame(const std::string& /*first*/,
@@ -822,13 +828,24 @@ class RandomRWFile {
 
 // MemoryMappedFileBuffer object represents a memory-mapped file's raw buffer.
 // Subclasses should release the mapping upon destruction.
-struct MemoryMappedFileBuffer {
+class MemoryMappedFileBuffer {
+public:
   MemoryMappedFileBuffer(void* _base, size_t _length)
-      : base(_base), length(_length) {}
+      : base_(_base), length_(_length) {}
+
   virtual ~MemoryMappedFileBuffer() = 0;
 
-  void* const base;
-  const size_t length;
+  // We do not want to unmap this twice. We can make this class
+  // movable if desired, however, since
+  MemoryMappedFileBuffer(const MemoryMappedFileBuffer&) = delete;
+  MemoryMappedFileBuffer& operator=(const MemoryMappedFileBuffer&) = delete;
+
+  void*       GetBase() const { return base_;   }
+  size_t      GetLen() const  { return length_; }
+
+protected:
+  void*        base_;
+  const size_t length_;
 };
 
 // Directory object represents collection of files and implements
@@ -1051,6 +1068,10 @@ class EnvWrapper : public Env {
 
   Status LinkFile(const std::string& s, const std::string& t) override {
     return target_->LinkFile(s, t);
+  }
+
+  Status NumFileLinks(const std::string& fname, uint64_t* count) override {
+    return target_->NumFileLinks(fname, count);
   }
 
   Status AreFilesSame(const std::string& first, const std::string& second,

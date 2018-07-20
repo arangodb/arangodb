@@ -1682,7 +1682,7 @@ TEST_F(DBTest, CustomComparator) {
 
 TEST_F(DBTest, DBOpen_Options) {
   Options options = CurrentOptions();
-  std::string dbname = test::TmpDir(env_) + "/db_options_test";
+  std::string dbname = test::PerThreadDBPath("db_options_test");
   ASSERT_OK(DestroyDB(dbname, options));
 
   // Does not exist, and create_if_missing == false: error
@@ -1740,7 +1740,7 @@ TEST_F(DBTest, DBOpen_Change_NumLevels) {
 }
 
 TEST_F(DBTest, DestroyDBMetaDatabase) {
-  std::string dbname = test::TmpDir(env_) + "/db_meta";
+  std::string dbname = test::PerThreadDBPath("db_meta");
   ASSERT_OK(env_->CreateDirIfMissing(dbname));
   std::string metadbname = MetaDatabaseName(dbname, 0);
   ASSERT_OK(env_->CreateDirIfMissing(metadbname));
@@ -2153,9 +2153,13 @@ TEST_F(DBTest, GroupCommitTest) {
   do {
     Options options = CurrentOptions();
     options.env = env_;
-    env_->log_write_slowdown_.store(100);
     options.statistics = rocksdb::CreateDBStatistics();
     Reopen(options);
+
+    rocksdb::SyncPoint::GetInstance()->LoadDependency(
+        {{"WriteThread::JoinBatchGroup:BeganWaiting",
+          "DBImpl::WriteImpl:BeforeLeaderEnters"}});
+    rocksdb::SyncPoint::GetInstance()->EnableProcessing();
 
     // Start threads
     GCThread thread[kGCNumThreads];
@@ -2165,13 +2169,7 @@ TEST_F(DBTest, GroupCommitTest) {
       thread[id].done = false;
       env_->StartThread(GCThreadBody, &thread[id]);
     }
-
-    for (int id = 0; id < kGCNumThreads; id++) {
-      while (thread[id].done == false) {
-        env_->SleepForMicroseconds(100000);
-      }
-    }
-    env_->log_write_slowdown_.store(0);
+    env_->WaitForJoin();
 
     ASSERT_GT(TestGetTickerCount(options, WRITE_DONE_BY_OTHER), 0);
 
@@ -2563,6 +2561,7 @@ class ModelDB : public DB {
   std::string name_ = "";
 };
 
+#ifndef ROCKSDB_VALGRIND_RUN
 static std::string RandomKey(Random* rnd, int minimum = 0) {
   int len;
   do {
@@ -2719,6 +2718,7 @@ TEST_P(DBTestRandomized, Randomized) {
   if (model_snap != nullptr) model.ReleaseSnapshot(model_snap);
   if (db_snap != nullptr) db_->ReleaseSnapshot(db_snap);
 }
+#endif  // ROCKSDB_VALGRIND_RUN
 
 TEST_F(DBTest, BlockBasedTablePrefixIndexTest) {
   // create a DB with block prefix index
@@ -4607,6 +4607,7 @@ TEST_F(DBTest, FileCreationRandomFailure) {
 }
 
 #ifndef ROCKSDB_LITE
+
 TEST_F(DBTest, DynamicMiscOptions) {
   // Test max_sequential_skip_in_iterations
   Options options;
@@ -4924,6 +4925,7 @@ TEST_P(DBTestWithParam, FilterCompactionTimeTest) {
   options.disable_auto_compactions = true;
   options.create_if_missing = true;
   options.statistics = rocksdb::CreateDBStatistics();
+  options.statistics->stats_level_ = kExceptTimeForMutex;
   options.max_subcompactions = max_subcompactions_;
   DestroyAndReopen(options);
 
@@ -5445,18 +5447,17 @@ TEST_F(DBTest, HardLimit) {
 #if !defined(ROCKSDB_LITE) && !defined(ROCKSDB_DISABLE_STALL_NOTIFICATION)
 class WriteStallListener : public EventListener {
  public:
-  WriteStallListener() : cond_(&mutex_), 
-    condition_(WriteStallCondition::kNormal),
-    expected_(WriteStallCondition::kNormal),
-    expected_set_(false) 
-  {}
+  WriteStallListener()
+      : cond_(&mutex_),
+        condition_(WriteStallCondition::kNormal),
+        expected_(WriteStallCondition::kNormal),
+        expected_set_(false) {}
   void OnStallConditionsChanged(const WriteStallInfo& info) override {
     MutexLock l(&mutex_);
     condition_ = info.condition.cur;
-    if (expected_set_ && 
-      condition_ == expected_) {
-        cond_.Signal();
-        expected_set_ = false;
+    if (expected_set_ && condition_ == expected_) {
+      cond_.Signal();
+      expected_set_ = false;
     }
   }
   bool CheckCondition(WriteStallCondition expected) {

@@ -57,7 +57,7 @@ CuckooTableReader::CuckooTableReader(
   }
   TableProperties* props = nullptr;
   status_ = ReadTableProperties(file_.get(), file_size, kCuckooTableMagicNumber,
-      ioptions, &props);
+      ioptions, &props, true /* compression_type_missing */);
   if (!status_.ok()) {
     return;
   }
@@ -141,6 +141,7 @@ CuckooTableReader::CuckooTableReader(
 
 Status CuckooTableReader::Get(const ReadOptions& /*readOptions*/,
                               const Slice& key, GetContext* get_context,
+                              const SliceTransform* /* prefix_extractor */,
                               bool /*skip_filters*/) {
   assert(key.size() == key_length_ + (is_last_level_ ? 8 : 0));
   Slice user_key = ExtractUserKey(key);
@@ -377,7 +378,9 @@ extern InternalIterator* NewErrorInternalIterator(const Status& status,
                                                   Arena* arena);
 
 InternalIterator* CuckooTableReader::NewIterator(
-    const ReadOptions& /*read_options*/, Arena* arena, bool /*skip_filters*/) {
+    const ReadOptions& /*read_options*/,
+    const SliceTransform* /* prefix_extractor */, Arena* arena,
+    bool /*skip_filters*/, bool /*for_compaction*/) {
   if (!status().ok()) {
     return NewErrorInternalIterator(
         Status::Corruption("CuckooTableReader status is not okay."), arena);

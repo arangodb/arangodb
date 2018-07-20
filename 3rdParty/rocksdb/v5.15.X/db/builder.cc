@@ -28,6 +28,7 @@
 #include "rocksdb/options.h"
 #include "rocksdb/table.h"
 #include "table/block_based_table_builder.h"
+#include "table/format.h"
 #include "table/internal_iterator.h"
 #include "util/file_reader_writer.h"
 #include "util/filename.h"
@@ -39,7 +40,7 @@ namespace rocksdb {
 class TableFactory;
 
 TableBuilder* NewTableBuilder(
-    const ImmutableCFOptions& ioptions,
+    const ImmutableCFOptions& ioptions, const MutableCFOptions& moptions,
     const InternalKeyComparator& internal_comparator,
     const std::vector<std::unique_ptr<IntTblPropCollectorFactory>>*
         int_tbl_prop_collector_factories,
@@ -52,19 +53,20 @@ TableBuilder* NewTableBuilder(
           TablePropertiesCollectorFactory::Context::kUnknownColumnFamily) ==
          column_family_name.empty());
   return ioptions.table_factory->NewTableBuilder(
-      TableBuilderOptions(
-          ioptions, internal_comparator, int_tbl_prop_collector_factories,
-          compression_type, compression_opts, compression_dict, skip_filters,
-          column_family_name, level, creation_time, oldest_key_time),
+      TableBuilderOptions(ioptions, moptions, internal_comparator,
+                          int_tbl_prop_collector_factories, compression_type,
+                          compression_opts, compression_dict, skip_filters,
+                          column_family_name, level, creation_time,
+                          oldest_key_time),
       column_family_id, file);
 }
 
 Status BuildTable(
     const std::string& dbname, Env* env, const ImmutableCFOptions& ioptions,
-    const MutableCFOptions& /*mutable_cf_options*/,
-    const EnvOptions& env_options, TableCache* table_cache,
-    InternalIterator* iter, std::unique_ptr<InternalIterator> range_del_iter,
-    FileMetaData* meta, const InternalKeyComparator& internal_comparator,
+    const MutableCFOptions& mutable_cf_options, const EnvOptions& env_options,
+    TableCache* table_cache, InternalIterator* iter,
+    std::unique_ptr<InternalIterator> range_del_iter, FileMetaData* meta,
+    const InternalKeyComparator& internal_comparator,
     const std::vector<std::unique_ptr<IntTblPropCollectorFactory>>*
         int_tbl_prop_collector_factories,
     uint32_t column_family_id, const std::string& column_family_name,
@@ -100,7 +102,7 @@ Status BuildTable(
 #endif  // !ROCKSDB_LITE
   TableProperties tp;
 
-  if (iter->Valid() || range_del_agg->ShouldAddTombstones()) {
+  if (iter->Valid() || !range_del_agg->IsEmpty()) {
     TableBuilder* builder;
     unique_ptr<WritableFileWriter> file_writer;
     {
@@ -122,10 +124,11 @@ Status BuildTable(
       file_writer.reset(new WritableFileWriter(std::move(file), env_options,
                                                ioptions.statistics));
       builder = NewTableBuilder(
-          ioptions, internal_comparator, int_tbl_prop_collector_factories,
-          column_family_id, column_family_name, file_writer.get(), compression,
-          compression_opts, level, nullptr /* compression_dict */,
-          false /* skip_filters */, creation_time, oldest_key_time);
+          ioptions, mutable_cf_options, internal_comparator,
+          int_tbl_prop_collector_factories, column_family_id,
+          column_family_name, file_writer.get(), compression, compression_opts,
+          level, nullptr /* compression_dict */, false /* skip_filters */,
+          creation_time, oldest_key_time);
     }
 
     MergeHelper merge(env, internal_comparator.user_comparator(),
@@ -137,6 +140,7 @@ Status BuildTable(
     CompactionIterator c_iter(
         iter, internal_comparator.user_comparator(), &merge, kMaxSequenceNumber,
         &snapshots, earliest_write_conflict_snapshot, snapshot_checker, env,
+        ShouldReportDetailedTime(env, ioptions.statistics),
         true /* internal key corruption is not ok */, range_del_agg.get());
     c_iter.SeekToFirst();
     for (; c_iter.Valid(); c_iter.Next()) {
@@ -152,12 +156,18 @@ Status BuildTable(
             ThreadStatus::FLUSH_BYTES_WRITTEN, IOSTATS(bytes_written));
       }
     }
-    // nullptr for table_{min,max} so all range tombstones will be flushed
-    range_del_agg->AddToBuilder(builder, nullptr /* lower_bound */,
-                                nullptr /* upper_bound */, meta);
+
+    for (auto it = range_del_agg->NewIterator(); it->Valid(); it->Next()) {
+      auto tombstone = it->Tombstone();
+      auto kv = tombstone.Serialize();
+      builder->Add(kv.first.Encode(), kv.second);
+      meta->UpdateBoundariesForRange(kv.first, tombstone.SerializeEndKey(),
+                                     tombstone.seq_, internal_comparator);
+    }
 
     // Finish and check for builder errors
-    bool empty = builder->NumEntries() == 0;
+    tp = builder->GetTableProperties();
+    bool empty = builder->NumEntries() == 0 && tp.num_range_deletions == 0;
     s = c_iter.status();
     if (!s.ok() || empty) {
       builder->Abandon();
@@ -170,7 +180,7 @@ Status BuildTable(
       meta->fd.file_size = file_size;
       meta->marked_for_compaction = builder->NeedCompact();
       assert(meta->fd.GetFileSize() > 0);
-      tp = builder->GetTableProperties();
+      tp = builder->GetTableProperties(); // refresh now that builder is finished
       if (table_properties) {
         *table_properties = tp;
       }
@@ -194,8 +204,9 @@ Status BuildTable(
       // we will regrad this verification as user reads since the goal is
       // to cache it here for further user reads
       std::unique_ptr<InternalIterator> it(table_cache->NewIterator(
-          ReadOptions(), env_options, internal_comparator, meta->fd,
-          nullptr /* range_del_agg */, nullptr,
+          ReadOptions(), env_options, internal_comparator, *meta,
+          nullptr /* range_del_agg */,
+          mutable_cf_options.prefix_extractor.get(), nullptr,
           (internal_stats == nullptr) ? nullptr
                                       : internal_stats->GetFileReadHist(0),
           false /* for_compaction */, nullptr /* arena */,
@@ -219,9 +230,11 @@ Status BuildTable(
   }
 
   // Output to event logger and fire events.
-  EventHelpers::LogAndNotifyTableFileCreationFinished(
-      event_logger, ioptions.listeners, dbname, column_family_name, fname,
-      job_id, meta->fd, tp, reason, s);
+  if (!s.ok() || meta->fd.GetFileSize() > 0) {
+    EventHelpers::LogAndNotifyTableFileCreationFinished(
+        event_logger, ioptions.listeners, dbname, column_family_name, fname,
+        job_id, meta->fd, tp, reason, s);
+  }
 
   return s;
 }

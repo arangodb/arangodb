@@ -184,16 +184,15 @@ Status PosixSequentialFile::Read(size_t n, Slice* result, char* scratch) {
 
 Status PosixSequentialFile::PositionedRead(uint64_t offset, size_t n,
                                            Slice* result, char* scratch) {
-  if (use_direct_io()) {
-    assert(IsSectorAligned(offset, GetRequiredBufferAlignment()));
-    assert(IsSectorAligned(n, GetRequiredBufferAlignment()));
-    assert(IsSectorAligned(scratch, GetRequiredBufferAlignment()));
-  }
+  assert(use_direct_io());
+  assert(IsSectorAligned(offset, GetRequiredBufferAlignment()));
+  assert(IsSectorAligned(n, GetRequiredBufferAlignment()));
+  assert(IsSectorAligned(scratch, GetRequiredBufferAlignment()));
+
   Status s;
   ssize_t r = -1;
   size_t left = n;
   char* ptr = scratch;
-  assert(use_direct_io());
   while (left > 0) {
     r = pread(fd_, ptr, left, static_cast<off_t>(offset));
     if (r <= 0) {
@@ -456,6 +455,7 @@ PosixMmapReadableFile::~PosixMmapReadableFile() {
     fprintf(stdout, "failed to munmap %p length %" ROCKSDB_PRIszt " \n",
             mmapped_region_, length_);
   }
+  close(fd_);
 }
 
 Status PosixMmapReadableFile::Read(uint64_t offset, size_t n, Slice* result,
@@ -1054,7 +1054,7 @@ Status PosixRandomRWFile::Close() {
 
 PosixMemoryMappedFileBuffer::~PosixMemoryMappedFileBuffer() {
   // TODO should have error handling though not much we can do...
-  munmap(this->base, length);
+  munmap(this->base_, length_);
 }
 
 /*

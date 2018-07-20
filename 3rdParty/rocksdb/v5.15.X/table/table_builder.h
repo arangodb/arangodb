@@ -27,27 +27,34 @@ class Status;
 struct TableReaderOptions {
   // @param skip_filters Disables loading/accessing the filter block
   TableReaderOptions(const ImmutableCFOptions& _ioptions,
+                     const SliceTransform* _prefix_extractor,
                      const EnvOptions& _env_options,
                      const InternalKeyComparator& _internal_comparator,
-                     bool _skip_filters = false, int _level = -1)
+                     bool _skip_filters = false, bool _immortal = false,
+                     int _level = -1)
       : ioptions(_ioptions),
+        prefix_extractor(_prefix_extractor),
         env_options(_env_options),
         internal_comparator(_internal_comparator),
         skip_filters(_skip_filters),
+        immortal(_immortal),
         level(_level) {}
 
   const ImmutableCFOptions& ioptions;
+  const SliceTransform* prefix_extractor;
   const EnvOptions& env_options;
   const InternalKeyComparator& internal_comparator;
   // This is only used for BlockBasedTable (reader)
   bool skip_filters;
+  // Whether the table will be valid as long as the DB is open
+  bool immortal;
   // what level this table/file is on, -1 for "not set, don't know"
   int level;
 };
 
 struct TableBuilderOptions {
   TableBuilderOptions(
-      const ImmutableCFOptions& _ioptions,
+      const ImmutableCFOptions& _ioptions, const MutableCFOptions& _moptions,
       const InternalKeyComparator& _internal_comparator,
       const std::vector<std::unique_ptr<IntTblPropCollectorFactory>>*
           _int_tbl_prop_collector_factories,
@@ -57,6 +64,7 @@ struct TableBuilderOptions {
       const std::string& _column_family_name, int _level,
       const uint64_t _creation_time = 0, const int64_t _oldest_key_time = 0)
       : ioptions(_ioptions),
+        moptions(_moptions),
         internal_comparator(_internal_comparator),
         int_tbl_prop_collector_factories(_int_tbl_prop_collector_factories),
         compression_type(_compression_type),
@@ -68,6 +76,7 @@ struct TableBuilderOptions {
         creation_time(_creation_time),
         oldest_key_time(_oldest_key_time) {}
   const ImmutableCFOptions& ioptions;
+  const MutableCFOptions& moptions;
   const InternalKeyComparator& internal_comparator;
   const std::vector<std::unique_ptr<IntTblPropCollectorFactory>>*
       int_tbl_prop_collector_factories;

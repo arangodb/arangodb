@@ -198,11 +198,21 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   // Typical speeds of kSnappyCompression on an Intel(R) Core(TM)2 2.4GHz:
   //    ~200-500MB/s compression
   //    ~400-800MB/s decompression
+  //
   // Note that these speeds are significantly faster than most
   // persistent storage speeds, and therefore it is typically never
   // worth switching to kNoCompression.  Even if the input data is
   // incompressible, the kSnappyCompression implementation will
   // efficiently detect that and will switch to uncompressed mode.
+  //
+  // If you do not set `compression_opts.level`, or set it to
+  // `CompressionOptions::kDefaultCompressionLevel`, we will attempt to pick the
+  // default corresponding to `compression` as follows:
+  //
+  // - kZSTD: 3
+  // - kZlibCompression: Z_DEFAULT_COMPRESSION (currently -1)
+  // - kLZ4HCCompression: 0
+  // - For all others, we do not specify a compression level
   CompressionType compression;
 
   // Compression algorithm that will be used for the bottommost level that
@@ -210,6 +220,11 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   //
   // Default: kDisableCompressionOption (Disabled)
   CompressionType bottommost_compression = kDisableCompressionOption;
+
+  // different options for compression algorithms used by bottommost_compression
+  // if it is enabled. To enable it, please see the definition of
+  // CompressionOptions.
+  CompressionOptions bottommost_compression_opts;
 
   // different options for compression algorithms
   CompressionOptions compression_opts;
@@ -271,7 +286,7 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   // later in the vector.
   // Note that, if a path is supplied to multiple column
   // families, it would have files and total size from all
-  // the column families combined. User should privision for the
+  // the column families combined. User should provision for the
   // total size(from all the column families) in such cases.
   //
   // If left empty, db_paths will be used.
@@ -558,8 +573,9 @@ struct DBOptions {
 
   // manifest file is rolled over on reaching this limit.
   // The older manifest file be deleted.
-  // The default value is MAX_INT so that roll-over does not take place.
-  uint64_t max_manifest_file_size = std::numeric_limits<uint64_t>::max();
+  // The default value is 1GB so that the manifest file can grow, but not
+  // reach the limit of storage capacity.
+  uint64_t max_manifest_file_size = 1024 * 1024 * 1024;
 
   // Number of shards used for table cache.
   int table_cache_numshardbits = 6;
@@ -1004,7 +1020,7 @@ struct ReadOptions {
   // can returns entries. Once the bound is reached, Valid() will be false.
   // "iterate_upper_bound" is exclusive ie the bound value is
   // not a valid entry.  If iterator_extractor is not null, the Seek target
-  // and iterator_upper_bound need to have the same prefix.
+  // and iterate_upper_bound need to have the same prefix.
   // This is because ordering is not guaranteed outside of prefix domain.
   //
   // Default: nullptr
@@ -1048,11 +1064,8 @@ struct ReadOptions {
   // Not supported in ROCKSDB_LITE mode!
   bool tailing;
 
-  // Specify to create a managed iterator -- a special iterator that
-  // uses less resources by having the ability to free its underlying
-  // resources on request.
-  // Default: false
-  // Not supported in ROCKSDB_LITE mode!
+  // This options is not used anymore. It was to turn on a functionality that
+  // has been removed.
   bool managed;
 
   // Enable a total order seek regardless of index format (e.g. hash index)
