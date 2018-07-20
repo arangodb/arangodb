@@ -40,12 +40,15 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
  public:
   RocksDBGeoIndex() = delete;
 
-  RocksDBGeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                    velocypack::Slice const&, std::string const& typeName);
+  RocksDBGeoIndex(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+  );
 
   ~RocksDBGeoIndex() override {}
 
- public:
   IndexType type() const override {
     if ("geo1" == _typeName) {
       return TRI_IDX_TYPE_GEO1_INDEX;

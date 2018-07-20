@@ -1,6 +1,9 @@
 # Encryption 
 
-**This feature is only available in the Enterprise Edition.**
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
 When you store sensitive data in your ArangoDB database, you want 
 to protect that data under all circumstances. 

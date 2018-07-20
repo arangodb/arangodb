@@ -168,7 +168,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +189,7 @@ class IResearchLink {
   // friend arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice const&, bool);
   friend class IResearchView;
 
-  LogicalCollection* _collection; // the linked collection
+  LogicalCollection& _collection; // the linked collection
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
   bool _dropCollectionInDestructor; // collection should be dropped from view in the destructor (for the case where init(..) is called folowed by distructor)
   TRI_idx_iid_t const _id; // the index identifier
