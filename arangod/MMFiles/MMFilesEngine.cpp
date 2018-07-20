@@ -1404,7 +1404,7 @@ arangodb::Result MMFilesEngine::dropView(
     VPackBuilder builder;
     builder.openObject();
     builder.add(StaticStrings::DataSourceId, velocypack::Value(std::to_string(view.id())));
-    builder.add("guid", velocypack::Value(std::to_string(view.id())));
+    builder.add("cuid", velocypack::Value(view.guid()));
     builder.close();
 
     MMFilesViewMarker marker(

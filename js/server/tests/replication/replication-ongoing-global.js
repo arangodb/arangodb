@@ -723,6 +723,37 @@ function BaseTestConfig() {
         },
         {}
       );
+    },
+
+    testViewDrop: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          try {
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          // rename view on master
+          let view = db._view("UnitTestsSyncView");
+          view.drop();
+        },
+        function(state) {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view === null);
+        },
+        {}
+      );
     }
 
   };

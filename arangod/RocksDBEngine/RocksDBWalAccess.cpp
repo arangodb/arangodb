@@ -163,7 +163,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             { // tick number
-              StringRef uuid = RocksDBLogValue::collectionUUID(blob);
+              StringRef uuid = RocksDBLogValue::viewUUID(blob);
               TRI_ASSERT(!uuid.empty());
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
@@ -267,9 +267,9 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
               marker->add("tick", VPackValue(std::to_string(tick)));
-              marker->add("type", VPackValue(REPLICATION_COLLECTION_DROP));
+              marker->add("type", VPackValue(REPLICATION_VIEW_DROP));
               marker->add("db", VPackValue(vocbase->name()));
-              marker->add("guid", VPackValuePair(uuid.data(), uuid.size(),
+              marker->add("cuid", VPackValuePair(uuid.data(), uuid.size(),
                                                  VPackValueType::String));
             }
             _callback(vocbase, _builder.slice());
@@ -363,7 +363,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         }
         break;
       }
-        
+      
+      case RocksDBLogType::IResearchLinkDrop: // do nothing        
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
@@ -479,7 +480,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
               VPackObjectBuilder marker(&_builder, true);
               marker->add("tick", VPackValue(std::to_string(_currentSequence)));
               marker->add("db", VPackValue(vocbase->name()));
-              marker->add("guid", VPackValue(view->guid()));
+              marker->add("cuid", VPackValue(view->guid()));
               marker->add("data", viewDef);
               if (_state == VIEW_CREATE) {
                 marker->add("type", VPackValue(REPLICATION_VIEW_CREATE));

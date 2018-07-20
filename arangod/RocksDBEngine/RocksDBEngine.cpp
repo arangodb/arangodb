@@ -1366,7 +1366,6 @@ arangodb::Result RocksDBEngine::dropView(
     RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
                               StringRef(view.guid()));
   RocksDBKey key;
-
   key.constructView(vocbase.id(), view.id());
 
   rocksdb::WriteBatch batch;
@@ -1396,22 +1395,31 @@ Result RocksDBEngine::changeView(
     return {};
   }
 
-  auto db = rocksutils::globalRocksDB();
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
-  
-  RocksDBLogValue logValue = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
   
   VPackBuilder infoBuilder;
   infoBuilder.openObject();
   view.toVelocyPack(infoBuilder, true, true);
   infoBuilder.close();
   
+  RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
   RocksDBValue const value = RocksDBValue::View(infoBuilder.slice());
+  
+  rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
-  rocksdb::Status const status = db->Put(wo, RocksDBColumnFamily::definitions(),
-                                         key.string(), value.string());
-  return rocksutils::convertStatus(status);
+  rocksdb::Status s;
+  s = batch.PutLogData(log.slice());
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+  s = batch.Put(RocksDBColumnFamily::definitions(),
+            key.string(), value.string());
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+  auto db = rocksutils::globalRocksDB();
+  return rocksutils::convertStatus(db->Write(wo, &batch));
 }
 
 void RocksDBEngine::signalCleanup(TRI_vocbase_t& vocbase) {

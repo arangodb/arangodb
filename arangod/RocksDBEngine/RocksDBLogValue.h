@@ -90,11 +90,14 @@ class RocksDBLogValue {
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
   static TRI_voc_cid_t viewId(rocksdb::Slice const&);
   static TRI_idx_iid_t indexId(rocksdb::Slice const&);
-  /// For DocumentRemoveV2 and SingleRemoveV2
+  // ==== For DocumentRemoveV2 and SingleRemoveV2 ====
   static TRI_voc_rid_t revisionId(rocksdb::Slice const&);
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
   static velocypack::Slice viewSlice(rocksdb::Slice const&);
+  /// @brief get UUID from collection drop marker
   static arangodb::StringRef collectionUUID(rocksdb::Slice const&);
+  /// @brief get UUID from view drop marker
+  static arangodb::StringRef viewUUID(rocksdb::Slice const&);
   
   // deprecated method for old collection drop marker
   static arangodb::StringRef oldCollectionName(rocksdb::Slice const&);

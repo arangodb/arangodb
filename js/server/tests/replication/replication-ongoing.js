@@ -713,10 +713,41 @@ function BaseTestConfig() {
     
           let view = db._view("UnitTestsSyncViewRenamed");
           assertTrue(view !== null);
-          let props = view.properties();
+          let props = view.properties().properties;
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty("links"));
           assertTrue(props.links.hasOwnProperty(cn));
+        },
+        {}
+      );
+    },
+
+    testViewDrop: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          try {
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          // rename view on master
+          let view = db._view("UnitTestsSyncView");
+          view.drop();
+        },
+        function(state) {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view === null);
         },
         {}
       );

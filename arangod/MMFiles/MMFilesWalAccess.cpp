@@ -232,6 +232,13 @@ struct MMFilesWalAccessContext : WalAccessContext {
     }
     return true;
   }
+  
+  bool isViewWalMarker(MMFilesMarker const* marker) const {
+    MMFilesMarkerType t = marker->getType();
+    return t == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+           t == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+           t == TRI_DF_MARKER_VPACK_CHANGE_VIEW;
+  }
 
   /// @brief whether or not a marker is replicated
   bool mustReplicateWalMarker(MMFilesMarker const* marker,
@@ -254,13 +261,14 @@ struct MMFilesWalAccessContext : WalAccessContext {
         // restrict output to a single collection, but a different one
         return false;
       }
-
-      // will not find anything for a view
-      LogicalCollection* collection = loadCollection(databaseId, datasourceId);
-      if (collection != nullptr) {  // db may be already dropped
-        if (TRI_ExcludeCollectionReplication(collection->name(),
-                                             _filter.includeSystem)) {
-          return false;
+      if (!isViewWalMarker(marker)) {
+        // will not find anything for a view
+        LogicalCollection* collection = loadCollection(databaseId, datasourceId);
+        if (collection != nullptr) {  // db may be already dropped
+          if (TRI_ExcludeCollectionReplication(collection->name(),
+                                               _filter.includeSystem)) {
+            return false;
+          }
         }
       }
     }
@@ -322,11 +330,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       _builder.add("db", VPackValue(vocbase->name()));
-      if (type == TRI_DF_MARKER_VPACK_DROP_COLLECTION) {
-        _builder.add("cuid", slice.get("cuid"));
-      } else /*type == TRI_DF_MARKER_VPACK_DROP_VIEW)*/ {
-        _builder.add("guid", slice.get("guid"));
-      }
+      _builder.add("cuid", slice.get("cuid"));
     } else if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
                type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
       TRI_ASSERT(databaseId != 0);
@@ -340,7 +344,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
         return TRI_ERROR_NO_ERROR; // ignore marker
       }
       _builder.add("db", VPackValue(vocbase->name()));
-      _builder.add("guid", VPackValue(view->guid()));
+      _builder.add("cuid", VPackValue(view->guid()));
       
     } else {
       TRI_ASSERT(databaseId != 0);

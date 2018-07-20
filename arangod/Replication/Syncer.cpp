@@ -368,8 +368,8 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   }
 
   if (cid == 0) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << TRI_errno_string(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "Invalid replication response: Was unable to resolve"
+    << " collection from marker: " << slice.toJson();
     return nullptr;
   }
 
@@ -752,7 +752,7 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
   
   VPackSlice guidSlice = slice.get("globallyUniqueId");
   if (guidSlice.isNone()) {
-    guidSlice = slice.get("guid");
+    guidSlice = slice.get("cuid");
   }
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,

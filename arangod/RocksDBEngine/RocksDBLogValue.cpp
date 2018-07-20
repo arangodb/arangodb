@@ -349,18 +349,29 @@ VPackSlice RocksDBLogValue::viewSlice(rocksdb::Slice const& slice) {
                     sizeof(uint64_t) * 2);
 }
 
+namespace {
+  StringRef dropMarkerUUID(rocksdb::Slice const& slice) {
+    size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
+    TRI_ASSERT(slice.size() >= off);
+    RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
+    TRI_ASSERT(type == RocksDBLogType::CollectionDrop ||
+               type == RocksDBLogType::ViewDrop);
+    if (slice.size() > off) {
+      // have a UUID
+      return StringRef(slice.data() + off, slice.size() - off);
+    }
+    // do not have a UUID
+    return StringRef();
+  }
+}
+
 StringRef RocksDBLogValue::collectionUUID(
     rocksdb::Slice const& slice) {
-  size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
-  TRI_ASSERT(slice.size() >= off);
-  RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
-  TRI_ASSERT(type == RocksDBLogType::CollectionDrop);
-  if (slice.size() > off) {
-    // have a UUID
-    return StringRef(slice.data() + off, slice.size() - off);
-  }
-  // do not have a UUID
-  return StringRef();
+  return ::dropMarkerUUID(slice);
+}
+
+StringRef RocksDBLogValue::viewUUID(rocksdb::Slice const& slice) {
+  return ::dropMarkerUUID(slice);
 }
 
 StringRef RocksDBLogValue::oldCollectionName(
