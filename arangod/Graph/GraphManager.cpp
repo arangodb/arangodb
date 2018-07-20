@@ -836,6 +836,12 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     }
   }
 
+  Result permRes = checkDropGraphPermissions(graph, followersToBeRemoved,
+                                             leadersToBeRemoved);
+  if (permRes.fail()) {
+    return OperationResult{std::move(permRes)};
+  }
+
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
@@ -981,4 +987,59 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
   }
 
   return OperationResult(TRI_ERROR_NO_ERROR);
+}
+
+Result GraphManager::checkDropGraphPermissions(
+    const Graph& graph,
+    const std::unordered_set<std::string>& followersToBeRemoved,
+    const std::unordered_set<std::string>& leadersToBeRemoved) {
+  std::string const& databaseName = ctx()->vocbase().name();
+
+  std::stringstream stringstream;
+  stringstream << "When dropping graph " << databaseName << "." << graph.name()
+               << ": ";
+  std::string const logprefix = stringstream.str();
+
+  ExecContext const* execContext = ExecContext::CURRENT;
+  if (execContext == nullptr) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix
+                                     << "Permissions are turned off.";
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  bool mustDropAtLeastOneCollection =
+      !followersToBeRemoved.empty() || !leadersToBeRemoved.empty();
+  bool canUseDatabaseRW = execContext->canUseDatabase(auth::Level::RW);
+
+  if (mustDropAtLeastOneCollection && !canUseDatabaseRW) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS)
+        << logprefix << "Must drop at least one collection in " << databaseName
+        << ", but don't have permissions.";
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  // We need RW on _graphs (which is the same as RW on the database). But in
+  // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
+  if (!execContext->canUseCollection(StaticStrings::GraphCollection,
+                                     auth::Level::RO)) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No read access to "
+                                     << databaseName << "."
+                                     << StaticStrings::GraphCollection;
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  // Note that this check includes the following check from before
+  //   if (mustDropAtLeastOneCollection && !canUseDatabaseRW)
+  // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
+  // However, in case a collection has to be created but can't, we have to throw
+  // FORBIDDEN instead of READ_ONLY for backwards compatibility.
+  if (!execContext->canUseCollection(StaticStrings::GraphCollection,
+                                     auth::Level::RW)) {
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No write access to "
+                                     << databaseName << "."
+                                     << StaticStrings::GraphCollection;
+    return TRI_ERROR_ARANGO_READ_ONLY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }

@@ -60,11 +60,6 @@ class GraphManager {
   OperationResult createCollection(std::string const& name, TRI_col_type_e colType,
                           bool waitForSync, VPackSlice options);
 
-  Result checkCreateGraphPermissions(
-      std::string const& graphName,
-      std::map<std::string, EdgeDefinition> const& edgeDefinitions,
-      std::set<std::string> const& orphanCollections) const;
-
  public:
   GraphManager() = delete;
 
@@ -150,6 +145,16 @@ class GraphManager {
  private:
 
   bool collectionExists(std::string const& collection) const;
+
+  Result checkCreateGraphPermissions(
+      std::string const& graphName,
+      std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+      std::set<std::string> const& orphanCollections) const;
+
+  Result checkDropGraphPermissions(
+      Graph const& graph,
+      std::unordered_set<std::string> const& followersToBeRemoved,
+      std::unordered_set<std::string> const& leadersToBeRemoved);
 };
 }  // namespace graph
 }  // namespace arangodb

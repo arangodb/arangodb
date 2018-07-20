@@ -781,6 +781,8 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   } else if (action == EdgeDefinitionAction::EDIT) {
     result = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
+    // TODO Does this get waitForSync? Not according to the documentation.
+    // if not, remove the parameter from eraseEdgeDefinition. What about add/edit?
     result = gops.eraseEdgeDefinition(
       waitForSync, edgeDefinitionName, dropCollections
     );
