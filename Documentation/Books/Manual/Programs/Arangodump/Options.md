@@ -18,8 +18,8 @@ This feature is only available in the
 The file `path-to-keyfile` must contain the encryption key. This
 file must be secured, so that only `arangod` can access it. You should
 also ensure that in case someone steals your hardware, they will not be
-able to read the file. For example, by encryption `/mytmpfs` or
-creating a in-memory file-system under `/mytmpfs`. The encryption keyfile must 
+able to read the file. For example, by encrypting `/mytmpfs` or
+creating an in-memory file-system under `/mytmpfs`. The encryption keyfile must 
 contain 32 bytes of random data.
 
 *--encryption.key-generator path-to-my-generator*
