@@ -162,10 +162,7 @@ arangorestore --collection "secret-collection" dump --create-collection true
 
 and _arangorestore_ will report the following error:
 
-> the dump data seems to be encrypted with aes-256-ctr, but no key information
-> was specified to decrypt the dump it is recommended to specify either
-> `--encryption.key-file` or `--encryption.key-generator` when invoking
-> arangorestore with an encrypted dump
+> TO BE TAKEN AGAIN
 
 It is required to use the exact same key when restoring the data. Again this is
 done by providing the `--encryption.keyfile` parameter:
