@@ -194,11 +194,11 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
 
           methods::Collections::enumerate(
             &vocbase,
-            [&](LogicalCollection* c)->void {
+            [&](LogicalCollection& c)->void {
               lvl =
-                user.configuredCollectionAuthLevel(vocbase.name(), c->name());
+                user.configuredCollectionAuthLevel(vocbase.name(), c.name());
                 data.add(
-                  c->name(),
+                  c.name(),
                   velocypack::Value(convertFromAuthLevel(lvl))
                 );
             }

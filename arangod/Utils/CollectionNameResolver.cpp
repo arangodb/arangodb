@@ -284,7 +284,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(
     }
   }
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;
   return "_unknown";
 }
 

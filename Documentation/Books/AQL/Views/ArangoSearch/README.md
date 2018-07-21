@@ -90,6 +90,9 @@ The supported filter functions are:
 
 ### EXISTS()
 
+Note: Will only match **attribute-name** values that have been processed with
+the link property **trackValues** set to anything other than **none**.
+
 `EXISTS(attribute-name)`
 
 Match documents where the attribute **attribute-name** exists in the document.

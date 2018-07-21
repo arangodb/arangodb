@@ -101,12 +101,13 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesPersistentIndex() = delete;
 
-  MMFilesPersistentIndex(TRI_idx_iid_t, LogicalCollection*,
-                         arangodb::velocypack::Slice const&);
+  MMFilesPersistentIndex(
+    TRI_idx_iid_t iid, LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesPersistentIndex();
 
- public:
   IndexType type() const override {
     return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
