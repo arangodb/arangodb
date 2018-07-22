@@ -41,8 +41,8 @@ const db = require('@arangodb').db;
 const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
-const testView1Name = `${namePrefix}View1New`;
-const testView2Name = `${namePrefix}View2New`;
+const testViewName = `${namePrefix}ViewNew`;
+const testViewRename = `${namePrefix}ViewRename`;
 const testViewType = "arangosearch";
 const testCol1Name = `${namePrefix}Col1New`;
 const testCol2Name = `${namePrefix}Col2New`;
@@ -133,6 +133,19 @@ describe('User Rights Management', () => {
           });
 
           describe('administrate on db level', () => {
+            before(() => {
+              db._useDatabase(dbName);
+              rootCreateCollection(testCol1Name);
+              rootCreateCollection(testCol2Name);
+              rootPrepareCollection(testCol1Name);
+              rootPrepareCollection(testCol2Name);
+            });
+
+            after(() => {
+              rootDropCollection(testCol1Name);
+              rootDropCollection(testCol2Name);
+            });
+
             const rootTestCollection = (colName, switchBack = true) => {
               helper.switchUser('root', dbName);
               let col = db._collection(colName);
@@ -183,7 +196,7 @@ describe('User Rights Management', () => {
                 helper.switchUser(name, dbName);
             };
 
-            const rootGrantCollection = (colName, user, explicitRight) => {
+            const rootGrantCollection = (colName, user, explicitRight = '') => {
               if (rootTestCollection(colName, false)) {
                 if (explicitRight !== '' && rightLevels.includes(explicitRight))
                 {
@@ -216,20 +229,20 @@ describe('User Rights Management', () => {
 
             const rootGetViewProps = (viewName, switchBack = true) => {
               helper.switchUser('root', dbName);
-              let properties = db._view(viewName).properties();
+              let properties = db._view(viewName).properties().properties;
               if (switchBack) {
                   helper.switchUser(name, dbName);
               }
               return properties;
             };
 
-            const rootCreateView = (viewName, links = null) => {
+            const rootCreateView = (viewName, properties = null) => {
               if (rootTestView(viewName, false)) {
                 db._dropView(viewName);
               }
               let view =  db._createView(viewName, testViewType, {});
-              if (links != null) {
-                view.properties(links, false);
+              if (properties != null) {
+                view.properties(properties, false);
               }
               helper.switchUser(name, dbName);
             };
@@ -237,9 +250,9 @@ describe('User Rights Management', () => {
             const rootGetDefaultViewProps = () => {
               helper.switchUser('root', dbName);
               try {
-                var tmpView = db._createView(this.title+"_tmpView");
-                var properties = tmpView.properties();
-                db._dropView(this.title+"_tmpView");
+                var tmpView = db._createView(this.title + "_tmpView");
+                var properties = tmpView.properties().properties;
+                db._dropView(this.title + "_tmpView");
               } catch (ignored) { }
               helper.switchUser(name, dbName);
               return properties;
@@ -254,24 +267,24 @@ describe('User Rights Management', () => {
             };
 
             describe('update a', () => {
+              beforeEach(() => {
+                rootCreateView(testViewName, { properties : { links: { [testCol1Name] : {includeAllFields: true } } } });
+              });
+
+              afterEach(() => {
+                rootDropView(testViewName);
+              });
+
               before(() => {
-                db._useDatabase(dbName);
-                rootCreateCollection(testCol1Name);
-                rootCreateCollection(testCol2Name);
-                rootPrepareCollection(testCol1Name);
-                rootPrepareCollection(testCol2Name);
-                rootCreateView(testView1Name, {links: { [testCol1Name] : {includeAllFields: true }}});
+                  db._useDatabase(dbName);
               });
 
               after(() => {
-                rootDropView(testView1Name);
-                rootDropView(testView2Name);
-                rootDropCollection(testCol1Name);
-                rootDropCollection(testCol2Name);
+                rootDropView(testViewRename);
               });
 
               it('view by name', () => {
-                expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, view was not found');
+                expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
                 setKey(keySpaceId, name);
                 const taskId = 'task_update_view_name_' + name;
                 const task = {
@@ -280,7 +293,7 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view(${testView1Name}).rename(${testView2Name});
+                      db._view('${testViewName}').rename('${testViewRename}');
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -293,7 +306,7 @@ describe('User Rights Management', () => {
                   tasks.register(task);
                   wait(keySpaceId, name);
                   expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                  expect(rootTestView(testView2Name)).to.equal(true, 'View renaming reported success, but updated view was not found afterwards');
+                  expect(rootTestView(testViewRename)).to.equal(true, 'View renaming reported success, but updated view was not found afterwards');
                 } else {
                   try {
                     tasks.register(task);
@@ -305,7 +318,7 @@ describe('User Rights Management', () => {
               });
 
               it('view by property update except links (partial)', () => {
-                expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, view was not found');
+                expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
                 setKey(keySpaceId, name);
                 const taskId = 'task_update_view_property_not_links_partial_' + name;
                 const task = {
@@ -314,7 +327,7 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view(${testView1Name}).properties({\"locale\" : \"de_DE.UTF-8\"}, true);
+                      db._view('${testViewName}').properties( { properties : { locale : 'de_DE.UTF-8' } }, true);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -327,7 +340,7 @@ describe('User Rights Management', () => {
                   tasks.register(task);
                   wait(keySpaceId, name);
                   expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                  expect(rootGetViewProps(testView1Name)["locale"]).to.equal("de_DE.UTF-8", 'View property update reported success, but property was not updated');
+                  expect(rootGetViewProps(testViewName)["locale"]).to.equal("de_DE.UTF-8", 'View property update reported success, but property was not updated');
                 } else {
                   try {
                     tasks.register(task);
@@ -339,7 +352,7 @@ describe('User Rights Management', () => {
               });
 
               it('view by property update except links (full)', () => {
-                expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, view was not found');
+                expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
                 setKey(keySpaceId, name);
                 const taskId = 'task_update_view_property_not_links_full_' + name;
                 const task = {
@@ -348,7 +361,7 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view(${testView1Name}).properties({\"locale\" : \"de_DE.UTF-8\"}, false);
+                      db._view('${testViewName}').properties({ properties : { 'locale' : 'de_DE.UTF-8' } }, false);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -361,7 +374,7 @@ describe('User Rights Management', () => {
                   tasks.register(task);
                   wait(keySpaceId, name);
                   expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                  expect(rootGetViewProps(testView1Name)["locale"]).to.equal("de_DE.UTF-8", 'View property update reported success, but property was not updated');
+                  expect(rootGetViewProps(testViewName)["locale"]).to.equal("de_DE.UTF-8", 'View property update reported success, but property was not updated');
                 } else {
                   try {
                     tasks.register(task);
@@ -373,7 +386,7 @@ describe('User Rights Management', () => {
               });
 
               it('view by properties remove (full)', () => {
-                expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, view was not found');
+                expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
                 setKey(keySpaceId, name);
                 const taskId = 'task_update_view_property_remove_full_' + name;
                 const task = {
@@ -382,7 +395,7 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view(${testView1Name}).properties({}, false);
+                      db._view('${testViewName}').properties({}, false);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -396,7 +409,7 @@ describe('User Rights Management', () => {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                    expect(rootGetViewProps(testView1Name)).to.deep.equal(rootGetDefaultViewProps(), 'View properties update reported success, but properties were not updated');
+                    expect(rootGetViewProps(testViewName)).to.deep.equal(rootGetDefaultViewProps(), 'View properties update reported success, but properties were not updated');
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
@@ -413,7 +426,7 @@ describe('User Rights Management', () => {
               });
 
               it('view by existing link update (partial)', () => {
-                expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, view was not found');
+                expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
                 setKey(keySpaceId, name);
                 const taskId = 'task_update_view_existing_link_partial_' + name;
                 const task = {
@@ -422,7 +435,7 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view(${testView1Name}).properties({ links: { [${testCol1Name}]: { includeAllFields: true, analyzers: [\"text_de\",\"text_en\"] } } }, true);
+                      db._view('${testViewName}').properties({ properties: { links: { [${testCol1Name}]: { includeAllFields: true, analyzers: ['text_de','text_en'] } } } }, true);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -437,7 +450,7 @@ describe('User Rights Management', () => {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                    expect(rootGetViewProps(testView1Name)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
+                    expect(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
@@ -454,7 +467,7 @@ describe('User Rights Management', () => {
               });
 
               it('view by existing link update (full)', () => {
-                expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, view was not found');
+                expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
                 setKey(keySpaceId, name);
                 const taskId = 'task_update_view_existing_link_full_' + name;
                 const task = {
@@ -463,7 +476,7 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view(${testView1Name}).properties({ links: { [${testCol1Name}]: { includeAllFields: true, analyzers: [\"text_de\",\"text_en\"] } } }, false);
+                      db._view('${testViewName}').properties({ properties : { links: { [${testCol1Name}]: { includeAllFields: true, analyzers: ['text_de','text_en'] } } } }, false);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -477,7 +490,7 @@ describe('User Rights Management', () => {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                    expect(rootGetViewProps(testView1Name)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
+                    expect(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
@@ -494,7 +507,7 @@ describe('User Rights Management', () => {
               });
 
               it('view by new link to RW collection (partial)', () => {
-                expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, view was not found');
+                expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
                 rootGrantCollection(testCol2Name, name, 'rw');
                 setKey(keySpaceId, name);
                 const taskId = 'task_update_view_new_link_to_RW_coll_partial_' + name;
@@ -504,7 +517,7 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view(${testView1Name}).properties({ links: { [${testCol2Name}]: { includeAllFields: true, analyzers: [\"text_de\"] } } }, true);
+                      db._view('${testViewName}').properties({ properties : { links: { [${testCol2Name}]: { includeAllFields: true, analyzers: ['text_de'] } } } }, true);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -517,7 +530,7 @@ describe('User Rights Management', () => {
                   tasks.register(task);
                   wait(keySpaceId, name);
                   expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                  expect(rootGetViewProps(testView1Name)["links"][testCol2Name]["analyzers"]).to.eql(["text_de"], 'View link update reported success, but property was not updated');
+                  expect(rootGetViewProps(testViewName)["links"][testCol2Name]["analyzers"]).to.eql(["text_de"], 'View link update reported success, but property was not updated');
                 } else {
                   try {
                     tasks.register(task);

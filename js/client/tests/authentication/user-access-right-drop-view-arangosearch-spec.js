@@ -126,7 +126,7 @@ describe('User Rights Management', () => {
             helper.switchUser(name, dbName);
           };
 
-          const rootGrantCollection = (colName, user, explicitRight) => {
+          const rootGrantCollection = (colName, user, explicitRight = '') => {
               if (rootTestCollection(colName, false)) {
                 if (explicitRight !== '' && rightLevels.includes(explicitRight))
                 {
@@ -140,20 +140,22 @@ describe('User Rights Management', () => {
               }
             };
 
-          const rootTestView = () => {
+          const rootTestView = (viewName = testViewName, switchBack = true) => {
             helper.switchUser('root', dbName);
-            const view = db._view(testViewName);
-            helper.switchUser(name, dbName);
+            let view = db._view(viewName);
+            if (switchBack) {
+                helper.switchUser(name, dbName);
+            }
             return view != null;
           };
 
-          const rootCreateView = (viewName = testViewName, links = null) => {
+          const rootCreateView = (viewName = testViewName, properties = null) => {
             if (rootTestView(viewName, false)) {
               db._dropView(viewName);
             }
             let view =  db._createView(viewName, testViewType, {});
-            if (links != null) {
-              view.properties(links, false);
+            if (properties != null) {
+              view.properties(properties, false);
             }
             helper.switchUser(name, dbName);
           };
@@ -169,40 +171,39 @@ describe('User Rights Management', () => {
           describe('drop a', () => {
             before(() => {
               db._useDatabase(dbName);
-              rootCreateView();
             });
 
             after(() => {
-              rootDropView();
+              rootDropView(testViewName);
               rootDropCollection(testCol1Name);
               rootDropCollection(testCol2Name);
             });
 
             it('view without links', () => {
-              expect(rootTestView()).to.equal(true, 'Precondition failed, the view doesn not exist');
+              rootCreateView(testViewName);
+              expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
               if (dbLevel['rw'].has(name)) {
                 db._dropView(testViewName);
-                expect(rootTestView()).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
               } else {
                 try {
                   db._dropView(testViewName);
                 } catch (e) {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }
-                expect(rootTestView()).to.equal(true, `${name} was able to delete a view with insufficent rights`);
+                expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
               }
             });
 
             it('view with link to non-existing collection', () => {
-              rootDropView();
-              rootDropCollection(testCol1Name);
-
-              rootCreateCollection(testCol1Name);
-              rootCreateView(testViewName, { links: { "NonExistentCol" : { includeAllFields: true } } });
-              expect(rootTestView()).to.equal(true, 'Precondition failed, the view doesn not exist');
+              rootDropView(testViewName);
+              rootCreateCollection("NonExistentCol");
+              rootCreateView(testViewName, { properties : { links: { "NonExistentCol" : { includeAllFields: true } } } });
+              rootDropCollection("NonExistentCol");
+              expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
               if (dbLevel['rw'].has(name)) {
                 db._dropView(testViewName);
-                expect(rootTestView()).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
               } else {
                 try {
                   db._dropView(testViewName);
@@ -210,21 +211,21 @@ describe('User Rights Management', () => {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }
                 if(!dbLevel['rw'].has(name)) {
-                  expect(rootTestView()).to.equal(true, `${name} was able to delete a view with insufficent rights`);
+                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                 }
               }
             });
 
             it('view with link to existing collection', () => {
-              rootDropView();
+              rootDropView(testViewName);
               rootDropCollection(testCol1Name);
 
               rootCreateCollection(testCol1Name);
-              rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true } } });
-              expect(rootTestView()).to.equal(true, 'Precondition failed, the view doesn not exist');
+              rootCreateView(testViewName, { properties : { links: { [testCol1Name]: { includeAllFields: true } } } });
+              expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                 db._dropView(testViewName);
-                expect(rootTestView()).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
               } else {
                 try {
                   db._dropView(testViewName);
@@ -232,29 +233,29 @@ describe('User Rights Management', () => {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }
                 if(!dbLevel['rw'].has(name)) {
-                  expect(rootTestView()).to.equal(true, `${name} was able to delete a view with insufficent rights`);
+                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                 }
               }
             });
 
             it('view with links to multiple collections (switching 1 of them as RW during RO/NONE of a user collection level)', () => {
-              rootDropView();
+              rootDropView(testViewName);
               rootDropCollection(testCol1Name);
 
               rootCreateCollection(testCol1Name);
               rootCreateCollection(testCol2Name);
-              rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } });
-              expect(rootTestView()).to.equal(true, 'Precondition failed, the view doesn not exist');
+              rootCreateView(testViewName, { properties : { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } } });
+              expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
               if (dbLevel['rw'].has(name)) {
                 if(colLevel['rw'].has(name))
                 {
                   db._dropView(testViewName);
-                  expect(rootTestView()).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                  expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
                 } else {
                   try {
                     rootGrantCollection(testCol2Name, name, 'rw');
                     db._dropView(testViewName);
-                    expect(rootTestView()).to.equal(true, `${name} was able to delete a view with insufficent rights`);
+                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                   } catch (e) {
                     expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                   }
@@ -266,7 +267,7 @@ describe('User Rights Management', () => {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }
                 if(!dbLevel['rw'].has(name)) {
-                  expect(rootTestView()).to.equal(true, `${name} was able to delete a view with insufficent rights`);
+                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                 }
               }
             });

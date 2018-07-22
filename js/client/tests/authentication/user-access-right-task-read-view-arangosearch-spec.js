@@ -147,11 +147,11 @@ describe('User Rights Management', () => {
               db._useDatabase(dbName);
               rootCreateCollection(testCol1Name);
               rootCreateCollection(testCol2Name);
-              var properties = { };
-              properties['links'] = {};
-              properties['links'][testCol1Name] = { includeAllFields: true };
+              var properties = { properties : {} };
+              properties['properties']['links'] = {};
+              properties['properties']['links'][testCol1Name] = { includeAllFields: true };
               rootCreateView(testView1Name, properties);
-              properties['links'][testCol2Name] = { includeAllFields: true };
+              properties['properties']['links'][testCol2Name] = { includeAllFields: true };
               rootCreateView(testView2Name, properties);
               rootPrepareCollection(testCol1Name, testNumDocs);
               rootPrepareCollection(testCol2Name, testNumDocs, false);
@@ -208,7 +208,7 @@ describe('User Rights Management', () => {
               helper.switchUser(name, dbName);
             };
 
-            const rootGrantCollection = (colName, user, explicitRight) => {
+            const rootGrantCollection = (colName, user, explicitRight = '') => {
               if (rootTestCollection(colName, false)) {
                 if (explicitRight !== '' && rightLevels.includes(explicitRight))
                 {
@@ -254,13 +254,13 @@ describe('User Rights Management', () => {
               return view != null;
             };
 
-            const rootCreateView = (viewName, links = null) => {
+            const rootCreateView = (viewName, properties = null) => {
               if (rootTestView(viewName, false)) {
                 db._dropView(viewName);
               }
               let view =  db._createView(viewName, testViewType, {});
-              if (links != null) {
-                view.properties(links, false);
+              if (properties != null) {
+                view.properties(properties, false);
               }
               helper.switchUser(name, dbName);
             };
