@@ -262,7 +262,7 @@ describe('User Rights Management', () => {
                 }
               });
 
-              /*it('view with link to non-existing collection', () => {
+              it('view with link to non-existing collection', () => {
                 rootDropView(testViewName);
                 rootCreateCollection("NonExistentCol");
                 rootCreateView(testViewName, { properties : { links: { "NonExistentCol" : { includeAllFields: true } } } });
@@ -389,7 +389,7 @@ describe('User Rights Management', () => {
                   }
                 }
               });
-            */});
+            });
           });
         });
       }
