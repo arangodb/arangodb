@@ -272,9 +272,9 @@ while [ $# -gt 0 ];  do
              CXX=""
              PAR=""
              PARALLEL_BUILDS=""
-             GENERATOR="Visual Studio 14 Win64"
+             GENERATOR="Visual Studio 15 Win64"
              CONFIGURE_OPTIONS+=("-T")
-             CONFIGURE_OPTIONS+=("v140,host=x64")
+             CONFIGURE_OPTIONS+=("v141,host=x64")
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
              CONFIGURE_OPTIONS+=("-DOPENSSL_USE_STATIC_LIBS=TRUE")
