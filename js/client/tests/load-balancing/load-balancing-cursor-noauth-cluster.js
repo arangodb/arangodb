@@ -91,7 +91,7 @@ function CursorSyncSuite () {
   }
 
   return {
-    setUpAll: function() {
+    setUp: function() {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -106,11 +106,15 @@ function CursorSyncSuite () {
           cs[i].save({ _key: key });
         }
       }
+
+      require("internal").wait(2);
     },
 
-    tearDownAll: function() {
+    tearDown: function() {
       db._drop(cns[0]);
       db._drop(cns[1]);
+      cs = [];
+      coordinators = [];
     },
 
     testCursorForwardingBasic: function() {
