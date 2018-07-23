@@ -2294,7 +2294,7 @@ OperationResult transaction::Methods::removeCoordinator(
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::deleteDocumentOnCoordinator(
-      vocbase().name(), collectionName, *this, value, options responseCode,
+      vocbase().name(), collectionName, *this, value, options, responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
