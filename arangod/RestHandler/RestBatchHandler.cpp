@@ -30,6 +30,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/JobQueue.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -41,6 +42,9 @@ RestBatchHandler::RestBatchHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 RestBatchHandler::~RestBatchHandler() {}
+
+// returns the queue name
+size_t RestBatchHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_batch_processing
@@ -351,14 +355,24 @@ bool RestBatchHandler::getBoundaryHeader(std::string* result) {
     return false;
   }
 
-  std::string boundary = "--" + parts[1].substr(boundaryLength);
+  std::string boundary = parts[1].substr(boundaryLength);
 
-  if (boundary.size() < 5) {
+  if ((boundary[0]  == '"') &&
+      (boundary.length() > 1) && 
+      (boundary[boundary.length() -1] == '"')) {
+    StringUtils::trimInPlace(boundary, "\"");
+  } else if ((boundary[0] == '\'') &&
+             (boundary.length() > 1) && 
+             (boundary[boundary.length() -1] == '\'')) {
+    StringUtils::trimInPlace(boundary, "'");
+  }
+
+  if (boundary.size() < 3) {
     // 3 bytes is min length for boundary (without "--")
     return false;
   }
 
-  *result = boundary;
+  *result = "--" + boundary;
   return true;
 }
 

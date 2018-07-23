@@ -32,6 +32,7 @@ class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestDatabaseHandler"; }
+  size_t queue() const override;
   bool isDirect() const override { return false; }
   RestStatus execute() override;
 

@@ -1,4 +1,4 @@
-v3.3.12 (XXXX-XX-XX)
+v3.3.13 (XXXX-XX-XX)
 --------------------
 
 * Added load balancer support and user-restriction to cursor API.
@@ -7,6 +7,43 @@ v3.3.12 (XXXX-XX-XX)
   the requests will be forwarded to the correct coordinator. If a cursor is
   accessed by a different user than the one who created it, the request will
   be denied.
+
+* keep failed follower in followers list in Plan.
+
+  This increases the changes of a failed follower getting back into sync if the
+  follower comes back after a short time. In this case the follower can try to
+  get in sync again, which normally takes less time than seeding a completely
+  new follower.
+
+* fix assertion failure and undefined behavior in Unix domain socket connections,
+  introduced by 3.3.12
+
+* fixed graph creation sometimes failing with 'edge collection
+  already used in edge def' when the edge definition contained multiple vertex
+  collections, despite the edge definitions being identical
+
+* inception could get caught in a trap, where agent configuration
+  version and timeout multiplier lead to incapacitated agency
+
+* fixed issue #5827: Batch request handling incompatible with .NET's default
+  ContentType format
+
+* fixed agency's log compaction for internal issue #2249
+
+* inspector collects additionally disk data size and storage engine statistics
+
+
+v3.3.12 (2018-07-12)
+--------------------
+
+* issue #5854: RocksDB engine would frequently request a new DelayToken.  This caused
+  excessive write delay on the next Put() call.  Alternate approach taken.
+
+* fixed graph creation under some circumstances failing with 'edge collection
+  already used in edge def' despite the edge definitions being identical
+
+* fixed issue #5727: Edge document with user provided key is inserted as many
+  times as the number of shards, violating the primary index
 
 * fixed internal issue #2658: AQL modification queries did not allow `_rev`
   checking. There is now a new option `ignoreRevs` which can be set to `false`
@@ -22,6 +59,13 @@ v3.3.12 (XXXX-XX-XX)
 * changed communication tasks to use boost strands instead of locks,
   this fixes a race condition with parallel VST communication over
   SSL
+
+* fixed agency restart from compaction without data
+
+* fixed for agent coming back to agency with changed endpoint and
+  total data loss
+
+* more patient agency tests to allow for ASAN tests to successfully finish
 
 
 v3.3.11 (2018-06-26)
@@ -322,7 +366,6 @@ v3.3.7 (2018-04-11)
   fully prepare before adding 10 second grace period after leadership change
 
 * fixed internal issue #2215's FailedLeader timeout bug
-
 
 v3.3.5 (2018-03-28)
 -------------------

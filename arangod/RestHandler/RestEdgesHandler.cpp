@@ -27,6 +27,8 @@
 #include "Aql/Variable.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
+#include "Scheduler/JobQueue.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
@@ -42,6 +44,14 @@ using namespace arangodb::rest;
 RestEdgesHandler::RestEdgesHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
+
+// returns the queue name
+size_t RestEdgesHandler::queue() const { 
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::BACKGROUND_QUEUE; 
+  }
+  return JobQueue::STANDARD_QUEUE; 
+}
 
 RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type

@@ -150,7 +150,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 
   if (_closedSend.load(std::memory_order_acquire) ||
       _abandoned.load(std::memory_order_acquire)) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) << "Connection abandoned or closed";
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Connection abandoned or closed";
     buffer.release();
     return;
   }
@@ -249,7 +249,7 @@ void SocketTask::resetKeepAlive() {
     _keepAliveTimer.async_wait([self, this](const asio_ns::error_code& error) {
       if (!error) {  // error will be true if timer was canceled
         LOG_TOPIC(ERR, Logger::COMMUNICATION)
-            << "keep alive timout - closing stream!";
+            << "keep alive timeout - closing stream!";
         closeStream();
       }
     });
@@ -442,20 +442,15 @@ void SocketTask::asyncReadSome() {
           return;
         }
 
-        _peer->strand.post([self, this, transferred] {
-          JobGuard guard(_loop);
-          guard.work();
-
-          _readBuffer.increaseLength(transferred);
-          if (processAll()) {
-            _peer->strand.post([self, this]() {
-              JobGuard guard(_loop);
-              guard.work();
-              asyncReadSome();
-            });
-          }
-          compactify();
-        });
+        _readBuffer.increaseLength(transferred);
+        if (processAll()) {
+          _peer->strand.post([self, this]() {
+            JobGuard guard(_loop);
+            guard.work();
+            asyncReadSome();
+          });
+        }
+        compactify();
       });
 }
 
@@ -529,27 +524,18 @@ void SocketTask::asyncWriteSome() {
           return;
         }
 
-        _peer->strand.post([self, this, transferred] {
-          JobGuard guard(_loop);
-          guard.work();
+        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics,
+                                          transferred);
 
-          if (_abandoned.load(std::memory_order_acquire)) {
-            return;
-          }
-
-          RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics,
-                                            transferred);
-
-          if (completedWriteBuffer()) {
-            _peer->strand.post([self, this] {
-              JobGuard guard(_loop);
-              guard.work();
-              if (!_abandoned.load(std::memory_order_acquire)) {
-                asyncWriteSome();
-              }
-            });
-          }
-        });
+        if (completedWriteBuffer()) {
+          _peer->strand.post([self, this] {
+            JobGuard guard(_loop);
+            guard.work();
+            if (!_abandoned.load(std::memory_order_acquire)) {
+              asyncWriteSome();
+            }
+          });
+        }
       });
 }
 
