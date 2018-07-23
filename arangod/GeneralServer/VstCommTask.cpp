@@ -78,12 +78,12 @@ inline std::size_t validateAndCount(char const* vpStart,
 }
 
 
-VstCommTask::VstCommTask(Scheduler* scheduler, GeneralServer* server,
+VstCommTask::VstCommTask(GeneralServer &server, GeneralServer::IoContext &context,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
                          double timeout, ProtocolVersion protocolVersion,
                          bool skipInit)
-    : Task(scheduler, "VstCommTask"),
-      GeneralCommTask(scheduler, server, std::move(socket), std::move(info), timeout,
+    : IoTask(server, context, "VstCommTask"),
+      GeneralCommTask(server, context, std::move(socket), std::move(info), timeout,
                       skipInit),
       _authorized(false),
       _authMethod(rest::AuthenticationMethod::NONE),
@@ -105,7 +105,7 @@ void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType r
   VstResponse resp(code, messageId);
   TRI_ASSERT(respType == rest::ContentType::VPACK); // or not ?
   resp.setContentType(respType);
-  
+
   try {
     if (!buffer.empty()) {
       resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
@@ -180,7 +180,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       ++c;
     }
   }
-  
+
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
@@ -188,7 +188,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
-  
+
   // process remaining requests ?
   //processAll();
 }
@@ -270,7 +270,7 @@ bool VstCommTask::isChunkComplete(char* start) {
 
 void VstCommTask::handleAuthHeader(VPackSlice const& header,
                                    uint64_t messageId) {
-  
+
   std::string authString;
   std::string user = "";
   _authorized = false;
@@ -288,7 +288,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   } else {
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
-  
+
   if (_auth->isActive()) { // will just fail if method is NONE
     auto entry = _auth->tokenCache()->checkAuthentication(_authMethod, authString);
     _authorized = entry.authenticated();
@@ -301,7 +301,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     _authorized = true;
     _authenticatedUser = std::move(user); // may be empty
   }
-  
+
   if (_authorized) {
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
     // obi: user who sends authentication expects a reply
@@ -316,7 +316,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
   TRI_ASSERT(_peer->runningInThisThread());
-  
+
   auto& prv = _processReadVariables;
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
   if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
@@ -385,12 +385,12 @@ bool VstCommTask::processRead(double startTime) {
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
-    
+
     // handle request types
     if (type == 1000) {
       handleAuthHeader(header, chunkHeader._messageID);
     } else {
-      
+
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
@@ -401,7 +401,7 @@ bool VstCommTask::processRead(double startTime) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
-      
+
       RequestFlow cont = prepareExecution(*request.get());
       if (cont == RequestFlow::Continue) {
         auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR,

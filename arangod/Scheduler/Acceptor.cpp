@@ -31,15 +31,17 @@
 
 using namespace arangodb;
 
-Acceptor::Acceptor(rest::Scheduler* scheduler, Endpoint* endpoint)
-    : _scheduler(scheduler), _endpoint(endpoint) {}
+Acceptor::Acceptor(rest::GeneralServer &server,
+                   rest::GeneralServer::IoContext &context, Endpoint* endpoint)
+    : _server(server), _context(context), _endpoint(endpoint) {}
 
-std::unique_ptr<Acceptor> Acceptor::factory(rest::Scheduler* scheduler,
+std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer &server,
+                                            rest::GeneralServer::IoContext &context,
                                             Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
-    return std::make_unique<AcceptorUnixDomain>(scheduler, endpoint);
+    return std::make_unique<AcceptorUnixDomain>(server, context, endpoint);
   }
 #endif
-  return std::make_unique<AcceptorTcp>(scheduler, endpoint);
+  return std::make_unique<AcceptorTcp>(server, context, endpoint);
 }

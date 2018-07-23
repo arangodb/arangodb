@@ -37,11 +37,11 @@ using namespace arangodb::rest;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask(Scheduler* scheduler, Endpoint* endpoint)
-    : Task(scheduler, "ListenTask"),
+ListenTask::ListenTask(GeneralServer &server, GeneralServer::IoContext& context, Endpoint* endpoint)
+    : IoTask(server, context, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
-      _acceptor(Acceptor::factory(scheduler, endpoint)) {}
+      _acceptor(Acceptor::factory(server, context, endpoint)) {}
 
 ListenTask::~ListenTask() {}
 
@@ -50,7 +50,6 @@ ListenTask::~ListenTask() {}
 // -----------------------------------------------------------------------------
 
 bool ListenTask::start() {
-  MUTEX_LOCKER(mutex, _shutdownMutex);
   TRI_ASSERT(_acceptor);
 
   try {
@@ -67,10 +66,9 @@ bool ListenTask::start() {
     return false;
   }
 
-  _handler = [this](asio_ns::error_code const& ec) {
-    MUTEX_LOCKER(mutex, _shutdownMutex);
-    JobGuard guard(_scheduler);
-    guard.work();
+  auto self(shared_from_this());
+
+  _handler = [this, self](asio_ns::error_code const& ec) {
 
     if (!_bound) {
       _handler = nullptr;
@@ -124,7 +122,6 @@ bool ListenTask::start() {
 }
 
 void ListenTask::stop() {
-  MUTEX_LOCKER(mutex, _shutdownMutex);
 
   if (!_bound) {
     return;

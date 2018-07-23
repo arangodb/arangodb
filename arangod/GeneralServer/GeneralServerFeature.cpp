@@ -100,7 +100,8 @@ GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
-      _proxyCheck(true) {
+      _proxyCheck(true),
+      _numIoThreads(8) {
   setOptional(true);
   startsAfter("AQLPhase");
 
@@ -123,6 +124,11 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("server.default-api-compatibility", "");
   options->addOldOption("no-server", "server.rest-server");
+
+  options->addOption(
+      "--server.io-threads",
+      "Number of threads used to handle IO",
+      new UInt64Parameter(&_numIoThreads));
 
   options->addSection("http", "HttpServer features");
 
@@ -183,6 +189,11 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                          return basics::StringUtils::trim(value).empty();
                        }),
         _accessControlAllowOrigins.end());
+  }
+
+  // we need at least one io thread and context
+  if (_numIoThreads <= 0) {
+    _numIoThreads = 1;
   }
 }
 
@@ -255,7 +266,7 @@ void GeneralServerFeature::buildServers() {
     ssl->SSL->verifySslOptions();
   }
 
-  GeneralServer* server = new GeneralServer();
+  GeneralServer* server = new GeneralServer(_numIoThreads);
 
   server->setEndpointList(&endpointList);
   _servers.push_back(server);
@@ -303,8 +314,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
-  
-  
+
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
       RestHandlerCreator<RestCollectionHandler>::createNoData);
@@ -347,7 +358,7 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>, queryRegistry);
-  
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
@@ -406,7 +417,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
       "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
@@ -451,7 +462,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
     "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
@@ -461,7 +472,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
       "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
@@ -500,11 +511,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
     "/_admin/server",
     RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
     "/_admin/statistics",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
     "/_admin/statistics-description",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
@@ -520,7 +531,7 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // actions defined in v8
   // ...........................................................................
-  
+
   _handlerFactory->addPrefixHandler(
      "/", RestHandlerCreator<RestActionHandler>::createNoData);
 

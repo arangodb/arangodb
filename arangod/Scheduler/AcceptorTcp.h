@@ -28,8 +28,9 @@
 namespace arangodb {
 class AcceptorTcp final : public Acceptor {
  public:
-  AcceptorTcp(rest::Scheduler* scheduler, Endpoint* endpoint)
-      : Acceptor(scheduler, endpoint), _acceptor(scheduler->newAcceptor()) {}
+  AcceptorTcp(rest::GeneralServer &server,
+              rest::GeneralServer::IoContext &context, Endpoint* endpoint)
+      : Acceptor(server, context, endpoint), _acceptor(context.newAcceptor()) {}
 
  public:
   void open() override;

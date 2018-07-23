@@ -28,6 +28,7 @@
 #include "Scheduler/SocketTask.h"
 
 #include <openssl/ssl.h>
+#include "GeneralServer/GeneralServer.h"
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -40,9 +41,8 @@ class GeneralRequest;
 class GeneralResponse;
 
 namespace rest {
-class GeneralServer;
 class RestHandler;
-  
+
 //
 // The flow of events is as follows:
 //
@@ -79,13 +79,13 @@ class RestHandler;
 //     called. This will call `addResponse()` with an error indicator, which in
 //     turn will end the responding request.
 //
-  
+
 class GeneralCommTask : public SocketTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket>,
+  GeneralCommTask(GeneralServer &server, GeneralServer::IoContext&, std::unique_ptr<Socket>,
                   ConnectionInfo&&, double keepAliveTimeout,
                   bool skipSocketInit = false);
 
@@ -94,31 +94,31 @@ class GeneralCommTask : public SocketTask {
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
  protected:
-  
+
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
-  
+
   /// @brief send simple response including response body
   virtual void addSimpleResponse(rest::ResponseCode, rest::ContentType,
                                  uint64_t messageId, velocypack::Buffer<uint8_t>&&) = 0;
-  
+
   /// @brief send the response to the client.
   virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
-  
+
  protected:
-  
+
   enum class RequestFlow : bool {
     Continue = true,
     Abort = false
   };
-  
+
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
   RequestFlow prepareExecution(GeneralRequest&);
-  
+
   /// Must be called from addResponse, before response is rendered
   void finishExecution(GeneralResponse&) const;
-  
+
   /// Push this request into the execution pipeline
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
                       std::unique_ptr<GeneralResponse>&&);
@@ -127,15 +127,14 @@ class GeneralCommTask : public SocketTask {
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);
-  
+
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
                         uint64_t messageId, int errorNum, std::string const&);
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
                         uint64_t messageId, int errorNum);
-  
+
  protected:
-  GeneralServer* const _server;
   AuthenticationFeature* _auth;
 
   // protocol to use http, vst
@@ -144,7 +143,7 @@ class GeneralCommTask : public SocketTask {
 
   arangodb::Mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
-  
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
   ///        exceptions for /_api/users to allow logins without authorization
