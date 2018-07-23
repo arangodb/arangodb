@@ -1715,9 +1715,6 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    // TODO validate that the behaviour of UPSERT should not change.
-    // maybe add a test.
-
     // TODO add a test validating the _rev is ignored in AQL
 
     // TODO add tests using shardKeys
