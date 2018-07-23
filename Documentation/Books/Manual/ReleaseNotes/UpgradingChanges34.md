@@ -6,6 +6,22 @@ upgrading to ArangoDB 3.4, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.4:
 
+
+Supported platforms
+-------------------
+
+The minimum supported architecture for the official release packages of ArangoDB is
+the Nehalem architecture.
+All release packages are built with compiler optimizations that require at least
+this architecture. The following CPU features are required for running an official
+release package (note: these are all included in the Nehalem architecture and upwards):
+
+* SSE2
+* SSE3
+* SSE4.1
+* SSE4.2
+
+
 Storage engine
 --------------
 
@@ -29,13 +45,21 @@ explicitly selected:
 
 * `--server.storage-engine mmfiles`
 
+
+To make users aware of that the RocksDB storage engine was chosen automatically
+due to an explicit other storage engine selection, 3.4 will come up with the following
+startup warning:
+
+    using default storage engine 'rocksdb', as no storage engine was explicitly selected via the `--server.storage-engine` option.
+    please note that default storage engine has changed from 'mmfiles' to 'rocksdb' in ArangoDB 3.4
+
+
 On upgrade, any existing ArangoDB installation will keep its previously selected
-storage engine. The change of the default storage engine is thus only relevant
+storage engine. The change of the default storage engine in 3.4 is thus only relevant
 for new ArangoDB installations and/or existing cluster setups for which new server 
 nodes get added later. All server nodes in a cluster setup should use the same
 storage engine to work reliably. Using different storage engines in a cluster is
 unsupported.
-
 
 To validate that the different nodes in a cluster deployment use the same storage
 engine throughout the entire cluster, there is now a startup check performed by
