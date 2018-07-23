@@ -99,7 +99,6 @@ arangodb::Result DumpStatus::waitForResponse(std::unique_ptr<arangodb::httpclien
       _response.reset();
       _res.reset();
       response.reset();
-      guard.signal();
 
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
