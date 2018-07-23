@@ -1,16 +1,16 @@
 @startDocuBlock post_api_view
 @brief creates an ArangoDB view
 
-@RESTHEADER{POST /_api/view#<view-type>, Create an ArangoDB view}
+@RESTHEADER{POST /_api/view#arangosearch, Create an ArangoDB view}
 
-@RESTBODYPARAM{name, string, required, string}
+@RESTBODYPARAM{name,string,required,string}
 The name of the view.
 
-@RESTBODYPARAM{type, string, required, string}
+@RESTBODYPARAM{type,string,required,string}
 The type of the view. must be equal to one of the supported ArangoDB view
 types.
 
-@RESTBODYPARAM{properties, object, optional, post_api_view_props}
+@RESTBODYPARAM{properties,object,optional,post_api_view_props}
 The view properties. If specified, then *properties* should be a JSON object
 containing the attributes supported by the specific view type.
 
