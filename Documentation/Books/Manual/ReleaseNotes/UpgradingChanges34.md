@@ -147,6 +147,25 @@ APIs:
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
 
+- `GET /_admin/status` now returns the attribute `operationMode` instead of `mode`.
+  The previously existing attribute `writeOpsEnabled` is no longer returned and was
+  replaced with an attribute `readOnly` with the inverted meaning.
+
+- if authentication is turned on, requests to databases by users with insufficient 
+  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
+
+
+The following APIs have been added or augmented:
+
+- `POST /_api/document/{collection}` now supports repsert (replace-insert). 
+  
+  This can be achieved by using the URL parameter `overwrite=true`. When set to 
+  `true`, insertion will not fail in case of a primary key conflict, but turn 
+  into a replace operation.
+
+  When an insert turns into a replace, the previous version of the document can
+  be retrieved by passing the URL parameter `returnOld=true`
+
 - `POST /_api/aqlfunction` now includes an "isNewlyCreated" attribute that indicates
   if a new function was created or if an existing one was replaced (in addition to the
   "code" attribute, which remains 200 for replacement and 201 for creation):
@@ -168,25 +187,6 @@ APIs:
     "deletedCount": 10
   }
   ```
-
-- `GET /_admin/status` now returns the attribute `operationMode` instead of `mode`.
-  The previously existing attribute `writeOpsEnabled` is no longer returned and was
-  replaced with an attribute `readOnly` with the inverted meaning.
-
-- if authentication is turned on, requests to databases by users with insufficient 
-  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
-
-
-The following APIs have been added or augmented:
-
-- `POST /_api/document/{collection}` now supports repsert (replace-insert). 
-  
-  This can be achieved by using the URL parameter `overwrite=true`. When set to 
-  `true`, insertion will not fail in case of a primary key conflict, but turn 
-  into a replace operation.
-
-  When an insert turns into a replace, the previous version of the document can
-  be retrieved by passing the URL parameter `returnOld=true`
 
 - APIs for view management have been added at endpoint `/_api/view`.
 
@@ -300,7 +300,7 @@ numbers of V8 contexts to start. In terms of configuration options, these
 are:
 
 - `--javascript.v8-contexts`: the maximum number of V8 contexts to create
-- `--javascript.v8-contexts-minimim`: the minimum number of V8 contexts to 
+- `--javascript.v8-contexts-minimum`: the minimum number of V8 contexts to 
   create at server start and to keep around
 
 The default values for these startup options have not been changed in ArangoDB
