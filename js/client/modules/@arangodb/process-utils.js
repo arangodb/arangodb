@@ -865,8 +865,10 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       agentsKilled = true;
     }
     toShutdown = toShutdown.filter(arangod => {
-      arangod.exitStatus = statusExternal(arangod.pid, false);
-
+      if (!arangod.hasOwnProperty('exitStatus') ||
+          (arangod.exitStatus.status === 'RUNNING')) {
+        arangod.exitStatus = statusExternal(arangod.pid, false);
+      }
       if (arangod.exitStatus.status === 'RUNNING') {
         let localTimeout = timeout;
         if (arangod.role === 'agent') {
