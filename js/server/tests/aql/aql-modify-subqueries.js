@@ -785,7 +785,6 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    /* Temporarily disabled needs some work on transaction
     testRemoveMainLevelCustomShardKeyFixedSingle : function () {
       let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
 
@@ -793,9 +792,9 @@ function ahuacatlModifySuite () {
         c.insert({ id: i });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = { writesExecuted: 1, writesIgnored: 99 };
       // this will only go to a single shard, as the shardkey is given in REMOVE!
-      let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: 42 } IN " + cn;
+      let query = `FOR d IN ${cn} REMOVE { _key: d._key, id: 42 } IN ${cn} OPTIONS { ignoreErrors: true }`;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
         let plan = AQL_EXPLAIN(query).plan;
@@ -804,11 +803,10 @@ function ahuacatlModifySuite () {
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
-      assertEqual(0, c.count());
+      assertEqual(99, c.count());
       assertEqual(0, actual.json.length);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
-    */
 
     testRemoveMainLevelCustomShardKeyFixedSingleWithFilter : function () {
       let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
@@ -861,7 +859,7 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
       // this will delete all documents!
-      let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id1: d.id1, id2: 2 } IN " + cn;
+      let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id1: d.id1, id2: d.id2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
         let plan = AQL_EXPLAIN(query).plan;
@@ -1717,6 +1715,30 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
+    // TODO validate that the behaviour of UPSERT should not change.
+    // maybe add a test.
+
+    // TODO add a test validating the _rev is ignored in AQL
+    // (and maybe one that checks that it is, or is not, ignored in the HTTP
+    //  interface depending on the options; at least if there isn't one already)
+
+    // TODO add tests using shardKeys
+    // for this, also test both syntaxes where applicable, e.g.
+    // UPDATE doc IN coll
+    // as well as
+    // UPDATE pat WITH doc IN coll
+
+    // TODO make sure this is tested in all combinations, i.e.:
+    // op: update/replace/remove/upsert
+    // op-variants if applicable
+    // cluster / single server
+    // enterprise / community
+    // mmfiles / rocksdb
+    // shard keys / unsharded keys
+    // with/without optimization
+    // with/without ignoreErrors
+    // _rev handling? => should always be ignored in AQL, but is optional in the
+    //                   HTTP interface
 
   };
 }
