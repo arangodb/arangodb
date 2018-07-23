@@ -1852,7 +1852,7 @@ void RestReplicationHandler::handleCommandSync() {
   engine->waitForSyncTimeout(waitForSyncTimeout);
 
   TRI_ASSERT(!config._skipCreateDrop);
-  std::unique_ptr<InitialSyncer> syncer;
+  std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(config));

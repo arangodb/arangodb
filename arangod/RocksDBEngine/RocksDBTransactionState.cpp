@@ -338,7 +338,15 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       if (waitForSync()) {
         RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
         TRI_ASSERT(engine != nullptr);
-        result = engine->syncThread()->syncWal();
+        if (engine->syncThread()) {
+          // we do have a sync thread
+          result = engine->syncThread()->syncWal();
+        } else {
+          // no sync thread present... this may be the case if automatic
+          // syncing is completely turned off. in this case, use the
+          // static sync method
+          result = RocksDBSyncThread::sync(engine->db()->GetBaseDB());
+        }
       }
     }
   } else {

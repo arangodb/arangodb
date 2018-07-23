@@ -165,6 +165,16 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result inventory(arangodb::velocypack::Builder& builder);
 
  private:
+  /// @brief order a new chunk from the /dump API
+  void orderDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                      std::string const& baseUrl, 
+                      arangodb::LogicalCollection* coll, 
+                      std::string const& leaderColl,
+                      InitialSyncerDumpStats& stats,
+                      int batch, 
+                      TRI_voc_tick_t fromTick, 
+                      uint64_t chunkSize);
+
   /// @brief fetch the server's inventory
   Result fetchInventory(arangodb::velocypack::Builder& builder);
 
