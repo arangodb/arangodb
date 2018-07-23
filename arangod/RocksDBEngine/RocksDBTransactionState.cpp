@@ -170,7 +170,35 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         // specific scenarios, i.e. when we are sure that we will have a
         // single operation transaction or we are sure we are writing
         // unique keys
-        _rocksMethods->DisableIndexing();
+    
+        // we must check if there is a unique secondary index for any of the collections
+        // we write into
+        // in case it is, we must disable NO_INDEXING here, as it wouldn't be safe
+        bool disableIndexing = true;
+
+        for (auto& trxCollection : _collections) {
+          if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
+            continue;
+          }
+          auto indexes = trxCollection->collection()->getIndexes();
+          for (auto const& idx : indexes) {
+            if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+              // primary index is unique, but we can ignore it here.
+              // we are only looking for secondary indexes
+              continue;
+            }
+            if (idx->unique()) {
+              // found secondary unique index. we need to turn off the NO_INDEXING optimization now
+              disableIndexing = false;
+              break;
+            }
+          }
+        }
+
+        if (disableIndexing) {
+          // only turn it on when safe...
+          _rocksMethods->DisableIndexing();
+        }
       }
     }
   } else {
