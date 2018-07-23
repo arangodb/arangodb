@@ -6,6 +6,12 @@ service. Note that many third-party libraries written for Node.js or the
 browser rely on async or filesystem logic
 [which may not be compatible with Foxx](../README.md#compatibility-caveats).
 
+{% hint 'info' %}
+Bundled node modules are often referred to as _dependencies_. In ArangoDB this
+term can often be ambiguous because Foxx also provides a
+[dependency mechanism](Dependencies.md) for linking services together.
+{% endhint %}
+
 Use a tool like [yarn](https://yarnpkg.com) or [npm](https://npmjs.com) to
 create a `package.json` file in your service source directory and add node
 dependencies as you would for any other Node.js application or library:
