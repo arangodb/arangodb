@@ -254,3 +254,9 @@ During view modification the following directives apply:
   otherwise all values in an array are treated as equal alternatives, e.g. when
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr == 'valueY'`
+
+* trackValues: (optional; default: "none")
+  how should the view track the attribute values, this setting allows for
+  additional value retrieval optimizations, one of:
+  * none: Do not track values by the view
+  * exists: Track only value presence, to allow use of the EXISTS() function
