@@ -718,17 +718,21 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    LocalDocumentId docId(RocksDBKey::revisionId(RocksDBEntryType::Document, iter->key()));
     VPackSlice doc = VPackSlice(iter->value().data());
     TRI_ASSERT(doc.isObject());
 
-    VPackSlice key = doc.get(StaticStrings::KeyString);
+    VPackSlice key;
+    TRI_voc_rid_t rid = 0;
+    transaction::helpers::extractKeyAndRevFromDocument(doc, key, rid);
     TRI_ASSERT(key.isString());
+    TRI_ASSERT(rid != 0);
 
     blackListKey(iter->key().data(), static_cast<uint32_t>(iter->key().size()));
+    LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
 
     state->prepareOperation(_logicalCollection->cid(), docId.id(),
                             StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    
     auto res = removeDocument(trx, docId, doc, options, false);
     if (res.fail()) {
       // Failed to remove document in truncate.

@@ -161,7 +161,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       // inconsistencies. 
       // TODO: enable this optimization once these circumstances are clear
       // and fully covered by tests
-      if (false && isExclusiveTransactionOnSingleCollection()) {
+      if (hasHint(transaction::Hints::Hint::UNTRACKED) && isExclusiveTransactionOnSingleCollection()) {
         _rocksMethods.reset(new RocksDBTrxUntrackedMethods(this));
       } else {
         _rocksMethods.reset(new RocksDBTrxMethods(this));
@@ -189,6 +189,36 @@ void RocksDBTransactionState::createTransaction() {
              _rocksTransaction->GetState() == rocksdb::Transaction::COMMITED ||
              _rocksTransaction->GetState() == rocksdb::Transaction::ROLLEDBACK);
   _rocksTransaction = db->BeginTransaction(_rocksWriteOptions, trxOpts, _rocksTransaction);
+      
+  if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
+    // we must check if there is a unique secondary index for any of the collections
+    // we write into
+    // in case it is, we must disable NO_INDEXING here, as it wouldn't be safe
+    bool disableIndexing = true;
+
+    for (auto& trxCollection : _collections) {
+      if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
+        continue;
+      }
+      auto indexes = trxCollection->collection()->getIndexes();
+      for (auto const& idx : indexes) {
+        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          // primary index is unique, but we can ignore it here.
+          // we are only looking for secondary indexes
+          continue;
+        }
+        if (idx->unique()) {
+          // found secondary unique index. we need to turn off the NO_INDEXING optimization now
+          disableIndexing = false;
+          break;
+        }
+      }
+    }
+
+    if (disableIndexing) {
+      _rocksTransaction->DisableIndexing();
+    }
+  }
   
   // add transaction begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
