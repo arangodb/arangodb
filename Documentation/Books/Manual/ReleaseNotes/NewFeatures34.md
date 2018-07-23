@@ -69,7 +69,7 @@ downtime you can alternatively run a second arangod instance in your system,
 that replicates the original data; once the replication has reached completion, 
 you can switch the instances.
 
-### Better control of rocksdb WAL sync interval
+### Better control of RocksDB WAL sync interval
 
 ArangoDB 3.4 also provides a new configuration option `--rocksdb.sync-interval`
 to control how frequently ArangoDB will automatically synchronize data in RocksDB's 
@@ -87,7 +87,7 @@ The catch-up time for comparing the contents of two collections (or shards) on t
 different hosts via the incremental replication protocol has been reduced when using
 the RocksDB storage engine.
 
-### Improved rocksdb geo index performance
+### Improved RocksDB geo index performance
 
 The rewritten geo index implementation 3.4 speeds up the RocksDB-based geo index
 functionality by a factor of 3 to 6 for many common cases when compared to the
@@ -679,6 +679,30 @@ The new optimizer rule `optimize-subqueries` will fire in the following situatio
   This saves fetching the document data from disk in first place, and copying it
   from the subquery to the outer scope.
   There may be more follow-up optimizations.
+
+### COLLECT INTO ... KEEP optimization
+
+When using an AQL COLLECT ... INTO without a *KEEP* clause, then the AQL query
+optimizer will now automatically detect which sub-attributes of the *INTO* variables 
+are used later in the query. The optimizer will add automatic *KEEP* clauses to
+the COLLECT statement then if possible.
+    
+For example, the query
+    
+    FOR doc1 IN collection1
+      FOR doc2 IN collection2
+	COLLECT x = doc1.x INTO g
+	RETURN { x, all: g[*].doc1.y }
+    
+will automatically be turned into
+    
+    FOR doc1 IN collection1
+      FOR doc2 IN collection2
+	COLLECT x = doc1.x INTO g KEEP doc1
+	RETURN { x, all: g[*].doc1.y }
+   
+This prevents variable `doc2` from being temporarily stored in the variable `g`,
+which saves processing time and memory, especially for big result sets.
 
 ### Fullcount changes
 

@@ -200,6 +200,7 @@ SECTION("test_defaults") {
   CHECK(true == meta._fields.empty());
   CHECK(false == meta._includeAllFields);
   CHECK(false == meta._trackListPositions);
+  CHECK((arangodb::iresearch::ValueStorage::NONE == meta._trackValues));
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
   CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
@@ -220,6 +221,7 @@ SECTION("test_inheritDefaults") {
   defaults._fields["abc"] = arangodb::iresearch::IResearchLinkMeta();
   defaults._includeAllFields = true;
   defaults._trackListPositions = true;
+  defaults._trackValues = arangodb::iresearch::ValueStorage::FULL;
   defaults._analyzers.clear();
   defaults._analyzers.emplace_back(analyzers.ensure("empty"));
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
@@ -240,6 +242,7 @@ SECTION("test_inheritDefaults") {
         CHECK(true == actual._fields.empty());
         CHECK(false == actual._includeAllFields);
         CHECK(false == actual._trackListPositions);
+        CHECK((arangodb::iresearch::ValueStorage::NONE == actual._trackValues));
         CHECK(1U == actual._analyzers.size());
         CHECK((*(actual._analyzers.begin())));
         CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
@@ -253,6 +256,7 @@ SECTION("test_inheritDefaults") {
   CHECK(true == expectedFields.empty());
   CHECK(true == meta._includeAllFields);
   CHECK(true == meta._trackListPositions);
+  CHECK((arangodb::iresearch::ValueStorage::FULL == meta._trackValues));
 
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
@@ -270,6 +274,7 @@ SECTION("test_readDefaults") {
   CHECK(true == meta._fields.empty());
   CHECK(false == meta._includeAllFields);
   CHECK(false == meta._trackListPositions);
+  CHECK((arangodb::iresearch::ValueStorage::NONE == meta._trackValues));
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
   CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
@@ -292,15 +297,16 @@ SECTION("test_readCustomizedValues") {
         \"b\": {}, \
         \"c\": { \
           \"fields\": { \
-            \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"analyzers\": [ \"identity\" ] }, \
-            \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"analyzers\": [ \"empty\" ] }, \
-            \"some\": { \"trackListPositions\": true }, \
+            \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"trackValues\": \"none\", \"analyzers\": [ \"identity\" ] }, \
+            \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"trackValues\": \"full\", \"analyzers\": [ \"empty\" ] }, \
+            \"some\": { \"trackListPositions\": true, \"trackValues\": \"exists\" }, \
             \"none\": {} \
           } \
         } \
       }, \
       \"includeAllFields\": true, \
       \"trackListPositions\": true, \
+      \"trackValues\": \"full\", \
       \"analyzers\": [ \"empty\", \"identity\" ] \
     }");
     CHECK(true == meta.init(json->slice(), tmpString));
@@ -318,6 +324,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._fields.empty());
           CHECK(false == actual._includeAllFields);
           CHECK(false == actual._trackListPositions);
+          CHECK((arangodb::iresearch::ValueStorage::NONE == actual._trackValues));
           CHECK(1U == actual._analyzers.size());
           CHECK((*(actual._analyzers.begin())));
           CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
@@ -329,6 +336,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == (actual._fields.find("e") != actual._fields.end()));
           CHECK(true == actual._includeAllFields);
           CHECK(true == actual._trackListPositions);
+          CHECK((arangodb::iresearch::ValueStorage::FULL == actual._trackValues));
           CHECK(1U == actual._analyzers.size());
           CHECK((*(actual._analyzers.begin())));
           CHECK(("empty" == (*(actual._analyzers.begin()))->name()));
@@ -338,6 +346,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._fields.empty()); // not inherited
           CHECK(true == actual._includeAllFields); // inherited
           CHECK(true == actual._trackListPositions);
+          CHECK((arangodb::iresearch::ValueStorage::EXISTS == actual._trackValues));
           CHECK(2U == actual._analyzers.size());
           auto itr = actual._analyzers.begin();
           CHECK((*itr));
@@ -353,6 +362,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._fields.empty()); // not inherited
           CHECK(true == actual._includeAllFields); // inherited
           CHECK(true == actual._trackListPositions); // inherited
+          CHECK((arangodb::iresearch::ValueStorage::FULL == actual._trackValues));
           auto itr = actual._analyzers.begin();
           CHECK((*itr));
           CHECK(("empty" == (*itr)->name()));
@@ -371,6 +381,7 @@ SECTION("test_readCustomizedValues") {
     CHECK(true == expectedFields.empty());
     CHECK(true == meta._includeAllFields);
     CHECK(true == meta._trackListPositions);
+    CHECK((arangodb::iresearch::ValueStorage::FULL == meta._trackValues));
     auto itr = meta._analyzers.begin();
     CHECK((*itr));
     CHECK(("empty" == (*itr)->name()));
@@ -393,13 +404,15 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((5U == slice.length()));
   tmpSlice = slice.get("fields");
   CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("includeAllFields");
   CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
   tmpSlice = slice.get("trackListPositions");
   CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+  tmpSlice = slice.get("trackValues");
+  CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
   tmpSlice = slice.get("analyzers");
   CHECK((
     true ==
@@ -419,6 +432,7 @@ SECTION("test_writeCustomizedValues") {
 
   meta._includeAllFields = true;
   meta._trackListPositions = true;
+  meta._trackValues = arangodb::iresearch::ValueStorage::FULL;
   meta._analyzers.clear();
   meta._analyzers.emplace_back(analyzers.ensure("identity"));
   meta._analyzers.emplace_back(analyzers.ensure("empty"));
@@ -442,10 +456,12 @@ SECTION("test_writeCustomizedValues") {
   overrideAll._fields["y"] = arangodb::iresearch::IResearchLinkMeta();
   overrideAll._includeAllFields = false;
   overrideAll._trackListPositions = false;
+  overrideAll._trackValues = arangodb::iresearch::ValueStorage::NONE;
   overrideAll._analyzers.clear();
   overrideAll._analyzers.emplace_back(analyzers.ensure("empty"));
   overrideSome._fields.clear(); // do not inherit fields to match jSon inheritance
   overrideSome._trackListPositions = false;
+  overrideSome._trackValues = arangodb::iresearch::ValueStorage::EXISTS;
   overrideNone._fields.clear(); // do not inherit fields to match jSon inheritance
 
   std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
@@ -458,7 +474,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((5U == slice.length()));
   tmpSlice = slice.get("fields");
   CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
 
@@ -481,11 +497,13 @@ SECTION("test_writeCustomizedValues") {
       CHECK(1U == expectedOverrides.erase(fieldOverride.copyString()));
 
       if ("default" == fieldOverride.copyString()) {
-        CHECK((3U == sliceOverride.length()));
+        CHECK((4U == sliceOverride.length()));
         tmpSlice = sliceOverride.get("includeAllFields");
         CHECK(true == (false == tmpSlice.getBool()));
         tmpSlice = sliceOverride.get("trackListPositions");
         CHECK(true == (false == tmpSlice.getBool()));
+        tmpSlice = sliceOverride.get("trackValues");
+        CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
         tmpSlice = sliceOverride.get("analyzers");
         CHECK((
           true ==
@@ -496,7 +514,7 @@ SECTION("test_writeCustomizedValues") {
         ));
       } else if ("all" == fieldOverride.copyString()) {
         std::unordered_set<std::string> expectedFields = { "x", "y" };
-        CHECK((4U == sliceOverride.length()));
+        CHECK((5U == sliceOverride.length()));
         tmpSlice = sliceOverride.get("fields");
         CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
         for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice); overrideFieldItr.valid(); ++overrideFieldItr) {
@@ -507,6 +525,8 @@ SECTION("test_writeCustomizedValues") {
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
         tmpSlice = sliceOverride.get("trackListPositions");
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+        tmpSlice = sliceOverride.get("trackValues");
+        CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
         tmpSlice = sliceOverride.get("analyzers");
         CHECK((
           true ==
@@ -516,9 +536,11 @@ SECTION("test_writeCustomizedValues") {
           std::string("empty") == tmpSlice.at(0).copyString()
         ));
       } else if ("some" == fieldOverride.copyString()) {
-        CHECK(1U == sliceOverride.length());
+        CHECK(2U == sliceOverride.length());
         tmpSlice = sliceOverride.get("trackListPositions");
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+        tmpSlice = sliceOverride.get("trackValues");
+        CHECK((true == tmpSlice.isString() && std::string("exists") == tmpSlice.copyString()));
       } else if ("none" == fieldOverride.copyString()) {
         CHECK(0U == sliceOverride.length());
       }
@@ -531,6 +553,8 @@ SECTION("test_writeCustomizedValues") {
   CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
   tmpSlice = slice.get("trackListPositions");
   CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
+  tmpSlice = slice.get("trackValues");
+  CHECK((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
   tmpSlice = slice.get("analyzers");
   CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
@@ -551,12 +575,14 @@ SECTION("test_readMaskAll") {
     \"fields\": { \"a\": {} }, \
     \"includeAllFields\": true, \
     \"trackListPositions\": true, \
+    \"trackValues\": \"full\", \
     \"analyzers\": [] \
   }");
   CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
   CHECK(true == mask._fields);
   CHECK(true == mask._includeAllFields);
   CHECK(true == mask._trackListPositions);
+  CHECK((true == mask._trackValues));
   CHECK(true == mask._analyzers);
 }
 
@@ -570,6 +596,7 @@ SECTION("test_readMaskNone") {
   CHECK(false == mask._fields);
   CHECK(false == mask._includeAllFields);
   CHECK(false == mask._trackListPositions);
+  CHECK((false == mask._trackValues));
   CHECK(false == mask._analyzers);
 }
 
@@ -582,10 +609,11 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((5U == slice.length()));
   CHECK(true == slice.hasKey("fields"));
   CHECK(true == slice.hasKey("includeAllFields"));
   CHECK(true == slice.hasKey("trackListPositions"));
+  CHECK(true == slice.hasKey("trackValues"));
   CHECK(true == slice.hasKey("analyzers"));
 }
 

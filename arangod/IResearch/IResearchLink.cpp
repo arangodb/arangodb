@@ -58,7 +58,7 @@ NS_BEGIN(iresearch)
 
 IResearchLink::IResearchLink(
   TRI_idx_iid_t iid,
-  arangodb::LogicalCollection* collection
+  arangodb::LogicalCollection& collection
 ): _collection(collection),
    _defaultId(0), // 0 is never a valid id
    _dropCollectionInDestructor(false),
@@ -100,12 +100,6 @@ void IResearchLink::batchInsert(
     throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
 
-  if (!_collection) {
-    queue->setStatus(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // '_collection' required
-
-    return;
-  }
-
   if (!trx) {
     queue->setStatus(TRI_ERROR_BAD_PARAMETER); // 'trx' required
 
@@ -121,7 +115,7 @@ void IResearchLink::batchInsert(
     return;
   }
 
-  auto res = _view->insert(*trx, _collection->id(), batch, _meta);
+  auto res = _view->insert(*trx, _collection.id(), batch, _meta);
 
   if (TRI_ERROR_NO_ERROR != res) {
     queue->setStatus(res);
@@ -133,10 +127,6 @@ bool IResearchLink::canBeDropped() const {
 }
 
 int IResearchLink::drop() {
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
-  }
-
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
@@ -144,23 +134,9 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
   }
 
-  // if the collection is in the process of being removed then drop it from the view
-  if (_collection->deleted()
-      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection->status()) {
-    auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
-
-    if (!result.ok()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to force view link revalidation while unloading dropped IResearch link '" << _id
-        << "' for IResearch view '" << _view->id() << "'";
-
-      return result.errorNumber();
-    }
-  }
-
   _dropCollectionInDestructor = false; // will do drop now
 
-  auto res = _view->drop(_collection->id());
+  auto res = _view->drop(_collection.id());
 
   // FIXME TODO this workaround should be in ClusterInfo when moving 'Plan' to 'Current', i.e. IResearchViewDBServer::drop
   if (arangodb::ServerState::instance()->isDBServer()) {
@@ -168,7 +144,7 @@ int IResearchLink::drop() {
 
     _view = nullptr; // mark as unassociated
     _viewLock.unlock(); // release read-lock on the IResearch View
-    _collection->vocbase().dropView(id, true); // cluster-view in ClusterInfo should already not have cid-view
+    _collection.vocbase().dropView(id, true); // cluster-view in ClusterInfo should already not have cid-view
   }
 
   return res;
@@ -203,8 +179,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false; // failed to parse metadata
   }
 
-  if (!_collection
-      || !definition.isObject()
+  if (!definition.isObject()
       || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "error finding view for link '" << _id << "'";
@@ -215,7 +190,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   auto identifier = definition.get(StaticStrings::ViewIdField);
   auto viewId = identifier.getNumber<uint64_t>();
-  auto& vocbase = _collection->vocbase();
+  auto& vocbase = _collection.vocbase();
   auto logicalView = vocbase.lookupView(viewId); // will only contain IResearchView (even for a DBServer)
 
   // creation of link on a DBServer
@@ -234,12 +209,12 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
 
     if (wiew) {
-      auto collection = vocbase.lookupCollection(_collection->id());
+      auto collection = vocbase.lookupCollection(_collection.id());
 
       // this is a cluster-wide collection/index/link (per-cid view links have their corresponding collections in vocbase)
       if (!collection) {
         auto clusterCol = ci->getCollectionCurrent(
-          vocbase.name(), std::to_string(_collection->id())
+          vocbase.name(), std::to_string(_collection.id())
         );
 
         if (clusterCol) {
@@ -259,7 +234,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return true; // leave '_view' uninitialized to mark the index as unloaded/unusable
       }
 
-      logicalView = wiew->ensure(_collection->id()); // repoint LogicalView at the per-cid instance
+      logicalView = wiew->ensure(_collection.id()); // repoint LogicalView at the per-cid instance
     }
   }
 
@@ -300,7 +275,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false;
   }
 
-  _dropCollectionInDestructor = view->emplace(_collection->id()); // track if this is the instance that called emplace
+  _dropCollectionInDestructor = view->emplace(_collection.id()); // track if this is the instance that called emplace
   _meta = std::move(meta);
   _view = std::move(view);
 
@@ -323,10 +298,6 @@ Result IResearchLink::insert(
   VPackSlice const& doc,
   Index::OperationMode mode
 ) {
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
-  }
-
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
@@ -338,7 +309,7 @@ Result IResearchLink::insert(
     return TRI_ERROR_ARANGO_INDEX_HANDLE_BAD; // IResearchView required
   }
 
-  return _view->insert(*trx, _collection->id(), documentId, doc, _meta);
+  return _view->insert(*trx, _collection.id(), documentId, doc, _meta);
 }
 
 bool IResearchLink::isPersistent() const {
@@ -450,10 +421,6 @@ Result IResearchLink::remove(
   VPackSlice const& doc,
   Index::OperationMode mode
 ) {
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
-  }
-
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
@@ -466,7 +433,7 @@ Result IResearchLink::remove(
   }
 
   // remove documents matching on cid and rid
-  return _view->remove(*trx, _collection->id(), documentId);
+  return _view->remove(*trx, _collection.id(), documentId);
 }
 
 Result IResearchLink::remove(
@@ -474,10 +441,6 @@ Result IResearchLink::remove(
   arangodb::LocalDocumentId const& documentId,
   Index::OperationMode mode
 ) {
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
-  }
-
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
@@ -490,7 +453,7 @@ Result IResearchLink::remove(
   }
 
   // remove documents matching on cid and documentId
-  return _view->remove(*trx, _collection->id(), documentId);
+  return _view->remove(*trx, _collection.id(), documentId);
 }
 
 Index::IndexType IResearchLink::type() const {
@@ -512,18 +475,11 @@ int IResearchLink::unload() {
 
   _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
 
-  if (!_collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed finding collection while unloading IResearch link '" << _id << "'";
-
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
-  }
-
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
-  if (_collection->deleted()
-      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection->status()) {
+  if (_collection.deleted()
+      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
     auto res = drop();
 
     if (TRI_ERROR_NO_ERROR != res) {

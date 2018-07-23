@@ -543,11 +543,12 @@ SECTION("a successfully started job should finish immediately and set everything
       + "/shards/" + SHARD;
     REQUIRE(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
     REQUIRE(std::string(writes.get(planEntry).typeName()) == "array");
-    REQUIRE(writes.get(planEntry).length() == 3);
+    REQUIRE(writes.get(planEntry).length() == 4);
     REQUIRE(writes.get(planEntry)[0].copyString() == "leader");
     auto freeEntry = writes.get(planEntry)[1].copyString();
     REQUIRE(freeEntry.compare(0,4,FREE_SERVER) == 0);
     REQUIRE(writes.get(planEntry)[2].copyString() == "follower2");
+    REQUIRE(writes.get(planEntry)[3].copyString() == "follower1");
 
     REQUIRE(writes.get("/arango/Plan/Version").get("op").copyString() == "increment");
     REQUIRE(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
@@ -634,22 +635,25 @@ SECTION("the job should handle distributeShardsLike") {
     REQUIRE(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
     auto entry = std::string("/arango/Plan/Collections/") + DATABASE + "/" + COLLECTION + "/shards/" + SHARD;
     REQUIRE(std::string(writes.get(entry).typeName()) == "array");
-    REQUIRE(writes.get(entry).length() == 3);
+    REQUIRE(writes.get(entry).length() == 4);
     REQUIRE(writes.get(entry)[0].copyString() == "leader");
     auto freeEntry = writes.get(entry)[1].copyString();
     REQUIRE(writes.get(entry)[1].copyString().compare(0,4,FREE_SERVER) == 0);
     REQUIRE(writes.get(entry)[2].copyString() == "follower2");
+    REQUIRE(writes.get(entry)[3].copyString() == "follower1");
     REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").typeName()) == "array");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").length() == 3);
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").length() == 4);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[0].copyString() == "leader");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[1].copyString().compare(0,4,FREE_SERVER) == 0);
 
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[2].copyString() == "follower2");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[3].copyString() == "follower1");
     REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").typeName()) == "array");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").length() == 3);
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").length() == 4);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[0].copyString() == "leader");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[1].copyString().compare(0,4,FREE_SERVER) == 0);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[2].copyString() == "follower2");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[3].copyString() == "follower1");
 
     REQUIRE(writes.get("/arango/Plan/Version").get("op").copyString() == "increment");
     REQUIRE(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
