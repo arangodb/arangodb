@@ -680,6 +680,30 @@ The new optimizer rule `optimize-subqueries` will fire in the following situatio
   from the subquery to the outer scope.
   There may be more follow-up optimizations.
 
+### COLLECT INTO ... KEEP optimization
+
+When using an AQL COLLECT ... INTO without a *KEEP* clause, then the AQL query
+optimizer will now automatically detect which sub-attributes of the *INTO* variables 
+are used later in the query. The optimizer will add automatic *KEEP* clauses to
+the COLLECT statement then if possible.
+    
+For example, the query
+    
+    FOR doc1 IN collection1
+      FOR doc2 IN collection2
+	COLLECT x = doc1.x INTO g
+	RETURN { x, all: g[*].doc1.y }
+    
+will automatically be turned into
+    
+    FOR doc1 IN collection1
+      FOR doc2 IN collection2
+	COLLECT x = doc1.x INTO g KEEP doc1
+	RETURN { x, all: g[*].doc1.y }
+   
+This prevents variable `doc2` from being temporarily stored in the variable `g`,
+which saves processing time and memory, especially for big result sets.
+
 ### Fullcount changes
 
 The behavior of the `fullCount` option for AQL query cursors was adjusted to conform

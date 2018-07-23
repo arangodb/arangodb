@@ -90,7 +90,7 @@ function recoverySuite () {
 
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
       assertEqual(result[0], 10000);
-/*
+
       // validate state
       var properties = v.properties().properties;
       assertEqual(10, properties.commit.cleanupIntervalStep);
@@ -103,7 +103,6 @@ function recoverySuite () {
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-8", properties.locale);
-*/
     }
 
   };
