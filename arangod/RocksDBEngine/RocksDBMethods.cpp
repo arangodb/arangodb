@@ -47,7 +47,13 @@ RocksDBSavePoint::RocksDBSavePoint(
 
 RocksDBSavePoint::~RocksDBSavePoint() {
   if (!_handled) {
-    rollback();
+    try {
+      rollback();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::ROCKSDB) << "caught exception during rollback to savepoint: " << ex.what();
+    } catch (...) {
+      // whatever happens during rollback, no exceptions are allowed to escape from here
+    }
   }
 }
 
