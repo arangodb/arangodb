@@ -506,14 +506,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::UNTRACKED);
-
-    LOG_TOPIC(ERR, Logger::FIXME) << "ADDING NO_INDEXING FLAG";
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
     
-    LOG_TOPIC(ERR, Logger::FIXME) << "TRANSACTION STARTED";
-
     if (!res.ok()) {
       return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
