@@ -80,7 +80,7 @@ struct IndexingDisabler {
   IndexingDisabler(RocksDBMethods* mthd, bool disableIndexing) 
       : mthd(mthd), disableIndexing(disableIndexing) {
     if (disableIndexing) {
-      mthd->DisableIndexing();
+      disableIndexing = mthd->DisableIndexing();
     }
   }
 
@@ -91,7 +91,7 @@ struct IndexingDisabler {
   }
 
   RocksDBMethods* mthd;
-  bool const disableIndexing;
+  bool disableIndexing;
 };
 
 RocksDBCollection::RocksDBCollection(

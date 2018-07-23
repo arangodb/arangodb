@@ -526,6 +526,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::NO_TRACKING);
+    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
 
@@ -588,6 +590,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::NO_TRACKING);
+    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
 

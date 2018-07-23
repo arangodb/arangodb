@@ -358,8 +358,6 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(
 Result DatabaseInitialSyncer::parseCollectionDump(
     transaction::Methods& trx, LogicalCollection* coll,
     httpclient::SimpleHttpResult* response, uint64_t& markersProcessed) {
-  std::string const invalidMsg =
-      "received invalid dump data for collection '" + coll->name() + "'";
 
   basics::StringBuffer const& data = response->getBody();
   char const* p = data.begin();
@@ -382,7 +380,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(
         VPackSlice marker(p);
         Result r = parseCollectionDumpMarker(trx, coll, marker);
         if (r.fail()) {
-          r.reset(r.errorNumber(), invalidMsg);
+          r.reset(r.errorNumber(), std::string("received invalid dump data for collection '") + coll->name() + "'");
           return r;
         }
         ++markersProcessed;
@@ -399,6 +397,8 @@ Result DatabaseInitialSyncer::parseCollectionDump(
     TRI_ASSERT(*end == '\0');
 
     VPackBuilder builder;
+    VPackParser parser(builder);
+
     while (p < end) {
       char const* q = strchr(p, '\n');
       if (q == nullptr) {
@@ -413,7 +413,6 @@ Result DatabaseInitialSyncer::parseCollectionDump(
       TRI_ASSERT(q <= end);
       try {
         builder.clear();
-        VPackParser parser(builder);
         parser.parse(p, static_cast<size_t>(q - p));
       } catch (velocypack::Exception const& e) {
         LOG_TOPIC(ERR, Logger::REPLICATION)
@@ -427,6 +426,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(
       if (r.fail()) {
         return r;
       }
+     
       ++markersProcessed;
     }
   }
@@ -446,6 +446,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
   using ::arangodb::basics::StringUtils::itoa;
   using ::arangodb::basics::StringUtils::uint64;
   using ::arangodb::basics::StringUtils::urlEncode;
+
+  double const startTime = TRI_microtime();
 
   std::string appendix;
 
@@ -468,12 +470,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
   int batch = 1;
   uint64_t bytesReceived = 0;
   uint64_t markersProcessed = 0;
-
-#if VPACK_DUMP
-  double const nowTotal = TRI_microtime();
-  double sumFetchTime = 0;
-  double sumApplyTime = 0;
-#endif
+  double applyTime = 0.0;
 
   while (true) {
     if (isAborted()) {
@@ -500,12 +497,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
         (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
     // send request
-    std::string const msg = "fetching master collection dump for collection '" +
-                            coll->name() + "', type: " + typeString + ", id " +
-                            leaderColl + ", batch " + itoa(batch) +
-                            ", markers processed: " + itoa(markersProcessed) +
-                            ", bytes received: " + itoa(bytesReceived);
-    _config.progress.set(msg);
+    _config.progress.set(std::string("fetching master collection dump for collection '") +
+                         coll->name() + "', type: " + typeString + ", id " +
+                         leaderColl + ", batch " + itoa(batch));
 
     // use async mode for first batch
     auto headers = replutils::createHeaders();
@@ -518,7 +512,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
     if (vv >= 3003009) {
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
     }
-    double fetchTimeNow = TRI_microtime();
 #endif
 
     std::unique_ptr<httpclient::SimpleHttpResult> response(
@@ -588,10 +581,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       // fallthrough here in case everything went well
     }
 
-#if VPACK_DUMP
-    sumFetchTime += (TRI_microtime() - fetchTimeNow);
-#endif
-
     if (replutils::hasFailed(response.get())) {
       return replutils::buildHttpError(response.get(), url, _config.connection);
     }
@@ -635,9 +624,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       }
     }
 
-#if VPACK_DUMP
-    double applyTimeNow = TRI_microtime();
-#endif
+    double t = TRI_microtime();
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
@@ -647,10 +634,15 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
+    // do not the operations in our own transactions
+    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
+    // do not check for conflicts, as we have an exclusive lock
+    trx.addHint(transaction::Hints::Hint::NO_TRACKING);
+
     // smaller batch sizes should work better here
 #if VPACK_DUMP
-    trx.state()->options().intermediateCommitCount = 128;
-    trx.state()->options().intermediateCommitSize = 16 * 1024 * 1024;
+//    trx.state()->options().intermediateCommitCount = 128;
+//    trx.state()->options().intermediateCommitSize = 16 * 1024 * 1024;
 #endif
 
     Result res = trx.begin();
@@ -669,34 +661,29 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
     }
 
     res = trx.commit();
+    
+    applyTime += TRI_microtime() - t; 
 
-#if VPACK_DUMP
-    sumApplyTime += (TRI_microtime() - applyTimeNow);
-#endif
-
-    std::string const msg2 = "fetched master collection dump for collection '" +
-                             coll->name() + "', type: " + typeString + ", id " +
-                             leaderColl + ", batch " + itoa(batch) +
-                             ", markers processed: " + itoa(markersProcessed) +
-                             ", bytes received: " + itoa(bytesReceived);
-    _config.progress.set(msg2);
+    _config.progress.set(std::string("fetched master collection dump for collection '") +
+                         coll->name() + "', type: " + typeString + ", id " +
+                         leaderColl + ", batch " + itoa(batch) +
+                         ", markers processed: " + itoa(markersProcessed) +
+                         ", bytes received: " + itoa(bytesReceived));
 
     if (!res.ok()) {
       return res;
     }
 
     if (!checkMore || fromTick == 0) {
-#if VPACK_DUMP
-      LOG_TOPIC(ERR, Logger::FIXME)
-          << "Collection " << leaderColl << ", local: " << coll->name();
-      LOG_TOPIC(ERR, Logger::FIXME) << "Fetching dump: " << sumFetchTime;
-      LOG_TOPIC(ERR, Logger::FIXME) << "Applying dump: " << sumApplyTime;
-      LOG_TOPIC(ERR, Logger::FIXME)
-          << "Total: " << (TRI_microtime() - nowTotal);
-      LOG_TOPIC(ERR, Logger::FIXME)
-          << "Markers processed: " << markersProcessed;
-#endif
       // done
+      _config.progress.set(std::string("finished initial dump for collection '") + coll->name() +
+        "', type: " + typeString + ", id " + leaderColl +
+        ", markers processed: " + itoa(markersProcessed) +
+        ", bytes received: " + itoa(bytesReceived) + 
+//        ", dump requests: " + std::to_string(stats.numDumpRequests) + 
+//        ", waited for dump: " + std::to_string(stats.waitedForDump) + " s" +
+        ", apply time: " + std::to_string(applyTime) + " s" + 
+        ", total time: " + std::to_string(TRI_microtime() - startTime) + " s"); 
       return Result();
     }
 

@@ -152,16 +152,25 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
 
 // =================== RocksDBTrxMethods ====================
   
-void RocksDBTrxMethods::DisableIndexing() {
-  _state->_rocksTransaction->DisableIndexing();
+bool RocksDBTrxMethods::DisableIndexing() {
+  if (!_indexingDisabled) {
+    _state->_rocksTransaction->DisableIndexing();
+    _indexingDisabled = true;
+    return true;
+  }
+  return false;
 }
 
 void RocksDBTrxMethods::EnableIndexing() {
-  _state->_rocksTransaction->EnableIndexing();
+  if (_indexingDisabled) {
+    _state->_rocksTransaction->EnableIndexing();
+    _indexingDisabled = false;
+  }
 }
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : RocksDBMethods(state) {}
+    : RocksDBMethods(state),
+      _indexingDisabled(false) {}
 
 bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
                                RocksDBKey const& key) {

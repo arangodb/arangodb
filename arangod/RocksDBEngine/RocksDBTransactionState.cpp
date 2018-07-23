@@ -159,10 +159,18 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       // inconsistencies.
       // TODO: enable this optimization once these circumstances are clear
       // and fully covered by tests
-      if (false && isExclusiveTransactionOnSingleCollection()) {
+      if (hasHint(transaction::Hints::Hint::NO_TRACKING) && isExclusiveTransactionOnSingleCollection()) {
         _rocksMethods.reset(new RocksDBTrxUntrackedMethods(this));
       } else {
         _rocksMethods.reset(new RocksDBTrxMethods(this));
+      }
+  
+      if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
+        // do not track our own writes... we can only use this in very
+        // specific scenarios, i.e. when we are sure that we will have a
+        // single operation transaction or we are sure we are writing
+        // unique keys
+        _rocksMethods->DisableIndexing();
       }
     }
   } else {
