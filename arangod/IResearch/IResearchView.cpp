@@ -275,7 +275,12 @@ inline void insertDocument(
 
   // User fields
   while (body.valid()) {
-    doc.insert(irs::action::index_store, field);
+    if (ValueStorage::NONE == field._storageType) {
+      doc.insert(irs::action::index, field);
+    } else {
+      doc.insert(irs::action::index_store, field);
+    }
+
     ++body;
   }
 

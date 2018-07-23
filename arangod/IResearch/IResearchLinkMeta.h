@@ -54,13 +54,11 @@ NS_BEGIN(iresearch)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enum of possible ways to store values in the view
 ////////////////////////////////////////////////////////////////////////////////
-namespace ValueStorage {
-  enum Type {
-    NONE, // do not store values in the view
-    EXISTS, // only track value existance
-    FULL, // store full value in the view
-  };
-}
+enum class ValueStorage : uint32_t {
+  NONE = 0, // do not store values in the view
+  EXISTS, // only track value existance
+  FULL, // store full value in the view
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief metadata describing how to process a field in a collection
@@ -82,7 +80,7 @@ struct IResearchLinkMeta {
   Fields _fields; // explicit list of fields to be indexed with optional overrides
   bool _includeAllFields; // include all fields or only fields listed in '_fields'
   bool _trackListPositions; // append relative offset in list to attribute name (as opposed to without offset)
-  ValueStorage::Type _trackValues; // how values should be stored inside the view
+  ValueStorage _trackValues; // how values should be stored inside the view
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy assignment operator !!!
   // NOTE: if adding fields don't forget to modify the move assignment operator !!!

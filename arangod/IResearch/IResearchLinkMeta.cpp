@@ -35,6 +35,7 @@
 #include "velocypack/Iterator.h"
 
 #include "IResearchLinkMeta.h"
+#include "Misc.h"
 
 NS_LOCAL
 
@@ -292,10 +293,10 @@ bool IResearchLinkMeta::init(
         return false;
       }
 
-      static const std::unordered_map<std::string, ValueStorage::Type> policies = {
-        { "exists", ValueStorage::Type::EXISTS },
-        { "full", ValueStorage::Type::FULL },
-        { "none", ValueStorage::Type::NONE },
+      static const std::unordered_map<std::string, ValueStorage> policies = {
+        { "exists", ValueStorage::EXISTS },
+        { "full", ValueStorage::FULL },
+        { "none", ValueStorage::NONE },
       };
       auto name = field.copyString();
       auto itr = policies.find(name);
@@ -428,20 +429,24 @@ bool IResearchLinkMeta::json(
   }
 
   if ((!ignoreEqual || _trackValues != ignoreEqual->_trackValues) && (!mask || mask->_trackValues)) {
-    struct ValueStorageHash { size_t operator()(ValueStorage::Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
-    static const std::unordered_map<ValueStorage::Type, std::string, ValueStorageHash> policies = {
-      { ValueStorage::Type::EXISTS, "exists" },
-      { ValueStorage::Type::FULL, "full" },
-      { ValueStorage::Type::NONE, "none" },
+    static_assert(adjacencyChecker<ValueStorage>::checkAdjacency<
+      ValueStorage::FULL, ValueStorage::EXISTS, ValueStorage::NONE>(),
+      "Values are not adjacent"
+    );
+
+    static const std::string policies[] {
+      "none", // ValueStorage::NONE
+      "exists", // ValueStorage::EXISTS
+      "full" // ValueStorage::FULL
     };
 
-    auto itr = policies.find(_trackValues);
+    auto const policyIdx = static_cast<std::underlying_type<ValueStorage>::type>(_trackValues);
 
-    if (itr == policies.end()) {
+    if (policyIdx >= IRESEARCH_COUNTOF(policies)) {
       return false; // unsupported value storage policy
     }
 
-    builder.add("trackValues", arangodb::velocypack::Value(itr->second));
+    builder.add("trackValues", arangodb::velocypack::Value(policies[policyIdx]));
   }
 
   return true;
