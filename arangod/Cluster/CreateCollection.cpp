@@ -117,12 +117,12 @@ bool CreateCollection::first() {
   
   _result = Collections::create(
     vocbase, collection, type, docket.slice(), waitForRepl, enforceReplFact,
-    [=](LogicalCollection* col) {
+    [=](LogicalCollection& col) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
         << "/" << collection << " successfully created";
-      col->followers()->setTheLeader(leader);
+      col.followers()->setTheLeader(leader);
       if (leader.empty()) {
-        col->followers()->clear();
+        col.followers()->clear();
       }
     });
 

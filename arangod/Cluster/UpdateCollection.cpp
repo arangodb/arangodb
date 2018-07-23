@@ -48,10 +48,10 @@ UpdateCollection::UpdateCollection(
 }
 
 void handleLeadership(
-  LogicalCollection* collection, std::string const& localLeader,
+  LogicalCollection& collection, std::string const& localLeader,
   std::string const& plannedLeader) {
   
-  auto& followers = collection->followers();
+  auto& followers = collection.followers();
       
   if (plannedLeader.empty()) { // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
@@ -106,7 +106,7 @@ bool UpdateCollection::first() {
   }
 
   Result found = methods::Collections::lookup(
-    vocbase, collection, [&](LogicalCollection* coll) {
+    vocbase, collection, [&](LogicalCollection& coll) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Updating local collection " + collection;
 
@@ -117,7 +117,7 @@ bool UpdateCollection::first() {
       // under "Drop local shards" to see the proper handling
       // of this case. Place is marked with *** in comments.
       handleLeadership(coll, localLeader, plannedLeader);
-      _result = Collections::updateProperties(coll, props);
+      _result = Collections::updateProperties(&coll, props);
     });
   
   if (found.fail()) {

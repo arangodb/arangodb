@@ -57,10 +57,10 @@ bool DropCollection::first() {
   }
 
   Result found = methods::Collections::lookup(
-    vocbase, collection, [&](LogicalCollection* coll) {
+    vocbase, collection, [&](LogicalCollection& coll) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Dropping local collection " + collection;
-      _result = Collections::drop(vocbase, coll, false, 120);
+      _result = Collections::drop(vocbase, &coll, false, 120);
     });
 
   if (found.fail()) {
