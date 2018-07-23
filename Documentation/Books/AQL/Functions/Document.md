@@ -219,6 +219,11 @@ RETURN MATCHES(
 This will return *2*, because the third example matches, and because the
 *returnIndex* flag is set to *true*.
 
+If a value in **examples** is `null`, the corresponding key does not have to
+exist in **document**. That means that not only
+`MATCHES({a: null, b: 1}, {a: null})` but also
+`MATCHES({b: 1}, {a: null})` are `true`.
+
 MERGE()
 -------
 
