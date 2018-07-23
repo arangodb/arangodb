@@ -1847,6 +1847,16 @@ OperationResult transaction::Methods::insertLocal(
   return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
 
+// on coordinators, a pattern may not be set.
+static void assertPatternIsNotSet(VPackSlice const pattern) {
+  if (!pattern.isNone()) {
+    LOG_TOPIC(FATAL, Logger::CLUSTER)
+        << "Internal error: Patterns in transaction methods are ONLY supported "
+           "on DBServers and will be ignored on coordinators!";
+  }
+  TRI_ASSERT(pattern.isNone());
+}
+
 /// @brief update/patch one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -1867,7 +1877,8 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
   OperationOptions optionsCopy = options;
 
   if (_state->isCoordinator()) {
-    return updateCoordinator(collectionName, newValue, optionsCopy, pattern);
+    assertPatternIsNotSet(pattern);
+    return updateCoordinator(collectionName, newValue, optionsCopy);
   }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
@@ -1880,14 +1891,14 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::updateCoordinator(
     std::string const& collectionName, VPackSlice const newValue,
-    OperationOptions& options, VPackSlice const pattern) {
+    OperationOptions& options) {
   auto headers =
       std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::modifyDocumentOnCoordinator(
-      vocbase().name(), collectionName, *this, newValue, options, pattern,
+      vocbase().name(), collectionName, *this, newValue, options,
       true /* isPatch */, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1918,7 +1929,8 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
   OperationOptions optionsCopy = options;
 
   if (_state->isCoordinator()) {
-    return replaceCoordinator(collectionName, newValue, optionsCopy, pattern);
+    assertPatternIsNotSet(pattern);
+    return replaceCoordinator(collectionName, newValue, optionsCopy);
   }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
@@ -1931,14 +1943,14 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::replaceCoordinator(
     std::string const& collectionName, VPackSlice const newValue,
-    OperationOptions& options, VPackSlice const pattern) {
+    OperationOptions& options) {
   auto headers =
       std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::modifyDocumentOnCoordinator(
-      vocbase().name(), collectionName, *this, newValue, options, pattern,
+      vocbase().name(), collectionName, *this, newValue, options,
       false /* isPatch */, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2003,10 +2015,11 @@ OperationResult transaction::Methods::modifyLocal(
 
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
+  VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
 
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
-                             &resultBuilder, &cid](VPackSlice const newVal,
+                             &resultBuilder, &cid, &vPackOptions](VPackSlice const newVal,
                                                    VPackSlice const pattern,
                                                    bool isBabies) -> Result {
     TRI_ASSERT(pattern.isNone() || pattern.isObject());
@@ -2024,7 +2037,7 @@ OperationResult transaction::Methods::modifyLocal(
                              !isLocked(collection, AccessMode::Type::WRITE));
 
       if (res.ok() &&
-          !aql::matches(VPackSlice(currentDoc.vpack()), &VPackOptions::Defaults,
+          !aql::matches(VPackSlice(currentDoc.vpack()), vPackOptions,
                         pattern)) {
         res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       }
@@ -2086,6 +2099,7 @@ OperationResult transaction::Methods::modifyLocal(
   Result res;
   if (multiCase) {
     {
+      TRI_ASSERT(pattern.isNone() || pattern.isArray());
       VPackArrayBuilder guard(&resultBuilder);
       VPackArrayIterator it(newValue);
 
@@ -2262,7 +2276,8 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   OperationOptions optionsCopy = options;
 
   if (_state->isCoordinator()) {
-    return removeCoordinator(collectionName, value, optionsCopy, pattern);
+    assertPatternIsNotSet(pattern);
+    return removeCoordinator(collectionName, value, optionsCopy);
   }
 
   return removeLocal(collectionName, value, optionsCopy, pattern);
@@ -2274,13 +2289,13 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::removeCoordinator(
     std::string const& collectionName, VPackSlice const value,
-    OperationOptions& options, VPackSlice const pattern) {
+    OperationOptions& options) {
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::deleteDocumentOnCoordinator(
-      vocbase().name(), collectionName, *this, value, options, pattern,
-      responseCode, errorCounter, resultBody);
+      vocbase().name(), collectionName, *this, value, options responseCode,
+      errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultRemove(responseCode, resultBody, errorCounter);
@@ -2335,6 +2350,7 @@ OperationResult transaction::Methods::removeLocal(
 
   VPackBuilder resultBuilder;
   TRI_voc_tick_t maxTick = 0;
+  VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
 
   auto workForOneDocument = [&](VPackSlice value, VPackSlice pattern,
                                 bool isBabies) -> Result {
@@ -2371,8 +2387,7 @@ OperationResult transaction::Methods::removeLocal(
       res = collection->read(this, key, previous, lock);
 
       if (res.ok() &&
-          !aql::matches(VPackSlice(previous.vpack()), &VPackOptions::Defaults,
-                        pattern)) {
+          !aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
         res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       }
     }
@@ -2414,6 +2429,7 @@ OperationResult transaction::Methods::removeLocal(
   bool multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
   if (multiCase) {
+    TRI_ASSERT(pattern.isNone() || pattern.isArray());
     VPackArrayBuilder guard(&resultBuilder);
 
     boost::optional<VPackArrayIterator> patternIt = boost::none;

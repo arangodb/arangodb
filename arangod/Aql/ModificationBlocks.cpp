@@ -389,9 +389,21 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
           }
           _tempBuilder.close();
           if (a.isObject()) {
-            patternBuilder.add(a.slice());
+            // add searchExpression to patternBuilder, but omit _rev.
+            // We could add it here depending on options.ignoreRevs and remove
+            // the special handling for revs down the line. In that case, the
+            // else branch must also add _rev unless ignoreRevs is true.
+            patternBuilder.openObject();
+            for (auto const& it : VPackObjectIterator(a.slice())) {
+              if (!it.key.isEqualString({"_rev"})) {
+                patternBuilder.add(it.key.copyString(), it.value);
+              }
+            }
+            patternBuilder.close();
           }
           else {
+            // TODO if we can deduce the type for the whole Variable, we could
+            // leave the whole patternBuilder to be none
             patternBuilder.add(VPackSlice::noneSlice());
           }
         } else {
@@ -757,15 +769,29 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
             // via extractKey()'s errorCode
             TRI_ASSERT(searchExpression.isString() || searchExpression.isObject());
             if (searchExpression.isObject()) {
-              patternBuilder.add(searchExpression.slice());
+              // add searchExpression to patternBuilder, but omit _rev.
+              // We could add it here depending on options.ignoreRevs and remove
+              // the special handling for revs down the line. In that case, the
+              // else branch must also add _rev unless ignoreRevs is true.
+              patternBuilder.openObject();
+              for (auto const& it :
+                   VPackObjectIterator(searchExpression.slice())) {
+                if (!it.key.isEqualString({"_rev"})) {
+                  patternBuilder.add(it.key.copyString(), it.value);
+                }
+              }
+              patternBuilder.close();
             } else {
-              patternBuilder.add(VPackSlice::noneSlice());
+              patternBuilder.add(VPackSlice::emptyObjectSlice());
             }
           }
           else {
             // use original slice for updating
             object.add(a.slice());
-            patternBuilder.add(VPackSlice::noneSlice());
+            // TODO if the inKeyVariable is not set, we can leave the whole
+            // patternBuilder at none instead of adding an array of empty
+            // objects.
+            patternBuilder.add(VPackSlice::emptyObjectSlice());
           }
         } else {
           wasTaken.push_back(false);
@@ -1241,7 +1267,18 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
             // via extractKey()'s errorCode
             TRI_ASSERT(searchExpression.isString() || searchExpression.isObject());
             if (searchExpression.isObject()) {
-              patternBuilder.add(searchExpression.slice());
+              // add searchExpression to patternBuilder, but omit _rev.
+              // We could add it here depending on options.ignoreRevs and remove
+              // the special handling for revs down the line. In that case, the
+              // else branch must also add _rev unless ignoreRevs is true.
+              patternBuilder.openObject();
+              for (auto const& it :
+                VPackObjectIterator(searchExpression.slice())) {
+                if (!it.key.isEqualString({"_rev"})) {
+                  patternBuilder.add(it.key.copyString(), it.value);
+                }
+              }
+              patternBuilder.close();
             }
             else {
               patternBuilder.add(VPackSlice::noneSlice());
@@ -1249,6 +1286,8 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
           } else {
             // Use the original slice for updating
             object.add(a.slice());
+            // TODO if the inKeyVariable is not set, we can leave the whole
+            // patternBuilder at none
             patternBuilder.add(VPackSlice::noneSlice());
           }
         } else {

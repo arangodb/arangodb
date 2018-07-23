@@ -1244,12 +1244,10 @@ Result createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int deleteDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    arangodb::transaction::Methods const& trx, VPackSlice const slice,
-    arangodb::OperationOptions const& options, VPackSlice const pattern,
-    arangodb::rest::ResponseCode& responseCode,
-    std::unordered_map<int, size_t>& errorCounter,
-    std::shared_ptr<arangodb::velocypack::Builder>& resultBody) {
+  std::string const &dbname, std::string const &collname, transaction::Methods const &trx, VPackSlice const slice,
+  OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
+  std::unordered_map<int, size_t> &errorCounter, std::shared_ptr<arangodb::velocypack::Builder> &resultBody
+) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -2291,8 +2289,7 @@ int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     arangodb::transaction::Methods const& trx,
     arangodb::velocypack::Slice const& slice,
-    arangodb::OperationOptions const& options,
-    arangodb::velocypack::Slice const& pattern, bool isPatch,
+    arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,

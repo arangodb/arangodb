@@ -308,9 +308,26 @@ class Methods {
                          VPackSlice const value,
                          OperationOptions const& options);
 
-  /// @brief update/patch one or multiple documents in a collecti  Result
+  // TODO replace special handling for rev with the pattern
+
+  // TODO right now, e.g. remove first makes a read and then, if it doesn't
+  // match the pattern, removes the document. can this be done faster somehow?
+  // e.g. (if ignoreErrors is false) remove the document, then pattern match it
+  // and maybe throw an exception. or (if ignoreErrors is true) remove the
+  // document and rollback (as an optimistic optimization)? other ideas?
+
+  // TODO all throughout this code there are distinctions of the cases whether
+  // the value is an object or an array of objects. maybe we can make this a lot
+  // simpler if we only handle the array case and wrap a single object in an
+  // array somewhere at the top level?
+
+  /// @brief update/patch one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
+  /// The pattern must match (in terms of the AQL function MATCHES()) the
+  /// to-be-updated document. Otherwise, update() will return a document not
+  /// found error. If updateValue is an array, pattern must be an array of the
+  /// same length (or unset).
   OperationResult update(std::string const& collectionName,
                          VPackSlice updateValue,
                          OperationOptions const& options,
@@ -319,6 +336,10 @@ class Methods {
   /// @brief replace one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
+  /// The pattern must match (in terms of the AQL function MATCHES()) the
+  /// to-be-replaced document. Otherwise, replace() will return a document not
+  /// found error. If updateValue is an array, pattern must be an array of the
+  /// same length (or unset).
   OperationResult replace(std::string const& collectionName,
                           VPackSlice updateValue,
                           OperationOptions const& options,
@@ -327,6 +348,10 @@ class Methods {
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
+  /// The pattern must match (in terms of the AQL function MATCHES()) the
+  /// to-be-removed document. Otherwise, remove() will return a document not
+  /// found error. If value is an array, pattern must be an array of the
+  /// same length (or unset).
   OperationResult remove(std::string const& collectionName, VPackSlice value,
                          OperationOptions const& options,
                          VPackSlice pattern = VPackSlice::noneSlice());
@@ -489,13 +514,11 @@ class Methods {
 
   OperationResult updateCoordinator(std::string const& collectionName,
                                     VPackSlice const newValue,
-                                    OperationOptions& options,
-                                    VPackSlice const pattern);
+                                    OperationOptions& options);
 
   OperationResult replaceCoordinator(std::string const& collectionName,
                                      VPackSlice const newValue,
-                                     OperationOptions& options,
-                                     VPackSlice const pattern);
+                                     OperationOptions& options);
 
   OperationResult modifyLocal(std::string const& collectionName,
                               VPackSlice const newValue,
@@ -505,9 +528,9 @@ class Methods {
 
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const value,
-                                    OperationOptions& options,
-                                    VPackSlice const pattern);
+                                    OperationOptions& options);
 
+  // TODO could the value slice be replaced by a string containing _key?
   OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const value, OperationOptions& options,
                               VPackSlice const pattern);

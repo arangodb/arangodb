@@ -1719,8 +1719,6 @@ function ahuacatlModifySuite () {
     // maybe add a test.
 
     // TODO add a test validating the _rev is ignored in AQL
-    // (and maybe one that checks that it is, or is not, ignored in the HTTP
-    //  interface depending on the options; at least if there isn't one already)
 
     // TODO add tests using shardKeys
     // for this, also test both syntaxes where applicable, e.g.
@@ -1737,8 +1735,6 @@ function ahuacatlModifySuite () {
     // shard keys / unsharded keys
     // with/without optimization
     // with/without ignoreErrors
-    // _rev handling? => should always be ignored in AQL, but is optional in the
-    //                   HTTP interface
 
   };
 }

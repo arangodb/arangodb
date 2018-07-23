@@ -114,12 +114,10 @@ Result createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int deleteDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    transaction::Methods const& trx, VPackSlice const slice,
-    OperationOptions const& options, VPackSlice const pattern,
-    arangodb::rest::ResponseCode& responseCode,
-    std::unordered_map<int, size_t>& errorCounters,
-    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+  std::string const &dbname, std::string const &collname, transaction::Methods const &trx, VPackSlice const slice,
+  OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
+  std::unordered_map<int, size_t> &errorCounters, std::shared_ptr<arangodb::velocypack::Builder> &resultBody
+);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
@@ -230,8 +228,9 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    transaction::Methods const& trx, arangodb::velocypack::Slice const& slice,
-    OperationOptions const& options, VPackSlice const& pattern, bool isPatch,
+    arangodb::transaction::Methods const& trx,
+    arangodb::velocypack::Slice const& slice,
+    arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
