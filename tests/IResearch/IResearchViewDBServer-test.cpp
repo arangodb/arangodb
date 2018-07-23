@@ -518,9 +518,9 @@ SECTION("test_query") {
 
   // snapshot isolation
   {
-    auto links = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \
+    auto links = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \"testCollection\": { \"includeAllFields\" : true } } \
-    }}");
+    }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\":442 }");
 
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
@@ -618,7 +618,7 @@ SECTION("test_query") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": { \"testCollection\": { \"includeAllFields\": true } } } }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
     auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::FlushFeature
     >("Flush");
@@ -821,14 +821,10 @@ SECTION("test_toVelocyPack") {
     wiew->toVelocyPack(builder, true, false);
     builder.close();
     auto slice = builder.slice();
-    CHECK((4 == slice.length()));
+    CHECK((5U == slice.length()));
     CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("2") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
     CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
-    CHECK((slice.hasKey("properties")));
-    auto props = slice.get("properties");
-    CHECK((props.isObject()));
-    CHECK((2U == props.length()));
   }
 
   // includeSystem
@@ -967,7 +963,7 @@ SECTION("test_updateProperties") {
   // update empty (partial)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -989,9 +985,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((2U == slice.length()));
+      CHECK((5U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1000,7 +994,7 @@ SECTION("test_updateProperties") {
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"collections\": [ 6, 7, 8, 9 ], \"commit\": { \"commitIntervalMsec\": 52 }, \"links\": { \"testCollection\": {} } } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"commit\": { \"commitIntervalMsec\": 52 }, \"links\": { \"testCollection\": {} } }");
       CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
     }
 
@@ -1013,9 +1007,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((2U == slice.length()));
+      CHECK((5U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1038,9 +1030,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((3U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1058,10 +1048,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((8U == slice.length()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((3U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
@@ -1074,7 +1061,7 @@ SECTION("test_updateProperties") {
   // update empty (full)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1096,9 +1083,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((2U == slice.length()));
+      CHECK((5U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1107,7 +1092,7 @@ SECTION("test_updateProperties") {
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
       CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
     }
 
@@ -1120,9 +1105,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((2U == slice.length()));
+      CHECK((5U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1145,9 +1128,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((3U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1165,10 +1146,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((8U == slice.length()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((3U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
@@ -1181,7 +1159,7 @@ SECTION("test_updateProperties") {
   // update non-empty (partial)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1208,9 +1186,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((2U == slice.length()));
+      CHECK((5U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1219,7 +1195,7 @@ SECTION("test_updateProperties") {
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
       CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
     }
 
@@ -1232,9 +1208,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((2U == slice.length()));
+      CHECK((5U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1254,9 +1228,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((3U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1274,10 +1246,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((8U == slice.length()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((3U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
@@ -1291,7 +1260,7 @@ SECTION("test_updateProperties") {
   {
     auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": \"123\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"commit\": { \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 } }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1320,9 +1289,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((2U == slice.length()));
+      CHECK((5U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1331,7 +1298,7 @@ SECTION("test_updateProperties") {
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commit\": { \"commitIntervalMsec\": 52 } }");
       CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
     }
 
@@ -1344,9 +1311,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((2U == slice.length()));
+      CHECK((5U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1366,9 +1331,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((3U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");
       CHECK((tmpSlice.hasKey("cleanupIntervalStep") && tmpSlice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == tmpSlice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1386,10 +1349,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((8U == slice.length()));
-      slice = slice.get("properties");
-      CHECK((slice.isObject()));
-      CHECK((3U == slice.length()));
+      CHECK((10U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("commit") && slice.get("commit").isObject()));
       auto tmpSlice = slice.get("commit");

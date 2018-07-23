@@ -106,8 +106,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
     var url = "/_api/view";
     var body = {
       name: "testViewBasics",
-      type: "arangosearch",
-      properties: {}
+      type: "arangosearch"
     };
 
     var response = logCurlRequest('POST', url, body);

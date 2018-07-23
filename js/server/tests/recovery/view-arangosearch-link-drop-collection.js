@@ -42,7 +42,7 @@ function runSetup () {
 
   db._dropView('UnitTestsRecovery1');
   var v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
-  var meta = { properties: { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } } };
+  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   v.properties(meta);
 
   c.drop();
@@ -71,7 +71,7 @@ function recoverySuite () {
 
     testIResearchLinkDropCollection: function () {
       var v1 = db._view('UnitTestsRecovery1');
-      assertEqual(v1.properties().properties.links, {});
+      assertEqual(v1.properties().links, {});
     }
 
   };

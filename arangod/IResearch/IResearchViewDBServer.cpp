@@ -208,14 +208,6 @@ arangodb::Result IResearchViewDBServer::appendVelocyPackDetailed(
     );
   }
 
-  builder.add(
-    StaticStrings::PropertiesField,
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-  );
-
-  auto closePropertiesField = // close StaticStrings::PropertiesField
-    irs::make_finally([&builder]()->void { builder.close(); });
-
   {
     SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
 
@@ -326,24 +318,15 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   ); // type required for proper factory selection
 
   {
-    builder.add(
-      StaticStrings::PropertiesField,
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-    );
+    SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
 
-    {
-      SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
+    if (!_meta->json(builder)) {
+      builder.close(); // close StaticStrings::PropertiesField
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().name() << "'";
 
-      if (!_meta->json(builder)) {
-        builder.close(); // close StaticStrings::PropertiesField
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().name() << "'";
-
-        return nullptr;
-      }
+      return nullptr;
     }
-
-    builder.close(); // close StaticStrings::PropertiesField
   }
 
   builder.close();
@@ -432,9 +415,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       new IResearchViewDBServer(vocbase, info, *feature, planVersion)
     );
 
-    auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-    auto props = json.get(StaticStrings::PropertiesField);
-    auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
+    auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
     std::string error;
     IResearchViewMeta meta;
 
@@ -649,13 +630,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   bool partialUpdate,
   bool doSync
 ) {
-  if (slice.isObject() && !slice.hasKey(StaticStrings::PropertiesField)) {
-    return arangodb::Result(); // nothing to update
-  }
-
-  auto properties = slice.get(StaticStrings::PropertiesField);
-
-  if (!properties.isObject()) {
+  if (!slice.isObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid properties supplied while updating IResearch View in database '") + vocbase().name() + "'"
@@ -675,7 +650,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
 
   props.openObject();
 
-  if (!mergeSliceSkipKeys(props, properties, propsAcceptor)) {
+  if (!mergeSliceSkipKeys(props, slice, propsAcceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failure to generate definition while updating IResearch View in database '") + vocbase().name() + "'"
@@ -720,7 +695,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
     feature->asyncNotify();
   }
 
-  if (!properties.hasKey(StaticStrings::LinksField)) {
+  if (!slice.hasKey(StaticStrings::LinksField) && partialUpdate) {
     return arangodb::Result();
   }
 
@@ -729,7 +704,10 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   // ...........................................................................
 
   std::unordered_set<TRI_voc_cid_t> collections;
-  auto links = properties.get(StaticStrings::LinksField);
+  auto links = slice.hasKey(StaticStrings::LinksField)
+             ? slice.get(StaticStrings::LinksField)
+             : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
+
 
   if (partialUpdate) {
     return IResearchLinkHelper::updateLinks(
