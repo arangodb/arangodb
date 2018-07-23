@@ -76,17 +76,14 @@ struct Exception : std::exception {
 
  private:
   ExceptionType _type;
-  std::string _msg;
+  char const* _msg;
 
  public:
-  Exception(ExceptionType type, std::string const& msg)
-      : _type(type), _msg(msg) {}
-
   Exception(ExceptionType type, char const* msg) : _type(type), _msg(msg) {}
 
   explicit Exception(ExceptionType type) : Exception(type, message(type)) {}
 
-  char const* what() const noexcept { return _msg.c_str(); }
+  char const* what() const noexcept { return _msg; }
 
   ExceptionType errorCode() const noexcept { return _type; }
 
