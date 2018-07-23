@@ -50,13 +50,13 @@ It is almost always an extremely bad idea to attempt to modify
 the filesystem from within a service:
 
 - The service folder itself is considered an implementation artefact and
-  may be discarded and replaced without warning.
+  **may be discarded and replaced without warning**.
   ArangoDB maintains a canonical copy of each service internally to
   detect missing or damaged services and restore them automatically.
 
 - ArangoDB uses multiple V8 contexts to allow handling multiple
   Foxx requests in parallel. Writing to the same file in a request handler
-  may therefore cause race conditions and result in corrupted data.
+  may therefore cause race conditions and **result in corrupted data**.
 
 - Writing to files outside the service folder introduces external state. In
   a cluster this will result in coordinators no longer being interchangeable.
@@ -65,8 +65,26 @@ the filesystem from within a service:
   be executed several times or not at all. In a cluster the setup script
   will only be executed on a single coordinator.
 
-Therefore it is almost always a better option to store files in the database or
-(if file size is a concern) a specialized file storage service.
+Therefore it is almost always a better option to store files using a
+specialized, external file storage service
+and handle file uploads outside Foxx itself.
+
+However in some cases it may be feasible to store smaller files directly in
+ArangoDB documents by using a separate collection.
+
+{% hint 'danger' %}
+Due to the way ArangoDB stores documents internally, you should not store
+file contents alongside other attributes that might be updated independently.
+Additionally, large file sizes will impact performance for operations
+involving the document and may affect overall database performance.
+{% endhint %}
+
+{% hint 'warning' %}
+In production, you should avoid storing any files in ArangoDB or handling file
+uploads in Foxx. The following example will work for moderate amounts of small
+files but is not recommended for large files or frequent uploads or
+modifications.
+{% endhint %}
 
 To store files in a document you can simply convert the file contents
 as a `Buffer` to a base64-encoded string:
