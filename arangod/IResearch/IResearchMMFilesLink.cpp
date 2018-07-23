@@ -33,7 +33,7 @@ NS_BEGIN(iresearch)
 
 IResearchMMFilesLink::IResearchMMFilesLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
 ): Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
    IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -46,7 +46,7 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 }
 
 /*static*/ IResearchMMFilesLink::ptr IResearchMMFilesLink::make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor

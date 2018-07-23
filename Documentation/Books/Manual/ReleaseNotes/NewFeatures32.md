@@ -117,7 +117,7 @@ operations on sharded collections can be avoided and response times can be close
 that of a single instance.
 
 [Satellite collections](../Administration/Satellites.md)
-are available in the *Enterprise* edition.
+are available in the *Enterprise Edition*.
 
 
 Memory management
