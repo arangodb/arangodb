@@ -7,6 +7,21 @@ upgrading to ArangoDB 3.4, and adjust any client programs if necessary.
 The following incompatible changes have been made in ArangoDB 3.4:
 
 
+Supported platforms
+-------------------
+
+The minimum supported architecture for the official release packages of ArangoDB is
+the Nehalem architecture.
+All release packages are built with compiler optimizations that require at least
+this architecture. The following CPU features are required for running an official
+release package (note: these are all included in the Nehalem architecture and upwards):
+
+* SSE2
+* SSE3
+* SSE4.1
+* SSE4.2
+
+
 Storage engine
 --------------
 
