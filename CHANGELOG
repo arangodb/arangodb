@@ -1,6 +1,13 @@
 v3.3.13 (XXXX-XX-XX)
 --------------------
 
+* keep failed follower in followers list in Plan.
+
+  This increases the changes of a failed follower getting back into sync if the
+  follower comes back after a short time. In this case the follower can try to
+  get in sync again, which normally takes less time than seeding a completely
+  new follower.
+
 * fix assertion failure and undefined behavior in Unix domain socket connections,
   introduced by 3.3.12
 
