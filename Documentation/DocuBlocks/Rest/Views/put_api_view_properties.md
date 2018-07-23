@@ -1,11 +1,11 @@
 @startDocuBlock put_api_view_properties
 @brief changes properties of an ArangoDB view
 
-@RESTHEADER{PUT /_api/view/{view-name}/properties#<view-type>, Change properties of an ArangoDB view}
+@RESTHEADER{PUT /_api/view/{view-name}/properties#arangosearch, Change properties of an ArangoDB view}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{view-name, string, required}
+@RESTURLPARAM{view-name,string,required}
 The name of the view.
 
 @RESTDESCRIPTION
