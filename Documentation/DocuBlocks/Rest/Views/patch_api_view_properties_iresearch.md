@@ -97,7 +97,7 @@ The list of analyzers to be used for indexing of string values
 The field properties. If specified, then *properties* should be a JSON object
 containing the following attributes:
 
-@RESTSTRUCT{[field-name],post_api_view_fields,,optional,post_api_view_field_props}
+@RESTSTRUCT{field-name,post_api_view_fields,array,optional,object}
 This is a recursive structure for the specific attribute path, potentially
 containing any of the following attributes:
 *analyzers*, *includeAllFields*, *trackListPositions*, *trackValues*
