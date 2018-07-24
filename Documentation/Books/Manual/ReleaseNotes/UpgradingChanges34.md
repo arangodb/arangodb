@@ -217,6 +217,22 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
 
   Using any of these functions from inside AQL will now produce an error.
 
+- the semantics of objects as *keyExpression*s in `UPDATE`, `REPLACE` and
+  `REMOVE` has changed. Additional attributes (in excess of `_key`) now must
+  match the document that is to be updated, replaced or removed, respectively.
+  Otherwise, a document not found error is returned. The check uses the
+  semantics of the `MATCHES()` function. `_rev` is still neglected unless the
+  option `ignoreRevs: false` is passed.
+  Note that for `UPDATE` and `REPLACE`, the syntax variants
+  - `REPLACE doc IN coll` and
+  - `UPDATE doc IN coll`
+
+  are unchanged. Only the variants with separate key expressions, that is
+  - `REPLACE keyExpression WITH doc IN coll` and
+  - `UPDATE keyExpression WITH doc IN coll`,
+
+  are affected.
+
 
 Usage of V8
 -----------
