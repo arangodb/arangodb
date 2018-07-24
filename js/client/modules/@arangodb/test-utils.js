@@ -581,7 +581,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const jsonFN = fs.join(instanceInfo.rootDir, 'testresult.json');
-  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
+  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
   let result;
   try {
     result = JSON.parse(fs.read(jsonFN));
