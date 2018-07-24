@@ -135,7 +135,6 @@
   * [Guides](Foxx/Guides/README.md)
     * [Development mode](Foxx/Guides/DevelopmentMode.md)
     * [Foxx in a cluster](Foxx/Guides/Cluster.md)
-    * [Development mode](Foxx/Guides/DevelopmentMode.md)
     * [Authentication and sessions](Foxx/Guides/Auth.md)
     * [Using Node modules](Foxx/Guides/BundledNodeModules.md)
     * [Working with collections](Foxx/Guides/Collections.md)
