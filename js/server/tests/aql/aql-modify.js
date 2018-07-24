@@ -315,52 +315,37 @@ function aqlUpdateWithRevOptionsSuite () {
   return {
     setUp, tearDown,
 
-    testUpdateWithSingleWithInvalidRev : function () {
+    testUpdateWithRevSingleWithInvalidRev : function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        try {
-          db._query(q, {key: d._key});
-          fail();
-        } catch (err) {
-          assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
-        }
+        db._query(q, {key: d._key});
       }
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateWithManyWithInvalidRev : function () {
+    testUpdateWithRevManyWithInvalidRev : function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      try {
-        db._query(q, {docs: [...docs]});
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
-      }
+      db._query(q, {docs: [...docs]});
 
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateWithEnumerationWithInvalidRev : function () {
+    testUpdateWithRevEnumerationWithInvalidRev : function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"}
                 IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs();
-      try {
-        db._query(q);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
-      }
+      db._query(q);
 
       validateDocsAreUpdated(docs, invalid, false);
     },
 
-    testUpdateWithSingleWithInvalidRevIgnore : function () {
+    testUpdateWithRevSingleWithInvalidRevIgnore : function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
@@ -370,7 +355,7 @@ function aqlUpdateWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithManyWithInvalidRevIgnore : function () {
+    testUpdateWithRevManyWithInvalidRevIgnore : function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
@@ -379,7 +364,7 @@ function aqlUpdateWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithEnumerationWithInvalidRevIgnore : function () {
+    testUpdateWithRevEnumerationWithInvalidRevIgnore : function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"}
@@ -390,7 +375,7 @@ function aqlUpdateWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithSingleWithInvalidRevDefault : function () {
+    testUpdateWithRevSingleWithInvalidRevDefault : function () {
       const invalid = genInvalidValue();
       let q = `UPDATE {_key: @key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
@@ -400,7 +385,7 @@ function aqlUpdateWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithManyWithInvalidRevDefault : function () {
+    testUpdateWithRevManyWithInvalidRevDefault : function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
@@ -409,7 +394,7 @@ function aqlUpdateWithRevOptionsSuite () {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
-    testUpdateWithEnumerationWithInvalidRevDefault : function () {
+    testUpdateWithRevEnumerationWithInvalidRevDefault : function () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
                 UPDATE {_key: doc._key} WITH {_rev: "invalid", val: "${invalid}"}
@@ -658,12 +643,7 @@ function aqlReplaceWithRevOptionsSuite () {
       let q = `REPLACE {_key: @key} WITH { _rev: "invalid", val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        try {
           db._query(q, {key: d._key});
-          fail();
-        } catch (err) {
-          assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
-        }
       }
       validateDocsAreUpdated(docs, invalid, false);
     },
@@ -672,12 +652,7 @@ function aqlReplaceWithRevOptionsSuite () {
       const invalid = genInvalidValue();
       let q = `FOR doc IN @docs REPLACE {_key: doc._key} WITH { _rev: "invalid", val: "${invalid}" } IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
-      try {
-        db._query(q, {docs: [...docs]});
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
-      }
+      db._query(q, {docs: [...docs]});
 
       validateDocsAreUpdated(docs, invalid, false);
     },
@@ -688,12 +663,7 @@ function aqlReplaceWithRevOptionsSuite () {
                 REPLACE {_key: doc._key} WITH { _rev: "invalid", val: "${invalid}" }
                 IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs();
-      try {
-        db._query(q);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_ARANGO_CONFLICT.code);
-      }
+      db._query(q);
 
       validateDocsAreUpdated(docs, invalid, false);
     },
