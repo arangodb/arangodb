@@ -1,5 +1,10 @@
 # Datacenter to datacenter replication.
 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
 ## About 
 
 At some point in the grows of a database, there comes a need for 

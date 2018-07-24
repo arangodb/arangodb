@@ -29,7 +29,9 @@ const functionsDocumentation = {
   'endpoints': 'endpoints tests'
 };
 const optionsDocumentation = [
-  '   - `skipEndpoints`: if set to true endpoints tests are skipped'
+  '   - `skipEndpoints`: if set to true endpoints tests are skipped',
+  '   - `skipEndpointsIpv6`: if set to true endpoints tests using IPv6 are skipped',
+  '   - `skipEndpointsUnix`: if set to true endpoints tests using Unix domain sockets are skipped',
 ];
 
 const fs = require('fs');
@@ -53,13 +55,17 @@ function endpoints (options) {
       return 'tcp://127.0.0.1:' + pu.findFreePort(options.minPort, options.maxPort);
     },
     'tcpv6': function () {
+      if (options.skipEndpointsIpv6) {
+        return undefined;
+      }
       return 'tcp://[::1]:' + pu.findFreePort(options.minPort, options.maxPort);
     },
     'unix': function () {
-      if (platform.substr(0, 3) === 'win') {
+      if (platform.substr(0, 3) === 'win' || options.skipEndpointsUnix) {
         return undefined;
       }
-      return 'unix://./arangodb-tmp.sock';
+      // use a random filename
+      return 'unix://./arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8);
     }
   };
   // we append one cleanup directory for the invoking logic...
@@ -115,6 +121,8 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['endpoints'] = endpoints;
 
   opts['skipEndpoints'] = false;
+  opts['skipEndpointsIpv6'] = false;
+  opts['skipEndpointsUnix'] = (platform.substr(0, 3) === 'win');
 
   defaultFns.push('endpoints');
 

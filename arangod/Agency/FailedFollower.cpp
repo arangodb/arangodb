@@ -166,6 +166,8 @@ bool FailedFollower::start() {
       auto s = i.copyString();
       ns.add(VPackValue((s != _from) ? s : _to));
     }
+    // Add the old one at the end, just in case it comes back more quickly:
+    ns.add(VPackValue(_from));
   }
   
   // Transaction
