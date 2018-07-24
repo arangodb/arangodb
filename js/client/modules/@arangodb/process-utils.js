@@ -534,7 +534,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
 
   internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, false, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -584,7 +584,7 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, false, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -622,7 +622,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     print(args);
   }
 
-  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir, coreCheck);
+  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir, false, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -646,7 +646,7 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
     args['flatCommands'] = ['--quiet'];
   }
 
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, false, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
