@@ -11,7 +11,8 @@ Supported platforms
 -------------------
 
 The minimum supported architecture for the official release packages of ArangoDB is
-the Nehalem architecture.
+now the Nehalem architecture.
+
 All release packages are built with compiler optimizations that require at least
 this architecture. The following CPU features are required for running an official
 release package (note: these are all included in the Nehalem architecture and upwards):
@@ -20,6 +21,24 @@ release package (note: these are all included in the Nehalem architecture and up
 * SSE3
 * SSE4.1
 * SSE4.2
+
+In case the target platform does not conform to these requirements, ArangoDB may
+not work correctly.
+
+The compiled-in architecture optimizations can be retrieved on most platforms by 
+invoking the *arangod* binary with the `--version` option. The optimization switches
+will then show up in the output in the line starting with `optimization-flags`, e.g.
+
+```
+$ arangod --version
+...
+optimization-flags: -march=nehalem -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mno-sse4a -mno-avx -mno-fma -mno-bmi2 -mno-avx2 -mno-xop -mno-fma4 -mno-avx512f -mno-avx512vl -mno-avx512pf -mno-avx512er -mno-avx512cd -mno-avx512dq -mno-avx512bw -mno-avx512ifma -mno-avx512vbmi
+platform: linux
+```
+
+Note that to get even more target-specific optimizations, it is possible for end
+users to compile ArangoDB on their own with compiler optimizations tailored to the
+target environment.
 
 
 Storage engine
