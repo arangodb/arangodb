@@ -49,7 +49,7 @@ function iResearchAqlTestSuite () {
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = { properties: {
+      var meta = {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
@@ -58,7 +58,7 @@ function iResearchAqlTestSuite () {
             }
           }
         }
-      } };
+      };
       v.properties(meta);
 
       ac.save({ a: "foo", id : 0 });
@@ -83,7 +83,7 @@ function iResearchAqlTestSuite () {
     },
 
     tearDown : function () {
-      var meta = { properties: { links : { "UnitTestsCollection": null } } };
+      var meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();
       db._drop("UnitTestsCollection");

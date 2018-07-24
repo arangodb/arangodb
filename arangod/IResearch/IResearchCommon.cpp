@@ -52,7 +52,6 @@ arangodb::LogTopic& logTopic() {
 // -----------------------------------------------------------------------------
 
 std::string const StaticStrings::LinksField("links");
-std::string const StaticStrings::PropertiesField("properties");
 std::string const StaticStrings::ViewIdField("view");
 
 } // iresearch
