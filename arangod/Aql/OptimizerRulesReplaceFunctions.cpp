@@ -43,7 +43,7 @@ using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
-  
+
 bool isValueTypeCollection(AstNode const* node) {
   return node->type == NODE_TYPE_COLLECTION || node->isStringValue();
 }
@@ -164,6 +164,11 @@ AstNode* createSubqueryWithLimit(
   if (limit && !limit->isNullValue()) {
     ExecutionNode* eLimit = plan->registerNode(
       new LimitNode(plan, plan->nextId(), 0 /*offset*/, limit->getIntValue())
+    );
+    plan->insertAfter(last, eLimit); // inject into plan
+  } else if (!limit) { //default limit of 100
+    ExecutionNode* eLimit = plan->registerNode(
+      new LimitNode(plan, plan->nextId(), 0 /*offset*/, 100)
     );
     plan->insertAfter(last, eLimit); // inject into plan
   }
@@ -351,22 +356,22 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
     //// wrap plan part into subquery
     return createSubqueryWithLimit(plan, calcNode, eEnumerate, eCalcMerge, calcMergeOutVariable, params.limit);
-  }
+  } //merge
 
   //// wrap plan part into subquery
   return createSubqueryWithLimit(plan, calcNode,
                                  eEnumerate /* first */, eSortOrFilter /* last */,
                                  enumerateOutVariable, params.limit);
 }
-  
+
 /// @brief replace WITHIN_RECTANGLE
 AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan) {
   auto* ast = plan->getAst();
-  
+
   TRI_ASSERT(funAstNode->type == AstNodeType::NODE_TYPE_FCALL);
   AstNode* fargs = funAstNode->getMember(0);
   TRI_ASSERT(fargs->type == AstNodeType::NODE_TYPE_ARRAY);
-       
+
   if (fargs->numMembers() < 5) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "WITHIN_RECTANGLE", 5, 5);
   }
@@ -380,7 +385,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
   if (!::isValueTypeCollection(coll)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
-  
+
   // check for suitable indexes
   std::string cname = coll->getString();
   std::shared_ptr<arangodb::Index> index;
@@ -395,13 +400,13 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
                                   cname.c_str());
   }
-  
+
   if (coll->type != NODE_TYPE_COLLECTION) { // TODO does this work?
    aql::addCollectionToQuery(ast->query(), cname, false);
    coll = ast->createNodeCollection(coll->getStringValue(),
                                     AccessMode::Type::READ);
   }
-  
+
   // FOR part
   Variable* collVar = ast->variables()->createTemporaryVariable();
   AstNode* forNode = ast->createNodeFor(collVar, coll);
@@ -455,7 +460,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
 
   // create an on-the-fly subquery for a full collection access
   AstNode* rootNode = ast->createNodeSubquery();
-  
+
   // add nodes to subquery
   rootNode->addMember(forNode);
   rootNode->addMember(filterNode);
