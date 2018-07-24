@@ -89,6 +89,7 @@ describe('Readonly mode api', function() {
       method: 'put',
     });
     expect(set.code).to.equal(400);
+    waitForHeartbeat();
 
     let resp = download(endpoint.url + '/_admin/server/mode');
     let body = JSON.parse(resp.body);
@@ -100,6 +101,7 @@ describe('Readonly mode api', function() {
       method: 'put',
     });
     expect(set.code).to.equal(400);
+    waitForHeartbeat();
 
     let resp = download(endpoint.url + '/_admin/server/mode');
     let body = JSON.parse(resp.body);
