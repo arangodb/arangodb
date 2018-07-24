@@ -24,11 +24,27 @@
 #include "CursorRepository.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace {
+bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
+  auto context = arangodb::ExecContext::CURRENT;
+  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+    return true;
+  }
+
+  if (context->isSuperuser()) {
+    return true;
+  }
+
+  return (cursor.second == context->user());
+}
+}
 
 using namespace arangodb;
 
@@ -75,7 +91,7 @@ CursorRepository::~CursorRepository() {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it : _cursors) {
-      delete it.second;
+      delete it.second.first;
     }
 
     _cursors.clear();
@@ -92,10 +108,11 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
   TRI_ASSERT(cursor->isUsed());
 
   CursorId const id = cursor->id();
+  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
-    _cursors.emplace(id, cursor.get());
+    _cursors.emplace(id, std::make_pair(cursor.get(), user));
   }
 
   return cursor.release();
@@ -113,7 +130,7 @@ Cursor* CursorRepository::createFromQueryResult(
     double ttl, bool count) {
   TRI_ASSERT(result.result != nullptr);
 
-  CursorId const id = TRI_NewTickServer();
+  CursorId const id = TRI_NewServerSpecificTick(); // embedded server id
 
   std::unique_ptr<Cursor> cursor;
   cursor.reset(new VelocyPackCursor(
@@ -134,12 +151,12 @@ bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _cursors.find(id);
-    if (it == _cursors.end()) {
+    if (it == _cursors.end() || !::authorized(it->second)) {
       // not found
       return false;
     }
 
-    cursor = (*it).second;
+    cursor = (*it).second.first;
 
     if (cursor->isDeleted()) {
       // already deleted
@@ -181,12 +198,12 @@ Cursor* CursorRepository::find(CursorId id, Cursor::CursorType type, bool& busy)
     MUTEX_LOCKER(mutexLocker, _lock);
 
     auto it = _cursors.find(id);
-    if (it == _cursors.end()) {
+    if (it == _cursors.end() || !::authorized(it->second)) {
       // not found
       return nullptr;
     }
 
-    cursor = (*it).second;
+    cursor = (*it).second.first;
 
     if (cursor->isDeleted()) {
       // already deleted
@@ -240,7 +257,7 @@ bool CursorRepository::containsUsedCursor() {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   for (auto it : _cursors) {
-    if (it.second->isUsed()) {
+    if (it.second.first->isUsed()) {
       return true;
     }
   }
@@ -262,7 +279,7 @@ bool CursorRepository::garbageCollect(bool force) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
-      auto cursor = (*it).second;
+      auto cursor = (*it).second.first;
 
       if (cursor->isUsed()) {
         // must not destroy used cursors

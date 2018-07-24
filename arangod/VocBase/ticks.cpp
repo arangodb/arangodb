@@ -23,6 +23,7 @@
 
 #include "ticks.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -55,13 +56,36 @@ void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
   auto expected = CurrentTick.load(std::memory_order_relaxed);
 
   // only update global tick if less than the specified value...
-  while (expected < t &&
-         !CurrentTick.compare_exchange_weak(expected, t,
-                                            std::memory_order_release,
-                                            std::memory_order_relaxed)) {
+  while (expected < t && !CurrentTick.compare_exchange_weak(
+                             expected, t, std::memory_order_release,
+                             std::memory_order_relaxed)) {
     expected = CurrentTick.load(std::memory_order_relaxed);
   }
 }
 
 /// @brief returns the current tick counter
 TRI_voc_tick_t TRI_CurrentTickServer() { return CurrentTick; }
+
+/// @brief generates a new tick which also encodes this server's id
+TRI_voc_tick_t TRI_NewServerSpecificTick() {
+  static constexpr uint64_t LowerMask{0x000000FFFFFFFFFF};
+  static constexpr uint64_t UpperMask{0xFFFFFF0000000000};
+  static constexpr size_t UpperShift{40};
+
+  uint64_t lower = TRI_NewTickServer() & LowerMask;
+  uint64_t upper =
+      (static_cast<uint64_t>(ServerState::instance()->getShortId())
+       << UpperShift) &
+      UpperMask;
+  uint64_t tick = (upper | lower);
+  return static_cast<TRI_voc_tick_t>(tick);
+}
+
+/// @brief extracts the server id from a server-specific tick
+uint32_t TRI_ExtractServerIdFromTick(TRI_voc_tick_t tick) {
+  static constexpr uint64_t Mask{0x0000000000FFFFFF};
+  static constexpr size_t Shift{40};
+
+  uint32_t shortId = static_cast<uint32_t>((tick >> Shift) & Mask);
+  return shortId;
+}

@@ -62,7 +62,7 @@ class CursorRepository {
   ////////////////////////////////////////////////////////////////////////////////
 
   Cursor* addCursor(std::unique_ptr<Cursor> cursor);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
   /// the cursor will be returned with the usage flag set to true. it must be
@@ -123,7 +123,7 @@ class CursorRepository {
   /// @brief list of current cursors
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<CursorId, Cursor*> _cursors;
+  std::unordered_map<CursorId, std::pair<Cursor*, std::string>> _cursors;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of cursors to garbage-collect in one go

@@ -16,6 +16,16 @@ v3.3.13 (XXXX-XX-XX)
   MMFiles engine will pick a random document from the entire range of the 
   in-memory primary index without performing scans.
 
+* return an empty result set instead of an "out of memory" exception when
+  querying the geo index with invalid (out of range) coordinates
+
+* added load balancer support and user-restriction to cursor API.
+
+  If a cursor is accessed on a different coordinator than where it was created,
+  the requests will be forwarded to the correct coordinator. If a cursor is
+  accessed by a different user than the one who created it, the request will
+  be denied.
+
 * keep failed follower in followers list in Plan.
 
   This increases the changes of a failed follower getting back into sync if the
@@ -36,7 +46,7 @@ v3.3.13 (XXXX-XX-XX)
 * fixed issue #5827: Batch request handling incompatible with .NET's default
   ContentType format
 
-* fixed agency's log compaction for internal issue #2249 
+* fixed agency's log compaction for internal issue #2249
 
 * inspector collects additionally disk data size and storage engine statistics
 
