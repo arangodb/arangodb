@@ -166,11 +166,6 @@ AstNode* createSubqueryWithLimit(
       new LimitNode(plan, plan->nextId(), 0 /*offset*/, limit->getIntValue())
     );
     plan->insertAfter(last, eLimit); // inject into plan
-  } else if (!limit) { //default limit of 100
-    ExecutionNode* eLimit = plan->registerNode(
-      new LimitNode(plan, plan->nextId(), 0 /*offset*/, 100)
-    );
-    plan->insertAfter(last, eLimit); // inject into plan
   }
 
   /// create subquery
@@ -241,6 +236,10 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   auto* ast = plan->getAst();
   auto* query = ast->query();
   NearOrWithinParams params(funAstNode,isNear);
+
+  if(isNear && (!params.limit || params.limit->isNullValue())){
+    params.limit = ast->createNodeValueInt(100);
+  }
 
   // RETURN (
   //  FOR d IN col
