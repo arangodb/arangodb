@@ -368,12 +368,24 @@ feature.
 Load-balancer support
 ---------------------
 
-When running in cluster mode, ArangoDB exposes some APIs which store request state data on specific coordinator nodes, and thus subsequent requests which require access to this state must be served by the coordinator node which owns this state data. In order to support function behind a load-balancer, ArangoDB can transparently forward requests within the cluster to the correct node. If a request is forwarded, the response will contain the following custom HTTP header whose value will be the ID of the node which actually answered the request:
+When running in cluster mode, ArangoDB exposes some APIs which store request
+state data on specific coordinator nodes, and thus subsequent requests which
+require access to this state must be served by the coordinator node which owns
+this state data. In order to support function behind a load-balancer, ArangoDB
+can transparently forward requests within the cluster to the correct node. If a
+request is forwarded, the response will contain the following custom HTTP header
+whose value will be the ID of the node which actually answered the request:
 
-* *x-arango-request-served-by*
+* *x-arango-request-forwarded-to*
 
 The following APIs may use request forwarding:
 
 * `/_api/cursor`
+* `/_api/job`
 
-Note: since forwarding such requests require an additional cluster-internal HTTP request, they should be avoided when possible for best performance. Typically this is accomplished either by directing the requests to the correct coordinator at a client-level or by enabling request "stickiness" on a load balancer. Since these approaches are not always possible in a given environment, we support the request forwarding as a fall-back solution.
+Note: since forwarding such requests require an additional cluster-internal HTTP
+request, they should be avoided when possible for best performance. Typically
+this is accomplished either by directing the requests to the correct coordinator
+at a client-level or by enabling request "stickiness" on a load balancer. Since
+these approaches are not always possible in a given environment, we support the
+request forwarding as a fall-back solution.
