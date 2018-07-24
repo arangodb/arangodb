@@ -12,7 +12,8 @@ term can often be ambiguous because Foxx also provides a
 [dependency mechanism](Dependencies.md) for linking services together.
 {% endhint %}
 
-Use a tool like [yarn](https://yarnpkg.com) or [npm](https://npmjs.com) to
+Use a tool like [yarn](https://yarnpkg.com) or
+[npm](https://npmjs.com) to
 create a `package.json` file in your service source directory and add node
 dependencies as you would for any other Node.js application or library:
 

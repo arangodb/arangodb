@@ -1,7 +1,12 @@
 Foxx service context
 ====================
 
-The service context provides access to methods and attributes that are specific to a given service. In a Foxx service the context is generally available as the `module.context` variable. Within a router's request handler the request and response objects' `context` attribute also provide access to the context of the service the route was mounted in (which may be different from the one the route handler was defined in).
+The service context provides access to methods and attributes that are specific
+to a given service. In a Foxx service the context is generally available as the
+`module.context` variable. Within a router's request handler the request and
+response objects' `context` attribute also provide access to the context of the
+service the route was mounted in (which may be different from the one the route
+handler was defined in).
 
 **Examples**
 
@@ -40,19 +45,24 @@ The service context specifies the following properties:
 
 * **argv**: `any`
 
-  Any arguments passed in if the current file was executed as a [script or queued job](../Guides/Scripts.md).
+  Any arguments passed in if the current file was executed as a
+  [script or queued job](../Guides/Scripts.md).
 
 * **basePath**: `string`
 
-  The file system path of the service, i.e. the folder in which the service was installed to by ArangoDB.
+  The file system path of the service, i.e. the folder in which the service
+  was installed to by ArangoDB.
 
 * **baseUrl**: `string`
 
-  The base URL of the service, relative to the ArangoDB server, e.g. `/_db/_system/my-foxx`.
+  The base URL of the service, relative to the ArangoDB server,
+  e.g. `/_db/_system/my-foxx`.
 
 * **collectionPrefix**: `string`
 
-  The prefix that will be used by *collection* and *collectionName* to derive the names of service-specific collections. This is derived from the service's mount point, e.g. `/my-foxx` becomes `my_foxx`.
+  The prefix that will be used by *collection* and *collectionName* to derive
+  the names of service-specific collections. This is derived from the
+  service's mount point, e.g. `/my-foxx` becomes `my_foxx`.
 
 * **configuration**: `Object`
 
@@ -87,7 +97,9 @@ apiDocumentation
 
 Creates a request handler that serves the API documentation.
 
-**Note**: This method has been deprecated in ArangoDB 3.1 and replaced with the more straightforward `createDocumentationRouter` method providing the same functionality.
+**Note**: This method has been deprecated in ArangoDB 3.1 and replaced with
+the more straightforward `createDocumentationRouter` method providing the
+same functionality.
 
 **Arguments**
 
@@ -110,7 +122,8 @@ createDocumentationRouter
 
 Creates a router that serves the API documentation.
 
-**Note**: The router can be mounted like any other child router (see examples below).
+**Note**: The router can be mounted like any other child router
+(see examples below).
 
 **Arguments**
 
@@ -137,7 +150,8 @@ Creates a router that serves the API documentation.
 
     If the function returns `false` the request will not be processed any further.
 
-    If the function returns an object, its attributes will be used to override the *options* for the current request.
+    If the function returns an object, its attributes will be used to override
+    the *options* for the current request.
 
     Any other return value will be ignored.
 
@@ -175,7 +189,8 @@ collection
 
 `module.context.collection(name): ArangoCollection | null`
 
-Passes the given name to *collectionName*, then looks up the collection with the prefixed name.
+Passes the given name to *collectionName*, then looks up the collection with
+the prefixed name.
 
 **Arguments**
 
@@ -222,7 +237,8 @@ Passes the given name to *fileName*, then loads the file with the resulting name
 
 * **encoding**: `string` (optional)
 
-  Encoding of the file, e.g. `utf-8`. If omitted the file will be loaded as a raw buffer instead of a string.
+  Encoding of the file, e.g. `utf-8`. If omitted the file will be loaded as a
+  raw buffer instead of a string.
 
 Returns the file's contents.
 
@@ -266,7 +282,8 @@ use
 
 `module.context.use([path], router): Endpoint`
 
-Mounts a given router on the service to expose the router's routes on the service's mount point.
+Mounts a given router on the service to expose the router's routes on the
+service's mount point.
 
 **Arguments**
 
@@ -280,4 +297,5 @@ Mounts a given router on the service to expose the router's routes on the servic
 
 Returns an [Endpoint](Routers/Endpoints.md) for the given router or middleware.
 
-**Note**: Mounting services at run time (e.g. within request handlers or queued jobs) is not supported.
+**Note**: Mounting services at run time (e.g. within request handlers or
+queued jobs) is not supported.

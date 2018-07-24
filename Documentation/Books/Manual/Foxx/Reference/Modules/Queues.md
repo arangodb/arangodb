@@ -3,15 +3,22 @@ Foxx queues
 
 `const queues = require('@arangodb/foxx/queues')`
 
-Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
+Foxx allows defining job queues that let you perform slow or expensive actions
+asynchronously. These queues can be used to send e-mails, call external APIs or
+perform other actions that you do not want to perform directly or want to retry
+on failure.
 
-Foxx queue jobs can be any [script](../../Guides/Scripts.md) named in the [manifest](../Manifest.md) of a service in the same database.
+Foxx queue jobs can be any [script](../../Guides/Scripts.md) named in the 
+[manifest](../Manifest.md) of a service in the same database.
 
-Please note that Foxx queues are database-specific. Queues and jobs are always relative to the database in which they are created or accessed.
+Please note that Foxx queues are database-specific. Queues and jobs are always
+relative to the database in which they are created or accessed.
 
-For disabling the Foxx queues feature or adjusting the polling interval see the [`foxx.queues` and `foxx.queues-poll-interval` options](../../../Administration/Configuration/GeneralArangod.md#foxx-queues).
+For disabling the Foxx queues feature or adjusting the polling interval see the
+[`foxx.queues` and `foxx.queues-poll-interval` options](../../../Administration/Configuration/GeneralArangod.md#foxx-queues).
 
-For the low-level functionality see the chapter on the [task management module](../../../Appendix/JavaScriptModules/Tasks.md).
+For the low-level functionality see the chapter on the
+[task management module](../../../Appendix/JavaScriptModules/Tasks.md).
 
 Managing queues
 ---------------
@@ -20,7 +27,9 @@ Managing queues
 
 `queues.create(name, [maxWorkers]): Queue`
 
-Returns the queue for the given name. If the queue does not exist, a new queue with the given name will be created. If a queue with the given name already exists and maxWorkers is set, the queue's maximum number of workers will be updated.
+Returns the queue for the given name. If the queue does not exist, a new queue
+with the given name will be created. If a queue with the given name already exists
+and maxWorkers is set, the queue's maximum number of workers will be updated.
 The queue will be created in the current database.
 
 **Arguments**
@@ -50,7 +59,8 @@ assertEqual(queue1, queue3);
 
 `queues.get(name): Queue`
 
-Returns the queue for the given name. If the queue does not exist an exception is thrown instead.
+Returns the queue for the given name. If the queue does not exist an exception
+is thrown instead.
 
 The queue will be looked up in the current database.
 
@@ -82,7 +92,8 @@ assertEqual(queue1, queue2);
 
 `queues.delete(name): boolean`
 
-Returns `true` if the queue was deleted successfully. If the queue did not exist, it returns `false` instead.
+Returns `true` if the queue was deleted successfully.
+If the queue did not exist, it returns `false` instead.
 The queue will be looked up and deleted in the current database.
 
 When a queue is deleted, jobs on that queue will no longer be executed.
@@ -130,11 +141,17 @@ Returns the job id.
 
   * **backOff**: `Function | number` (Default: `1000`)
 
-    Either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or `0` for no delay.
+    Either a function that takes the number of times the job has failed before
+    as input and returns the number of milliseconds to wait before trying the
+    job again, or the delay to be used to calculate an
+    [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff),
+    or `0` for no delay.
 
   * **maxFailures**: `number | Infinity` (Default: `0`):
 
-    Number of times a single run of a job will be re-tried before it is marked as `"failed"`. A negative value or `Infinity` means that the job will be re-tried on failure indefinitely.
+    Number of times a single run of a job will be re-tried before it is marked
+    as `"failed"`. A negative value or `Infinity` means that the job will be
+    re-tried on failure indefinitely.
 
   * **schema**: `Schema` (optional)
 
@@ -162,7 +179,8 @@ Returns the job id.
 
   * **delayUntil**: `number | Date` (Default: `Date.now()`)
 
-    Timestamp in milliseconds (or `Date` instance) until which the execution of the job should be delayed.
+    Timestamp in milliseconds (or `Date` instance) until which the execution of
+    the job should be delayed.
 
   * **backOff**: `Function | number` (Default: `1000`)
 
@@ -174,19 +192,34 @@ Returns the job id.
 
   * **repeatTimes**: `number | Function` (Default: `0`)
 
-    If set to a positive number, the job will be repeated this many times (not counting recovery when using *maxFailures*). If set to a negative number or `Infinity`, the job will be repeated indefinitely. If set to `0` the job will not be repeated.
+    If set to a positive number, the job will be repeated this many times
+    (not counting recovery when using *maxFailures*).
+    If set to a negative number or `Infinity`, the job will be repeated
+    indefinitely. If set to `0` the job will not be repeated.
 
   * **repeatUntil**: `number | Date` (optional)
 
-    If the job is set to automatically repeat, this can be set to a timestamp in milliseconds (or `Date` instance) after which the job will no longer repeat. Setting this value to zero, a negative value or `Infinity` has no effect.
+    If the job is set to automatically repeat, this can be set to a timestamp
+    in milliseconds (or `Date` instance) after which the job will no longer repeat.
+    Setting this value to zero, a negative value or `Infinity` has no effect.
 
   * **repeatDelay**: `number` (Default: `0`)
 
-    If the job is set to automatically repeat, this can be set to a non-negative value to set the number of milliseconds for which the job will be delayed before it is started again.
+    If the job is set to automatically repeat, this can be set to a non-negative
+    value to set the number of milliseconds for which the job will be delayed
+    before it is started again.
 
-Note that if you pass a function for the *backOff* calculation, *success* callback or *failure* callback options the function will be serialized to the database as a string and therefore must not rely on any external scope or external variables.
+Note that if you pass a function for the *backOff* calculation, *success*
+callback or *failure* callback options the function will be serialized to
+the database as a string and therefore must not rely on any external scope
+or external variables.
 
-When the job is set to automatically repeat, the *failure* callback will only be executed when a run of the job has failed more than *maxFailures* times. Note that if the job fails and *maxFailures* is set, it will be rescheduled according to the *backOff* until it has either failed too many times or completed successfully before being scheduled according to the *repeatDelay* again. Recovery attempts by *maxFailures* do not count towards *repeatTimes*.
+When the job is set to automatically repeat, the *failure* callback will only
+be executed when a run of the job has failed more than *maxFailures* times.
+Note that if the job fails and *maxFailures* is set, it will be rescheduled
+according to the *backOff* until it has either failed too many times or
+completed successfully before being scheduled according to the *repeatDelay*
+again. Recovery attempts by *maxFailures* do not count towards *repeatTimes*.
 
 The *success* and *failure* callbacks receive the following arguments:
 
@@ -216,7 +249,8 @@ queue.push(
 );
 ```
 
-This will *not* work, because `log` was defined outside the callback function (the callback must be serializable to a string):
+This will *not* work, because `log` was defined outside the callback function
+(the callback must be serializable to a string):
 
 ```js
 // WARNING: THIS DOES NOT WORK!
@@ -258,7 +292,8 @@ Creates a proxy object representing a job with the given job id.
 
 The job will be looked up in the specified queue in the current database.
 
-Returns the job for the given jobId. Properties of the job object will be fetched whenever they are referenced and can not be modified.
+Returns the job for the given jobId. Properties of the job object will be
+fetched whenever they are referenced and can not be modified.
 
 **Arguments**
 
@@ -286,13 +321,15 @@ The job will be looked up and deleted in the specified queue in the current data
 
   The id of the job to delete.
 
-Returns `true` if the job was deleted successfully. If the job did not exist it returns `false` instead.
+Returns `true` if the job was deleted successfully. If the job did not exist
+it returns `false` instead.
 
 ### pending
 
 `queue.pending([script]): Array<string>`
 
-Returns an array of job ids of jobs in the given queue with the status `"pending"`, optionally filtered by the given job type.
+Returns an array of job ids of jobs in the given queue with the status
+`"pending"`, optionally filtered by the given job type.
 The jobs will be looked up in the specified queue in the current database.
 
 **Arguments**
@@ -327,7 +364,8 @@ assertEqual(queue.complete(logScript).length, 1);
 
 `queue.progress([script])`
 
-Returns an array of job ids of jobs in the given queue with the status `"progress"`, optionally filtered by the given job type.
+Returns an array of job ids of jobs in the given queue with the status
+`"progress"`, optionally filtered by the given job type.
 The jobs will be looked up in the specified queue in the current database.
 
 **Arguments**
@@ -348,7 +386,8 @@ The jobs will be looked up in the specified queue in the current database.
 
 `queue.complete([script]): Array<string>`
 
-Returns an array of job ids of jobs in the given queue with the status `"complete"`, optionally filtered by the given job type.
+Returns an array of job ids of jobs in the given queue with the status
+`"complete"`, optionally filtered by the given job type.
 The jobs will be looked up in the specified queue in the current database.
 
 **Arguments**
@@ -369,7 +408,8 @@ The jobs will be looked up in the specified queue in the current database.
 
 `queue.failed([script]): Array<string>`
 
-Returns an array of job ids of jobs in the given queue with the status `"failed"`, optionally filtered by the given job type.
+Returns an array of job ids of jobs in the given queue with the status
+`"failed"`, optionally filtered by the given job type.
 The jobs will be looked up in the specified queue in the current database.
 
 **Arguments**
@@ -390,7 +430,8 @@ The jobs will be looked up in the specified queue in the current database.
 
 `queue.all([script]): Array<string>`
 
-Returns an array of job ids of all jobs in the given queue, optionally filtered by the given job type.
+Returns an array of job ids of all jobs in the given queue,
+optionally filtered by the given job type.
 The jobs will be looked up in the specified queue in the current database.
 
 **Arguments**
@@ -416,4 +457,5 @@ Job API
 
 Aborts a non-completed job.
 
-Sets a job's status to `"failed"` if it is not already `"complete"`, without calling the job's *onFailure* callback.
+Sets a job's status to `"failed"` if it is not already `"complete"`,
+without calling the job's *onFailure* callback.

@@ -3,7 +3,8 @@ Authentication
 
 `const createAuth = require('@arangodb/foxx/auth');`
 
-Authenticators allow implementing basic password mechanism using simple built-in hashing functions.
+Authenticators allow implementing basic password mechanism using simple
+built-in hashing functions.
 
 Creating an authenticator
 -------------------------
@@ -20,7 +21,10 @@ Creates an authenticator.
 
   * **method**: `string` (Default: `"sha256"`)
 
-    The hashing algorithm to use to create password hashes. The authenticator will be able to verify passwords against hashes using any supported hashing algorithm. This only affects new hashes created by the authenticator.
+    The hashing algorithm to use to create password hashes.
+    The authenticator will be able to verify passwords against hashes using
+    any supported hashing algorithm. This only affects new hashes created
+    by the authenticator.
 
     Supported values:
 
@@ -42,7 +46,8 @@ Creating authentication data objects
 
 `auth.create(password): AuthData`
 
-Creates an authentication data object for the given password with the following properties:
+Creates an authentication data object for the given password with the
+following properties:
 
 * **method**: `string`
 
@@ -69,7 +74,8 @@ Validating passwords against authentication data objects
 
 `auth.verify([hash, [password]]): boolean`
 
-Verifies the given password against the given hash using a constant time string comparison.
+Verifies the given password against the given hash using a constant time
+string comparison.
 
 **Arguments**
 

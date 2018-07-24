@@ -3,7 +3,8 @@ OAuth 2.0
 
 `const createOAuth2Client = require('@arangodb/foxx/oauth2');`
 
-The OAuth2 module provides abstractions over OAuth 2.0 providers like Facebook, GitHub and Google.
+The OAuth2 module provides abstractions over OAuth 2.0 providers like
+Facebook, GitHub and Google.
 
 **Examples**
 
@@ -106,19 +107,23 @@ Creates an OAuth 2.0 client.
 
   * **authEndpoint**: `string`
 
-    The fully-qualified URL of the provider's [authorization endpoint](http://tools.ietf.org/html/rfc6749#section-3.1).
+    The fully-qualified URL of the provider's
+    [authorization endpoint](http://tools.ietf.org/html/rfc6749#section-3.1).
 
   * **tokenEndpoint**: `string`
 
-    The fully-qualified URL of the provider's [token endpoint](http://tools.ietf.org/html/rfc6749#section-3.2).
+    The fully-qualified URL of the provider's
+    [token endpoint](http://tools.ietf.org/html/rfc6749#section-3.2).
 
   * **refreshEndpoint**: `string` (optional)
 
-    The fully-qualified URL of the provider's [refresh token endpoint](http://tools.ietf.org/html/rfc6749#section-6).
+    The fully-qualified URL of the provider's
+    [refresh token endpoint](http://tools.ietf.org/html/rfc6749#section-6).
 
   * **activeUserEndpoint**: `string` (optional)
 
-    The fully-qualified URL of the provider's endpoint for fetching details about the current user.
+    The fully-qualified URL of the provider's endpoint for fetching
+    details about the current user.
 
   * **clientId**: `string`
 
@@ -140,13 +145,21 @@ If you want to use Facebook as the OAuth 2.0 provider, use the following options
 
 You also need to obtain a client ID and client secret from Facebook:
 
-1. Create a regular account at [Facebook](https://www.facebook.com) or use an existing account you own.
+1. Create a regular account at [Facebook](https://www.facebook.com) or use an
+   existing account you own.
 2. Visit the [Facebook Developers](https://developers.facebook.com) page.
-3. Click on *Apps* in the menu, then select *Register as a Developer* (the only option) and follow the instructions provided. You may need to verify your account by phone.
-4. Click on *Apps* in the menu, then select *Create a New App* and follow the instructions provided.
-5. Open the app dashboard, then note down the *App ID* and *App Secret*. The secret may be hidden by default.
-6. Click on *Settings*, then *Advanced* and enter one or more *Valid OAuth redirect URIs*. At least one of them must match your *redirect_uri* later. Don't forget to save your changes.
-7. Set the option *clientId* to the *App ID* and the option *clientSecret* to the *App Secret*.
+3. Click on *Apps* in the menu, then select *Register as a Developer*
+   (the only option) and follow the instructions provided. You may need to
+   verify your account by phone.
+4. Click on *Apps* in the menu, then select *Create a New App* and follow
+   the instructions provided.
+5. Open the app dashboard, then note down the *App ID* and *App Secret*.
+   The secret may be hidden by default.
+6. Click on *Settings*, then *Advanced* and enter one or more
+   *Valid OAuth redirect URIs*. At least one of them must match your
+   *redirect_uri* later. Don't forget to save your changes.
+7. Set the option *clientId* to the *App ID* and the option *clientSecret*
+   to the *App Secret*.
 
 ### Setting up OAuth 2.0 for GitHub
 
@@ -158,12 +171,15 @@ If you want to use GitHub as the OAuth 2.0 provider, use the following options:
 
 You also need to obtain a client ID and client secret from GitHub:
 
-1. Create a regular account at [GitHub](https://github.com) or use an existing account you own.
+1. Create a regular account at [GitHub](https://github.com) or use an
+   existing account you own.
 2. Go to [Account Settings > Applications > Register new application](https://github.com/settings/applications/new).
-3. Provide an *authorization callback URL*. This must match your *redirect_uri* later.
+3. Provide an *authorization callback URL*. This must match your
+   *redirect_uri* later.
 4. Fill in the other required details and follow the instructions provided.
 5. Open the application page, then note down the *Client ID* and *Client Secret*.
-6. Set the option *clientId* to the *Client ID* and the option *clientSecret* to the *Client Secret*.
+6. Set the option *clientId* to the *Client ID* and the option *clientSecret*
+   to the *Client Secret*.
 
 ### Setting up OAuth 2.0 for Google
 
@@ -175,14 +191,20 @@ If you want to use Google as the OAuth 2.0 provider, use the following options:
 
 You also need to obtain a client ID and client secret from Google:
 
-1. Create a regular account at [Google](https://www.google.com) or use an existing account you own.
+1. Create a regular account at [Google](https://www.google.com) or use an
+   existing account you own.
 2. Visit the [Google Developers Console](https://console.developers.google.com).
 3. Click on *Create Project*, then follow the instructions provided.
-4. When your project is ready, open the project dashboard, then click on *Enable an API*.
+4. When your project is ready, open the project dashboard, then click on
+   *Enable an API*.
 5. Enable the *Google+ API* to allow your app to distinguish between different users.
-6. Open the *Credentials* page and click *Create new Client ID*, then follow the instructions provided. At least one *Authorized Redirect URI* must match your *redirect_uri* later. At least one *Authorized JavaScript Origin* must match your app's fully-qualified domain.
+6. Open the *Credentials* page and click *Create new Client ID*, then follow
+   the instructions provided. At least one *Authorized Redirect URI* must match
+   your *redirect_uri* later. At least one *Authorized JavaScript Origin* must
+   match your app's fully-qualified domain.
 7. When the Client ID is ready, note down the *Client ID* and *Client secret*.
-8. Set the option *clientId* to the *Client ID* and the option *clientSecret* to the *Client secret*.
+8. Set the option *clientId* to the *Client ID* and the option *clientSecret*
+   to the *Client secret*.
 
 Get the authorization URL
 -------------------------
@@ -205,7 +227,9 @@ Generates the authorization URL for the authorization endpoint.
 
   See [RFC 6749](http://tools.ietf.org/html/rfc6749).
 
-Returns a fully-qualified URL for the authorization endpoint of the provider by appending the client ID and any additional arguments from *args* to the *authEndpoint*.
+Returns a fully-qualified URL for the authorization endpoint of the provider
+by appending the client ID and any additional arguments from *args* to the
+*authEndpoint*.
 
 Exchange a grant code for an access token
 -----------------------------------------

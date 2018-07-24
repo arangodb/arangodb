@@ -2,7 +2,8 @@ Scripts and scheduling
 ======================
 
 In addition to the main entry point which defines your service's
-[routes](Routing.md) and [exports](Dependencies.md) you can define scripts
+[routes](Routing.md) and
+[exports](Dependencies.md) you can define scripts
 that need to be invoked directly and can be used to implement one-off tasks
 or scheduled and recurring jobs using queues.
 
