@@ -257,6 +257,52 @@ function RocksDBTransactionsInvocationsSuite () {
       assertTrue(failed);
       assertEqual(6533, db._collection(cn).count());
     },
+    
+    testIntermediateCommitDuplicateKeys1 : function () {
+      var failed = false;
+
+      try {
+        db._executeTransaction({
+          collections: { write: cn },
+          action: "function (params) { " +
+            "var db = require('internal').db; " +
+            "var c = db._collection(params.cn); " +
+            "for (var i = 0; i < 10; ++i) { c.insert({ _key: 'test' + i }); } " +
+            "for (var i = 0; i < 10; ++i) { c.insert({ _key: 'test' + i }); } " +
+            "}",
+          params: { cn },
+          intermediateCommitCount: 10 
+        });
+      } catch (err) {
+        failed = true;
+      }
+
+      assertTrue(failed);
+      assertEqual(10, db._collection(cn).count());
+    },
+    
+    testIntermediateCommitDuplicateKeys2 : function () {
+      var failed = false;
+
+      try {
+        db._executeTransaction({
+          collections: { write: cn },
+          action: "function (params) { " +
+            "var db = require('internal').db; " +
+            "var c = db._collection(params.cn); " +
+            "for (var i = 0; i < 10; ++i) { c.insert({ _key: 'test' + i }); } " +
+            "for (var i = 0; i < 10; ++i) { c.insert({ _key: 'test' + i }); } " +
+            "}",
+          params: { cn },
+          intermediateCommitCount: 100 
+        });
+      } catch (err) {
+        failed = true;
+      }
+
+      assertTrue(failed);
+      assertEqual(0, db._collection(cn).count());
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aql queries
