@@ -98,7 +98,7 @@ devel
   ascending lexicographical sort order.
 
 * The REST API of `/_admin/status` added: "operationMode" filed with same meaning as
-  the "mode" field and field "readOnly" that has the inverted meaning of field
+  the "mode" field and field "readOnly" that has the inverted meaning of the field
   "writeOpsEnabled". The old field names will be deprecated in upcoming versions.
 
 * added `COUNT_DISTINCT` AQL function

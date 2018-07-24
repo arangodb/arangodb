@@ -193,7 +193,7 @@ APIs:
 - `GET /_admin/status` now returns the attribute `operationMode` in addition to
   `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
   attribute `readOnly`, which is has an inverted value compared to the original
-  attribute. In future releases to old attributes will be deprecated in favour
+  attribute. In future releases the old attributes will be deprecated in favor
   of the new ones.
 
 - if authentication is turned on, requests to databases by users with insufficient 
