@@ -415,9 +415,11 @@ arangodb::Result SynchronizeShard::getReadLock(
     if ((steady_clock::now() - start).count() > timeout) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
-    }
-    
+    }  
   }
+
+  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
+  
 }
 
 bool isStopping() {
@@ -642,9 +644,13 @@ arangodb::Result replicationSynchronizeFinalize(
   return r;
 }
 
-arangodb::Result SynchronizeShard::synchroniseOneShard(
-  std::string const& database, std::string const& shard,
-  std::string const& planId, std::string const& leader) {
+
+arangodb::Result SynchronizeShard::synchronise() {
+
+  std::string database = _description.get(DATABASE);
+  std::string planId = _description.get(COLLECTION);
+  std::string shard = _description.get(SHARD);
+  std::string leader = _description.get(LEADER);
   
   auto* clusterInfo = ClusterInfo::instance();
   auto const ourselves = arangodb::ServerState::instance()->getId();
@@ -911,6 +917,8 @@ arangodb::Result SynchronizeShard::synchroniseOneShard(
 SynchronizeShard::~SynchronizeShard() {};
 
 bool SynchronizeShard::first() {
+
+  arangodb::Result res = synchronise();
   return true;
 }
 

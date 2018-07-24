@@ -64,9 +64,7 @@ private:
     std::string const& collection, std::string const& clientId, uint64_t& rlid,
     double timeout = 120.0);
 
-  arangodb::Result synchroniseOneShard(
-    std::string const& database, std::string const& shard,
-    std::string const& planId, std::string const& leader);
+  arangodb::Result synchronise();
 
   
 };

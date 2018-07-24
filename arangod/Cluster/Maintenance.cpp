@@ -584,6 +584,8 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
               {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
                {COLLECTION, colname}, {SHARD, shname}, {LEADER, leader}});
 
+            //LOG_TOPIC(ERR, Logger::MAINTENANCE) << desc;
+
           }
         }
       }
