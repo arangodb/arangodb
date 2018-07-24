@@ -104,7 +104,10 @@ var AqlHighlightRules = function() {
         "date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|" +
         "collections|document|union|union_distinct|intersection|flatten|is_same_collection|" +
-        "ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|hash|random_token|AQL_LAST_ENTRY)"
+        "ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|hash|random_token|to_base64|" +
+        "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
+        "geo_point|geo_multipoint|geo_polygon|geo_linestring|geo_multilinestring|geo_contains|geo_intersects|" +
+        "geo_equals|geo_distance|AQL_LAST_ENTRY)"
     );
 
     var keywordMapper = this.createKeywordMapper({

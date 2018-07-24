@@ -29,7 +29,7 @@
 #ifdef TRI_HAVE_WIN32_THREADS
 
 /// @brief condition variable
-typedef struct TRI_condition_t {
+struct TRI_condition_t {
   CRITICAL_SECTION _lockWaiters;
   CONDITION_VARIABLE _conditionVariable;
 };

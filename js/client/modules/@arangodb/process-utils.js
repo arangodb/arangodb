@@ -193,7 +193,7 @@ function findFreePort (minPort, maxPort, usedPorts) {
       return port;
     }
 
-    internal.wait(0.1);
+    internal.wait(0.1, false);
   }
 }
 
@@ -821,6 +821,21 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     print('Server already dead, doing nothing. This shouldn\'t happen?');
   }
 
+  try {
+    // send a maintenance request to any of the coordinators, so that
+    // no failed server/failed follower jobs will be started on shutdown
+    let coords = instanceInfo.arangods.filter(arangod => arangod.role === 'coordinator');
+    if (coords.length > 0) {
+      let requestOptions = makeAuthorizationHeaders(options);
+      requestOptions.method = 'PUT';
+
+      print(coords[0].url + "/_admin/cluster/maintenance");
+      download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify({ body: "on" }), requestOptions);
+    }
+  } catch (err) {
+    print("error while setting cluster maintenance mode:", err);
+  }
+
   // Shut down all non-agency servers:
   const n = instanceInfo.arangods.length;
 
@@ -836,7 +851,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   });
   print('Shutdown order ' + JSON.stringify(nonagencies));
   nonagencies.forEach(arangod => {
-    wait(0.025);
+    wait(0.025, false);
     shutdownArangod(arangod, options, forceTerminate);
   });
 
@@ -904,7 +919,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     });
     if (toShutdown.length > 0) {
       print(toShutdown.length + ' arangods are still running...');
-      wait(1);
+      require('internal').wait(1, false);
     }
   }
 
@@ -1060,7 +1075,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
   // we need to find the leading server
   if (options.activefailover) {
-    internal.wait(5.0);
+    internal.wait(5.0, false);
     let opts = {
       method: 'POST',
       jwt: crypto.jwtEncode(authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
