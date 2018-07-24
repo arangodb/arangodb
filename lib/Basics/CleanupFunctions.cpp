@@ -20,16 +20,25 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterPhase.h"
+#include "CleanupFunctions.h"
+#include "Basics/MutexLocker.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
+using namespace arangodb::basics;
 
-ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer* server)
-    : ApplicationFeaturePhase(server, "ClusterPhase") {
-  setOptional(false);
-  startsAfter("DatabasePhase");
+// Init static class members
+Mutex CleanupFunctions::_functionsMutex;
+std::vector<std::unique_ptr<CleanupFunctions::CleanupFunction>> CleanupFunctions::_cleanupFunctions;
 
-  startsAfter("Cluster");
-  startsAfter("ReplicationTimeout");
+void CleanupFunctions::registerFunction(std::unique_ptr<CleanupFunctions::CleanupFunction> func) {
+  MUTEX_LOCKER(locker, _functionsMutex);
+  _cleanupFunctions.emplace_back(std::move(func));
+}
+
+void CleanupFunctions::run(int code, void* data) {
+  MUTEX_LOCKER(locker, _functionsMutex);
+  for (auto const& func : _cleanupFunctions) {
+    (*func)(code, data);
+  }
+  _cleanupFunctions.clear();
 }

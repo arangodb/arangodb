@@ -225,14 +225,14 @@
   try {
     db._create("UnitTestsDumpViewCollection");
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});
-    view.properties({ properties: { links: {
+    view.properties({ links: {
       "UnitTestsDumpViewCollection": { 
         includeAllFields: true,
         fields: {
           text: { analyzers: [ "text_en" ] }
         }
       }
-    } } });
+    } });
   } catch (err) { }
 
 })();

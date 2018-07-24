@@ -166,6 +166,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
+  Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
   Basics/datetime.cpp
