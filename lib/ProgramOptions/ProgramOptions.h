@@ -226,7 +226,7 @@ class ProgramOptions {
 
     Option& option = (*it2).second;
 
-    return dynamic_cast<T>(option.parameter.get());
+    return dynamic_cast<T*>(option.parameter.get());
   }
 
   // returns an option description

@@ -126,10 +126,10 @@ The default locale used for queries on analyzed string values (default: *C*).
 Changes the properties of a view.
 
 On success an object with the following attributes is returned:
-- *id*: The identifier of the view.
-- *name*: The name of the view.
-- *type*: The view type.
-- *properties*: The updated properties of the view.
+- *id*: The identifier of the view
+- *name*: The name of the view
+- *type*: The view type
+- all additional arangosearch view implementation specific properties
 
 @RESTRETURNCODES
 
