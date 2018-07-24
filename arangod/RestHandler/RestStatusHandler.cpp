@@ -57,7 +57,7 @@ RestStatus RestStatusHandler::execute() {
   result.add("version", VPackValue(ARANGODB_VERSION));
 
   result.add("pid", VPackValue(Thread::currentProcessId()));
-  
+
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
 #else
@@ -67,6 +67,7 @@ RestStatus RestStatusHandler::execute() {
   if (application_features::ApplicationServer::server != nullptr) {
     auto server = application_features::ApplicationServer::server
                       ->getFeature<ServerFeature>("Server");
+    result.add("mode", VPackValue(server->operationModeString())); // to be deprecated - 3.3 compat
     result.add("operationMode", VPackValue(server->operationModeString()));
   }
 
@@ -89,6 +90,7 @@ RestStatus RestStatusHandler::execute() {
 
     result.add("maintenance", VPackValue(serverState->isMaintenance()));
     result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+    result.add("writeOpsEnabled", VPackValue(!serverState->readOnly())); // to be deprecated - 3.3 compat
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!serverState->isSingleServer()) {
