@@ -60,7 +60,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
-            trackValues: "exists",
+            storeValues: "id",
             fields: {
               text: { analyzers: [ "text_en" ] }
             }

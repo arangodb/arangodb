@@ -262,8 +262,8 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"properties\": { \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true, \"trackValues\": \"exists\"},"
-        "\"testCollection1\": { \"includeAllFields\": true, \"trackValues\": \"exists\" }"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"id\"},"
+        "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
       "}}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
@@ -1521,7 +1521,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"properties\": { \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
-        "\"testCollection1\": { \"includeAllFields\": true, \"trackValues\": \"exists\" }"
+        "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
       "}}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));

@@ -76,14 +76,14 @@ IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
     _fields(mask),
     _includeAllFields(mask),
     _trackListPositions(mask),
-    _trackValues(mask) {
+    _storeValues(mask) {
 }
 
 IResearchLinkMeta::IResearchLinkMeta()
   : //_fields(<empty>), // no fields to index by default
     _includeAllFields(false), // true to match all encountered fields, false match only fields in '_fields'
     _trackListPositions(false), // treat '_trackListPositions' as SQL-IN
-    _trackValues(ValueStorage::NONE) { // do not track values at all
+    _storeValues(ValueStorage::NONE) { // do not track values at all
   auto analyzer = IResearchAnalyzerFeature::identity();
 
   // identity-only tokenization
@@ -106,7 +106,7 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexc
     _fields = std::move(other._fields);
     _includeAllFields = std::move(other._includeAllFields);
     _trackListPositions = std::move(other._trackListPositions);
-    _trackValues = std::move(other._trackValues);
+    _storeValues = other._storeValues;
   }
 
   return *this;
@@ -118,7 +118,7 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) 
     _fields = other._fields;
     _includeAllFields = other._includeAllFields;
     _trackListPositions = other._trackListPositions;
-    _trackValues = other._trackValues;
+    _storeValues = other._storeValues;
   }
 
   return *this;
@@ -153,7 +153,7 @@ bool IResearchLinkMeta::operator==(
     return false; // values do not match
   }
 
-  if (_trackValues != other._trackValues) {
+  if (_storeValues != other._storeValues) {
     return false; // values do not match
   }
 
@@ -278,12 +278,12 @@ bool IResearchLinkMeta::init(
 
   {
     // optional string enum
-    static const std::string fieldName("trackValues");
+    static const std::string fieldName("storeValues");
 
-    mask->_trackValues = slice.hasKey(fieldName);
+    mask->_storeValues = slice.hasKey(fieldName);
 
-    if (!mask->_trackValues) {
-      _trackValues = defaults._trackValues;
+    if (!mask->_storeValues) {
+      _storeValues = defaults._storeValues;
     } else {
       auto field = slice.get(fieldName);
 
@@ -294,9 +294,9 @@ bool IResearchLinkMeta::init(
       }
 
       static const std::unordered_map<std::string, ValueStorage> policies = {
-        { "exists", ValueStorage::EXISTS },
-        { "full", ValueStorage::FULL },
         { "none", ValueStorage::NONE },
+        { "id", ValueStorage::ID },
+        { "full", ValueStorage::FULL }
       };
       auto name = field.copyString();
       auto itr = policies.find(name);
@@ -307,7 +307,7 @@ bool IResearchLinkMeta::init(
         return false;
       }
 
-      _trackValues = itr->second;
+      _storeValues = itr->second;
     }
   }
 
@@ -428,25 +428,25 @@ bool IResearchLinkMeta::json(
     builder.add("trackListPositions", arangodb::velocypack::Value(_trackListPositions));
   }
 
-  if ((!ignoreEqual || _trackValues != ignoreEqual->_trackValues) && (!mask || mask->_trackValues)) {
+  if ((!ignoreEqual || _storeValues != ignoreEqual->_storeValues) && (!mask || mask->_storeValues)) {
     static_assert(adjacencyChecker<ValueStorage>::checkAdjacency<
-      ValueStorage::FULL, ValueStorage::EXISTS, ValueStorage::NONE>(),
+      ValueStorage::FULL, ValueStorage::ID, ValueStorage::NONE>(),
       "Values are not adjacent"
     );
 
     static const std::string policies[] {
       "none", // ValueStorage::NONE
-      "exists", // ValueStorage::EXISTS
+      "id", // ValueStorage::ID
       "full" // ValueStorage::FULL
     };
 
-    auto const policyIdx = static_cast<std::underlying_type<ValueStorage>::type>(_trackValues);
+    auto const policyIdx = static_cast<std::underlying_type<ValueStorage>::type>(_storeValues);
 
     if (policyIdx >= IRESEARCH_COUNTOF(policies)) {
       return false; // unsupported value storage policy
     }
 
-    builder.add("trackValues", arangodb::velocypack::Value(policies[policyIdx]));
+    builder.add("storeValues", arangodb::velocypack::Value(policies[policyIdx]));
   }
 
   return true;
