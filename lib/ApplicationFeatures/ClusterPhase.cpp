@@ -31,7 +31,5 @@ ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer* server)
   startsAfter("DatabasePhase");
 
   startsAfter("Cluster");
-  startsAfter("EngineEqualityCheck");
   startsAfter("ReplicationTimeout");
-
 }
