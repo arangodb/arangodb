@@ -79,6 +79,10 @@ function TasksAuthSuite () {
 
     try {
       const envelope = {
+        headers: {
+          authorization:
+            `Basic ${base64Encode(auth.username + ':' + auth.password)}`
+        },
         json: true,
         method,
         url: `${coordinators[i]}${endpoint}`
@@ -126,7 +130,7 @@ function TasksAuthSuite () {
       userModule.save(users[0].username, users[0].password);
       userModule.save(users[1].username, users[1].password);
 
-      userModule.grantDatabase(users[0].username, '_system', 'ro');
+      userModule.grantDatabase(users[0].username, '_system', 'rw');
       userModule.grantDatabase(users[1].username, '_system', 'ro');
       userModule.grantCollection(users[0].username, '_system', cns[0], 'ro');
       userModule.grantCollection(users[1].username, '_system', cns[0], 'ro');
@@ -148,22 +152,22 @@ function TasksAuthSuite () {
     testTaskForwardingSameUser: function() {
       let url = baseTasksUrl;
       const task = {
-        command: `db[params.cn].save({});`,
+        command: `const time = Date.now();`,
         period: 2
       };
       let result = sendRequest(users[0], 'POST', url, task, true);
 
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.body, {});
-      assertEqual(result.status, 202);
+      assertEqual(result.status, 200);
+      assertFalse(result.body.id === undefined);
+      assertEqual(result.body.period, 2);
 
-      const taskId = result.result.id;
+      const taskId = result.body.id;
       url = `${baseTasksUrl}/${taskId}`;
       result = sendRequest(users[0], 'GET', url, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertEqual(taskId, result.result.id);
+      assertEqual(taskId, result.body.id);
 
       require('internal').wait(5.0, false);
 
@@ -178,29 +182,30 @@ function TasksAuthSuite () {
     testAsyncForwardingDifferentUser: function() {
       let url = baseTasksUrl;
       const task = {
-        command: `db[params.cn].save({});`,
+        command: `const time = Date.now();`,
         period: 2
       };
       let result = sendRequest(users[0], 'POST', url, task, true);
 
       assertFalse(result === undefined || result === {});
-      assertEqual(result.body, {});
-      assertEqual(result.status, 202);
+      assertEqual(result.status, 200);
+      assertFalse(result.body.id === undefined);
+      assertEqual(result.body.period, 2);
 
-      const taskId = result.result.id;
+      const taskId = result.body.id;
       url = `${baseTasksUrl}/${taskId}`;
       result = sendRequest(users[1], 'GET', url, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.body.error);
-      assertEqual(result.status, 401);
+      assertEqual(result.status, 403);
 
       url = `${baseTasksUrl}/${taskId}`;
       result = sendRequest(users[1], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.body.error);
-      assertEqual(result.status, 401);
+      assertEqual(result.status, 403);
 
       url = `${baseTasksUrl}/${taskId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, {}, false);

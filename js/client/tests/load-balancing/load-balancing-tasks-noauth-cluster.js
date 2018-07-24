@@ -124,22 +124,23 @@ function TasksSuite () {
     testTaskForwarding: function() {
       let url = baseTasksUrl;
       const task = {
-        command: `db[params.cn].save({});`,
+        command: `const time = Date.now();`,
         period: 2
       };
       let result = sendRequest('POST', url, task, true);
 
       assertFalse(result === undefined || result === {});
-      assertEqual(result.body, {});
-      assertEqual(result.status, 202);
+      assertEqual(result.status, 200);
+      assertFalse(result.body.id === undefined);
+      assertEqual(result.body.period, 2);
 
-      const taskId = result.result.id;
+      const taskId = result.body.id;
       url = `${baseTasksUrl}/${taskId}`;
       result = sendRequest('GET', url, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertEqual(taskId, result.result.id);
+      assertEqual(taskId, result.body.id);
 
       require('internal').wait(5.0, false);
 
