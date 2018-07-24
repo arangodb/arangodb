@@ -120,6 +120,7 @@ void GeneralServer::IoThread::run() {
 GeneralServer::IoContext::IoContext() :
   _clients(0),
   _thread(*this),
+  _asioIoContext(1),  // only a single thread per context
   _asioWork(_asioIoContext)
 {
   _thread.start();
