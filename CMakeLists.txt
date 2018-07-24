@@ -91,6 +91,28 @@ endif()
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
+if (WIN32)
+  # path containing the OpenSSL find-module and libraries
+  set(WIN_FIND_OPENSSL_PATH "C:/OpenSSL-ArangoDB")
+  if (EXISTS "${WIN_FIND_OPENSSL_PATH}")
+	list(APPEND CMAKE_MODULE_PATH ${WIN_FIND_OPENSSL_PATH})
+  endif()
+  project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
+else ()
+  project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
+endif ()
+
+# Static executables:
+option(STATIC_EXECUTABLES "produce static executables" OFF)
+if (STATIC_EXECUTABLES)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+endif()
+
+option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
+if (DEBUG_SYNC_REPLICATION)
+  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
+endif ()
+
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
@@ -503,7 +525,9 @@ option(USE_BACKTRACE
 
 # iresearch uses backtrace anyway, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
-find_package(Backtrace)
+if (NOT MSVC)
+  find_package(Backtrace)
+endif()
 
 if (USE_BACKTRACE)
   if (MSVC)
@@ -692,13 +716,13 @@ elseif (MSVC)
   endif ()
 
   set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
 
   set(CMAKE_CXX_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
@@ -822,6 +846,18 @@ include_directories(${ICU_INCLUDE_DIR})
 ################################################################################
 ## OPENSSL
 ################################################################################
+
+# Some special stuff for Mac OSX and homebrew as a preparation for the 
+# generic FindOpenSSL script:
+if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
+  message("searching openssl with brew (${BREW})")
+  # if we have a brew openssl, prefer it over the elderly system one.
+  execute_process(OUTPUT_VARIABLE BREW_ROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND ${BREW} --prefix)
+  set(OPENSSL_ROOT_DIR "${BREW_ROOT}/opt/openssl")
+  message("auto-set OPENSSL_ROOT_DIR to: ${OPENSSL_ROOT_DIR}")
+endif ()
 
 find_package(OpenSSL REQUIRED)
 
