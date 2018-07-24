@@ -1,6 +1,11 @@
 devel
 -----
 
+* in AQL, the semantics of objects as *keyExpression*s in UPDATE, REPLACE and
+  REMOVE has changed. Additional attributes (in excess of `_key`) now must match
+  the document that is to be updated, replaced or removed, respectively, or a
+  document not found error is returned.
+
 * added collection.indexes() as an alias for collection.getIndexes()
 
 * disable V8 engine and JavaScript APIs for agency nodes
