@@ -848,7 +848,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     if (b.role === 'coordinator' &&
         a.role === 'dbserver') return 1;
     if (a.role === 'agent') return 1;
-    if (b.role === 'agent') return -11;
+    if (b.role === 'agent') return -1;
     return 0;
   });
   print('Shutdown order ' + JSON.stringify(toShutdown));
