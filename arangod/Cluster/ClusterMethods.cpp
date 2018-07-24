@@ -669,7 +669,7 @@ bool shardKeysChanged(arangodb::LogicalCollection const& collection,
     return true;
   }
 #ifdef DEBUG_SYNC_REPLICATION
-  if (dbname == "sync-replication-test") {
+  if (collection.vocbase().name() == "sync-replication-test") {
     return false;
   }
 #endif
