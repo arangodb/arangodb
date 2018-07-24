@@ -170,7 +170,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   // Report to current
   if (!phaseTwo.isEmptyObject()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << phaseTwo.toJson();
+
     std::vector<AgencyOperation> operations;
     for (auto const& ao : VPackObjectIterator(report.get("phaseTwo"))) {
       operations.push_back(

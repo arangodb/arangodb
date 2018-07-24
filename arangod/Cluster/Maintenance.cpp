@@ -46,7 +46,6 @@ static std::string const CURRENT_COLLECTIONS("Current/Collections");
 static std::string const ERROR_MESSAGE("errorMessage");
 static std::string const ERROR_NUM("errorNum");
 static std::string const ERROR("error");
-static std::string const PLAN_COLLECTIONS("Plan/Collections");
 static std::string const PLAN_ID("planId");
 static std::string const PRIMARY("primary");
 static std::string const SERVERS("servers");
@@ -325,7 +324,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent (
   std::string const& serverId, Transactions& transactions) {
 
   arangodb::Result result;
-  auto const& cdbs = current.get("Collections");
+  auto const& cdbs = current;
 
   // Iterate over local databases
   for (auto const& ldbo : VPackObjectIterator(local)) {
@@ -527,44 +526,49 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
   std::string const& serverId) {
 
-  for (auto const& pdb : VPackObjectIterator(plan.get("Collections"))) {
+  auto pdbs = plan.get("Collections");
+  auto cdbs = current.get("Collections");
+  
+  for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
-    if (local.hasKey(dbname) && current.hasKey(dbname)) {
+    if (local.hasKey(dbname) && cdbs.hasKey(dbname)) {
       for (auto const& pcol : VPackObjectIterator(pdb.value)) {
         auto const& colname = pcol.key.copyString();
-        if (current.get(dbname).hasKey(colname)) {
+        if (cdbs.get(dbname).hasKey(colname)) {
           for (auto const& pshrd : VPackObjectIterator(pcol.value.get(SHARDS))) {
             auto const& shname = pshrd.key.copyString();
 
             // shard does not exist locally so nothing we can do at this point
-            if (!local.hasKey(std::vector<std::string>{dbname, colname, shname})) {
+            if (!local.hasKey(std::vector<std::string>{dbname, shname})) {
               continue;
             }
 
             // current stuff is created by the leader this one here will just
             // bring followers in sync so just continue here
-            if (!pshrd.value.hasKey(shname)) {
+            auto cpath = std::vector<std::string> {dbname, colname, shname};
+            if (!cdbs.hasKey(cpath)) {
               continue;
             }
-
 
             // Plan's servers
-            auto const ppath = std::vector<std::string> {dbname, colname, SHARDS, shname};
-            if (!plan.hasKey(ppath)) {
-              LOG_TOPIC(ERR, Logger::MAINTENANCE) <<
-                "Shard " << shname << " does not have servers substructure in 'Plan'";
+            auto ppath = std::vector<std::string> {dbname, colname, SHARDS, shname};
+            if (!pdbs.hasKey(ppath)) {
+              LOG_TOPIC(ERR, Logger::MAINTENANCE)
+                << "Shard " << shname
+                << " does not have servers substructure in 'Plan'";
               continue;
             }
-            auto const& pservers = plan.get(ppath);
+            auto const& pservers = pdbs.get(ppath);
             
             // Current's servers
-            auto const cpath = std::vector<std::string> {dbname, colname, shname, SERVERS};
-            if (!current.hasKey(cpath)) {
-              LOG_TOPIC(ERR, Logger::MAINTENANCE) <<
-                "Shard " << shname << " does not have servers substructure in 'Current'";
+            cpath.push_back(SERVERS);
+            if (!cdbs.hasKey(cpath)) {
+              LOG_TOPIC(ERR, Logger::MAINTENANCE)
+                << "Shard " << shname
+                << " does not have servers substructure in 'Current'";
               continue;
             }
-            auto const& cservers = current.get(cpath);
+            auto const& cservers = cdbs.get(cpath);
 
             // we are not planned to be a follower
             if (indexOf(pservers, serverId) <= 0) {
@@ -576,16 +580,17 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             }
 
             auto const leader = pservers[0].copyString();
+            auto desc = ActionDescription(
+              {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
+               {COLLECTION, colname}, {SHARD, shname}, {LEADER, leader}});
 
-            ActionDescription(
-              {{NAME, "SynchronizeShard"}, {DATABASE, dbname}, {COLLECTION, colname},
-               {SHARD, shname}, {LEADER, leader}});
-                
           }
         }
       }
     }
   }
+
+  return Result();
   
 }
 
