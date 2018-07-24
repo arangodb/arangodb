@@ -1715,7 +1715,249 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
+
+    testRemoveObjectWithShardedNonMatchingPattern : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 10, writesIgnored: 90 };
+      const query = `
+        FOR d IN ${cn}
+          REMOVE { _key: d._key, someAttr: '5' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      assertEqual(90, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testReplaceObjectWithShardedNonMatchingPattern : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 10, writesIgnored: 90 };
+      const query = `
+        FOR d IN ${cn}
+          REPLACE { _key: d._key, someAttr: '5' }
+            WITH { someAttr: '-42' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+
+      const docs = c.all().toArray();
+      assertEqual(
+        [..._.range(0, 100).map(d => d % 10).filter(d => d != 5),
+          ...Array(10).fill(-42)].map(String).sort(),
+        docs.map(d => d.someAttr).sort()
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testSimpleReplaceObjectWithShardedNonMatchingPattern : function () {
+      // tests that the document is not used as a pattern, i.e., only the _key
+      // may be used to select the document, while the other attributes will be
+      // used exclusively for the replace.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 100, writesIgnored: 0 };
+      const query = `
+        FOR d IN ${cn}
+          REPLACE { _key: d._key, someAttr: '42' }
+            IN ${cn}
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      assertEqual(
+        Array(100).fill('42', 0, 100),
+        docs.map(d => d.someAttr)
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testUpdateObjectWithShardedNonMatchingPattern : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 10, writesIgnored: 90 };
+      const query = `
+        FOR d IN ${cn}
+          UPDATE { _key: d._key, someAttr: '5' }
+            WITH { someAttr: '-42' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      assertEqual(
+        [..._.range(0, 100).map(d => d % 10).filter(d => d != 5),
+          ...Array(10).fill(-42)].map(String).sort(),
+        docs.map(d => d.someAttr).sort()
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testSimpleUpdateObjectWithShardedNonMatchingPattern : function () {
+      // tests that the document is not used as a pattern, i.e., only the _key
+      // may be used to select the document, while the other attributes will be
+      // used exclusively for the update.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 100, writesIgnored: 0 };
+      const query = `
+        FOR d IN ${cn}
+          UPDATE { _key: d._key, someAttr: '42' }
+            IN ${cn}
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      assertEqual(
+        Array(100).fill('42', 0, 100),
+        docs.map(d => d.someAttr)
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+
     // TODO add a test validating the _rev is ignored in AQL
+
+    testRemoveObjectWithNonShardedNonMatchingPatternNoIgnoreRev : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+      // _rev should not be ignored if `ignoreRevs == false`.
+
+      const c = db._create(cn);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 0, writesIgnored: 100 };
+      const query = `
+        FOR d IN ${cn}
+          REMOVE { _key: d._key, someAttr: '5', _rev: "ignored?" }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true, ignoreRevs: false }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testReplaceObjectWithNonShardedNonMatchingPatternNoIgnoreRev : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+      // _rev should not be ignored if `ignoreRevs == false`.
+
+      const c = db._create(cn);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 0, writesIgnored: 100 };
+      const query = `
+        FOR d IN ${cn}
+          REPLACE { _key: d._key, someAttr: '5', _rev: "ignored?" }
+            WITH { someAttr: '-42' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true, ignoreRevs: false }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+
+
+      const docs = c.all().toArray();
+      assertEqual(
+        _.range(0, 100).map(d => String(d % 10)).sort(),
+        docs.map(d => d.someAttr).sort()
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testUpdateObjectWithNonShardedNonMatchingPatternNoIgnoreRev : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+      // _rev should not be ignored if `ignoreRevs == false`.
+
+      const c = db._create(cn);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 0, writesIgnored: 100 };
+      const query = `
+        FOR d IN ${cn}
+          UPDATE { _key: d._key, someAttr: '5', _rev: "ignored?" }
+            WITH { someAttr: '-42' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true, ignoreRevs: false }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      assertEqual(
+        _.range(0, 100).map(d => String(d % 10)).sort(),
+        docs.map(d => d.someAttr).sort()
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
 
     // TODO add tests using shardKeys
     // for this, also test both syntaxes where applicable, e.g.
