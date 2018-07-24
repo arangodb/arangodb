@@ -599,13 +599,21 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
 
     if (checkMore) {
       ++posted;
-      SchedulerFeature::SCHEDULER->post([this, &stats, &baseUrl, &posted, dumpStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
-        try {
-          orderDumpChunk(dumpStatus, baseUrl, coll, leaderColl, stats, batch + 1, fromTick, chunkSize);
-        } catch (...) {
-        }
+      try {
+        SchedulerFeature::SCHEDULER->post([this, &stats, &baseUrl, &posted, dumpStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
+          try {
+            orderDumpChunk(dumpStatus, baseUrl, coll, leaderColl, stats, batch + 1, fromTick, chunkSize);
+          } catch (...) {
+          }
+          // whatever the result of orderDumpChunk is, we need to decrease "posted" here when
+          // we are done
+          --posted;
+        });
+      } catch (...) {
+        // in case posting to the scheduler fails, we need to rollback the increase of "posted"
         --posted;
-      });
+        throw;
+      }
     }
 
     SingleCollectionTransaction trx(
