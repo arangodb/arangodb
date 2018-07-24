@@ -695,7 +695,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir);
+  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false);
 
   let result = {
     total: 0,
