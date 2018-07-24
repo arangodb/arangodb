@@ -116,6 +116,7 @@ GeneralServerFeature::GeneralServerFeature(
 
   startsAfter("Endpoint");
   startsAfter("Upgrade");
+  startsAfter("SslServer");
 
   // TODO The following features are too high
   // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before

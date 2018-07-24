@@ -114,8 +114,9 @@ void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
   auto &context = _server.selectIoContext();
 
   if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new SocketSslTcp(context,
-                                 SslServerFeature::SSL->createSslContext()));
+
+    auto sslContext = SslServerFeature::SSL->createSslContext();
+    _peer.reset(new SocketSslTcp(context, std::move(sslContext)));
     SocketSslTcp* peer = static_cast<SocketSslTcp*>(_peer.get());
     _acceptor->async_accept(peer->_socket, peer->_peerEndpoint, handler);
   } else {

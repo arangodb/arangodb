@@ -36,7 +36,7 @@ class SocketSslTcp final : public Socket {
   SocketSslTcp(rest::GeneralServer::IoContext &context, asio_ns::ssl::context&& sslContext)
       : Socket(context, /*encrypted*/ true),
         _sslContext(std::move(sslContext)),
-        _sslSocket(context.newSslSocket(sslContext)),
+        _sslSocket(context.newSslSocket(_sslContext)),
         _socket(_sslSocket->next_layer()),
         _peerEndpoint() {}
 
