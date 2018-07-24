@@ -322,7 +322,7 @@ function aqlUpdateWithRevOptionsSuite () {
       for (let d of docs) {
         db._query(q, {key: d._key});
       }
-      validateDocsAreUpdated(docs, invalid, false);
+      validateDocsAreUpdated(docs, invalid, true);
     },
 
     testUpdateWithRevManyWithInvalidRev : function () {
@@ -331,7 +331,7 @@ function aqlUpdateWithRevOptionsSuite () {
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
-      validateDocsAreUpdated(docs, invalid, false);
+      validateDocsAreUpdated(docs, invalid, true);
     },
 
     testUpdateWithRevEnumerationWithInvalidRev : function () {
@@ -342,7 +342,7 @@ function aqlUpdateWithRevOptionsSuite () {
       let docs = buildSetOfDocs();
       db._query(q);
 
-      validateDocsAreUpdated(docs, invalid, false);
+      validateDocsAreUpdated(docs, invalid, true);
     },
 
     testUpdateWithRevSingleWithInvalidRevIgnore : function () {
@@ -645,7 +645,7 @@ function aqlReplaceWithRevOptionsSuite () {
       for (let d of docs) {
           db._query(q, {key: d._key});
       }
-      validateDocsAreUpdated(docs, invalid, false);
+      validateDocsAreUpdated(docs, invalid, true);
     },
 
     testReplaceWithRevManyWithInvalidRev : function () {
@@ -654,7 +654,7 @@ function aqlReplaceWithRevOptionsSuite () {
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
-      validateDocsAreUpdated(docs, invalid, false);
+      validateDocsAreUpdated(docs, invalid, true);
     },
 
     testReplaceWithRevEnumerationWithInvalidRev : function () {
@@ -665,7 +665,7 @@ function aqlReplaceWithRevOptionsSuite () {
       let docs = buildSetOfDocs();
       db._query(q);
 
-      validateDocsAreUpdated(docs, invalid, false);
+      validateDocsAreUpdated(docs, invalid, true);
     },
 
     testReplaceWithRevSingleWithInvalidRevIgnore : function () {
