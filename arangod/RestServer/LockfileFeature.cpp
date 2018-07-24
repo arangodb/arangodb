@@ -82,7 +82,6 @@ void LockfileFeature::start() {
 
   auto cleanup = std::make_unique<CleanupFunctions::CleanupFunction>(
   [&] (int code, void* data) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Removing LOCK file";
     TRI_DestroyLockFile(_lockFilename.c_str());
   });
   CleanupFunctions::registerFunction(std::move(cleanup));
