@@ -73,16 +73,12 @@ function TasksAuthSuite () {
   ];
   const baseTasksUrl = `/_api/tasks`;
 
-  function sendRequest(auth, method, endpoint, headers, body, usePrimary) {
+  function sendRequest(auth, method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
     try {
       const envelope = {
-        headers: Object.assign(headers, {
-          authorization:
-            `Basic ${base64Encode(auth.username + ':' + auth.password)}`
-        }),
         json: true,
         method,
         url: `${coordinators[i]}${endpoint}`
@@ -141,11 +137,6 @@ function TasksAuthSuite () {
     },
 
     tearDown: function() {
-      const url = `${baseTasksUrl}/all`;
-      const result = sendRequest(users[0], 'DELETE', url, {}, {}, true);
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-
       db._drop(cns[0]);
       db._drop(cns[1]);
       userModule.remove(users[0].username);
@@ -154,71 +145,29 @@ function TasksAuthSuite () {
       coordinators = [];
     },
 
-    testAsyncForwardingSameUserBasic: function() {
+    testTaskForwardingSameUser: function() {
       let url = baseTasksUrl;
-      const headers = {
-        "X-Arango-Async": "store"
+      const task = {
+        command: `db[params.cn].save({});`,
+        period: 2
       };
-      const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
-      };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
+      let result = sendRequest(users[0], 'POST', url, task, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined);
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
-      const jobId = result.headers["x-arango-async-id"];
-      url = `${baseTasksUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+      const taskId = result.result.id;
+      url = `${baseTasksUrl}/${taskId}`;
+      result = sendRequest(users[0], 'GET', url, {}, false);
 
       assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 204);
-      assertEqual(result.headers["x-arango-async-id"], undefined);
+      assertEqual(result.status, 200);
+      assertEqual(taskId, result.result.id);
 
-      require('internal').wait(11.0, false);
+      require('internal').wait(5.0, false);
 
-      url = `${baseTasksUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.body.error);
-      assertEqual(result.status, 201);
-      assertFalse(result.headers["x-arango-async-id"] === undefined);
-      assertEqual(result.body.result.length, 1);
-      assertEqual(result.body.result[0], 42);
-      assertFalse(result.body.hasMore);
-    },
-
-    testAsyncForwardingSameUserDelete: function() {
-      let url = baseTasksUrl;
-      const headers = {
-        "X-Arango-Async": "store"
-      };
-      const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
-      };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.body, {});
-      assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined);
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
-
-      const jobId = result.headers["x-arango-async-id"];
-      url = `${baseTasksUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 204);
-      assertEqual(result.headers["x-arango-async-id"], undefined);
-
-      require('internal').wait(11.0, false);
-
-      url = `${baseTasksUrl}/${jobId}`;
+      url = `${baseTasksUrl}/${taskId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
@@ -226,96 +175,39 @@ function TasksAuthSuite () {
       assertEqual(result.status, 200);
     },
 
-    testAsyncForwardingSameUserCancel: function() {
+    testAsyncForwardingDifferentUser: function() {
       let url = baseTasksUrl;
-      const headers = {
-        "X-Arango-Async": "store"
+      const task = {
+        command: `db[params.cn].save({});`,
+        period: 2
       };
-      const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
-      };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
+      let result = sendRequest(users[0], 'POST', url, task, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined);
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
-      const jobId = result.headers["x-arango-async-id"];
-      url = `${baseTasksUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+      const taskId = result.result.id;
+      url = `${baseTasksUrl}/${taskId}`;
+      result = sendRequest(users[1], 'GET', url, {}, false);
 
-      url = `${baseTasksUrl}/${jobId}/cancel`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.body.error);
+      assertEqual(result.status, 401);
+
+      url = `${baseTasksUrl}/${taskId}`;
+      result = sendRequest(users[1], 'DELETE', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.body.error);
+      assertEqual(result.status, 401);
+
+      url = `${baseTasksUrl}/${taskId}`;
+      result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);
       assertEqual(result.status, 200);
-    },
-
-    testAsyncForwardingDifferentUserBasic: function() {
-      let url = baseTasksUrl;
-      const headers = {
-        "X-Arango-Async": "store"
-      };
-      const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
-      };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.body, {});
-      assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined);
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
-
-      const jobId = result.headers["x-arango-async-id"];
-      url = `${baseTasksUrl}/${jobId}`;
-      result = sendRequest(users[1], 'PUT', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 404);
-      assertEqual(result.headers["x-arango-async-id"], undefined);
-
-      require('internal').wait(11.0, false);
-
-      url = `${baseTasksUrl}/${jobId}`;
-      result = sendRequest(users[1], 'PUT', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 404);
-    },
-
-    testAsyncForwardingDifferentUserDelete: function() {
-      let url = baseTasksUrl;
-      const headers = {
-        "X-Arango-Async": "store"
-      };
-      const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
-      };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.body, {});
-      assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined);
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
-
-      const jobId = result.headers["x-arango-async-id"];
-      url = `${baseTasksUrl}/${jobId}`;
-      result = sendRequest(users[1], 'PUT', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 404);
-      assertEqual(result.headers["x-arango-async-id"], undefined);
-
-      url = `${baseTasksUrl}/${jobId}`;
-      result = sendRequest(users[1], 'DELETE', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 404);
     },
 
   };
