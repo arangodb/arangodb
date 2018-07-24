@@ -1,6 +1,21 @@
 v3.3.13 (XXXX-XX-XX)
 --------------------
 
+* put an upper bound on the number of documents to be scanned when using
+  `db.<collection>.any()` in the RocksDB storage engine
+
+  previous versions of ArangoDB did a scan of a random amount of documents in
+  the collection, up to the total number of documents available. this produced
+  a random selection with a good quality, but needed to scan half the number
+  of documents in the collection on average.
+
+  The new version will only scan up to 500 documents, so it produces a less
+  random result, but will be a lot faster especially for large collections.
+  
+  The implementation of `any()` for the MMFiles engine remains unchanged. The
+  MMFiles engine will pick a random document from the entire range of the 
+  in-memory primary index without performing scans.
+
 * return an empty result set instead of an "out of memory" exception when
   querying the geo index with invalid (out of range) coordinates
 
