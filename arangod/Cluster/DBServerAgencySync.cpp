@@ -116,6 +116,9 @@ Result getLocalCollections(VPackBuilder& collections) {
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
+  TRI_ASSERT(AgencyCommManager::isEnabled());
+  AgencyComm comm;
+  
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
   
@@ -157,16 +160,35 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // in previous life handlePlanChange
     tmp = arangodb::maintenance::handleChange(
       plan->slice(), current->slice(), local.slice(), serverId, *mfeature, rb);
+    
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::HEARTBEAT)
       << "Failed to handle plan change: " << e.what();
   }
   auto report = rb.slice();
+  auto phaseTwo = report.get("phaseTwo");
+
+  // Report to current
+  if (!phaseTwo.isEmptyObject()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << phaseTwo.toJson();
+    std::vector<AgencyOperation> operations;
+    for (auto const& ao : VPackObjectIterator(report.get("phaseTwo"))) {
+      operations.push_back(
+        AgencyOperation(
+          ao.key.copyString(), AgencyValueOperationType::SET, ao.value));
+    }
+    AgencyWriteTransaction currentTransaction(operations);
+    AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
+    if (!r.successful()) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Error reporting to agency";
+    }
+  }
+  
   result = DBServerAgencySyncResult(
     tmp.ok(),
     report.hasKey("Plan") ? report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
     report.hasKey("Current") ? report.get("Current").get("Version").getNumber<uint64_t>() : 0);
-  
+
   auto took = duration<double>(clock::now()-start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::HEARTBEAT) << "DBServerAgencySync::execute "

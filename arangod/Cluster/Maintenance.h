@@ -157,6 +157,21 @@ arangodb::Result reportInCurrent(
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, VPackBuilder& report); 
 
+
+/**
+ * @brief            Schedule synchroneous replications
+ *
+ * @param  plan      Plan's snapshot
+ * @param  current   Current's scnapshot
+ * @param  local     Local snapshot
+ * @param  serverId  My server's uuid
+ *
+ * @return           Success story
+ */
+arangodb::Result syncReplicatedShardsWithLeaders(
+  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
+  std::string const& serverId);
+
 }}
 
 #endif

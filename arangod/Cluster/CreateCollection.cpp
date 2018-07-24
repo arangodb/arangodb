@@ -52,6 +52,7 @@ CreateCollection::CreateCollection(
 
   //Todo: runtime behaviour
   
+  TRI_ASSERT(desc.has(SHARD));
   TRI_ASSERT(desc.has(COLLECTION));
   TRI_ASSERT(desc.has(DATABASE));
   TRI_ASSERT(desc.has(LEADER));
@@ -67,13 +68,14 @@ bool CreateCollection::first() {
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
+  auto const& shard = _description.get(SHARD);
   auto const& planId = collection;
   auto const& leader = _description.get(LEADER);
   auto const& props = properties();
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "creating local shard '" << database << "/" << collection
-    << "' for central '" << database << "/" << planId << "'";
+    << "creating local shard '" << database << "/" << shard
+    << "' for central '" << database << "/" << collection << "'";
   
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
@@ -107,19 +109,22 @@ bool CreateCollection::first() {
         if (key == GLOB_UID || key == OBJECT_ID) {
           LOG_TOPIC(WARN, Logger::MAINTENANCE)
             << "unexpected " << key << " in " << props.toJson();
-        } else if (key == ID) {
-          docket.add("planId", VPackValue(planId));
         }
         continue;
       }
       docket.add(key, i.value);
-    }}
+    }
+    docket.add("planId", VPackValue(collection));
+  }
+
+  LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Creating collection as: " <<
+    docket.toJson();
   
   _result = Collections::create(
-    vocbase, collection, type, docket.slice(), waitForRepl, enforceReplFact,
+    vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
     [=](LogicalCollection& col) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
-        << "/" << collection << " successfully created";
+        << "/" << shard << " successfully created";
       col.followers()->setTheLeader(leader);
       if (leader.empty()) {
         col.followers()->clear();
@@ -128,8 +133,8 @@ bool CreateCollection::first() {
 
   if (_result.fail()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "creating local shard '" << database << "/" << collection
-      << "' for central '" << database << "/" << planId << "' failed: "
+      << "creating local shard '" << database << "/" << shard
+      << "' for central '" << database << "/" << collection << "' failed: "
       << _result;
   }
 
