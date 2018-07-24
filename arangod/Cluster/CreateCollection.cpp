@@ -69,7 +69,6 @@ bool CreateCollection::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = _description.get(SHARD);
-  auto const& planId = collection;
   auto const& leader = _description.get(LEADER);
   auto const& props = properties();
 
@@ -117,9 +116,6 @@ bool CreateCollection::first() {
     docket.add("planId", VPackValue(collection));
   }
 
-  LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Creating collection as: " <<
-    docket.toJson();
-  
   _result = Collections::create(
     vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
     [=](LogicalCollection& col) {
