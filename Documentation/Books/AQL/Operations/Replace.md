@@ -66,6 +66,25 @@ FOR u IN users
   REPLACE u WITH { name: CONCAT(u.firstName, u.lastName) } IN users
 ```
 
+If the *keyExpression* (using the second syntax) is an object and contains
+additional attributes, they must match the to-be-replaced document. Otherwise, a
+document not found error will be returned. For example,
+
+```
+REPLACE { _key: @key, active: true } WITH { name: CONCAT(u.firstName, u.lastName) } IN users
+```
+
+will fail with an error if the document specified does not contain
+`active: true`. This is not a search pattern; the `_key` attribute must
+always be present. The exact semantics are as for the
+[MATCHES()](../../AQL/Functions/Document.md#matches) function. Note that whether
+the `_rev` attribute is ignored or not depends on the option
+[`ignoreRevs`](#setting-query-options).
+
+In a cluster setup, specifying the shard keys in the *keyExpression* allows the
+optimizer to apply the rule
+[`restrict-to-single-shard`](../../AQL/ExecutionAndPerformance/Optimizer.html#list-of-optimizer-rules).
+
 A replace will fully replace an existing document, but it will not modify the values
 of internal attributes (such as *_id*, *_key*, *_from* and *_to*). Replacing a document
 will modify a document's revision number with a server-generated value.

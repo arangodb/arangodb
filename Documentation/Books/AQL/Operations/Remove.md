@@ -47,6 +47,25 @@ FOR u IN users
   REMOVE u IN users
 ```
 
+If the *keyExpression* is an object and contains additional attributes, they
+must match the to-be-removed document. Otherwise, a document not found error
+will be returned. For example,
+
+```
+REMOVE { _key: @key, active: true } IN users
+```
+
+will fail with an error if the document specified does not contain
+`active: true`. This is not a search pattern; the `_key` attribute must
+always be present.  The exact semantics are as for the
+[MATCHES()](../../AQL/Functions/Document.md#matches) function. Note that whether
+the `_rev` attribute is ignored or not depends on the option
+[`ignoreRevs`](#setting-query-options).
+
+In a cluster setup, specifying the shard keys in the *keyExpression* allows the
+optimizer to apply the rule
+[`restrict-to-single-shard`](../../AQL/ExecutionAndPerformance/Optimizer.html#list-of-optimizer-rules).
+
 **Note**: A remove operation can remove arbitrary documents, and the documents
 do not need to be identical to the ones produced by a preceding *FOR* statement:
 
