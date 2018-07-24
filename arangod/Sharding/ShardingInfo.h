@@ -62,7 +62,13 @@ class ShardingInfo {
   bool isSatellite() const;
   
   size_t numberOfShards() const;
-  void numberOfShards(size_t);
+
+  /// @brief update the number of shards. note that this method
+  /// should never be called after a collection was properly initialized
+  /// at the moment it is necessary to have it because of the collection
+  /// class hierarchy. VirtualSmartEdgeCollection calls this function
+  /// in its constructor, after the shardingInfo has been set up already
+  void numberOfShards(size_t numberOfShards);
   
   bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;

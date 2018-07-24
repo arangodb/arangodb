@@ -721,9 +721,8 @@ void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }
 
 arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
-  // the following collection properties are intentionally not updated as
-  // updating
-  // them would be very complicated:
+  // the following collection properties are intentionally not updated,
+  // as updating them would be very complicated:
   // - _cid
   // - _name
   // - _type

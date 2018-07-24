@@ -39,9 +39,8 @@ using namespace arangodb::basics;
 
 ShardingFeature::ShardingFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Sharding") {
-  setOptional(true);
-  startsAfter("Logger");
-  startsBefore("Cluster");
+  setOptional(false);
+  startsAfter("GreetingsPhase");
 }
 
 void ShardingFeature::prepare() {

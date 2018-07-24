@@ -151,6 +151,60 @@ function DocumentShardingSuite() {
       }
     },
     
+    testDistributeShardsLikeWithDiffentKeyAttribute : function () {
+      let c1 = db._create(name1, { shardingStrategy: "community-compat", numberOfShards: 5, shardKeys: ["one"] });
+      let c2 = db._create(name2, { distributeShardsLike: name1, shardKeys: ["two"] });
+      assertEqual("community-compat", c1.properties()["shardingStrategy"]);
+      assertEqual("community-compat", c2.properties()["shardingStrategy"]);
+      assertEqual(5, c1.properties()["numberOfShards"]);
+      assertEqual(5, c2.properties()["numberOfShards"]);
+      assertEqual(["one"], c1.properties()["shardKeys"]);
+      assertEqual(["two"], c2.properties()["shardKeys"]);
+     
+      let keys = []; 
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(c2.insert({ two: i })._key);
+      }
+      
+      assertEqual([ 179, 192, 200, 207, 222 ], Object.values(c2.count(true)).sort());
+
+      keys.forEach(function(k, i) {
+        assertEqual(i, c2.document(k).two);
+      });
+    },
+    
+    testDistributeShardsLikeWithDiffentKeyAttributes : function () {
+      let c1 = db._create(name1, { shardingStrategy: "community-compat", numberOfShards: 5, shardKeys: ["one", "two"] });
+      let c2 = db._create(name2, { distributeShardsLike: name1, shardKeys: ["three", "four"] });
+      assertEqual("community-compat", c1.properties()["shardingStrategy"]);
+      assertEqual("community-compat", c2.properties()["shardingStrategy"]);
+      assertEqual(5, c1.properties()["numberOfShards"]);
+      assertEqual(5, c2.properties()["numberOfShards"]);
+      assertEqual(["one", "two"], c1.properties()["shardKeys"]);
+      assertEqual(["three", "four"], c2.properties()["shardKeys"]);
+     
+      let keys = []; 
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(c2.insert({ three: i, four: i + 1 })._key);
+      }
+      
+      assertEqual([ 187, 188, 203, 208, 214 ], Object.values(c2.count(true)).sort());
+
+      keys.forEach(function(k, i) {
+        assertEqual(i, c2.document(k).three);
+      });
+    },
+    
+    testDistributeShardsLikeWithDiffentNumberOfKeyAttributes : function () {
+      let c1 = db._create(name1, { shardingStrategy: "community-compat", numberOfShards: 5, shardKeys: ["one", "two"] });
+      try {
+        db._create(name2, { distributeShardsLike: name1, shardKeys: ["three"] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+    
     testCreateWithNonDefaultKeysMissingValues : function () {
       let c = db._create(name1, { shardingStrategy: "community-compat", shardKeys: ["value"], numberOfShards: 5 });
       assertEqual("community-compat", c.properties()["shardingStrategy"]);

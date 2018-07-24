@@ -280,11 +280,14 @@ std::string ShardingInfo::distributeShardsLike() const {
 }
 
 void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo const* other) {
+  if (_shardKeys.size() != other->shardKeys().size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "cannot distribute shards like a collection with a different number of shard key attributes");
+  }
+
   if (!usesSameShardingStrategy(other)) {
     // other collection has a different sharding strategy
     // adjust our sharding so it uses the same strategy as the other collection
     _shardingStrategy = std::move(application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->create(other->shardingStrategyName(), this));
-    // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "can only distribute shards like a collection with the same sharding strategy");
   }
 
   _distributeShardsLike = cid;
@@ -310,6 +313,7 @@ size_t ShardingInfo::replicationFactor() const {
 }
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
+  TRI_ASSERT(replicationFactor != 0);
   _replicationFactor = replicationFactor;
 }
 
@@ -322,6 +326,10 @@ size_t ShardingInfo::numberOfShards() const {
 }
 
 void ShardingInfo::numberOfShards(size_t numberOfShards) {
+  // the only allowed value is "0", because the only allowed
+  // caller of this method is VirtualSmartEdgeCollection, which
+  // sets the number of shards to 0
+  TRI_ASSERT(numberOfShards == 0);
   _numberOfShards = numberOfShards;
 }
   
@@ -335,7 +343,6 @@ std::vector<std::string> const& ShardingInfo::shardKeys() const {
 }
 
 std::shared_ptr<ShardMap> ShardingInfo::shardIds() const {
-  // TODO make threadsafe update on the cache.
   return _shardIds;
 }
 
