@@ -28,13 +28,10 @@
 
 const jsunity = require("jsunity");
 
-const base64Encode = require('internal').base64Encode;
 const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
-const userModule = require("@arangodb/users");
 const _ = require("lodash");
-
 
 function getCoordinators() {
   const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
@@ -58,7 +55,7 @@ function getCoordinators() {
 
 const servers = getCoordinators();
 
-function AsyncAuthSuite () {
+function TasksSuite () {
   'use strict';
   const cns = ["animals", "fruits"];
   const keys = [
@@ -67,23 +64,15 @@ function AsyncAuthSuite () {
   ];
   let cs = [];
   let coordinators = [];
-  const users = [
-    { username: 'alice', password: 'pass1' },
-    { username: 'bob', password: 'pass2' },
-  ];
-  const baseCursorUrl = `/_api/cursor`;
-  const baseJobUrl = `/_api/job`;
+  const baseTasksUrl = `/_api/cursor`;
+  const baseTasksUrl = `/_api/job`;
 
-  function sendRequest(auth, method, endpoint, headers, body, usePrimary) {
+  function sendRequest(method, endpoint, headers, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
-
     try {
       const envelope = {
-        headers: Object.assign(headers, {
-          authorization:
-            `Basic ${base64Encode(auth.username + ':' + auth.password)}`
-        }),
+        headers,
         json: true,
         method,
         url: `${coordinators[i]}${endpoint}`
@@ -124,46 +113,30 @@ function AsyncAuthSuite () {
         }
       }
 
-      try {
-        userModule.remove(users[0].username);
-        userModule.remove(users[1].username);
-      } catch (err) {}
-      userModule.save(users[0].username, users[0].password);
-      userModule.save(users[1].username, users[1].password);
-
-      userModule.grantDatabase(users[0].username, '_system', 'ro');
-      userModule.grantDatabase(users[1].username, '_system', 'ro');
-      userModule.grantCollection(users[0].username, '_system', cns[0], 'ro');
-      userModule.grantCollection(users[1].username, '_system', cns[0], 'ro');
-      userModule.grantCollection(users[0].username, '_system', cns[1], 'ro');
-      userModule.grantCollection(users[1].username, '_system', cns[1], 'none');
-
       require("internal").wait(2);
     },
 
     tearDown: function() {
-      const url = `${baseJobUrl}/all`;
-      const result = sendRequest(users[0], 'DELETE', url, {}, {}, true);
+      const url = `${baseTasksUrl}/all`;
+      const result = sendRequest('DELETE', url, {}, {}, true);
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
 
       db._drop(cns[0]);
       db._drop(cns[1]);
-      userModule.remove(users[0].username);
-      userModule.remove(users[1].username);
       cs = [];
       coordinators = [];
     },
 
-    testAsyncForwardingSameUserBasic: function() {
-      let url = baseCursorUrl;
+    testAsyncCursorForwardingBasic: function() {
+      let url = baseTasksUrl;
       const headers = {
         "X-Arango-Async": "store"
       };
       const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`,
       };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
+      let result = sendRequest('POST', url, headers, query, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -172,8 +145,8 @@ function AsyncAuthSuite () {
       assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+      url = `${baseTasksUrl}/${jobId}`;
+      result = sendRequest('PUT', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 204);
@@ -181,8 +154,8 @@ function AsyncAuthSuite () {
 
       require('internal').wait(11.0, false);
 
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+      url = `${baseTasksUrl}/${jobId}`;
+      result = sendRequest('PUT', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);
@@ -193,15 +166,15 @@ function AsyncAuthSuite () {
       assertFalse(result.body.hasMore);
     },
 
-    testAsyncForwardingSameUserDelete: function() {
-      let url = baseCursorUrl;
+    testAsyncCursorForwardingDelete: function() {
+      let url = baseTasksUrl;
       const headers = {
         "X-Arango-Async": "store"
       };
       const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`,
       };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
+      let result = sendRequest('POST', url, headers, query, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -210,32 +183,30 @@ function AsyncAuthSuite () {
       assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+      url = `${baseTasksUrl}/${jobId}`;
+      result = sendRequest('PUT', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 204);
       assertEqual(result.headers["x-arango-async-id"], undefined);
 
-      require('internal').wait(11.0, false);
-
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
+      url = `${baseTasksUrl}/${jobId}`;
+      result = sendRequest('DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
-      assertFalse(result.body.error);
       assertEqual(result.status, 200);
+      assertEqual(result.headers["x-arango-async-id"], undefined);
     },
 
-    testAsyncForwardingSameUserCancel: function() {
-      let url = baseCursorUrl;
+    testAsyncCursorForwardingCancel: function() {
+      let url = baseTasksUrl;
       const headers = {
         "X-Arango-Async": "store"
       };
       const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`,
       };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
+      let result = sendRequest('POST', url, headers, query, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -244,84 +215,24 @@ function AsyncAuthSuite () {
       assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
 
       const jobId = result.headers["x-arango-async-id"];
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
-
-      url = `${baseJobUrl}/${jobId}/cancel`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+      url = `${baseTasksUrl}/${jobId}`;
+      result = sendRequest('PUT', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
-      assertFalse(result.body.error);
-      assertEqual(result.status, 200);
-    },
-
-    testAsyncForwardingDifferentUserBasic: function() {
-      let url = baseCursorUrl;
-      const headers = {
-        "X-Arango-Async": "store"
-      };
-      const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
-      };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.body, {});
-      assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined);
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
-
-      const jobId = result.headers["x-arango-async-id"];
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[1], 'PUT', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 404);
+      assertEqual(result.status, 204);
       assertEqual(result.headers["x-arango-async-id"], undefined);
 
-      require('internal').wait(11.0, false);
-
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[1], 'PUT', url, {}, {}, false);
+      url = `${baseTasksUrl}/${jobId}/cancel`;
+      result = sendRequest('PUT', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 404);
-    },
-
-    testAsyncForwardingDifferentUserDelete: function() {
-      let url = baseCursorUrl;
-      const headers = {
-        "X-Arango-Async": "store"
-      };
-      const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
-      };
-      let result = sendRequest(users[0], 'POST', url, headers, query, true);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.body, {});
-      assertEqual(result.status, 202);
-      assertFalse(result.headers["x-arango-async-id"] === undefined);
-      assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
-
-      const jobId = result.headers["x-arango-async-id"];
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[1], 'PUT', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 404);
+      assertEqual(result.status, 200);
       assertEqual(result.headers["x-arango-async-id"], undefined);
-
-      url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[1], 'DELETE', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 404);
     },
 
   };
 }
 
-jsunity.run(AsyncAuthSuite);
+jsunity.run(TasksSuite);
 
 return jsunity.done();
