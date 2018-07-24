@@ -28,9 +28,12 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
+#include "Scheduler/JobQueue.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Transaction/Context.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -49,6 +52,14 @@ RestCursorHandler::RestCursorHandler(
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false) {}
+
+// returns the queue name
+size_t RestCursorHandler::queue() const {
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::BACKGROUND_QUEUE;
+  }
+  return JobQueue::STANDARD_QUEUE;
+}
 
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
@@ -113,7 +124,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
-  
+
   if (l == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
   }
@@ -240,6 +251,26 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   }
 }
 
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestCursorHandler::forwardingTarget() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+    return false;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return false;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+
+  return (sourceServer == ServerState::instance()->getShortId())
+      ? 0
+      : sourceServer;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,6 +364,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
     options.add("cache", cache);
   }
 
+  bool hasTtl = false;
   VPackSlice opts = slice.get("options");
   if (opts.isObject()) {
     for (auto const& it : VPackObjectIterator(opts)) {
@@ -345,16 +377,21 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
         if (keyName == "cache" && hasCache) {
           continue;
         }
+        if (keyName == "ttl") {
+          hasTtl = true;
+        }
         options.add(keyName, it.value);
       }
     }
   }
 
-  VPackSlice ttl = slice.get("ttl");
-  if (ttl.isNumber()) {
-    options.add("ttl", ttl);
-  } else {
-    options.add("ttl", VPackValue(30));
+  if (!hasTtl) {
+    VPackSlice ttl = slice.get("ttl");
+    if (ttl.isNumber()) {
+      options.add("ttl", ttl);
+    } else {
+      options.add("ttl", VPackValue(30));
+    }
   }
   options.close();
 
@@ -403,7 +440,7 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
 
 void RestCursorHandler::createCursor() {
   if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, 600);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
@@ -424,7 +461,7 @@ void RestCursorHandler::createCursor() {
       // error message generated in parseVelocyPackBody
       return;
     }
-    
+
     // tell RestCursorHandler::finalizeExecute that the request
     // could be parsed successfully and that it may look at it
     _isValidForFinalize = true;

@@ -26,6 +26,10 @@
 #include <velocypack/Exception.h>
 
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
@@ -54,7 +58,8 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       _canceled(false),
       _request(request),
       _response(response),
-      _statistics(nullptr) {
+      _statistics(nullptr),
+      _state(HandlerState::PREPARE) {
   bool found;
   std::string const& startThread =
       _request->header(StaticStrings::StartThread, found);
@@ -62,14 +67,11 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
   if (found) {
     _needsOwnThread = StringUtils::boolean(startThread);
   }
-
-  _context =
-      std::make_shared<WorkContext>(_request->user(), _request->databaseName());
 }
 
 RestHandler::~RestHandler() {
   RequestStatistics* stat = _statistics.exchange(nullptr);
-  
+
   if (stat != nullptr) {
     stat->release();
   }
@@ -79,27 +81,249 @@ RestHandler::~RestHandler() {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-int RestHandler::prepareEngine() {
-  RequestStatistics::SET_REQUEST_START(_statistics);
+uint64_t RestHandler::messageId() const {
+  uint64_t messageId = 0UL;
+  auto req = _request.get();
+  auto res = _response.get();
+  if (req) {
+    messageId = req->messageId();
+  } else if (res) {
+    messageId = res->messageId();
+  } else {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+        << "could not find corresponding request/response";
+  }
 
+  return messageId;
+}
+
+void RestHandler::setStatistics(RequestStatistics* stat) {
+  RequestStatistics* old = _statistics.exchange(stat);
+  if (old != nullptr) {
+    old->release();
+  }
+}
+
+bool RestHandler::forwardRequest() {
+  // TODO refactor into a more general/customizable method
+  //
+  // The below is mostly copied and only lightly modified from
+  // RestReplicationHandler::handleTrampolineCoordinator; however, that method
+  // needs some more specific checks regarding headers and param values, so we
+  // can't just reuse this method there. Maybe we just need to implement some
+  // virtual methods to handle param/header filtering?
+
+  // TODO verify that vst -> http -> vst conversion works correctly
+
+  // TODO verify that async requests work correctly
+
+  uint32_t shortId = forwardingTarget();
+  if (shortId == 0) {
+    // no need to actually forward
+    return false;
+  }
+
+  std::string serverId =
+      ClusterInfo::instance()->getCoordinatorByShortID(shortId);
+  if ("" == serverId) {
+    // no mapping in agency, try to handle the request here
+    return false;
+  }
+
+  LOG_TOPIC(DEBUG, Logger::REQUESTS) <<
+      "forwarding request " << _request->messageId() << " to " << serverId;
+
+  bool useVst = false;
+  if (_request->transportType() == Endpoint::TransportType::VST) {
+    useVst = true;
+  }
+  std::string const& dbname = _request->databaseName();
+
+  std::unordered_map<std::string, std::string> const& oldHeaders =
+      _request->headers();
+  std::unordered_map<std::string, std::string>::const_iterator it =
+      oldHeaders.begin();
+  std::unordered_map<std::string, std::string> headers;
+  while (it != oldHeaders.end()) {
+    std::string const& key = (*it).first;
+
+    // ignore the following headers
+    if (key != StaticStrings::Authorization) {
+      headers.emplace(key, (*it).second);
+    }
+    ++it;
+  }
+  auto auth = AuthenticationFeature::instance();
+  if (auth != nullptr && auth->isActive()) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder payload{&builder};
+      payload->add("preferred_username", VPackValue(_request->user()));
+    }
+    VPackSlice slice = builder.slice();
+    headers.emplace(StaticStrings::Authorization,
+                    "bearer " + auth->tokenCache()->generateJwt(slice));
+  }
+
+  auto& values = _request->values();
+  std::string params;
+  for (auto const& i : values) {
+    if (params.empty()) {
+      params.push_back('?');
+    } else {
+      params.push_back('&');
+    }
+    params.append(StringUtils::urlEncode(i.first));
+    params.push_back('=');
+    params.append(StringUtils::urlEncode(i.second));
+  }
+
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
+    return true;
+  }
+
+  std::unique_ptr<ClusterCommResult> res;
+  if (!useVst) {
+    HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
+    if (httpRequest == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid request type");
+    }
+
+    // Send a synchronous request to that shard using ClusterComm:
+    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
+                          _request->requestType(),
+                          "/_db/" + StringUtils::urlEncode(dbname) +
+                              _request->requestPath() + params,
+                          httpRequest->body(), headers, 300.0);
+  } else {
+    // do we need to handle multiple payloads here? - TODO
+    // here we switch from vst to http
+    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
+                          _request->requestType(),
+                          "/_db/" + StringUtils::urlEncode(dbname) +
+                              _request->requestPath() + params,
+                          _request->payload().toJson(), headers, 300.0);
+  }
+
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
+                  "timeout within cluster");
+    return true;
+  }
+
+  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    // there is no result
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
+                  "lost connection within cluster");
+    return true;
+  }
+
+  if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    TRI_ASSERT(nullptr != res->result && res->result->isComplete());
+    // In this case a proper HTTP error was reported by the DBserver,
+    // we simply forward the result. Intentionally fall through here.
+  }
+
+  bool dummy;
+  resetResponse(
+      static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
+
+  _response->setContentType(
+      res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
+
+  if (!useVst) {
+    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+    if (_response == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid response type");
+    }
+    httpResponse->body().swap(&(res->result->getBody()));
+  } else {
+    // need to switch back from http to vst
+    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
+    std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
+    _response->setPayload(std::move(*buf),
+                          true);
+  }
+
+  auto const& resultHeaders = res->result->getHeaderFields();
+  for (auto const& it : resultHeaders) {
+    _response->setHeader(it.first, it.second);
+  }
+  _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
+
+  return true;
+}
+
+void RestHandler::runHandlerStateMachine() {
+  TRI_ASSERT(_callback);
+
+  while (true) {
+    switch (_state) {
+      case HandlerState::PREPARE:
+        this->prepareEngine();
+        break;
+
+      case HandlerState::EXECUTE: {
+        int res = this->executeEngine();
+        if (res != TRI_ERROR_NO_ERROR) {
+          this->finalizeEngine();
+        }
+        if (_state == HandlerState::PAUSED) {
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
+          return; // stop state machine
+        }
+        break;
+      }
+
+      case HandlerState::PAUSED:
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Resuming rest handler execution";
+        TRI_ASSERT(_response != nullptr);
+        _callback(this);
+        _state = HandlerState::FINALIZE;
+        break;
+
+      case HandlerState::FINALIZE:
+        this->finalizeEngine();
+        break;
+
+      case HandlerState::DONE:
+      case HandlerState::FAILED:
+        return;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+int RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
-  RequestStatistics::SET_REQUEST_END(_statistics);
+  RequestStatistics::SET_REQUEST_START_END(_statistics);
 
   if (_canceled) {
-    _engine.setState(RestEngine::State::DONE);
+    _state = HandlerState::DONE;
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
     handleError(err);
 
-    _storeResult(this);
+    _callback(this);
     return TRI_ERROR_REQUEST_CANCELED;
   }
 
   try {
     prepareExecute();
-    _engine.setState(RestEngine::State::EXECUTE);
+    _state = HandlerState::EXECUTE;
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -114,8 +338,8 @@ int RestHandler::prepareEngine() {
     handleError(err);
   }
 
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _state = HandlerState::FAILED;
+  _callback(this);
   return TRI_ERROR_INTERNAL;
 }
 
@@ -153,12 +377,12 @@ int RestHandler::finalizeEngine() {
   RequestStatistics::SET_REQUEST_END(_statistics);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    _engine.setState(RestEngine::State::DONE);
+    _state = HandlerState::DONE;
   } else {
-    _engine.setState(RestEngine::State::FAILED);
-    _storeResult(this);
+    _state = HandlerState::FAILED;
+    _callback(this);
   }
-  
+
   return res;
 }
 
@@ -169,22 +393,20 @@ int RestHandler::executeEngine() {
   try {
     RestStatus result = execute();
 
-    if (result.isLeaf()) {
-      if (_response == nullptr) {
-        Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
-                      __FILE__, __LINE__);
-
-        handleError(err);
-      }
-
-      _engine.setState(RestEngine::State::FINALIZE);
-      _storeResult(this);
+    if (result == RestStatus::FAIL) {
+      LOG_TOPIC(WARN, Logger::REQUESTS) << "Rest handler reported fail";
+    } else if (result == RestStatus::WAITING) {
+      _state = HandlerState::PAUSED; // wait for someone to continue the state machine
       return TRI_ERROR_NO_ERROR;
+    } else if (_response == nullptr) {
+      Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
+                    __FILE__, __LINE__);
+
+      handleError(err);
     }
 
-    _engine.setState(RestEngine::State::RUN);
-    _engine.appendRestStatus(result.element());
-
+    _state = HandlerState::FINALIZE;
+    _callback(this);
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -227,91 +449,62 @@ int RestHandler::executeEngine() {
     handleError(err);
   }
 
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _state = HandlerState::FAILED;
+  _callback(this);
   return TRI_ERROR_INTERNAL;
 }
 
-int RestHandler::runEngine(bool synchron) {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr);
-  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-  ExecContextScope scope(exec);
+void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
+                                std::string const& message) {
+  resetResponse(code);
+
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   try {
-    while (_engine.hasSteps()) {
-      std::shared_ptr<RestStatusElement> result = _engine.popStep();
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add(StaticStrings::Error, VPackValue(true));
+    builder.add(StaticStrings::ErrorMessage, VPackValue(message));
+    builder.add(StaticStrings::Code,
+                VPackValue(static_cast<int>(code)));
+    builder.add(StaticStrings::ErrorNum,
+                VPackValue(errorNumber));
+    builder.close();
 
-      switch (result->state()) {
-        case RestStatusElement::State::DONE:
-          _engine.setState(RestEngine::State::FINALIZE);
-          _storeResult(this);
-          break;
+    VPackOptions options(VPackOptions::Defaults);
+    options.escapeUnicode = true;
 
-        case RestStatusElement::State::FAIL:
-          _engine.setState(RestEngine::State::FINALIZE);
-          _storeResult(this);
-          return TRI_ERROR_NO_ERROR;
-
-        case RestStatusElement::State::WAIT_FOR:
-          if (!synchron) {
-            _engine.setState(RestEngine::State::WAITING);
-
-            std::shared_ptr<RestHandler> self = shared_from_this();
-            result->callWaitFor([self, this]() {
-              _engine.setState(RestEngine::State::RUN);
-              _engine.asyncRun(self);
-            });
-
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          return TRI_ERROR_INTERNAL;
-
-        case RestStatusElement::State::QUEUED:
-          if (!synchron) {
-            std::shared_ptr<RestHandler> self = shared_from_this();
-            _engine.queue([self, this]() { _engine.asyncRun(self); });
-            return TRI_ERROR_NO_ERROR;
-          }
-          break;
-
-        case RestStatusElement::State::THEN: {
-          auto status = result->callThen();
-
-          if (status != nullptr) {
-            _engine.appendRestStatus(status->element());
-          }
-
-          break;
-        }
+    try {
+      TRI_ASSERT(options.escapeUnicode);
+      if (_request != nullptr) {
+        _response->setContentType(_request->contentTypeResponse());
       }
+      _response->setPayload(std::move(buffer), true, options);
+    } catch (...) {
+      // exception while generating error
     }
-
-    return TRI_ERROR_NO_ERROR;
-  } catch (Exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    handleError(ex);
-  } catch (arangodb::velocypack::Exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
-                  __FILE__, __LINE__);
-    handleError(err);
-  } catch (std::bad_alloc const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
-    handleError(err);
-  } catch (std::exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
-    handleError(err);
   } catch (...) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
+    // exception while generating error
   }
+}
 
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
-  return TRI_ERROR_INTERNAL;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error
+////////////////////////////////////////////////////////////////////////////////
+
+void RestHandler::generateError(rest::ResponseCode code, int errorCode) {
+  char const* message = TRI_errno_string(errorCode);
+
+  if (message != nullptr) {
+    generateError(code, errorCode, std::string(message));
+  } else {
+    generateError(code, errorCode, std::string("unknown error"));
+  }
+}
+
+// generates an error
+void RestHandler::generateError(arangodb::Result const& r) {
+  ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
+  generateError(code, r.errorNumber(), r.errorMessage());
 }
 
 // -----------------------------------------------------------------------------

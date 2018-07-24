@@ -317,6 +317,10 @@ Testing a single rspec test:
 
     scripts/unittest http_server --test api-users-spec.rb
 
+Running a test against a ready started server (in contrast to starting one by itself):
+
+    scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
+
 **scripts/unittest** is mostly only a wrapper; The backend functionality lives in:
 **js/client/modules/@arangodb/testing.js**
 
@@ -655,8 +659,8 @@ Here is how its details work:
   - all code in between is executed as javascript in the **arangosh** while talking to a valid **arangod**.
   You may inspect the generated js code in `/tmp/arangosh.examples.js`
 
-OUTPUT and RUN specifics
----------------------------
+OUTPUT, RUN and AQL specifics
+-----------------------------
 By default, Examples should be self contained and thus not depend on each other. They should clean up the collections they create.
 Building will fail if resources aren't cleaned.
 However, if you intend a set of OUTPUT and RUN to demonstrate interactively and share generated *ids*, you have to use an alphabetical
@@ -694,6 +698,14 @@ sortable naming scheme so they're executed in sequence. Using `<modulename>_<seq
     * output the plain text to dump to the user: `logRawResponse(response);`
     * dump the reply to the errorlog for testing (will mark run as failed): `logErrorResponse(response);`
 
+ - AQL is intended to contain AQL queries that can be pasted into arangosh or the webinterfaces query editor.
+   Usually this query references an example dataset generator in `js/common/modules/@arangodb/examples/examples.js`
+   which the users can also invoke to generate the data in their installation. 
+   This sort of example consists of three parts: 
+    - @DATASET{datasetName} - the name of the dataset in the above mentioned `examples.js` to be instanciated before executing this query. 
+    - @EXPLAIN{TRUE|FALSE} - print execution plan of the AQL query. The default is `FALSE`.
+    - A following AQL query which may either end at the end of the comment block, or at the optional next section:
+    - @BV - verbatim object containing the bind parameters to be passed into the query. Will also be put into the generated snippet.
 
 Swagger integration
 ===================

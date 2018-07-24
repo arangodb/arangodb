@@ -117,7 +117,7 @@ class Methods {
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
-  double const TRX_FOLLOWER_TIMEOUT = 3.0;
+  double const TRX_FOLLOWER_TIMEOUT = 120.0;
 
   /// @brief transaction::Methods
  private:
@@ -157,6 +157,7 @@ class Methods {
   inline TransactionState* state() const { return _state; }
 
   Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength);
+  Result resolveId(char const* handle, size_t length, std::shared_ptr<LogicalCollection>& collection, char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
   std::shared_ptr<transaction::Context> transactionContext() const {

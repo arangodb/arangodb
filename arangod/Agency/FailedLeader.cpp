@@ -267,11 +267,9 @@ bool FailedLeader::start() {
       // Preconditions -------------------------------------------------------
       { VPackObjectBuilder preconditions(&pending);
         // Failed condition persists
-        pending.add(VPackValue(healthPrefix + _from + "/Status"));
-        { VPackObjectBuilder stillExists(&pending);
-          pending.add("old", VPackValue("FAILED")); }
+        addPreconditionServerHealth(pending, _from, "FAILED");
         // Destination server still in good condition
-        addPreconditionServerGood(pending, _to);
+        addPreconditionServerHealth(pending, _to, "GOOD"); 
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
         // Destination server should not be blocked by another job

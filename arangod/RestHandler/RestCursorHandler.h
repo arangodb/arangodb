@@ -55,6 +55,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
                     arangodb::aql::QueryRegistry*);
 
  public:
+  size_t queue() const override;
   virtual RestStatus execute() override;
   char const* name() const override final { return "RestCursorHandler"; }
 
@@ -71,6 +72,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void processQuery(arangodb::velocypack::Slice const&);
+
+  virtual uint32_t forwardingTarget() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -167,13 +170,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _queryKilled;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the finalize operation is allowed to further process
   /// the request data. this will not work if the original request cannot be
   /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
   //////////////////////////////////////////////////////////////////////////////
-  
+
   bool _isValidForFinalize;
 };
 }

@@ -65,23 +65,6 @@ const char *agency =
 #include "FailedServerTest.json"
 ;
 
-VPackBuilder createJob() {
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder a(&builder);
-    builder.add("creator", VPackValue("1"));
-    builder.add("type", VPackValue("failedServer"));
-    builder.add("database", VPackValue("database"));
-    builder.add("collection", VPackValue("collection"));
-    builder.add("shard", VPackValue("shard"));
-    builder.add("fromServer", VPackValue("follower1"));
-    builder.add("jobId", VPackValue("1"));
-    builder.add("timeCreated",
-                VPackValue(timepointToString(std::chrono::system_clock::now())));
-  }
-  return builder;
-}
-
 Node createNodeFromBuilder(VPackBuilder const& builder) {
 
   VPackBuilder opBuilder;
@@ -361,8 +344,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     
   } // SECTION
 
-
-    SECTION("The state is still 'FAILED' and 'Target/FailedServers' is PART 2") {
+  SECTION("The state is still 'FAILED' and 'Target/FailedServers' is PART 2") {
 
     TestStructureType createTestStructure = [&](
       Slice const& s, std::string const& path) {

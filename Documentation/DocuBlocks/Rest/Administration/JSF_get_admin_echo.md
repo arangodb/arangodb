@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/echo, Return current request}
 
 @RESTDESCRIPTION
-
 The call returns an object with the following attributes:
 
 - *headers*: object with HTTP headers received

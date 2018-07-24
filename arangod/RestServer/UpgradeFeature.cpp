@@ -85,7 +85,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
   std::vector<std::string> otherFeaturesToDisable = {
@@ -105,6 +105,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ClusterFeature* cluster =
       ApplicationServer::getFeature<ClusterFeature>("Cluster");
   cluster->forceDisable();
+  ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 }
 
 void UpgradeFeature::start() {
@@ -116,7 +117,7 @@ void UpgradeFeature::start() {
     upgradeDatabase();
 
     if (!init->restoreAdmin() && !init->defaultPassword().empty() &&
-        ServerState::instance()->isSingleServerOrCoordinator()) {
+        um != nullptr) {
       um->updateUser("root", [&](auth::User& user) {
         user.updatePassword(init->defaultPassword());
         return TRI_ERROR_NO_ERROR;

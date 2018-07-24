@@ -49,7 +49,10 @@ class ModificationBlock : public ExecutionBlock {
   virtual AqlItemBlock* work(std::vector<AqlItemBlock*>&) = 0;
 
   /// @brief extract a key from the AqlValue passed
-  int extractKey(AqlValue const&, std::string&);
+  int extractKey(AqlValue const&, std::string& key);
+
+  /// @brief extract a key and rev from the AqlValue passed
+  int extractKeyAndRev(AqlValue const&, std::string& key, std::string& rev);
 
   /// @brief process the result of a data-modification operation
   void handleResult(int, bool, std::string const* errorMessage = nullptr);

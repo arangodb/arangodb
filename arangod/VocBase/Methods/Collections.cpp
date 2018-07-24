@@ -174,7 +174,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
   try {
     ExecContext const* exe = ExecContext::CURRENT;
-    AuthenticationFeature* af = AuthenticationFeature::instance();
     if (ServerState::instance()->isCoordinator()) {
       std::unique_ptr<LogicalCollection> col =
           ClusterMethods::createCollectionOnCoordinator(
@@ -186,13 +185,14 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access
-      if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        af->userManager()->updateUser(
-            ExecContext::CURRENT->user(), [&](auth::User& entry) {
-              entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-              return TRI_ERROR_NO_ERROR;
-            });
+        um->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+        });
       }
       
       // reload otherwise collection might not be in yet
@@ -203,10 +203,10 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access
-      if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
-          ServerState::instance()->isSingleServerOrCoordinator()) {
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        af->userManager()->updateUser(
+        um->updateUser(
           ExecContext::CURRENT->user(), [&](auth::User& u) {
             u.grantCollection(vocbase->name(), name, auth::Level::RW);
             return TRI_ERROR_NO_ERROR;
@@ -417,7 +417,7 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
 ////////////////////////////////////////////////////////////////////////////////
 
 static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
-                                        bool allowDropSystem) {
+                                        bool allowDropSystem, double timeout) {
   if (collection->isSystem() && !allowDropSystem) {
     return TRI_ERROR_FORBIDDEN;
   }
@@ -427,8 +427,12 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
+  // < 0 is no timeout in SingleServer. == 0.0 is no timeout in Cluster
+  if (timeout < 0) {
+    timeout = 0.0;
+  }
 
-  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 120.0);
+  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, timeout);
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, errorMsg);
   }
@@ -439,15 +443,14 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 #endif
 
 Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
-                         bool allowDropSystem, double timeout) {
+                         bool allowDropSystem, double timeout, bool updateUsers) {
   
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if  (!exec->canUseDatabase(vocbase->name(), auth::Level::RW) ||
          !exec->canUseCollection(coll->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
-                    "Insufficient rights to drop "
-                    "collection " +
+                    "Insufficient rights to drop collection " +
                     coll->name());
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
@@ -462,9 +465,9 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    res = DropColCoordinatorEnterprise(coll, allowDropSystem);
+    res = DropColCoordinatorEnterprise(coll, allowDropSystem, timeout);
 #else
-    res = DropVocbaseColCoordinator(coll, allowDropSystem);
+    res = DropVocbaseColCoordinator(coll, allowDropSystem, timeout);
 #endif
   } else {
     int r = coll->vocbase()->dropCollection(coll, allowDropSystem, timeout);
@@ -473,9 +476,9 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     }
   }
 
-  if (res.ok() && ServerState::instance()->isSingleServerOrCoordinator()) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (updateUsers && res.ok() && um != nullptr) {
+    um->enumerateUsers([&](auth::User& entry) -> bool {
       return entry.removeCollection(dbname, collName);
     });
   }

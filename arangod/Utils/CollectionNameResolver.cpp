@@ -88,6 +88,23 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
   return 0;
 }
 
+std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollectionStructCluster(
+    std::string const& name) const {
+  if (!ServerState::isRunningInCluster(_serverRole)) {
+    return std::shared_ptr<LogicalCollection>(const_cast<LogicalCollection*>(getCollectionStruct(name)), [](LogicalCollection*){});
+  }
+
+  try {
+    // We have to look up the collection info:
+    ClusterInfo* ci = ClusterInfo::instance();
+    auto cinfo = ci->getCollection(_vocbase->name(), name);
+    TRI_ASSERT(cinfo != nullptr);
+    return cinfo;
+  } catch (...) {
+  }
+  return nullptr;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief look up a collection id for a collection name, this is the
 /// default one to use, which will usually do the right thing. On a

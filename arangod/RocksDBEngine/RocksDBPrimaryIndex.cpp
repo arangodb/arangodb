@@ -50,6 +50,10 @@
 
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/VirtualCollection.h"
+#endif
+
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
 
@@ -76,11 +80,13 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex* index,
-    std::unique_ptr<VPackBuilder>& keys)
+    std::unique_ptr<VPackBuilder>& keys,
+    bool allowCoveringIndexOptimization)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _keys(keys.get()),
-      _iterator(_keys->slice()) {
+      _iterator(_keys->slice()),
+      _allowCoveringIndexOptimization(allowCoveringIndexOptimization) {
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
 }
@@ -99,12 +105,36 @@ bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-
+  
   while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
     LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
+      --limit;
+    }
+
+    _iterator.next();
+    if (!_iterator.valid()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool RocksDBPrimaryIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  if (limit == 0 || !_iterator.valid()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  while (limit > 0) {
+    // TODO: prevent copying of the value into result, as we don't need it here!
+    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    if (documentId.isSet()) {
+      cb(documentId, *_iterator);
       --limit;
     }
 
@@ -160,11 +190,11 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 }
 
 LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                            arangodb::StringRef keyRef) const {
+                                               arangodb::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
-
+    
   bool lockTimeout = false;
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
@@ -367,7 +397,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
+  return new RocksDBPrimaryIndexIterator(_collection, trx, mmdr, this, keys, !isId);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -390,7 +420,7 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
+  return new RocksDBPrimaryIndexIterator(_collection, trx, mmdr, this, keys, !isId);
 }
 
 /// @brief add a single value node to the iterator's keys
@@ -405,31 +435,47 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
   if (isId) {
     // lookup by _id. now validate if the lookup is performed for the
     // correct collection (i.e. _collection)
-    TRI_voc_cid_t cid;
-    char const* key;
-    size_t outLength;
+    char const* key = nullptr;
+    size_t outLength = 0;
+    std::shared_ptr<LogicalCollection> collection;
     Result res =
         trx->resolveId(valNode->getStringValue(),
-
-                       valNode->getStringLength(), cid, key, outLength);
+                       valNode->getStringLength(), collection, key, outLength);
 
     if (!res.ok()) {
       return;
     }
 
-    TRI_ASSERT(cid != 0);
+    TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(key != nullptr);
 
-    if (!_isRunningInCluster && cid != _collection->cid()) {
+    if (!_isRunningInCluster && collection->cid() != _collection->cid()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (_isRunningInCluster && cid != _collection->planId()) {
-      // only continue lookup if the id value is syntactically correct and
-      // refers to "our" collection, using cluster collection id
-      return;
+    if (_isRunningInCluster) {
+#ifdef USE_ENTERPRISE
+      if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
+        auto c = dynamic_cast<VirtualSmartEdgeCollection const*>(collection.get());
+        if (c == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
+        }
+
+        if (_collection->planId() != c->getLocalCid() && 
+            _collection->planId() != c->getFromCid() && 
+            _collection->planId() != c->getToCid()) {
+          // invalid planId
+          return;
+        }
+      } else 
+#endif
+      if (collection->planId() != _collection->planId()) {
+        // only continue lookup if the id value is syntactically correct and
+        // refers to "our" collection, using cluster collection id
+        return;
+      }
     }
 
     // use _key value from _id

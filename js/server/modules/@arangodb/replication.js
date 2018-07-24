@@ -1,4 +1,4 @@
-/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_STOP, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE, GLOBAL_REPLICATION_SYNCHRONIZE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE, REPLICATION_SYNCHRONIZE, GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED */
+/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_STOP, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE, GLOBAL_REPLICATION_SYNCHRONIZE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_STATE_ALL, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE, REPLICATION_SYNCHRONIZE, GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -28,9 +28,11 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var ERRORS = internal.errors;
-var endpointToURL = require('@arangodb/cluster').endpointToURL;
+const internal = require('internal');
+const rpc = require('@arangodb/replication-common');
+const ERRORS = internal.errors;
+const endpointToURL = require('@arangodb/cluster').endpointToURL;
+
 var request;
 if (ArangoServerState.role() === 'PRIMARY') {
   request = require('@arangodb/request').clusterRequest;
@@ -71,6 +73,9 @@ applier.stop = function () { return REPLICATION_APPLIER_STOP(); };
 
 // / @brief return the replication applier state
 applier.state = function () { return REPLICATION_APPLIER_STATE(); };
+
+// / @brief return the replication applier state of all dbs
+applier.stateAll = function () { return REPLICATION_APPLIER_STATE_ALL(); };
 
 // / @brief stop the applier and "forget" all configuration
 applier.forget = function () { return REPLICATION_APPLIER_FORGET(); };
@@ -189,3 +194,4 @@ exports.syncCollection = syncCollection;
 exports.setupReplication = setupReplication;
 exports.setupReplicationGlobal = setupReplicationGlobal;
 exports.serverId = serverId;
+exports.compareTicks = rpc.compareTicks;

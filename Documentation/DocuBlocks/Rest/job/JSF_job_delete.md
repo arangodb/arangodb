@@ -19,8 +19,7 @@ The type of jobs to delete. type can be:
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{stamp, number, optional}
-
+@RESTQUERYPARAM{stamp,number,optional}
 A UNIX timestamp specifying the expiration threshold when type is expired.
 
 @RESTDESCRIPTION

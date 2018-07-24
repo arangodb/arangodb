@@ -64,7 +64,7 @@ class MMFilesWalLogfile {
   static MMFilesWalLogfile* createNew(std::string const&, MMFilesWalLogfile::IdType, uint32_t);
 
   /// @brief open an existing logfile
-  static MMFilesWalLogfile* openExisting(std::string const&, MMFilesWalLogfile::IdType, bool, bool);
+  static MMFilesWalLogfile* openExisting(std::string const&, MMFilesWalLogfile::IdType, bool wasCollected, bool ignoreErrors);
 
   int lockInMemory() {
     return _df->lockInMemory();

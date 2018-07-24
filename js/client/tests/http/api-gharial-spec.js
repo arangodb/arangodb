@@ -64,6 +64,18 @@ describe('_api/gharial', () => {
       db._graphs.remove(graphName);
     } catch (e) {
     }
+    try {
+      db._graphs.remove('knows_graph');
+    } catch (e) {
+    }
+    try {
+      db._drop('persons');
+    } catch (e) {
+    }
+    try {
+      db._drop('knows');
+    } catch (e) {
+    }
   };
 
   beforeEach(cleanup);
@@ -126,7 +138,7 @@ describe('_api/gharial', () => {
     // This is all async give it some time
     do {
       wait(0.1);
-      req = request.get(url + "/" + graphName); 
+      req = request.get(url + "/" + graphName);
     } while (req.statusCode !== 200);
 
     expect(db._collection(eColName)).to.not.be.null;
@@ -135,5 +147,171 @@ describe('_api/gharial', () => {
     expect(db._collection(oColName2)).to.not.be.null;
   });
 
+  it('should check if edges can only be created if their _from and _to vertices are existent - should create', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/bob',
+      _to: 'persons/charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(202);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing from document', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/notavailable',
+      _to: 'persons/charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing to document', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/bob',
+      _to: 'persons/notavailable'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing both from and to documents', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/notavailable',
+      _to: 'persons/notavailable'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing from collection', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'xxx/peter',
+      _to: 'persons/charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing to collection', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/bob',
+      _to: 'xxx/charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing from and to collection', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'xxx/peter',
+      _to: 'xxx/charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
 
 });

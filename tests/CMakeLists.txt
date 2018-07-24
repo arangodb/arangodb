@@ -2,10 +2,9 @@ foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
-# linking is a dark art...workmonitordummy is somehow necessary
 add_executable(
   arangodbtests
-#  ../lib/Basics/WorkMonitorDummy.cpp
+  Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
   Agency/FailedFollowerTest.cpp
@@ -56,6 +55,7 @@ add_executable(
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
+  Cluster/ClusterRepairsTest.cpp
   Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
   Graph/ClusterTraverserCacheTest.cpp

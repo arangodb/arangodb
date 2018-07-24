@@ -557,6 +557,13 @@ std::string ReplicationApplier::endpoint() const {
   return _configuration._endpoint;
 }
 
+/// @brief return last persisted tick
+TRI_voc_tick_t ReplicationApplier::lastTick() const {
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return std::max(_state._lastAppliedContinuousTick,
+                  _state._lastProcessedContinuousTick);
+}
+
 /// @brief register an applier error
 void ReplicationApplier::setError(arangodb::Result const& r) {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);

@@ -50,6 +50,7 @@ class V8ClientConnection {
 
  public:
   static void setJwtSecret(std::string const& jwtSecret) { JWT_SECRET = jwtSecret; }
+  static std::string jwtSecret() { return JWT_SECRET; }
   static std::string jwtToken(std::string const& secret);
 
  private:

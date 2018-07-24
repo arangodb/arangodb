@@ -53,11 +53,11 @@ uint64_t AqlValue::hash(transaction::Methods* trx, uint64_t seed) const {
     }
     case DOCVEC:
     case RANGE: {
-      VPackBuilder builder;
-      toVelocyPack(trx, builder, false);
+      transaction::BuilderLeaser builder(trx);
+      toVelocyPack(trx, *builder.get(), false);
       // we must use the slow hash function here, because a value may have
       // different representations in case its an array/object/number
-      return builder.slice().normalizedHash(seed);
+      return builder->slice().normalizedHash(seed);
     }
   }
 
@@ -1112,14 +1112,14 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
     if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC ||
         rightType == DOCVEC) {
       // range|docvec against x
-      VPackBuilder leftBuilder;
-      left.toVelocyPack(trx, leftBuilder, false);
+      transaction::BuilderLeaser leftBuilder(trx);
+      left.toVelocyPack(trx, *leftBuilder.get(), false);
 
-      VPackBuilder rightBuilder;
-      right.toVelocyPack(trx, rightBuilder, false);
+      transaction::BuilderLeaser rightBuilder(trx);
+      right.toVelocyPack(trx, *rightBuilder.get(), false);
 
       return arangodb::basics::VelocyPackHelper::compare(
-          leftBuilder.slice(), rightBuilder.slice(), compareUtf8, trx->transactionContextPtr()->getVPackOptions());
+          leftBuilder->slice(), rightBuilder->slice(), compareUtf8, trx->transactionContextPtr()->getVPackOptions());
     }
     // fall-through to other types intentional
   }

@@ -200,12 +200,13 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
   int res = mprotect(memoryAddress, numOfBytesToProtect, flags);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(TRACE, Logger::MMAP) << "memory-protecting range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+    LOG_TOPIC(TRACE, Logger::MMAP) << "memory-protecting range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags " << flagify(flags);
 
     return TRI_ERROR_NO_ERROR;
   }
     
-  LOG_TOPIC(WARN, Logger::MMAP) << "memory-protecting failed for range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  LOG_TOPIC(WARN, Logger::MMAP) << "memory-protecting failed for range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags " << flagify(flags) << ": " << TRI_last_error();
 
   return TRI_ERROR_SYS_ERROR;
 }

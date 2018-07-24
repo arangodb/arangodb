@@ -107,11 +107,20 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
-      _varId(base.get("varId").getNumericValue<VariableId>()),
-      _alternativeVarId(base.get("alternativeVarId").getNumericValue<VariableId>()),
+      _variable(nullptr),
+      _alternativeVariable(nullptr),
       _createKeys(base.get("createKeys").getBoolean()),
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-      _allowSpecifiedKeys(false) {}
+      _allowSpecifiedKeys(false) {
+ 
+  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) { 
+    _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
+    _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
+  } else {
+    _variable = plan->getAst()->variables()->getVariable(base.get("varId").getNumericValue<VariableId>());
+    _alternativeVariable = plan->getAst()->variables()->getVariable(base.get("alternativeVarId").getNumericValue<VariableId>());
+  }
+}
 
 /// @brief toVelocyPack, for DistributedNode
 void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -121,15 +130,37 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
-  nodes.add("varId", VPackValue(static_cast<int>(_varId)));
-  nodes.add("alternativeVarId",
-            VPackValue(static_cast<int>(_alternativeVarId)));
   nodes.add("createKeys", VPackValue(_createKeys));
   nodes.add("allowKeyConversionToObject",
             VPackValue(_allowKeyConversionToObject));
+  nodes.add(VPackValue("variable"));
+  _variable->toVelocyPack(nodes);
+  nodes.add(VPackValue("alternativeVariable"));
+  _alternativeVariable->toVelocyPack(nodes);
+  
+  // legacy format, remove in 3.4
+  nodes.add("varId", VPackValue(static_cast<int>(_variable->id)));
+  nodes.add("alternativeVarId",
+            VPackValue(static_cast<int>(_alternativeVariable->id)));
 
   // And close it:
   nodes.close();
+}
+  
+/// @brief getVariablesUsedHere, returning a vector
+std::vector<Variable const*> DistributeNode::getVariablesUsedHere() const {
+  std::vector<Variable const*> vars;
+  vars.emplace_back(_variable);
+  if (_variable != _alternativeVariable) {
+    vars.emplace_back(_alternativeVariable);
+  }
+  return vars;
+}
+  
+/// @brief getVariablesUsedHere, modifying the set in-place
+void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+  vars.emplace(_variable);
+  vars.emplace(_alternativeVariable);
 }
 
 /// @brief estimateCost

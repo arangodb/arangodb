@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,8 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// UserManager is the sole point of access for users and permissions
 /// stored in `_system/_users` as well as in external authentication
 /// systems like LDAP. The permissions are cached locally if possible,
-/// to avoid unecessary disk access.
+/// to avoid unnecessary disk access. An instance of this should only
+/// exist on coordinators and single servers.
 class UserManager {
  public:
   explicit UserManager();
@@ -145,6 +146,7 @@ class UserManager {
   Result storeUserInternal(auth::User const& user, bool replace);
 
  private:
+  
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
   Mutex _loadFromDBLock;

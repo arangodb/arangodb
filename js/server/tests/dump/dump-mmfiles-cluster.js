@@ -376,15 +376,18 @@ function dumpTestEnterpriseSuite () {
     },
 
     testShadowCollectionsOmitted : function () {
-      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
-      const collStructure = JSON.parse(
-        fs.read(fs.join(dumpDir, `${edges}.structure.json`))
-      );
+      const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
+      if (encryption === '' || encryption === 'none') {
+        const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+        const collStructure = JSON.parse(
+          fs.read(fs.join(dumpDir, `${edges}.structure.json`))
+        );
 
-      assertTrue(collStructure.hasOwnProperty('parameters'), collStructure);
-      const parameters = collStructure['parameters'];
-      assertFalse(parameters.hasOwnProperty('shadowCollections'),
-        `Property 'shadowCollections' should be hidden in collection ${edges}!`);
+        assertTrue(collStructure.hasOwnProperty('parameters'), collStructure);
+        const parameters = collStructure['parameters'];
+        assertFalse(parameters.hasOwnProperty('shadowCollections'),
+          `Property 'shadowCollections' should be hidden in collection ${edges}!`);
+      }
     },
 
     testVertices : function () {

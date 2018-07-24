@@ -36,6 +36,7 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestWalAccessHandler"; }
+  size_t queue() const override;
   bool isDirect() const override { return false; }
   RestStatus execute() override;
 

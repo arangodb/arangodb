@@ -159,6 +159,10 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   ///        Used in uniqueness checks.
   bool _isLastIndex;
 
+  /// @brief true if one of the indexes uses more than one expanded attribute, e.g. 
+  /// the index is on values[*].name and values[*].type 
+  bool _hasMultipleExpansions;
+  
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call.
   size_t _returned;

@@ -665,6 +665,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool returnBodyOnError = false;
   int maxRedirects = 5;
   uint64_t sslProtocol = TLS_V12;
+  std::string jwtToken, username, password;
 
   if (args.Length() > 2) {
     if (!args[2]->IsObject()) {
@@ -756,6 +757,15 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (options->Has(TRI_V8_ASCII_STRING(isolate, "returnBodyOnError"))) {
       returnBodyOnError = TRI_ObjectToBoolean(
           options->Get(TRI_V8_ASCII_STRING(isolate, "returnBodyOnError")));
+    }
+    
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "jwt"))) {
+      jwtToken = TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING(isolate, "jwt")));
+    } else if (options->Has(TRI_V8_ASCII_STRING(isolate, "username"))) {
+      username = TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING(isolate, "username")));
+      if (options->Has(TRI_V8_ASCII_STRING(isolate, "password"))) {
+        password = TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING(isolate, "password")));
+      }
     }
   }
 
@@ -870,6 +880,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     params.setSupportDeflate(false);
     // security by obscurity won't work. Github requires a useragent nowadays.
     params.setExposeArangoDB(true);
+    if (!jwtToken.empty()) {
+      params.setJwt(jwtToken);
+    } else if (!username.empty()) {
+      params.setUserNamePassword("/", username, password);
+    }
     SimpleHttpClient client(connection.get(), params);
     
     v8::Handle<v8::Object> result = v8::Object::New(isolate);

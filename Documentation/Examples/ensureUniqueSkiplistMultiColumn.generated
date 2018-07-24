@@ -5,7 +5,7 @@ arangosh&gt; db.ids.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
     <span class="hljs-string">"name.first"</span>, 
     <span class="hljs-string">"name.last"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"ids/16264"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"ids/16418"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -14,21 +14,21 @@ arangosh&gt; db.ids.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"hansen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16267"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16267"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WpTBAdq--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16421"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16421"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XG3zIpu--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"jens"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16271"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16271"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WpTBAdq--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16425"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16425"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XG3zIpu--B"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16274"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16274"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WpTBAdu--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/16428"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16428"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XG3zIpy--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"hansen"</span> }});
-[ArangoError <span class="hljs-number">1210</span>: unique constraint violated - <span class="hljs-keyword">in</span> index <span class="hljs-number">16264</span> <span class="hljs-keyword">of</span> type skiplist over [<span class="hljs-string">"name.first"</span>,<span class="hljs-string">"name.last"</span>]; conflicting key: <span class="hljs-number">16267</span>]
+[ArangoError <span class="hljs-number">1210</span>: unique constraint violated - <span class="hljs-keyword">in</span> index <span class="hljs-number">16418</span> <span class="hljs-keyword">of</span> type skiplist over [<span class="hljs-string">"name.first"</span>,<span class="hljs-string">"name.last"</span>]; conflicting key: <span class="hljs-number">16421</span>]

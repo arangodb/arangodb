@@ -11,6 +11,32 @@ if (typeof internal.printBrowser === 'function') {
   print = internal.printBrowser;
 }
 
+const anonymize = function(doc) {
+  if (Array.isArray(doc)) {
+    return doc.map(anonymize);
+  }
+  if (typeof doc === 'string') {
+    return Array(doc.length + 1).join("X");
+  }
+  if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
+    return doc;
+  } 
+  if (typeof doc === 'object') {
+    let result = {};
+    Object.keys(doc).forEach(function(key) {
+      if (key.startsWith("_") || key.startsWith("@")) {
+        // This excludes system attributes in examples
+        // and collections in bindVars
+        result[key] = doc[key];
+      } else {
+        result[key] = anonymize(doc[key]);
+      }
+    });
+    return result;
+  }
+  return doc;
+};
+
 var stringBuilder = {
   output: '',
 
@@ -825,8 +851,8 @@ function processQuery (query, explain) {
   };
 
   var projection = function (node) {
-    if (node.projection && node.projection.length > 0) {
-      return ', projection: `' + node.projection.join('`.`') + '`';
+    if (node.projections && node.projections.length > 0) {
+      return ', projections: `' + node.projections.join('`, `') + '`';
     }
     return '';
   };
@@ -841,14 +867,14 @@ function processQuery (query, explain) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + ' */');
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [];
         node.indexes.forEach(function (idx, i) {
-          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan';
+          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
           if (types.length === 0 || what !== types[types.length - 1]) {
             types.push(what);
           }
@@ -1287,6 +1313,7 @@ function explain(data, options, shouldPrint) {
 function debug(query, bindVars, options) {
   'use strict';
   let input = {};
+
   if (query instanceof Object) {
     if (typeof query.toAQL === 'function') {
       query = query.toAQL();
@@ -1295,7 +1322,7 @@ function debug(query, bindVars, options) {
   } else {
     input.query = query;
     if (bindVars !== undefined) {
-      input.bindVars = bindVars;
+      input.bindVars = anonymize(bindVars);
     }
     if (options !== undefined) {
       input.options = options;
@@ -1304,30 +1331,10 @@ function debug(query, bindVars, options) {
   if (!input.options) {
     input.options = {};
   }
-
-  let anonymize = function(doc) {
-    if (Array.isArray(doc)) {
-      return doc.map(anonymize);
-    }
-    if (typeof doc === 'string') {
-      return Array(doc.length).join("X");
-    }
-    if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
-      return doc;
-    } 
-    if (typeof doc === 'object') {
-      let result = {};
-      Object.keys(doc).forEach(function(key) {
-        result[key] = anonymize(doc[key]);
-      });
-      return result;
-    }
-    return doc;
-  };
-
   let result = {
     engine: db._engine(),
     version: db._version(true),
+    database: db._name(),
     query: input,
     collections: {}
   };
@@ -1337,8 +1344,51 @@ function debug(query, bindVars, options) {
   let stmt = db._createStatement(input);
   result.explain = stmt.explain(input.options);
 
+  let graphs = {};
+  let collections = result.explain.plan.collections;
+  let map = {};
+  collections.forEach(function(c) {
+    map[c.name] = true;
+  });
+
+  // export graphs
+  let findGraphs = function(nodes) {
+    nodes.forEach(function(node) {
+      if (node.type === 'TraversalNode') {
+        if (node.graph) {
+          try {
+            graphs[node.graph] = db._graphs.document(node.graph);
+          } catch (err) {}
+        }
+        if (node.graphDefinition) {
+          try {
+            node.graphDefinition.vertexCollectionNames.forEach(function(c) {
+              if (!map.hasOwnProperty(c)) {
+                map[c] = true;
+                collections.push({ name: c });
+              }
+            });
+          } catch (err) {}
+          try {
+            node.graphDefinition.edgeCollectionNames.forEach(function(c) {
+              if (!map.hasOwnProperty(c)) {
+                map[c] = true;
+                collections.push({ name: c });
+              }
+            });
+          } catch (err) {}
+        }
+      } else if (node.type === 'SubqueryNode') {
+        // recurse into subqueries
+        findGraphs(node.subquery.nodes);
+      }
+    });
+  };
+  // mangle with graphs used in query
+  findGraphs(result.explain.plan.nodes);
+
   // add collection information
-  result.explain.plan.collections.forEach(function(collection) {
+  collections.forEach(function(collection) {
     let c = db._collection(collection.name);
     let examples;
     if (input.options.examples) {
@@ -1358,7 +1408,7 @@ function debug(query, bindVars, options) {
       }
     }
     result.collections[collection.name] = { 
-      type: c.type() === 2,
+      type: c.type(),
       properties: c.properties(),
       indexes: c.getIndexes(true),
       count: c.count(),
@@ -1366,6 +1416,8 @@ function debug(query, bindVars, options) {
       examples
     };
   });
+  
+  result.graphs = graphs;
   return result;
 }
 
@@ -1377,16 +1429,29 @@ function debugDump(filename, query, bindVars, options) {
 
 function inspectDump(filename) {
   let data = JSON.parse(require("fs").read(filename));
+  if (data.database) {
+    print("/* original data gathered from database '" + data.database + "' */");
+  }
   if (db._engine().name !== data.engine.name) {
     print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
   }
+  print();
+
+  print("/* graphs */");
+  let graphs = data.graphs || {};
+  Object.keys(graphs).forEach(function(graph) {
+    let details = graphs[graph];
+    print("try { db._graphs.remove(" + JSON.stringify(graph) + "); } catch (err) {}");
+    print("db._graphs.insert(" + JSON.stringify(details) + ");");
+  });
+  print();
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
   Object.keys(data.collections).forEach(function(collection) {
     let details = data.collections[collection];
     print("db._drop(" + JSON.stringify(collection) + ");");
-    if (details.type === 3) {
+    if (details.type === false || details.type === 3) {
       print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
     } else {
       print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");

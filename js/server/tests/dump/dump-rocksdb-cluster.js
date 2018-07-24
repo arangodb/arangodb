@@ -357,6 +357,8 @@ function dumpTestEnterpriseSuite () {
     },
 
     testShadowCollectionsOmitted : function () {
+      const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
+      if (encryption === '' || encryption === 'none') {
       const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
       const collStructure = JSON.parse(
         fs.read(fs.join(dumpDir, `${edges}.structure.json`))
@@ -366,6 +368,7 @@ function dumpTestEnterpriseSuite () {
       const parameters = collStructure['parameters'];
       assertFalse(parameters.hasOwnProperty('shadowCollections'),
         `Property 'shadowCollections' should be hidden in collection ${edges}!`);
+      }
     },
 
     testVertices : function () {

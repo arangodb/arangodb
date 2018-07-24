@@ -124,6 +124,9 @@ class ReplicationApplier {
   
   /// @brief return the current endpoint
   std::string endpoint() const;
+  
+  /// @brief return last persisted tick
+  TRI_voc_tick_t lastTick() const;
 
   /// @brief block the replication applier from starting
   Result preventStart();

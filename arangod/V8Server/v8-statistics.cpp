@@ -136,8 +136,6 @@ static void JS_ServerStatistics(
                 v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numWorking(countersRaw))));
   counters->Set(TRI_V8_ASCII_STRING(isolate, "blocked"),
                 v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numBlocked(countersRaw))));
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "queued"),
-                v8::Number::New(isolate, static_cast<int32_t>(SchedulerFeature::SCHEDULER->numQueued())));
   result->Set(TRI_V8_ASCII_STRING(isolate, "threads"), counters);
 
   TRI_V8_RETURN(result);

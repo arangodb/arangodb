@@ -57,7 +57,7 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
 
-bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+bool shardKeysChanged(arangodb::LogicalCollection* collection,
                       VPackSlice const& oldValue, VPackSlice const& newValue,
                       bool isPatch);
 
@@ -120,7 +120,7 @@ int deleteDocumentOnCoordinator(
 
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    VPackSlice const slice, OperationOptions const& options,
+    VPackSlice slice, OperationOptions const& options,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,

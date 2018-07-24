@@ -958,7 +958,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
  
   Result res = methods::Collections::drop(vocbase, collection,
-                                          allowDropSystem, timeout);
+                                          allowDropSystem, timeout, true);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }

@@ -57,7 +57,7 @@ function getFishbowlUrl () {
 var getFishbowlStorage = function () {
   var c = db._collection('_fishbowl');
   if (c === null) {
-    c = db._create('_fishbowl', { isSystem: true });
+    c = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_graphs' });
   }
 
   return c;
@@ -160,7 +160,7 @@ var updateFishbowlFromZip = function (filename) {
         }
       });
 
-      require('console').log('Updated local foxx repository with ' + toSave.length + ' service(s)');
+      require('console').debug('Updated local foxx repository with ' + toSave.length + ' service(s)');
     }
   } catch (err) {
     if (tempPath !== undefined && tempPath !== '') {
@@ -328,7 +328,7 @@ var update = function () {
     var result = download(url, '', {
       method: 'get',
       followRedirects: true,
-      timeout: 30
+      timeout: 15
     }, filename);
 
     if (result.code < 200 || result.code > 299) {

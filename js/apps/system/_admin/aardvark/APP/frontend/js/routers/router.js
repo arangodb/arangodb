@@ -1,6 +1,6 @@
 /* jshint unused: false */
 /* global window, $, Backbone, document, d3 */
-/* global $, arangoHelper, btoa, _, frontendConfig */
+/* global $, arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -14,6 +14,8 @@
     routes: {
       '': 'cluster',
       'dashboard': 'dashboard',
+      'replication': 'replication',
+      'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
       'new': 'newCollection',
       'login': 'login',
@@ -931,6 +933,36 @@
       this.dashboardView.render();
     },
 
+    replication: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.replication.bind(this));
+        return;
+      }
+
+      if (!this.replicationView) {
+        // this.replicationView.remove();
+        this.replicationView = new window.ReplicationView({});
+      }
+      this.replicationView.render();
+    },
+
+    applier: function (endpoint, database, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.applier.bind(this), endpoint, database);
+        return;
+      }
+
+      if (this.applierView === undefined) {
+        this.applierView = new window.ApplierView({
+        });
+      }
+      this.applierView.endpoint = atob(endpoint);
+      this.applierView.database = atob(database);
+      this.applierView.render();
+    },
+
     graphManagement: function (initialized) {
       this.checkUser();
       if (!initialized) {
@@ -990,6 +1022,7 @@
         this.waitForInit(this.installService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceInstallView) {
         this.serviceInstallView.remove();
       }
@@ -1006,6 +1039,7 @@
         this.waitForInit(this.installNewService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceNewView) {
         this.serviceNewView.remove();
       }
@@ -1021,6 +1055,7 @@
         this.waitForInit(this.installGitHubService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceGitHubView) {
         this.serviceGitHubView.remove();
       }
@@ -1036,6 +1071,7 @@
         this.waitForInit(this.installUrlService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceUrlView) {
         this.serviceUrlView.remove();
       }
@@ -1051,6 +1087,7 @@
         this.waitForInit(this.installUploadService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceUploadView) {
         this.serviceUploadView.remove();
       }

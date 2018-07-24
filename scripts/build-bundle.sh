@@ -14,13 +14,12 @@ done
 
 ./Installation/Jenkins/build.sh \
     standard \
-    --rpath \
-    --parallel 5 \
+    --parallel 8 \
     --package Bundle \
     --buildDir build-${EP}bundle \
-    --prefix "/opt/arangodb" \
     --targetDir /var/tmp/ \
     --downloadStarter \
+    --prefix "/opt/arangodb" \
     --clang \
     --staticOpenSSL \
     $@

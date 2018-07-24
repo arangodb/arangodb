@@ -1138,9 +1138,41 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     bool const canUseHashAggregation =
         (!groupVariables.empty() &&
          (!collectNode->hasOutVariable() || collectNode->count()) &&
-         collectNode->getOptions().canUseHashMethod());
+         collectNode->getOptions().canUseMethod(CollectOptions::CollectMethod::HASH));
 
     if (canUseHashAggregation && !opt->runOnlyRequiredRules()) {
+      if (collectNode->getOptions().shouldUseMethod(CollectOptions::CollectMethod::HASH)) {
+        // user has explicitly asked for hash method
+        // specialize existing the CollectNode so it will become a HashedCollectBlock
+        // later. additionally, add a SortNode BEHIND the CollectNode (to sort the
+        // final result)
+        collectNode->aggregationMethod(
+            CollectOptions::CollectMethod::HASH);
+        collectNode->specialized();
+
+        if (!collectNode->isDistinctCommand()) {
+          // add the post-SORT
+          SortElementVector sortElements;
+          for (auto const& v : collectNode->groupVariables()) {
+            sortElements.emplace_back(v.first, true);
+          }
+
+          auto sortNode =
+              new SortNode(plan.get(), plan->nextId(), sortElements, false);
+          plan->registerNode(sortNode);
+
+          TRI_ASSERT(collectNode->hasParent());
+          auto parent = collectNode->getFirstParent();
+          TRI_ASSERT(parent != nullptr);
+
+          sortNode->addDependency(collectNode);
+          parent->replaceDependency(collectNode, sortNode);
+        }
+
+        modified = true;
+        continue;
+      } 
+
       // create a new plan with the adjusted COLLECT node
       std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
 
@@ -1154,7 +1186,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
       // additionally, add a SortNode BEHIND the CollectNode (to sort the
       // final result)
       newCollectNode->aggregationMethod(
-          CollectOptions::CollectMethod::COLLECT_METHOD_HASH);
+          CollectOptions::CollectMethod::HASH);
       newCollectNode->specialized();
 
       if (!collectNode->isDistinctCommand()) {
@@ -1189,7 +1221,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     } else if (groupVariables.empty() && 
                collectNode->aggregateVariables().empty() &&
                collectNode->count()) {
-      collectNode->aggregationMethod(CollectOptions::CollectMethod::COLLECT_METHOD_COUNT);
+      collectNode->aggregationMethod(CollectOptions::CollectMethod::COUNT);
       collectNode->specialized();
       modified = true;
       continue;
@@ -1203,7 +1235,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     // specialize the CollectNode so it will become a SortedCollectBlock
     // later
     collectNode->aggregationMethod(
-        CollectOptions::CollectMethod::COLLECT_METHOD_SORTED);
+        CollectOptions::CollectMethod::SORTED);
 
     // insert a SortNode IN FRONT OF the CollectNode
     if (!groupVariables.empty()) {
@@ -1461,6 +1493,10 @@ class arangodb::aql::RedundantCalculationsReplacer final
         for (auto& variable : node->_groupVariables) {
           variable.second = Variable::replace(variable.second, _replacements);
         }
+        for (auto& variable : node->_keepVariables) {
+          auto old = variable;
+          variable = Variable::replace(old, _replacements);
+        }
         for (auto& variable : node->_aggregateVariables) {
           variable.second.first =
               Variable::replace(variable.second.first, _replacements);
@@ -1484,6 +1520,25 @@ class arangodb::aql::RedundantCalculationsReplacer final
         for (auto& variable : node->_elements) {
           variable.var = Variable::replace(variable.var, _replacements);
         }
+        break;
+      }
+      
+      case EN::GATHER: {
+        auto node = static_cast<GatherNode*>(en);
+        for (auto& variable : node->_elements) {
+          auto v = Variable::replace(variable.var, _replacements);
+          if (v != variable.var) {
+            variable.var = v;
+          }
+          variable.attributePath.clear();
+        }
+        break;
+      }
+      
+      case EN::DISTRIBUTE: {
+        auto node = static_cast<DistributeNode*>(en);
+        node->_variable = Variable::replace(node->_variable, _replacements);
+        node->_alternativeVariable = Variable::replace(node->_alternativeVariable, _replacements);
         break;
       }
 
@@ -1612,8 +1667,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
               ->stringifyIfNotTooLong(&buffer);
         } catch (...) {
           // expression could not be stringified (maybe because not all node
-          // types
-          // are supported). this is not an error, we just skip the optimization
+          // types are supported). this is not an error, we just skip the optimization
           buffer.reset();
           continue;
         }
@@ -2055,6 +2109,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // sort condition is fully covered by index... now we can remove the
         // sort node from the plan
         _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+        // we need to have a sorted result later on, so we will need a sorted
+        // GatherNode in the cluster
+        indexNode->needsGatherNodeSort(true); 
         _modified = true;
         handled = true;
       }
@@ -2129,6 +2186,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
             indexNode->reverse(sortCondition.isDescending());
+            // we need to have a sorted result later on, so we will need a sorted
+            // GatherNode in the cluster
+            indexNode->needsGatherNodeSort(true); 
             _modified = true;
           } else if (numCovered > 0 && sortCondition.isUnidirectional()) {
             // remove the first few attributes if they are constant
@@ -2188,7 +2248,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           return true;  // a different SORT node. abort
         }
         _sortNode = static_cast<SortNode*>(en);
-        for (auto& it : _sortNode->getElements()) {
+        for (auto& it : _sortNode->elements()) {
           _sorts.emplace_back((it.var)->id, it.ascending);
         }
         return false;
@@ -2237,6 +2297,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
   std::unordered_set<ExecutionNode*> toUnlink;
   bool modified = false;
+  // this rule may modify the plan in place, but the new plan
+  // may not yet be optimal. so we may pass it into this same
+  // rule again. the default is to continue with the next rule
+  // however
+  int newLevel = 0;
 
   for (auto const& node : nodes) {
     auto fn = static_cast<FilterNode const*>(node);
@@ -2307,6 +2372,8 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               plan->replaceNode(setter, cn);
               modified = true;
               handled = true;
+              // pass the new plan into this rule again, to optimize even further
+              newLevel = static_cast<int>(rule->level - 1);
             }
           }
         }
@@ -2329,7 +2396,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     plan->unlinkNodes(toUnlink);
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
+  opt->addPlan(std::move(plan), rule, modified, newLevel);
 }
 
 /// @brief helper to compute lots of permutation tuples
@@ -2854,7 +2921,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
       // Using Index for sort only works if all indexes are equal.
       auto first = allIndexes[0].getIndex();
-      if (first->isSorted()) {
+      // also check if we actually need to bother about the sortedness of the
+      // result, or if we use the index for filtering only
+      if (first->isSorted() && idxNode->needsGatherNodeSort()) {
         for (auto const& path : first->fieldNames()) {
           elements.emplace_back(sortVariable, !isSortReverse, path);
         }
@@ -2909,7 +2978,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     plan->registerNode(remoteNode);
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
-
+    
     // insert a gather node
     GatherNode* gatherNode =
         new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
@@ -2919,7 +2988,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     // On SmartEdge collections we have 0 shards and we need the elements
     // to be injected here as well. So do not replace it with > 1
     if (!elements.empty() && gatherNode->collection()->numberOfShards() != 1) {
-      gatherNode->setElements(elements);
+      gatherNode->elements(elements);
     }
 
     // and now link the gather node with the rest of the plan
@@ -3013,13 +3082,6 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
 
-    if (node->getType() != EN::UPSERT &&
-        !node->isInInnerLoop() && 
-        !getSingleShardId(plan.get(), node, static_cast<ModificationNode const*>(node)->collection()).empty()) {
-      // no need to insert a DistributeNode for a single operation that is restricted to a single shard
-      continue;
-    }
-    
     ExecutionNode* originalParent = nullptr;
     if (node->hasParent()) {
       auto const& parents = node->getParents();
@@ -3107,7 +3169,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       inputVariable = node->getVariablesUsedHere()[0];
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable->id, createKeys, true);
+                             inputVariable, inputVariable, createKeys, true);
     } else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
@@ -3119,7 +3181,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable->id, false, v.size() > 1);
+                             inputVariable, inputVariable, false, v.size() > 1);
     } else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (v.size() > 1) {
@@ -3133,14 +3195,14 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable->id, false, v.size() > 1);
+                             inputVariable, inputVariable, false, v.size() > 1);
     } else if (nodeType == ExecutionNode::UPSERT) {
       // an UPSERT node has two input variables!
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 
       auto d = new DistributeNode(plan.get(), plan->nextId(), vocbase,
-                                  collection, v[0]->id, v[1]->id, true, true);
+                                  collection, v[0], v[1], true, true);
       d->setAllowSpecifiedKeys(true);
       distNode = static_cast<ExecutionNode*>(d);
     } else {
@@ -3198,12 +3260,17 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                                          OptimizerRule const* rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
-
+  
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
+  
+  std::unordered_set<Variable const*> allUsed;
 
   for (auto& node : nodes) {
+    allUsed.clear();
+    auto used = node->getVariablesUsedHere();
+
     // found a node we need to replace in the plan
 
     auto const& parents = node->getParents();
@@ -3212,45 +3279,262 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
     auto collectNode = static_cast<CollectNode*>(node);
     
-    if (collectNode->aggregationMethod() != CollectOptions::CollectMethod::COLLECT_METHOD_COUNT) {
-      // we can only optimize count so far
-      continue;
-    }
-
     // look for next remote node
     GatherNode* gatherNode = nullptr;
     auto current = node->getFirstDependency();
-
+        
     while (current != nullptr) {
+      bool eligible = true;
+      
+      // check if any of the nodes we pass use a variable that will not be
+      // available after we insert a new COLLECT on top of it (note: COLLECT
+      // will eliminate all variables from the scope but its own)
+      for (auto const& it : current->getVariablesUsedHere()) {
+        if (current->getType() != EN::GATHER) {
+          // Gather nodes are taken care of separately below
+          allUsed.emplace(it);
+        }
+      }
+
+      for (auto const& it : current->getVariablesSetHere()) {
+        if (std::find(used.begin(), used.end(), it) != used.end()) {
+          eligible = false;
+          break;
+        }
+      }
+
+      if (!eligible) {
+        break;
+      }
+
       if (current->getType() == ExecutionNode::GATHER) {
         gatherNode = static_cast<GatherNode*>(current);
       } else if (current->getType() == ExecutionNode::REMOTE) {
         auto previous = current->getFirstDependency();
         // now we are on a DB server
+
+        // we may have moved another CollectNode here already. if so, we need to
+        // move the new CollectNode to the front of multiple CollectNodes
+        ExecutionNode* target = current;
+        while (previous != nullptr && previous->getType() == ExecutionNode::COLLECT) {
+          target = previous;
+          previous = previous->getFirstDependency();
+        }
+
         if (previous != nullptr) {
-          // add a new CollectNode on the DB server to do the actual counting
-          auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
-          auto dbCollectNode = new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(), collectNode->groupVariables(), collectNode->aggregateVariables(), nullptr, outVariable, std::vector<Variable const*>(), collectNode->variableMap(), true, false);
-      
-          plan->registerNode(dbCollectNode);
-      
-          dbCollectNode->addDependency(previous);
-          current->replaceDependency(previous, dbCollectNode);
-          
-          dbCollectNode->specialized();
-          dbCollectNode->aggregationMethod(CollectOptions::CollectMethod::COLLECT_METHOD_COUNT);
+          for (auto const& otherVariable : allUsed) {
+            auto const setHere = collectNode->getVariablesSetHere();
+            if (std::find(setHere.begin(), setHere.end(), otherVariable) == setHere.end()) {
+              eligible = false;
+              break;
+            }
+          }
 
-          // re-use the existing CollectNode on the coordinator to aggregate the
-          // counts of the DB servers
-          std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
-          aggregateVariables.emplace_back(std::make_pair(collectNode->outVariable(), std::make_pair(outVariable, "SUM")));
+          if (!eligible) {
+            break;
+          }
 
-          collectNode->aggregationMethod(CollectOptions::CollectMethod::COLLECT_METHOD_SORTED);
-          collectNode->count(false);
-          collectNode->setAggregateVariables(aggregateVariables);
-          collectNode->clearOutVariable();
+          bool removeGatherNodeSort = false;
 
-          if (gatherNode != nullptr) {
+          if (collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT) {
+            // clone a COLLECT WITH COUNT operation from the coordinator to the DB server(s), and
+            // leave an aggregate COLLECT node on the coordinator for total aggregation
+
+            // add a new CollectNode on the DB server to do the actual counting
+            auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
+            auto dbCollectNode = new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(), collectNode->groupVariables(), collectNode->aggregateVariables(), nullptr, outVariable, std::vector<Variable const*>(), collectNode->variableMap(), true, false);
+        
+            plan->registerNode(dbCollectNode);
+        
+            dbCollectNode->addDependency(previous);
+            target->replaceDependency(previous, dbCollectNode);
+            
+            dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
+            dbCollectNode->specialized();
+
+            // re-use the existing CollectNode on the coordinator to aggregate the
+            // counts of the DB servers
+            std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+            aggregateVariables.emplace_back(std::make_pair(collectNode->outVariable(), std::make_pair(outVariable, "SUM")));
+
+            collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
+            collectNode->count(false);
+            collectNode->setAggregateVariables(aggregateVariables);
+            collectNode->clearOutVariable();
+            
+            removeGatherNodeSort = true;
+          } else if (collectNode->aggregationMethod() == CollectOptions::CollectMethod::DISTINCT) {
+            // clone a COLLECT DISTINCT operation from the coordinator to the DB server(s), and
+            // leave an aggregate COLLECT node on the coordinator for total aggregation
+
+            // create a new result variable
+            auto const& groupVars = collectNode->groupVariables();
+            TRI_ASSERT(!groupVars.empty());
+            auto out = plan->getAst()->variables()->createTemporaryVariable();
+    
+            std::vector<std::pair<Variable const*, Variable const*>> const groupVariables{std::make_pair(out, groupVars[0].second)};
+
+            auto dbCollectNode = new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(), groupVariables, collectNode->aggregateVariables(), nullptr, nullptr, std::vector<Variable const*>(), collectNode->variableMap(), false, true);
+
+            plan->registerNode(dbCollectNode);
+        
+            dbCollectNode->addDependency(previous);
+            target->replaceDependency(previous, dbCollectNode);
+            
+            dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
+            dbCollectNode->specialized();
+
+
+            // will set the input of the coordinator's collect node to the new variable produced on the DB servers
+            auto copy = collectNode->groupVariables();
+            TRI_ASSERT(!copy.empty());
+            copy[0].second = out;
+            collectNode->groupVariables(copy);
+            
+            removeGatherNodeSort = true;
+          } else if (!collectNode->groupVariables().empty() && 
+                     (!collectNode->hasOutVariable() || collectNode->count())) {
+            // clone a COLLECT v1 = expr, v2 = expr ... operation from the coordinator to the DB server(s), 
+            // and leave an aggregate COLLECT node on the coordinator for total aggregation
+
+            std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+            if (!collectNode->aggregateVariables().empty()) {
+              for (auto const& it : collectNode->aggregateVariables()) {
+                if (it.second.second == "SUM" || 
+                    it.second.second == "MAX" || 
+                    it.second.second == "MIN" ||
+                    it.second.second == "COUNT" ||
+                    it.second.second == "LENGTH") {
+                  auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
+                  aggregateVariables.emplace_back(std::make_pair(outVariable, std::make_pair(it.second.first, it.second.second)));
+                } else {
+                  eligible = false;
+                  break;
+                }
+              }
+            }
+
+            if (!eligible) {
+              break;
+            }
+    
+            Variable const* outVariable = nullptr;
+            if (collectNode->count()) {
+              outVariable = plan->getAst()->variables()->createTemporaryVariable();
+            }
+
+            // create new group variables
+            auto const& groupVars = collectNode->groupVariables();
+            std::vector<std::pair<Variable const*, Variable const*>> outVars;
+            outVars.reserve(groupVars.size());
+            std::unordered_map<Variable const*, Variable const*> replacements;
+    
+            for (auto const& it : groupVars) {
+              // create new out variables
+              auto out = plan->getAst()->variables()->createTemporaryVariable();
+              replacements.emplace(it.second, out);
+              outVars.emplace_back(out, it.second);
+            }
+    
+            auto dbCollectNode = new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(), outVars, aggregateVariables, nullptr, outVariable, std::vector<Variable const*>(), collectNode->variableMap(), collectNode->count(), false);
+        
+            plan->registerNode(dbCollectNode);
+        
+            dbCollectNode->addDependency(previous);
+            target->replaceDependency(previous, dbCollectNode);
+            
+            dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
+            dbCollectNode->specialized();
+           
+            std::vector<std::pair<Variable const*, Variable const*>> copy;
+            size_t i = 0;
+            for (auto const& it : collectNode->groupVariables()) {
+              // replace input variables
+              copy.emplace_back(std::make_pair(it.first, outVars[i].first));
+              ++i;
+            }
+            collectNode->groupVariables(copy);
+           
+            if (collectNode->count()) { 
+              std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+              aggregateVariables.emplace_back(std::make_pair(collectNode->outVariable(), std::make_pair(outVariable, "SUM")));
+
+              collectNode->count(false);
+              collectNode->setAggregateVariables(aggregateVariables);
+              collectNode->clearOutVariable();
+            } else {
+              size_t i = 0;
+              for (auto& it : collectNode->aggregateVariables()) {   
+                it.second.first = aggregateVariables[i].first;
+                if (it.second.second == "COUNT" ||
+                    it.second.second == "LENGTH") {
+                  // COUNT/LENGTH need to be converted to SUM on coordinator
+                  it.second.second = "SUM";
+                }
+                ++i;
+              }
+            }
+              
+            removeGatherNodeSort = (dbCollectNode->aggregationMethod() != CollectOptions::CollectMethod::SORTED);
+
+            // in case we need to keep the sortedness of the GatherNode,
+            // we may need to replace some variable references in it due
+            // to the changes we made to the COLLECT node
+            if (gatherNode != nullptr) {
+              SortElementVector& elements = gatherNode->elements();
+              if (!removeGatherNodeSort && !replacements.empty() && !elements.empty()) {
+                std::string cmp;
+                std::string other;
+                basics::StringBuffer buffer(128, false);
+
+                // look for all sort elements in the GatherNode and replace them if they
+                // match what we have changed
+                for (auto& it : elements) {
+                  // replace variables
+                  auto it2 = replacements.find(it.var);
+
+                  if (it2 != replacements.end()) {
+                    // match with our replacement table
+                    it.var = (*it2).second;
+                    it.attributePath.clear();
+                  } else {
+                    // no match. now check all our replacements and compare how their
+                    // sources are actually calculated (e.g. #2 may mean "foo.bar")
+                    cmp = it.toString();
+                    for (auto const& it3 : replacements) {
+                      auto setter = plan->getVarSetBy(it3.first->id);
+                      if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+                        continue;
+                      }
+                      auto* expr = static_cast<CalculationNode const*>(setter)->expression();
+                      if (expr == nullptr) {
+                        continue;
+                      }
+                      other.clear();
+                      try {
+                        buffer.clear();
+                        expr->stringify(&buffer);
+                        other = std::string(buffer.c_str(), buffer.size());
+                      } catch (...) {
+                      }
+                      if (other == cmp) {
+                        // finally a match!
+                        it.var = it3.second;
+                        it.attributePath.clear();
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            // all other cases cannot be optimized
+            break;
+          }
+
+          if (gatherNode != nullptr && removeGatherNodeSort) {
+            // remove sort(s) from GatherNode if we can
             gatherNode->clearElements();
           }
 
@@ -3448,7 +3732,7 @@ void arangodb::aql::distributeSortToClusterRule(
           // On SmartEdge collections we have 0 shards and we need the elements
           // to be injected here as well. So do not replace it with > 1
           if (gatherNode->collection()->numberOfShards() != 1) {
-            gatherNode->setElements(thisSortNode->getElements());
+            gatherNode->elements(thisSortNode->elements());
           }
           modified = true;
           // ready to rumble!
@@ -3596,14 +3880,20 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         break;
       }
       
-      case EN::ENUMERATE_COLLECTION: 
-      case EN::UPSERT: {
+      case EN::ENUMERATE_COLLECTION: {
         // track usage of the collection
         auto collection = static_cast<EnumerateCollectionNode const*>(en)->collection();
         _shardsUsed[collection].emplace("all");
         break;
       }
-      
+
+      case EN::UPSERT: {
+        // track usage of the collection
+        auto collection = static_cast<ModificationNode const*>(en)->collection();
+        _shardsUsed[collection].emplace("all");
+        break;
+      }
+
       case EN::INSERT:
       case EN::REPLACE:
       case EN::UPDATE:
@@ -3649,6 +3939,8 @@ void arangodb::aql::restrictToSingleShardRule(
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
+  std::unordered_set<ExecutionNode*> toUnlink;
+
   for (auto& node : nodes) {
     TRI_ASSERT(node->getType() == ExecutionNode::REMOTE);
     ExecutionNode* current = node->getFirstDependency();
@@ -3656,15 +3948,6 @@ void arangodb::aql::restrictToSingleShardRule(
     while (current != nullptr) {
       auto const currentType = current->getType();
       
-      // don't do this if we are already distributing!
-      auto deps = current->getDependencies();
-      if (deps.size() &&
-          deps[0]->getType() == ExecutionNode::REMOTE &&
-          deps[0]->hasDependency() &&
-          deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
-        break;
-      }
-
       if (currentType == ExecutionNode::INSERT ||
           currentType == ExecutionNode::UPDATE ||
           currentType == ExecutionNode::REPLACE ||
@@ -3678,6 +3961,50 @@ void arangodb::aql::restrictToSingleShardRule(
           // we are on a single shard. we must not ignore not-found documents now
           auto* modNode = static_cast<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
+
+          auto deps = current->getDependencies();
+          if (deps.size() &&
+              deps[0]->getType() == ExecutionNode::REMOTE) {
+            // if we can apply the single-shard optimization, but still have a
+            // REMOTE node in front of us, we can probably move the remote parts
+            // of the query to our side. this is only the case if the remote part
+            // does not call any remote parts itself
+            std::unordered_set<ExecutionNode*> toRemove;
+
+            auto c = deps[0];
+            toRemove.emplace(c);
+            while (true) {
+              if (c->getType() == EN::SCATTER || c->getType() == EN::DISTRIBUTE) {
+                toRemove.emplace(c);
+              }
+              c = c->getFirstDependency();
+
+              if (c == nullptr) {
+                // reached the end
+                break;
+              }
+
+              if (c->getType() == EN::REMOTE) {
+                toRemove.clear();
+                break;
+              }
+
+              if (c->getType() == EN::CALCULATION) {
+                auto cn = static_cast<CalculationNode*>(c);
+                auto expr = cn->expression();
+                if (expr != nullptr && !expr->canRunOnDBServer()) {
+                  // found something that must not run on a DB server,
+                  // but that must run on a coordinator. stop optimization here!
+                  toRemove.clear();
+                  break;
+                }
+              }
+            }
+
+            for (auto const& it : toRemove) {
+              toUnlink.emplace(it);
+            }
+          }
         }
         break;
       } else if (currentType == ExecutionNode::INDEX) {
@@ -3700,6 +4027,11 @@ void arangodb::aql::restrictToSingleShardRule(
       
       current = current->getFirstDependency();
     }
+  }
+
+  if (!toUnlink.empty()) {
+    TRI_ASSERT(wasModified);
+    plan->unlinkNodes(toUnlink);
   }
 
   opt->addPlan(std::move(plan), rule, wasModified); 
@@ -3848,7 +4180,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         }
 
         if (enumColl->getType() == EN::ENUMERATE_COLLECTION &&
-            !dynamic_cast<DocumentProducingNode const*>(enumColl)->projection().empty()) {
+            !dynamic_cast<DocumentProducingNode const*>(enumColl)->projections().empty()) {
           // cannot handle projections yet
           break;
         }
@@ -5053,25 +5385,25 @@ static bool isValueTypeNumber(AstNode* node) {
                                             node->value.type == VALUE_TYPE_DOUBLE));
 }
 
-static bool applyFulltextOptimization(EnumerateListNode* elnode,
-                                      LimitNode* limitNode, ExecutionPlan* plan) {
+static ExecutionNode* applyFulltextOptimization(EnumerateListNode* elnode,
+                                                LimitNode* limitNode, ExecutionPlan* plan) {
   std::vector<Variable const*> varsUsedHere = elnode->getVariablesUsedHere();
   TRI_ASSERT(varsUsedHere.size() == 1);
   // now check who introduced our variable
   ExecutionNode* node = plan->getVarSetBy(varsUsedHere[0]->id);
   if (node->getType() != EN::CALCULATION) {
-    return false;
+    return nullptr;
   }
   
   CalculationNode* calcNode = static_cast<CalculationNode*>(node);
   Expression* expr = calcNode->expression();
   // the expression must exist and it must have an astNode
   if (expr->node() == nullptr) {
-    return false;// not the right type of node
+    return nullptr;// not the right type of node
   }
   AstNode* flltxtNode = expr->nodeForModification();
   if (flltxtNode->type != NODE_TYPE_FCALL) {
-    return false;
+    return nullptr;
   }
   
   // get the ast node of the expression
@@ -5079,11 +5411,11 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   // we're looking for "FULLTEXT()", which is a function call
   // with a parameters array with collection, attribute, query, limit
   if (func->name != "FULLTEXT" || flltxtNode->numMembers() != 1) {
-    return false;
+    return nullptr;
   }
   AstNode* fargs = flltxtNode->getMember(0);
   if (fargs->numMembers() != 3 && fargs->numMembers() != 4) {
-    return false;
+    return nullptr;
   }
   
   AstNode* collArg = fargs->getMember(0);
@@ -5093,7 +5425,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (!isValueTypeCollection(collArg) || !isValueTypeString(attrArg) ||
       !isValueTypeString(queryArg) || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
-    return false;
+    return nullptr;
   }
   
   std::string name = collArg->getString();
@@ -5101,7 +5433,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
   if (field.empty()) {
-    return false;
+    return nullptr;
   }
   
   // check for suitable indexes
@@ -5118,7 +5450,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     }
   });
   if (!index) { // no index found
-    return false;
+    return nullptr;
   }
   
   Ast* ast = plan->getAst();  
@@ -5174,7 +5506,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     limitNode->addDependency(indexNode);
   }
   
-  return true;
+  return indexNode;
 }
 
 void arangodb::aql::fulltextIndexRule(Optimizer* opt,
@@ -5192,8 +5524,12 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
     while (current) {
       if (current->getType() == EN::ENUMERATE_LIST) {
         EnumerateListNode* elnode = static_cast<EnumerateListNode*>(current);
-        modified = modified || applyFulltextOptimization(elnode, limit, plan.get());
-        break;
+        auto indexNode = applyFulltextOptimization(elnode, limit, plan.get());
+        if (indexNode != nullptr) {
+          modified = true;
+          limit = nullptr;
+          current = indexNode; // resume iteration at new node
+        }
       } else if (current->getType() == EN::LIMIT) {
         limit = static_cast<LimitNode*>(current);
       }
@@ -5501,7 +5837,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type,
   switch (type) {
     case EN::SORT: {
       auto node = static_cast<SortNode*>(n);
-      auto& elements = node->getElements();
+      auto& elements = node->elements();
 
       // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort
       // criterion

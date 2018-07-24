@@ -37,6 +37,8 @@ LogicalCollection* OperationCursor::collection() const {
 
 bool OperationCursor::hasExtra() const { return indexIterator()->hasExtra(); }
 
+bool OperationCursor::hasCovering() const { return indexIterator()->hasCovering(); }
+
 void OperationCursor::reset() {
   code = TRI_ERROR_NO_ERROR;
 
@@ -97,6 +99,23 @@ bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback
   
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextExtra(callback, atMost);
+  return _hasMore;
+}
+
+bool OperationCursor::nextCovering(IndexIterator::DocumentCallback const& callback,
+                                   uint64_t batchSize) {
+  TRI_ASSERT(hasCovering());
+
+  if (!hasMore()) {
+    return false;
+  }
+  
+  if (batchSize == UINT64_MAX) {
+    batchSize = _batchSize;
+  }
+
+  size_t atMost = static_cast<size_t>(batchSize);
+  _hasMore = _indexIterator->nextCovering(callback, atMost);
   return _hasMore;
 }
 

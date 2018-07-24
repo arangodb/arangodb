@@ -35,7 +35,8 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestActionHandler"; }
-  bool isDirect() const override;
+  bool isDirect() const override { return _action == nullptr; }
+  size_t queue() const override { return JobQueue::BACKGROUND_QUEUE; }
   RestStatus execute() override;
   bool cancel() override;
 

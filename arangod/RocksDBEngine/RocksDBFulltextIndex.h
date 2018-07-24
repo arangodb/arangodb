@@ -136,7 +136,6 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
                                    std::set<LocalDocumentId>& resultSet);
 };
   
-
 /// El Cheapo index iterator
 class RocksDBFulltextIndexIterator : public IndexIterator {
 public:
@@ -166,7 +165,7 @@ public:
   void reset() override { _pos = _docs.begin(); }
   
   void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end()) {
+    while (_pos != _docs.end() && skipped < count) {
       _pos++;
       skipped++;
     }

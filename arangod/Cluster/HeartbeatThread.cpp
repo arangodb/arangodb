@@ -63,7 +63,7 @@ std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
-                                 uint64_t interval,
+                                 std::chrono::microseconds interval,
                                  uint64_t maxFailsBeforeWarning) 
     : Thread("Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
@@ -221,8 +221,6 @@ void HeartbeatThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runDBServer() {
-  // convert timeout to seconds
-  double const interval = (double)_interval / 1000.0 / 1000.0;
 
   std::function<bool(VPackSlice const& result)> updatePlan =
     [=](VPackSlice const& result) {
@@ -275,10 +273,10 @@ void HeartbeatThread::runDBServer() {
   while (!isStopping()) {
 
     try {
-      double const start = TRI_microtime();
+      auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
       // we don't care if this fails
-      sendState();
+      sendServerState();
 
       if (isStopping()) {
         break;
@@ -305,9 +303,7 @@ void HeartbeatThread::runDBServer() {
               << "Heartbeat: Could not read from agency!";
         } else {
 
-          VPackSlice agentPool =
-            result.slice()[0].get(
-              std::vector<std::string>({".agency","pool"}));
+          VPackSlice agentPool = result.slice()[0].get(".agency");
           updateAgentPool(agentPool);
 
           VPackSlice shutdownSlice =
@@ -360,7 +356,7 @@ void HeartbeatThread::runDBServer() {
         break;
       }
 
-      double remain = interval - (TRI_microtime() - start);
+      auto remain = _interval - (std::chrono::steady_clock::now() - start);
       // mop: execute at least once
       do {
         
@@ -375,8 +371,8 @@ void HeartbeatThread::runDBServer() {
           CONDITION_LOCKER(locker, _condition);
           wasNotified = _wasNotified;
           if (!wasNotified) {
-            if (remain > 0.0) {
-              locker.wait(static_cast<uint64_t>(remain * 1000000.0));
+            if (remain.count() > 0) {
+              locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
               wasNotified = _wasNotified;
             }
           }
@@ -393,8 +389,8 @@ void HeartbeatThread::runDBServer() {
           LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "wasNotified==true";
           syncDBServerStatusQuo();
         }
-        remain = interval - (TRI_microtime() - start);
-      } while (remain > 0);
+        remain = _interval - (std::chrono::steady_clock::now() - start);
+      } while (remain.count() > 0);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an exception in DBServer heartbeat: " << e.what();
@@ -412,8 +408,6 @@ void HeartbeatThread::runDBServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runSingleServer() {
-  // convert timeout to seconds
-  double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
@@ -427,23 +421,21 @@ void HeartbeatThread::runSingleServer() {
   GlobalReplicationApplier* applier = replication->globalReplicationApplier();
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(applier != nullptr && ci != nullptr);
+  
+  std::string const leaderPath = "Plan/AsyncReplication/Leader";
+  std::string const transientPath = "AsyncReplication/" + _myId;
+
+  VPackBuilder myIdBuilder;
+  myIdBuilder.add(VPackValue(_myId));
  
   uint64_t lastSentVersion = 0;
-  double start = 0; // no wait time initially
+  auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
-    double remain = interval - (TRI_microtime() - start);
-    // sleep for a while if appropriate, on some systems usleep does not
-    // like arguments greater than 1000000
-    while (remain > 0.0) {
-      if (remain >= 0.5) {
-        usleep(500000);
-        remain -= 0.5;
-      } else {
-        usleep(static_cast<TRI_usleep_t>(remain * 1000.0 * 1000.0));
-        remain = 0.0;
-      }
+    auto remain = _interval - (std::chrono::steady_clock::now() - start);
+    if (remain.count() > 0) {
+      std::this_thread::sleep_for(remain);
     }
-    start = TRI_microtime();
+    start = std::chrono::steady_clock::now();
     
     if (isStopping()) {
       break;
@@ -452,17 +444,15 @@ void HeartbeatThread::runSingleServer() {
     try {
       // send our state to the agency.
       // we don't care if this fails
-      sendState();
+      sendServerState();
       double const timeout = 1.0;
 
       // check current local version of database objects version, and bump
       // the global version number in the agency in case it changed. this
       // informs other listeners about our local DDL changes
       uint64_t currentVersion = DatabaseFeature::DATABASE->versionTracker()->current();
-      
       if (currentVersion != lastSentVersion) {
-        AgencyOperation incrementVersion("Plan/Version",
-                                         AgencySimpleOperationType::INCREMENT_OP);
+        AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
         AgencyWriteTransaction trx(incrementVersion);
         AgencyCommResult res = _agency.sendTransactionWithFailover(trx, timeout);
 
@@ -471,9 +461,8 @@ void HeartbeatThread::runSingleServer() {
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not increase version number in agency";
         }
+        lastSentVersion = currentVersion;
       }
-
-      lastSentVersion = currentVersion;
 
       AgencyReadTransaction trx(
         std::vector<std::string>({
@@ -496,11 +485,10 @@ void HeartbeatThread::runSingleServer() {
       }
       
       VPackSlice response = result.slice()[0];
-      VPackSlice agentPool = response.get(std::vector<std::string>{".agency", "pool"});
+      VPackSlice agentPool = response.get(".agency");
       updateAgentPool(agentPool);
       
-      VPackSlice shutdownSlice =
-      response.get({AgencyCommManager::path(), "Shutdown"});
+      VPackSlice shutdownSlice = response.get({AgencyCommManager::path(), "Shutdown"});
       if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
         ApplicationServer::server->beginShutdown();
         break;
@@ -517,9 +505,6 @@ void HeartbeatThread::runSingleServer() {
         continue;
       }
       
-      VPackBuilder myIdBuilder;
-      myIdBuilder.add(VPackValue(_myId));
-      
       VPackSlice leader = async.get("Leader");
       if (!leader.isString() || leader.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
@@ -528,7 +513,6 @@ void HeartbeatThread::runSingleServer() {
         
         // if we stay a slave, the redirect will be turned on again
         ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
-        std::string const leaderPath = "Plan/AsyncReplication/Leader";
         if (leader.isNone()) {
           result = _agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
                                     /*ttl*/ 0, /*timeout*/ 5.0);
@@ -556,14 +540,18 @@ void HeartbeatThread::runSingleServer() {
       // Case 2: Current server is leader
       if (leader.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
-        
         if (applier->isActive()) {
           applier->stopAndJoin();
+          // preemtily remove the transient entry from the agency
+          _agency.setTransient(transientPath, VPackSlice::emptyObjectSlice(), 0);
         }
         
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
-        ServerState::setServerMode(ServerState::Mode::DEFAULT);
+        auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
+        if (prv == ServerState::Mode::REDIRECT) {
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Took over leadership";
+        }
         continue; // nothing more to do
       }
       
@@ -586,8 +574,7 @@ void HeartbeatThread::runSingleServer() {
         // on this server may prevent us from being a proper follower. We wait for
         // all ongoing ops to stop, and make sure nothing is committed:
         // setting server mode to REDIRECT stops DDL ops and write transactions
-        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to secondary change, "
-                                           << "this might take a few seconds";
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to follower switch";
         Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not cancel all async jobs "
@@ -597,14 +584,27 @@ void HeartbeatThread::runSingleServer() {
         sleep(10);
       }
       
-      if (applier->endpoint() != endpoint) {
-        // configure applier for new endpoint
+      TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
+      auto sendTransient = [&]() {
+        VPackBuilder builder;
+        builder.openObject();
+        builder.add("leader", leader);
+        builder.add("lastTick", VPackValue(lastTick));
+        builder.close();
+        double ttl = std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
+        _agency.setTransient(transientPath, builder.slice(), ttl);
+      };
+      TRI_DEFER(sendTransient());
+
+      if (applier->isActive() && applier->endpoint() == endpoint) {
+        lastTick = applier->lastTick();
+      } else if (applier->endpoint() != endpoint) { // configure applier for new endpoint
         if (applier->isActive()) {
           applier->stopAndJoin();
         }
 
         while (applier->isShuttingDown() && !isStopping()) {
-          std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
@@ -615,13 +615,11 @@ void HeartbeatThread::runSingleServer() {
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
-        // TODO: how do we initially configure the applier
-        
-        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "start initial sync from leader";
+        config._requireFromPresent = true;
+        config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
 
-        // forget about any existing replication applier configuration
-        applier->forget();
+        applier->forget(); // forget about any existing configuration
         applier->reconfigure(config);
         applier->startReplication();
         
@@ -634,25 +632,21 @@ void HeartbeatThread::runSingleServer() {
             continue;
           } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
-            // restart applier if possible
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier... ";
-            
-            VPackBuilder builder;
-            builder.openObject();
-            applier->toVelocyPack(builder);
-            builder.close();
-            LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << builder.slice().toJson();
-
-            applier->startTailing(0, false, 0);
+            VPackBuilder debug;
+            debug.openObject();
+            applier->toVelocyPack(debug);
+            debug.close();
+            LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << debug.toJson();
+            applier->startTailing(0, false, 0); // reads ticks from configuration
             continue; // check again next time
-          } 
+          }
         }
-      
         // complete resync next round
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "forgetting previous applier state. Will trigger a full resync now";
         applier->forget();
       }
-            
+      
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "got an exception in single server heartbeat: " << e.what();
@@ -683,15 +677,12 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runCoordinator() {
-  AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<
-          AuthenticationFeature>("Authentication");
-  TRI_ASSERT(authentication != nullptr);
+  AuthenticationFeature* af = application_features::ApplicationServer::getFeature<
+            AuthenticationFeature>("Authentication");
+  TRI_ASSERT(af != nullptr);
 
   uint64_t oldUserVersion = 0;
 
-  // convert timeout to seconds
-  double const interval = (double)_interval / 1000.0 / 1000.0;
   // invalidate coordinators every 2nd call
   bool invalidateCoordinators = true;
 
@@ -704,10 +695,10 @@ void HeartbeatThread::runCoordinator() {
 
   while (!isStopping()) {
     try {
-      double const start = TRI_microtime();
+      auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
       // we don't care if this fails
-      sendState();
+      sendServerState();
 
       if (isStopping()) {
         break;
@@ -735,9 +726,7 @@ void HeartbeatThread::runCoordinator() {
             << result.bodyRef() << ", timeout: " << timeout;
       } else {
 
-        VPackSlice agentPool =
-          result.slice()[0].get(
-            std::vector<std::string>({".agency","pool"}));
+        VPackSlice agentPool = result.slice()[0].get(".agency");
         updateAgentPool(agentPool);
 
         VPackSlice shutdownSlice = result.slice()[0].get(
@@ -828,9 +817,9 @@ void HeartbeatThread::runCoordinator() {
 
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
-            if (authentication->isActive()) {
-              authentication->userManager()->outdate();
-              authentication->tokenCache()->invalidateBasicCache();
+            if (af->isActive() && af->userManager() != nullptr) {
+              af->userManager()->outdate();
+              af->tokenCache()->invalidateBasicCache();
             }
           }
         }
@@ -903,19 +892,9 @@ void HeartbeatThread::runCoordinator() {
         DBServerUpdateCounter = 0;
       }
 
-      double remain = interval - (TRI_microtime() - start);
+      auto remain = _interval - (std::chrono::steady_clock::now() - start);
+      std::this_thread::sleep_for(remain);
 
-      // sleep for a while if appropriate, on some systems usleep does not
-      // like arguments greater than 1000000
-      while (remain > 0.0) {
-        if (remain >= 0.5) {
-          usleep(500000);
-          remain -= 0.5;
-        } else {
-          usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
-          remain = 0.0;
-        }
-      }
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an exception in coordinator heartbeat: " << e.what();
@@ -933,7 +912,7 @@ void HeartbeatThread::runCoordinator() {
 bool HeartbeatThread::init() {
   // send the server state a first time and use this as an indicator about
   // the agency's health
-  if (!sendState()) {
+  if (!sendServerState()) {
     return false;
   }
 
@@ -1175,7 +1154,7 @@ bool HeartbeatThread::handleStateChange(AgencyCommResult& result) {
 /// @brief sends the current server's state to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::sendState() {
+bool HeartbeatThread::sendServerState() {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
   const AgencyCommResult result = _agency.sendServerState(0.0);
@@ -1199,10 +1178,10 @@ bool HeartbeatThread::sendState() {
 }
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
-  if (agentPool.isObject() && agentPool.hasKey("size") &&
-      agentPool.get("size").getUInt() > 1) {
-    _agency.updateEndpoints(agentPool);
+  if (agentPool.isObject() && agentPool.get("pool").isObject() &&
+      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
+    _agency.updateEndpoints(agentPool.get("pool"));
   } else {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Cannot find an agency persisted in RAFT 8|";
   }
 }

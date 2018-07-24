@@ -68,6 +68,7 @@ SET(ARANGOD_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
@@ -203,6 +204,8 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
+  Cluster/ClusterRepairDistributeShardsLike.cpp
+  Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
   Cluster/FollowerInfo.cpp
@@ -223,10 +226,8 @@ SET(ARANGOD_SOURCES
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
-  GeneralServer/RestEngine.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
-  GeneralServer/RestStatus.cpp
   GeneralServer/VstCommTask.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
@@ -302,7 +303,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
-  RestHandler/RestDemoHandler.cpp
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
@@ -316,6 +316,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestPregelHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestRepairHandler.cpp
   RestHandler/RestReplicationHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
@@ -328,7 +329,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
-  RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
@@ -351,7 +351,6 @@ SET(ARANGOD_SOURCES
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
-  RestServer/WorkMonitorFeature.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
@@ -360,9 +359,8 @@ SET(ARANGOD_SOURCES
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
-  Scheduler/Socket.cpp
+  Scheduler/SocketSslTcp.cpp
   Scheduler/SocketTask.cpp
-  Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
   Statistics/ConnectionStatistics.cpp
   Statistics/RequestStatistics.cpp
@@ -389,7 +387,6 @@ SET(ARANGOD_SOURCES
   Utils/ExecContext.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
-  Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp

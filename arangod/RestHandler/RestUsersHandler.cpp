@@ -26,6 +26,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/JobQueue.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -43,11 +44,16 @@ RestUsersHandler::RestUsersHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
+// returns the queue name
+size_t RestUsersHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
+
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af == nullptr) { // nullptr happens only during shutdown
-    return RestStatus::FAIL;
+  if (af == nullptr || af->userManager() == nullptr) {
+    // nullptr may happens during shutdown, or on Agency
+    generateError(ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED);
+    return RestStatus::DONE;
   }
 
   switch (type) {

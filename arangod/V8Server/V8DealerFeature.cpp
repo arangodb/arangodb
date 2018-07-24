@@ -34,7 +34,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
-#include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -109,11 +108,11 @@ V8DealerFeature::V8DealerFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Action");
   startsAfter("Authentication");
+  startsAfter("CheckVersion");
   startsAfter("Database");
   startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
   startsAfter("Temp");
 }
 
@@ -449,8 +448,6 @@ void V8DealerFeature::collectGarbage() {
       gc->updateGcStamp(lastGc);
 
       if (context != nullptr) {
-        arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->id());
-
         LOG_TOPIC(TRACE, arangodb::Logger::V8) << "collecting V8 garbage in context #" << context->id()
                   << ", invocations total: " << context->invocations()  
                   << ", invocations since last gc: " << context->invocationsSinceLastGc()  

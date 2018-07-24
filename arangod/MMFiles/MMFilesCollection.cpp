@@ -2789,36 +2789,11 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
-  if (isEdgeCollection) {
-    // _from:
-    fromSlice = slice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    VPackValueLength len;
-    char const* docId = fromSlice.getString(len);
-    size_t split;
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    // _to:
-    toSlice = slice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    docId = toSlice.getString(len);
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-  }
-
   transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
   Result res(TRI_ERROR_NO_ERROR);
   if (options.recoveryData == nullptr) {
-    res = newObjectForInsert(trx, slice, fromSlice, toSlice, documentId,
+    res = newObjectForInsert(trx, slice, documentId,
                              isEdgeCollection, *builder.get(), options.isRestore, revisionId);
     if (res.fail()) {
       return res;
@@ -3297,15 +3272,17 @@ Result MMFilesCollection::update(
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   if (options.recoveryData == nullptr) {
-    mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
+    res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                           documentId, options.mergeObjects,
                           options.keepNull, *builder.get(), options.isRestore, revisionId);
 
+    if (res.fail()) { 
+      return res;
+    }
+
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
-      if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                     trx->resolver()->getCollectionNameCluster(
-                                         _logicalCollection->planId()),
+      if (arangodb::shardKeysChanged(_logicalCollection,
                                      oldDoc, builder->slice(), false)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
       }
@@ -3376,8 +3353,7 @@ Result MMFilesCollection::replace(
     transaction::Methods* trx, VPackSlice const newSlice,
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    ManagedDocumentResult& previous,
-    VPackSlice const fromSlice, VPackSlice const toSlice) {
+    ManagedDocumentResult& previous) {
 
   LocalDocumentId const documentId = LocalDocumentId::create();
   bool const isEdgeCollection =
@@ -3435,15 +3411,17 @@ Result MMFilesCollection::replace(
   // merge old and new values
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
-  newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
-                      isEdgeCollection, documentId,
-                      *builder.get(), options.isRestore, revisionId);
+  res = newObjectForReplace(trx, oldDoc, newSlice,
+                            isEdgeCollection, documentId,
+                            *builder.get(), options.isRestore, revisionId);
+
+  if (res.fail()) {
+    return res;
+  }
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                   trx->resolver()->getCollectionNameCluster(
-                                       _logicalCollection->planId()),
+    if (arangodb::shardKeysChanged(_logicalCollection,
                                    oldDoc, builder->slice(), false)) {
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
