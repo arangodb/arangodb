@@ -57,10 +57,25 @@ using namespace arangodb::basics;
 // --SECTION--                                                     task handling
 // -----------------------------------------------------------------------------
 
+namespace {
+bool authorized(std::pair<std::string, std::shared_ptr<arangodb::Task>> const& task) {
+  auto context = arangodb::ExecContext::CURRENT;
+  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+    return true;
+  }
+
+  if (context->isSuperuser()) {
+    return true;
+  }
+
+  return (task.first == context->user());
+}
+}
+
 namespace arangodb {
 
 Mutex Task::_tasksLock;
-std::unordered_map<std::string, std::shared_ptr<Task>> Task::_tasks;
+std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>> Task::_tasks;
 
 std::shared_ptr<Task> Task::createTask(std::string const& id,
                                        std::string const& name,
@@ -84,13 +99,15 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
   TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
                                    // DatabaseGuard constructor which on failure
                                    // would fail Task constructor
+
+  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
   auto task =
       std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
-  auto itr = _tasks.emplace(id, std::move(task));
+  auto itr = _tasks.emplace(id, std::make_pair(user, std::move(task)));
 
   ec = TRI_ERROR_NO_ERROR;
 
-  return itr.first->second;
+  return itr.first->second.second;
 }
 
 int Task::unregisterTask(std::string const& id, bool cancel) {
@@ -102,12 +119,12 @@ int Task::unregisterTask(std::string const& id, bool cancel) {
 
   auto itr = _tasks.find(id);
 
-  if (itr == _tasks.end()) {
+  if (itr == _tasks.end() || !::authorized(itr->second)) {
     return TRI_ERROR_TASK_NOT_FOUND;
   }
 
   if (cancel) {
-    itr->second->cancel();
+    itr->second.second->cancel();
   }
 
   _tasks.erase(itr);
@@ -120,11 +137,11 @@ std::shared_ptr<VPackBuilder> Task::registeredTask(std::string const& id) {
 
   auto itr = _tasks.find(id);
 
-  if (itr == _tasks.end()) {
+  if (itr == _tasks.end() || !::authorized(itr->second)) {
     return nullptr;
   }
 
-  return itr->second->toVelocyPack();
+  return itr->second.second->toVelocyPack();
 }
 
 std::shared_ptr<VPackBuilder> Task::registeredTasks() {
@@ -136,8 +153,10 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
     MUTEX_LOCKER(guard, _tasksLock);
 
     for (auto& it : _tasks) {
+      if (::authorized(it.second)) {
       VPackObjectBuilder b2(builder.get());
-      it.second->toVelocyPack(*builder);
+      it.second.second->toVelocyPack(*builder);
+    }
     }
   } catch (...) {
     return std::make_shared<VPackBuilder>();
@@ -150,7 +169,7 @@ void Task::shutdownTasks() {
   MUTEX_LOCKER(guard, _tasksLock);
 
   for (auto& it : _tasks) {
-    it.second->cancel();
+    it.second.second->cancel();
   }
 
   _tasks.clear();
@@ -160,10 +179,10 @@ void Task::removeTasksForDatabase(std::string const& name) {
   MUTEX_LOCKER(guard, _tasksLock);
 
   for (auto it = _tasks.begin(); it != _tasks.end(); /* no hoisting */) {
-    if (!(*it).second->databaseMatches(name)) {
+    if (!(*it).second.second->databaseMatches(name)) {
       ++it;
     } else {
-      auto task = (*it).second;
+      auto task = (*it).second.second;
       task->cancel();
       it = _tasks.erase(it);
     }
@@ -237,7 +256,7 @@ std::function<void(const asio::error_code&)> Task::callbackFunction() {
 
       if (itr != _tasks.end()) {
         // remove task from list of tasks if it is still active
-        if (this == (*itr).second.get()) {
+        if (this == (*itr).second.second.get()) {
           // still the same task. must remove from map
           _tasks.erase(itr);
         }

@@ -131,7 +131,7 @@ function TasksAuthSuite () {
       userModule.save(users[1].username, users[1].password);
 
       userModule.grantDatabase(users[0].username, '_system', 'rw');
-      userModule.grantDatabase(users[1].username, '_system', 'ro');
+      userModule.grantDatabase(users[1].username, '_system', 'rw');
       userModule.grantCollection(users[0].username, '_system', cns[0], 'ro');
       userModule.grantCollection(users[1].username, '_system', cns[0], 'ro');
       userModule.grantCollection(users[0].username, '_system', cns[1], 'ro');
@@ -198,14 +198,14 @@ function TasksAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.body.error);
-      assertEqual(result.status, 403);
+      assertEqual(result.status, 404);
 
       url = `${baseTasksUrl}/${taskId}`;
       result = sendRequest(users[1], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.body.error);
-      assertEqual(result.status, 403);
+      assertEqual(result.status, 404);
 
       url = `${baseTasksUrl}/${taskId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
