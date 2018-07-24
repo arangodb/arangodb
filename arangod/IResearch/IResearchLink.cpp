@@ -71,9 +71,9 @@ IResearchLink::IResearchLink(
 IResearchLink::~IResearchLink() {
   if (_dropCollectionInDestructor) {
     drop();
+  } else {
+    unload(); // disassociate from view if it has not been done yet
   }
-
-  unload(); // disassociate from view if it has not been done yet
 }
 
 bool IResearchLink::operator==(LogicalView const& view) const noexcept {
@@ -134,20 +134,23 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
   }
 
-  _dropCollectionInDestructor = false; // will do drop now
-
   auto res = _view->drop(_collection.id());
+
+  if (TRI_ERROR_NO_ERROR != res) {
+    return res;
+  }
+
+  _dropCollectionInDestructor = false; // will do drop now
+  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  _view = nullptr; // mark as unassociated
+  _viewLock.unlock(); // release read-lock on the IResearch View
 
   // FIXME TODO this workaround should be in ClusterInfo when moving 'Plan' to 'Current', i.e. IResearchViewDBServer::drop
   if (arangodb::ServerState::instance()->isDBServer()) {
-    auto id = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
-
-    _view = nullptr; // mark as unassociated
-    _viewLock.unlock(); // release read-lock on the IResearch View
-    _collection.vocbase().dropView(id, true); // cluster-view in ClusterInfo should already not have cid-view
+    return _collection.vocbase().dropView(_defaultId, true).errorNumber(); // cluster-view in ClusterInfo should already not have cid-view
   }
 
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -473,8 +476,6 @@ int IResearchLink::unload() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
-
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
@@ -486,12 +487,13 @@ int IResearchLink::unload() {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to drop collection from view while unloading dropped IResearch link '" << _id
         << "' for IResearch view '" << _view->id() << "'";
-
-      return res;
     }
+
+    return res;
   }
 
   _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped
+  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
 
