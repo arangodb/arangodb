@@ -1077,6 +1077,9 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
       if (!skipping) {
         size_t i = 0;
         for (auto& it : _groupRegisters) {
+          if (_skipped > 0) {
+            _res->copyValuesFromFirstRow(_skipped, cur->getNrRegs()); 
+          }
           _res->setValue(_skipped, it.first, groupValues[i].clone());
           ++i;
         }

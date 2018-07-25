@@ -50,7 +50,7 @@
         processData: false,
         success: function (data) {
           self.$el.html(self.template.render({
-            views: data
+            views: data.result
           }));
         },
         error: function (error) {

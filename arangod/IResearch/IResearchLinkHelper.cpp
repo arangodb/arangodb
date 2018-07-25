@@ -398,10 +398,20 @@ namespace iresearch {
       TRI_ERROR_ARANGO_ILLEGAL_STATE,
       std::string("failed to update links while updating IResearch view '") + view.name() + "', retry same request or examine errors for collections: " + error
     );
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while updating links for IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      e.code(),
+      std::string("error updating links for IResearch view '") + view.name() + "'"
+    );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for IResearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
+
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating links for IResearch view '") + view.name() + "'"
@@ -410,6 +420,7 @@ namespace iresearch {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for IResearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
+
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating links for IResearch view '") + view.name() + "'"
