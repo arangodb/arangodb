@@ -858,6 +858,7 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
         TRI_ASSERT(resultList.isArray());
         auto iter = VPackArrayIterator(resultList);
         for (size_t i = 0; i < n; ++i) {
+          TRI_ASSERT(i < wasTaken.size());
           if (wasTaken[i]) {
             TRI_ASSERT(iter.valid());
             auto elm = iter.value();
@@ -1353,6 +1354,7 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
         TRI_ASSERT(resultList.isArray());
         auto iter = VPackArrayIterator(resultList);
         for (size_t i = 0; i < n; ++i) {
+          TRI_ASSERT(i < wasTaken.size());
           if (wasTaken[i]) {
             TRI_ASSERT(iter.valid());
             auto elm = iter.value();

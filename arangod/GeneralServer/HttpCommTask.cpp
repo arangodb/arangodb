@@ -420,12 +420,6 @@ bool HttpCommTask::processRead(double startTime) {
         }
 
         default: {
-          size_t l = _readPosition - _startPosition;
-
-          if (6 < l) {
-            l = 6;
-          }
-
           // bad request, method not allowed
           addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED, rest::ContentType::UNSET,
                             1, VPackBuffer<uint8_t>());

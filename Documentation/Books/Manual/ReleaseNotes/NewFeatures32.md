@@ -117,7 +117,7 @@ operations on sharded collections can be avoided and response times can be close
 that of a single instance.
 
 [Satellite collections](../Administration/Satellites.md)
-are available in the *Enterprise* edition.
+are available in the *Enterprise Edition*.
 
 
 Memory management
@@ -361,10 +361,11 @@ Authorization
 Read more in the [overview](../Administration/ManagingUsers/README.md).
 
 
-Foxx
-----
+Foxx and authorization
+----------------------
 
-* the [cookie session transport](../Foxx/Reference/Sessions/Transports/Cookie.md) now supports all options supported by the [cookie method of the response object](../Foxx/Reference/Routers/Response.md#cookie).
+* the [cookie session transport](../Foxx/Reference/Sessions/Transports/Cookie.md) now supports
+  all options supported by the [cookie method of the response object](../Foxx/Reference/Routers/Response.md#cookie).
 
 * it's now possible to provide your own version of the `graphql-sync` module when using the [GraphQL extensions for Foxx](../Foxx/Reference/GraphQL.md) by passing a copy of the module using the new _graphql_ option.
 

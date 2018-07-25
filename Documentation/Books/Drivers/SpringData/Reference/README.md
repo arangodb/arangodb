@@ -8,7 +8,7 @@ The `ArangoTemplate` class is the default implementation of the operations inter
 
 # Repositories
 
-## Introduction
+## Introduction to repositories
 
 Spring Data Commons provides a composable repository infrastructure which Spring Data ArangoDB is built on. These allow for interface-based composition of repositories consisting of provided default implementations for certain interfaces (like `CrudRepository`) and custom implementations for other methods.
 
@@ -352,7 +352,7 @@ repository.findByName(sort, "Tony");
 
 # Mapping
 
-## Introduction
+## Introduction to mapping
 
 In this section we will describe the features and conventions for mapping Java objects to documents and how to override those conventions with annotation based mapping metadata.
 

@@ -190,16 +190,15 @@ IResearchViewDBServer::IResearchViewDBServer(
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
     uint64_t planVersion
-): LogicalView(vocbase, info, planVersion) {
+): LogicalViewClusterInfo(vocbase, info, planVersion) {
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
   _collections.clear(); // ensure view distructors called before mutex is deallocated
 }
 
-arangodb::Result IResearchViewDBServer::appendVelocyPack(
+arangodb::Result IResearchViewDBServer::appendVelocyPackDetailed(
   arangodb::velocypack::Builder& builder,
-  bool detailed,
   bool //forPersistence
 ) const {
   if (!builder.isOpenObject()) {
@@ -209,50 +208,16 @@ arangodb::Result IResearchViewDBServer::appendVelocyPack(
     );
   }
 
-  builder.add(
-    arangodb::StaticStrings::DataSourceType,
-    arangodb::velocypack::Value(type().name())
-  );
-
-  if (!detailed) {
-    return arangodb::Result();
-  }
-
-  builder.add(
-    StaticStrings::PropertiesField,
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-  );
-
   {
     SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
 
-    if (!_meta->json(builder, &IResearchViewMeta::DEFAULT())) {
-      builder.close(); // close StaticStrings::PropertiesField
-
+    if (!_meta->json(builder)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to generate definition while generating properties jSON for IResearch View in database '") + vocbase().name() + "'"
       );
     }
   }
-
-  {
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_collections' can be asynchronously modified
-
-    builder.add(
-      StaticStrings::CollectionsField,
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array)
-    );
-
-    for (auto& entry: _collections) {
-      builder.add(arangodb::velocypack::Value(entry.first));
-    }
-
-    builder.close(); // close StaticStrings::CollectionsField
-  }
-
-  builder.close(); // close StaticStrings::PropertiesField
 
   return arangodb::Result();
 }
@@ -353,24 +318,15 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   ); // type required for proper factory selection
 
   {
-    builder.add(
-      StaticStrings::PropertiesField,
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-    );
+    SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
 
-    {
-      SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
+    if (!_meta->json(builder)) {
+      builder.close(); // close StaticStrings::PropertiesField
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().name() << "'";
 
-      if (!_meta->json(builder)) {
-        builder.close(); // close StaticStrings::PropertiesField
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().name() << "'";
-
-        return nullptr;
-      }
+      return nullptr;
     }
-
-    builder.close(); // close StaticStrings::PropertiesField
   }
 
   builder.close();
@@ -459,9 +415,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       new IResearchViewDBServer(vocbase, info, *feature, planVersion)
     );
 
-    auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-    auto props = json.get(StaticStrings::PropertiesField);
-    auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
+    auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
     std::string error;
     IResearchViewMeta meta;
 
@@ -672,11 +626,11 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
 }
 
 arangodb::Result IResearchViewDBServer::updateProperties(
-  arangodb::velocypack::Slice const& properties,
+  arangodb::velocypack::Slice const& slice,
   bool partialUpdate,
   bool doSync
 ) {
-  if (!properties.isObject()) {
+  if (!slice.isObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid properties supplied while updating IResearch View in database '") + vocbase().name() + "'"
@@ -690,13 +644,13 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   static const std::function<bool(irs::string_ref const& key)> propsAcceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != StaticStrings::CollectionsField && key != StaticStrings::LinksField; // ignored fields
+    return key != StaticStrings::LinksField; // ignored fields
   };
   arangodb::velocypack::Builder props;
 
   props.openObject();
 
-  if (!mergeSliceSkipKeys(props, properties, propsAcceptor)) {
+  if (!mergeSliceSkipKeys(props, slice, propsAcceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failure to generate definition while updating IResearch View in database '") + vocbase().name() + "'"
@@ -727,19 +681,6 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   WriteMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // '_collections' can be asynchronously read
 
-  // ...........................................................................
-  // update per-cid views
-  // ...........................................................................
-
-  for (auto& entry: _collections) {
-    auto res =
-      entry.second->updateProperties(props.slice(), partialUpdate, doSync);
-
-    if (!res.ok()) {
-      return res; // fail on first failure
-    }
-  }
-
   {
     SCOPED_LOCK(_meta->write());
 
@@ -754,7 +695,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
     feature->asyncNotify();
   }
 
-  if (!properties.hasKey(StaticStrings::LinksField)) {
+  if (!slice.hasKey(StaticStrings::LinksField) && partialUpdate) {
     return arangodb::Result();
   }
 
@@ -763,7 +704,10 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   // ...........................................................................
 
   std::unordered_set<TRI_voc_cid_t> collections;
-  auto links = properties.get(StaticStrings::LinksField);
+  auto links = slice.hasKey(StaticStrings::LinksField)
+             ? slice.get(StaticStrings::LinksField)
+             : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
+
 
   if (partialUpdate) {
     return IResearchLinkHelper::updateLinks(

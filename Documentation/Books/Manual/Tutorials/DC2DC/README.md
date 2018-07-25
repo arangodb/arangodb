@@ -1,6 +1,11 @@
 <!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Datacenter to datacenter Replication
 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
 ## About
 
 At some point in the growth of a database, there comes a need for
@@ -67,7 +72,7 @@ ArangoSync is not a good solution when one of the following applies:
 
 To use ArangoSync you need the following:
 
-- Two datacenters, each running an ArangoDB Enterprise cluster, version 3.3 or higher.
+- Two datacenters, each running an ArangoDB Enterprise Edition cluster, version 3.3 or higher.
 - A network connection between both datacenters with accessible endpoints
   for several components (see individual components for details).
 - TLS certificates for ArangoSync master instances (can be self-signed).
@@ -98,7 +103,7 @@ consult the [reference manual](../../Deployment/DC2DC/README.md).
 ### ArangoDB cluster
 
 Datacenter to datacenter replication requires an ArangoDB cluster in both data centers,
-configured with the `rocksdb` storage engine.
+configured with the RocksDB storage engine.
 
 Since the cluster agents are so critical to the availability of both the ArangoDB and the ArangoSync cluster,
 it is recommended to run agents on dedicated machines. Consider these machines "pets".

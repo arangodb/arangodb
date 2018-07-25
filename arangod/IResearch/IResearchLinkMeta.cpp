@@ -74,13 +74,15 @@ IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
   : _analyzers(mask),
     _fields(mask),
     _includeAllFields(mask),
-    _trackListPositions(mask) {
+    _trackListPositions(mask),
+    _trackValues(mask) {
 }
 
 IResearchLinkMeta::IResearchLinkMeta()
   : //_fields(<empty>), // no fields to index by default
     _includeAllFields(false), // true to match all encountered fields, false match only fields in '_fields'
-    _trackListPositions(false) { // treat '_trackListPositions' as SQL-IN
+    _trackListPositions(false), // treat '_trackListPositions' as SQL-IN
+    _trackValues(ValueStorage::NONE) { // do not track values at all
   auto analyzer = IResearchAnalyzerFeature::identity();
 
   // identity-only tokenization
@@ -103,6 +105,7 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexc
     _fields = std::move(other._fields);
     _includeAllFields = std::move(other._includeAllFields);
     _trackListPositions = std::move(other._trackListPositions);
+    _trackValues = std::move(other._trackValues);
   }
 
   return *this;
@@ -114,6 +117,7 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) 
     _fields = other._fields;
     _includeAllFields = other._includeAllFields;
     _trackListPositions = other._trackListPositions;
+    _trackValues = other._trackValues;
   }
 
   return *this;
@@ -145,6 +149,10 @@ bool IResearchLinkMeta::operator==(
   }
 
   if (_trackListPositions != other._trackListPositions) {
+    return false; // values do not match
+  }
+
+  if (_trackValues != other._trackValues) {
     return false; // values do not match
   }
 
@@ -267,6 +275,41 @@ bool IResearchLinkMeta::init(
     }
   }
 
+  {
+    // optional string enum
+    static const std::string fieldName("trackValues");
+
+    mask->_trackValues = slice.hasKey(fieldName);
+
+    if (!mask->_trackValues) {
+      _trackValues = defaults._trackValues;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!field.isString()) {
+        errorField = fieldName;
+
+        return false;
+      }
+
+      static const std::unordered_map<std::string, ValueStorage::Type> policies = {
+        { "exists", ValueStorage::Type::EXISTS },
+        { "full", ValueStorage::Type::FULL },
+        { "none", ValueStorage::Type::NONE },
+      };
+      auto name = field.copyString();
+      auto itr = policies.find(name);
+
+      if (itr == policies.end()) {
+        errorField = fieldName + "=>" + name;
+
+        return false;
+      }
+
+      _trackValues = itr->second;
+    }
+  }
+
   // .............................................................................
   // process fields last since children inherit from parent
   // .............................................................................
@@ -382,6 +425,23 @@ bool IResearchLinkMeta::json(
 
   if ((!ignoreEqual || _trackListPositions != ignoreEqual->_trackListPositions) && (!mask || mask->_trackListPositions)) {
     builder.add("trackListPositions", arangodb::velocypack::Value(_trackListPositions));
+  }
+
+  if ((!ignoreEqual || _trackValues != ignoreEqual->_trackValues) && (!mask || mask->_trackValues)) {
+    struct ValueStorageHash { size_t operator()(ValueStorage::Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
+    static const std::unordered_map<ValueStorage::Type, std::string, ValueStorageHash> policies = {
+      { ValueStorage::Type::EXISTS, "exists" },
+      { ValueStorage::Type::FULL, "full" },
+      { ValueStorage::Type::NONE, "none" },
+    };
+
+    auto itr = policies.find(_trackValues);
+
+    if (itr == policies.end()) {
+      return false; // unsupported value storage policy
+    }
+
+    builder.add("trackValues", arangodb::velocypack::Value(itr->second));
   }
 
   return true;

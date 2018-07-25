@@ -6,6 +6,87 @@ upgrading to ArangoDB 3.4, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.4:
 
+
+Supported platforms
+-------------------
+
+The minimum supported architecture for the official release packages of ArangoDB is
+now the Nehalem architecture.
+
+All release packages are built with compiler optimizations that require at least
+this architecture. The following CPU features are required for running an official
+release package (note: these are all included in the Nehalem architecture and upwards):
+
+* SSE2
+* SSE3
+* SSE4.1
+* SSE4.2
+
+In case the target platform does not conform to these requirements, ArangoDB may
+not work correctly.
+
+The compiled-in architecture optimizations can be retrieved on most platforms by 
+invoking the *arangod* binary with the `--version` option. The optimization switches
+will then show up in the output in the line starting with `optimization-flags`, e.g.
+
+```
+$ arangod --version
+...
+optimization-flags: -march=nehalem -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mno-sse4a -mno-avx -mno-fma -mno-bmi2 -mno-avx2 -mno-xop -mno-fma4 -mno-avx512f -mno-avx512vl -mno-avx512pf -mno-avx512er -mno-avx512cd -mno-avx512dq -mno-avx512bw -mno-avx512ifma -mno-avx512vbmi
+platform: linux
+```
+
+Note that to get even more target-specific optimizations, it is possible for end
+users to compile ArangoDB on their own with compiler optimizations tailored to the
+target environment.
+
+
+Storage engine
+--------------
+
+In ArangoDB 3.4, the default storage engine for new installations is the RocksDB
+engine. This differs to previous versions (3.2 and 3.3), in which the default
+storage engine was the MMFiles engine.
+
+The MMFiles engine can still be explicitly selected as the storage engine for
+all new installations. It's only that the "auto" setting for selecting the storage
+engine will now use the RocksDB engine instead of MMFiles engine.
+
+In the following scenarios, the effectively selected storage engine for new
+installations will be RocksDB:
+
+* `--server.storage-engine rocksdb`
+* `--server.storage-engine auto`
+* `--server.storage-engine` option not specified
+
+The MMFiles storage engine will be selected for new installations only when 
+explicitly selected:
+
+* `--server.storage-engine mmfiles`
+
+
+To make users aware of that the RocksDB storage engine was chosen automatically
+due to an explicit other storage engine selection, 3.4 will come up with the following
+startup warning:
+
+    using default storage engine 'rocksdb', as no storage engine was explicitly selected via the `--server.storage-engine` option.
+    please note that default storage engine has changed from 'mmfiles' to 'rocksdb' in ArangoDB 3.4
+
+
+On upgrade, any existing ArangoDB installation will keep its previously selected
+storage engine. The change of the default storage engine in 3.4 is thus only relevant
+for new ArangoDB installations and/or existing cluster setups for which new server 
+nodes get added later. All server nodes in a cluster setup should use the same
+storage engine to work reliably. Using different storage engines in a cluster is
+unsupported.
+
+To validate that the different nodes in a cluster deployment use the same storage
+engine throughout the entire cluster, there is now a startup check performed by
+each coordinator. Each coordinator will contact all DB servers and check if the
+same engine on the DB server is the same as its local storage engine. In case 
+there is any discrepancy, the coordinator will abort its startup.
+
+
 Geo indexes
 -----------
 
@@ -17,7 +98,7 @@ Geo indexes
   indexes using the new on-disk format.
 
   The on-disk format for geo indexes is incompatible with the on-disk format used
-  in 3.3 and 3.2, so downgrading from 3.4 to 3.3 is not supported.
+  in 3.3 and 3.2, so an in-place downgrade from 3.4 to 3.3 is not supported.
 
 - Geo indexes will now be reported no longer as _geo1_ or _geo2_ but as type `geo`. 
   The two previously known geo index types (`geo1`and `geo2`) are **deprecated**. 
@@ -25,17 +106,27 @@ Geo indexes
   `geo1`and `geo2`.
 
 
-RocksDB engine
---------------
+RocksDB engine data storage format
+----------------------------------
 
 Installations that start using ArangoDB 3.4 will use an optimized on-disk format
 for storing documents using the RocksDB storage engine. This format cannot be used
-ArangoDB 3.3 or before, meaning it is not possible to downgrade from a fresh 3.4
-install to 3.3 or earlier when using the RocksDB engine.
+on ArangoDB 3.3 or before, meaning it is not possible to perform an in-place downgrade
+from a fresh 3.4 install to 3.3 or earlier when using the RocksDB engine. For more
+information on how to downgrade, please refer to the [Downgrading](../Downgrading/README.md)
+chapter.
 
 Installations that were originally set up with older versions of ArangoDB (e.g. 3.2
 or 3.3) will continue to use the existing on-disk format for the RocksDB engine
-even with ArangoDB 3.4.
+even with ArangoDB 3.4 (unless you install a fresh 3.4 package and restore a backup
+of your data on this fresh installation).
+
+In order to use the new binary format with existing data, it is required to 
+create a logical dump of the database data, shut down the server, erase the 
+database directory and restore the data from the logical dump. To minimize 
+downtime you can alternatively run a second arangod instance in your system,
+that replicates the original data; once the replication has reached completion, 
+you can switch the instances.
 
 
 Threading and request handling
@@ -55,17 +146,14 @@ be strictly bounded by configuration options.
 
 The number of server threads is now configured by the following startup options:
 
-- `--server.threads`: determines the maximum number of request processing threads
-  the server will start for request handling. If that number of threads is already
-  running, arangod will not start further threads for request handling
 - `--server.minimal-threads`: determines the minimum number of request processing
   threads the server will start and always keep around
+- `--server.maximal-threads`: determines the maximum number of request processing 
+  threads the server will start for request handling. If that number of threads is 
+  already running, arangod will not start further threads for request handling
 
 The actual number of request processing threads is adjusted dynamically at runtime
-and will float between `--server.minimal-threads` and `--server.threads`.
-
-To avoid overloading servers, the value of `--server.threads` should not exceed the 
-server's number of hardware threads in ArangoDB 3.4.
+and will float between `--server.minimal-threads` and `--server.maximal-threads`.
 
 
 HTTP REST API
@@ -102,6 +190,25 @@ APIs:
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
 
+- `GET /_admin/status` now returns the attribute `operationMode` instead of `mode`.
+  The previously existing attribute `writeOpsEnabled` is no longer returned and was
+  replaced with an attribute `readOnly` with the inverted meaning.
+
+- if authentication is turned on, requests to databases by users with insufficient 
+  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
+
+
+The following APIs have been added or augmented:
+
+- `POST /_api/document/{collection}` now supports repsert (replace-insert). 
+  
+  This can be achieved by using the URL parameter `overwrite=true`. When set to 
+  `true`, insertion will not fail in case of a primary key conflict, but turn 
+  into a replace operation.
+
+  When an insert turns into a replace, the previous version of the document can
+  be retrieved by passing the URL parameter `returnOld=true`
+
 - `POST /_api/aqlfunction` now includes an "isNewlyCreated" attribute that indicates
   if a new function was created or if an existing one was replaced (in addition to the
   "code" attribute, which remains 200 for replacement and 201 for creation):
@@ -124,27 +231,21 @@ APIs:
   }
   ```
 
-- `GET /_admin/status` now returns the attribute `operationMode` instead of `mode`.
-  The previously existing attribute `writeOpsEnabled` is no longer returned and was
-  replaced with an attribute `readOnly` with the inverted meaning.
-
-- if authentication is turned on, requests to databases by users with insufficient 
-  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
-
-
-The following APIs have been added or augmented:
-
-- `POST /_api/document/{collection}` now supports repsert (replace-insert). 
-  
-  This can be achieved by using the URL parameter `overwrite=true`. When set to 
-  `true`, insertion will not fail in case of a primary key conflict, but turn 
-  into a replace operation.
-
-  When an insert turns into a replace, the previous version of the document can
-  be retrieved by passing the URL parameter `returnOld=true`
-
 - APIs for view management have been added at endpoint `/_api/view`.
 
+- The REST APIs for modifying graphs at endpoint `/_api/gharial` now support returning
+  the old revision of vertices / edges after modifying them. The APIs also supports 
+  returning the just-inserted vertex / edge. This is in line with the already existing 
+  single-document functionality provided at endpoint `/_api/document`.
+
+  The old/new revisions can be accessed by passing the URL parameters `returnOld` and
+  `returnNew` to the following endpoints:
+
+  * /_api/gharial/<graph>/vertex/<collection>
+  * /_api/gharial/<graph>/edge/<collection>
+
+  The exception from this is that the HTTP DELETE verb for these APIs does not
+  support `returnOld` because that would make the existing API incompatible.
 
 The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
 
@@ -206,6 +307,11 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   Due to internal changes in AQL this is not detected anymore in 3.4, so this 
   particular warning will not be raised.
 
+  Additionally, using collections in arbitrary AQL expressions as above is unsupported
+  in a mixed cluster that is running a 3.3 coordinator and 3.4 DB server(s). The
+  DB server(s) running 3.4 will in this case not be able to use a collection in an
+  arbitrary expression, and instead throw an error.
+
 - the undocumented built-in visitor functions for AQL traversals have been removed,
   as they were based on JavaScript implementations:
   
@@ -253,7 +359,7 @@ numbers of V8 contexts to start. In terms of configuration options, these
 are:
 
 - `--javascript.v8-contexts`: the maximum number of V8 contexts to create
-- `--javascript.v8-contexts-minimim`: the minimum number of V8 contexts to 
+- `--javascript.v8-contexts-minimum`: the minimum number of V8 contexts to 
   create at server start and to keep around
 
 The default values for these startup options have not been changed in ArangoDB
@@ -264,24 +370,17 @@ less V8 contexts than 3.3.
 Startup option changes
 ----------------------
 
-The arangod, the following startup options have changed:
+For arangod, the following startup options have changed:
 
-- the hidden option `--server.maximal-threads` is now obsolete.
+- the number of server threads is now configured by the following startup options:
 
-  Setting the option will have no effect. 
-  The number of server threads is now configured by the following startup options:
-
-  - `--server.threads`: determines the maximum number of request processing threads
-    the server will start
   - `--server.minimal-threads`: determines the minimum number of request processing
+    threads the server will start
+  - `--server.maximal-threads`: determines the maximum number of request processing 
     threads the server will start
 
   The actual number of request processing threads is adjusted dynamically at runtime
-  and will float between `--server.minimal-threads` and `--server.threads`. Thus the
-  value configured for `--server.threads` should not greatly exceed the server's number
-  of hardware threads.
-
-- the option `--server.maximal-queue-size` has been renamed to `--server.queue-size`.
+  and will float between `--server.minimal-threads` and `--server.maximal-threads`. 
 
 - the default value for the existing startup option `--javascript.gc-interval`
   has been increased from every 1000 to every 2000 requests, and the default value
@@ -301,6 +400,14 @@ The arangod, the following startup options have changed:
 
   As direct upgrades from ArangoDB 3.0 to 3.4 or from 3.1 to 3.4 are not supported,
   this option has been removed in 3.4.
+
+- the startup option `--server.session-timeout` has been obsoleted. Setting this 
+  option will not have any effect.
+
+- the option `--replication.automatic-failover` was renamed to `--replication.active-failover`
+
+  Using the old option name will still work in ArangoDB 3.4, but support for the old 
+  option name will be removed in future versions of ArangoDB.
 
 
 Permissions
@@ -339,6 +446,17 @@ As it is not safe at all to use this protocol, the support for it has also
 been stopped in ArangoDB. End users that use SSLv2 for connecting to ArangoDB
 should change the protocol from SSLv2 to TLSv12 if possible, by adjusting
 the value of the `--ssl.protocol` startup option.
+
+
+Mixed-engine clusters
+---------------------
+
+Starting a cluster with coordinators and DB servers using different storage 
+engines is not supported. Doing it anyway will now log an error and abort a 
+coordinator's startup.
+
+Previous versions of ArangoDB did not detect the usage of different storage
+engines in a cluster, but the runtime behavior of the cluster was undefined.
 
 
 Client tools

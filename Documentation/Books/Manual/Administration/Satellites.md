@@ -1,7 +1,10 @@
 Satellite Collections
 =====================
 
-**This feature is only available in the Enterprise Edition.**
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
 When doing Joins in an ArangoDB cluster data has to exchanged between different servers.
 

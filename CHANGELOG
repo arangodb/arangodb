@@ -6,21 +6,57 @@ devel
   the document that is to be updated, replaced or removed, respectively, or a
   document not found error is returned.
 
+* Added load balancer support and user-restriction to async jobs API.
+
+  If an async job is accessed on a different coordinator than where it was
+  created, the request(s) will be forwarded to the correct coordinator. If a
+  job is accessed by a different user than the one who created it, the request
+  will be denied.
+
+* switch default storage engine from MMFiles to RocksDB
+
+  In ArangoDB 3.4, the default storage engine for new installations is the RocksDB
+  engine. This differs to previous versions (3.2 and 3.3), in which the default
+  storage engine was the MMFiles engine.
+
+  The MMFiles engine can still be explicitly selected as the storage engine for
+  all new installations. It's only that the "auto" setting for selecting the storage
+  engine will now use the RocksDB engine instead of MMFiles engine.
+
+  In the following scenarios, the effectively selected storage engine for new
+  installations will be RocksDB:
+
+  * `--server.storage-engine rocksdb`
+  * `--server.storage-engine auto`
+  * `--server.storage-engine` option not specified
+
+  The MMFiles storage engine will be selected for new installations only when
+  explicitly selected:
+
+  * `--server.storage-engine mmfiles`
+
+  On upgrade, any existing ArangoDB installation will keep its previously selected
+  storage engine. The change of the default storage engine is thus only relevant
+  for new ArangoDB installations and/or existing cluster setups for which new server
+  nodes get added later. All server nodes in a cluster setup should use the same
+  storage engine to work reliably. Using different storage engines in a cluster is
+  unsupported.
+
 * added collection.indexes() as an alias for collection.getIndexes()
 
 * disable V8 engine and JavaScript APIs for agency nodes
 
 * renamed MMFiles engine compactor thread from "Compactor" to "MMFilesCompactor".
-  
+
   This change will be visible only on systems which allow assigning names to
   threads.
 
 * added configuration option `--rocksdb.sync-interval`
 
-  This option specifies interval (in milliseconds) that ArangoDB will use to 
-  automatically synchronize data in RocksDB's write-ahead log (WAL) files to 
-  disk. Automatic syncs will only be performed for not-yet synchronized data, 
-  and only for operations that have been executed without the *waitForSync* 
+  This option specifies interval (in milliseconds) that ArangoDB will use to
+  automatically synchronize data in RocksDB's write-ahead log (WAL) files to
+  disk. Automatic syncs will only be performed for not-yet synchronized data,
+  and only for operations that have been executed without the *waitForSync*
   attribute.
 
   Automatic synchronization is performed by a background thread. The default
@@ -31,20 +67,16 @@ devel
 * PR #5857: RocksDB engine would frequently request a new DelayToken.  This caused
   excessive write delay on the next Put() call.  Alternate approach taken.
 
-* changed the thread handling in the scheduler. `--server.threads` will be
+* changed the thread handling in the scheduler. `--server.maximal-threads` will be
   the maximum number of threads for the scheduler.
 
-* The hidden option `--server.maximal-threads` is now obsolete.
-
-* The hidden options `--server.queue-size`, `--server.prioN-size` (N = 1 or 2)
-  control the size of the internal queues. The defaults are sensible, do not
-  change these settings.
+* The option `--server.threads` is now obsolete.
 
 * use sparse indexes in more cases now, when it is clear that the index attribute
   value cannot be null
 
 * introduce SingleRemoteOperationNode via "optimize-cluster-single-document-operations"
-  optimizer rule, which triggers single document operations directly from the coordinator 
+  optimizer rule, which triggers single document operations directly from the coordinator
   instead of using a full-featured AQL setup. This saves cluster roundtrips.
 
   Queries directly referencing the document key benefit from this:
@@ -370,7 +402,7 @@ devel
 
 * fixed agency restart from compaction without data
 
-* fixed agency's log compaction for internal issue #2249 
+* fixed agency's log compaction for internal issue #2249
 
 * only load Plan and Current from agency when actually needed
 
@@ -378,7 +410,7 @@ devel
 v3.3.13 (XXXX-XX-XX)
 --------------------
 
-* fixed issue #5827: Batch request handling incompatible with .NET's default 
+* fixed issue #5827: Batch request handling incompatible with .NET's default
   ContentType format
 
 
@@ -1296,7 +1328,7 @@ v3.2.12 (2018-02-27)
 
 * fix internal bug #1726: supervision failed to remove multiple
   removed servers from health UI
-  
+
 * fixed internal issue #1969 - command apt-get purge/remove arangodb3e was failing
 
 * fixed a bug where supervision tried to deal with shards of virtual collections

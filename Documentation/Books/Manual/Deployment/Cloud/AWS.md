@@ -11,7 +11,8 @@ still possible, and again, a quite common scenario.
 
 After having initialized your preferred AWS instance, with one of the ArangoDB supported
 operating systems, using the [ArangoDB Starter](../ArangoDBStarter/README.md),
-performing a [Manual Deployment](../Manually/README.md), or using [Kubernetes](../Kubernetes/README.md), 
+performing a [Manual Deployment](../Manually/README.md),
+or using [Kubernetes](../Kubernetes/README.md), 
 are all valid options to deploy on AWS. Please refer to the corresponding chapters for further 
 information.
 
