@@ -129,7 +129,7 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const*);
 
 #ifdef USE_ENTERPRISE
-void distributeInClusterRuleSmartEdgeCollection(
+ExecutionNode* distributeInClusterRuleSmartEdgeCollection(
     ExecutionPlan*,
     SubqueryNode* snode,
     ExecutionNode* node,
@@ -209,7 +209,7 @@ void patchUpdateStatementsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// merges filter nodes into graph traversal nodes
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const* rule);
-  
+
 /// @brief removes filter nodes already covered by the traversal and removes unused variables
 void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                      OptimizerRule const* rule);
@@ -225,10 +225,10 @@ void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
-  
+
 /// @brief replace FILTER and SORT containing DISTANCE function
 void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
-  
+
 /// @brief replace FULLTEXT function
 void fulltextIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
 
