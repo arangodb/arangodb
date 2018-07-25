@@ -18,7 +18,7 @@ Converting JSON pretty printed files into JSONlines format
 
 [_arangoimport_](../Programs/Arangoimport/README.md) may perform better with [_JSONlines_](http://jsonlines.org/) formatted input files.
 
-Depending on the actual formatting of a JSON input file processing large data with lots of objects (that requires reading all them first into memory) may be optimized using JSONlines. An input with pretty printed JSON objects within an array can be converted into JSON object per line using [_jq_](http://stedolan.github.io/jq/) command line tool. Converted data can be validated and processed faster in this case.
+Depending on the actual formatting of a JSON input file processing large data with lots of objects (that requires reading all them first into memory) it may be optimized using JSONlines. An input with pretty printed JSON objects within an array can be converted into JSON object per line using [_jq_](http://stedolan.github.io/jq/) command line tool. Converted data can be validated and processed faster in this case.
 
 You can easily use the `jq` command line tool for this conversion:
     
