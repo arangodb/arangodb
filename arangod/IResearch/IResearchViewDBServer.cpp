@@ -257,14 +257,33 @@ arangodb::Result IResearchViewDBServer::drop(TRI_voc_cid_t cid) noexcept {
     }
 
     return res;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      e.code(),
+      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+    );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+    );
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "'";
     IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+    );
   }
 
   return arangodb::Result(TRI_ERROR_INTERNAL);
@@ -605,6 +624,13 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
         reader.add(*rdr);
       }
     }
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while collecting readers for snapshot of DBServer IResearch view '" << id()
+      << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+
+    return nullptr;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while collecting readers for snapshot of DBServer IResearch view '" << id()
