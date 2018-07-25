@@ -98,7 +98,7 @@ devel
 * if authentication is turned on requests to databases by users with insufficient rights
  will be answered with the HTTP forbidden (401) response.
 
-* upgraded bundled RocksDB library version to 5.14
+* upgraded bundled RocksDB library version to 5.15
 
 * added key generators `uuid` and `padded`
 

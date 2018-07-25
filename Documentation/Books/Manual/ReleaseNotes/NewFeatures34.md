@@ -175,7 +175,7 @@ to RocksDB collections, so it should be used with extreme care.
 
 ### RocksDB library upgrade
 
-The version of the bundled RocksDB library was upgraded from 5.9 to 5.14.2.
+The version of the bundled RocksDB library was upgraded from 5.9 to 5.15.
 
 
 Collection and document operations
