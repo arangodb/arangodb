@@ -51,7 +51,7 @@ Some relevant log topics available in ArangoDB 3 are:
 - `startup`: information about server startup and shutdown
 - `threads`: information about threads
 
-See more [log levels](../../../HTTP/AdministrationAndMonitoring/index.html#modify-and-return-the-current-server-loglevel)
+See more [log levels](../../../HTTP/AdministrationAndMonitoring/index.html#modify-and-return-the-current-server-log-level)
 
 ### Log outputs
 
