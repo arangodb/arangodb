@@ -119,9 +119,9 @@ CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
 CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) {
   let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex/" + encodeURIComponent(name);
   if (dropCollection === true) {
-    uri += "?dropCollection=true";
+    uri += "?dropCollections=true";
   } else {
-    uri += "?dropCollection=false";
+    uri += "?dropCollections=false";
   }
   const requestResult = arangosh.checkRequestResult(db._connection.DELETE(uri));
   const graph = requestResult.graph;
@@ -139,9 +139,9 @@ CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) 
 CommonGraph.prototype._deleteEdgeDefinition = function (name, dropCollection = false) {
   let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + encodeURIComponent(name);
   if (dropCollection === true) {
-    uri += "?dropCollection=true";
+    uri += "?dropCollections=true";
   } else {
-    uri += "?dropCollection=false";
+    uri += "?dropCollections=false";
   }
 
   const requestResult = arangosh.checkRequestResult(db._connection.DELETE(uri));
