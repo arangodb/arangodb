@@ -17,7 +17,7 @@ if [ "$os" == linux ]; then
 elif [ "$os" == mac ]; then
     type="${type}_${os}"
 else
-    echo "$0: unknown engine '$os', expecting 'linux' or 'mac'"
+    echo "$0: unknown os '$os', expecting 'linux' or 'mac'"
     exit 1
 fi
 

@@ -923,13 +923,6 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
     return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
   }
 
-  builder.add(
-    StaticStrings::PropertiesField,
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-  );
-
-  auto closePropertiesField = // close StaticStrings::PropertiesField
-    irs::make_finally([&builder]()->void { builder.close(); });
   std::vector<std::string> collections;
 
   {
@@ -1501,9 +1494,7 @@ int IResearchView::insert(
     new IResearchView(vocbase, info, *feature, planVersion)
   );
   auto& impl = reinterpret_cast<IResearchView&>(*view);
-  auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-  auto props = json.get(StaticStrings::PropertiesField);
-  auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
+  auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
   if (!impl._meta->init(properties, error)
@@ -1844,11 +1835,6 @@ arangodb::Result IResearchView::updateProperties(
     arangodb::velocypack::Slice const& slice,
     bool partialUpdate
 ) {
-  if (slice.isObject() && !slice.hasKey(StaticStrings::PropertiesField)) {
-    return arangodb::Result(); // nothing to update
-  }
-
-  auto properties = slice.get(StaticStrings::PropertiesField);
   std::string error;
   IResearchViewMeta meta;
   WriteMutex mutex(_mutex); // '_metaState' can be asynchronously read
@@ -1861,7 +1847,7 @@ arangodb::Result IResearchView::updateProperties(
     IResearchViewMeta* metaPtr = viewMeta.get();
     auto& initialMeta = partialUpdate ? *metaPtr : IResearchViewMeta::DEFAULT();
 
-    if (!meta.init(properties, error, initialMeta)) {
+    if (!meta.init(slice, error, initialMeta)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
 
@@ -1875,7 +1861,8 @@ arangodb::Result IResearchView::updateProperties(
 
   mutex.unlock(true); // downgrade to a read-lock
 
-  if (!properties.hasKey(StaticStrings::LinksField)) {
+  if (!slice.hasKey(StaticStrings::LinksField)
+      && (partialUpdate || _inRecovery.load())) { // ignore missing links coming from WAL (inRecovery)
     return res;
   }
 
@@ -1886,7 +1873,9 @@ arangodb::Result IResearchView::updateProperties(
   // ...........................................................................
 
   std::unordered_set<TRI_voc_cid_t> collections;
-  auto links = properties.get(StaticStrings::LinksField);
+  auto links = slice.hasKey(StaticStrings::LinksField)
+             ? slice.get(StaticStrings::LinksField)
+             : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
 
   if (partialUpdate) {
     mtx.unlock(); // release lock

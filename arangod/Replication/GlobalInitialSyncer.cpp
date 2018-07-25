@@ -197,21 +197,21 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       // change database name in place
       auto configurationCopy = _state.applier;
       configurationCopy._database = nameSlice.copyString();
-      DatabaseInitialSyncer syncer(*vocbase, configurationCopy);
 
-      syncer.useAsChildSyncer(_state.master, _state.barrier.id,
-                              _state.barrier.updateTime, _batch.id,
-                              _batch.updateTime);
+      auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
+      syncer->useAsChildSyncer(_state.master, _state.barrier.id,
+                               _state.barrier.updateTime, _batch.id,
+                               _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
-      Result r = syncer.runWithInventory(false, dbInventory);
+      Result r = syncer->runWithInventory(false, dbInventory);
       if (r.fail()) {
         return r;
       }
 
       // we need to pass on the update times to the next syncer
-      _state.barrier.updateTime = syncer.barrierUpdateTime();
-      _batch.updateTime = syncer.batchUpdateTime();
+      _state.barrier.updateTime = syncer->barrierUpdateTime();
+      _batch.updateTime = syncer->batchUpdateTime();
 
       if (!_state.isChildSyncer) {
         _batch.extend(_state.connection, _progress);

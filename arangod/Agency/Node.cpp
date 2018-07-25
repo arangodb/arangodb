@@ -115,7 +115,7 @@ Slice Node::slice() const {
   }
 
   // Empty object
-  return arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+  return arangodb::velocypack::Slice::emptyObjectSlice();
 }
 
 
@@ -987,7 +987,7 @@ std::pair<Slice, bool> Node::hasAsSlice(
 
   // *this is bogus initializer
   std::pair<Slice, bool> ret_pair =
-    {arangodb::basics::VelocyPackHelper::EmptyObjectValue(), false};
+    {arangodb::velocypack::Slice::emptyObjectSlice(), false};
 
   // retrieve node, throws if does not exist
   try {
@@ -1129,7 +1129,7 @@ std::pair<Slice, bool> Node::hasAsArray(
 
   // *this is bogus initializer
   std::pair<Slice, bool> ret_pair =
-    {arangodb::basics::VelocyPackHelper::EmptyObjectValue(), false};
+    {arangodb::velocypack::Slice::emptyObjectSlice(), false};
 
   // retrieve node, throws if does not exist
   try {

@@ -2162,6 +2162,27 @@ std::string TRI_RidToString(TRI_voc_rid_t rid) {
   return HybridLogicalClock::encodeTimeStamp(rid);
 }
 
+/// encodes the uint64_t timestamp into the provided result buffer
+/// the result buffer must be at least 11 chars long
+/// the length of the encoded value and the start position into
+/// the result buffer are returned by the function
+std::pair<size_t, size_t> TRI_RidToString(TRI_voc_rid_t rid, char* result) {
+  if (rid <= tickLimit) {
+    std::pair<size_t, size_t> pos{0, 0};
+    pos.second = arangodb::basics::StringUtils::itoa(rid, result);
+    return pos;
+  }
+  return HybridLogicalClock::encodeTimeStamp(rid, result);
+}
+
+/// encodes the uint64_t timestamp into a temporary velocypack ValuePair,
+/// using the specific temporary result buffer
+/// the result buffer must be at least 11 chars long
+arangodb::velocypack::ValuePair TRI_RidToValuePair(TRI_voc_rid_t rid, char* result) {
+  auto positions = TRI_RidToString(rid, result);
+  return arangodb::velocypack::ValuePair(&result[0] + positions.first, positions.second, velocypack::ValueType::String);
+}
+
 /// @brief Convert a string into a revision ID, no check variant
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool warn) {
   bool isOld;

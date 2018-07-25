@@ -47,7 +47,13 @@ RocksDBSavePoint::RocksDBSavePoint(
 
 RocksDBSavePoint::~RocksDBSavePoint() {
   if (!_handled) {
-    rollback();
+    try {
+      rollback();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::ROCKSDB) << "caught exception during rollback to savepoint: " << ex.what();
+    } catch (...) {
+      // whatever happens during rollback, no exceptions are allowed to escape from here
+    }
   }
 }
 
@@ -152,16 +158,25 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
 
 // =================== RocksDBTrxMethods ====================
   
-void RocksDBTrxMethods::DisableIndexing() {
-  _state->_rocksTransaction->DisableIndexing();
+bool RocksDBTrxMethods::DisableIndexing() {
+  if (!_indexingDisabled) {
+    _state->_rocksTransaction->DisableIndexing();
+    _indexingDisabled = true;
+    return true;
+  }
+  return false;
 }
 
 void RocksDBTrxMethods::EnableIndexing() {
-  _state->_rocksTransaction->EnableIndexing();
+  if (_indexingDisabled) {
+    _state->_rocksTransaction->EnableIndexing();
+    _indexingDisabled = false;
+  }
 }
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : RocksDBMethods(state) {}
+    : RocksDBMethods(state),
+      _indexingDisabled(false) {}
 
 bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
                                RocksDBKey const& key) {

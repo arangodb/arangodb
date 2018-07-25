@@ -52,13 +52,13 @@ NS_BEGIN(iresearch)
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enum of possible ways to process list values
+/// @brief enum of possible ways to store values in the view
 ////////////////////////////////////////////////////////////////////////////////
-namespace ListValuation {
+namespace ValueStorage {
   enum Type {
-    IGNORED, // skip indexing list value
-    ORDERED, // index using relative offset as attribute name
-    MULTIVALUED, // index by treating listed values as alternatives (SQL IN)
+    NONE, // do not store values in the view
+    EXISTS, // only track value existance
+    FULL, // store full value in the view
   };
 }
 
@@ -71,6 +71,7 @@ struct IResearchLinkMeta {
     bool _fields;
     bool _includeAllFields;
     bool _trackListPositions;
+    bool _trackValues;
     explicit Mask(bool mask = false) noexcept;
   };
 
@@ -81,6 +82,7 @@ struct IResearchLinkMeta {
   Fields _fields; // explicit list of fields to be indexed with optional overrides
   bool _includeAllFields; // include all fields or only fields listed in '_fields'
   bool _trackListPositions; // append relative offset in list to attribute name (as opposed to without offset)
+  ValueStorage::Type _trackValues; // how values should be stored inside the view
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy assignment operator !!!
   // NOTE: if adding fields don't forget to modify the move assignment operator !!!

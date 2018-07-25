@@ -396,8 +396,8 @@ class RocksDBEngine final : public StorageEngine {
   }
   
   /// @brief returns a pointer to the sync thread
+  /// note: returns a nullptr if automatic syncing is turned off!
   RocksDBSyncThread* syncThread() const {
-    TRI_ASSERT(_syncThread);
     return _syncThread.get();
   }
 
@@ -456,6 +456,7 @@ class RocksDBEngine final : public StorageEngine {
   TRI_voc_tick_t _releasedTick;
   
   /// Background thread handling WAL syncing
+  /// note: this is a nullptr if automatic syncing is turned off!
   std::unique_ptr<RocksDBSyncThread> _syncThread;
 
   // WAL sync interval, specified in milliseconds by end user, but uses microseconds internally
