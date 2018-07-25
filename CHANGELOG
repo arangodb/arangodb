@@ -1,4 +1,4 @@
-v3.3.13 (XXXX-XX-XX)
+v3.3.13 (2018-07-25)
 --------------------
 
 * fixed issue #5977: Unexpected execution plan when subquery contains COLLECT
