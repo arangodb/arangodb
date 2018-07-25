@@ -33,6 +33,7 @@ var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getModifyQueryResults = helper.getModifyQueryResults;
+var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 var assertQueryError = helper.assertQueryError;
 
 var sanitizeStats = function (stats) {
@@ -116,6 +117,7 @@ function ahuacatlModifySuite () {
 
 function ahuacatlRemoveSuite () {
   var errors = internal.errors;
+  var cn =  "UnitTestsAhuacatlRemove";
   var cn1 = "UnitTestsAhuacatlRemove1";
   var cn2 = "UnitTestsAhuacatlRemove2";
   var c1;
@@ -147,6 +149,7 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop(cn);
       db._drop(cn1);
       db._drop(cn2);
       c1 = null;
@@ -438,7 +441,31 @@ function ahuacatlRemoveSuite () {
       assertEqual(90, edge.count());
       assertEqual(expected, sanitizeStats(actual));
       db._drop("UnitTestsAhuacatlEdge");
-    }
+    },
+
+    testRemoveObjectWithShardedNonMatchingPattern : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 10, writesIgnored: 90 };
+      const query = `
+        FOR d IN ${cn}
+          REMOVE { _key: d._key, someAttr: '5' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      assertEqual(90, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
 
   };
 }
@@ -1073,6 +1100,7 @@ function ahuacatlInsertSuite () {
 
 function ahuacatlUpdateSuite () {
   var errors = internal.errors;
+  var cn =  "UnitTestsAhuacatlUpdate";
   var cn1 = "UnitTestsAhuacatlUpdate1";
   var cn2 = "UnitTestsAhuacatlUpdate2";
   var cn3 = "UnitTestsAhuacatlUpdate3";
@@ -1115,6 +1143,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop(cn);
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
@@ -1614,7 +1643,139 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("value"));
         assertFalse(doc.hasOwnProperty("wantToFind"));
       }
-    }
+    },
+
+    testReplaceObjectWithShardedNonMatchingPatternIgnore : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 10, writesIgnored: 90 };
+      const query = `
+        FOR d IN ${cn}
+          REPLACE { _key: d._key, someAttr: '5' }
+            WITH { replaced: true }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      const matchingDocs = docs.filter(x => x.someAttr % 10 === 5);
+      const nonMatchingDocs = docs.filter(x => x.someAttr % 10 !== 5);
+      assertEqual(10, matchingDocs.length);
+      assertEqual(90, nonMatchingDocs.length);
+      assertTrue(_.every(matchingDocs.map(x => x.replaced)));
+      assertTrue(_.every(nonMatchingDocs.map(x => !x.hasOwnProperty('replaced'))));
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testSimpleReplaceObjectWithShardedNonMatchingPattern : function () {
+      // tests that the shard keys *are* used as a pattern (to avoid mixed
+      // "document not found" and "cannot change shard key" errors), but
+      // not the rest of the document, which must be used exclusively for the
+      // replace.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const query = `
+        FOR d IN ${cn}
+          REPLACE { _key: d._key, someAttr: '5', replaced: true }
+            IN ${cn}
+      `;
+
+      try {
+        db._query(query);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      }
+
+      // without transactional guarantees, at least the non-matching document
+      // may not have been replaced
+      assertEqual(
+        90,
+        c.toArray().filter(x => x.someAttr !== '5' && !x.replaced).length
+      );
+    },
+
+    testUpdateObjectWithShardedNonMatchingPatternIgnore : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const expected = { writesExecuted: 10, writesIgnored: 90 };
+      const query = `
+        FOR d IN ${cn}
+          UPDATE { _key: d._key, someAttr: '5' }
+            WITH { updated: true }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      const matchingDocs = docs.filter(x => x.someAttr % 10 === 5);
+      const nonMatchingDocs = docs.filter(x => x.someAttr % 10 !== 5);
+      assertEqual(10, matchingDocs.length);
+      assertEqual(90, nonMatchingDocs.length);
+      assertTrue(_.every(matchingDocs.map(x => x.updated)));
+      assertTrue(_.every(nonMatchingDocs.map(x => !x.hasOwnProperty('updated'))));
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testSimpleUpdateObjectWithShardedNonMatchingPattern : function () {
+      // tests that the shard keys *are* used as a pattern (to avoid mixed
+      // "document not found" and "cannot change shard key" errors), but
+      // not the rest of the document, which must be used exclusively for the
+      // update.
+
+      const c = db._create(cn, {numberOfShards:5, shardKeys: ["someAttr"]});
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i % 10 });
+      }
+
+      const query = `
+        FOR d IN ${cn}
+          UPDATE { _key: d._key, someAttr: '5', updated: true }
+            IN ${cn}
+      `;
+
+      try {
+        db._query(query);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      }
+
+      // without transactional guarantees, at least the non-matching document
+      // may not have been updated
+      assertEqual(
+        90,
+        c.toArray().filter(x => x.someAttr !== '5' && !x.updated).length
+      );
+    },
 
   };
 }
