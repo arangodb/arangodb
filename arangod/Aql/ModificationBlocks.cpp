@@ -707,8 +707,8 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
 
   // loop over all blocks
   size_t dstRow = 0;
-  for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
-    auto* res = it->get();
+  for (auto blockIt = _blocks.begin(); blockIt != _blocks.end(); ++blockIt) {
+    auto* res = blockIt->get();
 
     throwIfKilled();  // check if we were aborted
 
@@ -803,10 +803,21 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
           else {
             // use original slice for updating
             object.add(a.slice());
-            // TODO if the inKeyVariable is not set, we can leave the whole
-            // patternBuilder at none instead of adding an array of empty
-            // objects.
-            patternBuilder.add(VPackSlice::emptyObjectSlice());
+
+            // if the shard keys are available, add them to the pattern.
+            // this avoids sometimes throwing
+            // ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
+            // and sometimes ERROR_ARANGO_DOCUMENT_NOT_FOUND, in favour of
+            // always throwing the latter.
+            if (hasAllKeys(a.slice(), _collection->shardKeys())) {
+              patternBuilder.openObject();
+              for (auto const& it : _collection->shardKeys()) {
+                patternBuilder.add(it, a.slice().get(it));
+              }
+              patternBuilder.close();
+            } else {
+              patternBuilder.add(VPackSlice::emptyObjectSlice());
+            }
           }
         } else {
           wasTaken.push_back(false);
@@ -903,7 +914,7 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
     }
 
     // done with block. now unlink it and return it to block manager
-    it->release();
+    blockIt->release();
     returnBlock(res);
   }
 
@@ -1222,8 +1233,8 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
 
   // loop over all blocks
   size_t dstRow = 0;
-  for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
-    auto* res = it->get();
+  for (auto blockIt = _blocks.begin(); blockIt != _blocks.end(); ++blockIt) {
+    auto* res = blockIt->get();
 
     throwIfKilled();  // check if we were aborted
 
@@ -1318,9 +1329,21 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
           } else {
             // Use the original slice for updating
             object.add(a.slice());
-            // TODO if the inKeyVariable is not set, we can leave the whole
-            // patternBuilder at none
-            patternBuilder.add(VPackSlice::noneSlice());
+
+            // if the shard keys are available, add them to the pattern.
+            // this avoids sometimes throwing
+            // ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
+            // and sometimes ERROR_ARANGO_DOCUMENT_NOT_FOUND, in favour of
+            // always throwing the latter.
+            if (hasAllKeys(a.slice(), _collection->shardKeys())) {
+              patternBuilder.openObject();
+              for (auto const& it : _collection->shardKeys()) {
+                patternBuilder.add(it, a.slice().get(it));
+              }
+              patternBuilder.close();
+            } else {
+              patternBuilder.add(VPackSlice::emptyObjectSlice());
+            }
           }
         } else {
           wasTaken.push_back(false);
@@ -1415,7 +1438,7 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
     }
 
     // done with block. now unlink it and return it to block manager
-    it->release();
+    blockIt->release();
     returnBlock(res);
   }
 
@@ -1428,4 +1451,15 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
   }
 
   return result;
+}
+
+bool ModificationBlock::hasAllKeys(velocypack::Slice const slice,
+                                   std::vector<std::string> const& vector) {
+  for (auto const& it : vector) {
+    if (!slice.hasKey(it)) {
+      return false;
+    }
+  }
+
+  return true;
 }

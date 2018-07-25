@@ -76,6 +76,8 @@ class ModificationBlock : public ExecutionBlock {
   ///        no more results.
   ExecutionState getHasMoreState() override;
 
+  static bool hasAllKeys(velocypack::Slice const slice,
+                         std::vector<std::string> const& vector);
 
  protected:
   /// @brief output register ($OLD)
@@ -144,6 +146,7 @@ class UpdateBlock : public ModificationBlock {
  protected:
   /// @brief the actual work horse for updating data
   std::unique_ptr<AqlItemBlock> work() override final;
+
 };
 
 class ReplaceBlock : public ModificationBlock {
