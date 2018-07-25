@@ -2862,9 +2862,6 @@ AqlValue Functions::RegexSplit(arangodb::aql::Query* query,
                                VPackFunctionParameters const& parameters) {
     static char const* AFN = "REGEX_SPLIT";
     ValidateParameters(parameters, AFN, 2, 4);
-    bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
-    transaction::StringBufferLeaser buffer(trx);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
     
     int64_t limitNumber = -1;
     if (parameters.size() == 4) {
@@ -2884,16 +2881,6 @@ AqlValue Functions::RegexSplit(arangodb::aql::Query* query,
         }
     }
     
-    transaction::StringBufferLeaser regexBuffer(trx);
-    AqlValue aqlSeparatorExpression;
-    if (parameters.size() >= 2) {
-        aqlSeparatorExpression = ExtractFunctionParameterValue(parameters, 1);
-        if (aqlSeparatorExpression.isObject()) {
-            ::registerInvalidArgumentWarning(query, AFN);
-            return AqlValue(AqlValueHintNull());
-        }
-    }
-    
     AqlValueMaterializer materializer(trx);
     AqlValue aqlValueToSplit = ExtractFunctionParameterValue(parameters, 0);
     
@@ -2906,12 +2893,19 @@ AqlValue Functions::RegexSplit(arangodb::aql::Query* query,
         return AqlValue(result);
     }
     
-    // Get ready for ICU
-    Stringify(trx, adapter, aqlValueToSplit.slice());
-    UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-    bool isEmptyExpression = false;
+    bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
+
+    // build pattern from parameter #1
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+    AqlValue regex = ExtractFunctionParameterValue(parameters, 1);
+    ::appendAsString(trx, adapter, regex);
+    bool isEmptyExpression = (buffer->length() == 0);
+
     // the matcher is owned by the query!
-    ::RegexMatcher* matcher = query->regexCache()->buildSplitMatcher(aqlSeparatorExpression, trx, isEmptyExpression);
+    ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(
+      buffer->c_str(), buffer->length(), caseInsensitive);
     
     if (matcher == nullptr) {
         ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -2921,6 +2915,7 @@ AqlValue Functions::RegexSplit(arangodb::aql::Query* query,
     buffer->clear();
     AqlValue value = ExtractFunctionParameterValue(parameters, 0);
     ::appendAsString(trx, adapter, value);
+    UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
     
     VPackBuilder result;
     result.openArray();
