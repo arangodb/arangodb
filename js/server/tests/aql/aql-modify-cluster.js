@@ -499,22 +499,21 @@ function ahuacatlInsertSuite () {
     testInsertDobule : function () {
       c1.truncate();
       c2.truncate();
-      var expected = { writesExecuted: 0, writesIgnored: 0 };
-      const query = `LET dog = {name:'ulf'}
-                     LET pussy = {name : 'uschi'}
-                     INSERT dog IN @@hunde
-                     INSERT pussy IN @@kartzen
+      const query = `LET d1 = {name : 'foo'}
+                     LET d2 = {name : 'bar'}
+                     INSERT d1 IN @@c1
+                     INSERT d2 IN @@c2
                      RETURN $NEW`;
-      const bind = { "@hunde" : cn1, "@kartzen" : cn2 };
-      const options = {optimizer : { rules : ["+restrict-to-single-shard","-optimize-cluster-single-document-operations", "-remove-unnecessary-remote-scatter"] } };
-
-      db._explain(query, bind, options)
-      db._query(query, bind, options)
-      //var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 INSERT { foxx: true } IN " + cn1);
-      
+      const bind = { "@c1" : cn1, "@c2" : cn2 };
+      const options = { optimizer : {
+                          rules : [ "+restrict-to-single-shard",
+                                    "-optimize-cluster-single-document-operations",
+                                    "-remove-unnecessary-remote-scatter"
+                                  ]
+                      } };
+      db._query(query, bind, options);
       assertEqual(1, c1.count());
       assertEqual(1, c2.count());
-      //assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

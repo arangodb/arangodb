@@ -3219,7 +3219,6 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                  nodeType == ExecutionNode::UPSERT);
 
 
-      //LOG_DEVEL_IF(snode) << "within SubqueryBlock";
       ExecutionNode* originalParent = nullptr;
       if (node->hasParent()) {
         auto const& parents = node->getParents();
@@ -3239,7 +3238,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
           ci->getCollection(collection->vocbase()->name(), collection->name());
       // Throws if collection is not found!
       if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
-        distributeInClusterRuleSmartEdgeCollection(
+        node = distributeInClusterRuleSmartEdgeCollection(
             plan.get(), snode, node, originalParent, wasModified);
         continue;
       }
@@ -3250,6 +3249,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
           nodeType == ExecutionNode::UPDATE) {
         if (!defaultSharding) {
           // We have to use a ScatterNode.
+          node = node->getFirstDependency(); // advance node
           continue;
         }
       }
