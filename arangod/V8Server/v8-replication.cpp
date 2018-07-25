@@ -214,7 +214,7 @@ static void SynchronizeReplication(
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  std::unique_ptr<InitialSyncer> syncer;
+  std::shared_ptr<InitialSyncer> syncer;
 
   if (applierType == APPLIER_DATABASE) { 
     // database-specific synchronization

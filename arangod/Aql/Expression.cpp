@@ -628,7 +628,7 @@ AqlValue Expression::executeSimpleExpressionArray(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(VelocyPackHelper::EmptyArrayValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -661,7 +661,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(VelocyPackHelper::EmptyObjectValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyObjectSlice());
   }
 
   // unordered map to make object keys unique afterwards
@@ -876,8 +876,8 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   parameters.reserve(n);
   destroyParameters.reserve(n);
 
-  auto guard = scopeGuard([&destroyParameters, &parameters, &n]() {
-    for (size_t i = 0; i < n; ++i) {
+  auto guard = scopeGuard([&destroyParameters, &parameters]() {
+    for (size_t i = 0; i < destroyParameters.size(); ++i) {
       if (destroyParameters[i]) {
         parameters[i].destroy();
       }
@@ -1440,7 +1440,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValue(VelocyPackHelper::EmptyArrayValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
   }
 
   // FILTER
@@ -1454,7 +1454,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
   }
 
@@ -1473,7 +1473,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
 
     VPackBuilder builder;
@@ -1515,7 +1515,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
 
     mustDestroy = localMustDestroy; // maybe we need to destroy...

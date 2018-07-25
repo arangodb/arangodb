@@ -235,12 +235,14 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesHashIndex() = delete;
 
-  MMFilesHashIndex(TRI_idx_iid_t, LogicalCollection*,
-                   arangodb::velocypack::Slice const&);
+  MMFilesHashIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesHashIndex();
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
 
   char const* typeName() const override { return "hash"; }

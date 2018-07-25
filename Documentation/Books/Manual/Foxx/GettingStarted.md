@@ -58,7 +58,10 @@ router.get('/hello-world', function (req, res) {
 
 The `router` provides the methods `get`, `post`, etc corresponding to each HTTP verb as well as the catch-all `all`. These methods indicate that the given route should be used to handle incoming requests with the given HTTP verb (or any method when using `all`).
 
-These methods take an optional path (if omitted, it defaults to `"/"`) as well as a request handler, which is a function taking the `req` ([request](Reference/Routers/Request.md)) and `res` ([response](Reference/Routers/Response.md)) objects to handle the incoming request and generate the outgoing response. If you have used the express framework in Node.js, you may already be familiar with how this works, otherwise check out [the chapter on routes](Reference/Routers/Endpoints.md).
+These methods take an optional path (if omitted, it defaults to `"/"`) as well as a request handler,
+which is a function taking the `req` ([request](Reference/Routers/Request.md))
+and `res` ([response](Reference/Routers/Response.md)) objects to handle the incoming request and generate the outgoing response.
+If you have used the express framework in Node.js, you may already be familiar with how this works, otherwise check out [the chapter on routes](Reference/Routers/Endpoints.md).
 
 The object returned by the router's methods provides additional methods to attach metadata and validation to the route. We're using `summary` and `description` to document what the route does -- these aren't strictly necessary but give us some nice auto-generated documentation. The `response` method lets us additionally document the response content type and what the response body will represent.
 
@@ -177,7 +180,8 @@ The script uses the [`db` object](../Appendix/References/DBObject.md) from the `
 
 The `_collection` method looks up a collection by name and returns `null` if no collection with that name was found. The `_createDocumentCollection` method creates a new document collection by name (`_createEdgeCollection` also exists and works analogously for edge collections).
 
-**Note**: Because we have hardcoded the collection name, multiple copies of the service installed alongside each other in the same database will share the same collection. Because this may not always be what you want, the [Foxx context](Reference/Context.md) also provides the `collectionName` method which applies a mount point specific prefix to any given collection name to make it unique to the service. It also provides the `collection` method, which behaves almost exactly like `db._collection` except it also applies the prefix before looking the collection up.
+**Note**: Because we have hardcoded the collection name, multiple copies of the service installed alongside each other in the same database will share the same collection.
+Because this may not always be what you want, the [Foxx context](Reference/Context.md) also provides the `collectionName` method which applies a mount point specific prefix to any given collection name to make it unique to the service. It also provides the `collection` method, which behaves almost exactly like `db._collection` except it also applies the prefix before looking the collection up.
 
 Next we need to tell our service about the script by adding it to the manifest file:
 
@@ -334,7 +338,8 @@ You now know how to create a Foxx service from scratch, how to handle user input
 
 * Writing a single page app? You could [store some basic assets](Reference/Assets.md) right inside your Foxx service.
 
-* Need to integrate external services? You can [make HTTP requests](Reference/Modules/README.md) from inside Foxx and use [queued jobs](Reference/Scripts.md) to perform that work in the background.
+* Need to integrate external services? You can [make HTTP requests](Reference/Modules/README.md) from inside Foxx
+  and use [queued jobs](Reference/Scripts.md) to perform that work in the background.
 
 * Tired of reinventing the wheel? Learn about [dependencies](Reference/Dependencies.md).
 

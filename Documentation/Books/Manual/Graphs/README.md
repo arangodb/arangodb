@@ -59,7 +59,8 @@ Anonymous graphs
 ----------------
 
 Sometimes you may not need all the powers of named graphs, but some of its bits may be valuable to you.
-You may use anonymous graphs in the [traversals](Traversals/README.md) and in the [Working with Edges](Edges/README.md) chapter.
+You may use anonymous graphs in the [traversals](Traversals/README.md) 
+and in the [Working with Edges](Edges/README.md) chapter.
 Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
 This gives you more freedom than the strict *named graphs*.
 
@@ -307,7 +308,12 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
 
 ### Higher volume graph examples
 
-All of the above examples are rather small so they are easier to comprehend and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/arangodb/example-datasets) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.
+All of the above examples are rather small so they are easier to comprehend and can demonstrate the way the functionality works.
+There are however several datasets freely available on the web that are a lot bigger.
+[We collected some of them with import scripts](https://github.com/arangodb/example-datasets) so you may play around with them.
+Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html)
+from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/);
+You will find importing scripts etc. in this blogpost.
 
 Cookbook examples
 -----------------

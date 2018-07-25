@@ -36,13 +36,20 @@ class LogicalCollection;
 
 class MMFilesIndex : public Index {
  public:
-  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-               std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-               bool unique, bool sparse) 
+  MMFilesIndex(
+      TRI_idx_iid_t id,
+      LogicalCollection& collection,
+      std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+      bool unique,
+      bool sparse
+  )
     : Index(id, collection, attributes, unique, sparse) {}
 
-  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-               VPackSlice const& info) 
+  MMFilesIndex(
+      TRI_idx_iid_t id,
+      LogicalCollection& collection,
+      arangodb::velocypack::Slice const& info
+  )
     : Index(id, collection, info) {}
 
 

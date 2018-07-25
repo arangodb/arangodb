@@ -258,6 +258,9 @@ std::string itoa(int64_t i);
 /// @brief converts unsigned integer to string
 std::string itoa(uint64_t i);
 
+/// @brief converts unsigned integer to string
+size_t itoa(uint64_t i, char* result);
+
 /// @brief converts integer to string
 std::string itoa(int32_t i);
 
