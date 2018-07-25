@@ -496,6 +496,31 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
+    testInsertDobule : function () {
+      c1.truncate();
+      c2.truncate();
+      var expected = { writesExecuted: 0, writesIgnored: 0 };
+      const query = `LET dog = {name:'ulf'}
+                     LET pussy = {name : 'uschi'}
+                     INSERT dog IN @@hunde
+                     INSERT pussy IN @@kartzen
+                     RETURN $NEW`;
+      const bind = { "@hunde" : cn1, "@kartzen" : cn2 };
+      const options = {optimizer : { rules : ["+restrict-to-single-shard","-optimize-cluster-single-document-operations", "-remove-unnecessary-remote-scatter"] } };
+
+      db._explain(query, bind, options)
+      db._query(query, bind, options)
+      //var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 INSERT { foxx: true } IN " + cn1);
+      
+      assertEqual(1, c1.count());
+      assertEqual(1, c2.count());
+      //assertEqual(expected, sanitizeStats(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
     testInsertNothing : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 INSERT { foxx: true } IN " + cn1);
