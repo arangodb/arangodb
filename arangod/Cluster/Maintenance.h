@@ -117,8 +117,8 @@ arangodb::Result handleChange(
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
- * @param report   Resulting agency transaction, which is to be sent
  * @param feature  Maintenance feature
+ * @param report   Resulting agency transaction, which is to be sent
  *
  * @return         Result
  */
@@ -133,13 +133,14 @@ arangodb::Result phaseOne (
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
+ * @param feature  Maintenance feature
  * @param report   Report on what we did
  *
  * @return         Result
  */
 arangodb::Result phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId, VPackBuilder& report);
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report);
 
 
 /**
@@ -170,7 +171,7 @@ arangodb::Result reportInCurrent(
  */
 arangodb::Result syncReplicatedShardsWithLeaders(
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
-  std::string const& serverId);
+  std::string const& serverId, std::vector<ActionDescription>& actions);
 
 }}
 

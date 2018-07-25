@@ -355,7 +355,7 @@ arangodb::Result arangodb::maintenance::handleChange(
     report.add(VPackValue("Plan"));
     { VPackObjectBuilder p(&report);
       report.add("Version", plan.get("Version"));}
-    result = phaseTwo(plan, current, local, serverId, report);
+    result = phaseTwo(plan, current, local, serverId, feature, report);
     if (result.ok()) {
       report.add(VPackValue("Current"));
       { VPackObjectBuilder p(&report);
@@ -524,7 +524,7 @@ template<> int indexOf<std::string> (VPackSlice const& slice, std::string const&
 
 arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
-  std::string const& serverId) {
+  std::string const& serverId, std::vector<ActionDescription>& actions) {
 
   auto pdbs = plan.get("Collections");
   auto cdbs = current.get("Collections");
@@ -580,11 +580,10 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             }
 
             auto const leader = pservers[0].copyString();
-            auto desc = ActionDescription(
-              {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
-               {COLLECTION, colname}, {SHARD, shname}, {LEADER, leader}});
-
-            //LOG_TOPIC(ERR, Logger::MAINTENANCE) << desc;
+            actions.push_back(
+              ActionDescription(
+                {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
+                 {COLLECTION, colname}, {SHARD, shname}, {LEADER, leader}}));
 
           }
         }
@@ -601,7 +600,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId, VPackBuilder& report) {
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
 
   report.add(VPackValue("phaseTwo"));
   VPackObjectBuilder p2(&report);
@@ -617,7 +616,11 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   }
 
   try {
-    result = syncReplicatedShardsWithLeaders(plan, cur, local, serverId);
+    std::vector<ActionDescription> actions;
+    result = syncReplicatedShardsWithLeaders(plan, cur, local, serverId, actions);
+    for (auto const& action : actions) {
+      feature.addAction(std::make_shared<ActionDescription>(action), true);
+    }
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "Error scheduling shards: " << e.what() << ". "

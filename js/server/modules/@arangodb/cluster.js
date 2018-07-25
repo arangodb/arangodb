@@ -601,14 +601,13 @@ function synchronizeOneShard (database, shard, planId, leader) {
         // Now start a read transaction to stop writes:
         var lockJobId = false;
         try {
-          lockJobId = startReadLockOnLeader(ep, database,
-            shard, 300); // MARK
+          lockJobId = startReadLockOnLeader(ep, database, shard, 300); 
           console.topic('heartbeat=debug', 'lockJobId:', lockJobId);
         } catch (err1) {
           console.topic('heartbeat=error', 'synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
         }
         finally {
-          cancelBarrier(ep, database, sy.barrierId);
+          cancelBarrier(ep, database, sy.barrierId); 
         }
         if (lockJobId !== false) {
           try {
