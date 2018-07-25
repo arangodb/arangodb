@@ -255,8 +255,8 @@ During view modification the following directives apply:
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr == 'valueY'`
 
-* trackValues: (optional; default: "none")
+* storeValues: (optional; default: "none")
   how should the view track the attribute values, this setting allows for
   additional value retrieval optimizations, one of:
-  * none: Do not track values by the view
-  * exists: Track only value presence, to allow use of the EXISTS() function
+  * none: Do not store values by the view
+  * id: Store only information about value presence, to allow use of the EXISTS() function

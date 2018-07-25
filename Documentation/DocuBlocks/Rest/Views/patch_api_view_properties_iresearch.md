@@ -100,7 +100,7 @@ containing the following attributes:
 @RESTSTRUCT{field-name,post_api_view_fields,array,optional,object}
 This is a recursive structure for the specific attribute path, potentially
 containing any of the following attributes:
-*analyzers*, *includeAllFields*, *trackListPositions*, *trackValues*
+*analyzers*, *includeAllFields*, *trackListPositions*, *storeValues*
 Any attributes not specified are inherited from the parent.
 
 
@@ -112,11 +112,11 @@ depth (default: false).
 The flag determines whether or not values in a lists should be treated separate
 (default: false).
 
-@RESTSTRUCT{trackValues,post_api_view_link_props,string,optional,string}
+@RESTSTRUCT{storeValues,post_api_view_link_props,string,optional,string}
 How should the view track the attribute values, this setting allows for
 additional value retrieval optimizations, one of:
-- *none*: Do not track values by the view
-- *exists*: Track only value presence, to allow use of the EXISTS() function
+- *none*: Do not store values by the view
+- *id*: Store only information about value presence, to allow use of the EXISTS() function
 (default "none").
 
 
