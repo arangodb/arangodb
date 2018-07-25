@@ -389,7 +389,7 @@ function check-dangling-anchors()
                     echo "Anchor not found in $i"
                     NO=$((NO + 1))
                     echo "${RESET}${WRN_COLOR}available anchors in that file:${RESET}${STD_COLOR}"
-                    cat "/tmp/tags/${FN}"
+                    cat "/tmp/tags/${FN}" |sort
                     echo "${RESET}"
                 fi
             fi
