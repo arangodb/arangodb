@@ -984,7 +984,7 @@ void extractKeys(std::unordered_set<std::string>& names,
       } else {
         char buffer[24];
         int length = fpconv_dtoa(number, &buffer[0]);
-        names.emplace(std::string(&buffer[0], static_cast<size_t>(length)));
+        names.emplace(&buffer[0], static_cast<size_t>(length));
       }
     } else if (param.isArray()) {
       AqlValueMaterializer materializer(trx);

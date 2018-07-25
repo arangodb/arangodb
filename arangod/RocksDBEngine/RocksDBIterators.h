@@ -123,8 +123,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-
-
 class RocksDBGenericIterator {
  public:
   RocksDBGenericIterator(rocksdb::ReadOptions& options
@@ -159,12 +157,10 @@ class RocksDBGenericIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx
-                                                 ,LogicalCollection* col
-                                                 );
+RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx,
+                                                  LogicalCollection* col);
 
-RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx
-                                            ,LogicalCollection* col
-                                            );
+RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx,
+                                              LogicalCollection* col);
 } //namespace arangodb
 #endif

@@ -113,6 +113,7 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // minimum value for --rocksdb.sync-interval (in ms)
+// a value of 0 however means turning off the syncing altogether!
 static constexpr uint64_t minSyncInterval = 5;
 
 static constexpr uint64_t databaseIdForGlobalApplier = 0;
@@ -226,7 +227,7 @@ void RocksDBEngine::collectOptions(
                      new UInt64Parameter(&_intermediateCommitCount));
   
   options->addOption("--rocksdb.sync-interval",
-                     "interval for automatic, non-requested disk syncs (in milliseconds)",
+                     "interval for automatic, non-requested disk syncs (in milliseconds, use 0 to turn automatic syncing off)",
                      new UInt64Parameter(&_syncInterval));
 
   options->addOption("--rocksdb.wal-file-timeout",
@@ -255,7 +256,8 @@ void RocksDBEngine::validateOptions(
   validateEnterpriseOptions(options);
 #endif
   
-  if (_syncInterval < minSyncInterval) {
+  if (_syncInterval > 0 && _syncInterval < minSyncInterval) {
+    // _syncInterval = 0 means turned off!
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --rocksdb.sync-interval. Please use a value "
                   "of at least " << minSyncInterval;
     FATAL_ERROR_EXIT();
@@ -422,6 +424,7 @@ void RocksDBEngine::start() {
   }
   tableOptions.block_size = opts->_tableBlockSize;
   tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
+  // tableOptions.format_version = 3;
 
   _options.table_factory.reset(
       rocksdb::NewBlockBasedTableFactory(tableOptions));
@@ -600,12 +603,14 @@ void RocksDBEngine::start() {
 
   // only enable logger after RocksDB start
   logger->enable();
-  
-  _syncThread.reset(
-      new RocksDBSyncThread(this, std::chrono::milliseconds(_syncInterval)));
-  if (!_syncThread->start()) {
-    LOG_TOPIC(FATAL, Logger::ENGINES) << "could not start rocksdb sync thread";
-    FATAL_ERROR_EXIT();
+ 
+  if (_syncInterval > 0) { 
+    _syncThread.reset(
+        new RocksDBSyncThread(this, std::chrono::milliseconds(_syncInterval)));
+    if (!_syncThread->start()) {
+      LOG_TOPIC(FATAL, Logger::ENGINES) << "could not start rocksdb sync thread";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   TRI_ASSERT(_db != nullptr);
@@ -665,6 +670,7 @@ void RocksDBEngine::stop() {
   }
   
   if (_syncThread) {
+    // _syncThread may be a nullptr, in case automatic syncing is turned off
     _syncThread->beginShutdown();
 
     // wait until sync thread stops
@@ -1528,6 +1534,7 @@ RocksDBEngine::IndexTriple RocksDBEngine::mapObjectToIndex(
 Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
                                bool /*writeShutdownFile*/) {
   if (_syncThread) {
+    // _syncThread may be a nullptr, in case automatic syncing is turned off
     _syncThread->syncWal();
   }
   
@@ -2013,8 +2020,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 Result RocksDBEngine::handleSyncKeys(
     DatabaseInitialSyncer& syncer,
     LogicalCollection& col,
-    std::string const& keysId
-) {
+    std::string const& keysId) {
   return handleSyncKeysRocksDB(syncer, &col, keysId);
 }
 
