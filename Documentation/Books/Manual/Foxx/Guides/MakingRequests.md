@@ -19,11 +19,13 @@ if (response.status < 400) {
 }
 ```
 
-Note that because
+{% hint 'warning' %}
+Because
 [Foxx services are always synchronous](../README.md#compatibility-caveats)
 and network requests can be considerably slower than any other
 database operation, you should avoid making requests in your service
 if possible or use [queues](Scripts.md#queues) instead.
+{% endhint %}
 
 By using an absolute path instead of a full URL, you can also use the
 request module to talk to ArangoDB itself,
