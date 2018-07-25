@@ -1,6 +1,8 @@
 v3.3.13 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5977: Unexpected execution plan when subquery contains COLLECT
+
 * Bugfix: The AQL syntax variants `UPDATE/REPLACE k WITH d` now correctly take
   _rev from k instead of d (when ignoreRevs is false) and ignore d._rev.
 
