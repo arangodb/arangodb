@@ -176,16 +176,32 @@ bool Scheduler::queue(RequestPriority prio, std::function<void()> const&handler)
 
 
 std::string  Scheduler::infoStatus() {
-  return "scheduler has nothing to say";
+  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
+  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
+    - _jobsDone.load(std::memory_order_relaxed);
+
+  return "scheduler threads " + std::to_string(numWorker) + " (" +
+         std::to_string(_numIdleWorker) + "<" + std::to_string(_maxNumWorker) +
+         ") queued " + std::to_string(queueLength);
 }
 
 Scheduler::QueueStatistics Scheduler::queueStatistics() const
 {
-  return QueueStatistics{0, 0, 0};
+  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
+  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
+    - _jobsDone.load(std::memory_order_relaxed);
+
+  return QueueStatistics{numWorker, numWorker, queueLength};
 }
 
 void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
-  return ;
+  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
+  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
+    - _jobsDone.load(std::memory_order_relaxed);
+
+  b.add("scheduler-threads",
+        VPackValue(static_cast<int32_t>(numWorker)));
+  b.add("queued", VPackValue(static_cast<int32_t>(queueLength)));
 }
 
 bool Scheduler::start() {
