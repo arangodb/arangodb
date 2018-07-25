@@ -33,6 +33,7 @@ const expect = require('chai').expect;
 
 const internal = require('internal');
 const db = internal.db;
+const heartbeatInterval = 1; // 1 second
 
 let isCluster = instanceInfo.arangods.length > 1;
 let endpoint = instanceInfo.arangods.filter(arangod => {
@@ -46,6 +47,10 @@ if (isCluster) {
   download = require('internal').download;
 }
 
+const waitForHeartbeat = function () {
+  internal.wait(3 * heartbeatInterval, false); 
+};
+
 // this only tests the http api...there is a separate readonly test
 describe('Readonly mode api', function() {
   afterEach(function() {
@@ -53,12 +58,13 @@ describe('Readonly mode api', function() {
     let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'default'}), {
       method: 'put',
     });
+    waitForHeartbeat();
   });
   
   after(function() {
-    // wait 5 seconds so the "default" server mode has a chance to be picked up by all db servers
+    // wait for heartbeats so the "default" server mode has a chance to be picked up by all db servers
     // before we go on with other tests
-    require("internal").wait(5, false); 
+    waitForHeartbeat();
   });
 
   it('outputs its current mode', function() {
@@ -73,6 +79,8 @@ describe('Readonly mode api', function() {
       method: 'put',
     });
     expect(resp.code).to.equal(200);
+    waitForHeartbeat();
+
     let body = JSON.parse(resp.body);
     expect(body).to.have.property('mode', 'readonly');
   });
@@ -82,6 +90,7 @@ describe('Readonly mode api', function() {
       method: 'put',
     });
     expect(set.code).to.equal(400);
+    waitForHeartbeat();
 
     let resp = download(endpoint.url + '/_admin/server/mode');
     let body = JSON.parse(resp.body);
@@ -93,6 +102,7 @@ describe('Readonly mode api', function() {
       method: 'put',
     });
     expect(set.code).to.equal(400);
+    waitForHeartbeat();
 
     let resp = download(endpoint.url + '/_admin/server/mode');
     let body = JSON.parse(resp.body);
@@ -104,8 +114,8 @@ describe('Readonly mode api', function() {
       method: 'put',
     });
     expect(resp.code).to.equal(200);
-    // heartbeat thread will take some time
-    internal.wait(0.5);
+
+    waitForHeartbeat();
     
     let res = instanceInfo.arangods.filter(arangod => arangod.role === 'single' || arangod.role === 'coordinator' || arangod.role === 'primary')
     .every(arangod => {
