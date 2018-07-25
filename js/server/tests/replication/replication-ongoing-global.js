@@ -654,7 +654,7 @@ function BaseTestConfig() {
                 text: { analyzers: [ "text_en" ] }
               }
             };
-            view.properties({properties: {"links": links}});
+            view.properties({"links": links});
             state.arangoSearchEnabled = true;
           } catch (err) { }
         },
@@ -666,7 +666,7 @@ function BaseTestConfig() {
     
           let view = db._view("UnitTestsSyncView");
           assertTrue(view !== null);
-          let props = view.properties().properties;
+          let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty("links"));
           assertTrue(props.links.hasOwnProperty(cn));
@@ -690,7 +690,7 @@ function BaseTestConfig() {
                 text: { analyzers: [ "text_en" ] }
               }
             };
-            view.properties({properties: {"links": links}});
+            view.properties({"links": links});
             state.arangoSearchEnabled = true;
           } catch (err) { }
         },
@@ -703,7 +703,7 @@ function BaseTestConfig() {
           view.rename("UnitTestsSyncViewRenamed");
           view = db._view("UnitTestsSyncViewRenamed");
           assertTrue(view !== null);
-          let props = view.properties().properties;
+          let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty("links"));
           assertTrue(props.links.hasOwnProperty(cn));
@@ -716,7 +716,7 @@ function BaseTestConfig() {
     
           let view = db._view("UnitTestsSyncViewRenamed");
           assertTrue(view !== null);
-          let props = view.properties().properties;
+          let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty("links"));
           assertTrue(props.links.hasOwnProperty(cn));
