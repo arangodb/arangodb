@@ -60,6 +60,12 @@ static char const* USER_ABORTED = "user aborted";
 void ConsoleThread::run() {
   std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
 
+  bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
+  if (!v8Enabled) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "V8 engine is not enabled";
+    FATAL_ERROR_EXIT();
+  }
+
   // enter V8 context
   _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
 

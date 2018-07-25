@@ -75,7 +75,7 @@ class MMFilesEngine final : public StorageEngine {
   // inherited from ApplicationFeature
   // ---------------------------------
 
-  // add the storage engine's specifc options to the global list of options
+  // add the storage engine's specific options to the global list of options
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   // validate the storage engine's specific options

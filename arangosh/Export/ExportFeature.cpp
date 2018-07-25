@@ -65,9 +65,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Config");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 
   _outputDirectory = FileUtils::buildFilename(
       FileUtils::currentDirectory().result(), "export");

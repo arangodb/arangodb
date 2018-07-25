@@ -16,13 +16,13 @@ Components
 
 ### Replication Logger
 
-#### Purpose
+**Purpose**
 
 The _replication logger_ will write all data-modification operations into the
 _write-ahead log_. This log may then be read by clients to replay any data
 modification on a different server.
 
-#### Checking the state
+**Checking the state**
 
 To query the current state of the _logger_, use the *state* command:
   
@@ -73,7 +73,7 @@ and maximum tick values per logfile:
 	
 ### Replication Applier
 
-#### Purpose
+**Purpose**
 
 The purpose of the _replication applier_ is to read data from a master database's
 event log, and apply them locally. The _applier_ will check the master database

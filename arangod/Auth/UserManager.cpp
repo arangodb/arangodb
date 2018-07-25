@@ -148,7 +148,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 }
 
 /// Convert documents from _system/_users into the format used in
-/// the REST user API and foxx
+/// the REST user API and Foxx
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   if (doc.isExternal()) {
     doc = doc.resolveExternals();
@@ -162,7 +162,7 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 }
 
 // private, will acquire _userCacheLock in write-mode and release it.
-// will also aquire _loadFromDBLock and release it
+// will also acquire _loadFromDBLock and release it
 void auth::UserManager::loadFromDB() {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());

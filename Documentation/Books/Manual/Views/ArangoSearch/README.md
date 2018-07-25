@@ -7,7 +7,7 @@ ArangoSearch is a natively integrated AQL extension making use of the IResearch 
 Arangosearch allows one to:
 * join documents located in different collections to one result list
 * filter documents based on AQL boolean expressions and functions
-* sort the resultset based on how closely each document matched the filter
+* sort the result set based on how closely each document matched the filter
 
 A concept of value 'analysis' that is meant to break up a given value into
 a set of sub-values internally tied together by metadata which influences both
@@ -186,14 +186,6 @@ During view modification the following directives apply:
     impact performance and waste disk space for each commit call without any
     added benefits
 
-  * commitTimeoutMsec: (optional; default: `5000`; to disable use: `0`)
-    try to commit as much as possible before *count* milliseconds
-    for the case where there are a lot of inserts/updates, a lower value will
-    cause a delay in the view accounting for them, due skipping of some commits
-    for the case where there are a lot of inserts/updates, a higher value will
-    cause higher memory consumption between commits due to accumulation of
-    document modifications while a commit is in progress
-
   * consolidate: (optional; default: `none`)
     a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
     store segment merge candidates, if specified then only the listed policies
@@ -235,18 +227,6 @@ During view modification the following directives apply:
 * locale: (optional; default: `C`)
   the default locale used for ordering processed attribute names
 
-### View properties (unmodifiable)
-
-* collections:
-  an internally tracked list of collection identifiers which were explicitly
-  added to the current view by the user via view 'link' property modification
-  the list may have no-longer valid identifiers if the user did not explicitly
-  drop the link for the said collection identifier from the current view
-  invalid collection identifiers are removed during view property modification
-  among other things used for acquiring collection locks in transactions (i.e.
-  during a view query no documents will be returned for collections not in this
-  list) and generating view properties 'links' list
-
 ### Link properties
 
 * analyzers: (optional; default: `[ 'identity' ]`)
@@ -274,3 +254,9 @@ During view modification the following directives apply:
   otherwise all values in an array are treated as equal alternatives, e.g. when
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr == 'valueY'`
+
+* trackValues: (optional; default: "none")
+  how should the view track the attribute values, this setting allows for
+  additional value retrieval optimizations, one of:
+  * none: Do not track values by the view
+  * exists: Track only value presence, to allow use of the EXISTS() function

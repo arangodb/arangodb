@@ -39,8 +39,6 @@ namespace arangodb {
 /// @brief just also stores the context
 class VocbaseContext : public arangodb::ExecContext {
  public:
-  static double ServerSessionTtl;
-
   TEST_VIRTUAL ~VocbaseContext();
 
   static VocbaseContext* create(GeneralRequest& req, TRI_vocbase_t& vocbase);

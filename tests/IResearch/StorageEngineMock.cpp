@@ -140,7 +140,7 @@ class EdgeIndexMock final : public arangodb::Index {
  public:
   static std::shared_ptr<arangodb::Index> make(
       TRI_idx_iid_t iid,
-      arangodb::LogicalCollection* collection,
+      arangodb::LogicalCollection& collection,
       arangodb::velocypack::Slice const& definition
   ) {
     auto const typeSlice = definition.get("type");
@@ -305,14 +305,14 @@ class EdgeIndexMock final : public arangodb::Index {
       // a.b IN values
       if (!valNode->isArray()) {
         // a.b IN non-array
-        return new arangodb::EmptyIndexIterator(_collection, trx, this);
+        return new arangodb::EmptyIndexIterator(&_collection, trx, this);
       }
 
       return createInIterator(trx, mmdr, attrNode, valNode);
     }
 
     // operator type unsupported
-    return new arangodb::EmptyIndexIterator(_collection, trx, this);
+    return new arangodb::EmptyIndexIterator(&_collection, trx, this);
   }
 
   arangodb::aql::AstNode* specializeCondition(
@@ -326,8 +326,11 @@ class EdgeIndexMock final : public arangodb::Index {
 
   EdgeIndexMock(
       TRI_idx_iid_t iid,
-      arangodb::LogicalCollection* collection
-  ) : arangodb::Index(iid, collection, {
+      arangodb::LogicalCollection& collection
+  ): arangodb::Index(
+      iid,
+      collection,
+      {
         {arangodb::basics::AttributeName(arangodb::StaticStrings::FromString, false)},
         {arangodb::basics::AttributeName(arangodb::StaticStrings::ToString, false)}
       }, true, false) {
@@ -353,7 +356,7 @@ class EdgeIndexMock final : public arangodb::Index {
     bool const isFrom = (attrNode->stringEquals(arangodb::StaticStrings::FromString));
 
     return new EdgeIndexIteratorMock(
-      _collection,
+      &_collection,
       trx,
       this,
       isFrom ? _edgesFrom : _edgesTo,
@@ -389,7 +392,7 @@ class EdgeIndexMock final : public arangodb::Index {
     bool const isFrom = (attrNode->stringEquals(arangodb::StaticStrings::FromString));
 
     return new EdgeIndexIteratorMock(
-      _collection,
+      &_collection,
       trx,
       this,
       isFrom ? _edgesFrom : _edgesTo,
@@ -403,44 +406,13 @@ class EdgeIndexMock final : public arangodb::Index {
   EdgeIndexIteratorMock::Map _edgesTo;
 }; // EdgeIndexMock
 
-class IndexMock final : public arangodb::Index {
- public:
-  IndexMock()
-    : arangodb::Index(0, nullptr, std::vector<std::vector<arangodb::basics::AttributeName>>(), false, false) {
-  }
-  virtual char const* typeName() const override { return "IndexMock"; }
-  virtual IndexType type() const override { return TRI_IDX_TYPE_UNKNOWN; }
-  virtual bool canBeDropped() const override { return true; }
-  virtual bool isSorted() const override { return true; }
-  virtual bool hasSelectivityEstimate() const override { return false; }
-  virtual size_t memory() const override { return 0; }
-  virtual arangodb::Result insert(
-      arangodb::transaction::Methods*,
-      arangodb::LocalDocumentId const&,
-      arangodb::velocypack::Slice const&,
-      OperationMode mode) override {
-    TRI_ASSERT(false);
-    return arangodb::Result();
-  }
-  virtual arangodb::Result remove(
-      arangodb::transaction::Methods*,
-      arangodb::LocalDocumentId const&,
-      arangodb::velocypack::Slice const&,
-      OperationMode mode) override {
-    TRI_ASSERT(false);
-    return arangodb::Result();
-  }
-  virtual void load() override {}
-  virtual void unload() override {}
-} EMPTY_INDEX;
-
 class ReverseAllIteratorMock final : public arangodb::IndexIterator {
  public:
   ReverseAllIteratorMock(
       uint64_t size,
       arangodb::LogicalCollection* coll,
       arangodb::transaction::Methods* trx)
-    : arangodb::IndexIterator(coll, trx, &EMPTY_INDEX),
+    : arangodb::IndexIterator(coll, trx, nullptr),
       _end(size), _size(size) {
   }
 
@@ -470,9 +442,9 @@ class AllIteratorMock final : public arangodb::IndexIterator {
  public:
   AllIteratorMock(
       uint64_t size,
-      arangodb::LogicalCollection* coll,
+      arangodb::LogicalCollection& coll,
       arangodb::transaction::Methods* trx)
-    : arangodb::IndexIterator(coll, trx, &EMPTY_INDEX),
+    : arangodb::IndexIterator(&coll, trx, nullptr),
       _end(size) {
   }
 
@@ -500,15 +472,18 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 
 struct IndexFactoryMock : arangodb::IndexFactory {
   virtual void fillSystemIndexes(
-    arangodb::LogicalCollection* col,
+    arangodb::LogicalCollection& col,
     std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
   ) const override {
     // NOOP
   }
-  
+
   /// @brief create indexes from a list of index definitions
-  virtual void prepareIndexes(arangodb::LogicalCollection*, arangodb::velocypack::Slice const&,
-                              std::vector<std::shared_ptr<arangodb::Index>>&) const override {
+  virtual void prepareIndexes(
+      arangodb::LogicalCollection& col,
+      arangodb::velocypack::Slice const& indexesSlice,
+      std::vector<std::shared_ptr<arangodb::Index>>& indexes
+  ) const override {
     // NOOP
   }
 };
@@ -527,11 +502,15 @@ bool ContextDataMock::isPinned(TRI_voc_cid_t cid) const {
 
 std::function<void()> PhysicalCollectionMock::before = []()->void {};
 
-PhysicalCollectionMock::PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info)
-  : PhysicalCollection(collection, info), lastId(0) {
+PhysicalCollectionMock::PhysicalCollectionMock(
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+): PhysicalCollection(collection, info), lastId(0) {
 }
 
-arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection*) const {
+arangodb::PhysicalCollection* PhysicalCollectionMock::clone(
+    arangodb::LogicalCollection& collection
+) const {
   before();
   TRI_ASSERT(false);
   return nullptr;
@@ -573,9 +552,13 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
 
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      index = arangodb::iresearch::IResearchLinkCoordinator::make(_logicalCollection, info, ++lastId, false);
+      index = arangodb::iresearch::IResearchLinkCoordinator::make(
+        _logicalCollection, info, ++lastId, false
+      );
     } else {
-      index = arangodb::iresearch::IResearchMMFilesLink::make(_logicalCollection, info, ++lastId, false);
+      index = arangodb::iresearch::IResearchMMFilesLink::make(
+        _logicalCollection, info, ++lastId, false
+      );
     }
 #endif
   }
@@ -604,7 +587,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   return _indexes.back();
 }
 
-void PhysicalCollectionMock::deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) {
+void PhysicalCollectionMock::deferDropCollection(
+    std::function<bool(arangodb::LogicalCollection&)> const& callback
+) {
   before();
 
   callback(_logicalCollection); // assume noone is using this collection (drop immediately)
@@ -648,7 +633,7 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   before();
 
   arangodb::velocypack::Builder builder;
-  auto isEdgeCollection = _logicalCollection->type() == TRI_COL_TYPE_EDGE;
+  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   TRI_voc_rid_t unused;
   auto res = newObjectForInsert(
@@ -760,7 +745,8 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
       continue;
     }
 
-    auto idx = idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
+    auto idx =
+      idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
 
     if (!idx) {
       continue;
@@ -1065,7 +1051,7 @@ std::unique_ptr<arangodb::PhysicalCollection> StorageEngineMock::createPhysicalC
 ) {
   before();
   return std::unique_ptr<arangodb::PhysicalCollection>(
-    new PhysicalCollectionMock(&collection, info)
+    new PhysicalCollectionMock(collection, info)
   );
 }
 

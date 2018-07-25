@@ -9,7 +9,7 @@ to the ArangoDB user.
 They provide the capability to:
 * evaluate together documents located in different collections
 * filter documents based on AQL boolean expressions and functions
-* sort the resultset based on how closely each document matched the filter
+* sort the result set based on how closely each document matched the filter
 
 ArangoSearch value analysis
 ---------------------------
@@ -89,6 +89,9 @@ By default, context contains boost value equal to `1.0`.
 The supported filter functions are:
 
 ### EXISTS()
+
+Note: Will only match **attribute-name** values that have been processed with
+the link property **trackValues** set to anything other than **none**.
 
 `EXISTS(attribute-name)`
 

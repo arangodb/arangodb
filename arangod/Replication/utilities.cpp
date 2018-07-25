@@ -308,6 +308,8 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
 
   return Result();
 }
+  
+constexpr double BatchInfo::DefaultTimeout;
 
 Result BatchInfo::start(replutils::Connection& connection,
                         replutils::ProgressInfo& progress) {

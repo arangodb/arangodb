@@ -42,20 +42,23 @@ std::shared_ptr<arangodb::LogicalView> makeTestView(
     uint64_t planVersion,
     arangodb::LogicalView::PreCommitCallback const& preCommit
   ) {
-  struct Impl: public arangodb::DBServerLogicalView {
+  struct Impl: public arangodb::LogicalViewStorageEngine {
     Impl(
         TRI_vocbase_t& vocbase,
         arangodb::velocypack::Slice const& info,
         uint64_t planVersion
-    ): arangodb::DBServerLogicalView(vocbase, info, planVersion) {
+    ): arangodb::LogicalViewStorageEngine(vocbase, info, planVersion) {
     }
-    arangodb::Result create() { return DBServerLogicalView::create(*this); }
-    virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
-    virtual void getPropertiesVPack(
+    virtual arangodb::Result appendVelocyPackDetailed(
       arangodb::velocypack::Builder&,
       bool
     ) const override {
+      return arangodb::Result();
     }
+    arangodb::Result create() {
+      return LogicalViewStorageEngine::create(*this);
+    }
+    virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
     virtual void open() override {}
     virtual arangodb::Result updateProperties(
       arangodb::velocypack::Slice const&,

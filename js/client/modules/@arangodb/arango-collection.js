@@ -258,7 +258,7 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '  name()                                collection name                   ' + '\n' +
   '  status()                              status of the collection          ' + '\n' +
   '  type()                                type of the collection            ' + '\n' +
-  '  truncate()                            delete all documents              ' + '\n' +
+  '  truncate()                            remove all documents              ' + '\n' +
   '  properties()                          show collection properties        ' + '\n' +
   '  properties(<data>)                    change collection properties      ' + '\n' +
   '  drop()                                delete a collection               ' + '\n' +
@@ -266,7 +266,7 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '  unload()                              unload a collection               ' + '\n' +
   '  rename(<new-name>)                    renames a collection              ' + '\n' +
   '  getIndexes()                          return defined indexes            ' + '\n' +
-  '  refresh()                             refreshes the status and name     ' + '\n' +
+  '  refresh()                             refresh the status and name       ' + '\n' +
   '  _help()                               this help                         ' + '\n' +
   '                                                                          ' + '\n' +
   'Document Functions:                                                       ' + '\n' +
@@ -276,8 +276,8 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '  replace(<id>, <data>, <overwrite>)    overwrite document                ' + '\n' +
   '  update(<id>, <data>, <overwrite>,     partially update document         ' + '\n' +
   '         <keepNull>)                                                      ' + '\n' +
-  '  remove(<id>)                          delete document                   ' + '\n' +
-  '  exists(<id>)                          checks whether a document exists  ' + '\n' +
+  '  remove(<id>)                          remove document                   ' + '\n' +
+  '  exists(<id>)                          check whether a document exists   ' + '\n' +
   '                                                                          ' + '\n' +
   'Attributes:                                                               ' + '\n' +
   '  _database                             database object                   ' + '\n' +
@@ -598,7 +598,7 @@ ArangoCollection.prototype.refresh = function () {
 // / @brief gets all indexes
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.getIndexes = function (withStats) {
+ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats) {
   var requestResult = this._database._connection.GET(this._indexurl() +
     '&withStats=' + (withStats || false));
 

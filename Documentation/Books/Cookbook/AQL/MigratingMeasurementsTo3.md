@@ -54,7 +54,7 @@ Solution 2: Foxx (recommended)
 The general graph module still offers the measurement functions.
 As these are typically computation expensive and create long running queries it is recommended
 to not use them in combination with other AQL features.
-Therefore the best idea is to offer these measurements directly via an API using FOXX.
+Therefore the best idea is to offer these measurements directly via an API using Foxx.
 
 First we create a new [Foxx service](../../Manual/Foxx/index.html).
 Then we include the `general-graph` module in the service.

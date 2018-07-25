@@ -92,14 +92,8 @@ void TRI_GetBacktrace(std::string& btstr);
 /// @brief prints a backtrace on stderr
 void TRI_PrintBacktrace();
 
-/// @brief logs a backtrace in loglevel warning
+/// @brief logs a backtrace in log level warning
 void TRI_LogBacktrace();
-
-/// @brief initialize the debugging
-void TRI_InitializeDebugging();
-
-/// @brief shutdown the debugging
-void TRI_ShutdownDebugging();
 
 /// @brief flushes the logger and shuts it down
 void TRI_FlushDebugging();

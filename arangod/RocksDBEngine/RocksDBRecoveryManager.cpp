@@ -40,11 +40,13 @@
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
 
@@ -72,10 +74,12 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
       _db(nullptr),
       _inRecovery(true) {
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
   startsAfter("RocksDBEngine");
-  startsAfter("StorageEngine");
   startsAfter("ServerId");
+  startsAfter("StorageEngine");
 
   onlyEnabledWith("RocksDBEngine");
 }
@@ -122,6 +126,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   uint64_t _maxTick = 0;
   uint64_t _maxHLC = 0;
+  /// @brief last document removed
+  TRI_voc_rid_t _lastRemovedDocRid = 0;
 
  public:
   explicit WBReader(std::unordered_map<uint64_t, rocksdb::SequenceNumber> const& seqs)
@@ -163,17 +169,14 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     return rv;
   }
 
-  bool shouldHandleDocument(uint32_t column_family_id,
-                            const rocksdb::Slice& key) {
-    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      uint64_t objectId = RocksDBKey::objectId(key);
-      auto const& it = _seqStart.find(objectId);
-      if (it != _seqStart.end()) {
-        if (deltas.find(objectId) == deltas.end()) {
-          deltas.emplace(objectId, RocksDBSettingsManager::CounterAdjustment());
-        }
-        return it->second <= currentSeqNum;
+  bool shouldHandleDocument(const rocksdb::Slice& key) {
+    uint64_t objectId = RocksDBKey::objectId(key);
+    auto const& it = _seqStart.find(objectId);
+    if (it != _seqStart.end()) {
+      if (deltas.find(objectId) == deltas.end()) {
+        deltas.emplace(objectId, RocksDBSettingsManager::CounterAdjustment());
       }
+      return it->second <= currentSeqNum;
     }
     return false;
   }
@@ -298,15 +301,15 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
     updateMaxTick(column_family_id, key, value);
-    if (shouldHandleDocument(column_family_id, key)) {
+    if (column_family_id == RocksDBColumnFamily::documents()->GetID() &&
+        shouldHandleDocument(key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      LocalDocumentId docId = RocksDBKey::documentId(key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
         it->second._sequenceNum = currentSeqNum;
         it->second._added++;
-        it->second._revisionId = docId.id();
+        it->second._revisionId = transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
       }
     } else {
       // We have to adjust the estimate with an insert
@@ -338,16 +341,19 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status DeleteCF(uint32_t column_family_id,
                            const rocksdb::Slice& key) override {
-    if (shouldHandleDocument(column_family_id, key)) {
-      uint64_t objectId = RocksDBKey::objectId(key);
-      LocalDocumentId docId = RocksDBKey::documentId(key);
-
-      auto const& it = deltas.find(objectId);
-      if (it != deltas.end()) {
-        it->second._sequenceNum = currentSeqNum;
-        it->second._removed++;
-        it->second._revisionId = docId.id();
+    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+      
+      if (shouldHandleDocument(key)) {
+        uint64_t objectId = RocksDBKey::objectId(key);
+        auto const& it = deltas.find(objectId);
+        if (it != deltas.end()) {
+          it->second._sequenceNum = currentSeqNum;
+          it->second._removed++;
+          it->second._revisionId = _lastRemovedDocRid;
+        }
       }
+      _lastRemovedDocRid = 0; // reset in any case
+      
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hash = 0;
@@ -388,6 +394,21 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   void LogData(const rocksdb::Slice& blob) override {
+    // a delete log message appears directly before a Delete
+    RocksDBLogType type = RocksDBLogValue::type(blob);
+    switch(type) {
+      case RocksDBLogType::DocumentRemoveV2: // remove within a trx
+        TRI_ASSERT(_lastRemovedDocRid == 0);
+        _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
+        break;
+      case RocksDBLogType::SingleRemoveV2:
+        TRI_ASSERT(_lastRemovedDocRid == 0);
+        _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
+        break;
+      default:
+        _lastRemovedDocRid = 0; // reset in any other case
+        break;
+    }
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {

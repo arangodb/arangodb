@@ -76,10 +76,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer* server,
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Config");
-  startsAfter("Random");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

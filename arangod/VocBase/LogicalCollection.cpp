@@ -160,7 +160,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _shardIds(new ShardMap()),  // Not needed
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(this)),
+      _physical(other.getPhysical()->clone(*this)),
       _clusterEstimateTTL(0) {
   TRI_ASSERT(_physical != nullptr);
 
@@ -392,7 +392,7 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 
   if (!indexesSlice.isArray()) {
     // always point to an array
-    indexesSlice = basics::VelocyPackHelper::EmptyArrayValue();
+    indexesSlice = arangodb::velocypack::Slice::emptyArraySlice();
   }
 
   _physical->prepareIndexes(indexesSlice);
@@ -1068,7 +1068,7 @@ void LogicalCollection::persistPhysicalCollection() {
 ///        the collection and it is guaranteed that no one is using
 ///        it at that moment.
 void LogicalCollection::deferDropCollection(
-    std::function<bool(LogicalCollection*)> callback) {
+    std::function<bool(LogicalCollection&)> const& callback) {
   _physical->deferDropCollection(callback);
 }
 
@@ -1190,7 +1190,7 @@ bool LogicalCollection::isSatellite() const { return _replicationFactor == 0; }
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
   if (_keyOptions == nullptr) {
-    return arangodb::basics::VelocyPackHelper::NullValue();
+    return arangodb::velocypack::Slice::nullSlice();
   }
   return VPackSlice(_keyOptions->data());
 }

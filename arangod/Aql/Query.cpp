@@ -896,7 +896,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
               size_t const n = value->size();
 
               for (size_t i = 0; i < n; ++i) {
-                AqlValue const &val = value->getValueReference(
+                AqlValue const& val = value->getValueReference(
                   i, resultRegister
                 );
 
@@ -1312,7 +1312,7 @@ uint64_t Query::hash() {
   }
 
   // also hash "optimizer" options
-  VPackSlice options = basics::VelocyPackHelper::EmptyObjectValue();
+  VPackSlice options = arangodb::velocypack::Slice::emptyObjectSlice();
 
   if (_options != nullptr && _options->slice().isObject()) {
     options = _options->slice().get("optimizer");

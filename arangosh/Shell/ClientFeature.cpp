@@ -63,7 +63,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _haveServerPassword(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

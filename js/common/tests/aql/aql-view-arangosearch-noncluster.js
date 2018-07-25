@@ -49,7 +49,7 @@ function iResearchAqlTestSuite () {
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = { 
+      var meta = {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
