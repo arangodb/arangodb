@@ -4032,6 +4032,30 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
     // render the optimization unsafe
     return (!_stop && !_plan->getAst()->functionsMayAccessDocuments());
   }
+  
+  bool isSafeForOptimization(aql::Collection const* collection) const {
+    auto it = _shardsUsed.find(collection);
+   
+    if (it == _shardsUsed.end()) {
+      return false;
+    } 
+
+    if ((*it).second.size() != 1) {
+      // more than one shard
+      return false;
+    }
+
+    // check for "all" marker
+    auto it2 = (*it).second.find("all");
+    
+    if (it2 != (*it).second.end()) {
+      // "all" included
+      return false;
+    }
+
+    // all good -> safe to optimize
+    return true;
+  }
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return true;
@@ -4050,6 +4074,7 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         auto collection = ExecutionNode::castTo<IndexNode const*>(en)->collection();
         std::string shardId = getSingleShardId(_plan, en, collection);
         if (shardId.empty()) {
+          _shardsUsed[collection].clear();
           _shardsUsed[collection].emplace("all");
         } else {
           _shardsUsed[collection].emplace(shardId);
@@ -4060,6 +4085,7 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
       case EN::ENUMERATE_COLLECTION: {
         // track usage of the collection
         auto collection = ExecutionNode::castTo<EnumerateCollectionNode const*>(en)->collection();
+        _shardsUsed[collection].clear();
         _shardsUsed[collection].emplace("all");
         break;
       }
@@ -4067,6 +4093,7 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
       case EN::UPSERT: {
         // track usage of the collection
         auto collection = ExecutionNode::castTo<ModificationNode const*>(en)->collection();
+        _shardsUsed[collection].clear();
         _shardsUsed[collection].emplace("all");
         break;
       }
@@ -4078,6 +4105,7 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         auto collection = ExecutionNode::castTo<ModificationNode const*>(en)->collection();
         std::string shardId = getSingleShardId(_plan, en, collection);
         if (shardId.empty()) {
+          _shardsUsed[collection].clear();
           _shardsUsed[collection].emplace("all");
         } else {
           _shardsUsed[collection].emplace(shardId);
@@ -4131,7 +4159,7 @@ void arangodb::aql::restrictToSingleShardRule(
         auto collection = ExecutionNode::castTo<ModificationNode const*>(current)->collection();
         std::string shardId = getSingleShardId(plan.get(), current, collection);
 
-        if (!shardId.empty()) {
+        if (finder.isSafeForOptimization(collection) && !shardId.empty()) {
           wasModified = true;
           // we are on a single shard. we must not ignore not-found documents now
           auto* modNode = ExecutionNode::castTo<ModificationNode*>(current);
@@ -4187,7 +4215,7 @@ void arangodb::aql::restrictToSingleShardRule(
         auto collection = ExecutionNode::castTo<IndexNode const*>(current)->collection();
         std::string shardId = getSingleShardId(plan.get(), current, collection);
 
-        if (!shardId.empty()) {
+        if (finder.isSafeForOptimization(collection) && !shardId.empty()) {
           wasModified = true;
           ExecutionNode::castTo<IndexNode*>(current)->restrictToShard(shardId);
         }
