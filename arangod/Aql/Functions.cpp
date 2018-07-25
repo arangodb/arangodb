@@ -1509,6 +1509,29 @@ AqlValue Functions::Soundex(arangodb::aql::Query*,
     return AqlValue(encoded);
 }
 
+
+/// @brief function LEVENSHTEIN_DISTANCE
+AqlValue Functions::LevenshteinDistance(arangodb::aql::Query*,
+                            transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
+    ValidateParameters(parameters, "LEVENSHTEIN_DISTANCE", 2, 2);
+    AqlValue value1 = ExtractFunctionParameterValue(parameters, 0);
+    AqlValue value2 = ExtractFunctionParameterValue(parameters, 1);
+    
+    transaction::StringBufferLeaser buffer1(trx);
+    transaction::StringBufferLeaser buffer2(trx);
+    
+    arangodb::basics::VPackStringBufferAdapter adapter1(buffer1->stringBuffer());
+    arangodb::basics::VPackStringBufferAdapter adapter2(buffer2->stringBuffer());
+    
+    ::appendAsString(trx, adapter1, value1);
+    ::appendAsString(trx, adapter2, value2);
+    
+    int encoded = basics::StringUtils::levenshteinDistance(std::string(buffer1->begin(), buffer1->length()), std::string(buffer2->begin(), buffer2->length()));
+    
+    return AqlValue(AqlValueHintInt(encoded));
+}
+
 /// @brief function TO_BOOL
 AqlValue Functions::ToBool(arangodb::aql::Query*,
                            transaction::Methods* trx,
