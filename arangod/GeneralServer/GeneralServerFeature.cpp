@@ -73,6 +73,7 @@
 #include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
+#include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -304,8 +305,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
-  
-  
+
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
       RestHandlerCreator<RestCollectionHandler>::createNoData);
@@ -348,7 +349,7 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>, queryRegistry);
-  
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
@@ -363,6 +364,10 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::TASKS_PATH,
+      RestHandlerCreator<RestTasksHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::UPLOAD_PATH,
@@ -407,7 +412,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
       "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
@@ -455,7 +460,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
     "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
@@ -465,7 +470,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
       "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
@@ -504,11 +509,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
     "/_admin/server",
     RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
     "/_admin/statistics",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
     "/_admin/statistics-description",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
@@ -524,7 +529,7 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // actions defined in v8
   // ...........................................................................
-  
+
   _handlerFactory->addPrefixHandler(
      "/", RestHandlerCreator<RestActionHandler>::createNoData);
 

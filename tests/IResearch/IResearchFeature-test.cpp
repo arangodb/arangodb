@@ -32,6 +32,7 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchFeature.h"
 #include "Rest/Version.h"
@@ -49,9 +50,13 @@ struct IResearchFeatureSetup {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
   }
 
   ~IResearchFeatureSetup() {
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };

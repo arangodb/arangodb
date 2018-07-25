@@ -65,8 +65,9 @@ class RocksDBMethods {
 
   rocksdb::ReadOptions const& readOptions();
 
-  // the default implementation is to do nothing
-  virtual void DisableIndexing() {}
+  /// @brief returns true if indexing was disabled by this call
+  /// the default implementation is to do nothing
+  virtual bool DisableIndexing() { return false; }
   
   // the default implementation is to do nothing
   virtual void EnableIndexing() {}
@@ -134,7 +135,8 @@ class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
   
-  void DisableIndexing() override;
+  /// @brief returns true if indexing was disabled by this call
+  bool DisableIndexing() override;
   
   void EnableIndexing() override;
 
@@ -154,6 +156,8 @@ class RocksDBTrxMethods : public RocksDBMethods {
 
   void SetSavePoint() override;
   arangodb::Result RollbackToSavePoint() override;
+
+  bool _indexingDisabled;
 };
 
 /// transaction wrapper, uses the current rocksdb transaction and non-tracking methods
