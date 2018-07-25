@@ -63,6 +63,7 @@
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
+#include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBThrottle.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
@@ -114,6 +115,9 @@ std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 static constexpr uint64_t databaseIdForGlobalApplier = 0;
 
+// minimum value for --rocksdb.sync-interval (in ms)
+static constexpr uint64_t minSyncInterval = 5;
+
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
@@ -126,6 +130,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _pruneWaitTime(10.0),
+      _syncInterval(0),
       _useThrottle(true) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
@@ -139,6 +144,21 @@ RocksDBEngine::~RocksDBEngine() {
   if (nullptr != _listener.get()) {
     _listener->StopThread();
   } // if
+
+  if (_db == nullptr) {
+    return;
+  }
+
+  try {
+    // do a final WAL sync here before shutting down
+    Result res = RocksDBSyncThread::sync(_db->GetBaseDB());
+    if (res.fail()) {
+      LOG_TOPIC(WARN, Logger::ROCKSDB) << "could not sync RocksDB WAL: " << res.errorMessage();
+    }
+  } catch (...) {
+    // this is allowed to go wrong on shutdown
+    // we must not throw an exception from here
+  }
 
   delete _db;
   _db = nullptr;
@@ -168,6 +188,10 @@ void RocksDBEngine::collectOptions(
                      "when this number of "
                      "operations is reached in a transaction",
                      new UInt64Parameter(&_intermediateCommitCount));
+  
+  options->addOption("--rocksdb.sync-interval",
+                     "interval for automatic, non-requested disk syncs (in milliseconds, use 0 to turn automatic syncing off)",
+                     new UInt64Parameter(&_syncInterval));
 
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
@@ -190,6 +214,12 @@ void RocksDBEngine::validateOptions(
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+  
+  if (_syncInterval > 0 && _syncInterval < minSyncInterval) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --rocksdb.sync-interval. Please use a value "
+                  "of at least " << minSyncInterval;
+    FATAL_ERROR_EXIT();
+  }
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -549,6 +579,15 @@ void RocksDBEngine::start() {
 
   // only enable logger after RocksDB start
   logger->enable();
+  
+  if (_syncInterval > 0) {
+    _syncThread.reset(
+        new RocksDBSyncThread(this, std::chrono::milliseconds(_syncInterval)));
+    if (!_syncThread->start()) {
+      LOG_TOPIC(FATAL, Logger::ENGINES) << "could not start rocksdb sync thread";
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   TRI_ASSERT(_db != nullptr);
   _counterManager.reset(new RocksDBCounterManager(_db));
@@ -606,6 +645,16 @@ void RocksDBEngine::stop() {
     }
     _backgroundThread.reset();
   }
+  
+  if (_syncThread) {
+    _syncThread->beginShutdown();
+
+    // wait until sync thread stops
+    while (_syncThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    _syncThread.reset();
+  }
 }
 
 void RocksDBEngine::unprepare() {
@@ -626,9 +675,6 @@ void RocksDBEngine::unprepare() {
     // now prune all obsolete WAL files
     determinePrunableWalFiles(0);
     pruneWalFiles();
-
-    delete _db;
-    _db = nullptr;
   }
 }
 
@@ -1282,27 +1328,23 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
 }
 
 Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
-                             bool /*writeShutdownFile*/) {
-  rocksdb::Status status;
-#ifndef _WIN32
-  // SyncWAL always reports "not implemented" on Windows
-  status = _db->GetBaseDB()->SyncWAL();
-  if (!status.ok()) {
-    return rocksutils::convertStatus(status);
+                               bool /*writeShutdownFile*/) {
+  if (_syncThread) {
+    _syncThread->syncWal();
   }
-#endif
+
   if (waitForCollector) {
     rocksdb::FlushOptions flushOptions;
     flushOptions.wait = waitForSync;
 
     for (auto cf : RocksDBColumnFamily::_allHandles) {
-      status = _db->GetBaseDB()->Flush(flushOptions, cf);
+      rocksdb::Status status = _db->GetBaseDB()->Flush(flushOptions, cf);
       if (!status.ok()) {
         return rocksutils::convertStatus(status);
       }
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 std::vector<std::string> RocksDBEngine::currentWalFiles() {

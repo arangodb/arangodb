@@ -39,6 +39,19 @@ v3.3.13 (XXXX-XX-XX)
 * fix assertion failure and undefined behavior in Unix domain socket connections,
   introduced by 3.3.12
 
+* added configuration option `--rocksdb.sync-interval`
+
+  This option specifies interval (in milliseconds) that ArangoDB will use to 
+  automatically synchronize data in RocksDB's write-ahead log (WAL) files to 
+  disk. Automatic syncs will only be performed for not-yet synchronized data, 
+  and only for operations that have been executed without the *waitForSync* 
+  attribute.
+
+  Automatic synchronization is performed by a background thread. The default
+  sync interval is 0, meaning the automatic background syncing is turned off.
+  Background syncing in 3.3 is opt-in, whereas in ArangoDB 3.4 the default sync
+  interval will be 100 milliseconds.
+
 * fixed graph creation sometimes failing with 'edge collection
   already used in edge def' when the edge definition contained multiple vertex
   collections, despite the edge definitions being identical

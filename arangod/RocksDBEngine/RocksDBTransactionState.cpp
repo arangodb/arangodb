@@ -35,7 +35,9 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionManager.h"
@@ -62,7 +64,6 @@ RocksDBTransactionState::RocksDBTransactionState(
     : TransactionState(vocbase, options),
       _rocksTransaction(nullptr),
       _snapshot(nullptr),
-      _rocksWriteOptions(),
       _rocksReadOptions(),
       _cacheTx(nullptr),
       _numCommits(0),
@@ -161,7 +162,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       // inconsistencies. 
       // TODO: enable this optimization once these circumstances are clear
       // and fully covered by tests
-      if (false && isExclusiveTransactionOnSingleCollection()) {
+      if (hasHint(transaction::Hints::Hint::UNTRACKED) && isExclusiveTransactionOnSingleCollection()) {
         _rocksMethods.reset(new RocksDBTrxUntrackedMethods(this));
       } else {
         _rocksMethods.reset(new RocksDBTrxMethods(this));
@@ -189,6 +190,36 @@ void RocksDBTransactionState::createTransaction() {
              _rocksTransaction->GetState() == rocksdb::Transaction::COMMITED ||
              _rocksTransaction->GetState() == rocksdb::Transaction::ROLLEDBACK);
   _rocksTransaction = db->BeginTransaction(_rocksWriteOptions, trxOpts, _rocksTransaction);
+      
+  if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
+    // we must check if there is a unique secondary index for any of the collections
+    // we write into
+    // in case it is, we must disable NO_INDEXING here, as it wouldn't be safe
+    bool disableIndexing = true;
+
+    for (auto& trxCollection : _collections) {
+      if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
+        continue;
+      }
+      auto indexes = trxCollection->collection()->getIndexes();
+      for (auto const& idx : indexes) {
+        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          // primary index is unique, but we can ignore it here.
+          // we are only looking for secondary indexes
+          continue;
+        }
+        if (idx->unique()) {
+          // found secondary unique index. we need to turn off the NO_INDEXING optimization now
+          disableIndexing = false;
+          break;
+        }
+      }
+    }
+
+    if (disableIndexing) {
+      _rocksTransaction->DisableIndexing();
+    }
+  }
   
   // add transaction begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
@@ -244,15 +275,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
-
+  
   Result result;
   if (_rocksTransaction->GetNumKeys() > 0) {
-    // set wait for sync flag if required
-    if (waitForSync()) {
-      _rocksWriteOptions.sync = true;
-      _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
-    }
-
     ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
     rocksdb::SequenceNumber latestSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
@@ -277,6 +302,20 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         collection->commitCounts();
+      }
+    
+      // wait for sync if required
+      if (waitForSync()) {
+        RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+        TRI_ASSERT(engine != nullptr);
+
+        if (engine->syncThread()) {
+          // sync thread is present
+          result = engine->syncThread()->syncWal();
+        } else {
+          // no sync thread present. use the static method for syncing instead
+          result = RocksDBSyncThread::sync(engine->db()->GetBaseDB());
+        }
       }
     }
   } else {
