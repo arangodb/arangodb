@@ -1,7 +1,9 @@
 Import and Export
 =================
 
-Import and export can be done via the tools [_arangoimport_](../Programs/Arangoimport/README.md) and [_arangoexport_](../Programs/Arangoexport/README.md)
+Imports and exports can be done with the tools
+[_arangoimport_](../Programs/Arangoimport/README.md) and
+[_arangoexport_](../Programs/Arangoexport/README.md).
 
 <!-- Importing from files -->
 
@@ -13,70 +15,75 @@ Import and export can be done via the tools [_arangoimport_](../Programs/Arangoi
 
 <!-- Syncing with 3rd party systems? -->
 
-Converting JSON pretty printed files into JSONlines format
-==========================================================
+JSONlines
+---------
 
-[_arangoimport_](../Programs/Arangoimport/README.md) may perform better with [_JSONlines_](http://jsonlines.org/) formatted input files.
+Multiple documents can be stored in JSON format in a top-level array with
+objects as members:
 
-Depending on the actual formatting of a JSON input file processing large data with lots of objects (that requires reading all them first into memory) it may be optimized using JSONlines. An input with pretty printed JSON objects within an array can be converted into JSON object per line using [_jq_](http://stedolan.github.io/jq/) command line tool. Converted data can be validated and processed faster in this case.
+```json
+[
+  {"attr": "a document"},
+  {"attr": "another document"}
+]
+```
 
-You can easily use the `jq` command line tool for this conversion:
-    
-    jq -c ".[]" inputFile.json > outputFile.jsonl
+It requires parsers to read the entire input in order to verify that the
+array is properly closed at the very end. This can be problematic for large
+files. [_arangoimport_](../Programs/Arangoimport/README.md) can perform better
+with [_JSONlines_](http://jsonlines.org/) (also known as _JSONL_) formatted
+input files, which allows processing each line individually:
+
+```json
+{"attr": "a document"}
+{"attr": "another document"}
+```
+
+An input with JSON objects in an array, optionally pretty printed, can be
+easily converted into JSONL with one JSON object per line using the
+[**jq** command line tool](http://stedolan.github.io/jq/):
+
+```
+jq -c ".[]" inputFile.json > outputFile.jsonl
+```
+
+The `-c` option enables compact JSON (as opposed to pretty printed JSON).
+`".[]"` is a filter that unpacks the top-level array and effectively puts each
+object in that array on a separate line in combination with the compact option.
 
 An example `inputFile.json` can look like this:
 
 ```json
 [
   {
-    "_id": "5b575e382e8cfbe474cb870d",
-    "index": 0,
-    "guid": "0a991404-ac99-4cb7-94f1-2e629a02ae02",
     "isActive": true,
     "name": "Evans Wheeler",
-    "gender": "male",
     "latitude": -0.119406,
     "longitude": 146.271888,
     "tags": [
       "amet",
       "qui",
-      "proident",
-      "velit",
-      "id",
-      "enim",
-      "officia"
-    ],
-    "greeting": "Hello, Evans Wheeler! You have 9 unread messages.",
-    "favoriteFruit": "strawberry"
+      "velit"
+    ]
   },
   {
-    "_id": "5b575e3897cb664a12066f63",
-    "index": 1,
-    "guid": "3b94a6f2-6381-46f6-9516-e8df4f945fd9",
     "isActive": true,
     "name": "Coffey Barron",
-    "gender": "male",
     "latitude": -37.78772,
     "longitude": 131.218935,
     "tags": [
-      "laborum",
-      "quis",
       "dolore",
-      "anim",
       "exercitation",
       "irure",
       "velit"
-    ],
-    "greeting": "Hello, Coffey Barron! You have 10 unread messages.",
-    "favoriteFruit": "apple"
+    ]
   }
 ]
 ```
 
-After conversion the following `outputFile.jsonl` will be created:
+The conversion produces the following `outputFile.jsonl`:
 
 ```json
-{"_id":"5b575e382e8cfbe474cb870d","index":0,"guid":"0a991404-ac99-4cb7-94f1-2e629a02ae02","isActive":true,"name":"Evans Wheeler","gender":"male","latitude":-0.119406,"longitude":146.271888,"tags":["amet","qui","proident","velit","id","enim","officia"],"greeting":"Hello, Evans Wheeler! You have 9 unread messages.","favoriteFruit":"strawberry"}
-{"_id":"5b575e3897cb664a12066f63","index":1,"guid":"3b94a6f2-6381-46f6-9516-e8df4f945fd9","isActive":true,"name":"Coffey Barron","gender":"male","latitude":-37.78772,"longitude":131.218935,"tags":["laborum","quis","dolore","anim","exercitation","irure","velit"],"greeting":"Hello, Coffey Barron! You have 10 unread messages.","favoriteFruit":"apple"}
+{"isActive":true,"name":"Evans Wheeler","latitude":-0.119406,"longitude":146.271888,"tags":["amet","qui","velit"]}
+{"isActive":true,"name":"Coffey Barron","latitude":-37.78772,"longitude":131.218935,"tags":["dolore","exercitation","irure","velit"]}
 ```
-
