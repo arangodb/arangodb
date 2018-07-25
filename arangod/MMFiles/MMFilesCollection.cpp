@@ -3281,10 +3281,7 @@ Result MMFilesCollection::update(
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(
-            _logicalCollection.vocbase().name(),
-            trx->resolver()->getCollectionNameCluster(
-              _logicalCollection.planId()
-            ),
+            _logicalCollection,
             oldDoc,
             builder->slice(),
             false
@@ -3419,10 +3416,7 @@ Result MMFilesCollection::replace(
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection.vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            _logicalCollection.planId()
-          ),
+          _logicalCollection,
           oldDoc,
           builder->slice(),
           false

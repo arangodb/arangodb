@@ -313,15 +313,14 @@ MMFilesHashIndex::MMFilesHashIndex(
     : MMFilesPathBasedIndex(iid, collection, info,
                             sizeof(LocalDocumentId) + sizeof(uint32_t), false),
       _uniqueArray(nullptr) {
-  size_t indexBuckets = 1;
   auto physical = static_cast<MMFilesCollection*>(collection.getPhysical());
 
-    TRI_ASSERT(physical != nullptr);
-    indexBuckets = static_cast<size_t>(physical->indexBuckets());
+  TRI_ASSERT(physical != nullptr);
+  size_t indexBuckets = static_cast<size_t>(physical->indexBuckets());
 
   if (collection.isAStub()) {
-      // in order to reduce memory usage
-      indexBuckets = 1;
+    // in order to reduce memory usage
+    indexBuckets = 1;
   }
 
   if (_unique) {

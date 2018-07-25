@@ -38,15 +38,15 @@ char const* TRI_last_error();
 int TRI_set_errno(int);
 
 /// @brief defines an error string
-void TRI_set_errno_string(int, char const*);
+void TRI_set_errno_string(int code, char const* msg);
+
+/// @brief defines an exit string
+void TRI_set_exitno_string(int code, char const* msg);
 
 /// @brief return an error message for an error code
-char const* TRI_errno_string(int);
+char const* TRI_errno_string(int code) noexcept;
 
 /// @brief initializes the error messages
 void TRI_InitializeError();
-
-/// @brief defines an exit string
-void TRI_set_exitno_string(int, char const*);
 
 #endif

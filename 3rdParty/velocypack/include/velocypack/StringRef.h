@@ -42,7 +42,7 @@ class StringRef {
   constexpr StringRef() noexcept : _data(""), _length(0) {}
 
   /// @brief create a StringRef from an std::string
-  explicit StringRef(std::string const& str) : StringRef(str.data(), str.size()) {}
+  explicit StringRef(std::string const& str) noexcept : StringRef(str.data(), str.size()) {}
   
   /// @brief create a StringRef from a null-terminated C string
   explicit StringRef(char const* data) noexcept : StringRef(data, strlen(data)) {}
@@ -62,8 +62,19 @@ class StringRef {
   StringRef(StringRef const& other) noexcept
       : _data(other._data), _length(other._length) {}
   
+  /// @brief move a StringRef from another StringRef
+  StringRef(StringRef&& other) noexcept
+      : _data(other._data), _length(other._length) {}
+  
   /// @brief create a StringRef from another StringRef
   StringRef& operator=(StringRef const& other) noexcept {
+    _data = other._data;
+    _length = other._length;
+    return *this;
+  }
+  
+  /// @brief move a StringRef from another StringRef
+  StringRef& operator=(StringRef&& other) noexcept {
     _data = other._data;
     _length = other._length;
     return *this;
