@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,36 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H
-#define ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_TASKS_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_TASKS_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "StorageEngine/TransactionState.h"
-#include "Utils/DatabaseGuard.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/Methods.h"
-#include "VocBase/AccessMode.h"
-#include "VocBase/vocbase.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-
-class ReplicationTransaction : public transaction::Methods {
+class RestTasksHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  /// @brief create the transaction
-  explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
-    : transaction::Methods(transaction::StandaloneContext::Create(vocbase)),
-      _guard(vocbase) {
-    TRI_ASSERT(_state != nullptr);
-    _state->setType(AccessMode::Type::EXCLUSIVE);
-  }
+  RestTasksHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  char const* name() const override final { return "RestTasksHandler"; }
+  RequestLane lane() const override final { return RequestLane::TASK_V8; }
+  RestStatus execute() override;
+
+ protected:
+  virtual uint32_t forwardingTarget() override;
 
  private:
-  DatabaseGuard _guard;
+  void getTasks();
+  void registerTask(bool byId);
+  void deleteTask();
 };
-
-}
+}  // namespace arangodb
 
 #endif

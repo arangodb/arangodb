@@ -488,7 +488,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
       if (_sparse) {
         return;
       }
-      sliceStack.emplace_back(arangodb::basics::VelocyPackHelper::NullValue());
+      sliceStack.emplace_back(arangodb::velocypack::Slice::nullSlice());
     } else {
       sliceStack.emplace_back(slice);
     }
@@ -505,7 +505,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
   // with None values to be able to use the index for a prefix match.
 
   // Trivial case to bottom out with Illegal types.
-  VPackSlice illegalSlice = arangodb::basics::VelocyPackHelper::IllegalValue();
+  VPackSlice illegalSlice = arangodb::velocypack::Slice::illegalSlice();
 
   auto finishWithNones = [&]() -> void {
     if (!_allowPartialIndex || level == 0) {
@@ -562,7 +562,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
     for (size_t i = _expanding[level] + 1; i < n; i++) {
       if (!current2.isObject()) {
         if (!_sparse) {
-          moveOn(arangodb::basics::VelocyPackHelper::NullValue());
+          moveOn(arangodb::velocypack::Slice::nullSlice());
         }
         doneNull = true;
         break;
@@ -570,7 +570,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
       current2 = current2.get(_paths[level][i]);
       if (current2.isNone()) {
         if (!_sparse) {
-          moveOn(arangodb::basics::VelocyPackHelper::NullValue());
+          moveOn(arangodb::velocypack::Slice::nullSlice());
         }
         doneNull = true;
         break;

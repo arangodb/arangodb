@@ -96,7 +96,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _index(index),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _cache(std::move(cache)),
-      _builderIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()),
+      _builderIterator(arangodb::velocypack::Slice::emptyArraySlice()),
       _lastKey(VPackSlice::nullSlice()) {
   TRI_ASSERT(_keys != nullptr);
   TRI_ASSERT(_keys->slice().isArray());
@@ -122,7 +122,7 @@ void RocksDBEdgeIndexIterator::reset() {
   _keysIterator.reset();
   _lastKey = VPackSlice::nullSlice();
   _builderIterator =
-      VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+      VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
 }
     
 // returns true if we have one more key for the index lookup.
@@ -218,7 +218,7 @@ bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
               _builderIterator.next();
             }
             _builderIterator = VPackArrayIterator(
-                arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+                arangodb::velocypack::Slice::emptyArraySlice());
           } else {
             // We need to copy it.
             // And then we just get back to beginning of the loop
@@ -313,7 +313,7 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
               _builderIterator.next();
             }
             _builderIterator = VPackArrayIterator(
-                arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+                arangodb::velocypack::Slice::emptyArraySlice());
           } else {
             // We need to copy it.
             // And then we just get back to beginning of the loop
@@ -420,7 +420,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
               limit--;
             }
             _builderIterator = VPackArrayIterator(
-                arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+                arangodb::velocypack::Slice::emptyArraySlice());
           } else {
             // We need to copy it.
             // And then we just get back to beginning of the loop
