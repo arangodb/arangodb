@@ -35,15 +35,11 @@
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-std::atomic_uint_fast64_t NEXT_HANDLER_ID(
-    static_cast<uint64_t>(TRI_microtime() * 100000.0));
-}
 
 thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 
@@ -52,11 +48,11 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 // -----------------------------------------------------------------------------
 
 RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
-    : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
-      _canceled(false),
+    : _canceled(false),
       _request(request),
       _response(response),
       _statistics(nullptr),
+      _handlerId(0),
       _state(HandlerState::PREPARE) {}
 
 RestHandler::~RestHandler() {
@@ -70,6 +66,10 @@ RestHandler::~RestHandler() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+void RestHandler::assignHandlerId() {
+  _handlerId = TRI_NewServerSpecificTick();
+}
 
 uint64_t RestHandler::messageId() const {
   uint64_t messageId = 0UL;
@@ -104,8 +104,6 @@ bool RestHandler::forwardRequest() {
   // virtual methods to handle param/header filtering?
 
   // TODO verify that vst -> http -> vst conversion works correctly
-
-  // TODO verify that async requests work correctly
 
   uint32_t shortId = forwardingTarget();
   if (shortId == 0) {
@@ -246,7 +244,7 @@ bool RestHandler::forwardRequest() {
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
-  _response->setHeader(StaticStrings::RequestServedBy, serverId);
+  _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
   return true;
 }
 
@@ -360,7 +358,7 @@ void RestHandler::shutdownEngine() {
 
   // shutdownExecute is noexcept
   shutdownExecute(true);
-  
+
   RestHandler::CURRENT_HANDLER = nullptr;
   _state = HandlerState::DONE;
 }
@@ -418,7 +416,7 @@ void RestHandler::executeEngine(bool isContinue) {
     } else {
       result = execute();
     }
-  
+
     RestHandler::CURRENT_HANDLER = nullptr;
 
     if (result == RestStatus::WAITING) {

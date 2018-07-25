@@ -114,22 +114,24 @@ LogicalCollection* Collections::Context::coll() const {
 
 void Collections::enumerate(
     TRI_vocbase_t* vocbase,
-    std::function<void(LogicalCollection*)> const& func) {
+    std::function<void(LogicalCollection&)> const& func
+) {
   if (ServerState::instance()->isCoordinator()) {
     std::vector<std::shared_ptr<LogicalCollection>> colls =
         ClusterInfo::instance()->getCollections(vocbase->name());
+
     for (std::shared_ptr<LogicalCollection> const& c : colls) {
       if (!c->deleted()) {
-        func(c.get());
+        func(*c);
       }
     }
-
   } else {
     std::vector<arangodb::LogicalCollection*> colls =
         vocbase->collections(false);
+
     for (LogicalCollection* c : colls) {
       if (!c->deleted()) {
-        func(c);
+        func(*c);
       }
     }
   }
@@ -143,16 +145,22 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (ServerState::instance()->isCoordinator()) {
     try {
       auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
+
       // check authentication after ensuring the collection exists
       if (exec != nullptr &&
           !exec->canUseCollection(vocbase->name(), coll->name(), auth::Level::RO)) {
         return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
       }
-      func(coll.get());
-      return Result();
+
+      if (coll) {
+        func(*coll);
+
+        return Result();
+      }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -160,6 +168,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
     } catch (...) {
       return Result(TRI_ERROR_INTERNAL);
     }
+
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
@@ -172,7 +181,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
       return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
     }
     try {
-      func(coll.get());
+      func(*coll);
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -180,8 +189,10 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
     } catch (...) {
       return Result(TRI_ERROR_INTERNAL);
     }
+
     return Result();
   }
+
   return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
@@ -247,6 +258,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+
       if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
         um->updateUser(
@@ -257,7 +269,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       }
 
       // reload otherwise collection might not be in yet
-      func(col.get());
+      func(*col);
     } else {
       arangodb::LogicalCollection* col = vocbase->createCollection(infoSlice);
       TRI_ASSERT(col != nullptr);
@@ -265,6 +277,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+
       if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
         um->updateUser(
@@ -273,7 +286,8 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
             return TRI_ERROR_NO_ERROR;
           });
       }
-      func(col);
+
+      func(*col);
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());

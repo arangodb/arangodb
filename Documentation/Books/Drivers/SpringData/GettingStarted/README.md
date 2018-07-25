@@ -10,7 +10,8 @@
 
 Spring Data ArangoDB requires ArangoDB 3.0 or higher - which you can download [here](https://www.arangodb.com/download/) - and Java 8 or higher.
 
-**Note**: ArangoDB 3.0 does not support the default transport protocol [VelocyStream](https://github.com/arangodb/velocystream). A manual switch to HTTP is required. See chapter [configuration](#configuration). Also ArangoDB 3.0 does not support geospatial queries.
+**Note**: ArangoDB 3.0 does not support the default transport protocol [VelocyStream](https://github.com/arangodb/velocystream).
+A manual switch to HTTP is required. See chapter [configuration](#configuration). Also ArangoDB 3.0 does not support geospatial queries.
 
 ## Maven
 

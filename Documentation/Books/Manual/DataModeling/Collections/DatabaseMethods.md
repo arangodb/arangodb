@@ -96,8 +96,18 @@ to the [naming conventions](../NamingConventions/README.md).
   - *type*: specifies the type of the key generator. The currently
     available generators are *traditional*, *autoincrement*, *uuid* and
     *padded*.
-    (**note**: *autoincrement* is currently only supported for non-sharded
-    collections)
+    The `traditional` key generator generates numerical keys in ascending order.
+    The `autoincrement` key generator generates numerical keys in ascending order, 
+    the inital offset and the spacing can be configured (**note**: *autoincrement* is currently only 
+    supported for non-sharded collections). 
+    The `padded` key generator generates keys of a fixed length (16 bytes) in
+    ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
+    engine, which will slightly benefit keys that are inserted in lexicographically
+    ascending order. The key generator can be used in a single-server or cluster.
+    The `uuid` key generator generates universally unique 128 bit keys, which 
+    are stored in hexadecimal human-readable format. This key generator can be used
+    in a single-server or cluster to generate "seemingly random" keys. The keys 
+    produced by this key generator are not lexicographically sorted.
   - *allowUserKeys*: if set to *true*, then it is allowed to supply
     own key values in the *_key* attribute of a document. If set to
     *false*, then the key generator will solely be responsible for
@@ -148,7 +158,7 @@ to the [naming conventions](../NamingConventions/README.md).
   servers holding copies take over, usually without an error being
   reported.
 
-  When using the *Enterprise* version of ArangoDB the replicationFactor
+  When using the *Enterprise Edition* of ArangoDB the replicationFactor
   may be set to "satellite" making the collection locally joinable
   on every database server. This reduces the number of network hops
   dramatically when using joins in AQL at the costs of reduced write
@@ -158,7 +168,7 @@ to the [naming conventions](../NamingConventions/README.md).
   cloning the shard distribution of another. If this value is set
   it will copy *replicationFactor* and *numberOfShards* from the
   other collection, the attributes in this collection will be 
-  ignored and can be ommited.
+  ignored and can be omitted.
 
 
 `db._create(collection-name, properties, type)`

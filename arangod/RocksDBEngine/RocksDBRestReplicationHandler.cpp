@@ -461,13 +461,6 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
 
-  // TRI_voc_tick_t tickEnd = UINT64_MAX;
-  // determine end tick for keys
-  // std::string const& value = _request->value("to", found);
-  // if (found) {
-  //  tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
-  //}
-
   // bind collection to context - will initialize iterator
   int res = ctx->bindCollectionIncremental(_vocbase, collection);
 

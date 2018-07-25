@@ -202,6 +202,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", true, false, true, &Functions::EncodeURIComponent});
   add({"UUID", "", true, false, true, &Functions::UUID});
   add({"SOUNDEX", ".", true, false, true, &Functions::Soundex});
+  add({"LEVENSHTEIN_DISTANCE", ".,.", true, false, true, &Functions::LevenshteinDistance});
   // FULLTEXT is replaced by the AQL optimizer with an index lookup
   add({"FULLTEXT", ".h,.,.|." , false, true, false, &Functions::NotImplemented});
 }

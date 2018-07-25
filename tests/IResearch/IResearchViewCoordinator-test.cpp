@@ -255,7 +255,7 @@ SECTION("test_type") {
 
 SECTION("test_rename") {
   auto json = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"properties\": { \"collections\": [1,2,3] } }");
+    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"collections\": [1,2,3] }");
 
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
 
@@ -335,7 +335,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK(8 == slice.length());
+    CHECK((9U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
@@ -343,9 +343,6 @@ SECTION("test_defaults") {
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.hasKey("planId"));
     CHECK(false == slice.get("deleted").getBool());
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((2U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
@@ -361,15 +358,12 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK(4 == slice.length());
+    CHECK((6U == slice.length()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(!slice.hasKey("planId"));
     CHECK(!slice.hasKey("deleted"));
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((3U == slice.length()));
     CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
@@ -633,7 +627,7 @@ SECTION("test_update_properties") {
 
       arangodb::iresearch::IResearchViewMeta meta;
       error.clear(); // clear error
-      CHECK(meta.init(builder.slice().get("properties"), error));
+      CHECK(meta.init(builder.slice(), error));
       CHECK(error.empty());
       CHECK(meta == arangodb::iresearch::IResearchViewMeta::DEFAULT());
     }
@@ -671,7 +665,7 @@ SECTION("test_update_properties") {
         expected._commit._cleanupIntervalStep = 42;
         expected._commit._commitIntervalMsec = 50;
         error.clear(); // clear error
-        CHECK(meta.init(builder.slice().get("properties"), error));
+        CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
         CHECK(expected == meta);
       }
@@ -685,7 +679,7 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         error.clear(); // clear error
-        CHECK(meta.init(builder.slice().get("properties"), error));
+        CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
         CHECK(meta == arangodb::iresearch::IResearchViewMeta::DEFAULT());
       }
@@ -722,7 +716,7 @@ SECTION("test_update_properties") {
         expected._commit._cleanupIntervalStep = 42;
         expected._commit._commitIntervalMsec = 42;
         error.clear(); // clear error
-        CHECK(meta.init(builder.slice().get("properties"), error));
+        CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
         CHECK(expected == meta);
       }
@@ -847,7 +841,7 @@ SECTION("test_update_links_partial_remove") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
@@ -889,7 +883,7 @@ SECTION("test_update_links_partial_remove") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -1087,7 +1081,7 @@ SECTION("test_update_links_partial_remove") {
   }
 
   auto const updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"links\": {"
     "  \"2\" : null "
     "} }"
   );
@@ -1126,7 +1120,7 @@ SECTION("test_update_links_partial_remove") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -1403,7 +1397,7 @@ SECTION("test_update_links_partial_add") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
     "} }"
@@ -1443,7 +1437,7 @@ SECTION("test_update_links_partial_add") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -1581,7 +1575,7 @@ SECTION("test_update_links_partial_add") {
   }
 
   auto const updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"links\": {"
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
     "} }"
   );
@@ -1621,7 +1615,7 @@ SECTION("test_update_links_partial_add") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -1969,7 +1963,7 @@ SECTION("test_update_links_replace") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
     "} }"
@@ -2009,7 +2003,7 @@ SECTION("test_update_links_replace") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -2158,7 +2152,7 @@ SECTION("test_update_links_replace") {
   }
 
   auto updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"links\": {"
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
     "} }"
   );
@@ -2196,7 +2190,7 @@ SECTION("test_update_links_replace") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -2278,7 +2272,7 @@ SECTION("test_update_links_replace") {
   }
 
   updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
+    "{ \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : null "
     "} }"
@@ -2317,7 +2311,7 @@ SECTION("test_update_links_replace") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -2536,7 +2530,7 @@ SECTION("test_update_links_clear") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"locale\": \"en\", \"links\" : {"
+    "{ \"locale\": \"en\", \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
@@ -2578,7 +2572,7 @@ SECTION("test_update_links_clear") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -2786,7 +2780,7 @@ SECTION("test_update_links_clear") {
     CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
   }
 
-  auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": {}}");
+  auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": {} }");
   CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -2817,7 +2811,7 @@ SECTION("test_update_links_clear") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK((properties.hasKey(arangodb::iresearch::StaticStrings::LinksField)));
     auto links = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK((links.isObject()));
@@ -2924,7 +2918,7 @@ SECTION("test_drop_link") {
       CHECK(arangodb::AgencyComm().setValue(currentCollectionPath, value->slice(), 0.0).successful());
     }
 
-    auto linksJson = arangodb::velocypack::Parser::fromJson("{ \"links\" : { \"testCollection\" : { \"includeAllFields\" : true } } }");
+    auto linksJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\" : { \"includeAllFields\" : true } } }");
     CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // add link
     CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -2958,7 +2952,7 @@ SECTION("test_drop_link") {
       view->toVelocyPack(info, true, false);
       info.close();
 
-      auto const properties = info.slice().get("properties");
+      auto const properties = info.slice();
       CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
       auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
       CHECK(linksSlice.isObject());
@@ -3069,7 +3063,7 @@ SECTION("test_drop_link") {
       view->toVelocyPack(info, true, false);
       info.close();
 
-      auto const properties = info.slice().get("properties");
+      auto const properties = info.slice();
       CHECK((properties.hasKey(arangodb::iresearch::StaticStrings::LinksField)));
       auto links = properties.get(arangodb::iresearch::StaticStrings::LinksField);
       CHECK((links.isObject()));

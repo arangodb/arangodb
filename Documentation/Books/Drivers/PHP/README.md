@@ -14,4 +14,5 @@ The official ArangoDB PHP Driver.
 
 * PHPDoc documentation for the complete library is in the library's docs subdirectory. Point your browser at this directory to get a click-through version of the documentation after cloning the repository.
 
-* [Follow us on Twitter](https://twitter.com/arangodbphp) [@arangodbphp](https://twitter.com/arangodbphp) to receive updates on the PHP driver
+* [Follow us on Twitter](https://twitter.com/arangodbphp)
+  [@arangodbphp](https://twitter.com/arangodbphp) to receive updates on the PHP driver

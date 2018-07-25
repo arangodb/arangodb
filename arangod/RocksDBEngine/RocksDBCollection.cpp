@@ -80,7 +80,7 @@ struct IndexingDisabler {
   IndexingDisabler(RocksDBMethods* mthd, bool disableIndexing) 
       : mthd(mthd), disableIndexing(disableIndexing) {
     if (disableIndexing) {
-      mthd->DisableIndexing();
+      disableIndexing = mthd->DisableIndexing();
     }
   }
 
@@ -91,7 +91,7 @@ struct IndexingDisabler {
   }
 
   RocksDBMethods* mthd;
-  bool const disableIndexing;
+  bool disableIndexing;
 };
 
 RocksDBCollection::RocksDBCollection(
@@ -291,10 +291,10 @@ void RocksDBCollection::prepareIndexes(
   std::vector<std::shared_ptr<Index>> indexes;
 
   if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine->indexFactory().fillSystemIndexes(&_logicalCollection, indexes);
+    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
   } else {
     engine->indexFactory().prepareIndexes(
-      &_logicalCollection, indexesSlice, indexes
+      _logicalCollection, indexesSlice, indexes
     );
   }
 
@@ -386,7 +386,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   // Create it
 
   idx = engine->indexFactory().prepareIndexFromSlice(
-    info, true, &_logicalCollection, false
+    info, true, _logicalCollection, false
   );
   TRI_ASSERT(idx != nullptr);
 
@@ -460,7 +460,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
     newIdx = engine->indexFactory().prepareIndexFromSlice(
-      info, false, &_logicalCollection, false
+      info, false, _logicalCollection, false
     );
   } catch (arangodb::basics::Exception const& e) {
     // Something with index creation went wrong.
@@ -891,10 +891,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection.vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            _logicalCollection.planId()
-          ),
+          _logicalCollection,
           oldDoc,
           builder->slice(),
           false
@@ -1001,10 +998,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection.vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            _logicalCollection.planId()
-          ),
+          _logicalCollection,
           oldDoc,
           builder->slice(),
           false

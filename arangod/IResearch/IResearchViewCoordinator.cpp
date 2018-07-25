@@ -268,14 +268,6 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
     );
   }
 
-  builder.add(
-    StaticStrings::PropertiesField,
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-  );
-
-  auto closePropertiesField = // close StaticStrings::PropertiesField
-    irs::make_finally([&builder]()->void { builder.close(); });
-
   if (!_meta.json(builder)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
@@ -349,9 +341,7 @@ bool IResearchViewCoordinator::emplace(
   auto view = std::shared_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
   );
-  auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-  auto props = json.get(StaticStrings::PropertiesField);
-  auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'props' then assume defaults
+  auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
   if (!view->_meta.init(properties, error)) {
@@ -431,7 +421,7 @@ bool IResearchViewCoordinator::visitCollections(
 }
 
 arangodb::Result IResearchViewCoordinator::updateProperties(
-    velocypack::Slice const& properties,
+    velocypack::Slice const& slice,
     bool partialUpdate,
     bool /*doSync*/
 ) {
@@ -443,7 +433,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       ? _meta
       : IResearchViewMeta::DEFAULT();
 
-    if (!meta.init(properties, error, defaults)) {
+    if (!meta.init(slice, error, defaults)) {
       return { TRI_ERROR_BAD_PARAMETER, error };
     }
 
@@ -461,12 +451,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-        builder.add(
-          StaticStrings::PropertiesField,
-          arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-        );
-          meta.json(builder);
-        builder.close(); // close PROPERTIES_FIELD
+        meta.json(builder);
 
         auto result = toVelocyPack(builder, false, true);
 
@@ -484,7 +469,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       }
     }
 
-    if (!properties.hasKey(StaticStrings::LinksField)) {
+    if (!slice.hasKey(StaticStrings::LinksField) && partialUpdate) {
       return arangodb::Result(); // nothing more to do
     }
 
@@ -514,11 +499,15 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     arangodb::velocypack::Builder viewNewProperties;
     bool modified = false;
     std::unordered_set<TRI_voc_cid_t> newCids;
+    auto links = slice.hasKey(StaticStrings::LinksField)
+               ? slice.get(StaticStrings::LinksField)
+               : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
+
 
     viewNewProperties.openObject();
 
     return updateLinks(
-      properties.get(StaticStrings::LinksField),
+      links,
       currentLinks.slice(),
       *this,
       partialUpdate,

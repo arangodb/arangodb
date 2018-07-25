@@ -1,7 +1,10 @@
 Audit Events
 ============
 
-__This feature is available in the Enterprise Edition.__
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
 Authentication
 --------------

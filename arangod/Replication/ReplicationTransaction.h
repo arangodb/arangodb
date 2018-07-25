@@ -44,32 +44,6 @@ class ReplicationTransaction : public transaction::Methods {
     _state->setType(AccessMode::Type::EXCLUSIVE);
   }
 
-  /// @brief get a collection by id
-  /// this will automatically add the collection to the transaction
-  /*inline TransactionCollection* trxCollection(TRI_voc_cid_t cid, AccessMode::Type) const override {
-    TRI_ASSERT(cid > 0);
-    Result result;
-
-    TransactionCollection* trxCollection = _state->collection(cid, AccessMode::Type::WRITE);
-
-    if (trxCollection == nullptr) {
-      int res = _state->addCollection(cid, AccessMode::Type::EXCLUSIVE, 0, true);
-      result.reset(res);
-
-      if (result.ok()) {
-        result = _state->ensureCollections();
-      }
-
-      if (!result.ok()) {
-        return nullptr;
-      }
-
-      trxCollection = _state->collection(cid, AccessMode::Type::EXCLUSIVE);
-    }
-
-    return trxCollection;
-  }*/
-
  private:
   DatabaseGuard _guard;
 };

@@ -39,13 +39,17 @@ class ReplicationApplierConfiguration;
 
 class DatabaseInitialSyncer final : public InitialSyncer {
   friend ::arangodb::Result handleSyncKeysMMFiles(
-      DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
+      DatabaseInitialSyncer& syncer, 
+      arangodb::LogicalCollection* col,
       std::string const& keysId);
   friend ::arangodb::Result handleSyncKeysRocksDB(
-      DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
+      DatabaseInitialSyncer& syncer, 
+      arangodb::LogicalCollection* col,
       std::string const& keysId);
   friend ::arangodb::Result syncChunkRocksDB(
-      DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
+      DatabaseInitialSyncer& syncer, 
+      SingleCollectionTransaction* trx,
+      InitialSyncerIncrementalSyncStats& stats,
       std::string const& keysId, uint64_t chunkId, std::string const& lowString,
       std::string const& highString,
       std::vector<std::pair<std::string, uint64_t>> const& markers);
@@ -161,6 +165,16 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result inventory(arangodb::velocypack::Builder& builder);
 
  private:
+  /// @brief order a new chunk from the /dump API
+  void orderDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                      std::string const& baseUrl, 
+                      arangodb::LogicalCollection* coll, 
+                      std::string const& leaderColl,
+                      InitialSyncerDumpStats& stats,
+                      int batch, 
+                      TRI_voc_tick_t fromTick, 
+                      uint64_t chunkSize);
+
   /// @brief fetch the server's inventory
   Result fetchInventory(arangodb::velocypack::Builder& builder);
 

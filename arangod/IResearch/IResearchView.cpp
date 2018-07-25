@@ -495,26 +495,6 @@ bool syncStore(
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove all cids from 'collections' that do not actually exist in
-///        'vocbase' for the specified 'view'
-////////////////////////////////////////////////////////////////////////////////
-void validateLinks(
-    std::unordered_set<TRI_voc_cid_t>& collections,
-    TRI_vocbase_t& vocbase,
-    arangodb::iresearch::IResearchView const& view
-) {
-  for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
-    auto collection = vocbase.lookupCollection(*itr);
-
-    if (!collection || !arangodb::iresearch::IResearchLink::find(*collection, view)) {
-      itr = collections.erase(itr);
-    } else {
-      ++itr;
-    }
-  }
-}
-
 NS_END
 
 NS_BEGIN(arangodb)
@@ -943,13 +923,6 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
     return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
   }
 
-  builder.add(
-    StaticStrings::PropertiesField,
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-  );
-
-  auto closePropertiesField = // close StaticStrings::PropertiesField
-    irs::make_finally([&builder]()->void { builder.close(); });
   std::vector<std::string> collections;
 
   {
@@ -1162,10 +1135,20 @@ arangodb::Result IResearchView::dropImpl() {
   collections.insert(
     _metaState._collections.begin(), _metaState._collections.end()
   );
-  validateLinks(collections, vocbase(), *this);
+
+  auto collectionsCount = collections.size();
+
+  for (auto& entry: collections) {
+    auto collection = vocbase().lookupCollection(entry);
+
+    if (!collection
+        || !arangodb::iresearch::IResearchLink::find(*collection, *this)) {
+      --collectionsCount;
+    }
+  }
 
   // ArangoDB global consistency check, no known dangling links
-  if (!collections.empty()) {
+  if (collectionsCount) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("links still present while removing iResearch view '") + std::to_string(id()) + "'"
@@ -1511,9 +1494,7 @@ int IResearchView::insert(
     new IResearchView(vocbase, info, *feature, planVersion)
   );
   auto& impl = reinterpret_cast<IResearchView&>(*view);
-  auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-  auto props = json.get(StaticStrings::PropertiesField);
-  auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
+  auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
   if (!impl._meta->init(properties, error)
@@ -1880,7 +1861,8 @@ arangodb::Result IResearchView::updateProperties(
 
   mutex.unlock(true); // downgrade to a read-lock
 
-  if (!slice.hasKey(StaticStrings::LinksField)) {
+  if (!slice.hasKey(StaticStrings::LinksField)
+      && (partialUpdate || _inRecovery.load())) { // ignore missing links coming from WAL (inRecovery)
     return res;
   }
 
@@ -1891,7 +1873,9 @@ arangodb::Result IResearchView::updateProperties(
   // ...........................................................................
 
   std::unordered_set<TRI_voc_cid_t> collections;
-  auto links = slice.get(StaticStrings::LinksField);
+  auto links = slice.hasKey(StaticStrings::LinksField)
+             ? slice.get(StaticStrings::LinksField)
+             : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
 
   if (partialUpdate) {
     mtx.unlock(); // release lock
