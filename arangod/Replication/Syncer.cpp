@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/RocksDBUtils.h"
@@ -177,10 +178,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
           std::string(
               "document insert/replace operation failed: unknown exception"));
     }
-  }
-
-  else if (type ==
-           arangodb::TRI_replication_operation_e::REPLICATION_MARKER_REMOVE) {
+  } else if (type == arangodb::TRI_replication_operation_e::REPLICATION_MARKER_REMOVE) {
     // {"type":2302,"key":"592063"}
 
     try {
@@ -222,6 +220,83 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
 namespace arangodb {
 
+Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> syncer) 
+    : _syncer(syncer), 
+      _gotResponse(false),
+      _jobsInFlight(0) {}
+
+/// @brief will be called whenever a response for the job comes in
+void Syncer::JobSynchronizer::gotResponse(arangodb::Result const& res, 
+                                          std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) {
+  CONDITION_LOCKER(guard, _condition);
+  _res = res;
+  _response = std::move(response);
+  _gotResponse = true;
+
+  guard.signal();
+}
+
+/// @brief the calling Syncer will call and block inside this function until
+/// there is a response or the syncer/server is shut down
+Result Syncer::JobSynchronizer::waitForResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
+  while (true) {
+    {
+      CONDITION_LOCKER(guard, _condition);
+      
+      if (!_gotResponse) {
+        guard.wait(1 * 1000 * 1000);
+      }
+
+      // check again, _gotResponse may have changed
+      if (_gotResponse) {
+        _gotResponse = false;
+        response = std::move(_response);
+        return _res;
+      }
+    }
+
+    if (_syncer->isAborted()) {
+      // clear result response
+      response.reset();
+
+      CONDITION_LOCKER(guard, _condition);
+      _gotResponse = false;
+      _response.reset();
+      _res.reset();
+
+      // will result in returning TRI_ERROR_REPLICATION_APPLIER_STOPPED
+      break;
+    }
+  }
+      
+  return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+}
+    
+/// @brief notifies that a job was posted
+void Syncer::JobSynchronizer::jobPosted() {
+  CONDITION_LOCKER(guard, _condition);
+
+  TRI_ASSERT(_jobsInFlight == 0);
+  ++_jobsInFlight;
+}
+
+/// @brief notifies that a job was done
+void Syncer::JobSynchronizer::jobDone() {
+  CONDITION_LOCKER(guard, _condition);
+
+  TRI_ASSERT(_jobsInFlight == 1);
+  --_jobsInFlight;
+}
+
+/// @brief checks if there are jobs in flight (can be 0 or 1 job only)
+bool Syncer::JobSynchronizer::hasJobInFlight() const {
+  CONDITION_LOCKER(guard, _condition);
+
+  TRI_ASSERT(_jobsInFlight <= 1);
+  return _jobsInFlight > 0;
+}
+
+
 Syncer::SyncerState::SyncerState(
     Syncer* syncer, ReplicationApplierConfiguration const& configuration)
     : applier{configuration},
@@ -230,8 +305,9 @@ Syncer::SyncerState::SyncerState(
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
-  TRI_ASSERT(ServerState::instance()->isSingleServer() ||
-             ServerState::instance()->isDBServer());
+  if (!ServerState::instance()->isSingleServer() && !ServerState::instance()->isDBServer()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "the replication functionality is supposed to be invoked only on a single server or DB server");
+  }
   if (!_state.applier._database.empty()) {
     // use name from configuration
     _state.databaseName = _state.applier._database;
@@ -403,6 +479,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
         return res;
       }
 
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "got lock timeout while waiting for lock on collection '" << coll->name() << "', retrying...";
       std::this_thread::sleep_for(std::chrono::microseconds(50000));
       // retry
     }

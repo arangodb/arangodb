@@ -173,7 +173,7 @@ SECTION("test_defaults") {
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, json->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, json->slice(), 1, false);
     CHECK((true == !link));
   }
 
@@ -185,7 +185,7 @@ SECTION("test_defaults") {
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, json->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, json->slice(), 1, false);
     CHECK((true == !link));
   }
 
@@ -337,7 +337,7 @@ SECTION("test_init") {
       CHECK((actual.empty()));
     }
 
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link));
 
     // collection in view after
@@ -375,7 +375,7 @@ SECTION("test_init") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 101 }");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 43 }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 43, \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 101 ] } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 43, \"type\": \"arangosearch\", \"collections\": [ 101 ] }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
@@ -396,7 +396,7 @@ SECTION("test_init") {
       CHECK((actual.empty()));
     }
 
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link));
 
     // collection in view after
@@ -443,7 +443,7 @@ SECTION("test_drop") {
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
 
-    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link0));
 
     // collection in view before
@@ -460,7 +460,9 @@ SECTION("test_drop") {
       CHECK((actual.empty()));
     }
 
+    CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
     CHECK((TRI_ERROR_NO_ERROR == link0->drop()));
+    CHECK((false == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
 
     // collection not in view after
     {
@@ -476,7 +478,7 @@ SECTION("test_drop") {
       CHECK((actual.empty()));
     }
 
-    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link1));
 
     // collection in view before (new link)
@@ -523,7 +525,7 @@ SECTION("test_unload") {
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
 
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link));
 
     // collection in view before
@@ -540,7 +542,9 @@ SECTION("test_unload") {
       CHECK((actual.empty()));
     }
 
+    CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get()) == *logicalView)));
     link->unload();
+    CHECK((false == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get()) == *logicalView)));
 
     // collection in view after unload
     {

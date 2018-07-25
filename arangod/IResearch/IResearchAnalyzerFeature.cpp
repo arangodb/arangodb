@@ -323,6 +323,10 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
 
       return true;
     }
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
@@ -378,6 +382,10 @@ irs::flags const& IResearchAnalyzerFeature::AnalyzerPool::features() const noexc
 irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const noexcept {
   try {
     return _cache.emplace(_type, _properties);
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
@@ -508,6 +516,10 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
     }
 
     return std::make_pair(pool, itr.second);
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "': " << e.what();
@@ -611,6 +623,10 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
     _customAnalyzers.erase(itr);
 
     return 1;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while removing an IResearch analizer name '" << name << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while removing an IResearch analizer name '" << name << "': " << e.what();
@@ -648,6 +664,10 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure to get IResearch analyzer name '" << name << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while retrieving an IResearch analizer name '" << name << "': " << e.code() << " "  << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while retrieving an IResearch analizer name '" << name << "': " << e.what();
@@ -948,6 +968,10 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
     revert = false;
 
     return true;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while loading configuration: " << e.code() << " "  << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while loading configuration: " << e.what();
@@ -1174,6 +1198,10 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
     pool.setKey(getStringRef(key));
 
     return true;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "': " << e.code() << " "  << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "': " << e.what();

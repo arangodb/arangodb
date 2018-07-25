@@ -392,7 +392,7 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 
   if (!indexesSlice.isArray()) {
     // always point to an array
-    indexesSlice = basics::VelocyPackHelper::EmptyArrayValue();
+    indexesSlice = arangodb::velocypack::Slice::emptyArraySlice();
   }
 
   _physical->prepareIndexes(indexesSlice);
@@ -1190,7 +1190,7 @@ bool LogicalCollection::isSatellite() const { return _replicationFactor == 0; }
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
   if (_keyOptions == nullptr) {
-    return arangodb::basics::VelocyPackHelper::NullValue();
+    return arangodb::velocypack::Slice::nullSlice();
   }
   return VPackSlice(_keyOptions->data());
 }

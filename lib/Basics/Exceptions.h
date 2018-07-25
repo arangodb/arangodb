@@ -89,7 +89,7 @@ class Exception final : public virtual std::exception {
 
   Exception(int code, char const* errorMessage, char const* file, int line);
 
-  ~Exception() throw();
+  ~Exception();
 
  public:
   char const* what() const noexcept override;

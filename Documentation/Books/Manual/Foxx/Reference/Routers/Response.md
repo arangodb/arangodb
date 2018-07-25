@@ -5,11 +5,13 @@ The response object specifies the following properties:
 
 * **body**: `Buffer | string`
 
-  Response body as a string or buffer. Can be set directly or using some of the response methods.
+  Response body as a string or buffer. Can be set directly or using some
+  of the response methods.
 
 * **context**: `Context`
 
-  The [service context](../Context.md) in which the router was mounted (rather than the context in which the route was defined).
+  The [service context](../Context.md) in which the router was mounted
+  (rather than the context in which the route was defined).
 
 * **headers**: `object`
 
@@ -17,16 +19,20 @@ The response object specifies the following properties:
 
 * **statusCode**: `number`
 
-  Status code of the response. Defaults to `200` (body set and not an empty string or buffer) or `204` (otherwise) if not changed from `undefined`.
+  Status code of the response. Defaults to `200` (body set and not an empty
+  string or buffer) or `204` (otherwise) if not changed from `undefined`.
 
 attachment
 ----------
 
 `res.attachment([filename]): this`
 
-Sets the `content-disposition` header to indicate the response is a downloadable file with the given name.
+Sets the `content-disposition` header to indicate the response is a
+downloadable file with the given name.
 
-**Note:** This does not actually modify the response body or access the file system. To send a file from the file system see the `download` or `sendFile` methods.
+**Note:** This does not actually modify the response body or access the
+file system. To send a file from the file system see the `download` or
+`sendFile` methods.
 
 **Arguments**
 
@@ -34,7 +40,8 @@ Sets the `content-disposition` header to indicate the response is a downloadable
 
   Name of the downloadable file in the response body.
 
-  If present, the extension of the filename will be used to set the response `content-type` if it has not yet been set.
+  If present, the extension of the filename will be used to set the response
+  `content-type` if it has not yet been set.
 
 Returns the response object.
 
@@ -71,7 +78,9 @@ Sets a cookie with the given name.
 
     Secret that will be used to sign the cookie.
 
-    If a secret is specified, the cookie's signature will be stored in a second cookie with the same options, the same name and the suffix `.sig`. Otherwise no signature will be added.
+    If a secret is specified, the cookie's signature will be stored in a second
+    cookie with the same options, the same name and the suffix `.sig`.
+    Otherwise no signature will be added.
 
   * **path**: `string` (optional)
 
@@ -87,11 +96,14 @@ Sets a cookie with the given name.
 
   * **httpOnly**: `boolean` (Default: `false`)
 
-    Whether the cookie should be marked as HTTP-only (rather than also exposing it to client-side code).
+    Whether the cookie should be marked as HTTP-only (rather than also exposing
+    it to client-side code).
 
-If a string is passed instead of an options object it will be interpreted as the *secret* option.
+If a string is passed instead of an options object it will be interpreted as
+the *secret* option.
 
-If a number is passed instead of an options object it will be interpreted as the *ttl* option.
+If a number is passed instead of an options object it will be interpreted as
+the *ttl* option.
 
 Returns the response object.
 
@@ -159,11 +171,14 @@ Redirects the response by setting the response `location` header and status code
 
   Response status code to set.
 
-  If the status code is the string value `"permanent"` it will be treated as the value `301`.
+  If the status code is the string value `"permanent"` it will be treated as
+  the value `301`.
 
-  If the status code is a string it will be converted to a numeric status code using the [statuses module](https://github.com/jshttp/statuses) first.
+  If the status code is a string it will be converted to a numeric status code
+  using the [statuses module](https://github.com/jshttp/statuses) first.
 
-  If the status code is omitted but the response status has not already been set, the response status will be set to `302`.
+  If the status code is omitted but the response status has not already been
+  set, the response status will be set to `302`.
 
 * **path**: `string`
 
@@ -191,33 +206,46 @@ send
 
 `res.send(data, [type]): this`
 
-Sets the response body to the given data with respect to the response definition for the response's current status code.
+Sets the response body to the given data with respect to the response
+definition for the response's current status code.
 
 **Arguments**
 
 * **data**: `any`
 
-  The data to be used as the response body. Will be converted according the [response definition](Endpoints.md#response) for the response's current status code (or `200`) in the following way:
+  The data to be used as the response body. Will be converted according the
+  [response definition](Endpoints.md#response) for the response's current
+  status code (or `200`) in the following way:
 
   If the data is an ArangoDB result set, it will be converted to an array first.
 
-  If the response definition specifies a model with a `forClient` method, that method will be applied to the data first. If the data is an array and the response definition has the `multiple` flag set, the method will be applied to each entry individually instead.
+  If the response definition specifies a model with a `forClient` method,
+  that method will be applied to the data first. If the data is an array and
+  the response definition has the `multiple` flag set, the method will be
+  applied to each entry individually instead.
 
-  Finally the data will be processed by the response type handler to conver the response body to a string or buffer.
+  Finally the data will be processed by the response type handler to convert
+  the response body to a string or buffer.
 
 * **type**: `string` (Default: `"auto"`)
 
   Content-type of the response body.
 
-  If set to `"auto"` the first MIME type specified in the [response definition](Endpoints.md#response) for the response's current status code (or `200`) will be used instead.
+  If set to `"auto"` the first MIME type specified in the
+  [response definition](Endpoints.md#response) for the response's current
+  status code (or `200`) will be used instead.
 
-  If set to `"auto"` and no response definition exists, the MIME type will be determined the following way:
+  If set to `"auto"` and no response definition exists, the MIME type will
+  be determined the following way:
 
-  If the data is a buffer the MIME type will be set to binary (`application/octet-stream`).
+  If the data is a buffer the MIME type will be set to binary
+  (`application/octet-stream`).
 
-  If the data is an object the MIME type will be set to JSON and the data will be converted to a JSON string.
+  If the data is an object the MIME type will be set to JSON and the data
+  will be converted to a JSON string.
 
-  Otherwise the MIME type will be set to HTML and the data will be converted to a string.
+  Otherwise the MIME type will be set to HTML and the data will be
+  converted to a string.
 
 Returns the response object.
 
@@ -234,7 +262,8 @@ Sends a file from the local filesystem as the response body.
 
   Path to the file on the local filesystem to be sent as the response body.
 
-  If no `content-type` header has been set yet, the extension of the filename will be used to set the value of that header.
+  If no `content-type` header has been set yet, the extension of the filename
+  will be used to set the value of that header.
 
 * **options**: `object` (optional)
 
@@ -242,8 +271,9 @@ Sends a file from the local filesystem as the response body.
 
   * **lastModified**: `boolean` (optional)
 
-    If set to `true` or if no `last-modified` header has been set yet and the value is not set to `false`
-    the `last-modified` header will be set to the modification date of the file in milliseconds.
+    If set to `true` or if no `last-modified` header has been set yet and the
+    value is not set to `false` the `last-modified` header will be set to the
+    modification date of the file in milliseconds.
 
 Returns the response object.
 
@@ -260,7 +290,8 @@ sendStatus
 `res.sendStatus(status): this`
 
 Sends a plaintext response for the given status code.
-The response status will be set to the given status code, the response body will be set to the status message corresponding to that status code.
+The response status will be set to the given status code, the response body
+will be set to the status message corresponding to that status code.
 
 **Arguments**
 
@@ -268,7 +299,8 @@ The response status will be set to the given status code, the response body will
 
   Response status code to set.
 
-  If the status code is a string it will be converted to a numeric status code using the [statuses module](https://github.com/jshttp/statuses) first.
+  If the status code is a string it will be converted to a numeric status code
+  using the [statuses module](https://github.com/jshttp/statuses) first.
 
 Returns the response object.
 
@@ -312,7 +344,8 @@ Sets the response status to the given status code.
 
   Response status code to set.
 
-  If the status code is a string it will be converted to a numeric status code using the [statuses module](https://github.com/jshttp/statuses) first.
+  If the status code is a string it will be converted to a numeric status
+  code using the [statuses module](https://github.com/jshttp/statuses) first.
 
 Returns the response object.
 
@@ -321,7 +354,8 @@ throw
 
 `res.throw(status, [reason], [options]): void`
 
-Throws an HTTP exception for the given status, which will be handled by Foxx to serve the appropriate JSON error response.
+Throws an HTTP exception for the given status, which will be handled by Foxx
+to serve the appropriate JSON error response.
 
 **Arguments**
 
@@ -329,17 +363,22 @@ Throws an HTTP exception for the given status, which will be handled by Foxx to 
 
   Response status code to set.
 
-  If the status code is a string it will be converted to a numeric status code using the [statuses module](https://github.com/jshttp/statuses) first.
+  If the status code is a string it will be converted to a numeric status code
+  using the [statuses module](https://github.com/jshttp/statuses) first.
 
-  If the status code is in the 500-range (500-599), its stacktrace will always be logged as if it were an unhandled exception.
+  If the status code is in the 500-range (500-599), its stacktrace will always
+  be logged as if it were an unhandled exception.
 
-  If development mode is enabled, the error's stacktrace will be logged as a warning if the status code is in the 400-range (400-499) or as a regular message otherwise.
+  If development mode is enabled, the error's stacktrace will be logged as a
+  warning if the status code is in the 400-range (400-499) or as a regular
+  message otherwise.
 
 * **reason**: `string` (optional)
 
   Message for the exception.
 
-  If omitted, the status message corresponding to the status code will be used instead.
+  If omitted, the status message corresponding to the status code will be
+  used instead.
 
 * **options**: `object` (optional)
 
@@ -347,15 +386,21 @@ Throws an HTTP exception for the given status, which will be handled by Foxx to 
 
   * **cause**: `Error` (optional)
 
-    Cause of the exception that will be logged as part of the error's stacktrace (recursively, if the exception also has a `cause` property and so on).
+    Cause of the exception that will be logged as part of the error's stacktrace
+    (recursively, if the exception also has a `cause` property and so on).
 
   * **extra**: `object` (optional)
 
-    Additional properties that will be added to the error response body generated by Foxx.
+    Additional properties that will be added to the error response body
+    generated by Foxx.
 
-    If development mode is enabled, an `exception` property will be added to this value containing the error message and a `stacktrace` property will be added containing an array with each line of the error's stacktrace.
+    If development mode is enabled, an `exception` property will be added to
+    this value containing the error message and a `stacktrace` property will
+    be added containing an array with each line of the error's stacktrace.
 
-If an error is passed instead of an options object it will be interpreted as the *cause* option. If no reason was provided the error's `message` will be used as the reason instead.
+If an error is passed instead of an options object it will be interpreted as
+the *cause* option. If no reason was provided the error's `message` will be
+used as the reason instead.
 
 Returns nothing.
 
@@ -364,7 +409,8 @@ type
 
 `res.type([type]): string`
 
-Sets the response content-type to the given type if provided or returns the previously set content-type.
+Sets the response content-type to the given type if provided or returns the
+previously set content-type.
 
 **Arguments**
 
@@ -372,7 +418,9 @@ Sets the response content-type to the given type if provided or returns the prev
 
   Content-type of the response body.
 
-  Unlike `res.set('content-type', type)` file extensions can be provided as values and will be translated to the corresponding MIME type (e.g. `json` becomes `application/json`).
+  Unlike `res.set('content-type', type)` file extensions can be provided as
+  values and will be translated to the corresponding MIME type (e.g. `json`
+  becomes `application/json`).
 
 Returns the content-type of the response body.
 
@@ -383,7 +431,8 @@ vary
 
 `res.vary(...names): this`
 
-This method wraps the `vary` header manipulation method of the [vary module](https://github.com/jshttp/vary) for the current response.
+This method wraps the `vary` header manipulation method of the
+[vary module](https://github.com/jshttp/vary) for the current response.
 
 The given names will be added to the response's `vary` header if not already present.
 

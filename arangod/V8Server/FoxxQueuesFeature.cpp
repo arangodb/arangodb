@@ -45,7 +45,7 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 
   options->addOption(
       "--foxx.queues", 
-      "enable or disable Foxx queues",
+      "enable Foxx queues",
       new BooleanParameter(&_enabled));
 
   options->addOption(

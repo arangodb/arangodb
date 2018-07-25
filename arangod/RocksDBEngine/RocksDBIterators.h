@@ -86,10 +86,8 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
  private:
   bool outOfRange() const;
-  static uint64_t newOffset(LogicalCollection* collection,
-                            transaction::Methods* trx);
-
   bool checkIter();
+
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds const _bounds;
@@ -125,8 +123,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-
-
 class RocksDBGenericIterator {
  public:
   RocksDBGenericIterator(rocksdb::ReadOptions& options
@@ -161,12 +157,10 @@ class RocksDBGenericIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx
-                                                 ,LogicalCollection* col
-                                                 );
+RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx,
+                                                  LogicalCollection* col);
 
-RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx
-                                            ,LogicalCollection* col
-                                            );
+RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx,
+                                              LogicalCollection* col);
 } //namespace arangodb
 #endif

@@ -1,6 +1,9 @@
 # Encryption 
 
-**This feature is only available in the Enterprise Edition.**
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
 When you store sensitive data in your ArangoDB database, you want 
 to protect that data under all circumstances. 
@@ -38,7 +41,7 @@ encryption key to the server.
 Make sure to pass this option the very first time you start your
 database.  You cannot encrypt a database that already exists.
 
-Note: You also have to activate the `rocksdb` storage engine.
+Note: You also have to activate the RocksDB storage engine.
 
 ### Encryption key stored in file
 

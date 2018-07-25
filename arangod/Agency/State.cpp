@@ -674,7 +674,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
     if (_log.empty()) {
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
-      VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+      VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
       _log.push_back(
         log_t(index_t(0), term_t(0), buf, std::string()));
@@ -987,7 +987,7 @@ bool State::loadRemaining() {
         if (index > lastIndex + 1) {
           std::shared_ptr<Buffer<uint8_t>> buf =
             std::make_shared<Buffer<uint8_t>>();
-          VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+          VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
           buf->append(value.startAs<char const>(), value.byteSize());
           term_t term(ii.get("term").getNumber<uint64_t>());
           for (index_t i = lastIndex+1; i < index; ++i) {

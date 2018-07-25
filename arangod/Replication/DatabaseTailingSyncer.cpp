@@ -231,9 +231,10 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
     // no translations yet... query master inventory to find names of all
     // collections
     try {
-      DatabaseInitialSyncer init(*_vocbase, _state.applier);
       VPackBuilder inventoryResponse;
-      Result res = init.inventory(inventoryResponse);
+
+      auto init = std::make_shared<DatabaseInitialSyncer>(*_vocbase, _state.applier);
+      Result res = init->inventory(inventoryResponse);
       _queriedTranslations = true;
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();

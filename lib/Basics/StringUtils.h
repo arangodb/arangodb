@@ -232,7 +232,7 @@ unsigned int levenshteinDistance(std::string const& str1, std::string const& str
 /// @brief calculates the levenshtein distance between the input strings
 size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2);
 
-/// @brief unicode hexidecmial characters to utf8
+/// @brief unicode hexadecimal characters to utf8
 bool unicodeToUTF8(char const* inputStr, size_t const& len,
                    std::string& outputStr);
 
@@ -260,6 +260,9 @@ std::string itoa(int64_t i);
 
 /// @brief converts unsigned integer to string
 std::string itoa(uint64_t i);
+
+/// @brief converts unsigned integer to string
+size_t itoa(uint64_t i, char* result);
 
 /// @brief converts integer to string
 std::string itoa(int32_t i);
