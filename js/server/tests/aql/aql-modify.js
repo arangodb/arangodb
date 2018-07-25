@@ -892,8 +892,7 @@ function aqlRemoveOptionsSuite () {
     setUp, tearDown,
 
     testRemoveSingleWithInvalidRev : function () {
-      const invalid = genInvalidValue();
-      let q = `REMOVE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
+      let q = `REMOVE {_key: @key, _rev: "invalid"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {
@@ -906,9 +905,23 @@ function aqlRemoveOptionsSuite () {
       assertEqual(2000, col.count(), `We removed the document`);
     },
 
-    testRemoveManyWithInvalidRev : function () {
+    testRemoveSingleWithInvalidVal : function () {
       const invalid = genInvalidValue();
-      let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
+      let q = `REMOVE {_key: @key, val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
+      let docs = buildSetOfDocs(1);
+      for (let d of docs) {
+        try {
+          db._query(q, {key: d._key});
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+        }
+      }
+      assertEqual(2000, col.count(), `We removed the document`);
+    },
+
+    testRemoveManyWithInvalidRev : function () {
+      let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(10);
       try {
         db._query(q, {docs: [...docs]});
@@ -919,12 +932,24 @@ function aqlRemoveOptionsSuite () {
       assertEqual(2000, col.count(), `We removed the document`);
     },
 
-    testRemoveEnumerationWithInvalidRev : function () {
+    testRemoveManyWithInvalidVal : function () {
       const invalid = genInvalidValue();
+      let q = `FOR doc IN @docs REMOVE {_key: doc._key, val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
+      let docs = buildSetOfDocs(10);
+      try {
+        db._query(q, {docs: [...docs]});
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      }
+      assertEqual(2000, col.count(), `We removed the document`);
+    },
+
+    testRemoveEnumerationWithInvalidRev : function () {
       let q = `FOR doc IN ${collectionName}
-                REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
+                REMOVE {_key: doc._key, _rev: "invalid"}
                 IN ${collectionName} OPTIONS {ignoreRevs: false}`;
-      let docs = buildSetOfDocs();
+      buildSetOfDocs();
       try {
         db._query(q);
         fail();
@@ -934,9 +959,23 @@ function aqlRemoveOptionsSuite () {
       assertEqual(2000, col.count(), `We removed the document`);
     },
 
-    testRemoveSingleWithInvalidRevIgnore : function () {
+    testRemoveEnumerationWithInvalidVal : function () {
       const invalid = genInvalidValue();
-      let q = `REMOVE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
+      let q = `FOR doc IN ${collectionName}
+                REMOVE {_key: doc._key, val: "${invalid}"}
+                IN ${collectionName} OPTIONS {ignoreRevs: false}`;
+      buildSetOfDocs();
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      }
+      assertEqual(2000, col.count(), `We removed the document`);
+    },
+
+    testRemoveSingleWithInvalidRevIgnore : function () {
+      let q = `REMOVE {_key: @key, _rev: "invalid"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         db._query(q, {key: d._key});
@@ -945,8 +984,7 @@ function aqlRemoveOptionsSuite () {
     },
 
     testRemoveManyWithInvalidRevIgnore : function () {
-      const invalid = genInvalidValue();
-      let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
+      let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid"} IN ${collectionName} OPTIONS {ignoreRevs: true}`;
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
@@ -954,19 +992,17 @@ function aqlRemoveOptionsSuite () {
     },
 
     testRemoveEnumerationWithInvalidRevIgnore : function () {
-      const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
-                REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
+                REMOVE {_key: doc._key, _rev: "invalid"}
                 IN ${collectionName} OPTIONS {ignoreRevs: true}`;
-      let docs = buildSetOfDocs();
+      buildSetOfDocs();
       db._query(q);
 
       assertEqual(0, col.count(), `We did not remove the document`);
     },
 
     testRemoveSingleWithInvalidRevDefault : function () {
-      const invalid = genInvalidValue();
-      let q = `REMOVE {_key: @key, _rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
+      let q = `REMOVE {_key: @key, _rev: "invalid"} IN ${collectionName}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         db._query(q, {key: d._key});
@@ -975,8 +1011,7 @@ function aqlRemoveOptionsSuite () {
     },
 
     testRemoveManyWithInvalidRevDefault : function () {
-      const invalid = genInvalidValue();
-      let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"} IN ${collectionName}`;
+      let q = `FOR doc IN @docs REMOVE {_key: doc._key, _rev: "invalid"} IN ${collectionName}`;
       let docs = buildSetOfDocs(10);
       db._query(q, {docs: [...docs]});
 
@@ -984,11 +1019,10 @@ function aqlRemoveOptionsSuite () {
     },
 
     testRemoveEnumerationWithInvalidRevDefault : function () {
-      const invalid = genInvalidValue();
       let q = `FOR doc IN ${collectionName}
-                REMOVE {_key: doc._key, _rev: "invalid", val: "${invalid}"}
+                REMOVE {_key: doc._key, _rev: "invalid"}
                 IN ${collectionName}`;
-      let docs = buildSetOfDocs();
+      buildSetOfDocs();
       db._query(q);
 
       assertEqual(0, col.count(), `We did not remove the document`);
