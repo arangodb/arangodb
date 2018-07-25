@@ -602,7 +602,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
         var lockJobId = false;
         try {
           lockJobId = startReadLockOnLeader(ep, database,
-            shard, 300);
+            shard, 300); // MARK
           console.topic('heartbeat=debug', 'lockJobId:', lockJobId);
         } catch (err1) {
           console.topic('heartbeat=error', 'synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
