@@ -23,7 +23,7 @@ For the low-level functionality see the chapter on the
 Managing queues
 ---------------
 
-### create
+### queues.create
 
 `queues.create(name, [maxWorkers]): Queue`
 
@@ -55,7 +55,7 @@ const queue3 = queues.create("my-queue", 10);
 assertEqual(queue1, queue3);
 ```
 
-### get
+### queues.get
 
 `queues.get(name): Queue`
 
@@ -88,7 +88,7 @@ const queue2 = queues.get("some-queue");
 assertEqual(queue1, queue2);
 ```
 
-### delete
+### queues.delete
 
 `queues.delete(name): boolean`
 
@@ -117,7 +117,7 @@ queues.delete("my-queue"); // false
 Queue API
 ---------
 
-### push
+### queue.push
 
 `queue.push(script, data, [opts]): string`
 
@@ -284,7 +284,7 @@ queue.push(
 );
 ```
 
-### get
+### queue.get
 
 `queue.get(jobId): Job`
 
@@ -308,7 +308,7 @@ const job = queue.get(jobId);
 assertEqual(job.id, jobId);
 ```
 
-### delete
+### queue.delete
 
 `queue.delete(jobId): boolean`
 
@@ -324,7 +324,7 @@ The job will be looked up and deleted in the specified queue in the current data
 Returns `true` if the job was deleted successfully. If the job did not exist
 it returns `false` instead.
 
-### pending
+### queue.pending
 
 `queue.pending([script]): Array<string>`
 
@@ -360,7 +360,7 @@ assertEqual(queue.progress(logScript).length, 0);
 assertEqual(queue.complete(logScript).length, 1);
 ```
 
-### progress
+### queue.progress
 
 `queue.progress([script])`
 
@@ -382,7 +382,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-### complete
+### queue.complete
 
 `queue.complete([script]): Array<string>`
 
@@ -404,7 +404,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-### failed
+### queue.failed
 
 `queue.failed([script]): Array<string>`
 
@@ -426,7 +426,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-### all
+### queue.all
 
 `queue.all([script]): Array<string>`
 
@@ -451,7 +451,7 @@ The jobs will be looked up in the specified queue in the current database.
 Job API
 -------
 
-### abort
+### job.abort
 
 `job.abort(): void`
 
