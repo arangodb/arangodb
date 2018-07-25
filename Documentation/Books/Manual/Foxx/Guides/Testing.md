@@ -206,6 +206,12 @@ describe("verifyCredentials", () => {
 Integration testing
 -------------------
 
+{% hint 'warning' %}
+You should avoid running integration tests while a service
+is mounted in [development mode](DevelopmentMode.md) as each request
+will cause the service to be reloaded.
+{% endhint %}
+
 You can [use the `@arangodb/request` module](MakingRequests.md)
 to let tests talk to routes of the same service.
 
@@ -252,9 +258,3 @@ router.get("/:name", (req, res) => {
 })
 .response(["text/plain"]);
 ```
-
-{% hint 'warning' %}
-You should avoid running integration tests while a service
-is mounted in [development mode](DevelopmentMode.md) as each request
-will cause the service to be reloaded.
-{% endhint %}
