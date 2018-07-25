@@ -151,6 +151,8 @@ struct Functions {
                              VPackFunctionParameters const&);
    static AqlValue RegexReplace(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+   static AqlValue RegexSplit(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
    static AqlValue ToBase64(arangodb::aql::Query*,transaction::Methods*,
                             VPackFunctionParameters const&);
    static AqlValue ToHex(arangodb::aql::Query*, transaction::Methods*,
