@@ -62,6 +62,18 @@ using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 using VelocyPackHelper = basics::VelocyPackHelper;
 
+namespace {
+static bool ArrayContainsCollection(VPackSlice array, std::string const& colName) {
+  TRI_ASSERT(array.isArray());
+  for (auto const& it : VPackArrayIterator(array)) {
+      if (it.copyString() == colName) {
+        return true;
+      }
+  }
+  return false;
+}
+}
+
 OperationResult GraphManager::createEdgeCollection(std::string const& name,
                                                    bool waitForSync,
                                                    VPackSlice options) {
@@ -677,7 +689,7 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!graphsSlice.isArray()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot read users from _graphs collection";
+        << "cannot read graphs from _graphs collection";
   }
 
   builder.add(VPackValue(VPackValueType::Object));
@@ -902,9 +914,9 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
     graph = graph.resolveExternals();
     if (!collectionUnused) {
       // Short circuit
-      continue;
+      break;
     }
-    if (graph.get("_key").copyString() == graphName) {
+    if (graph.get(StaticStrings::KeyString).copyString() == graphName) {
       continue;
     }
 
@@ -919,18 +931,13 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
           collectionUnused = false;
         }
         // from's
-        for (auto const& from :
-             VPackArrayIterator(edgeDefinition.get(StaticStrings::GraphFrom))) {
-          if (from.copyString() == colName) {
-            collectionUnused = false;
-          }
+        if (::ArrayContainsCollection(edgeDefinition.get(StaticStrings::GraphFrom), colName)) {
+          collectionUnused = false;
+          break;
         }
-        // to's
-        for (auto const& to :
-             VPackArrayIterator(edgeDefinition.get(StaticStrings::GraphTo))) {
-          if (to.copyString() == colName) {
-            collectionUnused = false;
-          }
+        if (::ArrayContainsCollection(edgeDefinition.get(StaticStrings::GraphTo), colName)) {
+          collectionUnused = false;
+          break;
         }
       }
     } else {
@@ -940,11 +947,9 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
     // check orphan collections
     VPackSlice orphanCollections = graph.get(StaticStrings::GraphOrphans);
     if (orphanCollections.isArray()) {
-      for (auto const& orphanCollection :
-           VPackArrayIterator(orphanCollections)) {
-        if (orphanCollection.copyString() == colName) {
-          collectionUnused = false;
-        }
+      if (::ArrayContainsCollection(orphanCollections, colName)) {
+        collectionUnused = false;
+        break;
       }
     }
   }
