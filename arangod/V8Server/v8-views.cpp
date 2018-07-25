@@ -463,8 +463,14 @@ static void JS_PropertiesViewVocbase(
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view->toVelocyPack(builder, true, false);
+
+  auto res = view->toVelocyPack(builder, true, false);
+
   builder.close();
+
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
   // return the current parameter set
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()) ->ToObject());
