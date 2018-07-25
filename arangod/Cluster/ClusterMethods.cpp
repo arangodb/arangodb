@@ -1307,7 +1307,7 @@ int deleteDocumentOnCoordinator(
         bool usesDefaultShardingAttributes;
         int error = ci->getResponsibleShard(
             collinfo.get(),
-            arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
+            arangodb::velocypack::Slice::emptyObjectSlice(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 
         if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
@@ -2058,7 +2058,7 @@ void fetchVerticesFromEngines(
   // Fill everything we did not find with NULL
   for (auto const& v : vertexIds) {
     result.emplace(
-        v, VPackBuilder::clone(arangodb::basics::VelocyPackHelper::NullValue())
+        v, VPackBuilder::clone(arangodb::velocypack::Slice::nullSlice())
                .steal());
   }
   vertexIds.clear();
