@@ -722,6 +722,7 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
     }
 
     std::string key;
+    std::string rev;
 
     // loop over the complete block
     std::vector<bool> wasTaken;
@@ -740,7 +741,12 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
         if (hasKeyVariable) {
           // separate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
-          errorCode = extractKey(k, key);
+          if (options.ignoreRevs) {
+            errorCode = extractKey(k, key);
+          } else {
+            rev.clear();
+            errorCode = extractKeyAndRev(k, key, rev);
+          }
         } else {
           errorCode = extractKey(a, key);
         }
@@ -759,9 +765,18 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
             _tempBuilder.clear();
             _tempBuilder.openObject();
             _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
+            if (!options.ignoreRevs && !rev.empty()) {
+              _tempBuilder.add(StaticStrings::RevString, VPackValue(rev));
+            } else {
+              // we must never take _rev from the document if there is a key
+              // expression.
+              _tempBuilder.add(StaticStrings::RevString,
+                               VPackValue(VPackValueType::Null));
+            }
             _tempBuilder.close();
 
-            VPackCollection::merge(object, a.slice(), _tempBuilder.slice(), false, false);
+            VPackCollection::merge(object, a.slice(), _tempBuilder.slice(),
+                                   false, true);
 
             // add searchExpression / inKeyVariable to pattern
             AqlValue const& searchExpression = res->getValueReference(i, keyRegisterId);
@@ -1222,6 +1237,7 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
     }
 
     std::string key;
+    std::string rev;
 
     // loop over the complete block
     std::vector<bool> wasTaken;
@@ -1240,7 +1256,12 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
         if (hasKeyVariable) {
           // separate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
-          errorCode = extractKey(k, key);
+          if (options.ignoreRevs) {
+            errorCode = extractKey(k, key);
+          } else {
+            rev.clear();
+            errorCode = extractKeyAndRev(k, key, rev);
+          }
         } else {
           errorCode = extractKey(a, key);
         }
@@ -1259,8 +1280,18 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
             _tempBuilder.clear();
             _tempBuilder.openObject();
             _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
+            if (!options.ignoreRevs && !rev.empty()) {
+              _tempBuilder.add(StaticStrings::RevString, VPackValue(rev));
+            } else {
+              // we must never take _rev from the document if there is a key
+              // expression.
+              _tempBuilder.add(StaticStrings::RevString,
+                               VPackValue(VPackValueType::Null));
+            }
             _tempBuilder.close();
-            VPackCollection::merge(object, a.slice(), _tempBuilder.slice(), false, false);
+
+            VPackCollection::merge(object, a.slice(), _tempBuilder.slice(),
+                                   false, true);
 
             // add searchExpression / inKeyVariable to pattern
             AqlValue const& searchExpression = res->getValueReference(i, keyRegisterId);
