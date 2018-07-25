@@ -160,7 +160,7 @@ function ahuacatlRemoveSuite () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
       let query = "FOR d IN " + cn1 + " FILTER d.value1 < 0 REMOVE d IN " + cn1;
       var actual = getModifyQueryResults(query);
-    
+      
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
       
