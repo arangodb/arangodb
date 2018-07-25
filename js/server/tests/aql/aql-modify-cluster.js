@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -158,10 +158,14 @@ function ahuacatlRemoveSuite () {
 
     testRemoveNothing : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 REMOVE d IN " + cn1);
-
+      let query = "FOR d IN " + cn1 + " FILTER d.value1 < 0 REMOVE d IN " + cn1;
+      var actual = getModifyQueryResults(query);
+    
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
+      
+      let rules = AQL_EXPLAIN(query).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,10 +174,14 @@ function ahuacatlRemoveSuite () {
 
     testRemoveNothingBind : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 REMOVE d IN @@cn", { "@cn": cn1 });
+      let query = "FOR d IN @@cn FILTER d.value1 < 0 REMOVE d IN @@cn";
+      var actual = getModifyQueryResults(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +217,8 @@ function ahuacatlRemoveSuite () {
 
     testRemoveReturn : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = AQL_EXECUTE("FOR d IN @@cn REMOVE d IN @@cn LET removed = OLD RETURN removed", { "@cn": cn1 });
+      let query = "FOR d IN @@cn REMOVE d IN @@cn LET removed = OLD RETURN removed";
+      var actual = AQL_EXECUTE(query, { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
@@ -226,6 +235,9 @@ function ahuacatlRemoveSuite () {
         assertEqual(i, doc.value1);
         assertEqual("test" + i, doc.value2);
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,10 +246,14 @@ function ahuacatlRemoveSuite () {
 
     testRemoveIgnore1 : function () {
       var expected = { writesExecuted: 0, writesIgnored: 100 };
-      var actual = getModifyQueryResults("FOR d IN @@cn REMOVE 'foo' IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
+      let query = "FOR d IN @@cn REMOVE 'foo' IN @@cn OPTIONS { ignoreErrors: true }";
+      var actual = getModifyQueryResults(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,10 +262,14 @@ function ahuacatlRemoveSuite () {
 
     testRemoveIgnore2 : function () {
       var expected = { writesExecuted: 100, writesIgnored: 1 };
-      var actual = getModifyQueryResults("FOR i IN 0..100 REMOVE CONCAT('test', i) IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
+      let query = "FOR i IN 0..100 REMOVE CONCAT('test', i) IN @@cn OPTIONS { ignoreErrors: true }";
+      var actual = getModifyQueryResults(query, { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual));
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -495,7 +515,7 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertDobule : function () {
+    testInsertDouble : function () {
       c1.truncate();
       c2.truncate();
       var expected = { writesExecuted: 0, writesIgnored: 0 };
@@ -1310,7 +1330,8 @@ function ahuacatlUpdateSuite () {
 
     testUpdateKeepNullTrue : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: true }", { "@cn": cn1 });
+      let query = "FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: true }";
+      var actual = getModifyQueryResults(query, { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
@@ -1320,6 +1341,9 @@ function ahuacatlUpdateSuite () {
         assertEqual("foobar", doc.value3);
         assertNull(doc.value9);
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1328,7 +1352,8 @@ function ahuacatlUpdateSuite () {
 
     testUpdateKeepNullFalse : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: false }", { "@cn": cn1 });
+      let query = "FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: false }";
+      var actual = getModifyQueryResults(query, { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
@@ -1338,6 +1363,9 @@ function ahuacatlUpdateSuite () {
         assertEqual("foobar", doc.value3);
         assertFalse(doc.hasOwnProperty("value9"));
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1386,7 +1414,8 @@ function ahuacatlUpdateSuite () {
       AQL_EXECUTE("FOR i IN 0..99 INSERT { _key: CONCAT('sometest', i), value: i, wantToFind: true } IN @@cn", { "@cn": cn1 });
 
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.wantToFind UPDATE d._key WITH { value2: d.value % 2 == 0 ? d.value : d.value + 1 } INTO @@cn", { "@cn": cn1 });
+      let query = "FOR d IN @@cn FILTER d.wantToFind UPDATE d._key WITH { value2: d.value % 2 == 0 ? d.value : d.value + 1 } INTO @@cn";
+      var actual = getModifyQueryResults(query, { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
@@ -1396,6 +1425,9 @@ function ahuacatlUpdateSuite () {
         assertEqual(i % 2 === 0 ? i : i + 1, doc.value2);
         assertEqual(i, doc.value);
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1404,7 +1436,8 @@ function ahuacatlUpdateSuite () {
 
     testUpdateReturnOld : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = AQL_EXECUTE("FOR d IN @@cn UPDATE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous", { "@cn": cn1 });
+      let query = "FOR d IN @@cn UPDATE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous";
+      var actual = AQL_EXECUTE(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
@@ -1422,6 +1455,9 @@ function ahuacatlUpdateSuite () {
         assertEqual("test" + i, doc.value2);
         assertFalse(doc.hasOwnProperty("value3"));
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1430,7 +1466,8 @@ function ahuacatlUpdateSuite () {
 
     testUpdateReturnNew : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = AQL_EXECUTE("FOR d IN @@cn UPDATE d WITH { value3: d.value1 + 5 } IN @@cn LET now = NEW RETURN now", { "@cn": cn1 });
+      let query = "FOR d IN @@cn UPDATE d WITH { value3: d.value1 + 5 } IN @@cn LET now = NEW RETURN now";
+      var actual = AQL_EXECUTE(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
@@ -1448,6 +1485,9 @@ function ahuacatlUpdateSuite () {
         assertEqual("test" + i, doc.value2);
         assertEqual(i + 5, doc.value3);
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1457,10 +1497,9 @@ function ahuacatlUpdateSuite () {
     testReplace1 : function () {
       var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      for (i = 0; i < 5; ++i) {
-        var actual = getModifyQueryResults("FOR d IN @@cn REPLACE d._key WITH { value4: 12 } INTO @@cn", { "@cn": cn1 });
-        assertEqual(expected, sanitizeStats(actual));
-      }
+      let query = "FOR d IN @@cn REPLACE d._key WITH { value4: 12 } INTO @@cn";
+      var actual = getModifyQueryResults(query, { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual));
 
       for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
@@ -1469,6 +1508,9 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("value3"));
         assertEqual(12, doc.value4);
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1478,10 +1520,9 @@ function ahuacatlUpdateSuite () {
     testReplace2 : function () {
       var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      for (i = 0; i < 5; ++i) {
-        var actual = getModifyQueryResults("FOR d IN @@cn REPLACE { _key: d._key, value4: 13 } INTO @@cn", { "@cn": cn1 });
-        assertEqual(expected, sanitizeStats(actual));
-      }
+      let query = "FOR d IN @@cn REPLACE { _key: d._key, value4: 13 } INTO @@cn";
+      var actual = getModifyQueryResults(query, { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual));
 
       for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
@@ -1490,6 +1531,9 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("value3"));
         assertEqual(13, doc.value4);
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1499,8 +1543,9 @@ function ahuacatlUpdateSuite () {
     testReplaceReplace : function () {
       var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
+      let query = "FOR d IN @@cn REPLACE d._key WITH { value1: d.value1 + 1 } INTO @@cn";
       for (i = 0; i < 5; ++i) {
-        var actual = getModifyQueryResults("FOR d IN @@cn REPLACE d._key WITH { value1: d.value1 + 1 } INTO @@cn", { "@cn": cn1 });
+        var actual = getModifyQueryResults(query, { "@cn": cn1 });
         assertEqual(expected, sanitizeStats(actual));
       }
 
@@ -1509,6 +1554,9 @@ function ahuacatlUpdateSuite () {
         assertEqual(i + 5, doc.value1);
         assertFalse(doc.hasOwnProperty("value2"));
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1517,7 +1565,8 @@ function ahuacatlUpdateSuite () {
 
     testReplaceReturnOld : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = AQL_EXECUTE("FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous", { "@cn": cn1 });
+      let query = "FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous";
+      var actual = AQL_EXECUTE(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
@@ -1535,6 +1584,9 @@ function ahuacatlUpdateSuite () {
         assertEqual("test" + i, doc.value2);
         assertFalse(doc.hasOwnProperty("value3"));
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1543,7 +1595,8 @@ function ahuacatlUpdateSuite () {
 
     testReplaceReturnNew : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      var actual = AQL_EXECUTE("FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET now = NEW RETURN now", { "@cn": cn1 });
+      let query = "FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET now = NEW RETURN now";
+      var actual = AQL_EXECUTE(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
@@ -1561,6 +1614,9 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("value2"));
         assertEqual(i + 5, doc.value3);
       }
+      
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
