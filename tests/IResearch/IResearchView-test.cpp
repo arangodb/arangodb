@@ -408,6 +408,27 @@ SECTION("test_drop_with_link") {
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
 }
 
+SECTION("test_drop_collection") {
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+  auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+  REQUIRE((false == !logicalCollection));
+  auto logicalView = vocbase.createView(viewCreateJson->slice());
+  REQUIRE((false == !logicalView));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  REQUIRE((false == !view));
+
+  CHECK((true == logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+  CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+  CHECK((true == logicalCollection->drop().ok()));
+  CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; }))); // FIXME TODO should be 'true' but the Index is not notified
+
+  CHECK((true == logicalView->drop().ok()));
+}
+
 SECTION("test_drop_cid") {
   static std::vector<std::string> const EMPTY;
 
@@ -4207,7 +4228,7 @@ SECTION("test_update_partial") {
         view->toVelocyPack(builder, true, false);
         builder.close();
 
-        auto slice = builder.slice();std::cerr << slice.length() << std::endl;
+        auto slice = builder.slice();
         CHECK(slice.isObject());
         CHECK((6U == slice.length()));
         CHECK(slice.get("name").copyString() == "testView");
