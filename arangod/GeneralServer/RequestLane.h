@@ -40,7 +40,7 @@ enum class RequestLane {
   TASK_V8
 };
 
-enum class RequestPriority : size_t { HIGH = 1, LOW = 2 };
+enum class RequestPriority : size_t { POST = 0, HIGH = 1, LOW = 2 };
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {

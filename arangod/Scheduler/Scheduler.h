@@ -29,6 +29,9 @@
 
 #include <boost/lockfree/queue.hpp>
 
+#include <mutex>
+#include <condition_variable>
+
 #include "Basics/Mutex.h"
 #include "Basics/asio_ns.h"
 #include "Basics/socket-utils.h"
@@ -47,44 +50,21 @@ namespace rest {
 class GeneralCommTask;
 class SocketTask;
 
+class SchedulerContextThread;
+class SchedulerWorkerThread;
+class SchedulerManagerThread;
+
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
-  friend class arangodb::JobGuard;
-  friend class arangodb::rest::GeneralCommTask;
-  friend class arangodb::rest::SocketTask;
-  friend class arangodb::ListenTask;
+
 
  public:
   Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
             uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~Scheduler();
 
-  // queue handling:
-  //
-  // The Scheduler queue is an `io_context` that is server by a number
-  // of SchedulerThreads. Jobs can be posted to the `io_context` using
-  // the function `post`. A job in the Scheduler queue can be queues,
-  // i.e. the executing has not yet been started, or running, i.e.
-  // the executing has already been started.
-  //
-  // `numRunning` returns the number of running threads that are
-  // currently serving the `io_context`.
-  //
-  // `numQueued` returns the number of jobs queued in the io_context
-  // that are not yet worked on.
-  //
-  // `numWorking`returns the number of jobs currently worked on.
-  //
-  // The scheduler also has a number of FIFO where it stores jobs in
-  // case that the there are too many jobs in Scheduler queue. The
-  // function `queue` will handle the queuing. Depending on the fifos
-  // and the number of queues jobs it will either queue the job
-  // directly in the Scheduler queue or move it to the corresponding
-  // FIFO.
-
- public:
   struct QueueStatistics {
     uint64_t _running;
     uint64_t _working;
@@ -92,162 +72,107 @@ class Scheduler {
   };
 
   void post(std::function<void()> const& callback);
-  void post(asio_ns::io_context::strand&,
-            std::function<void()> const& callback);
-
   bool queue(RequestPriority prio, std::function<void()> const&);
-  void drain();
+
+  //void post(uint64_t time, std::function<void()> const& callback);
 
   void addQueueStatistics(velocypack::Builder&) const;
   QueueStatistics queueStatistics() const;
   std::string infoStatus();
 
-  bool isRunning() const { return numRunning(_counters) > 0; }
-  bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
+private:
+  std::atomic<size_t> _numWorker;
+  std::atomic<bool> _stopping;
 
- private:
-  inline void setStopping() noexcept { _counters |= (1ULL << 63); }
+public:
+  bool isRunning() const { return _numWorker > 0; }
+  bool isStopping() const noexcept { return _stopping; }
 
-  inline bool isStopping(uint64_t value) const noexcept {
-    return (value & (1ULL << 63)) != 0;
-  }
-
-  bool canPostDirectly() const noexcept;
-
-  static uint64_t numRunning(uint64_t value) noexcept {
-    return value & 0xFFFFULL;
-  }
-
-  inline void incRunning() noexcept { _counters += 1ULL << 0; }
-
-  inline void decRunning() noexcept {
-    TRI_ASSERT((_counters & 0xFFFFUL) > 0);
-    _counters -= 1ULL << 0;
-  }
-
-  static uint64_t numQueued(uint64_t value) noexcept {
-    return (value >> 32) & 0xFFFFULL;
-  }
-
-  inline void incQueued() noexcept { _counters += 1ULL << 32; }
-
-  inline void decQueued() noexcept {
-    TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0);
-    _counters -= 1ULL << 32;
-  }
-
-  static uint64_t numWorking(uint64_t value) noexcept {
-    return (value >> 16) & 0xFFFFULL;
-  }
-
-  inline void incWorking() noexcept { _counters += 1ULL << 16; }
-
-  inline void decWorking() noexcept {
-    TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0);
-    _counters -= 1ULL << 16;
-  }
-
-  // maximal number of running + queued jobs in the Scheduler `io_context`
-  uint64_t const _maxQueueSize;
-
-  // we store most of the threads status info in a single atomic uint64_t
-  // the encoding of the values inside this variable is (left to right means
-  // high to low bytes):
-  //
-  //   AA BB CC DD
-  //
-  // we use the lowest 2 bytes (DD) to store the number of running threads
-  //
-  // the next lowest bytes (CC) are used to store the number of currently
-  // working threads
-  //
-  // the next bytes (BB) are used to store the number of currently blocked
-  // threads
-  //
-  // the highest bytes (AA) are used only to encode a stopping bit. when this
-  // bit is set, the scheduler is stopping (or already stopped)
-
-  std::atomic<uint64_t> _counters;
-
-  inline uint64_t getCounters() const noexcept { return _counters; }
-
-  // the fifos will collect the outstand requests in case the Scheduler
-  // queue is full
-
-  struct FifoJob {
-    explicit FifoJob(std::function<void()> const& callback) : _callback(callback) {}
-    std::function<void()> _callback;
-  };
-
-  bool pushToFifo(size_t fifo, std::function<void()> const& callback);
-  bool popFifo(size_t fifo);
-
-  static int64_t const NUMBER_FIFOS = 2;
-  uint64_t const _maxFifoSize[NUMBER_FIFOS];
-  std::atomic<int64_t> _fifoSize[NUMBER_FIFOS];
-  boost::lockfree::queue<FifoJob*> _fifo1;
-  boost::lockfree::queue<FifoJob*> _fifo2;
-  boost::lockfree::queue<FifoJob*>* _fifos[NUMBER_FIFOS];
-
-  // the following methds create tasks in the `io_context`.
-  // The `io_context` itself is not exposed because everything
-  // should use the method `post` of the Scheduler.
-
- private:
-  static void initializeSignalHandlers();
-
-  // `start`will start the Scheduler threads
-  // `stopRebalancer` will stop the rebalancer thread
-  // `beginShutdown` will begin to shut down the Scheduler threads
-  // `shutdown` will shutdown the Scheduler threads
-
- public:
   bool start();
   void beginShutdown();
   void shutdown();
 
- private:
-  void startIoService();
-  void startManagerThread();
-  void startRebalancer();
 
- public:
-  void stopRebalancer() noexcept;
+  template <typename T>
+  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
+    return new asio_ns::deadline_timer(_obsoleteContext, timeout);
+  }
 
- private:
-  std::shared_ptr<asio_ns::io_context::work> _serviceGuard;
-  std::unique_ptr<asio_ns::io_context> _ioContext;
+  asio_ns::steady_timer* newSteadyTimer() {
+    return new asio_ns::steady_timer(_obsoleteContext);
+  }
 
-  std::shared_ptr<asio_ns::io_context::work> _managerGuard;
-  std::unique_ptr<asio_ns::io_context> _managerContext;
+  asio_ns::signal_set* newSignalSet() {
+    return new asio_ns::signal_set(_obsoleteContext);
+  }
 
-  std::unique_ptr<asio_ns::steady_timer> _threadManager;
-  std::function<void(const asio_ns::error_code&)> _threadHandler;
 
-  // There will never be less than `_minThread` Scheduler threads.
-  // There will never be more than `_maxThread` Scheduler threads.
 
  private:
-  void rebalanceThreads();
+  friend class SchedulerManagerThread;
+  friend class SchedulerWorkerThread;
+  friend class SchedulerContextThread;
 
- public:
-  // decrements the nrRunning counter for the thread
-  void threadHasStopped();
 
-  // check if the current thread should be stopped returns true if
-  // yes, otherwise false. when the function returns true, it has
-  // already decremented the nrRunning counter!
-  bool threadShouldStop(double now);
 
- private:
-  void startNewThread();
+  struct WorkItem {
+    std::function<void()> _handler;
 
- private:
-  uint64_t const _minThreads;
-  uint64_t const _maxThreads;
+    WorkItem(std::function<void()> const& handler) : _handler(handler) {}
+    WorkItem(std::function<void()> && handler) : _handler(std::move(handler)) {}
+    void operator() () { _handler(); }
+  };
 
-  mutable Mutex _threadCreateLock;
-  double _lastAllBusyStamp;
+  // Since the lockfree queue can only handle PODs, one has to wrap lambdas
+  // in a container class and store pointers. -- Maybe there is a better way?
+  boost::lockfree::queue<WorkItem*> _queue[3];
+
+  std::atomic<uint64_t> _jobsSubmitted, _jobsDone;
+
+  std::atomic<uint64_t> _wakeupQueueLength;                        // q1
+  std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
+
+
+  struct WorkerState {
+    uint64_t _queueRetryCount;     // t1
+    uint64_t _sleepTimeout_ms;    // t2
+    bool _stop;
+
+    std::unique_ptr<SchedulerWorkerThread> _thread;
+
+    // initialise with harmless defaults: spin once, sleep forever
+    WorkerState(Scheduler &scheduler);
+  };
+
+  size_t _maxNumWorker;
+  size_t _numIdleWorker;
+  std::vector<WorkerState> _workerStates;
+
+  std::mutex _mutex;
+  std::condition_variable _conditionWork;
+
+  // This asio context is here to provide functionallity
+  // for signal handlers, deadline and steady timer.
+  // It runs in a seperate thread.
+  //
+  // However in feature this should be replaced:
+  //  Steady and deadline timer could be implemented using a priority queue
+  asio_ns::io_context _obsoleteContext;
+  asio_ns::io_context::work _obsoleteWork;
+
+  void runWorker();
+  void runSupervisor();
+
+  std::mutex _mutexSupervisor;
+  std::condition_variable _conditionSupervisor;
+  std::unique_ptr<SchedulerManagerThread> _manager;
+
+  bool getWork (WorkItem *&, WorkerState &);
+
+  void startOneThread();
+  void stopOneThread();
+
+  std::unique_ptr<SchedulerContextThread> _contextThread;
 };
 }
 }

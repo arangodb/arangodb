@@ -83,10 +83,6 @@ public:
       return new asio_ns::deadline_timer(_asioIoContext, timeout);
     }
 
-    asio_ns::steady_timer* newSteadyTimer() {
-      return new asio_ns::steady_timer(_asioIoContext);
-    }
-
     asio_ns::io_context::strand* newStrand() {
       return new asio_ns::io_context::strand(_asioIoContext);
     }

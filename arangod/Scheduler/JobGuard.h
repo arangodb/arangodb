@@ -29,50 +29,23 @@
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
-namespace rest {
-class Scheduler;
-}
+
 
 class JobGuard : public SameThreadAsserter {
  public:
   JobGuard(JobGuard const&) = delete;
   JobGuard& operator=(JobGuard const&) = delete;
 
-  explicit JobGuard(rest::Scheduler* scheduler)
-      : SameThreadAsserter(), _scheduler(scheduler) {}
-  ~JobGuard() { release(); }
+  explicit JobGuard(rest::Scheduler* scheduler) {}
+  ~JobGuard() {}
 
  public:
   void work() {
-    TRI_ASSERT(!_isWorkingFlag);
-
-    if (0 == _isWorking++) {
-      _scheduler->incWorking();
-    }
-
-    _isWorkingFlag = true;
   }
 
  private:
   void release() {
-    if (_isWorkingFlag) {
-      _isWorkingFlag = false;
-
-      TRI_ASSERT(_isWorking > 0);
-      if (0 == --_isWorking) {
-        // if this is the last JobGuard we inform the
-        // scheduler that the thread is back to idle
-        _scheduler->decWorking();
-      }
-    }
   }
-
- private:
-  rest::Scheduler* _scheduler;
-
-  bool _isWorkingFlag = false;
-
-  static thread_local size_t _isWorking;
 };
 }
 

@@ -68,11 +68,11 @@ void SchedulerFeature::collectOptions(
   // max / min number of threads
   options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
                      new UInt64Parameter(&_nrMaximalThreads));
-  
+
   options->addHiddenOption("--server.minimal-threads",
                            "minimum number of request handling threads to run",
                            new UInt64Parameter(&_nrMinimalThreads));
-  
+
   options->addOption("--server.maximal-queue-size", "size of the priority 2 fifo",
                      new UInt64Parameter(&_fifo2Size));
 
@@ -168,9 +168,7 @@ void SchedulerFeature::start() {
 
 void SchedulerFeature::beginShutdown() {
   // shut-down scheduler
-  if (_scheduler != nullptr) {
-    _scheduler->stopRebalancer();
-  }
+  // maybe we could stop the supervisor here?
 }
 
 void SchedulerFeature::stop() {
@@ -209,7 +207,7 @@ void SchedulerFeature::stop() {
 }
 
 void SchedulerFeature::unprepare() { SCHEDULER = nullptr; }
-    
+
 /// @brief return the default number of threads to use (upper bound)
 size_t SchedulerFeature::defaultNumberOfThreads() const {
   // use two times the number of hardware threads as the default
