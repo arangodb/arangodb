@@ -712,7 +712,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
             });
 
             orderDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats, batch + 1, fromTick, chunkSize);
-        });
+        }, false);
       } catch (...) {
         // will get here only if Scheduler::post threw
         sharedStatus->jobDone();

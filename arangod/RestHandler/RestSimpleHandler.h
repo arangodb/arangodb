@@ -42,8 +42,6 @@ class RestSimpleHandler : public RestCursorHandler {
   RestStatus execute() override final;
   RestStatus continueExecute() override final;
   char const* name() const override final { return "RestSimpleHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
-  bool cancel() override;
 
  private:
 

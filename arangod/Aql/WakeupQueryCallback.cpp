@@ -45,7 +45,7 @@ bool WakeupQueryCallback::operator()(ClusterCommResult* result) {
       // We are shutting down
       return false;
     }
-    scheduler->post(_query->continueHandler());
+    scheduler->post(_query->continueHandler(), false);
   } else {
     _query->continueAfterPause();
   }

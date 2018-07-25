@@ -171,7 +171,7 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
                      uint64_t maxQueueSize, uint64_t fifo1Size,
                      uint64_t fifo2Size)
     : _queuedV8(0),
-      _maxQueuedV8(std::max(1ULL, nrMaximum - nrMinimum)),
+      _maxQueuedV8(std::max(static_cast<uint64_t>(1), nrMaximum - nrMinimum)),
       _maxQueueSize(maxQueueSize),
       _counters(0),
       _maxFifoSize{fifo1Size, fifo2Size, fifo2Size},
@@ -192,17 +192,6 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
 
 Scheduler::~Scheduler() {
   stopRebalancer();
-
-  FifoJob* job = nullptr;
-
-  for (int i = 0; i < NUMBER_FIFOS; ++i) {
-    _fifoSize[i] = 0;
-
-    while (_fifos[i]->pop(job) && job != nullptr) {
-      delete job;
-      job = nullptr;
-    }
-  }
 
   _managerGuard.reset();
   _managerContext.reset();
