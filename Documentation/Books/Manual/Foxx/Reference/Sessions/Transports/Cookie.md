@@ -3,7 +3,8 @@ Cookie Session Transport
 
 `const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');`
 
-The cookie transport stores session identifiers in cookies on the request and response object.
+The cookie transport stores session identifiers in cookies on the request and
+response object.
 
 **Examples**
 
@@ -41,11 +42,15 @@ Creates a [Transport](README.md) that can be used in the sessions middleware.
 
   * **ttl**: `number` (optional)
 
-    Cookie lifetime in seconds. Note that this does not affect the storage TTL (i.e. how long the session itself is considered valid), just how long the cookie should be stored by the client.
+    Cookie lifetime in seconds. Note that this does not affect the storage TTL
+    (i.e. how long the session itself is considered valid), just how long the
+    cookie should be stored by the client.
 
   * **algorithm**: `string` (optional)
 
-    The algorithm used to sign and verify the cookie. If no algorithm is specified, the cookie will not be signed or verified. See the [cookie method on the response object](../../Routers/Response.md).
+    The algorithm used to sign and verify the cookie. If no algorithm is
+    specified, the cookie will not be signed or verified.
+    See the [cookie method on the response object](../../Routers/Response.md).
 
   * **secret**: `string` (optional)
 
@@ -65,6 +70,8 @@ Creates a [Transport](README.md) that can be used in the sessions middleware.
 
   * **httpOnly**: `boolean` (Default: `false`)
 
-    Whether the cookie should be marked as HTTP-only (rather than also exposing it to client-side code).
+    Whether the cookie should be marked as HTTP-only (rather than also
+    exposing it to client-side code).
 
-If a string is passed instead of an options object, it will be interpreted as the *name* option.
+If a string is passed instead of an options object, it will be interpreted
+as the *name* option.
