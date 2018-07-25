@@ -664,11 +664,11 @@ SECTION("collections") {
 
   // link collections
   auto updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"links\": {"
+    "{ \"links\": {"
       "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
       "\"testCollection1\": { \"includeAllFields\": true },"
       "\"testCollection2\": { \"includeAllFields\": true }"
-    "}}}"
+    "}}"
   );
   CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -820,3 +820,7 @@ SECTION("createBlockCoordinator") {
 }
 
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -151,7 +151,7 @@ void InternalRestTraverserHandler::queryEngine() {
       return;
     }
     generateResult(ResponseCode::OK,
-                   arangodb::basics::VelocyPackHelper::TrueValue());
+                   arangodb::velocypack::Slice::trueSlice());
     return;
   }
 
@@ -280,5 +280,5 @@ void InternalRestTraverserHandler::destroyEngine() {
   TraverserEngineID id = basics::StringUtils::uint64(suffixes[0]);
   _registry->destroy(id);
   generateResult(ResponseCode::OK,
-                 arangodb::basics::VelocyPackHelper::TrueValue());
+                 arangodb::velocypack::Slice::trueSlice());
 }

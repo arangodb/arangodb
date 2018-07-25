@@ -209,10 +209,10 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   // add link to collection
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"properties\": { \"links\" : {"
+      "{ \"links\" : {"
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
-      "}}}"
+      "}}"
     );
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -227,7 +227,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
-    auto tmpSlice = slice.get("properties").get("links");
+    auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 

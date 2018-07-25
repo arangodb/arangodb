@@ -58,7 +58,7 @@ function getCoordinators() {
 
 const servers = getCoordinators();
 
-function CursorSyncAuthSuite () {
+function AsyncAuthSuite () {
   'use strict';
   const cns = ["animals", "fruits"];
   const keys = [
@@ -322,6 +322,6 @@ function CursorSyncAuthSuite () {
   };
 }
 
-jsunity.run(CursorSyncAuthSuite);
+jsunity.run(AsyncAuthSuite);
 
 return jsunity.done();
