@@ -726,7 +726,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     }
   }
 
-  fs.remove(jsonFN);
+  if (fs.exists(jsonFN)) fs.remove(jsonFN);
   fs.remove(tmpname);
   return result;
 }
