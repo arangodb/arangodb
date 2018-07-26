@@ -270,7 +270,7 @@ void RocksDBEngine::validateOptions(
 
 #ifdef _WIN32 
   if (_syncInterval > 0) {
-    LOG_TOPIC(WARNING, arangodb::Logger::ROCKSDB) << "automatic syncing of RocksDB WAL via background thread is not supported on this platform";
+    LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB) << "automatic syncing of RocksDB WAL via background thread is not supported on this platform";
   }
 #endif
 }
