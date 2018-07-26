@@ -214,7 +214,7 @@
           });
 
           if (from) {
-            delete obj[leader];
+            delete obj[arangoHelper.getDatabaseShortName(leader)];
           }
 
           _.each(obj, function (value) {
