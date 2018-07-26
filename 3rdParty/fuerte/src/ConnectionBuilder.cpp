@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,22 +19,22 @@
 ///
 /// @author Jan Christoph Uhde
 /// @author Ewout Prangsma
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <boost/algorithm/string.hpp>
 
 #include <fuerte/connection.h>
 #include <fuerte/waitgroup.h>
 
 #include "HttpConnection.h"
 #include "VstConnection.h"
+#include "http_parser/http_parser.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Create an connection and start opening it.
 std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
   std::shared_ptr<Connection> result;
 
-  if (_conf._connType == TransportType::Vst) {
+  if (_conf._protocolType == ProtocolType::Vst) {
     FUERTE_LOG_DEBUG << "fuerte - creating velocystream connection"
                      << std::endl;
     result = std::make_shared<vst::VstConnection>(loop.nextIOContext(), _conf);
@@ -45,37 +45,85 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
         std::make_shared<http::HttpConnection>(loop.nextIOContext(), _conf);
   }
   // Start the connection implementation
-  result->start();
+  result->startConnection();
 
   return result;
 }
 
-ConnectionBuilder& ConnectionBuilder::host(std::string const& str) {
-  std::vector<std::string> strings;
-  boost::split(strings, str, boost::is_any_of(":"));
-
-  // get protocol
-  std::string const& proto = strings[0];
-  if (proto == "vst") {
-    _conf._connType = TransportType::Vst;
-    _conf._ssl = false;
-  } else if (proto == "vsts") {
-    _conf._connType = TransportType::Vst;
-    _conf._ssl = true;
-  } else if (proto == "http") {
-    _conf._connType = TransportType::Http;
-    _conf._ssl = false;
-  } else if (proto == "https") {
-    _conf._connType = TransportType::Http;
-    _conf._ssl = true;
-  } else {
-    throw std::runtime_error(std::string("invalid protocol: ") + proto);
+ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& host) {
+  
+  // Step 1. Parse provided host
+  struct http_parser_url parsed;
+  http_parser_url_init(&parsed);
+  int error = http_parser_parse_url(host.c_str(), host.length(), 0, &parsed);
+  if (error != 0) {
+    throw std::runtime_error(std::string("invalid endpoint spec: ") + host);
   }
+  
+  if (!(parsed.field_set & (1 << UF_SCHEMA))) {
+    throw std::runtime_error(std::string("invalid schema: ") + host);
+  }
+  std::string schema = host.substr(parsed.field_data[UF_SCHEMA].off,
+                                   parsed.field_data[UF_SCHEMA].len);
+  
+  // put hostname, port and path in seperate strings
+  std::string server;
+  if (!(parsed.field_set & (1 << UF_HOST))) {
+    throw std::runtime_error(std::string("invalid host: ") + host);
+  }
+  _conf._host = host.substr(parsed.field_data[UF_HOST].off,
+                            parsed.field_data[UF_HOST].len);
+  
+  if (!(parsed.field_set & (1 << UF_PORT))) {
+    throw std::runtime_error(std::string("invalid port: ") + host);
+  }
+  _conf._port = host.substr(parsed.field_data[UF_PORT].off,
+                            parsed.field_data[UF_PORT].len);
 
-  // TODO
-  // do more checking?
-  _conf._host = strings[1].erase(0, 2);  // remove '//'
-  _conf._port = strings[2];
+  // non exthausive list of supported url schemas
+  // "http+tcp://", "http+ssl://", "tcp://", "ssl://", "unix://", "http+unix://"
+  // "vsts://", "vst://", "http://", "https://", "vst+unix://", "vst+tcp://"
+  std::string proto = schema;
+  std::string::size_type pos = schema.find('+');
+  if (pos != std::string::npos && pos + 1 < schema.length()) {
+    // got something like "http+tcp://"
+    proto = schema.substr(0, pos);
+    std::string socket = schema.substr(pos + 1);
+    if (socket == "tcp" || socket == "srv") {
+      _conf._socketType = SocketType::Tcp;
+    } else if (proto == "ssl") {
+      _conf._socketType = SocketType::Ssl;
+    }  else if (proto == "unix") {
+      _conf._socketType = SocketType::Unix;
+    } else {
+      throw std::runtime_error(std::string("invalid protocol: ") + proto);
+    }
+    
+    if (proto == "vst") {
+      _conf._protocolType = ProtocolType::Vst;
+    } else if (proto == "http") {
+      _conf._protocolType = ProtocolType::Http;
+    } else {
+      throw std::runtime_error(std::string("invalid protocol: ") + proto);
+    }
+
+  } else { // got only protocol
+    if (proto == "vst") {
+      _conf._socketType = SocketType::Tcp;
+      _conf._protocolType = ProtocolType::Vst;
+    } else if (proto == "vsts") {
+      _conf._socketType = SocketType::Ssl;
+      _conf._protocolType = ProtocolType::Vst;
+    } else if (proto == "http" || proto == "tcp") {
+      _conf._socketType = SocketType::Tcp;
+      _conf._protocolType = ProtocolType::Http;
+    } else if (proto == "https" || proto == "ssl") {
+      _conf._socketType = SocketType::Ssl;
+      _conf._protocolType = ProtocolType::Http;
+    } else {
+      throw std::runtime_error(std::string("invalid protocol: ") + proto);
+    }
+  }
 
   return *this;
 }

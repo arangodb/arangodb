@@ -40,6 +40,13 @@ class Connection : public std::enable_shared_from_this<Connection> {
 
  public:
   virtual ~Connection();
+  
+  enum class State {
+    Disconnected = 0,
+    Connecting = 1,
+    Connected = 2,
+    Failed = 3 /// broken permanently (i.e. bad authentication)
+  };
 
   // Send a request to the server and wait into a response it received.
   std::unique_ptr<Response> sendRequest(std::unique_ptr<Request> r);
@@ -67,12 +74,12 @@ class Connection : public std::enable_shared_from_this<Connection> {
   // Return the number of requests that have not yet finished.
   virtual std::size_t requestsLeft() const = 0;
   
-  /// @brief returns true if requests can be handled
-  virtual bool connected() const = 0;
+  /// @brief connection state
+  virtual State state() const;
 
- private:
-  // Activate the connection.
-  virtual void start() {}
+  /// @brief Activate the connection.
+  virtual void startConnection() = 0;
+  virtual void shutdownConnection(const ErrorCondition) = 0;
 
  protected:
   Connection(detail::ConnectionConfiguration const& conf)
@@ -98,13 +105,11 @@ class Connection : public std::enable_shared_from_this<Connection> {
 class ConnectionBuilder {
  public:
   inline std::string host() const { return _conf._host; }
-  ConnectionBuilder& host(std::string const&);  // takes url in the form
-  // (http|vst)[s]://(ip|hostname):port
-  // sets protocol host and port
-  // ConnectionBuilder() = delete;
-  // ConnectionBuilder(std::string const& s){
-  //  host(s);
-  //};
+  inline std::string port() const { return _conf._port; }
+
+  /// @brief takes url in the form (http|vst)[s]://(ip|hostname):port
+  /// also supports the syntax "http+tcp://", "http+unix://" etc
+  ConnectionBuilder& endpoint(std::string const&);
 
   // Create an connection and start opening it.
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
@@ -134,6 +139,13 @@ class ConnectionBuilder {
   inline std::string password() const { return _conf._password; }
   ConnectionBuilder& password(std::string const& p) {
     _conf._password = p;
+    return *this;
+  }
+  
+  // Set the jwt token of the connection
+  inline std::string jwtToken() const { return _conf._jwtToken; }
+  ConnectionBuilder& jwtToken(std::string const& t) {
+    _conf._jwtToken = t;
     return *this;
   }
   // Set the maximum size for chunks (VST only)

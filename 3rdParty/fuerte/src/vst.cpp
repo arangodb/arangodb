@@ -24,10 +24,10 @@
 #include "vst.h"
 #include "Basics/Format.h"
 
+#include <boost/algorithm/string.hpp>
 #include <fuerte/helper.h>
 #include <fuerte/types.h>
 #include <fuerte/FuerteLogger.h>
-
 #include <velocypack/HexDump.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Validator.h>
@@ -482,7 +482,9 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
     assert(meta.isObject());
     if (meta.isObject()) {
       for (auto it : VPackObjectIterator(meta)) {
-        header.meta.emplace(it.key.copyString(), it.value.copyString());
+        std::string key = it.key.copyString();
+        boost::algorithm::to_lower(key); // in-place
+        header.meta.emplace(std::move(key), it.value.copyString());
       }
     }
   }

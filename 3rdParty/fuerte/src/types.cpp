@@ -126,16 +126,34 @@ std::string to_string(MessageType type) {
 
   return "undefined";
 }
-
-std::string to_string(TransportType type) {
+  
+std::string to_string(SocketType type) {
   switch (type) {
-    case TransportType::Undefined:
+    case SocketType::Undefined:
+      return "undefined";
+      
+    case SocketType::Tcp:
+      return "tcp";
+      
+    case SocketType::Ssl:
+      return "ssl";
+      
+    case SocketType::Unix:
+      return "unix";
+  }
+  
+  return "undefined";
+}
+
+std::string to_string(ProtocolType type) {
+  switch (type) {
+    case ProtocolType::Undefined:
       return "undefined";
 
-    case TransportType::Http:
+    case ProtocolType::Http:
       return "http";
 
-    case TransportType::Vst:
+    case ProtocolType::Vst:
       return "vst";
   }
 
@@ -263,12 +281,12 @@ std::string to_string(ErrorCondition error) {
       return "Error: timeout";
     case ErrorCondition::QueueCapacityExceeded:
       return "Error: queue capacity exceeded";
-    case ErrorCondition::VstReadError:
+    case ErrorCondition::ReadError:
       return "Error: reading from connection";
     case ErrorCondition::WriteError:
       return "Error: writing to connection";
-    case ErrorCondition::CanceledDuringReset:
-      return "Error: cancel as result of other error";
+    case ErrorCondition::Canceled:
+      return "Error: connection canceled";
     case ErrorCondition::MalformedURL:
       return "Error: malformed URL";
 

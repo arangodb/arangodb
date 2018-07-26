@@ -88,7 +88,27 @@ void RequestHeader::addParameter(std::string const& key,
                                  std::string const& value) {
   parameters.emplace(key, value);
 }
-
+  
+/// @brief set http style path /a/b?q1=x&q2=y
+void RequestHeader::parseHttpPath(std::string const& p) {
+  size_t pos = p.rfind('?');
+  if (pos != std::string::npos) {
+    path = p.substr(0, pos);
+    
+    while (pos != std::string::npos && pos + 1 < p.length()) {
+      size_t pos2 = p.find('=', pos + 1);
+      if (pos2 == std::string::npos) {
+        break;
+      }
+      std::string key = p.substr(pos + 1, pos2);
+      pos = p.find('&', pos2 + 1); // points to next '&' or string::npos
+      std::string value = p.substr(pos2 + 1, pos);
+      parameters.emplace(std::move(key), std::move(value));
+    }
+  } else {
+    path = p;
+  }
+}
 
 ///////////////////////////////////////////////
 // class Message

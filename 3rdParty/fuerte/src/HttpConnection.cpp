@@ -24,13 +24,14 @@
 
 #include "Basics/cpu-relax.h"
 
-#include <velocypack/Parser.h>
 #include <atomic>
+#include <boost/algorithm/string.hpp>
 #include <cassert>
-
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
+#include <velocypack/Parser.h>
+
 
 namespace {
 using namespace arangodb::fuerte::v1;
@@ -41,6 +42,7 @@ int on_status(http_parser* parser, const char* at, size_t len) { return 0; }
 int on_header_field(http_parser* parser, const char* at, size_t len) {
   RequestItem* data = static_cast<RequestItem*>(parser->data);
   if (data->last_header_was_a_value) {
+    boost::algorithm::to_lower(data->lastHeaderField); // in-place
     data->_response->header.meta.emplace(std::move(data->lastHeaderField),
                                          std::move(data->lastHeaderValue));
     data->lastHeaderField.assign(at, len);
@@ -65,6 +67,7 @@ static int on_header_complete(http_parser* parser) {
   data->_response->header.responseCode =
       static_cast<StatusCode>(parser->status_code);
   if (!data->lastHeaderField.empty()) {
+    boost::algorithm::to_lower(data->lastHeaderField); // in-place
     data->_response->header.meta.emplace(std::move(data->lastHeaderField),
                                          std::move(data->lastHeaderValue));
   }
@@ -120,12 +123,12 @@ MessageID HttpConnection::sendRequest(std::unique_ptr<Request> request,
   // Prepare a new request
   auto item = createRequestItem(std::move(request), callback);
   uint64_t id = item->_messageID;
-  uint32_t state = queueRequest(std::move(item));
-  if (_connected) {
+  uint32_t loop = queueRequest(std::move(item));
+  if (_state.load(std::memory_order_acquire) == State::Connected) {
     FUERTE_LOG_HTTPTRACE << "sendRequest (http): start sending & reading"
                          << std::endl;
     // HTTP is half-duplex protocol: we only write if there is no reading
-    if (!(state & LOOP_FLAGS)) {
+    if (!(loop & LOOP_FLAGS)) {
       startWriting();
     }
   } else {
@@ -165,13 +168,13 @@ std::unique_ptr<RequestItem> HttpConnection::createRequestItem(
   if (parameters.empty()) {
     header.append(request->header.path);
   } else {
-    std::string path = request->header.path;
-    path.push_back('?');
+    header.append(request->header.path);
+    header.push_back('?');
     for (auto p : parameters) {
-      if (path.back() != '?') {
-        path.push_back('&');
+      if (header.back() != '?') {
+        header.push_back('&');
       }
-      path += http::urlEncode(p.first) + "=" + http::urlEncode(p.second);
+      header.append(http::urlEncode(p.first) + "=" + http::urlEncode(p.second));
     }
   }
   header.append(" HTTP/1.1\r\n");
@@ -203,8 +206,7 @@ std::unique_ptr<RequestItem> HttpConnection::createRequestItem(
   // body will be appended seperately
 
   // construct RequestItem
-  std::unique_ptr<RequestItem> requestItem(
-      new RequestItem());  // std::make_shared<RequestItem>(, callback);
+  std::unique_ptr<RequestItem> requestItem(new RequestItem());
   requestItem->_request = std::move(request);
   requestItem->_callback = std::move(callback);
   // requestItem->_response later
@@ -215,7 +217,7 @@ std::unique_ptr<RequestItem> HttpConnection::createRequestItem(
 
 // socket connection is up (with optional SSL)
 void HttpConnection::finishInitialization() {
-  _connected = true;
+  _state.store(State::Connected, std::memory_order_release);
   startWriting();  // starts writing queue if non-empty
 }
 
@@ -252,7 +254,7 @@ std::vector<asio_ns::const_buffer> HttpConnection::prepareRequest(
 
 // Thread-Safe: activate the combined write-read loop
 void HttpConnection::startWriting() {
-  assert(_connected);
+  assert(_connected.load() == State::Connected);
   FUERTE_LOG_HTTPTRACE << "startWriting (http): this=" << this << std::endl;
 
   // we want to turn on both flags at once
@@ -331,8 +333,7 @@ void HttpConnection::asyncReadCallback(asio_ns::error_code const& ec,
     FUERTE_LOG_ERROR << ec.message() << std::endl;
 
     // Restart connection, this will trigger a release of the readloop.
-    restartConnection(
-        ErrorCondition::ConnectionError);  // will invoke _inFlight cb
+    restartConnection(ErrorCondition::ReadError);  // will invoke _inFlight cb
 
   } else {
     FUERTE_LOG_CALLBACKS

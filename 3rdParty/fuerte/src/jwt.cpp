@@ -43,7 +43,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 
 /// generate a JWT token for internal cluster communication
   std::string jwt::generateInternalToken(std::string const& secret,
-                                  std::string const& id) {
+                                         std::string const& id) {
   std::chrono::seconds iss = std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::system_clock::now().time_since_epoch());
   /*std::chrono::seconds exp =

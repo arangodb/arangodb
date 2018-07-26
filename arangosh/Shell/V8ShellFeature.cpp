@@ -279,7 +279,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 }
 
 // the result is wrapped in a Javascript variable SYS_ARANGO
-V8ClientConnection* V8ShellFeature::setup(
+std::unique_ptr<V8ClientConnection> V8ShellFeature::setup(
     v8::Local<v8::Context>& context, bool createConnection,
     std::vector<std::string> const& positionals, bool* promptError) {
   std::unique_ptr<V8ClientConnection> v8connection;
@@ -287,19 +287,14 @@ V8ClientConnection* V8ShellFeature::setup(
   ClientFeature* client = nullptr;
 
   if (createConnection) {
-    client = dynamic_cast<ClientFeature*>(server()->feature("Client"));
+    client = server()->getFeature<ClientFeature>("Client");
 
     if (client != nullptr && client->isEnabled()) {
-      auto jwtSecret = client->jwtSecret();
-
+      /*auto jwtSecret = client->jwtSecret();
       if (!jwtSecret.empty()) {
         V8ClientConnection::setJwtSecret(jwtSecret);
-      }
-
-      auto connection = client->createConnection();
-      v8connection = std::make_unique<V8ClientConnection>(
-          connection, client->databaseName(), client->username(),
-          client->password(), client->requestTimeout());
+      }*/
+      v8connection = std::make_unique<V8ClientConnection>(client);
     } else {
       client = nullptr;
     }
@@ -318,7 +313,7 @@ V8ClientConnection* V8ShellFeature::setup(
     *promptError = pe;
   }
 
-  return v8connection.release();
+  return v8connection;
 }
 
 int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
@@ -334,7 +329,6 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   bool promptError;
   auto v8connection = setup(context, true, positionals, &promptError);
-  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   V8LineEditor v8LineEditor(_isolate, context, "." + _name + ".history");
 
@@ -483,7 +477,6 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
   v8::Context::Scope context_scope{context};
 
   auto v8connection = setup(context, execute, positionals);
-  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
 
@@ -562,10 +555,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
   v8::Context::Scope context_scope{context};
 
   auto v8connection = setup(context, true, positionals);
-  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
-
   for (auto const& script : strings) {
     v8::TryCatch tryCatch;
 
@@ -668,8 +659,6 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   v8::Context::Scope context_scope{context};
 
   auto v8connection = setup(context, true, positionals);
-  std::unique_ptr<V8ClientConnection> guard(v8connection);
-
   bool ok = true;
 
   // set-up unit tests array

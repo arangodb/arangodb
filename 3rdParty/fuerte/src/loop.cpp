@@ -31,7 +31,7 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 class VstConnection;
 
-GlobalService::GlobalService() : _vpack_init(new impl::VpackInit()) {
+GlobalService::GlobalService() : _vpack_init(nullptr/*new impl::VpackInit()*/) {
   FUERTE_LOG_DEBUG << "GlobalService init" << std::endl;
   //::curl_global_init(CURL_GLOBAL_ALL);
 }

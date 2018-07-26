@@ -55,17 +55,20 @@ class AsioConnection : public Connection {
   virtual ~AsioConnection();
 
  public:
-  // Activate the connection.
-  void start() override;
+  /// Activate the connection.
+  void startConnection() override final;
+  
+  /// called on shutdown, always call superclass
+  virtual void shutdownConnection(const ErrorCondition) override;
 
   // Return the number of unfinished requests.
   virtual size_t requestsLeft() const override {
     return _loopState.load(std::memory_order_acquire) & WRITE_LOOP_QUEUE_MASK;
   }
   
-  /// @brief returns true if requests can be handled
-  bool connected() const override final {
-    return _connected.load(std::memory_order_acquire);
+  /// @brief connection state
+  Connection::State state() const override final {
+    return _state.load(std::memory_order_acquire);
   }
 
   bool hasCapacity() const {
@@ -89,8 +92,7 @@ class AsioConnection : public Connection {
   void startSSLHandshake();
 
  protected:
-  void restartConnection(
-      const ErrorCondition = ErrorCondition::CanceledDuringReset);
+  void restartConnection(const ErrorCondition);
 
   // Thread-Safe: reset io loop flags
   void stopIOLoops();
@@ -117,10 +119,6 @@ class AsioConnection : public Connection {
  protected:
   // socket connection is up (with optional SSL)
   virtual void finishInitialization() = 0;
-
-  // called on shutdown, always call superclass
-  virtual void shutdownConnection(
-      const ErrorCondition = ErrorCondition::CanceledDuringReset);
 
   // fetch the buffers for the write-loop (called from IO thread)
   virtual std::vector<asio_ns::const_buffer> prepareRequest(
@@ -154,11 +152,8 @@ class AsioConnection : public Connection {
   std::shared_ptr<asio_ns::ssl::stream<::asio_ns::ip::tcp::socket&>>
       _sslSocket;
 
-  /// @brief is the connection established (set by subclass)
-  std::atomic<bool> _connected;
-  /// @brief we received an error which breaks the connection (i.e. bad
-  /// authentication)
-  std::atomic<bool> _permanent_failure;
+  /// @brief is the connection established
+  std::atomic<Connection::State> _state;
 
   /// stores in-flight messages (thread-safe)
   MessageStore<T> _messageStore;

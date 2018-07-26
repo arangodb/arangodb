@@ -95,6 +95,9 @@ public:
   
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
+  
+  /// @brief set http style path /a/b?q1=x&q2=y
+  void parseHttpPath(std::string const&);
 };
   
 struct ResponseHeader final : public MessageHeader {

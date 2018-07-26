@@ -43,8 +43,7 @@ AsioConnection<T>::AsioConnection(
       _timeout(*ctx),
       _sslContext(nullptr),
       _sslSocket(nullptr),
-      _connected(false),
-      _permanent_failure(false),
+      _state(Connection::State::Disconnected),
       _loopState(0),
       _writeQueue(1024) {}
 
@@ -57,13 +56,13 @@ AsioConnection<T>::~AsioConnection() {
                          << _messageStore.size() << " outstanding requests!"
                          << std::endl;
   }
-  shutdownConnection();
+  shutdownConnection(ErrorCondition::Canceled);
 }
 
 // Activate this connection.
 template <typename T>
-void AsioConnection<T>::start() {
-  startResolveHost();
+void AsioConnection<T>::startConnection() {
+  startResolveHost(); // checks _state
 }
 
 // resolve the host into a series of endpoints
@@ -72,6 +71,12 @@ void AsioConnection<T>::startResolveHost() {
   // socket must be empty before. Check that
   assert(!_socket);
   assert(!_sslSocket);
+  
+  Connection::State exp = Connection::State::Disconnected;
+  if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
+    FUERTE_LOG_ERROR << "already resolving endpoint";
+    return;
+  }
   
   // Resolve the host asynchronous.
   auto self = shared_from_this();
@@ -108,7 +113,7 @@ void AsioConnection<T>::initSocket() {
 
   FUERTE_LOG_CALLBACKS << "begin init" << std::endl;
   _socket.reset(new bt::socket(*_io_context));
-  if (_configuration._ssl) {
+  if (_configuration._socketType == SocketType::Ssl) {
     _sslContext.reset(new asio_ns::ssl::context(
         asio_ns::ssl::context::method::sslv23));
     _sslContext->set_default_verify_paths();
@@ -145,7 +150,7 @@ template <typename T>
 void AsioConnection<T>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
   
-  _connected.store(false, std::memory_order_release);
+  _state.store(State::Disconnected, std::memory_order_release);
   
   // cancel timeouts
   _timeout.cancel();
@@ -170,15 +175,9 @@ void AsioConnection<T>::restartConnection(const ErrorCondition error) {
   FUERTE_LOG_CALLBACKS << "restartConnection" << std::endl;
   
   // only restart connection if it was connected previously
-  if (_connected.exchange(false, std::memory_order_acquire)) {
-    
-    // Terminate connection
-    shutdownConnection(error);
-    
-    // Initiate new connection
-    if (!_permanent_failure) {
-      startResolveHost();
-    }
+  if (_state.load(std::memory_order_acquire) == Connection::State::Connected) {
+    shutdownConnection(error); // Terminate connection
+    startResolveHost(); // will check state
   }
 }
 
@@ -228,23 +227,23 @@ void AsioConnection<T>::startConnect(bt::resolver::iterator endpointItr) {
 // callback handler for async_callback (called in startConnect).
 template <typename T>
 void AsioConnection<T>::asyncConnectCallback(
-   asio_ns::error_code const& error, bt::resolver::iterator endpointItr) {
+   asio_ns::error_code const& ec, bt::resolver::iterator endpointItr) {
   _timeout.cancel();
   
-  if (error) {
+  if (ec) {
     // Connection failed
-    FUERTE_LOG_ERROR << error.message() << std::endl;
-    shutdownConnection();
+    FUERTE_LOG_ERROR << ec.message() << std::endl;
+    shutdownConnection(ErrorCondition::CouldNotConnect);
     if (endpointItr == bt::resolver::iterator()) {
       FUERTE_LOG_CALLBACKS << "no further endpoint" << std::endl;
     }
     onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-              "unable to connect -- " + error.message());
+              "unable to connect -- " + ec.message());
     _messageStore.cancelAll(ErrorCondition::CouldNotConnect);
   } else {
     // Connection established
     FUERTE_LOG_CALLBACKS << "TCP socket connected" << std::endl;
-    if (_configuration._ssl) {
+    if (_configuration._socketType == SocketType::Ssl) {
       startSSLHandshake();
     } else {
       finishInitialization();
@@ -255,7 +254,7 @@ void AsioConnection<T>::asyncConnectCallback(
 // start intiating an SSL connection (on top of an established TCP socket)
 template <typename T>
 void AsioConnection<T>::startSSLHandshake() {
-  if (!_configuration._ssl) {
+  if (_configuration._socketType != SocketType::Ssl) {
     finishInitialization();
   }
   // https://www.boost.org/doc/libs/1_67_0/doc/html/boost_asio/overview/ssl.html
@@ -304,19 +303,25 @@ uint32_t AsioConnection<T>::queueRequest(std::unique_ptr<T> item) {
 template <typename T>
 void AsioConnection<T>::asyncWriteNextRequest() {
   FUERTE_LOG_TRACE << "asyncWrite: preparing to send next" << std::endl;
-  if (_permanent_failure || !_connected) {
+  if (_state.load(std::memory_order_acquire) != State::Connected) {
     FUERTE_LOG_TRACE << "asyncReadSome: permanent failure\n";
     stopIOLoops();  // will set the flag
     return;
   }
 
   // reduce queue length and check active flag
+#ifndef NDEBUG
   uint32_t state =
-      _loopState.fetch_sub(WRITE_LOOP_QUEUE_INC, std::memory_order_acquire);
+#endif
+    _loopState.fetch_sub(WRITE_LOOP_QUEUE_INC, std::memory_order_acquire);
   assert((state & WRITE_LOOP_QUEUE_MASK) > 0);
 
-  T* ptr;
-  assert(_writeQueue.pop(ptr));  // should never fail here
+  T* ptr = nullptr;
+#ifndef NDEBUG
+  bool success =
+#endif
+    _writeQueue.pop(ptr);
+  assert(success); // should never fail here
   std::shared_ptr<T> item(ptr);
 
   // we stop the write-loop if we stopped it ourselves.
@@ -325,7 +330,7 @@ void AsioConnection<T>::asyncWriteNextRequest() {
     asyncWriteCallback(ec, transferred, std::move(item));
   };
   auto buffers = this->prepareRequest(item);
-  if (_configuration._ssl) {
+  if (_configuration._socketType == SocketType::Ssl) {
     asio_ns::async_write(*_sslSocket, buffers, cb);
     /*asio_ns::async_write(
         *_sslSocket, buffers,
@@ -359,7 +364,7 @@ void AsioConnection<T>::asyncReadSome() {
     FUERTE_LOG_TRACE << "asyncReadSome: read-loop was stopped\n";
     return;  // just stop
   }
-  if (_permanent_failure || !_connected) {
+  if (_state.load(std::memory_order_acquire) != State::Connected) {
     FUERTE_LOG_TRACE << "asyncReadSome: permanent failure\n";
     stopIOLoops();  // will set the flags
     return;
@@ -381,7 +386,7 @@ void AsioConnection<T>::asyncReadSome() {
 
   // reserve 32kB in output buffer
   auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
-  if (_configuration._ssl) {
+  if (_configuration._socketType == SocketType::Ssl) {
     _sslSocket->async_read_some(mutableBuff, std::move(cb));
   } else {
     _socket->async_read_some(mutableBuff, std::move(cb));

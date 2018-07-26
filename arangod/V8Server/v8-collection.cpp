@@ -1866,8 +1866,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength < 3 || !args[0]->IsString()) {
       // TODO extend this for named graphs, use the Graph class
-      TRI_V8_THROW_EXCEPTION_USAGE(
-                                   "_pregelStart(<algorithm>, <vertexCollections>,"
+      TRI_V8_THROW_EXCEPTION_USAGE("_pregelStart(<algorithm>, <vertexCollections>,"
                                    "<edgeCollections>[, {maxGSS:100, ...}]");
   }
   auto parse = [](v8::Local<v8::Value> const& value, std::vector<std::string> &out) {

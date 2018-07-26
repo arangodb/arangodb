@@ -513,7 +513,7 @@ parse_url_char(enum state s, const char ch)
       break;
 
     case s_req_schema:
-      if (IS_ALPHA(ch)) {
+      if (IS_ALPHA(ch) || ch == '+') {
         return s;
       }
 

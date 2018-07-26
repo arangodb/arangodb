@@ -64,15 +64,12 @@ MessageID VstConnection::sendRequest(std::unique_ptr<Request> request,
   item->prepareForNetwork(_vstVersion);
   
   // Add item to send queue
-  uint32_t state = queueRequest(std::move(item));
-
-  // this allows sendRequest to return immediately and
-  // not to block until all writing is done
-  if (_connected.load(std::memory_order_acquire)) {
+  uint32_t loop = queueRequest(std::move(item));
+  if (_state.load(std::memory_order_acquire) != State::Connected) {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): start sending & reading"
                         << std::endl;
-    if (!(state & WRITE_LOOP_ACTIVE)) {
-      startWriting();
+    if (!(loop & WRITE_LOOP_ACTIVE)) {
+      startWriting(); // try to start write loop
     }
   } else {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): not connected" << std::endl;
@@ -109,7 +106,7 @@ void VstConnection::finishInitialization() {
       [this, self](asio_ns::error_code const& ec, std::size_t transferred) {
         if (ec) {
           FUERTE_LOG_ERROR << ec.message() << std::endl;
-          _connected.store(false, std::memory_order_release);
+          _state.store(State::Disconnected, std::memory_order_release);
           shutdownConnection(ErrorCondition::WriteError);
           onFailure(
               errorToInt(ErrorCondition::CouldNotConnect),
@@ -119,10 +116,10 @@ void VstConnection::finishInitialization() {
               << "VST connection established; starting send/read loop"
               << std::endl;
           if (_configuration._authenticationType != AuthenticationType::None) {
-            // send the auth, then set _connected == true
+            // send the auth, then set _state == connected
             sendAuthenticationRequest();
           } else {
-            _connected.store(true, std::memory_order_release);
+            _state.store(State::Connected, std::memory_order_release);
             startWriting(); // start writing if something is queued
           }
         }
@@ -146,7 +143,7 @@ void VstConnection::sendAuthenticationRequest() {
   }
   assert(item->_requestMetadata.size() < defaultMaxChunkSize);
   asio_ns::const_buffer header(item->_requestMetadata.data(),
-                                   item->_requestMetadata.byteSize());
+                               item->_requestMetadata.byteSize());
 
   item->prepareForNetwork(_vstVersion, header, asio_ns::const_buffer(0,0));
 
@@ -154,7 +151,7 @@ void VstConnection::sendAuthenticationRequest() {
   item->_callback = [this, self](Error error, std::unique_ptr<Request>,
                                  std::unique_ptr<Response> resp) {
     if (error || resp->statusCode() != StatusOK) {
-      _permanent_failure = true;
+      _state.store(State::Failed, std::memory_order_release);
       onFailure(error, "authentication failed");
     }
   };
@@ -166,11 +163,15 @@ void VstConnection::sendAuthenticationRequest() {
   asio_ns::post(*_io_context, [this, self, item] {
     auto cb = [this, self, item](asio_ns::error_code const& ec,
                                  std::size_t transferred) {
-      _connected.store(true, std::memory_order_release);
+      if (ec) {
+        asyncWriteCallback(ec, transferred, std::move(item)); // error handling
+        return;
+      }
+      _state.store(State::Connected, std::memory_order_release);
       asyncWriteCallback(ec, transferred, std::move(item)); // calls startReading()
       startWriting(); // start writing if something was queued
     };
-    if (_configuration._ssl) {
+    if (_configuration._socketType == SocketType::Ssl) {
       asio_ns::async_write(*_sslSocket, item->_requestBuffers, std::move(cb));
     } else {
       asio_ns::async_write(*_socket, item->_requestBuffers, std::move(cb));
@@ -200,7 +201,7 @@ std::vector<asio_ns::const_buffer> VstConnection::prepareRequest(
 
 // Thread-Safe: activate the writer loop (if off and items are queud)
 void VstConnection::startWriting() {
-  assert(_connected);
+  assert(_connected.load() == State::Connected);
   FUERTE_LOG_TRACE << "startWriting (vst): this=" << this << std::endl;
 
   uint32_t state = _loopState.load(std::memory_order_acquire);
@@ -223,18 +224,18 @@ void VstConnection::startWriting() {
 }
 
 // callback of async_write function that is called in sendNextRequest.
-void VstConnection::asyncWriteCallback(asio_ns::error_code const& error,
+void VstConnection::asyncWriteCallback(asio_ns::error_code const& ec,
                                        std::size_t transferred,
                                        std::shared_ptr<RequestItem> item) {
 
   // auto pendingAsyncCalls = --_connection->_async_calls;
-  if (error) {
+  if (ec) {
     _timeout.cancel(); // leave timeout running in non-error case
     
     // Send failed
     FUERTE_LOG_CALLBACKS << "asyncWriteCallback (vst): error "
-                         << error.message() << std::endl;
-    FUERTE_LOG_ERROR << error.message() << std::endl;
+                         << ec.message() << std::endl;
+    FUERTE_LOG_ERROR << ec.message() << std::endl;
 
     // Item has failed, remove from message store
     _messageStore.removeByID(item->_messageID);
@@ -334,7 +335,7 @@ void VstConnection::asyncReadCallback(asio_ns::error_code const& e,
     FUERTE_LOG_ERROR << e.message() << std::endl;
 
     // Restart connection, this will trigger a release of the readloop.
-    restartConnection(ErrorCondition::VstReadError);
+    restartConnection(ErrorCondition::ReadError);
 
   } else {
     FUERTE_LOG_CALLBACKS

@@ -26,6 +26,9 @@
 
 #include <v8.h>
 #include <iostream>
+#include <fuerte/connection.h>
+#include <fuerte/jwt.h>
+#include <fuerte/requests.h>
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -42,6 +45,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -49,9 +53,7 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::import;
 
-std::shared_ptr<std::string> V8ClientConnection::JWT_SECRET = nullptr;
-
-std::string V8ClientConnection::jwtToken(std::string const& secret) {
+/*std::string V8ClientConnection::jwtToken(std::string const& secret) {
   VPackBuilder headerBuilder;
   {
     VPackObjectBuilder h(&headerBuilder);
@@ -76,46 +78,103 @@ std::string V8ClientConnection::jwtToken(std::string const& secret) {
       fullMessage.length(), rest::SslInterface::Algorithm::ALGORITHM_SHA256);
 
   return fullMessage + "." + StringUtils::encodeBase64U(signature);
-}
+}*/
 
-V8ClientConnection::V8ClientConnection(
-    std::unique_ptr<GeneralClientConnection>& connection,
-    std::string const& database, std::string const& username,
-    std::string const& password, double requestTimeout)
-    : _requestTimeout(requestTimeout),
-      _client(nullptr),
+V8ClientConnection::V8ClientConnection(ClientFeature* client)
+    : _requestTimeout(client->requestTimeout()),
       _lastHttpReturnCode(0),
       _lastErrorMessage(""),
-      _httpResult(nullptr),
       _version("arango"),
-      _mode("unknown mode") {
-  init(connection, username, password, database);
+      _mode("unknown mode"),
+      _loop(1),
+      _connection(nullptr) {
+  init(client);
 }
 
 V8ClientConnection::~V8ClientConnection() {}
 
-void V8ClientConnection::init(
-    std::unique_ptr<GeneralClientConnection>& connection,
-    std::string const& username, std::string const& password,
-    std::string const& databaseName) {
-  _username = username;
-  _password = password;
-  _databaseName = databaseName;
+void V8ClientConnection::init(ClientFeature* client) {
+  _username = client->username();
+  _password = client->password();
+  _databaseName = client->password();
 
   SimpleHttpClientParams params(_requestTimeout, false);
   params.setLocationRewriter(this, &rewriteLocation);
   params.setUserNamePassword("/", _username, _password);
 
-  if (JWT_SECRET != nullptr) {
+  /*if (JWT_SECRET != nullptr) {
     params.setJwt(jwtToken(*JWT_SECRET));
+  }*/
+
+  //_client.reset(new SimpleHttpClient(connection, params));
+  
+  fuerte::ConnectionBuilder builder;
+  builder.endpoint(client->endpoint());
+  if (!client->username().empty()) {
+    builder.user(client->username()).password(client->password());
+    builder.authenticationType(fuerte::AuthenticationType::Basic);
+  } else if (!client->jwtSecret().empty()) {
+    builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
+    builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  }
+  _connection = builder.connect(_loop);
+  
+  auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version",
+                                   fuerte::StringMap{{"details","true"}});
+  try {
+    auto res = _connection->sendRequest(std::move(req));
+    _lastHttpReturnCode = res->statusCode();
+    
+    if (_lastHttpReturnCode == 200) {
+      std::shared_ptr<VPackBuilder> parsedBody;
+      VPackSlice body;
+      if (res->contentType() == fuerte::ContentType::VPack) {
+        body = res->slices()[0];
+      } else {
+        parsedBody = VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
+                                           res->payload().size());
+        body = parsedBody->slice();
+      }
+      
+      std::string const server =
+      VelocyPackHelper::getStringValue(body, "server", "");
+      
+      // "server" value is a string and content is "arango"
+      if (server == "arango") {
+        // look up "version" value
+        _version = VelocyPackHelper::getStringValue(body, "version", "");
+        VPackSlice const details = body.get("details");
+        if (details.isObject()) {
+          VPackSlice const mode = details.get("mode");
+          if (mode.isString()) {
+            _mode = mode.copyString();
+          }
+        }
+        std::string const versionString =
+        VelocyPackHelper::getStringValue(body, "version", "");
+        std::pair<int, int> version =
+        rest::Version::parseVersionString(versionString);
+        if (version.first < 3) {
+          // major version of server is too low
+          //_client->disconnect();
+          _connection.reset();
+          _lastErrorMessage = "Server version number ('" + versionString +
+          "') is too low. Expecting 3.0 or higher";
+          return;
+        }
+      }
+      
+    }
+
+  } catch(std::exception const& e) { // connection error
+    _lastErrorMessage = e.what();
+    _lastHttpReturnCode = 500;
   }
 
-  _client.reset(new SimpleHttpClient(connection, params));
-
   // connect to server and get version number
-  std::unordered_map<std::string, std::string> headerFields;
+  /*std::unordered_map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(
-      _client->request(rest::RequestType::GET, "/_api/version?details=true",
+      _client->request(fuerte::RestVerb::Get, "/_api/version?details=true",
                        nullptr, 0, headerFields));
 
   if (result.get() == nullptr || !result->isComplete()) {
@@ -130,32 +189,7 @@ void V8ClientConnection::init(
       try {
         std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
         VPackSlice const body = parsedBody->slice();
-        std::string const server =
-            VelocyPackHelper::getStringValue(body, "server", "");
-
-        // "server" value is a string and content is "arango"
-        if (server == "arango") {
-          // look up "version" value
-          _version = VelocyPackHelper::getStringValue(body, "version", "");
-          VPackSlice const details = body.get("details");
-          if (details.isObject()) {
-            VPackSlice const mode = details.get("mode");
-            if (mode.isString()) {
-              _mode = mode.copyString();
-            }
-          }
-          std::string const versionString =
-              VelocyPackHelper::getStringValue(body, "version", "");
-          std::pair<int, int> version =
-              rest::Version::parseVersionString(versionString);
-          if (version.first < 3) {
-            // major version of server is too low
-            _client->disconnect();
-            _lastErrorMessage = "Server version number ('" + versionString +
-                                "') is too low. Expecting 3.0 or higher";
-            return;
-          }
-        }
+        
 
       } catch (...) {
         // Ignore all parse errors
@@ -170,7 +204,7 @@ void V8ClientConnection::init(
                             ": " + result->getHttpReturnMessage();
       }
     }
-  }
+  }*/
 }
 
 std::string V8ClientConnection::rewriteLocation(void* data,
@@ -197,22 +231,28 @@ std::string V8ClientConnection::rewriteLocation(void* data,
   return "/_db/" + c->_databaseName + "/" + location;
 }
 
-void V8ClientConnection::setInterrupted(bool value) {
-  _client->setInterrupted(value);
+void V8ClientConnection::setInterrupted(bool interrupted) {
+  if (interrupted) {
+    _connection->shutdownConnection(fuerte::ErrorCondition::Canceled);
+  } else {
+    if (_connection->state() == fuerte::Connection::State::Disconnected) {
+      _connection->startConnection();
+    }
+  }
 }
 
-bool V8ClientConnection::isConnected() { return _client->isConnected(); }
+bool V8ClientConnection::isConnected() {
+  return _connection->state() == fuerte::Connection::State::Connected;
+}
 
 std::string V8ClientConnection::endpointSpecification() const {
-  return _client->getEndpointSpecification();
+  return "";//_client->getEndpointSpecification();
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
+  _connection.reset();
   try {
-    std::unique_ptr<GeneralClientConnection> connection =
-        client->createConnection(client->endpoint());
-    init(connection, client->username(), client->password(),
-         client->databaseName());
+    init(client);
   } catch (...) {
     std::string errorMessage = "error in '" + client->endpoint() + "'";
     throw errorMessage;
@@ -299,18 +339,6 @@ static void DestroyV8ClientConnection(V8ClientConnection* v8connection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a new client connection instance
-////////////////////////////////////////////////////////////////////////////////
-
-static V8ClientConnection* CreateV8ClientConnection(
-    std::unique_ptr<GeneralClientConnection>& connection,
-    ClientFeature* client) {
-  return new V8ClientConnection(connection, client->databaseName(),
-                                client->username(), client->password(),
-                                client->requestTimeout());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for queries (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -358,7 +386,7 @@ static void ClientConnection_ConstructorCallback(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  std::unique_ptr<GeneralClientConnection> connection;
+  /*std::unique_ptr<GeneralClientConnection> connection;
 
   try {
     if (args.Length() > 0 && args[0]->IsString()) {
@@ -369,10 +397,9 @@ static void ClientConnection_ConstructorCallback(
     }
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot connect to client");
-  }
+  }*/
 
-  std::unique_ptr<V8ClientConnection> v8connection(
-      CreateV8ClientConnection(connection, client));
+  auto v8connection = std::make_unique<V8ClientConnection>(client);
 
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
@@ -434,7 +461,7 @@ static void ClientConnection_reconnect(
   std::string password;
 
   if (args.Length() < 4) {
-    if (V8ClientConnection::jwtSecret() == nullptr) {
+    if (client->jwtSecret().empty()) {
       ConsoleFeature* console =
         ApplicationServer::getFeature<ConsoleFeature>("Console");
       
@@ -1368,137 +1395,134 @@ v8::Handle<v8::Value> V8ClientConnection::getData(
     v8::Isolate* isolate, StringRef const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::GET, location, StringRef(), headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Get, location, StringRef(), headerFields);
   }
-  return requestData(isolate, rest::RequestType::GET, location, StringRef(), headerFields);
+  return requestData(isolate, fuerte::RestVerb::Get, location, StringRef(), headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::headData(
     v8::Isolate* isolate, StringRef const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::HEAD, location, StringRef(), headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Head, location, StringRef(), headerFields);
   }
-  return requestData(isolate, rest::RequestType::HEAD, location, StringRef(), headerFields);
+  return requestData(isolate, fuerte::RestVerb::Head, location, StringRef(), headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::deleteData(
     v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::DELETE_REQ, location, body, headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Delete, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::DELETE_REQ, location, body, headerFields);
+  return requestData(isolate, fuerte::RestVerb::Delete, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::optionsData(
     v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::OPTIONS, location, body, headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Options, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::OPTIONS, location, body, headerFields);
+  return requestData(isolate, fuerte::RestVerb::Options, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::postData(
     v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::POST, location, body, headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Post, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::POST, location, body, headerFields);
+  return requestData(isolate, fuerte::RestVerb::Post, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::putData(
     v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::PUT, location, body, headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Put, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::PUT, location, body, headerFields);
+  return requestData(isolate, fuerte::RestVerb::Put, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::patchData(
     v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::PATCH, location, body, headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Patch, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::PATCH, location, body, headerFields);
+  return requestData(isolate, fuerte::RestVerb::Patch, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::requestData(
-    v8::Isolate* isolate, rest::RequestType method,
+    v8::Isolate* isolate, fuerte::RestVerb method,
     StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
-
-  _httpResult.reset(_client->request(method, location.toString(), body.data(), body.size(), headerFields));
-
-  return handleResult(isolate);
+  
+  auto req = std::make_unique<fuerte::Request>();
+  req->header.restVerb = method;
+  req->header.parseHttpPath(location.toString());
+  for (auto& pair : headerFields) {
+    req->header.meta.emplace(std::move(pair));
+  }
+  if (!body.empty()) {
+    req->addBinary(reinterpret_cast<uint8_t const*>(body.data()), body.length());
+    req->header.contentType(fuerte::ContentType::Json);
+  }
+  
+  std::unique_ptr<fuerte::Response> response;
+  try {
+    response = _connection->sendRequest(std::move(req));
+  } catch (fuerte::ErrorCondition e) {
+    _lastErrorMessage.assign(fuerte::to_string(e));
+    _lastHttpReturnCode = 500;
+  }
+  
+  return handleResult(isolate, std::move(response));
 }
 
 v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
-    v8::Isolate* isolate, rest::RequestType method,
+    v8::Isolate* isolate, fuerte::RestVerb method,
     StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
 
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  _httpResult.reset(_client->request(method, location.toString(), body.data(), body.size(), headerFields));
-
-  if (_httpResult == nullptr) {
+  auto req = std::make_unique<fuerte::Request>();
+  req->header.restVerb = method;
+  req->header.parseHttpPath(location.toString());
+  for (auto& pair : headerFields) {
+    req->header.meta.emplace(std::move(pair));
+  }
+  if (!body.empty()) {
+    req->addBinary(reinterpret_cast<uint8_t const*>(body.data()), body.length());
+    req->header.contentType(fuerte::ContentType::Json);
+  }
+  
+  std::unique_ptr<fuerte::Response> response;
+  try {
+    response = _connection->sendRequest(std::move(req));
+  } catch (fuerte::ErrorCondition e) {
+    _lastErrorMessage.assign(fuerte::to_string(e));
+    _lastHttpReturnCode = 500;
+  }
+  /*if (_httpResult == nullptr) {
     // create a fake response to prevent crashes when accessing the response
     _httpResult.reset(new SimpleHttpResult());
     _httpResult->setHttpReturnCode(500);
     _httpResult->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
-  }
+  }*/
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  TRI_ASSERT(_httpResult != nullptr);
-
-  if (!_httpResult->isComplete()) {
-    // not complete
-    _lastErrorMessage = _client->getErrorMessage();
-
-    if (_lastErrorMessage.empty()) {
-      _lastErrorMessage = "Unknown error";
-    }
-
-    _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
-
-    result->ForceSet(
-        TRI_V8_ASCII_STRING(isolate, "code"),
-        v8::Integer::New(isolate,
-                         static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
-
-    int errorNumber = 0;
-
-    switch (_httpResult->getResultType()) {
-      case (SimpleHttpResult::COULD_NOT_CONNECT):
-        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
-        break;
-
-      case (SimpleHttpResult::READ_ERROR):
-        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
-        break;
-
-      case (SimpleHttpResult::WRITE_ERROR):
-        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_WRITE;
-        break;
-
-      default:
-        errorNumber = TRI_SIMPLE_CLIENT_UNKNOWN_ERROR;
-        break;
-    }
-
+  if (!response) {
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, true));
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                     v8::Integer::New(isolate, errorNumber));
+                     v8::Integer::New(isolate, _lastHttpReturnCode));
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                      TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
@@ -1507,39 +1531,37 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
 
   // complete
 
-  _lastHttpReturnCode = _httpResult->getHttpReturnCode();
+  _lastHttpReturnCode = response->statusCode();
 
   // create raw response
   result->ForceSet(TRI_V8_ASCII_STRING(isolate, "code"),
                    v8::Integer::New(isolate, _lastHttpReturnCode));
 
   if (_lastHttpReturnCode >= 400) {
-    std::string returnMessage(_httpResult->getHttpReturnMessage());
+    std::string msg(GeneralResponse::responseString(static_cast<ResponseCode>(_lastHttpReturnCode)));
 
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, true));
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                      v8::Integer::New(isolate, _lastHttpReturnCode));
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                     TRI_V8_STD_STRING(isolate, returnMessage));
+                     TRI_V8_STD_STRING(isolate, msg));
   } else {
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, false));
   }
 
   // got a body, copy it into the result
-  StringBuffer& sb = _httpResult->getBody();
-  if (sb.length() > 0) {
-    v8::Handle<v8::String> b = TRI_V8_STD_STRING(isolate, sb);
-
+  auto sb = response->payload();
+  if (sb.size() > 0) {
+    const char* str = reinterpret_cast<const char*>(sb.data());
+    v8::Handle<v8::String> b = TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
     result->ForceSet(TRI_V8_ASCII_STRING(isolate, "body"), b);
   }
 
   // copy all headers
   v8::Handle<v8::Object> headers = v8::Object::New(isolate);
-  auto const& hf = _httpResult->getHeaderFields();
-
-  for (auto const& it : hf) {
+  for (auto const& it : response->header.meta) {
     v8::Handle<v8::String> key = TRI_V8_STD_STRING(isolate, it.first);
     v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, it.second);
 
@@ -1552,13 +1574,14 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   return result;
 }
 
-v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
-  if (_httpResult.get() == nullptr) {
+v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
+                                                       std::unique_ptr<fuerte::Response> response) {
+  if (!response) {
     return v8::Undefined(isolate);
   }
 
   // not complete
-  if (!_httpResult->isComplete()) {
+  /*if (!_httpResult->isComplete()) {
     _lastErrorMessage = _client->getErrorMessage();
 
     if (_lastErrorMessage.empty()) {
@@ -1601,24 +1624,27 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
                      TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
     return result;
-  }
+  }*/
 
   // complete
-  _lastHttpReturnCode = _httpResult->getHttpReturnCode();
+  _lastHttpReturnCode = response->statusCode();
 
   // got a body
-  StringBuffer& sb = _httpResult->getBody();
-
-  if (sb.length() > 0) {
-    isolate->GetCurrentContext()->Global();
-
-    if (_httpResult->isJson()) {
-      // TODO: check if we can use the VPack parser here...
-      return TRI_FromJsonString(isolate, sb.c_str(), nullptr);
+  auto sb = response->payload();
+  if (sb.size() > 0) {
+    /*
+    v8::Handle<v8::String> b = TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "body"), b);*/
+    if (response->contentType() == fuerte::ContentType::VPack) {
+      return TRI_VPackToV8(isolate, response->slices()[0]);
+    } else if (response->contentType() == fuerte::ContentType::Json) {
+      const char* str = reinterpret_cast<const char*>(sb.data());
+      return TRI_FromJsonString(isolate, str, sb.size(), nullptr);
+    } else {
+      const char* str = reinterpret_cast<const char*>(sb.data());
+      // return body as string
+      return TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
     }
-
-    // return body as string
-    return TRI_V8_STD_STRING(isolate, sb);
   }
 
   // no body
@@ -1629,14 +1655,14 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
                    v8::Integer::New(isolate, _lastHttpReturnCode));
 
   if (_lastHttpReturnCode >= 400) {
-    std::string returnMessage(_httpResult->getHttpReturnMessage());
+    std::string msg(GeneralResponse::responseString(static_cast<ResponseCode>(_lastHttpReturnCode)));
 
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, true));
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                      v8::Integer::New(isolate, _lastHttpReturnCode));
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                     TRI_V8_STD_STRING(isolate, returnMessage));
+                     TRI_V8_STD_STRING(isolate, msg));
   } else {
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, false));
