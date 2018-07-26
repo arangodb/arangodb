@@ -70,6 +70,7 @@ class RocksDBOptionFeature final
   int64_t _level0CompactionTrigger;
   int64_t _level0SlowdownTrigger;
   int64_t _level0StopTrigger;
+  bool _blockAlignDataBlocks;
   bool _enablePipelinedWrite;
   bool _optimizeFiltersForHits;
   bool _useDirectReads;

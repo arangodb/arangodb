@@ -120,6 +120,11 @@ Only meaningful on Linux. If set, use `O_DIRECT` for writing files. Default: fal
 
 If set, issue an `fsync` call when writing to disk (set to false to issue
 `fdatasync` only. Default: false.
+  
+`--rocksdb.block-align-data-blocks`
+
+If true, data blocks are aligned on the lesser of page size and block size,
+which may waste some memory but may reduce the number of cross-page I/O operations.
 
 ### Background tasks
 

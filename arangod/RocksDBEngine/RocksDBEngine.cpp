@@ -435,7 +435,9 @@ void RocksDBEngine::start() {
   }
   tableOptions.block_size = opts->_tableBlockSize;
   tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
-  // tableOptions.format_version = 3;
+  // use slightly space-optimized format version 3
+  tableOptions.format_version = 3;
+  tableOptions.block_align = opts->_blockAlignDataBlocks;
 
   _options.table_factory.reset(
       rocksdb::NewBlockBasedTableFactory(tableOptions));
@@ -1935,7 +1937,12 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   };
 
   builder.openObject();
+  for (int i = 0; i < _options.num_levels; ++i) {
+    addInt(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
+    addInt(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
+  }
   addInt(rocksdb::DB::Properties::kNumImmutableMemTable);
+  addInt(rocksdb::DB::Properties::kNumImmutableMemTableFlushed);
   addInt(rocksdb::DB::Properties::kMemTableFlushPending);
   addInt(rocksdb::DB::Properties::kCompactionPending);
   addInt(rocksdb::DB::Properties::kBackgroundErrors);
@@ -1944,6 +1951,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kSizeAllMemTables);
   addInt(rocksdb::DB::Properties::kNumEntriesActiveMemTable);
   addInt(rocksdb::DB::Properties::kNumEntriesImmMemTables);
+  addInt(rocksdb::DB::Properties::kNumDeletesActiveMemTable);
   addInt(rocksdb::DB::Properties::kNumDeletesImmMemTables);
   addInt(rocksdb::DB::Properties::kEstimateNumKeys);
   addInt(rocksdb::DB::Properties::kEstimateTableReadersMem);
@@ -1952,6 +1960,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kNumLiveVersions);
   addInt(rocksdb::DB::Properties::kMinLogNumberToKeep);
   addInt(rocksdb::DB::Properties::kEstimateLiveDataSize);
+  addInt(rocksdb::DB::Properties::kLiveSstFilesSize);
   addStr(rocksdb::DB::Properties::kDBStats);
   addStr(rocksdb::DB::Properties::kSSTables);
   addInt(rocksdb::DB::Properties::kNumRunningCompactions);
@@ -1959,6 +1968,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
   addInt(rocksdb::DB::Properties::kEstimatePendingCompactionBytes);
   addInt(rocksdb::DB::Properties::kBaseLevel);
+  addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
+  addInt(rocksdb::DB::Properties::kBlockCacheUsage);
+  addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
   addInt(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
   addInt(rocksdb::DB::Properties::kIsWriteStopped);
@@ -1967,21 +1979,6 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     for (auto const& stat : rocksdb::TickersNameMap) {
       builder.add(stat.second,
                   VPackValue(_options.statistics->getTickerCount(stat.first)));
-    }
-  }
-  if (_options.table_factory) {
-    void* options = _options.table_factory->GetOptions();
-    if (options != nullptr) {
-      auto* bto = static_cast<rocksdb::BlockBasedTableOptions*>(options);
-
-      if (bto != nullptr && bto->block_cache != nullptr) {
-        // block cache is present
-        builder.add("rocksdb.block-cache-used",
-                    VPackValue(bto->block_cache->GetUsage()));
-      } else {
-        // no block cache present
-        builder.add("rocksdb.block-cache-used", VPackValue(0));
-      }
     }
   }
 
