@@ -534,7 +534,16 @@
         window.modalView.createReadOnlyEntry(
           'debug-download-package-disclaimer',
           'Disclaimer',
-          'This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include collection names and created indexes, including attribute names and bind parameters. All string values will be obfuscated in a not-reversable way. If the below check box is not checked this package will not include any data. If the below check box is checked it will include a sample data-set again obfuscating all string values, all number values are not obfuscated. In order to check if any sensitive data is shared open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before. Including this package in bug reports will lower the amout of questioning back and forth until the issue is reproduced.',
+          '<p>This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include:</p>' +
+            '<ul>' +
+            '<li>collection names</li>' +
+            '<li>collection indexes</li>' +
+            '<li>attribute names</li>' +
+            '<li>bind parameters</li>' +
+            '</ul>' +
+            '<p>Additionally, samples of your data will be included with all <b>string values obfuscated</b> in a non-reversible way if below checkbox is ticked.</p>' +
+            '<p>If disabled, this package will not include any data.</p>' +
+            '<p>Please open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before uploading. Including this package in bug reports will lower the amount of questioning back and forth to reproduce the issue on our side and is much appreciated.</p>',
           undefined,
           false,
           false
@@ -545,7 +554,7 @@
           'debug-download-package-examples',
           'Include obfuscated examples',
           'includeExamples',
-          'Includes an example set of documents, obfuscating all String values inside the data. This helps the Team in many ways as many issues are related to the document structure / format and the indexes defined on them.',
+          'Includes an example set of documents, obfuscating all string values inside the data. This helps the ArangoDB Team as many issues are related to the document structure / format and the indexes defined on them.',
           true
         )
       );
