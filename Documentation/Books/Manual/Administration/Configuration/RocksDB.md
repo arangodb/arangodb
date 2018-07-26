@@ -227,3 +227,6 @@ The default sync interval in 3.3 is *0*, meaning that automatic background
 syncing is turned off. Automatic syncing was added in the middle of the ArangoDB
 3.3 release cycle, so it is opt-in. The default sync interval will change to *100*
 milliseconds in ArangoDB 3.4 however.
+
+Note: this option is not supported on Windows platforms. Setting the option to
+a value greater 0 will produce a startup warning.
