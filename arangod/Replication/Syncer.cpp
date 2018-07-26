@@ -45,6 +45,7 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -442,8 +443,8 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   }
 
   if (cid == 0) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << TRI_errno_string(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "Invalid replication response: Was unable to resolve"
+    << " collection from marker: " << slice.toJson();
     return nullptr;
   }
 
@@ -525,7 +526,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   bool forceRemoveCid = false;
   if (col != nullptr && _state.master.simulate32Client()) {
     forceRemoveCid = true;
-    LOG_TOPIC(TRACE, Logger::REPLICATION)
+    LOG_TOPIC(INFO, Logger::REPLICATION)
         << "would have got a wrong collection!";
     // go on now and truncate or drop/re-create the collection
   }
@@ -561,7 +562,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
     }
   }
 
-  VPackSlice uuid = slice.get("globallyUniqueId");
+  VPackSlice uuid = slice.get(StaticStrings::DataSourceGuid);
   // merge in "isSystem" attribute, doesn't matter if name does not start with
   // '_'
   VPackBuilder s;
@@ -574,7 +575,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
     // if we received a globallyUniqueId from the remote, then we will always
     // use this id so we can discard the "cid" and "id" values for the
     // collection
-    s.add("id", VPackSlice::nullSlice());
+    s.add(StaticStrings::DataSourceId, VPackSlice::nullSlice());
     s.add("cid", VPackSlice::nullSlice());
   }
 
@@ -750,6 +751,103 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   }
 
   return r;
+}
+  
+/// @brief creates a view, based on the VelocyPack provided
+Result Syncer::createView(TRI_vocbase_t& vocbase,
+                          arangodb::velocypack::Slice const& slice) {
+  if (!slice.isObject()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "collection slice is no object");
+  }
+  
+  VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+  if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "no name specified for view");
+  }
+  VPackSlice guidSlice = slice.get("globallyUniqueId");
+  if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "no guid specified for view");
+  }
+  VPackSlice typeSlice = slice.get(StaticStrings::DataSourceType);
+  if (!typeSlice.isString() || typeSlice.getStringLength() == 0) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "no type specified for view");
+  }
+  
+  auto view = vocbase.lookupView(guidSlice.copyString());
+  if (view) { // identical view already exists
+    VPackSlice properties = slice.get("properties");
+    if (properties.isObject()) {
+      bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
+      return view->updateProperties(properties, false, doSync);
+    }
+    return {};
+  }
+  
+  view = vocbase.lookupView(nameSlice.copyString());
+  if (view) { // resolve name conflict by deleting existing
+    Result res = vocbase.dropView(view->id(), /*dropSytem*/false);
+    if (res.fail()) {
+      return res;
+    }
+  }
+  
+  VPackBuilder s;
+  s.openObject();
+  s.add("id", VPackSlice::nullSlice());
+  s.close();
+  
+  VPackBuilder merged =
+  VPackCollection::merge(slice, s.slice(), /*mergeValues*/ true,
+                         /*nullMeansRemove*/ true);
+  
+  try {
+    vocbase.createView(merged.slice());
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  
+  return Result();
+}
+
+/// @brief drops a view, based on the VelocyPack provided
+Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
+                        bool reportError) {
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  VPackSlice guidSlice = slice.get("globallyUniqueId");
+  if (guidSlice.isNone()) {
+    guidSlice = slice.get("cuid");
+  }
+  if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "no guid specified for view");
+  }
+  
+  try {
+    auto view = vocbase->lookupView(guidSlice.copyString());
+    if (view != nullptr) { // ignore non-existing
+      return vocbase->dropView(view->id(), false);
+    }
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  
+  return Result();
 }
 
 void Syncer::reloadUsers() {

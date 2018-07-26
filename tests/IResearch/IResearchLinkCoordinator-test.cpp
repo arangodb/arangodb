@@ -370,8 +370,9 @@ SECTION("test_create_drop") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(logicalView->id() == 42);
+    CHECK(logicalView->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -408,8 +409,9 @@ SECTION("test_create_drop") {
       CHECK(error.empty());
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -476,8 +478,9 @@ SECTION("test_create_drop") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -493,8 +496,9 @@ SECTION("test_create_drop") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")

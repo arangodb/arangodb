@@ -141,7 +141,7 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const*);
 
 #ifdef USE_ENTERPRISE
-void distributeInClusterRuleSmartEdgeCollection(
+ExecutionNode* distributeInClusterRuleSmartEdgeCollection(
     ExecutionPlan*,
     SubqueryNode* snode,
     ExecutionNode* node,
