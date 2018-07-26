@@ -1,5 +1,5 @@
-Working with Documents using REST
-=================================
+Batch Document API
+==================
 
 **This is a draft.**
 
