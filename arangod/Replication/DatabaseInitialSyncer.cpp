@@ -312,9 +312,16 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
 /// @brief send a WAL flush command
 Result DatabaseInitialSyncer::sendFlush() {
   std::string const url = "/_admin/wal/flush";
-  std::string const body =
-      "{\"waitForSync\":true,\"waitForCollector\":true,"
-      "\"waitForCollectorQueue\":true}";
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("waitForSync", VPackValue(true));
+  builder.add("waitForCollector", VPackValue(true));
+  builder.add("waitForCollectorQueue", VPackValue(true));
+  builder.close();
+
+  VPackSlice bodySlice = builder.slice();
+  std::string const body = bodySlice.toJson();
 
   // send request
   _config.progress.set("sending WAL flush command to url " + url);

@@ -190,7 +190,7 @@ class SimpleHttpClient {
   ~SimpleHttpClient();
 
  public:
-  void setInterrupted(bool value);
+  void setInterrupted(bool value) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates the connection used by the client
@@ -321,7 +321,13 @@ class SimpleHttpClient {
 
   SimpleHttpClientParams& params() { return _params; };
   
-  bool isAborted() const noexcept { return _aborted.load(std::memory_order_acquire); }
+  /// @brief if true, makes the SimpleHttpClient consider the case of
+  /// server shutdown as a case for aborting the request
+  void checkForGlobalAbort(bool value) noexcept;
+ 
+  /// @brief checks if connection is aborted, and may also set it to
+  /// aborted if the server is shutting down 
+  bool isAborted() noexcept;
 
   void setAborted(bool value) noexcept;
 
@@ -488,8 +494,7 @@ class SimpleHttpClient {
   
   std::atomic<bool> _aborted;
 
-  // empty map, used for headers
-  static std::unordered_map<std::string, std::string> const NO_HEADERS;
+  bool _checkForGlobalAbort;
 };
 }
 }
