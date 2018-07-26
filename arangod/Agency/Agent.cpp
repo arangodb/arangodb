@@ -381,12 +381,14 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   // Else we want to indicate to the leader that we are behind and need data:
   // a single false will go back and trigger _confirmed[thisfollower] = 0
   if (nqs == 0) {
-    if (_state.lastIndex() > 0) {
+    auto lastIndex = _state.lastIndex();
+    if (lastIndex > 0) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Finished empty AppendEntriesRPC from " << leaderId << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
-        _commitIndex = leaderCommitIndex;
+        _commitIndex = std::max(
+          _commitIndex, std::min(leaderCommitIndex, lastIndex));
         if (_commitIndex >= _state.nextCompactionAfter()) {
           _compactor.wakeUp();
         }
@@ -489,16 +491,13 @@ void Agent::sendAppendEntriesRPC() {
         commitIndex = _commitIndex;
       }
 
-      // If lastConfirmed is smaller than our first log entry's index, and
-      // given that our first log entry is either the 0-entry or a compacted
-      // state and that compactions are only performed up to a RAFT-wide 
-      // committed index, and by that up to absolut truth we can correct
-      // lastConfirmed to one minus our first log index.
-      if (lastConfirmed < _state.firstIndex()) {
-        lastConfirmed = _state.firstIndex() - 1;
-        // Note that this can only ever happen if _state.firstIndex() is
-        // greater than 0, so there is no underflow.
-      }
+      // If the follower is behind our first log entry send last snapshot and
+      // following logs. Else try to have the follower catch up in regular order. 
+      bool needSnapshot = lastConfirmed < _state.firstIndex();
+      if (needSnapshot) {
+        lastConfirmed = _state.lastCompactionAt() - 1;
+      } 
+
       LOG_TOPIC(TRACE, Logger::AGENCY)
         << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
       // If lastConfirmed is one minus the first log entry, then this is
@@ -539,16 +538,14 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      bool needSnapshot = false;
       Store snapshot(this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
-      
-      if (lowest > lastConfirmed) {
+
+      if (lowest > lastConfirmed || needSnapshot) {
         // Ooops, compaction has thrown away so many log entries that
         // we cannot actually update the follower. We need to send our
         // latest snapshot instead:
-        needSnapshot = true;
         bool success = false;
         try {
           success = _state.loadLastCompactedSnapshot(snapshot,
@@ -898,16 +895,20 @@ bool Agent::challengeLeadership() {
 
 
 /// Get last acknowledged responses on leader
-query_t Agent::lastAckedAgo() const {
+void Agent::lastAckedAgo(Builder& ret) const {
 
   std::unordered_map<std::string, index_t> confirmed;
   std::unordered_map<std::string, SteadyTimePoint> lastAcked;
   std::unordered_map<std::string, SteadyTimePoint> lastSent;
+  index_t lastCompactionAt, nextCompactionAfter;
+  
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;
     confirmed = _confirmed;
     lastSent = _lastSent;
+    lastCompactionAt = _state.lastCompactionAt();
+    nextCompactionAfter = _state.nextCompactionAfter();    
   }
 
   std::function<double(std::pair<std::string,SteadyTimePoint> const&)> dur2str =
@@ -917,22 +918,22 @@ query_t Agent::lastAckedAgo() const {
         std::floor(duration<double>(steady_clock::now()-i.second).count()*1.0e3);
   };
 
-  auto ret = std::make_shared<Builder>();
-  { VPackObjectBuilder e(ret.get());
-    if (leading()) {
-      for (auto const& i : lastAcked) {
-        auto lsit = lastSent.find(i.first);
-        ret->add(VPackValue(i.first));
-        { VPackObjectBuilder o(ret.get());
-          ret->add("lastAckedTime", VPackValue(dur2str(i)));
-          ret->add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
-          if (i.first != id()) {
-            ret->add("lastAppend", VPackValue(dur2str(*lsit)));
-          }}
-      }
-    }}
-
-  return ret;
+  ret.add("lastCompactionAt", VPackValue(lastCompactionAt));
+  ret.add("nextCompactionAfter", VPackValue(nextCompactionAfter));
+  if (leading()) {
+    ret.add(VPackValue("lastAcked"));
+    VPackObjectBuilder b(&ret);
+    for (auto const& i : lastAcked) {
+      auto lsit = lastSent.find(i.first);
+      ret.add(VPackValue(i.first));
+      { VPackObjectBuilder o(&ret);
+        ret.add("lastAckedTime", VPackValue(dur2str(i)));
+        ret.add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
+        if (i.first != id()) {
+          ret.add("lastAppend", VPackValue(dur2str(*lsit)));
+        }}
+    }
+  }
 
 }
 
@@ -1578,7 +1579,6 @@ void Agent::rebuildDBs() {
   _commitIndex = lastCompactionIndex;
   _waitForCV.broadcast();
 
-
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Rebuilding key-value stores from index "
@@ -1610,16 +1610,13 @@ void Agent::compact() {
     commitIndex = _commitIndex;
   }
 
-  if (commitIndex > _config.compactionKeepSize()) {
-    // If the keep size is too large, we do not yet compact
-    // TODO: check if there is at problem that we call State::compact()
-    // now with a commit index that may have been slightly modified by other
-    // threads
-    // TODO: the question is if we have to lock out others while we
-    // call compact or while we grab _commitIndex and then call compact
-    if (!_state.compact(commitIndex - _config.compactionKeepSize())) {
+  if (commitIndex >= _state.nextCompactionAfter()) {
+    // This check needs to be here, because the compactor thread wakes us
+    // up every 5 seconds.
+    // Note that it is OK to compact anywhere before or at _commitIndex.
+    if (!_state.compact(commitIndex, _config.compactionKeepSize())) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Compaction for index "
-        << commitIndex - _config.compactionKeepSize()
+        << commitIndex << " with keep size " << _config.compactionKeepSize()
         << " did not work.";
     }
   }

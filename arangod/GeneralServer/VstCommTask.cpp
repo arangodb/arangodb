@@ -42,7 +42,6 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 
@@ -86,7 +85,7 @@ VstCommTask::VstCommTask(Scheduler* scheduler, GeneralServer* server,
     : Task(scheduler, "VstCommTask"),
       GeneralCommTask(scheduler, server, std::move(socket), std::move(info), timeout,
                       skipInit),
-      _authorized(false),
+      _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
       _authenticatedUser(),
       _protocolVersion(protocolVersion) {

@@ -30,14 +30,9 @@
 
 using namespace arangodb;
 
-EngineEqualityCheckFeature::EngineEqualityCheckFeature(
-    application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "EngineEqualityCheck") {
-  setOptional(false);
-  startsAfter("Bootstrap");
-}
+namespace {
 
-bool equalStorageEngines(){
+bool equalStorageEngines() {
   std::string engineName = EngineSelectorFeature::engineName();
   auto allEqual = true;
   auto ci = ClusterInfo::instance();
@@ -68,17 +63,17 @@ bool equalStorageEngines(){
   // check answers
   for (auto const& request : requests){
     auto const& result = request.result;
-    if(result.status == CL_COMM_RECEIVED) {
+    if (result.status == CL_COMM_RECEIVED) {
       httpclient::SimpleHttpResult const& simpleResult = *request.result.result;
 
       // extract engine from body
       auto vpack = simpleResult.getBodyVelocyPack();
       auto dbserverEngine = vpack->slice().get("name").copyString();
 
-      if(dbserverEngine != engineName) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      if (dbserverEngine != engineName) {
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
           << "this coordinator is using the '" << engineName
-          << "' engine while the dbserver at '" << request.destination
+          << "' engine while the DB server at '" << request.destination
           << "' uses the '" << dbserverEngine << "' engine";
 
         allEqual = false;
@@ -93,8 +88,25 @@ bool equalStorageEngines(){
   return allEqual;
 }
 
+} // namespace
+
+EngineEqualityCheckFeature::EngineEqualityCheckFeature(
+    application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "EngineEqualityCheck") {
+  setOptional(false);
+  startsAfter("DatabasePhase");
+  // this feature is supposed to run after the cluster is somewhat ready
+  startsAfter("ClusterPhase"); 
+  startsAfter("Bootstrap");
+}
+
 void EngineEqualityCheckFeature::start() {
-  if (ServerState::instance()->isCoordinator() && !equalStorageEngines()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "the usage of different storage engines in the cluster is unsupported and may cause issues";
+  if (ServerState::instance()->isCoordinator()) {
+    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "running storage engine equality check";
+
+    if (!equalStorageEngines()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES) << "the usage of different storage engines in the cluster is unsupported and may cause issues";
+      FATAL_ERROR_EXIT();
+    }
   }
 }

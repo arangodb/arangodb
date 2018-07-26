@@ -27,11 +27,12 @@ version check on startup. Running the server with a non-matching version number
 in the VERSION file will make the server refuse to start.
 
 ### Storage Engine
-As of ArangoDB 3.2 two storage engines are supported. The "traditional"
-engine is called `MMFiles`, which is also the default storage engine.
+ArangoDB's "traditional" storage engine is called `MMFiles`, which also was the 
+default storage engine up to including ArangoDB 3.3.
 
-An alternative engine based on [RocksDB](http://rocksdb.org) is also provided and
-can be turned on manually.
+Since ArangoDB 3.2, an alternative engine based on [RocksDB](http://rocksdb.org) 
+is also provided and could be turned on manually. Since ArangoDB 3.4, the RocksDB
+storage engine is the default storage engine for new installations.
 
 One storage engine type is supported per server per installation. 
 Live switching of storage engines on already installed systems isn't supported.
@@ -39,8 +40,11 @@ Configuring the wrong engine (not matching the previously used one) will result
 in the server refusing to start. You may however use `auto` to let ArangoDB choose 
 the previously used one. 
 
-
 `--server.storage-engine [auto|mmfiles|rocksdb]`
+
+Note that `auto` will default to `rocksdb` starting with ArangoDB 3.4, but in
+previous versions it defaulted to `mmfiles`.
+
 
 ### Daemon
 
@@ -302,9 +306,23 @@ The default value for this option is *false*.
 
 ### Server threads
 
-`--server.threads number`
+`--server.minimal-threads number`
+
+`--server.maximal-threads number`
 
 Specifies the *number* of threads that are spawned to handle requests.
+
+The actual number of request processing threads is adjusted dynamically at runtime
+and will float between `--server.minimal-threads` and `--server.maximal-threads`.
+
+`--server.minimal-threads` determines the minimum number of request processing
+threads the server will start and that will always be kept around. The default
+value is *2*.
+
+`--server.maximal-threads` determines the maximum number of request processing 
+threads the server is allowed to start for request handling. If that number of 
+threads is already running, arangod will not start further threads for request 
+handling. The default value is 
 
 ### Toggling server statistics
 
@@ -313,16 +331,6 @@ Specifies the *number* of threads that are spawned to handle requests.
 If this option is *value* is *false*, then ArangoDB's statistics gathering
 is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances a bit.
-
-### Session timeout
-
-time to live for server sessions
-`--server.session-timeout value`
-
-The timeout for web interface sessions, using for authenticating requests
-to the web interface (/_admin/aardvark) and related areas.
-
-Sessions are only used when authentication is turned on.
 
 ### Foxx queues
 @startDocuBlock foxxQueues
@@ -371,7 +379,7 @@ in a specific state on startup. the options for this value are:
 - any: any directory state allowed
 
 
-### Journal size
+### Journal size (MMFiles only)
 @startDocuBlock databaseMaximalJournalSize
 
 
@@ -612,5 +620,5 @@ In certain types of ArangoDB instances you can now completely disable the V8 Jav
 an **highly experimental** feature and it is to be expected that certain functionality (e.g. some API endpoints, the WebUI, 
 some AQL functions etc) will be missing or severly broken. Nevertheless you may whish to reduce the footprint of ArangoDB by disabling V8.
 
-This option is expected to **only** work reliably on a _Single-Server_, _Agency_ or _Active-Failover_ setup. Do not try to use
-this feature on a _Coordinator_, or _DBServer_
+This option is expected to **only** work reliably on a _single server_, _agency_ or in an _active failover_ setup. Do not try to use
+this feature on a _coordinator_, or _cluster database server_.

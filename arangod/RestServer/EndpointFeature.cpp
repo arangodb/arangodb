@@ -41,7 +41,8 @@ EndpointFeature::EndpointFeature(
       _backlogSize(64) {
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("Ssl");
+  startsAfter("AQLPhase");
+
   startsAfter("Server");
 
   // if our default value is too high, we'll use half of the max value provided

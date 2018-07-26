@@ -162,7 +162,7 @@ function ViewSuite () {
       var abc = db._createView("abc", "arangosearch", { "commit": { "commitIntervalMsec": 17 } });
       assertEqual(abc.name(), "abc");
       assertEqual(abc.properties().commit.commitIntervalMsec, 17);
-      abc.properties({"bogus": "junk", "commit": { "commitIntervalMsec": 7 } });
+      abc.properties({ "bogus": "junk", "commit": { "commitIntervalMsec": 7 } });
       assertEqual(abc.properties().commit.commitIntervalMsec, 7);
       abc.drop();
     },

@@ -15,7 +15,7 @@ function help() {
   echo "  -x/--xterm              XTerm command       (default: xterm)"
   echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
   echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
-  echo "  -r/--rocksdb-engine     Use RocksDB engine  (default: false)"
+  echo "  -r/--rocksdb-engine     Use RocksDB engine  (default: true)"
   echo "  -q/--source-dir         ArangoDB source dir (default: .)"
   echo "  -B/--bin-dir            ArangoDB binary dir (default: ./build)"
   echo "  -O/--ongoing-ports      Ongoing ports       (default: false)"

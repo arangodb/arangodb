@@ -483,7 +483,6 @@ MMFilesCollection::MMFilesCollection(
     : PhysicalCollection(collection, info),
       _ditches(&collection),
       _initialCount(0),
-      _revisionError(false),
       _lastRevision(0),
       _uncollectedLogfileEntries(0),
       _nextCompactionStartIndex(0),
@@ -537,7 +536,6 @@ MMFilesCollection::MMFilesCollection(
   _persistentIndexes = mmfiles._persistentIndexes;
   _useSecondaryIndexes = mmfiles._useSecondaryIndexes;
   _initialCount = mmfiles._initialCount;
-  _revisionError = mmfiles._revisionError;
   _lastRevision = mmfiles._lastRevision;
   _nextCompactionStartIndex = mmfiles._nextCompactionStartIndex;
   _lastCompactionStatus = mmfiles._lastCompactionStatus;
@@ -1771,7 +1769,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(vocbase),
-    &_logicalCollection,
+    _logicalCollection,
     AccessMode::Type::READ
   );
 
@@ -1832,11 +1830,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
   }
 
   // successfully opened collection. now adjust version number
-  if (LogicalCollection::VERSION_31 != _logicalCollection.version() &&
-      !_revisionError &&
-      application_features::ApplicationServer::server
-          ->getFeature<DatabaseFeature>("Database")
-          ->check30Revisions()) {
+  if (LogicalCollection::VERSION_31 != _logicalCollection.version()) {
     _logicalCollection.setVersion(LogicalCollection::VERSION_31);
 
     bool const doSync =
@@ -1877,36 +1871,6 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
       << "found " << openState._documents << " document markers, "
       << openState._deletions << " deletion markers for collection '"
       << _logicalCollection.name() << "'";
-
-  if (LogicalCollection::VERSION_30 >= _logicalCollection.version() &&
-      _lastRevision >= static_cast<TRI_voc_rid_t>(2016ULL - 1970ULL) * 1000ULL *
-                           60ULL * 60ULL * 24ULL * 365ULL &&
-      application_features::ApplicationServer::server
-          ->getFeature<DatabaseFeature>("Database")
-          ->check30Revisions()) {
-    // a collection from 3.0 or earlier with a _rev value that is higher than we
-    // can handle safely
-    setRevisionError();
-
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "collection '" << _logicalCollection.name()
-        << "' contains _rev values that are higher than expected for an "
-           "ArangoDB 3.1 database. If this collection was created or used with "
-           "a pre-release or development version of ArangoDB 3.1, please "
-           "restart the server with option '--database.check-30-revisions "
-           "false' to suppress this warning. If this collection was created "
-           "with an ArangoDB 3.0, please dump the 3.0 database with arangodump "
-           "and restore it in 3.1 with arangorestore.";
-    if (application_features::ApplicationServer::server
-            ->getFeature<DatabaseFeature>("Database")
-            ->fail30Revisions()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-          std::string("collection '") + _logicalCollection.name() +
-              "' contains _rev values from 3.0 and needs to be migrated using "
-              "dump/restore");
-    }
-  }
 
   // update the real statistics for the collection
   try {
@@ -2049,11 +2013,11 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   if (!foundPrimary ||
       (!foundEdge && TRI_COL_TYPE_EDGE == _logicalCollection.type())) {
     // we still do not have any of the default indexes, so create them now
-    engine->indexFactory().fillSystemIndexes(&_logicalCollection, indexes);
+    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
   }
 
   engine->indexFactory().prepareIndexes(
-    &_logicalCollection, indexesSlice, indexes
+    _logicalCollection, indexesSlice, indexes
   );
 
   for (std::shared_ptr<Index>& idx : indexes) {
@@ -2148,7 +2112,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   // Create it
 
   idx = engine->indexFactory().prepareIndexFromSlice(
-    info, true, &_logicalCollection, false
+    info, true, _logicalCollection, false
   );
   TRI_ASSERT(idx != nullptr);
 
@@ -2308,7 +2272,7 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
     newIdx = engine->indexFactory().prepareIndexFromSlice(
-      info, false, &_logicalCollection, false
+      info, false, _logicalCollection, false
     );
   } catch (arangodb::basics::Exception const& e) {
     // Something with index creation went wrong.
@@ -3317,10 +3281,7 @@ Result MMFilesCollection::update(
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(
-            _logicalCollection.vocbase().name(),
-            trx->resolver()->getCollectionNameCluster(
-              _logicalCollection.planId()
-            ),
+            _logicalCollection,
             oldDoc,
             builder->slice(),
             false
@@ -3452,18 +3413,17 @@ Result MMFilesCollection::replace(
     return res;
   }
 
-  if (_isDBServer) {
-    // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(
-          _logicalCollection.vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            _logicalCollection.planId()
-          ),
-          oldDoc,
-          builder->slice(),
-          false
-       )) {
-      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+  if (options.recoveryData == nullptr) {
+    if (_isDBServer) {
+      // Need to check that no sharding keys have changed:
+      if (arangodb::shardKeysChanged(
+            _logicalCollection,
+            oldDoc,
+            builder->slice(),
+            false
+        )) {
+        return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+      }
     }
   }
 

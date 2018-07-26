@@ -202,6 +202,51 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow", "foo", "bar")');
     },
 
+
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test LevenshteinDistance
+// //////////////////////////////////////////////////////////////////////////////
+    testToLevenshteinDistanceValues: function () {
+      [ 
+        [ null, "", 0 ],
+        [ null, null, 0 ],
+        [ "", "", 0 ],
+        [ "", "foobar", 6 ],
+        [ "foobar", "", 6 ],
+        [ "foobar", "foo", 3 ],
+        [ "foo", "foobar", 3 ],
+        [ "or", "of", 1 ],
+        [ "or", "", 2 ],
+        [ "or", "The quick brown fox jumps over the lazy dog", 41 ],
+        [ true, "foobar", 6 ],
+        [ false, "foobar", 5 ],
+        [ "foobar", true, 6 ],
+        [ "foobar", false, 5 ],
+        [ true, true, 0 ],
+        [ false, false, 0 ],
+        [ true, false, 4 ],
+        [ false, true, 4 ],
+        [ "", "", 0 ],
+        [ " ", "", 1 ],
+        [ "", " ", 1 ],
+        [ "der mötör trötet", "der mötör trötet", 0 ],
+        [ "der mötör trötet", "der trötet", 6 ],
+        [ "der mötör trötet", "dertrötet", 7 ],
+        [ "Öööööö", "öö", 4 ],
+        [ "The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox", 13 ],
+        [ "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, 'Lorem ipsum dolor sit amet..', comes from a line in section 1.10.32.  The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from 'de Finibus Bonorum et Malorum' by Cicero are also reproduced in their exact original form, accompanied by English versions from the 1914 translation by H. Rackham..", "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, 'Lorem ipsum dolor sit amet..', comes from a line in section 1.10.32.  The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from 'de Finibus Bonorum et Malorum' by Cicero are also reproduced in their exact original form.", 74 ],
+      ].forEach(function(test) {
+        assertEqual([ test[2] ], getQueryResults('RETURN LEVENSHTEIN_DISTANCE(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ')'), test);
+      });
+    },
+
+    testLevenshteinDistanceInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test", "meow", "foo", "bar")');
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test JSON_STRINGIFY
 // //////////////////////////////////////////////////////////////////////////////

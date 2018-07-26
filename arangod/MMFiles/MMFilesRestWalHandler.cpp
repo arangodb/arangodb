@@ -221,7 +221,7 @@ void MMFilesRestWalHandler::flush() {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  generateResult(rest::ResponseCode::OK, basics::VelocyPackHelper::EmptyObjectValue());
+  generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void MMFilesRestWalHandler::transactions() {

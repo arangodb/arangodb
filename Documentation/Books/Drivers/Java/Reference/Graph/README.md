@@ -30,7 +30,7 @@ Create a new graph in the graph module. The creation of a graph requires the nam
 
   - **isSmart**: `Boolean`
 
-    Define if the created graph should be smart. This only has effect in Enterprise version.
+    Define if the created graph should be smart. This only has effect in Enterprise Edition.
 
   - **replicationFactor**: `Integer`
 
@@ -82,7 +82,7 @@ Alternative for [ArangoDatabase.createGraph](#arangodatabasecreategraph).
 
   - **isSmart**: `Boolean`
 
-    Define if the created graph should be smart. This only has effect in Enterprise version.
+    Define if the created graph should be smart. This only has effect in Enterprise Edition.
 
   - **replicationFactor**: `Integer`
 

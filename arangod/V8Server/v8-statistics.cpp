@@ -47,13 +47,13 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Array> DistributionList(v8::Isolate* isolate,
-                                              StatisticsVector const& dist) {
+                                              std::vector<double> const& dist) {
   v8::EscapableHandleScope scope(isolate);
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
-  for (uint32_t i = 0; i < (uint32_t)dist._value.size(); ++i) {
-    result->Set(i, v8::Number::New(isolate, dist._value[i]));
+  for (uint32_t i = 0; i < (uint32_t)dist.size(); ++i) {
+    result->Set(i, v8::Number::New(isolate, dist[i]));
   }
 
   return scope.Escape<v8::Array>(result);

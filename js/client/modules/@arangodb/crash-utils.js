@@ -172,7 +172,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
 function analyzeCrash (binary, arangod, options, checkStr) {
-  if (!options.coreCheck) {
+  if (!options.coreCheck || arangod.exitStatus.hasOwnProperty('gdbHint')) {
     print(RESET);
     return;
   }

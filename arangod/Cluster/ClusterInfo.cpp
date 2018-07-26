@@ -27,7 +27,6 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -433,6 +432,16 @@ void ClusterInfo::loadPlan() {
           << "Attention: /arango/Plan/Version in the agency is not set or not "
              "a positive number.";
       }
+      {
+        READ_LOCKER(guard, _planProt.lock);
+        if (_planProt.isValid && newPlanVersion <= _planVersion) {
+          LOG_TOPIC(DEBUG, Logger::CLUSTER)
+            << "We already know this or a later version, do not update. "
+            << "newPlanVersion=" << newPlanVersion << " _planVersion="
+            << _planVersion;
+          return;
+        }
+      }
       decltype(_plannedDatabases) newDatabases;
       decltype(_plannedCollections) newCollections; // map<string /*database id*/
                                                     //    ,map<string /*collection id*/
@@ -510,6 +519,7 @@ void ClusterInfo::loadPlan() {
                 views.reserve(views.size() + 2);
                 views[viewId] = view;
                 views[view->name()] = view;
+                views[view->guid()] = view;
                 return true;
               };
 
@@ -829,6 +839,16 @@ void ClusterInfo::loadCurrent() {
         LOG_TOPIC(WARN, Logger::CLUSTER)
           << "Attention: /arango/Current/Version in the agency is not set or "
              "not a positive number.";
+      }
+      { 
+        READ_LOCKER(guard, _currentProt.lock);
+        if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
+          LOG_TOPIC(DEBUG, Logger::CLUSTER)
+            << "We already know this or a later version, do not update. "
+            << "newCurrentVersion=" << newCurrentVersion << " _currentVersion="
+            << _currentVersion;
+          return;
+        }
       }
 
       decltype(_currentDatabases) newDatabases;
@@ -1915,7 +1935,6 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  TRI_ASSERT(info->replicationFactor() <= 10 && info->replicationFactor() >= 0);
   VPackBuilder temp;
   temp.openObject();
   temp.add("waitForSync", VPackValue(info->waitForSync()));
@@ -2228,8 +2247,10 @@ Result ClusterInfo::setCollectionStatusCoordinator(
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
       AgencyValueOperationType::SET, builder.slice());
+  AgencyOperation incrementVersion(
+      "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  AgencyWriteTransaction trans(setColl, databaseExists);
+  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
 
   res = ac.sendTransactionWithFailover(trans);
 
@@ -3368,88 +3389,6 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find the shard that is responsible for a document, which is given
-/// as a VelocyPackSlice.
-///
-/// There are two modes, one assumes that the document is given as a
-/// whole (`docComplete`==`true`), in this case, the non-existence of
-/// values for some of the sharding attributes is silently ignored
-/// and treated as if these values were `null`. In the second mode
-/// (`docComplete`==false) leads to an error which is reported by
-/// returning TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, which is the only
-/// error code that can be returned.
-///
-/// In either case, if the collection is found, the variable
-/// shardID is set to the ID of the responsible shard and the flag
-/// `usesDefaultShardingAttributes` is used set to `true` if and only if
-/// `_key` is the one and only sharding attribute.
-////////////////////////////////////////////////////////////////////////////////
-
-#ifndef USE_ENTERPRISE
-int ClusterInfo::getResponsibleShard(LogicalCollection* collInfo,
-                                     VPackSlice slice, bool docComplete,
-                                     ShardID& shardID,
-                                     bool& usesDefaultShardingAttributes,
-                                     std::string const& key) {
-  // Note that currently we take the number of shards and the shardKeys
-  // from Plan, since they are immutable. Later we will have to switch
-  // this to Current, when we allow to add and remove shards.
-  if (!_planProt.isValid) {
-    loadPlan();
-  }
-
-  int tries = 0;
-  std::shared_ptr<std::vector<std::string>> shardKeysPtr;
-  std::shared_ptr<std::vector<ShardID>> shards;
-  bool found = false;
-  CollectionID collectionId = std::to_string(collInfo->planId());
-
-  while (true) {
-    {
-      // Get the sharding keys and the number of shards:
-      READ_LOCKER(readLocker, _planProt.lock);
-      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
-      auto it = _shards.find(collectionId);
-
-      if (it != _shards.end()) {
-        shards = it->second;
-        // _shardKeys is a map-type <CollectionID, shared_ptr<vector<string>>>
-        auto it2 = _shardKeys.find(collectionId);
-        if (it2 != _shardKeys.end()) {
-          shardKeysPtr = it2->second;
-          usesDefaultShardingAttributes =
-              shardKeysPtr->size() == 1 &&
-              shardKeysPtr->at(0) == StaticStrings::KeyString;
-          found = true;
-          break;  // all OK
-        }
-      }
-    }
-    if (++tries >= 2) {
-      break;
-    }
-    loadPlan();
-  }
-
-  if (!found) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-
-  int error = TRI_ERROR_NO_ERROR;
-  uint64_t hash = arangodb::basics::VelocyPackHelper::hashByAttributes(
-      slice, *shardKeysPtr, docComplete, error, key);
-  static char const* magicPhrase =
-      "Foxx you have stolen the goose, give she back again!";
-  static size_t const len = 52;
-  // To improve our hash function:
-  hash = TRI_FnvHashBlock(hash, magicPhrase, len);
-
-  shardID = shards->at(hash % shards->size());
-  return error;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of coordinator server names
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3637,7 +3576,3 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   }
   return ret;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

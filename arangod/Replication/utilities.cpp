@@ -200,6 +200,7 @@ Connection::Connection(Syncer* syncer,
     }
     params.setLocationRewriter(syncer, &(syncer->rewriteLocation));
     client.reset(new httpclient::SimpleHttpClient(connection, params));
+    client->checkForGlobalAbort(true);
   }
 }
 
@@ -308,6 +309,8 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
 
   return Result();
 }
+  
+constexpr double BatchInfo::DefaultTimeout;
 
 Result BatchInfo::start(replutils::Connection& connection,
                         replutils::ProgressInfo& progress) {

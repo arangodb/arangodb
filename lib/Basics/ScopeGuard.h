@@ -30,7 +30,6 @@
 #error use <Basics/Common.h>
 #endif
 
-#include <new>
 #include <type_traits>
 
 #define SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y) x##y
@@ -82,9 +81,6 @@ class ScopeGuard {
     }
   }
 
-  // don't allow creation of any ScopeGuards on the heap
-  void* operator new(std::size_t) = delete;
-  
   // make the guard not trigger the function at scope exit
   void cancel() noexcept { _active = false; }
 

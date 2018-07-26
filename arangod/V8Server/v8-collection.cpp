@@ -990,7 +990,7 @@ static void JS_FiguresVocbaseCol(
 
   SingleCollectionTransaction trx(
     transaction::V8Context::Create(collection->vocbase(), true),
-    collection,
+    *collection,
     AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -1379,17 +1379,20 @@ static void JS_PropertiesVocbaseCol(
   // in the cluster the collection object might contain outdated
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
+
   methods::Collections::lookup(
     &(consoleColl->vocbase()),
     consoleColl->name(),
-    [&](LogicalCollection* coll) {
+    [&](LogicalCollection& coll)->void {
     VPackObjectBuilder object(&builder, true);
-    methods::Collections::Context ctxt(coll->vocbase(), coll);
+    methods::Collections::Context ctxt(coll.vocbase(), coll);
     Result res = methods::Collections::properties(ctxt, builder);
+
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   });
+
   // return the current parameter set
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject());
   TRI_V8_TRY_CATCH_END
@@ -2121,7 +2124,7 @@ static void JS_RevisionVocbaseCol(
 
   TRI_voc_rid_t revisionId;
 
-  methods::Collections::Context ctxt(collection->vocbase(), collection);
+  methods::Collections::Context ctxt(collection->vocbase(), *collection);
   auto res = methods::Collections::revisionId(ctxt, revisionId);
 
   if (res.fail()) {
@@ -2298,7 +2301,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   auto transactionContext =
       std::make_shared<transaction::V8Context>(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, collection, AccessMode::Type::WRITE
+    transactionContext, *collection, AccessMode::Type::WRITE
   );
 
   if (!payloadIsArray && !options.overwrite) {
@@ -2448,7 +2451,7 @@ static void JS_TruncateVocbaseCol(
 
   auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    ctx, collection, AccessMode::Type::EXCLUSIVE
+    ctx, *collection, AccessMode::Type::EXCLUSIVE
   );
   Result res = trx.begin();
 
@@ -2877,7 +2880,7 @@ static void JS_WarmupVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::warmup(collection->vocbase(), collection);
+  auto res = methods::Collections::warmup(collection->vocbase(), *collection);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

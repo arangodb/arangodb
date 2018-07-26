@@ -246,6 +246,9 @@ void checkAgainstExpectedOperations(
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
+  // Disable cluster logging
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
+  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT));
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager =
       std::move(AgencyCommManager::MANAGER);
@@ -437,6 +440,9 @@ SCENARIO("Broken distributeShardsLike collections",
 }
 
 SCENARIO("VersionSort", "[cluster][shards][repairs]") {
+  // Disable cluster logging
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
+  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT));
   GIVEN("Different version strings") {
     // General functionality check
     CHECK(VersionSort()("s2", "s10"));
@@ -467,6 +473,9 @@ SCENARIO("VersionSort", "[cluster][shards][repairs]") {
 }
 
 SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
+  // Disable cluster logging
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
+  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT));
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager =
       std::move(AgencyCommManager::MANAGER);
@@ -525,7 +534,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                                 protoCollIdSlice},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyValueOperationType::SET, replicationFactorSlice}},
+                    AgencyValueOperationType::SET, replicationFactorSlice},
+                AgencyOperation{
+                    "Plan/Version",
+                    AgencySimpleOperationType::INCREMENT_OP}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{"Plan/Collections/myDbName/123456/"
                                    "repairingDistributeShardsLike",
@@ -597,7 +609,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
 
         AgencyWriteTransaction expectedTrx{
-            {},
+            {AgencyOperation{"Plan/Version",
+	                     AgencySimpleOperationType::INCREMENT_OP}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
@@ -658,7 +671,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                                 protoCollIdSlice},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyValueOperationType::SET, replicationFactorSlice}},
+                    AgencyValueOperationType::SET, replicationFactorSlice},
+                AgencyOperation{
+                    "Plan/Version",
+                    AgencySimpleOperationType::INCREMENT_OP}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{"Plan/Collections/myDbName/123456/"
                                    "repairingDistributeShardsLike",
@@ -719,7 +735,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                                 AgencySimpleOperationType::DELETE_OP},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyValueOperationType::SET, protoIdSlice}},
+                    AgencyValueOperationType::SET, protoIdSlice},
+                AgencyOperation{
+                    "Plan/Version",
+                    AgencySimpleOperationType::INCREMENT_OP}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",

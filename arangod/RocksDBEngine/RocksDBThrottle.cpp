@@ -55,7 +55,7 @@ namespace arangodb {
 ///
 /// To get full performance benefit of this code, the server needs three settings:
 ///
-///  1. /etc/pam.d/login must contain the line "auth	   require    pam_cap.so"
+///  1. /etc/pam.d/login must contain the line "auth   require    pam_cap.so"
 ///  2. /etc/security/capability.conf must contain "cap_sys_nice      arangodb"
 ///  3. root must execute this command "setcap cap_sys_nice+ie arangod" on
 ///      the arangodb binary executable

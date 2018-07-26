@@ -41,10 +41,7 @@ ShellFeature::ShellFeature(application_features::ApplicationServer* server,
       _unitTestFilter("") {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Config");
-  startsAfter("Language");
-  startsAfter("Logger");
-  startsAfter("V8Shell");
+  startsAfter("V8ShellPhase");
 }
 
 void ShellFeature::collectOptions(

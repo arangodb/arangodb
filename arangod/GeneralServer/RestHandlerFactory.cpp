@@ -23,11 +23,8 @@
 
 #include "RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "Replication/ReplicationFeature.h"
-#include "Replication/GlobalReplicationApplier.h"
 #include "Rest/GeneralRequest.h"
 #include "RestHandler/RestBaseHandler.h"
-#include "RestHandler/RestDocumentHandler.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
