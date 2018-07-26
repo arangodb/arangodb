@@ -51,6 +51,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Agency/AgencyFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
@@ -74,6 +75,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -162,6 +164,7 @@ struct IResearchViewCoordinatorSetup {
     buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(&server), true);
     buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
     buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
     #if USE_ENTERPRISE
@@ -971,8 +974,8 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1017,8 +1020,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1061,8 +1065,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1194,8 +1199,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1239,8 +1245,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1511,8 +1518,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1555,8 +1563,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1703,8 +1712,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1749,8 +1759,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1794,8 +1805,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2077,8 +2089,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2121,8 +2134,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2251,8 +2265,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2372,8 +2387,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2660,8 +2676,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2706,8 +2723,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2750,8 +2768,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -3016,8 +3035,9 @@ SECTION("test_drop_link") {
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
       CHECK(slice.hasKey("view"));
-      CHECK(slice.get("view").isNumber());
-      CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+      CHECK(slice.get("view").isString());
+      CHECK(view->id() == 42);
+      CHECK(view->guid() == slice.get("view").copyString());
       CHECK(slice.hasKey("figures"));
       CHECK(slice.get("figures").isObject());
       CHECK(slice.get("figures").hasKey("memory"));

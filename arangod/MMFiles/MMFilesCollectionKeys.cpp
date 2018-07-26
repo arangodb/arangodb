@@ -99,7 +99,7 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
   // copy all document tokens into the result under the read-lock
   {
     auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
-    SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
+    SingleCollectionTransaction trx(ctx, *_collection, AccessMode::Type::READ);
 
     // already locked by _guard
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);

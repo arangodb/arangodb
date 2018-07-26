@@ -505,14 +505,15 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   ManagedDocumentResult mmdr;
   OperationOptions options;
+
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+
   if (!syncer._state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
   }
 
-  VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
 
   // remove all keys that are below first remote key or beyond last remote key
@@ -520,7 +521,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     // first chunk
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      col,
+      *col,
       AccessMode::Type::EXCLUSIVE
     );
 
@@ -584,7 +585,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      col,
+      *col,
       AccessMode::Type::EXCLUSIVE
     );
 

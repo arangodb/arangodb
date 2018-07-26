@@ -70,12 +70,16 @@ Result RocksDBSyncThread::syncWal() {
 }
   
 Result RocksDBSyncThread::sync(rocksdb::DB* db) {
+#ifndef _WIN32
+  // if called on Windows, we would get the following error from RocksDB:
+  // > Not implemented: SyncWAL() is not supported for this implementation of WAL file
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "syncing RocksDB WAL";
 
   rocksdb::Status status = db->SyncWAL();
   if (!status.ok()) {
     return rocksutils::convertStatus(status);
-  } 
+  }
+#endif 
   return Result();
 }
 

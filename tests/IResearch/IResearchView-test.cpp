@@ -70,6 +70,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
@@ -183,11 +184,11 @@ struct IResearchViewSetup {
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
  
     buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-
+    buildFeatureEntry(new arangodb::ShardingFeature(&server), false); 
     buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
 
     #if USE_ENTERPRISE
-      buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -421,6 +422,66 @@ SECTION("test_defaults") {
     builder.openObject();
     CHECK((TRI_ERROR_FORBIDDEN == logicalView->toVelocyPack(builder, true, false).errorNumber()));
   }
+}
+
+SECTION("test_cleanup") {
+  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"commit\": { \"cleanupIntervalStep\":1, \"commitIntervalMsec\": 1000 } }");
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
+  CHECK((false == !viewImpl));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+  CHECK((nullptr != view));
+
+  std::vector<std::string> const EMPTY;
+
+  // fill with test data
+  {
+
+    auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    meta._includeAllFields = true;
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+    view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+    CHECK((trx.commit().ok()));
+    view->sync();
+  }
+
+  auto const memory = view->memory();
+
+  // remove the data
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+    view->remove(trx, 42, arangodb::LocalDocumentId(0));
+    CHECK((trx.commit().ok()));
+    view->sync();
+  }
+
+  // wait for commit thread
+  size_t const MAX_ATTEMPTS = 200;
+  size_t attempt = 0;
+
+  while (memory <= view->memory() && attempt < MAX_ATTEMPTS) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    ++attempt;
+  }
+
+  // ensure memory was freed
+  CHECK(view->memory() <= memory);
 }
 
 SECTION("test_drop") {

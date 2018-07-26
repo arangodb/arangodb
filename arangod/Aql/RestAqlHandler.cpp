@@ -723,6 +723,10 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
           }
         } else {
           auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
+          if (block == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           "unexpected node type");
+          }
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
               block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
