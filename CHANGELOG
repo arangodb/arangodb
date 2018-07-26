@@ -57,6 +57,9 @@ v3.3.13 (2018-07-26)
   Background syncing in 3.3 is opt-in, whereas in ArangoDB 3.4 the default sync
   interval will be 100 milliseconds.
 
+  Note: this option is not supported on Windows platforms. Setting the sync
+  interval to a value greater 0 will produce a startup warning.
+
 * fixed graph creation sometimes failing with 'edge collection
   already used in edge def' when the edge definition contained multiple vertex
   collections, despite the edge definitions being identical

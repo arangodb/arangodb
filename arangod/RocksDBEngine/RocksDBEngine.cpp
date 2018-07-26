@@ -188,7 +188,7 @@ void RocksDBEngine::collectOptions(
                      "when this number of "
                      "operations is reached in a transaction",
                      new UInt64Parameter(&_intermediateCommitCount));
-  
+ 
   options->addOption("--rocksdb.sync-interval",
                      "interval for automatic, non-requested disk syncs (in milliseconds, use 0 to turn automatic syncing off)",
                      new UInt64Parameter(&_syncInterval));
@@ -216,10 +216,15 @@ void RocksDBEngine::validateOptions(
 #endif
   
   if (_syncInterval > 0 && _syncInterval < minSyncInterval) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --rocksdb.sync-interval. Please use a value "
+    LOG_TOPIC(FATAL, arangodb::Logger::ROCKSDB) << "invalid value for --rocksdb.sync-interval. Please use a value "
                   "of at least " << minSyncInterval;
     FATAL_ERROR_EXIT();
   }
+#ifdef _WIN32 
+  if (_syncInterval > 0) {
+    LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB) << "automatic syncing of RocksDB WAL via background thread is not supported on this platform";
+  }
+#endif
 }
 
 // preparation phase for storage engine. can be used for internal setup.
