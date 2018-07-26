@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Basics/asio-helper.h"
+#include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
 
@@ -51,7 +51,7 @@ struct AgencyVersions {
 
 class AgencyCallbackRegistry;
 
-class HeartbeatThread : public Thread,
+class HeartbeatThread : public CriticalThread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
   HeartbeatThread(AgencyCallbackRegistry*, std::chrono::microseconds,
@@ -86,7 +86,27 @@ class HeartbeatThread : public Thread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() { return HasRunOnce.load(); }
+  static bool hasRunOnce() { return HasRunOnce.load(std::memory_order_acquire); }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief break runDBserver out of wait on condition after setting state in
+  /// base class
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void beginShutdown() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add thread name to ongoing list of threads that have crashed
+  ///        unexpectedly
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void recordThreadDeath(const std::string & threadName);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief post list of deadThreads to current log.  Called regularly, but only
+  ///        posts to log roughly every 60 minutes
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void logThreadDeaths(bool force=false);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -107,24 +127,24 @@ class HeartbeatThread : public Thread,
   //////////////////////////////////////////////////////////////////////////////
 
   void runDBServer();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop, single server version
   //////////////////////////////////////////////////////////////////////////////
-  
+
   void runSingleServer();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief heartbeat main loop for agent and single db ... provides thread crash reporting
+  //////////////////////////////////////////////////////////////////////////////
+
+  void runSimpleServer();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
   bool handlePlanChangeCoordinator(uint64_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handles a plan change, DBServer case
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool handlePlanChangeDBServer(uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a state change
@@ -142,8 +162,8 @@ class HeartbeatThread : public Thread,
   /// @brief bring the db server in sync with the desired state
   //////////////////////////////////////////////////////////////////////////////
 
-  void syncDBServerStatusQuo();
-  
+  void syncDBServerStatusQuo(bool asyncPush = false);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
   //////////////////////////////////////////////////////////////////////////////
@@ -268,7 +288,7 @@ class HeartbeatThread : public Thread,
   /// to be started when the current one has terminated. This and the
   /// previous one are protected by the statusLock.
   //////////////////////////////////////////////////////////////////////////////
-  
+
   bool _launchAnotherBackgroundJob;
 
   // when was the javascript sync routine last run?
