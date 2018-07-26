@@ -2496,7 +2496,11 @@
 
             if (typeof obj === 'object') {
               if (obj.hasOwnProperty('coordinates') && obj.hasOwnProperty('type')) {
-                geojson++;
+                if (obj.type === 'Point' || obj.type === 'MultiPoint' ||
+                    obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
+                    obj.type === 'LineString' || obj.type === 'MultiLineString') {
+                  geojson++;
+                }
               }
             }
 
