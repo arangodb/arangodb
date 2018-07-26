@@ -318,6 +318,16 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       }
     });
 
+#ifdef _WIN32
+    // set wait for sync flag if required
+    // we do this only for Windows here, because all other platforms use the
+    // RocksDB SyncThread to do the syncing
+    if (waitForSync()) {
+      _rocksWriteOptions.sync = true;
+      _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
+    }
+#endif
+
     ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
     rocksdb::SequenceNumber latestSeq =
@@ -334,7 +344,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         committed = true;
       }
     
-      // wait for sync if required
+#ifndef _WIN32
+      // wait for sync if required, for all other platforms but Windows
       if (waitForSync()) {
         RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
         TRI_ASSERT(engine != nullptr);
@@ -348,6 +359,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
           result = RocksDBSyncThread::sync(engine->db()->GetBaseDB());
         }
       }
+#endif
     }
   } else {
     TRI_ASSERT(_rocksTransaction->GetNumKeys() == 0 &&
