@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "The ArangoDB web interface",
   "author": "Heiko Kernbach, Michael Hackstein, moonglum",
-  "license": "Apache 2",
+  "license": "Apache-2.0",
   "scripts": {
     "grunt": "grunt"
   },
