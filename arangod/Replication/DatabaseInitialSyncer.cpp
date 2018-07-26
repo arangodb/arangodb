@@ -744,7 +744,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::EXCLUSIVE
     );
 
@@ -962,7 +962,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();
@@ -1022,7 +1022,7 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 }
 
 /// @brief determine the number of documents in a collection
-int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
+int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(vocbase()),
     col,
@@ -1034,7 +1034,7 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
     return -1;
   }
 
-  OperationResult result = trx.count(col->name(), false);
+  auto result = trx.count(col.name(), false);
 
   if (result.result.fail()) {
     return -1;
@@ -1152,7 +1152,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
             SingleCollectionTransaction trx(
               transaction::StandaloneContext::Create(vocbase()),
-              col,
+              *col,
               AccessMode::Type::EXCLUSIVE
             );
             Result res = trx.begin();
@@ -1252,15 +1252,12 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                         parameters.toJson());
     }
 
-    Result res;
     std::string const& masterColl =
         !masterUuid.empty() ? masterUuid : itoa(masterCid);
-
-    if (incremental && getSize(col) > 0) {
-      res = fetchCollectionSync(col, masterColl, _config.master.lastLogTick);
-    } else {
-      res = fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
-    }
+    auto res = incremental && getSize(*col) > 0
+             ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
+             : fetchCollectionDump(col, masterColl, _config.master.lastLogTick)
+             ;
 
     if (!res.ok()) {
       return res;
@@ -1286,7 +1283,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       try {
         SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(vocbase()),
-          col,
+          *col,
           AccessMode::Type::EXCLUSIVE
         );
 

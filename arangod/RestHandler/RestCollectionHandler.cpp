@@ -89,7 +89,7 @@ void RestCollectionHandler::handleCommandGet() {
 
         if (canUse && (!excludeSystem || !coll.system())) {
           // We do not need a transaction here
-          methods::Collections::Context ctxt(_vocbase, &coll);
+          methods::Collections::Context ctxt(_vocbase, coll);
 
           collectionRepresentation(builder, ctxt,
                                    /*showProperties*/ false,
@@ -148,7 +148,7 @@ void RestCollectionHandler::handleCommandGet() {
             obj->add("revision", result.slice().get("revision"));
 
             // We do not need a transaction here
-            methods::Collections::Context ctxt(_vocbase, &coll);
+            methods::Collections::Context ctxt(_vocbase, coll);
 
             collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
@@ -175,7 +175,7 @@ void RestCollectionHandler::handleCommandGet() {
                                    /*detailedCount*/ true);
         } else if (sub == "revision") {
 
-          methods::Collections::Context ctxt(_vocbase, &coll);
+          methods::Collections::Context ctxt(_vocbase, coll);
           // /_api/collection/<identifier>/revision
           TRI_voc_rid_t revisionId;
           auto res =
@@ -366,7 +366,7 @@ void RestCollectionHandler::handleCommandPut() {
           _request->value("isSynchronousReplication");
 
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
-        SingleCollectionTransaction trx(ctx, &coll, AccessMode::Type::EXCLUSIVE);
+        SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::EXCLUSIVE);
 
         res = trx.begin();
 
@@ -418,7 +418,7 @@ void RestCollectionHandler::handleCommandPut() {
 
         } else if (sub == "rotate") {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
-          SingleCollectionTransaction trx(ctx, &coll, AccessMode::Type::WRITE);
+          SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::WRITE);
 
           res = trx.begin();
 
@@ -433,7 +433,7 @@ void RestCollectionHandler::handleCommandPut() {
           builder.add("result", VPackValue(true));
           builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
-          res = methods::Collections::warmup(_vocbase, &coll);
+          res = methods::Collections::warmup(_vocbase, coll);
 
           VPackObjectBuilder obj(&builder, true);
 
@@ -529,13 +529,13 @@ void RestCollectionHandler::collectionRepresentation(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    methods::Collections::Context ctxt(_vocbase, &coll, trx.get());
+    methods::Collections::Context ctxt(_vocbase, coll, trx.get());
 
     collectionRepresentation(builder, ctxt, showProperties, showFigures,
                              showCount, detailedCount);
   } else {
     // We do not need a transaction here
-    methods::Collections::Context ctxt(_vocbase, &coll);
+    methods::Collections::Context ctxt(_vocbase, coll);
 
     collectionRepresentation(builder, ctxt, showProperties, showFigures,
                              showCount, detailedCount);
