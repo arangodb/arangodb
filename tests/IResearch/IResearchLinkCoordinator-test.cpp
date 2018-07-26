@@ -46,11 +46,13 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterComm.h"
+#include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Sharding/ShardingFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -160,6 +162,7 @@ struct IResearchLinkCoordinatorSetup {
     buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
     buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
     #if USE_ENTERPRISE

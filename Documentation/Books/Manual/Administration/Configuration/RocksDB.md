@@ -120,6 +120,11 @@ Only meaningful on Linux. If set, use `O_DIRECT` for writing files. Default: fal
 
 If set, issue an `fsync` call when writing to disk (set to false to issue
 `fdatasync` only. Default: false.
+  
+`--rocksdb.block-align-data-blocks`
+
+If true, data blocks are aligned on the lesser of page size and block size,
+which may waste some memory but may reduce the number of cross-page I/O operations.
 
 ### Background tasks
 
@@ -222,3 +227,6 @@ The interval (in milliseconds) that ArangoDB will use to automatically
 synchronize data in RocksDB's write-ahead logs to disk. Automatic syncs will
 only be performed for not-yet synchronized data, and only for operations that
 have been executed without the *waitForSync* attribute.
+
+Note: this option is not supported on Windows platforms. Setting the option to
+a value greater 0 will produce a startup warning.

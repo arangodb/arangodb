@@ -204,10 +204,9 @@ void ensureLink(
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(*vocbase),
-    col.get(),
+    *col,
     arangodb::AccessMode::Type::EXCLUSIVE
   );
-
   auto res = trx.begin();
   bool created;
 
@@ -356,7 +355,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     auto doc = RocksDBValue::data(value);
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()),
-      coll.get(),
+      *coll,
       arangodb::AccessMode::Type::WRITE
     );
 
@@ -398,7 +397,7 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
     auto docId = RocksDBKey::documentId(key);
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()),
-      coll.get(),
+      *coll,
       arangodb::AccessMode::Type::WRITE
     );
 

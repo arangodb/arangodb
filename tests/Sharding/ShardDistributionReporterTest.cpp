@@ -29,7 +29,7 @@
 #include "fakeit.hpp"
 
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ShardDistributionReporter.h"
+#include "Sharding/ShardDistributionReporter.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"

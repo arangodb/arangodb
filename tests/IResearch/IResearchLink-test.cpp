@@ -35,8 +35,9 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Basics/files.h"
+#include "Sharding/ShardingFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -85,6 +86,7 @@ struct IResearchLinkSetup {
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(new arangodb::ShardingFeature(&server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
