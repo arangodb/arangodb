@@ -27,6 +27,8 @@
 
 #include "Basics/Common.h"
 
+#include <vector>
+
 namespace arangodb {
 namespace basics {
 
@@ -220,7 +222,13 @@ std::string soundex(std::string const& str);
    
 /// @brief converts input string to soundex code
 std::string soundex(char const* src, size_t const len);
-
+   
+/// @brief converts input string to vector of character codes
+std::vector<uint32_t> characterCodes(std::string const& str);
+    
+/// @brief calculates the levenshtein distance between the input strings
+unsigned int levenshteinDistance(std::string const& str1, std::string const& str2);
+  
 /// @brief unicode hexadecimal characters to utf8
 bool unicodeToUTF8(char const* inputStr, size_t const& len,
                    std::string& outputStr);

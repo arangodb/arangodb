@@ -516,10 +516,20 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       viewNewProperties,
       newCids
     );
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, iresearch::TOPIC)
+      << "caught exception while updating properties for IResearch view '" << id() << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      e.code(),
+      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
+    );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
       << "caught exception while updating properties for IResearch view '" << id() << "': " << e.what();
     IR_LOG_EXCEPTION();
+
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
@@ -528,6 +538,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     LOG_TOPIC(WARN, iresearch::TOPIC)
       << "caught exception while updating properties for IResearch view '" << id() << "'";
     IR_LOG_EXCEPTION();
+
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"

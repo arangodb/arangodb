@@ -53,6 +53,7 @@ function iResearchAqlTestSuite () {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
+            storeValues: "id",
             fields: {
               text: { analyzers: [ "text_en" ] }
             }

@@ -1,6 +1,9 @@
 devel
 -----
 
+* Bugfix: The AQL syntax variants `UPDATE/REPLACE k WITH d` now correctly take
+  _rev from k instead of d (when ignoreRevs is false) and ignore d._rev.
+
 * Added C++ implementation, load balancer support, and user restriction to tasks API
 
   If a task is accessed on a different coordinator than where it was created,
@@ -95,7 +98,7 @@ devel
 * if authentication is turned on requests to databases by users with insufficient rights
  will be answered with the HTTP forbidden (401) response.
 
-* upgraded bundled RocksDB library version to 5.14
+* upgraded bundled RocksDB library version to 5.15
 
 * added key generators `uuid` and `padded`
 

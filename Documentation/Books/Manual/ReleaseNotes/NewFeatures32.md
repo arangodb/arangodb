@@ -367,7 +367,7 @@ Foxx and authorization
 * the [cookie session transport](../Foxx/Reference/Sessions/Transports/Cookie.md) now supports
   all options supported by the [cookie method of the response object](../Foxx/Reference/Routers/Response.md#cookie).
 
-* it's now possible to provide your own version of the `graphql-sync` module when using the [GraphQL extensions for Foxx](../Foxx/Reference/GraphQL.md) by passing a copy of the module using the new _graphql_ option.
+* it's now possible to provide your own version of the `graphql-sync` module when using the [GraphQL extensions for Foxx](../Foxx/Reference/Modules/GraphQL.md) by passing a copy of the module using the new _graphql_ option.
 
 * custom API endpoints can now be tagged using the [tag method](../Foxx/Reference/Routers/Endpoints.md#tag) to generate a cleaner Swagger documentation.
 

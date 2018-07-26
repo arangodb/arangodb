@@ -462,7 +462,9 @@ SECTION("test_drop") {
       CHECK((actual.empty()));
     }
 
+    CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
     CHECK((TRI_ERROR_NO_ERROR == link0->drop()));
+    CHECK((false == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
 
     // collection not in view after
     {
@@ -542,7 +544,9 @@ SECTION("test_unload") {
       CHECK((actual.empty()));
     }
 
+    CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get()) == *logicalView)));
     link->unload();
+    CHECK((false == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get()) == *logicalView)));
 
     // collection in view after unload
     {

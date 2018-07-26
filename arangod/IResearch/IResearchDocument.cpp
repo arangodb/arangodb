@@ -524,6 +524,8 @@ bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& 
 bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
   auto const value = topValue().value;
 
+  _value._storeValues = context._storeValues;
+
   switch (value.type()) {
     case VPackValueType::None:
     case VPackValueType::Illegal:
