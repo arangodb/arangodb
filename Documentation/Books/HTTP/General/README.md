@@ -294,7 +294,7 @@ ArangoDB will add the following headers to the response:
 When making CORS requests to endpoints of Foxx services, the value of the
 `access-control-expose-headers` header will instead be set to a list of
 response headers used in the response itself (but not including the
-`access-control-` headers). Note that [Foxx services may override this behavior](../../Manual/Foxx/Reference/Cors.html).
+`access-control-` headers). Note that [Foxx services may override this behavior](../../Manual/Foxx/Guides/Browser.html#cross-origin-resource-sharing-cors).
 
 ### Cookies and authentication
 
