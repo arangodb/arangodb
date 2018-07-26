@@ -99,8 +99,8 @@ class SchedulerThread : public Thread {
 
     // when we enter this method,
     // _nrRunning has already been increased for this thread
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread: "
-                                      << _scheduler->infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS)
+        << "started thread: " << _scheduler->infoStatus();
 
     // some random delay value to avoid all initial threads checking for
     // their deletion at the very same time
@@ -115,8 +115,8 @@ class SchedulerThread : public Thread {
       try {
         _service->run_one();
       } catch (std::exception const& ex) {
-        LOG_TOPIC(ERR, Logger::THREADS) << "scheduler loop caught exception: "
-                                        << ex.what();
+        LOG_TOPIC(ERR, Logger::THREADS)
+            << "scheduler loop caught exception: " << ex.what();
       } catch (...) {
         LOG_TOPIC(ERR, Logger::THREADS)
             << "scheduler loop caught unknown exception";
@@ -214,69 +214,69 @@ Scheduler::~Scheduler() {
 // do not pass callback by reference, might get deleted before execution
 void Scheduler::post(std::function<void()> const callback, bool isV8,
                      uint64_t timeout) {
+  // increment number of queued and guard against exceptions
   incQueued();
 
-  try {
-    if (isV8) {
-      ++_queuedV8;
-    }
+  auto guardQueue = scopeGuard([this]() { decQueued(); });
 
-    // capture without self, ioContext will not live longer than scheduler
-    _ioContext->post([this, callback, isV8, timeout]() {
-      try {
-        if (isV8 && _queuedV8 > _maxQueuedV8 &&
-            numWorking(getCounters()) >= static_cast<uint64_t>(_maxQueuedV8)) {
-          --_queuedV8;
-          decQueued();
+  // increment number of queued V8 jobs and guard against exceptions
+  if (isV8) {
+    ++_queuedV8;
+  }
 
-          auto t = timeout;
-
-          if (t == 0) {
-            t = 10;
-          } else {
-            t *= 2;
-
-            if (200 <= t) {
-              t = 200;
-            }
-          }
-
-          std::shared_ptr<asio_ns::deadline_timer> timer(
-              newDeadlineTimer(boost::posix_time::millisec(timeout)));
-          timer->async_wait(
-              [this, callback, isV8, t](const asio::error_code& error) {
-                if (error != asio::error::operation_aborted) {
-                  post(callback, isV8, t);
-                }
-              });
-
-          return;
-        }
-
-        decQueued();
-
-        callback();
-
-        if (isV8) {
-          --_queuedV8;
-        }
-      } catch (...) {
-        if (isV8) {
-          --_queuedV8;
-        }
-
-        throw;
-      }
-    });
-  } catch (...) {
-    decQueued();
-
+  auto guardV8 = scopeGuard([this, isV8]() {
     if (isV8) {
       --_queuedV8;
     }
+  });
 
-    throw;
-  }
+  // capture without self, ioContext will not live longer than scheduler
+  _ioContext->post([this, callback, isV8, timeout]() {
+    // reduce number of queued now
+    decQueued();
+
+    // at the end (either success or exception),
+    // reduce number of queued V8
+    auto guard = scopeGuard([this, isV8]() {
+      if (isV8) {
+        --_queuedV8;
+      }
+    });
+
+    if (isV8 && _queuedV8 > _maxQueuedV8 &&
+        numWorking(getCounters()) >= static_cast<uint64_t>(_maxQueuedV8)) {
+      // this must be done before requeuing the job
+      guard.fire();
+
+      // in case we queued more V8 jobs in the scheduler than desired this
+      // job is put back into the scheduler queue. An exponential backoff is
+      // used with a maximum of 256ms. Initial the timeout will be zero.
+      auto t = timeout;
+
+      if (t == 0) {
+        t = 1;
+      } else if (t <= 200) {
+        t *= 2;
+      }
+
+      std::shared_ptr<asio_ns::deadline_timer> timer(
+          newDeadlineTimer(boost::posix_time::millisec(timeout)));
+      timer->async_wait(
+          [this, callback, isV8, t](const asio::error_code& error) {
+            if (error != asio::error::operation_aborted) {
+              post(callback, isV8, t);
+            }
+          });
+
+      return;
+    }
+
+    callback();
+  });
+
+  // no exception happen, cancel guards
+  guardV8.cancel();
+  guardQueue.cancel();
 }
 
 // do not pass callback by reference, might get deleted before execution
@@ -305,31 +305,39 @@ bool Scheduler::queue(RequestPriority prio,
   bool ok = true;
 
   switch (prio) {
+    // If there is anything in the fifo1 or if the scheduler
+    // queue is already full, then append it to the fifo1.
+    // Otherwise directly queue it.
+    //
+    // This does not care if there is anything in fifo2 or
+    // fifo8 because these queue have lower priority.
     case RequestPriority::HIGH:
-      if (0 < _fifoSize[FIFO1]) {
+      if (0 < _fifoSize[FIFO1] || !canPostDirectly()) {
         ok = pushToFifo(FIFO1, callback, false);
-      } else if (canPostDirectly()) {
-        post(callback, false);
       } else {
-        ok = pushToFifo(FIFO1, callback, false);
+        post(callback, false);
       }
       break;
+
+    // If there is anything in the fifo1, fifo2, fifo8
+    // or if the scheduler queue is already full, then
+    // append it to the fifo2. Otherewise directly queue
+    // it.
     case RequestPriority::LOW:
-      if (0 < _fifoSize[FIFO1]) {
+      if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO8] ||
+          0 < _fifoSize[FIFO2] || !canPostDirectly()) {
         ok = pushToFifo(FIFO2, callback, false);
-      } else if (0 < _fifoSize[FIFO8]) {
-        ok = pushToFifo(FIFO2, callback, false);
-      } else if (0 < _fifoSize[FIFO2]) {
-        ok = pushToFifo(FIFO2, callback, false);
-      } else if (canPostDirectly()) {
-        post(callback, false);
       } else {
-        ok = pushToFifo(FIFO2, callback, false);
+        post(callback, false);
       }
       break;
+
+    // Also push V8 requests to the fifo2. Even if we could
+    // queue directly.
     case RequestPriority::V8:
       ok = pushToFifo(FIFO2, callback, true);
       break;
+
     default:
       TRI_ASSERT(false);
       break;
@@ -348,6 +356,8 @@ void Scheduler::drain() {
       if (!found) {
         found = popFifo(FIFO2);
       } else if (canPostDirectly()) {
+        // There is still enough space in the scheduler queue. Queue
+        // one more.
         popFifo(FIFO2);
       }
     }
@@ -361,17 +371,16 @@ void Scheduler::drain() {
 void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
   auto counters = getCounters();
 
-  b.add("scheduler-threads",
-        VPackValue(static_cast<int32_t>(numRunning(counters))));
-  b.add("in-progress", VPackValue(static_cast<int32_t>(numWorking(counters))));
-  b.add("queued", VPackValue(static_cast<int32_t>(numQueued(counters))));
-  b.add("queue-size", VPackValue(static_cast<int32_t>(_maxQueueSize)));
-  b.add("current-fifo1", VPackValue(static_cast<int32_t>(_fifoSize[FIFO1])));
-  b.add("fifo1-size", VPackValue(static_cast<int32_t>(_maxFifoSize[FIFO1])));
-  b.add("current-fifo2", VPackValue(static_cast<int32_t>(_fifoSize[FIFO2])));
-  b.add("fifo2-size", VPackValue(static_cast<int32_t>(_maxFifoSize[FIFO2])));
-  b.add("current-fifo8", VPackValue(static_cast<int32_t>(_fifoSize[FIFO8])));
-  b.add("fifo8-size", VPackValue(static_cast<int32_t>(_maxFifoSize[FIFO8])));
+  b.add("scheduler-threads", VPackValue(numRunning(counters)));
+  b.add("in-progress", VPackValue(numWorking(counters)));
+  b.add("queued", VPackValue(numQueued(counters)));
+  b.add("queue-size", VPackValue(_maxQueueSize));
+  b.add("current-fifo1", VPackValue(_fifoSize[FIFO1]));
+  b.add("fifo1-size", VPackValue(_maxFifoSize[FIFO1]));
+  b.add("current-fifo2", VPackValue(_fifoSize[FIFO2]));
+  b.add("fifo2-size", VPackValue(_maxFifoSize[FIFO2]));
+  b.add("current-fifo8", VPackValue(_fifoSize[FIFO8]));
+  b.add("fifo8-size", VPackValue(_maxFifoSize[FIFO8]));
 }
 
 Scheduler::QueueStatistics Scheduler::queueStatistics() const {
@@ -417,7 +426,7 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback,
   TRI_ASSERT(fifo != FIFO8 || (fifo == FIFO8 && isV8));
 
   size_t p = static_cast<size_t>(fifo);
-  std::unique_ptr<FifoJob> job(new FifoJob(callback, isV8));
+  auto job = std::make_unique<FifoJob>(callback, isV8);
 
   try {
     if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
@@ -459,12 +468,16 @@ bool Scheduler::popFifo(int64_t fifo) {
   bool ok = _fifos[p]->pop(job) && job != nullptr;
 
   if (ok) {
+    auto guard = scopeGuard([job]() {
+      if (job) {
+        delete job;
+      }
+    });
+
     if (!job->_isV8 || _queuedV8 < _maxQueuedV8) {
       post(job->_callback, job->_isV8);
-      delete job;
     } else {
       pushToFifo(FIFO8, job->_callback, job->_isV8);
-      delete job;
     }
 
     --_fifoSize[p];

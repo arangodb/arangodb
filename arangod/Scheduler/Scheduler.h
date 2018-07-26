@@ -184,7 +184,7 @@ class Scheduler {
   struct FifoJob {
     FifoJob(std::function<void()> const& callback, bool isV8)
         : _isV8(isV8), _callback(callback) {}
-    bool _isV8;
+    bool const _isV8;
     std::function<void()> _callback;
   };
 
