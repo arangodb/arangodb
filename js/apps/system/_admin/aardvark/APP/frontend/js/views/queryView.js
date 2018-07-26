@@ -2548,6 +2548,18 @@
         }
       }
 
+      if (toReturn.defaultType === 'geo' || toReturn.defaultType === 'geotable') {
+        if (!window.activeInternetConnection) {
+          if (toReturn.defaultType === 'geo') {
+            toReturn.defaultType = 'json';
+          } else {
+            toReturn.defaultType = 'table';
+          }
+          // notify user
+          arangoHelper.arangoMessage('Map', 'No internet connection available. Not able to render the map. Falling back to: ' + toReturn.defaultType);
+        }
+      }
+
       return toReturn;
     },
 

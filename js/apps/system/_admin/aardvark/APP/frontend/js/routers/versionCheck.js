@@ -172,7 +172,17 @@
           timeout: 3000,
           dataType: 'jsonp',
           url: 'https://www.arangodb.com/repositories/versions.php' +
-            '?jsonp=parseVersions&version=' + encodeURIComponent(currentVersion.toString())
+            '?jsonp=parseVersions&version=' + encodeURIComponent(currentVersion.toString()),
+          error: function (e) {
+            if (e.status === 200) {
+              window.activeInternetConnection = true;
+            } else {
+              window.activeInternetConnection = false;
+            }
+          },
+          success: function (e) {
+            window.activeInternetConnection = true;
+          }
         });
       }
     });
