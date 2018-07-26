@@ -31,6 +31,7 @@
 #include "VocBase/LogicalView.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -161,6 +162,7 @@ struct IResearchQuerySetup {
 #ifdef USE_ENTERPRISE
     features.emplace_back(new arangodb::LdapFeature(&server), false);
 #endif
+    features.emplace_back(new arangodb::ShardingFeature(&server), false); // 
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);

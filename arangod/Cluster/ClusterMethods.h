@@ -57,7 +57,7 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
 
-bool shardKeysChanged(arangodb::LogicalCollection const& collection,
+bool shardKeysChanged(LogicalCollection const& collection,
                       VPackSlice const& oldValue, VPackSlice const& newValue,
                       bool isPatch);
 

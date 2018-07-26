@@ -1,15 +1,18 @@
 Foxx configuration
 ==================
 
-Foxx services can define configuration parameters to make them more re-usable.
+Foxx services can define configuration parameters
+[in the service manifest](Manifest.md) to make them more re-usable.
 
 The `configuration` object maps names to configuration parameters:
 
-* The key is the name under which the parameter will be available on the [service context's](Context.md) `configuration` property.
+* The key is the name under which the parameter will be available on the
+  [service context's](Context.md) `configuration` property.
 
 * The value is a parameter definition.
 
-The key should be a valid identifier following the case-insensitive format `/^[_$a-z][-_$a-z0-9]*$/`.
+The key should be a valid identifier following the case-insensitive format
+`/^[_$a-z][-_$a-z0-9]*$/`.
 
 The parameter definition can have the following properties:
 
@@ -47,9 +50,13 @@ The parameter definition can have the following properties:
 
   Whether the parameter is required.
 
-If the configuration has parameters that do not specify a default value, you need to configure the service before it becomes active. In the meantime a fallback servicelication will be mounted that responds to all requests with a HTTP 500 status code indicating a server-side error.
+If the configuration has parameters that do not specify a default value, you
+need to configure the service before it becomes active. In the meantime a
+fallback service will be mounted that responds to all requests with a HTTP 500
+status code indicating a server-side error.
 
-The configuration parameters of a mounted service can be adjusted from the web interface by clicking the *Configuration* button in the service details.
+The configuration parameters of a mounted service can be adjusted from the
+web interface by clicking the *Configuration* button in the service details.
 
 <!-- TODO (Link to admin docs) -->
 

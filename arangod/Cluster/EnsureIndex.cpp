@@ -59,6 +59,7 @@ bool EnsureIndex::first() {
     std::string errorMsg("EnsureIndex: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    setState(FAILED);
     return false;
   }
 
@@ -67,6 +68,7 @@ bool EnsureIndex::first() {
     std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
     errorMsg += collection + " in database " + database;
     _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
+    setState(FAILED);
     return false;
   }
 
@@ -90,9 +92,13 @@ bool EnsureIndex::first() {
   } else {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "Failed to ensure index " << body.slice().toJson();
+    setState(FAILED);
+    return false;
   }
-  
+
+  setState(COMPLETE);
   return false;
+  
 }
 
 arangodb::Result EnsureIndex::kill(Signal const& signal) {

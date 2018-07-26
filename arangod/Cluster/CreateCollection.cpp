@@ -81,6 +81,7 @@ bool CreateCollection::first() {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    setState(FAILED);
     return false;
   }
 
@@ -132,8 +133,11 @@ bool CreateCollection::first() {
       << "creating local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << collection << "' failed: "
       << _result;
+    setState(FAILED);
+    return false;
   }
 
+  setState(COMPLETE);
   return false;
   
 }

@@ -312,7 +312,6 @@ SET(ARANGOD_SOURCES
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
-  Cluster/ShardDistributionReporter.cpp
   Cluster/SynchronizeShard.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
@@ -468,6 +467,11 @@ SET(ARANGOD_SOURCES
   Scheduler/SocketSslTcp.cpp
   Scheduler/SocketTask.cpp
   Scheduler/Task.cpp
+  Sharding/ShardDistributionReporter.cpp
+  Sharding/ShardingFeature.cpp
+  Sharding/ShardingInfo.cpp
+  Sharding/ShardingStrategy.cpp
+  Sharding/ShardingStrategyDefault.cpp
   Statistics/ConnectionStatistics.cpp
   Statistics/Descriptions.cpp
   Statistics/RequestStatistics.cpp

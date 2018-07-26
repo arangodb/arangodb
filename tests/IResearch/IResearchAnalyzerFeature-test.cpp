@@ -34,6 +34,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -194,6 +195,7 @@ struct IResearchAnalyzerFeatureSetup {
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(new arangodb::ShardingFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<Vocbase>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE); // QueryRegistryFeature required for instantiation
@@ -1152,11 +1154,15 @@ SECTION("test_tokens") {
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   auto* analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(&server);
   auto* functions = new arangodb::aql::AqlFunctionFeature(&server);
+  auto* sharding = new arangodb::ShardingFeature(&server);
   auto* systemdb = new arangodb::iresearch::SystemDatabaseFeature(&server, s.system.get());
 
   arangodb::application_features::ApplicationServer::server->addFeature(analyzers);
   arangodb::application_features::ApplicationServer::server->addFeature(functions);
+  arangodb::application_features::ApplicationServer::server->addFeature(sharding);
   arangodb::application_features::ApplicationServer::server->addFeature(systemdb);
+
+  sharding->prepare();
 
   // ensure there is no configuration collection
   {

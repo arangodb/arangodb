@@ -1207,8 +1207,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   }
 
   auto res2 = engine->persistCollection(*this, *collection);
-  // API compatibility, we always return the collection, even if creation
-  // failed.
+  // API compatibility, we always return the collection,
+  // even if creation failed.
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {

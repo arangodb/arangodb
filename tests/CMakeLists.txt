@@ -120,7 +120,6 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
-  Cluster/ShardDistributionReporterTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoJsonTest.cpp
   Geo/GeoFunctionsTest.cpp
@@ -134,6 +133,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
+  Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
