@@ -227,6 +227,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
       std::vector<std::pair<arangodb::velocypack::Slice,
                             arangodb::velocypack::Slice>> const&,
       bool incremental, SyncPhase);
+  
+  /// @brief create non-existing views locally
+  Result handleViewCreation(VPackSlice const& views);
 
  private:
   Configuration _config;

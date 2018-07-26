@@ -229,8 +229,8 @@ SECTION("test_defaults") {
     auto slice = builder->slice();
     CHECK((
       slice.hasKey("view")
-      && slice.get("view").isNumber()
-      && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+      && slice.get("view").isString()
+      && logicalView->guid() == slice.get("view").copyString()
       && slice.hasKey("figures")
       && slice.get("figures").isObject()
       && slice.get("figures").hasKey("memory")
@@ -282,8 +282,8 @@ SECTION("test_defaults") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -299,8 +299,8 @@ SECTION("test_defaults") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")

@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 #include "Logger/Logger.h"
 
@@ -88,15 +89,12 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
     DB_CREATE,
     DB_DROP,
     COLLECTION_CREATE,
-    COLLECTION_DROP,
     COLLECTION_RENAME,
     COLLECTION_CHANGE,
     INDEX_CREATE,
     INDEX_DROP,
     VIEW_CREATE,
-    VIEW_DROP,
     VIEW_CHANGE,
-    VIEW_RENAME,
     TRANSACTION,
     SINGLE_PUT,
     SINGLE_REMOVE
@@ -165,7 +163,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             { // tick number
-              StringRef uuid = RocksDBLogValue::collectionUUID(blob);
+              StringRef uuid = RocksDBLogValue::viewUUID(blob);
               TRI_ASSERT(!uuid.empty());
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
@@ -245,17 +243,53 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
           _responseSize += _builder.size();
           _builder.clear();
         }
-
         break;
       }
       case RocksDBLogType::ViewCreate:
-      case RocksDBLogType::ViewDrop:
-      case RocksDBLogType::ViewChange:
-      case RocksDBLogType::ViewRename: {
         resetTransientState(); // finish ongoing trx
-        // TODO
+        if (shouldHandleView(RocksDBLogValue::databaseId(blob),
+                             RocksDBLogValue::viewId(blob))) {
+          _state = VIEW_CREATE;
+        }
+        // wait for marker data in Put entry
+        break;
+        
+      case RocksDBLogType::ViewDrop: {
+        resetTransientState(); // finish ongoing trx
+        TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
+        TRI_voc_cid_t vid = RocksDBLogValue::viewId(blob);
+        if (shouldHandleView(dbid, vid)) {
+          TRI_vocbase_t* vocbase = loadVocbase(dbid);
+          if (vocbase != nullptr) {
+            { // tick number
+              StringRef uuid = RocksDBLogValue::collectionUUID(blob);
+              TRI_ASSERT(!uuid.empty());
+              uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+              VPackObjectBuilder marker(&_builder, true);
+              marker->add("tick", VPackValue(std::to_string(tick)));
+              marker->add("type", VPackValue(REPLICATION_VIEW_DROP));
+              marker->add("db", VPackValue(vocbase->name()));
+              marker->add("cuid", VPackValuePair(uuid.data(), uuid.size(),
+                                                 VPackValueType::String));
+            }
+            _callback(vocbase, _builder.slice());
+            _responseSize += _builder.size();
+            _builder.clear();
+          }
+        }
+        // wait for marker data in Put entry
         break;
       }
+        
+      case RocksDBLogType::ViewChange:
+        resetTransientState(); // finish ongoing trx
+        if (shouldHandleView(RocksDBLogValue::databaseId(blob),
+                             RocksDBLogValue::viewId(blob))) {
+          _state = VIEW_CHANGE;
+        }
+        // wait for marker data in Put entry
+        break;
+      
       case RocksDBLogType::BeginTransaction: {
         resetTransientState(); // finish ongoing trx
         TRI_voc_tid_t tid = RocksDBLogValue::transactionId(blob);
@@ -329,7 +363,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         }
         break;
       }
-        
+      
+      case RocksDBLogType::IResearchLinkDrop: // do nothing        
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
@@ -428,7 +463,38 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
           _responseSize += _builder.size();
           _builder.clear();
         }
-      } // if (RocksDBKey::type(key) == RocksDBEntryType::Collection)
+      } else if (RocksDBKey::type(key) == RocksDBEntryType::View) {
+        
+        TRI_voc_tick_t dbid = RocksDBKey::databaseId(key);
+        TRI_voc_cid_t vid = RocksDBKey::viewId(key);
+        
+        if (shouldHandleView(dbid, vid) && (_state == VIEW_CREATE ||
+                                            _state == VIEW_CHANGE)) {
+          TRI_vocbase_t* vocbase = loadVocbase(dbid);
+          TRI_ASSERT(vocbase != nullptr);
+          auto view = vocbase->lookupView(vid);
+          
+          if (view != nullptr) { // ignore nonexisting views
+            VPackSlice viewDef = RocksDBValue::data(value);
+            {
+              VPackObjectBuilder marker(&_builder, true);
+              marker->add("tick", VPackValue(std::to_string(_currentSequence)));
+              marker->add("db", VPackValue(vocbase->name()));
+              marker->add("cuid", VPackValue(view->guid()));
+              marker->add("data", viewDef);
+              if (_state == VIEW_CREATE) {
+                marker->add("type", VPackValue(REPLICATION_VIEW_CREATE));
+              } else /*if (_state == VIEW_CHANGE)*/ {
+                marker->add("type", VPackValue(REPLICATION_VIEW_CHANGE));
+              }
+            }
+            
+            _callback(vocbase, _builder.slice());
+            _responseSize += _builder.size();
+            _builder.clear();
+          }
+        }
+      }
       
       // reset everything immediately after DDL operations
       resetTransientState();

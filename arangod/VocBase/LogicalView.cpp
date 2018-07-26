@@ -288,9 +288,7 @@ arangodb::Result LogicalViewStorageEngine::appendVelocyPack(
       }
     #endif
 
-    engine->createView(view.vocbase(), view.id(), view);
-
-    return engine->persistView(view.vocbase(), view);
+    return engine->createView(view.vocbase(), view.id(), view);
   } catch (std::exception const& e) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
@@ -330,7 +328,8 @@ Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
 
     // store new view definition to disk
     if (!engine->inRecovery()) {
-      engine->changeView(vocbase(), id(), *this, doSync);
+      // write WAL 'change' marker
+      return engine->changeView(vocbase(), *this, doSync);
     }
   } catch (basics::Exception const& ex) {
     name(std::move(oldName));
@@ -342,8 +341,7 @@ Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
     return TRI_ERROR_INTERNAL;
   }
 
-  // write WAL 'rename' marker
-  return engine->renameView(vocbase(), *this, oldName);
+  return TRI_ERROR_NO_ERROR;
 }
 
 arangodb::Result LogicalViewStorageEngine::updateProperties(
@@ -368,7 +366,7 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   }
 
   try {
-    engine->changeView(vocbase(), id(), *this, doSync);
+    engine->changeView(vocbase(), *this, doSync);
   } catch (arangodb::basics::Exception const& e) {
     return { e.code() };
   } catch (...) {

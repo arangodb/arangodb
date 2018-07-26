@@ -323,7 +323,7 @@ arangodb::Result persistProperties(
   if (!engine->inRecovery()) {
     // change view throws exception on error
     try {
-      engine->changeView(view.vocbase(), view.id(), view, true);
+      engine->changeView(view.vocbase(), view, true);
     } catch (arangodb::basics::Exception& e) {
       IR_LOG_EXCEPTION();
 
@@ -390,7 +390,7 @@ arangodb::Result persistProperties(
 
       // change view throws exception on error
       try {
-        engine->changeView(view.vocbase(), view.id(), view, true);
+        engine->changeView(view.vocbase(), view, true);
       } catch (arangodb::basics::Exception& e) {
         IR_LOG_EXCEPTION();
 
