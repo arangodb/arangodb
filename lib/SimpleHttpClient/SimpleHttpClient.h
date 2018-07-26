@@ -190,7 +190,7 @@ class SimpleHttpClient {
   ~SimpleHttpClient();
 
  public:
-  void setInterrupted(bool value);
+  void setInterrupted(bool value) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates the connection used by the client
@@ -321,7 +321,9 @@ class SimpleHttpClient {
 
   SimpleHttpClientParams& params() { return _params; };
   
-  bool isAborted() const noexcept { return _aborted.load(std::memory_order_acquire); }
+  void checkForGlobalAbort(bool value) noexcept;
+  
+  bool isAborted() const noexcept;
 
   void setAborted(bool value) noexcept;
 
@@ -488,8 +490,7 @@ class SimpleHttpClient {
   
   std::atomic<bool> _aborted;
 
-  // empty map, used for headers
-  static std::unordered_map<std::string, std::string> const NO_HEADERS;
+  bool _checkForGlobalAbort;
 };
 }
 }

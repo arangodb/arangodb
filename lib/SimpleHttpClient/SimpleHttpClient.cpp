@@ -25,6 +25,7 @@
 
 #include "SimpleHttpClient.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
@@ -37,15 +38,16 @@
 #include <thread>
 #include <chrono>
 
+namespace {
+// empty map, used for headers
+std::unordered_map<std::string, std::string> const noHeaders;
+}
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace arangodb {
 namespace httpclient {
-
-/// @brief empty map, used for headers
-std::unordered_map<std::string, std::string> const
-    SimpleHttpClient::NO_HEADERS{};
 
 /// @brief default value for max packet size
 size_t SimpleHttpClientParams::MaxPacketSize = 256 * 1024 * 1024;
@@ -64,7 +66,8 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
       _result(nullptr),
-      _aborted(false) {
+      _aborted(false),
+      _checkForGlobalAbort(false) {
   TRI_ASSERT(connection != nullptr);
 
   if (_connection->isConnected()) {
@@ -97,12 +100,24 @@ SimpleHttpClient::~SimpleHttpClient() {
 // public methods
 // -----------------------------------------------------------------------------
 
+void SimpleHttpClient::checkForGlobalAbort(bool value) noexcept {
+  // if set to true, a request is also considered aborted on shutdown
+  _checkForGlobalAbort = value;
+}
+   
+bool SimpleHttpClient::isAborted() const noexcept {
+  // stop if our own aborted flag is set, or if the _checkForGlobalAbort was set
+  // and the program is shutting down
+  return _aborted.load(std::memory_order_acquire) ||
+    (_checkForGlobalAbort && application_features::ApplicationServer::isStopping());
+}
+
 void SimpleHttpClient::setAborted(bool value) noexcept {
   _aborted.store(value, std::memory_order_release);
   setInterrupted(value);
 }
 
-void SimpleHttpClient::setInterrupted(bool value) {
+void SimpleHttpClient::setInterrupted(bool value) noexcept {
   if (_connection != nullptr) {
     _connection->setInterrupted(value);
   }
@@ -143,7 +158,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(rest::RequestType method,
                                                  std::string const& location,
                                                  char const* body,
                                                  size_t bodyLength) {
-  return retryRequest(method, location, body, bodyLength, NO_HEADERS);
+  return retryRequest(method, location, body, bodyLength, ::noHeaders);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +220,7 @@ SimpleHttpResult* SimpleHttpClient::request(rest::RequestType method,
                                             std::string const& location,
                                             char const* body,
                                             size_t bodyLength) {
-  return doRequest(method, location, body, bodyLength, NO_HEADERS);
+  return doRequest(method, location, body, bodyLength, ::noHeaders);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

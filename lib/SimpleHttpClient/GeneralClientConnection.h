@@ -145,13 +145,13 @@ class GeneralClientConnection {
   /// @brief whether or not the current operation should be interrupted
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isInterrupted() const { return _isInterrupted.load(std::memory_order_acquire); }
+  bool isInterrupted() const noexcept { return _isInterrupted.load(std::memory_order_acquire); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief interrupt the current operation
   //////////////////////////////////////////////////////////////////////////////
 
-  void setInterrupted(bool value) { _isInterrupted.store(value, std::memory_order_release); }
+  void setInterrupted(bool value) noexcept { _isInterrupted.store(value, std::memory_order_release); }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
