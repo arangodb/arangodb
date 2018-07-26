@@ -46,7 +46,7 @@ struct AsyncJobResult {
  public:
   AsyncJobResult();
 
-  AsyncJobResult(IdType jobId, Status status, std::shared_ptr<RestHandler> handler);
+  AsyncJobResult(IdType jobId, Status status, std::shared_ptr<RestHandler>&& handler);
 
   ~AsyncJobResult();
 
