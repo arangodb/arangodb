@@ -284,7 +284,7 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_params._warn || forceWarn) {
-      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _errorMessage;
+      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << _errorMessage;
     }
   }
 
