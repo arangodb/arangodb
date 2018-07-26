@@ -508,9 +508,7 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertDobule : function () {
-      c1.truncate();
-      c2.truncate();
+    testInsertDouble : function () {
       const query = `LET d1 = {name : 'foo'}
                      LET d2 = {name : 'bar'}
                      INSERT d1 IN @@c1
