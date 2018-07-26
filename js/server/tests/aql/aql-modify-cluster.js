@@ -508,6 +508,30 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
+    testInsertDobule : function () {
+      c1.truncate();
+      c2.truncate();
+      const query = `LET d1 = {name : 'foo'}
+                     LET d2 = {name : 'bar'}
+                     INSERT d1 IN @@c1
+                     INSERT d2 IN @@c2
+                     RETURN $NEW`;
+      const bind = { "@c1" : cn1, "@c2" : cn2 };
+      const options = { optimizer : {
+                          rules : [ "+restrict-to-single-shard",
+                                    "-optimize-cluster-single-document-operations",
+                                    "-remove-unnecessary-remote-scatter"
+                                  ]
+                      } };
+      db._query(query, bind, options);
+      assertEqual(1, c1.count());
+      assertEqual(1, c2.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
     testInsertNothing : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 INSERT { foxx: true } IN " + cn1);
