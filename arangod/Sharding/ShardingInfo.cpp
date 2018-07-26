@@ -313,7 +313,6 @@ size_t ShardingInfo::replicationFactor() const {
 }
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
-  TRI_ASSERT(replicationFactor != 0);
   _replicationFactor = replicationFactor;
 }
 
