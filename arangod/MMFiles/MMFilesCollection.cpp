@@ -1769,7 +1769,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(vocbase),
-    &_logicalCollection,
+    _logicalCollection,
     AccessMode::Type::READ
   );
 

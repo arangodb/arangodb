@@ -59,16 +59,17 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
-Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection* coll)
+Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection& coll)
     : _vocbase(vocbase), _coll(coll), _trx(nullptr), _responsibleForTrx(true) {
-      TRI_ASSERT(_coll != nullptr);
-    }
+}
 
-Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection* coll,
-                              transaction::Methods* trx)
+Collections::Context::Context(
+    TRI_vocbase_t& vocbase,
+    LogicalCollection& coll,
+    transaction::Methods* trx
+)
     : _vocbase(vocbase), _coll(coll), _trx(trx), _responsibleForTrx(false) {
   TRI_ASSERT(_trx != nullptr);
-  TRI_ASSERT(_coll != nullptr);
 }
 
 Collections::Context::~Context() {
@@ -109,7 +110,7 @@ TRI_vocbase_t& Collections::Context::vocbase() const {
 }
 
 LogicalCollection* Collections::Context::coll() const {
-  return _coll;
+  return &_coll;
 }
 
 void Collections::enumerate(
@@ -322,8 +323,7 @@ Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-  SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-
+  SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (res.fail()) {
@@ -411,9 +411,7 @@ Result Collections::updateProperties(LogicalCollection* coll,
   } else {
     auto ctx =
       transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
-    SingleCollectionTransaction trx(
-      ctx, coll, AccessMode::Type::EXCLUSIVE
-    );
+    SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -573,7 +571,10 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   return res;
 }
 
-Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
+Result Collections::warmup(
+    TRI_vocbase_t& vocbase,
+    LogicalCollection const& coll
+) {
   ExecContext const* exec = ExecContext::CURRENT; // disallow expensive ops
 
   if (!exec->isSuperuser() && ServerState::readOnly()) {
@@ -582,7 +583,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    auto cid = std::to_string(coll->id());
+    auto cid = std::to_string(coll.id());
 
     return warmupOnCoordinator(vocbase.name(), cid);
   }
@@ -595,11 +596,10 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
     return res;
   }
 
-  auto idxs = coll->getIndexes();
+  auto idxs = coll.getIndexes();
   auto poster = [](std::function<void()> fn) -> void {
     SchedulerFeature::SCHEDULER->post(fn);
   };
-
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
   for (auto& idx : idxs) {

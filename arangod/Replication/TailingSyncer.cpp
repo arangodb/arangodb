@@ -391,7 +391,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // update the apply tick for all standalone operations
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(*vocbase),
-    coll,
+    *coll,
     AccessMode::Type::EXCLUSIVE
   );
 

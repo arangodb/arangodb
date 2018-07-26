@@ -94,7 +94,6 @@ class DatabaseInitialSyncer final : public InitialSyncer {
     bool isChild() const; // TODO worker safety
   };
 
- public:
   DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                         ReplicationApplierConfiguration const& configuration);
 
@@ -196,7 +195,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                              httpclient::SimpleHttpResult*, uint64_t&);
 
   /// @brief determine the number of documents in a collection
-  int64_t getSize(arangodb::LogicalCollection*);
+  int64_t getSize(arangodb::LogicalCollection const& col);
 
   /// @brief incrementally fetch data from a collection
   // TODO worker safety
@@ -228,7 +227,6 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                             arangodb::velocypack::Slice>> const&,
       bool incremental, SyncPhase);
 
- private:
   Configuration _config;
 };
 

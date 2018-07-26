@@ -539,7 +539,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
                  col->guid() == col->name());
       SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase),
-        col,
+        *col,
         AccessMode::Type::WRITE
       );
       Result res = trx.begin();
@@ -663,7 +663,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   try {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(*vocbase),
-      col.get(),
+      *col,
       AccessMode::Type::WRITE
     );
     Result res = trx.begin();

@@ -531,7 +531,7 @@ SECTION("test_async_index") {
 
       arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(collection0->vocbase()),
-        collection0,
+        *collection0,
         arangodb::AccessMode::Type::WRITE
       );
       resThread0 = trx.begin().ok();
@@ -569,7 +569,7 @@ SECTION("test_async_index") {
 
       arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(collection1->vocbase()),
-        collection1,
+        *collection1,
         arangodb::AccessMode::Type::WRITE
       );
       resThread1 = trx.begin().ok();
