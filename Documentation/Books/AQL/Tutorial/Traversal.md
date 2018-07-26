@@ -32,7 +32,7 @@ Our characters have the following relations between parents and children
 
 Visualized as graph:
 
-![ChildOf graph visualization](ChildOf_Graph2.png)
+![ChildOf graph visualization](ChildOf_Graph.png)
 
 Creating the edges
 ------------------
@@ -261,7 +261,7 @@ It might be a bit unexpected, that Joffrey is returned twice. However, if you
 look at the graph visualization, you can see that multiple paths lead from
 Joffrey (bottom right) to Tywin:
 
-![ChildOf graph visualization](ChildOf_Graph2.png)
+![ChildOf graph visualization](ChildOf_Graph.png)
 
 ```
 Tywin <- Jaime <- Joffrey
