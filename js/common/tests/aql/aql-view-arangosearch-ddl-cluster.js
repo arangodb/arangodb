@@ -680,6 +680,31 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-8", properties.locale);
+
+      view.properties({}, false); // full update (reset to defaults)
+      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      assertEqual(0, result.length);
+      properties = view.properties();
+      assertTrue(Object === properties.commit.constructor);
+      assertEqual(10, properties.commit.cleanupIntervalStep);
+      assertEqual(60000, properties.commit.commitIntervalMsec);
+      assertTrue(Object === properties.commit.consolidate.constructor);
+      assertEqual(4, Object.keys(properties.commit.consolidate).length);
+      assertTrue(Object === properties.commit.consolidate.bytes.constructor);
+      assertEqual(300, properties.commit.consolidate.bytes.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
+      assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
+      assertTrue(Object === properties.commit.consolidate.count.constructor);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.commit.consolidate.fill.constructor);
+      assertEqual(300, properties.commit.consolidate.fill.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.fill.threshold.toFixed(6));
+      assertEqual("C", properties.locale);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(0, Object.keys(properties.links).length);
     },
 
     testLinkModify: function() {
