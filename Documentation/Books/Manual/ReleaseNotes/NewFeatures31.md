@@ -15,7 +15,7 @@ The SmartGraph feature is suggested for all graph database use cases that requir
 a cluster of database servers for what ever reason.
 You can either have a graph that is too large to be stored on a single machine only.
 Or you can have a small graph, but at the same time need additional data with has to be
-sharded and you want to keep all of them in the same envirenment.
+sharded and you want to keep all of them in the same environment.
 Or you simply use the cluster for high-availability.
 In all the above cases SmartGraphs will significantly increase the performance of
 graph operations.
@@ -42,7 +42,7 @@ Communication Layer
 
 ArangoDB up to 3.0 used [libev](http://software.schmorp.de/pkg/libev.html) for
 the communication layer. ArangoDB starting from 3.1 uses
-[Boost ASIO](www.boost.org).
+[Boost ASIO](https://www.boost.org).
 
 Starting with ArangoDB 3.1 we begin to provide the VelocyStream Protocol (vst) as
 a addition to the established http protocol.
@@ -214,7 +214,7 @@ Foxx
 
 ### GraphQL
 
-It is now easy to get started with providing GraphQL APIs in Foxx, see [Foxx GraphQL](../Foxx/Reference/GraphQL.md).
+It is now easy to get started with providing GraphQL APIs in Foxx, see [Foxx GraphQL](../Foxx/Reference/Modules/GraphQL.md).
 
 ### OAuth2
 

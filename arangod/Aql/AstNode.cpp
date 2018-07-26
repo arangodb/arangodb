@@ -379,14 +379,15 @@ static bool IsEmptyString(char const* p, size_t length) {
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
     : type(type), flags(0), computedValue(nullptr) {
-  value.type = VALUE_TYPE_NULL;
+  // properly zero-initialize all members
+  value.value._int = 0;
   value.length = 0;
+  value.type = VALUE_TYPE_NULL;
 }
 
 /// @brief create a node, with defining a value type
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
-  value.length = 0;
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
 }
@@ -527,6 +528,17 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       setIntValue(Quantifier::FromString(slice.get("quantifier").copyString()));
       break;
     }
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE: {
+      bool excludesNull = false;
+      VPackSlice v = slice.get("excludesNull");
+      if (v.isBoolean()) {
+        excludesNull = v.getBoolean();
+      }
+      setExcludesNull(excludesNull);
+      break;
+    }
     case NODE_TYPE_OBJECT:
     case NODE_TYPE_ROOT:
     case NODE_TYPE_FOR:
@@ -555,10 +567,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
     case NODE_TYPE_OPERATOR_BINARY_DIV:
     case NODE_TYPE_OPERATOR_BINARY_MOD:
-    case NODE_TYPE_OPERATOR_BINARY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_NE:
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-    case NODE_TYPE_OPERATOR_BINARY_LE:
     case NODE_TYPE_OPERATOR_BINARY_GT:
     case NODE_TYPE_OPERATOR_BINARY_GE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -871,7 +880,6 @@ void AstNode::dump(int level) const {
 
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
-/// note that the return value might be NULL in case of OOM
 VPackSlice AstNode::computeValue() const {
   TRI_ASSERT(isConstant());
 
@@ -882,6 +890,8 @@ VPackSlice AstNode::computeValue() const {
     computedValue = new uint8_t[builder.size()];
     memcpy(computedValue, builder.data(), builder.size());
   }
+  
+  TRI_ASSERT(computedValue != nullptr);
 
   return VPackSlice(computedValue);
 }
@@ -1068,6 +1078,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
       type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_VIEW ||
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
+    TRI_ASSERT(getStringValue() != nullptr);
     builder.add("name", VPackValuePair(getStringValue(), getStringLength(),
                                         VPackValueType::String));
   }
@@ -1091,6 +1102,12 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
       builder.add("vType", VPackValue(getValueTypeString()));
       builder.add("vTypeID", VPackValue(static_cast<int>(value.type)));
     }
+  }
+  
+  if (type == NODE_TYPE_OPERATOR_BINARY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    builder.add("excludesNull", VPackValue(getExcludesNull()));
   }
 
   if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
@@ -1537,13 +1554,6 @@ bool AstNode::isSimple() const {
 
     TRI_ASSERT(numMembers() == 1);
 
-    // check if there is a C++ function handler condition
-    if (func->condition != nullptr && !func->condition()) {
-      // function execution condition is false
-      setFlag(DETERMINED_SIMPLE);
-      return false;
-    }
-
     // check simplicity of function arguments
     auto args = getMember(0);
     size_t const n = args->numMembers();
@@ -1569,7 +1579,7 @@ bool AstNode::isSimple() const {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
-  
+
   if (type == NODE_TYPE_FCALL_USER) {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
@@ -1603,14 +1613,9 @@ bool AstNode::willUseV8() const {
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
     }
-    
-    if (func->condition && !func->condition()) {
-      // a function with an execution condition
-      setFlag(DETERMINED_V8, VALUE_V8);
-      return true;
-    }
+
   }
-    
+
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {

@@ -26,6 +26,7 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/fasthash.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
@@ -159,7 +160,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _shardIds(new ShardMap()),  // Not needed
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(this)),
+      _physical(other.getPhysical()->clone(*this)),
       _clusterEstimateTTL(0) {
   TRI_ASSERT(_physical != nullptr);
 
@@ -215,7 +216,8 @@ LogicalCollection::LogicalCollection(
       _keyOptions(nullptr),
       _keyGenerator(),
       _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
+        EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)
+      ),
       _clusterEstimateTTL(0) {
   TRI_ASSERT(info.isObject());
 
@@ -251,17 +253,9 @@ LogicalCollection::LogicalCollection(
     }
 
     VPackSlice keyGenSlice = info.get("keyOptions");
-    if (keyGenSlice.isObject()) {
-      keyGenSlice = keyGenSlice.get("type");
-      if (keyGenSlice.isString()) {
-        StringRef tmp(keyGenSlice);
-        if (!tmp.empty() && tmp != "traditional") {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                         "non-traditional key generators are "
-                                         "not supported for sharded "
-                                         "collections");
-        }
-      }
+    if (!KeyGenerator::canUseType(keyGenSlice)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
+                                     "the specified key generator is not supported for sharded collections");
     }
   }
 
@@ -398,7 +392,7 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 
   if (!indexesSlice.isArray()) {
     // always point to an array
-    indexesSlice = basics::VelocyPackHelper::EmptyArrayValue();
+    indexesSlice = arangodb::velocypack::Slice::emptyArraySlice();
   }
 
   _physical->prepareIndexes(indexesSlice);
@@ -662,7 +656,7 @@ Result LogicalCollection::rename(std::string&& newName, bool doSync) {
     TRI_ASSERT(engine != nullptr);
 
     name(std::move(newName));
-    engine->changeCollection(vocbase(), id(), this, doSync);
+    engine->changeCollection(vocbase(), id(), *this, doSync);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -701,7 +695,7 @@ arangodb::Result LogicalCollection::drop() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  engine->destroyCollection(vocbase(), this);
+  engine->destroyCollection(vocbase(), *this);
   deleted(true);
   _physical->drop();
 
@@ -913,7 +907,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // - _isVolatile
   // ... probably a few others missing here ...
 
-  WRITE_LOCKER(writeLocker, _infoLock);
+  MUTEX_LOCKER(guard, _infoLock); // prevent simultanious updates
   
   size_t rf = _replicationFactor;
   VPackSlice rfSl = slice.get("replicationFactor");
@@ -984,7 +978,8 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->changeCollection(vocbase(), id(), this, doSync);
+
+  engine->changeCollection(vocbase(), id(), *this, doSync);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1063,7 +1058,7 @@ void LogicalCollection::persistPhysicalCollection() {
   // We have not yet persisted this collection!
   TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(vocbase(), id(), this);
+  auto path = engine->createCollection(vocbase(), id(), *this);
 
   getPhysical()->setPath(path);
 }
@@ -1073,7 +1068,7 @@ void LogicalCollection::persistPhysicalCollection() {
 ///        the collection and it is guaranteed that no one is using
 ///        it at that moment.
 void LogicalCollection::deferDropCollection(
-    std::function<bool(LogicalCollection*)> callback) {
+    std::function<bool(LogicalCollection&)> const& callback) {
   _physical->deferDropCollection(callback);
 }
 
@@ -1195,14 +1190,14 @@ bool LogicalCollection::isSatellite() const { return _replicationFactor == 0; }
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
   if (_keyOptions == nullptr) {
-    return arangodb::basics::VelocyPackHelper::NullValue();
+    return arangodb::velocypack::Slice::nullSlice();
   }
   return VPackSlice(_keyOptions->data());
 }
 
 ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
   auto ctx = transaction::StandaloneContext::Create(vocbase());
-  SingleCollectionTransaction trx(ctx, id(), AccessMode::Type::READ);
+  SingleCollectionTransaction trx(ctx, this, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (!res.ok()) {

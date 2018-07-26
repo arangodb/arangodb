@@ -44,7 +44,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
   emplaceFactory(
     "edge",
     [](
-        LogicalCollection* collection,
+        LogicalCollection& collection,
         velocypack::Slice const& definition,
         TRI_idx_iid_t id,
         bool isClusterConstructor
@@ -68,7 +68,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
   emplaceFactory(
     "primary",
     [](
-        LogicalCollection* collection,
+        LogicalCollection& collection,
         velocypack::Slice const& definition,
         TRI_idx_iid_t id,
         bool isClusterConstructor
@@ -106,7 +106,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
     emplaceFactory(
       typeStr,
       [type](
-          LogicalCollection* collection,
+          LogicalCollection& collection,
           velocypack::Slice const& definition,
           TRI_idx_iid_t id,
           bool isClusterConstructor
@@ -167,8 +167,9 @@ ClusterIndexFactory::ClusterIndexFactory() {
 }
 
 void ClusterIndexFactory::fillSystemIndexes(
-    arangodb::LogicalCollection* col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+    arangodb::LogicalCollection& col,
+    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
+) const {
   // create primary index
   VPackBuilder input;
   input.openObject();
@@ -188,8 +189,9 @@ void ClusterIndexFactory::fillSystemIndexes(
 
   systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
       0, col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));
+
   // create edges indexes
-  if (col->type() == TRI_COL_TYPE_EDGE) {
+  if (col.type() == TRI_COL_TYPE_EDGE) {
     // first edge index
     input.clear();
     input.openObject();
@@ -198,9 +200,11 @@ void ClusterIndexFactory::fillSystemIndexes(
     input.add(StaticStrings::IndexId, VPackValue("1"));
     input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
     input.add(VPackValue(StaticStrings::FromString));
+
     if (ct == ClusterEngineType::MMFilesEngine) {
       input.add(VPackValue(StaticStrings::ToString));
     }
+
     input.close();
     input.add(StaticStrings::IndexUnique, VPackValue(false));
     input.add(StaticStrings::IndexSparse, VPackValue(false));
@@ -228,8 +232,10 @@ void ClusterIndexFactory::fillSystemIndexes(
 }
 
 void ClusterIndexFactory::prepareIndexes(
-    LogicalCollection* col, VPackSlice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+    LogicalCollection& col,
+    arangodb::velocypack::Slice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+) const {
   TRI_ASSERT(indexesSlice.isArray());
 
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
@@ -240,12 +246,14 @@ void ClusterIndexFactory::prepareIndexes(
     }
 
     auto idx = prepareIndexFromSlice(v, false, col, true);
+
     if (!idx) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-          << "error creating index from definition '" << indexesSlice.toString()
-          << "'";
+        << "error creating index from definition '" << v.toString() << "'";
+
       continue;
     }
+
     indexes.emplace_back(std::move(idx));
   }
 }

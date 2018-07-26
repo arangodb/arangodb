@@ -393,7 +393,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type",
-                VPackValue(AccessMode::typeString(c.second->accessType)));
+                VPackValue(AccessMode::typeString(c.second->accessType())));
     builder.close();
   }
   builder.close();
@@ -406,6 +406,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
   builder.add("estimatedNrItems", VPackValue(nrItems));
   builder.add("initialize", VPackValue(_isResponsibleForInitialize));
+  builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
 
   builder.close();
 }
@@ -594,7 +595,7 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
 /// @brief get the output variable from a node
 Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   if (node->getType() == ExecutionNode::CALCULATION) {
-    // CalculationNode has an outVariale() method
+    // CalculationNode has an outVariable() method
     return ExecutionNode::castTo<CalculationNode const*>(node)->outVariable();
   }
 
@@ -613,9 +614,13 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
     TRI_ASSERT(v != nullptr);
     return v;
   }
+  
+  if (node->getType() == ExecutionNode::SUBQUERY) {
+    return ExecutionNode::castTo<SubqueryNode const*>(node)->outVariable();
+  }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid node type in getOutVariable");
+                                 std::string("invalid node type '") + node->getTypeString() + "' in getOutVariable");
 }
 
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
@@ -699,6 +704,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           options.exclusive = value->isTrue();
         } else if (name == "overwrite") {
           options.overwrite = value->isTrue();
+        } else if (name == "ignoreRevs") {
+          options.ignoreRevs = value->isTrue();
         }
       }
     }
@@ -729,7 +736,7 @@ ModificationOptions ExecutionPlan::createModificationOptions(
       auto const collections = _ast->query()->collections();
 
       for (auto const& it : *(collections->collections())) {
-        if (it.second->isReadWrite) {
+        if (it.second->isReadWrite()) {
           isReadWrite = true;
           break;
         }
@@ -862,18 +869,29 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                      "no collection for EnumerateCollection");
     }
     en = registerNode(new EnumerateCollectionNode(
-      this, nextId(), &(_ast->query()->vocbase()), collection, v, false)
+      this, nextId(), collection, v, false)
     );
 #ifdef USE_IRESEARCH
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
     std::string const viewName = expression->getString();
     auto& vocbase = _ast->query()->vocbase();
-    auto view = vocbase.lookupView(viewName);
+
+    std::shared_ptr<LogicalView> view;
+
+    if (ServerState::instance()->isSingleServer()) {
+      view = vocbase.lookupView(viewName);
+    } else {
+      // need cluster wide view
+      TRI_ASSERT(ClusterInfo::instance());
+      view = ClusterInfo::instance()->getView(vocbase.name(), viewName);
+    }
 
     if (!view) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no view for EnumerateView");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "no view for EnumerateView"
+      );
     }
 
     en = registerNode(new iresearch::IResearchViewNode(
@@ -1322,13 +1340,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
         // operand is a variable
         auto e = static_cast<Variable*>(arg->getData());
         aggregateVariables.emplace_back(
-            std::make_pair(v, std::make_pair(e, func->name)));
+            std::make_pair(v, std::make_pair(e, Aggregator::translateAlias(func->name))));
       } else {
         auto calc = createTemporaryCalculation(arg, previous);
         previous = calc;
 
         aggregateVariables.emplace_back(std::make_pair(
-            v, std::make_pair(getOutVariable(calc), func->name)));
+            v, std::make_pair(getOutVariable(calc), Aggregator::translateAlias(func->name))));
       }
     }
   }
@@ -1553,7 +1571,6 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     en = registerNode(new RemoveNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1566,7 +1583,6 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     en = registerNode(new RemoveNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1619,7 +1635,6 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     en = registerNode(new InsertNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1633,7 +1648,6 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     en = registerNode(new InsertNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1701,7 +1715,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     en = registerNode(new UpdateNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1716,7 +1729,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     en = registerNode(new UpdateNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1785,7 +1797,6 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     en = registerNode(new ReplaceNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1800,7 +1811,6 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     en = registerNode(new ReplaceNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1871,7 +1881,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   ExecutionNode* en = registerNode(new UpsertNode(
     this,
     nextId(),
-    &(_ast->query()->vocbase()),
     collection,
     options,
     docVariable,
@@ -2224,6 +2233,7 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
   TRI_ASSERT(newNode != nullptr);
   TRI_ASSERT(previous->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
+
   std::vector<ExecutionNode*> parents = previous->getParents(); // Intentional copy
   for (ExecutionNode* parent : parents) {
     if (!parent->replaceDependency(previous, newNode)) {
@@ -2232,6 +2242,20 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
     }
   }
   newNode->addDependency(previous);
+}
+
+/// @brief insert note directly before current
+void ExecutionPlan::insertBefore(ExecutionNode* current, ExecutionNode* newNode) {
+  TRI_ASSERT(newNode != nullptr);
+  TRI_ASSERT(current->id() != newNode->id());
+  TRI_ASSERT(newNode->getDependencies().empty());
+  TRI_ASSERT(!newNode->hasParent());
+
+  for (auto* dep : current->getDependencies()){
+    newNode->addDependency(dep);
+  }
+  current->removeDependencies();
+  current->addDependency(newNode);
 }
 
 /// @brief create a plan from VPack

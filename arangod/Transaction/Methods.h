@@ -128,8 +128,6 @@ class Methods {
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
-  double const TRX_FOLLOWER_TIMEOUT = 3.0;
-
   /// @brief transaction::Methods
  private:
   Methods() = delete;
@@ -144,21 +142,40 @@ class Methods {
 
  public:
 
+  /// @brief create the transaction, used to be UserTransaction
+  Methods(std::shared_ptr<transaction::Context> const& ctx,
+          std::vector<std::string> const& readCollections,
+          std::vector<std::string> const& writeCollections,
+          std::vector<std::string> const& exclusiveCollections,
+          transaction::Options const& options);
+
   /// @brief destroy the transaction
   virtual ~Methods();
 
-  typedef Result(*StateRegistrationCallback)(LogicalDataSource& dataSource, TransactionState& state);
+  typedef Result(*DataSourceRegistrationCallback)(LogicalDataSource& dataSource, Methods& trx);
 
-  /// @brief add a callback to be called for state instance association events
-  ///        e.g. addCollection(...)
+  /// @brief definition from TransactionState::StatusChangeCallback
+  /// @param status the new status of the transaction
+  ///               will match trx.state()->status() for top-level transactions
+  ///               may not match trx.state()->status() for embeded transactions
+  ///               since their staus is not updated from RUNNING
+  typedef std::function<void(transaction::Methods& trx, transaction::Status status)> StatusChangeCallback;
+
+  /// @brief add a callback to be called for LogicalDataSource instance
+  ///        association events, e.g. addCollection(...)
   /// @note not thread-safe on the assumption of static factory registration
-  static void addStateRegistrationCallback(StateRegistrationCallback callback);
+  static void addDataSourceRegistrationCallback(DataSourceRegistrationCallback const& callback);
 
-  /// @brief clear all called for state instance association events
+  /// @brief add a callback to be called for state change events
+  /// @param callback nullptr and empty functers are ignored, treated as success
+  /// @return success
+  bool addStatusChangeCallback(StatusChangeCallback const* callback);
+
+  /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
   /// @note FOR USE IN TESTS ONLY to reset test state
   /// FIXME TODO StateRegistrationCallback logic should be moved into its own feature
-  static void clearStateRegistrationCallbacks();
+  static void clearDataSourceRegistrationCallbacks();
 
   /// @brief default batch size for index and other operations
   static constexpr uint64_t defaultBatchSize() { return 1000; }
@@ -326,7 +343,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  virtual OperationResult count(std::string const& collectionName, bool aggregate);
+  virtual OperationResult count(std::string const& collectionName, bool details);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -389,6 +406,29 @@ class Methods {
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
                                 AccessMode::Type) const;
+  /**
+   * @brief Check if this shard is locked, used to send nolockheader
+   *
+   * @param shardName shard The name of the shard
+   *
+   * @return True if locked by this transaction.
+   */
+  bool isLockedShard(std::string const& shardName) const;
+
+  /**
+   * @brief Set that this shard is locked by this transaction
+   *        Used to define nolockheaders
+   *
+   * @param shardName shard the shard name
+   */
+  void setLockedShard(std::string const& shardName);
+
+  /**
+   * @brief Overwrite the entire list of locked shards.
+   *
+   * @param lockedShards The list of locked shards.
+   */
+  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards);
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
@@ -494,7 +534,7 @@ class Methods {
  protected:
 
   OperationResult countCoordinator(std::string const& collectionName,
-                                   bool aggregate, bool sendNoLockHeader);
+                                   bool details);
 
   OperationResult countLocal(std::string const& collectionName);
 
@@ -507,13 +547,7 @@ class Methods {
       TransactionCollection const*) const;
 
   /// @brief add a collection by id, with the name supplied
-  ENTERPRISE_VIRT Result addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
-
-  /// @brief add a collection by id, with the name supplied
-  Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
-
-  /// @brief add a collection by id
-  Result addCollection(TRI_voc_cid_t, AccessMode::Type);
+  ENTERPRISE_VIRT Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
 
   /// @brief add a collection by name
   Result addCollection(std::string const&, AccessMode::Type);
@@ -583,12 +617,6 @@ class Methods {
   /// @brief Get all indexes for a collection name, coordinator case
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(
       std::string const&) const;
-
-  /// @brief add a collection to an embedded transaction
-  Result addCollectionEmbedded(TRI_voc_cid_t, char const* name, AccessMode::Type);
-
-  /// @brief add a collection to a top-level transaction
-  Result addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
 
  protected:
   /// @brief the state

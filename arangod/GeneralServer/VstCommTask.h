@@ -38,7 +38,7 @@ namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+  VstCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket> socket,
               ConnectionInfo&&, double timeout, ProtocolVersion protocolVersion,
               bool skipSocketInit = false);
 
@@ -62,8 +62,6 @@ class VstCommTask final : public GeneralCommTask {
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
   void addResponse(GeneralResponse&, RequestStatistics*) override;
-
-  bool allowDirectHandling() const override final { return false; }
 
  private:
   // process the VST 1000 request type

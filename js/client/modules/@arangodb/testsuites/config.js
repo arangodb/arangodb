@@ -117,7 +117,7 @@ function config (options) {
 
     const run = fs.join(pu.BIN_DIR, test);
 
-    results.absolut[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, options.coreCheck);
+    results.absolut[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, false, options.coreCheck);
 
     if (!results.absolut[test].status) {
       results.absolut.status = false;
@@ -153,7 +153,7 @@ function config (options) {
 
     const run = fs.join(pu.BIN_DIR, test);
 
-    results.relative[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, options.coreCheck);
+    results.relative[test] = pu.executeAndWait(run, toArgv(args), options, test, rootDir, false, options.coreCheck);
 
     if (!results.relative[test].status) {
       results.failed += 1;

@@ -27,6 +27,7 @@
 
 #include "LogicalDataSource.h"
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
@@ -329,7 +330,8 @@ class LogicalCollection: public LogicalDataSource {
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
   void deferDropCollection(
-      std::function<bool(arangodb::LogicalCollection*)> callback);
+    std::function<bool(arangodb::LogicalCollection&)> const& callback
+  );
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
@@ -419,7 +421,7 @@ class LogicalCollection: public LogicalDataSource {
 
   mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
-  mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
+  mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
   std::unordered_map<std::string, double> _clusterEstimates;
   double _clusterEstimateTTL; //only valid if above vector is not empty

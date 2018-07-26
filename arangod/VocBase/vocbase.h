@@ -119,7 +119,6 @@ enum TRI_vocbase_col_status_e : int {
 
 /// @brief database
 struct TRI_vocbase_t {
-  friend class arangodb::CollectionNameResolver;
   friend class arangodb::StorageEngine;
 
   /// @brief database state
@@ -354,7 +353,7 @@ struct TRI_vocbase_t {
   );
 
   /// @brief callback for collection dropping
-  static bool DropCollectionCallback(arangodb::LogicalCollection* collection);
+  static bool DropCollectionCallback(arangodb::LogicalCollection& collection);
 
   /// @brief unloads a collection
   int unloadCollection(arangodb::LogicalCollection* collection, bool force);

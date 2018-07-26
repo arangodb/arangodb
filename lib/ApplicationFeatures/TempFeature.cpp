@@ -36,8 +36,7 @@ TempFeature::TempFeature(application_features::ApplicationServer* server,
                          std::string const& appname)
     : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
   setOptional(false);
-  startsAfter("Logger");
-  startsAfter("Random");
+  startsAfter("GreetingsPhase");
 }
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -48,7 +48,7 @@ class SocketTask : virtual public Task {
   static size_t const READ_BLOCK_SIZE = 10000;
 
  public:
-  SocketTask(EventLoop, std::unique_ptr<Socket>, ConnectionInfo&&,
+  SocketTask(Scheduler*, std::unique_ptr<Socket>, ConnectionInfo&&,
              double keepAliveTimeout, bool skipInit);
 
   virtual ~SocketTask();
@@ -178,7 +178,7 @@ class SocketTask : virtual public Task {
   std::list<WriteBuffer> _writeBuffers;
 
   boost::posix_time::milliseconds _keepAliveTimeout;
-  asio_ns::deadline_timer _keepAliveTimer;
+  std::unique_ptr<asio_ns::deadline_timer> _keepAliveTimer;
   bool const _useKeepAliveTimer;
 
   std::atomic<bool> _keepAliveTimerActive;

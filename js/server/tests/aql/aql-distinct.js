@@ -207,6 +207,17 @@ function ahuacatlDistinct () {
       assertEqual(100, integers.length);
       assertEqual(100, strings.length);
     },
+            
+    testDistinctInOptimizedAwaySubquery : function () {
+      let query = "LET values = (FOR i IN " + c.name() + " RETURN DISTINCT i.value1) FOR doc IN values RETURN 42";
+      containsDistinct(query);
+      let result = AQL_EXECUTE(query).json;
+
+      assertEqual(100, result.length);
+  
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf("inline-subqueries"));
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief distinct usage 
@@ -263,8 +274,43 @@ function ahuacatlDistinct () {
       assertEqual(2, result.length);
       assertEqual([ 1, 2, 3, 4 ], result[0].sort(function (l, r) { return l - r; }));
       assertEqual([ 1, 2, 3, 4 ], result[1].sort(function (l, r)  { return l - r; }));
-    }
-    
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distinct regression test:
+/// crash when a subsequent call to DistinctCollectBlock::getSome() added no new
+/// non-distinct results. The crash may occur ONLY IN MAINTAINER MODE, while
+/// in non-maintainer mode problems may occur only because either an empty
+/// result is returned (which would cause some parent blocks to crash), or
+/// an erroneous result is returned, but I didn't find a way to produce this
+/// reliably with an AQL query.
+////////////////////////////////////////////////////////////////////////////////
+
+    testDistinctRegressionGetSomeWithEmptyResult : function () {
+      const query = 'FOR i IN 1..2 FOR k IN 1..1000 RETURN DISTINCT k';
+      containsDistinct(query);
+      const options = {optimizer: {rules: [ "-interchange-adjacent-enumerations" ]}};
+
+      // check plan
+      const plan = helper.getCompactPlan(AQL_EXPLAIN(query, {}, options));
+      assertEqual(
+        [
+          "SingletonNode",
+          "CalculationNode",
+          "CalculationNode",
+          "EnumerateListNode",
+          "EnumerateListNode",
+          "CollectNode",
+          "ReturnNode",
+        ],
+        plan.map(node => node.type)
+      );
+
+      // execute query
+      const result = AQL_EXECUTE(query, {}, options).json;
+      assertEqual(1000, result.length);
+    },
+
   };
 }
 

@@ -25,6 +25,9 @@
 
 using namespace arangodb;
 
+/// @brief rocksdb format version
+char arangodb::rocksDBFormatVersion() { return '1'; }
+
 namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;
@@ -193,8 +196,6 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "ViewDrop";
     case arangodb::RocksDBLogType::ViewChange:
       return "ViewChange";
-    case arangodb::RocksDBLogType::ViewRename:
-      return "ViewRename";
 #ifdef USE_IRESEARCH
     case arangodb::RocksDBLogType::IResearchLinkDrop:
       return "IResearchLinkDrop";
@@ -264,4 +265,3 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   return Placeholder;  // avoids warning - errorslice instead ?!
 }
 
-char arangodb::rocksDBFormatVersion() { return '0'; }

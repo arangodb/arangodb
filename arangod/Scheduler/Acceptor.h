@@ -36,7 +36,7 @@ class Acceptor {
   typedef std::function<void(asio_ns::error_code const&)> AcceptHandler;
 
  public:
-  Acceptor(asio_ns::io_context& ioService, Endpoint* endpoint);
+  Acceptor(rest::Scheduler*, Endpoint* endpoint);
   virtual ~Acceptor() {}
 
  public:
@@ -46,11 +46,10 @@ class Acceptor {
   std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
 
  public:
-  static std::unique_ptr<Acceptor> factory(asio_ns::io_context& _ioService,
-                                           Endpoint* endpoint);
+  static std::unique_ptr<Acceptor> factory(rest::Scheduler*, Endpoint*);
 
  protected:
-  asio_ns::io_context& _ioContext;
+  rest::Scheduler* _scheduler;
   Endpoint* _endpoint;
   std::unique_ptr<Socket> _peer;
 };

@@ -91,15 +91,13 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
     IResearchViewNode const&
   );
 
-  aql::AqlItemBlock* getSome(size_t atMost) override final;
+  std::pair<aql::ExecutionState, std::unique_ptr<aql::AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip between atLeast and atMost returns the number actually skipped . . .
-  // will only return less than atLeast if there aren't atLeast many
-  // things to skip overall.
-  size_t skipSome(size_t atMost) override final;
+  std::pair<aql::ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   // here we release our docs from this collection
-  int initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
+  virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
   bool readDocument(size_t segmentId, irs::doc_id_t docId);
@@ -125,6 +123,9 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   bool _hasMore;
   bool _volatileSort;
   bool _volatileFilter;
+
+  /// @brief The number of documents inflight if we hit a WAITING state.
+  size_t _inflight;
 }; // IResearchViewBlockBase
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -137,6 +138,10 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
+
+  Type getType() const override {
+    return Type::IRESEARCH_VIEW_UNORDERED;
+  }
 
  protected:
   virtual void reset() override final {
@@ -171,6 +176,10 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
     IResearchViewNode const& node
   );
 
+  Type getType() const override final {
+    return Type::IRESEARCH_VIEW;
+  }
+
  protected:
   virtual bool next(
     aql::AqlItemBlock& res,
@@ -198,6 +207,10 @@ class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
+
+  Type getType() const override final {
+    return Type::IRESEARCH_VIEW_ORDERED;
+  }
 
  protected:
   virtual void reset() override {

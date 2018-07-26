@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertFalse, print */
+/*global assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the performance of removal with a skip-list index
@@ -80,7 +80,6 @@ function SkipListPerfSuite() {
       var p=14777;  // must be coprime to N
 
       if (db._engine().name === "rocksdb") {
-        print("FIXME -- fix performance for rockdsdb and remove adjustment in test");
         N = 1000;
         p = 333;
       }

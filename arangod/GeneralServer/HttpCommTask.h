@@ -17,7 +17,7 @@ class HttpCommTask final : public GeneralCommTask {
   static size_t const RunCompactEvery;
 
  public:
-  HttpCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+  HttpCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket> socket,
                ConnectionInfo&&, double timeout);
 
   arangodb::Endpoint::TransportType transportType() override {
@@ -37,8 +37,6 @@ class HttpCommTask final : public GeneralCommTask {
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType,
                          uint64_t messageId, velocypack::Buffer<uint8_t>&&) override;
-
-  bool allowDirectHandling() const override final { return true; }
 
  private:
   void processRequest(std::unique_ptr<HttpRequest>);

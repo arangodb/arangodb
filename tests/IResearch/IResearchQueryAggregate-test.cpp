@@ -33,12 +33,9 @@
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Transaction/StandaloneContext.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -198,7 +195,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      collection->id(),
+      collection,
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
@@ -230,7 +227,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      collection->id(),
+      collection,
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));

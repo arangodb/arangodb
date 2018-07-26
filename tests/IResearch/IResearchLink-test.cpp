@@ -51,12 +51,13 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
-#include "velocypack/Parser.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+
+#include <velocypack/Parser.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -172,7 +173,7 @@ SECTION("test_defaults") {
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, json->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, json->slice(), 1, false);
     CHECK((true == !link));
   }
 
@@ -184,7 +185,7 @@ SECTION("test_defaults") {
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, json->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, json->slice(), 1, false);
     CHECK((true == !link));
   }
 
@@ -228,8 +229,8 @@ SECTION("test_defaults") {
     auto slice = builder->slice();
     CHECK((
       slice.hasKey("view")
-      && slice.get("view").isNumber()
-      && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+      && slice.get("view").isString()
+      && logicalView->guid() == slice.get("view").copyString()
       && slice.hasKey("figures")
       && slice.get("figures").isObject()
       && slice.get("figures").hasKey("memory")
@@ -281,8 +282,8 @@ SECTION("test_defaults") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -298,8 +299,8 @@ SECTION("test_defaults") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -336,7 +337,7 @@ SECTION("test_init") {
       CHECK((actual.empty()));
     }
 
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link));
 
     // collection in view after
@@ -374,7 +375,7 @@ SECTION("test_init") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 101 }");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 43 }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 43, \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 101 ] } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 43, \"type\": \"arangosearch\", \"collections\": [ 101 ] }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
@@ -395,7 +396,7 @@ SECTION("test_init") {
       CHECK((actual.empty()));
     }
 
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link));
 
     // collection in view after
@@ -442,7 +443,7 @@ SECTION("test_drop") {
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
 
-    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link0));
 
     // collection in view before
@@ -459,7 +460,9 @@ SECTION("test_drop") {
       CHECK((actual.empty()));
     }
 
+    CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
     CHECK((TRI_ERROR_NO_ERROR == link0->drop()));
+    CHECK((false == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
 
     // collection not in view after
     {
@@ -475,7 +478,7 @@ SECTION("test_drop") {
       CHECK((actual.empty()));
     }
 
-    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link1));
 
     // collection in view before (new link)
@@ -522,7 +525,7 @@ SECTION("test_unload") {
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
 
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == !link));
 
     // collection in view before
@@ -539,7 +542,9 @@ SECTION("test_unload") {
       CHECK((actual.empty()));
     }
 
+    CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get()) == *logicalView)));
     link->unload();
+    CHECK((false == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get()) == *logicalView)));
 
     // collection in view after unload
     {
@@ -577,8 +582,8 @@ SECTION("test_write") {
   static std::vector<std::string> const EMPTY;
   auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
-  std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-42")).utf8();
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  std::string dataPath = ((((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-42")).utf8();
   auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42, \"includeAllFields\": true }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -606,7 +611,7 @@ SECTION("test_write") {
   CHECK((0 == reader.reopen().live_docs_count()));
   CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).errorNumber()));
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,
@@ -624,7 +629,7 @@ SECTION("test_write") {
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,
@@ -642,7 +647,7 @@ SECTION("test_write") {
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,

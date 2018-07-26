@@ -1428,6 +1428,50 @@ function BaseTestConfig() {
         }
       );
     },
+    
+    testCreateCollectionKeygenUuid: function() {
+      compare(
+        function(state) {
+          var c = db._create(cn, {
+            keyOptions: {
+              type: "uuid",
+              allowUserKeys: false
+            }
+          });
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function(state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(cn, db._collection(cn).name());
+          assertFalse(properties.keyOptions.allowUserKeys);
+          assertEqual("uuid", properties.keyOptions.type);
+        }
+      );
+    },
+    
+    testCreateCollectionKeygenPadded: function() {
+      compare(
+        function(state) {
+          var c = db._create(cn, {
+            keyOptions: {
+              type: "padded",
+              allowUserKeys: false
+            }
+          });
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function(state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(cn, db._collection(cn).name());
+          assertFalse(properties.keyOptions.allowUserKeys);
+          assertEqual("padded", properties.keyOptions.type);
+        }
+      );
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test create collection
@@ -1975,6 +2019,38 @@ function BaseTestConfig() {
         }, {
           restrictType: "exclude",
           restrictCollections: [cn2]
+        }
+      );
+    },
+
+    testViewBasic: function() {
+      compare(
+        function(state) {
+          try {
+            db._create(cn);
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            let links = {};
+            links[cn] =  { 
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
+            };
+            view.properties({"links": links});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
         }
       );
     }

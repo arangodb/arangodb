@@ -91,7 +91,7 @@ void DatabaseReplicationApplier::forget() {
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  engine->removeReplicationApplierConfiguration(&_vocbase);
+  engine->removeReplicationApplierConfiguration(_vocbase);
   _configuration.reset();
 }
 
@@ -103,7 +103,7 @@ void DatabaseReplicationApplier::forget() {
 
   if (vocbase.type() == TRI_VOCBASE_TYPE_NORMAL) {
     applier = std::make_unique<DatabaseReplicationApplier>(
-      DatabaseReplicationApplier::loadConfiguration(&vocbase), vocbase
+      DatabaseReplicationApplier::loadConfiguration(vocbase), vocbase
     );
     applier->loadState();
   } else {
@@ -114,7 +114,9 @@ void DatabaseReplicationApplier::forget() {
 }
 
 /// @brief load a persisted configuration for the applier
-ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TRI_vocbase_t* vocbase) {
+ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(
+    TRI_vocbase_t& vocbase
+) {
   // TODO: move to ReplicationApplier 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = TRI_ERROR_INTERNAL;
@@ -128,7 +130,9 @@ ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TR
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), vocbase->name());
+  return ReplicationApplierConfiguration::fromVelocyPack(
+    builder.slice(), vocbase.name()
+  );
 }
 
 /// @brief store the configuration for the applier
@@ -147,7 +151,7 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = engine->saveReplicationApplierConfiguration(
-    &_vocbase, builder.slice(), doSync
+    _vocbase, builder.slice(), doSync
   );
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -155,13 +159,13 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   }
 }
 
-std::unique_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
-  return std::make_unique<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
+std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
+  return std::make_shared<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
 }
 
-std::unique_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
+std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
                                                                               bool useTick, TRI_voc_tick_t barrierId) const {
-  return std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
+  return std::make_shared<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
                                                            initialTick, useTick, barrierId);
 }
 

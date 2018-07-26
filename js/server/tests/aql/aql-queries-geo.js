@@ -87,8 +87,8 @@ function ahuacatlLegacyGeoTestSuite () {
 
       locations.ensureGeoIndex("latitude", "longitude");
 
+      //locations without index
       locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
-
       for (lat = -40; lat <= 40; ++lat) {
         for (lon = -40; lon <= 40; ++lon) {
           locationsNon.save({"latitude" : lat, "longitude" : lon });
@@ -103,6 +103,10 @@ function ahuacatlLegacyGeoTestSuite () {
     tearDown : function () {
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
+    },
+
+    testNearInvalidCoordinate : function () {
+      assertQueryError(errors.ERROR_QUERY_INVALID_GEO_VALUE.code, "RETURN NEAR(" + locations.name() + ", 1000, 1000, 10)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,12 +134,29 @@ function ahuacatlLegacyGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNear3 : function () {
-      var expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 }, { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
-      var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+      var expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, 
+                       { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 },
+                       { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
+      var query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") " + 
+                  "SORT x.distance DESC LIMIT 3 RETURN x";
+      var actual = runQuery(query);
       assertEqual(expected, actual);
 
-      expected = [ {"distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 }, { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 }, { "distance" : "4484371.86154" , "latitude" : -38, "longitude" : 23 } ];
-      actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+      expected = [ { "distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 },
+                   { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 },
+                   { "distance" : "4484371.86154", "latitude" : -38, "longitude" : 23 } ];
+      query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, 100, \"distance\") "+
+              "SORT x.distance DESC LIMIT 3 RETURN x";
+      actual = runQuery(query);
+      assertEqual(expected, actual);
+
+      //until changed null will result in the default value of 100
+      //expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, 
+      //             { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 },
+      //             { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
+      query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") "+
+              "SORT x.distance DESC LIMIT 3 RETURN x";
+      actual = runQuery(query);
       assertEqual(expected, actual);
     },
 
@@ -151,6 +172,10 @@ function ahuacatlLegacyGeoTestSuite () {
       expected = [ { "latitude" : -40, "longitude" : 40 }, { "latitude" : -40, "longitude" : 39 } ];
       actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 2) SORT x.latitude, x.longitude DESC LIMIT 3 RETURN x");
       assertEqual(expected, actual);
+    },
+    
+    testWithinInvalidCoordinate : function () {
+      assertQueryError(errors.ERROR_QUERY_INVALID_GEO_VALUE.code, "RETURN WITHIN(" + locations.name() + ", 1000, 1000, 100000)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,9 +249,9 @@ function ahuacatlLegacyGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidNearArgument : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, \"foo\")");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, 10, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, \"foo\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, 10, true)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,10 +259,10 @@ function ahuacatlLegacyGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidWithinArgument : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, \"foo\")");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 0, [ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, \"foo\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, 0, [ ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -355,19 +380,28 @@ function legacyGeoTestSuite() {
 
     testNear3: function () {
       var expected = [{ "distance": "14891044.54146", "latitude": 40, "longitude": -40 },
-      { "distance": "14853029.30724", "latitude": 40, "longitude": -39 },
-      { "distance": "14815001.47646", "latitude": 40, "longitude": -38 }];
+                      { "distance": "14853029.30724", "latitude": 40, "longitude": -39 },
+                      { "distance": "14815001.47646", "latitude": 40, "longitude": -38 }];
       var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000) " +
-        "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
-        "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
+                                "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
+                                "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
 
       expected = [{ "distance": "4487652.12954", "latitude": -37, "longitude": 26 },
-      { "distance": "4485565.93668", "latitude": -39, "longitude": 20 },
-      { "distance": "4484371.86154", "latitude": -38, "longitude": 23 }];
+                  { "distance": "4485565.93668", "latitude": -39, "longitude": 20 },
+                  { "distance": "4484371.86154", "latitude": -38, "longitude": 23 }];
+      actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 100) " +
+                            "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
+                            "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
+      assertEqual(expected, actual);
+
+      //until changed null will result in the default value of 100
+      //expected = [{ "distance": "14891044.54146", "latitude": 40, "longitude": -40 },
+      //            { "distance": "14853029.30724", "latitude": 40, "longitude": -39 },
+      //            { "distance": "14815001.47646", "latitude": 40, "longitude": -38 }];
       actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, null) " +
-        "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
-        "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
+                             "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
+                             "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
     },
 
@@ -460,9 +494,9 @@ function legacyGeoTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidNearArgument: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, \"foo\")");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, 10, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, \"foo\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, 10, true)");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -470,10 +504,10 @@ function legacyGeoTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidWithinArgument: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, \"foo\")");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 0, [ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, \"foo\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, 0, [ ])");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -925,13 +959,17 @@ function geoJsonTestSuite() {
     assertEqual(expected, result2.sort(), query.string);
   }
 
-  // GeoJSON test data. https://gist.github.com/aaronlidman/7894176?short_path=2b56a92
+  // GeoJSON test data, located over Borneo, Sumatra and malaysia
   // Mostly from the spec: http://geojson.org/geojson-spec.html.
-  // stuff over Java island
   let indonesia = [
     { "type": "Polygon", "coordinates": [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]]] },
     { "type": "LineString", "coordinates": [[102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]] },
-    { "type": "Point", "coordinates": [102.0, 0.5] }];
+    { "type": "Point", "coordinates": [102.0, 0.5] },
+    { "type": "MultiPolygon", "coordinates": [
+      [[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+      [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+        [[100.2, 0.2], [100.2, 0.8], [100.8, 0.8], [100.8, 0.2], [100.2, 0.2]]]]
+    }];
   let indonesiaKeys = [];
 
   // EMEA region
@@ -997,7 +1035,7 @@ function geoJsonTestSuite() {
         bindVars: {
           "@cc": locations.name(),
         },
-        expected: [indonesiaKeys[0], indonesiaKeys[2]]
+        expected: [indonesiaKeys[0], indonesiaKeys[2], indonesiaKeys[3]]
       });
     },
 
@@ -1030,7 +1068,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle contains
+    /// @brief test polygon contains
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsPolygon1: function () {
@@ -1045,7 +1083,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle contains using a reference
+    /// @brief test polygon contains
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsPolygon2: function () {
@@ -1063,7 +1101,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle contains
+    /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon1: function () {
@@ -1078,7 +1116,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle intersection
+    /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon2: function () {
@@ -1093,7 +1131,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle intersection
+    /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon3: function () {
@@ -1108,7 +1146,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle intersection using a reference
+    /// @brief test polygon intersection using a reference
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon4: function () {
@@ -1123,8 +1161,122 @@ function geoJsonTestSuite() {
         },
         expected: emeaKeys.slice(0, 1)
       });
+    }
+  };
+}
+
+
+function geoFunctionsTestSuite() {
+
+  function runQuery(query) {
+    var result1 = getQueryResults(query.string, query.bindVars || {}, false);
+    var result2 = getQueryResults(query.string, query.bindVars || {}, false,
+      { optimizer: { rules: ["-all"] } });
+    let expected = query.expected.slice().sort();
+    /*
+    result1.forEach(k => internal.print("Res: ", locations.document(k)));
+    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
+
+    assertEqual(expected, result1.sort(), query.string);
+    assertEqual(expected, result2.sort(), query.string);
+  }
+
+  let locations;
+  return {
+
+    testContainsPolygon1: function () {
+      // simple triangle
+      let triangle = {type:"Polygon", coordinates:[[[0,0], [1,0], [0,1], [0,0]]]};
+      let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49]];
+
+      const query = "RETURN GEO_CONTAINS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": triangle, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": triangle, "cc": [1.0, 1.0]}), [false]);
     },
 
+    testContainsPolygon2: function () {
+      // polygon with nested rings
+      let polygon = {type:"Polygon", coordinates:[[[-1,-1], [2,-1], [2,2], [-1,2], [-1,-1]],
+                                                  [[0,0], [1,0], [1,1], [0,1], [0,0]]]};
+      let valid = [[-0.99, -0.99], [1.99, -0.99], [1.99, 1.99], [-0.99, 1.99], 
+                   [-0.5, 0.5], [0.5, 1.5], [1.5, -0.5], [0.5, -0.5]];
+
+      const query = "RETURN GEO_CONTAINS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": polygon, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [0.5, 0.5]}), [false]);
+      assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [3.0, 3.0]}), [false]);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsMultiPolygon: function () {
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
+      let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49],
+                   [2.01, 2.01], [2.01, 2.99], [2.99, 2.01], [2.49, 2.49]];
+
+      const query = "RETURN GEO_CONTAINS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [1.0, 1.0]}), [false]);
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [3.0, 3.0]}), [false]);
+    },
+
+    testIntersectsPolygon1: function () {
+      // polygon with nested rings
+      let polygon = {type:"Polygon", coordinates:[[[-1,-1], [2,-1], [2,2], [-1,2], [-1,-1]],
+      [[0,0], [1,0], [1,1], [0,1], [0,0]]]};
+      let valid = [[-0.99, -0.99], [1.99, -0.99], [1.99, 1.99], [-0.99, 1.99], 
+      [-0.5, 0.5], [0.5, 1.5], [1.5, -0.5], [0.5, -0.5]];
+
+      const query = "RETURN GEO_INTERSECTS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": polygon, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [0.5, 0.5]}), [false]);
+      assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [3.0, 3.0]}), [false]);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsMultiPolygon1: function () {
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
+      let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49],
+                   [2.01, 2.01], [2.01, 2.99], [2.99, 2.01], [2.49, 2.49]];
+
+      const query = "RETURN GEO_INTERSECTS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [1.0, 1.0]}), [false]);
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [3.0, 3.0]}), [false]);
+    },
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsMultiPolygon2: function () {
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
+      let valid = [{"type": "Polygon","coordinates": [[[2.5,2],[3,2.0],[3,2.5],[2.5,2.5],[2.5,2]]]},
+                   {"type": "LineString","coordinates": [[2,2.5],[2.5,3.0]]}, 
+                   {"type": "LineString","coordinates": [[-0,0.5],[0.5,1],[0.5,-0.5]]}];
+
+      const query = "RETURN GEO_INTERSECTS(@polygon, @other)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": multipoly, "other": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "other": {"type": "LineString","coordinates": [[2.5,1],[3,0.05]]}}), [false]);
+    },
   };
 }
 
@@ -1132,5 +1284,6 @@ jsunity.run(ahuacatlLegacyGeoTestSuite);
 jsunity.run(legacyGeoTestSuite);
 jsunity.run(pointsTestSuite);
 jsunity.run(geoJsonTestSuite);
+jsunity.run(geoFunctionsTestSuite);
 
 return jsunity.done();

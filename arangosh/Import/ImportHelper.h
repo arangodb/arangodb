@@ -33,7 +33,6 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-
 #include "Basics/StringBuffer.h"
 #include "Basics/csv.h"
 
@@ -281,6 +280,7 @@ class ImportHelper {
   void addLastField(char const*, size_t, size_t row, size_t column,
                     bool escaped);
 
+  bool collectionExists();
   bool checkCreateCollection();
   bool truncateCollection();
 
@@ -298,7 +298,7 @@ class ImportHelper {
   std::vector<std::unique_ptr<SenderThread>> _senderThreads;
   uint32_t const _threadCount;
   basics::ConditionVariable _threadsCondition;
-
+  basics::StringBuffer _tempBuffer;
 
   std::string _separator;
   std::string _quote;

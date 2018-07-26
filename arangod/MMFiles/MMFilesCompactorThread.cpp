@@ -325,7 +325,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
       auto physical = static_cast<MMFilesCollection*>(context._collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
       bool const useDeadlockDetector = false;
-      int res = physical->lockRead(useDeadlockDetector, trx->tid(), 86400.0);
+      int res = physical->lockRead(useDeadlockDetector, trx->state(), 86400.0);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -336,7 +336,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         } catch (...) {
           ok = false;
         }
-        physical->unlockRead(useDeadlockDetector, trx->tid());
+        physical->unlockRead(useDeadlockDetector, trx->state());
       }
     }
 
@@ -437,7 +437,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-    collection->id(),
+    collection,
     AccessMode::Type::WRITE
   );
 
@@ -874,7 +874,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 }
 
 MMFilesCompactorThread::MMFilesCompactorThread(TRI_vocbase_t& vocbase)
-    : Thread("Compactor"), _vocbase(vocbase) {}
+    : Thread("MMFilesCompactor"), _vocbase(vocbase) {}
 
 MMFilesCompactorThread::~MMFilesCompactorThread() { shutdown(); }
 
@@ -895,7 +895,7 @@ void MMFilesCompactorThread::run() {
     try {
       engine->tryPreventCompaction(
         &_vocbase,
-        [this, &numCompacted, &collections](TRI_vocbase_t* vocbase) {
+        [this, &numCompacted, &collections, &engine](TRI_vocbase_t* vocbase) {
         // compaction is currently allowed
         numCompacted = 0;
 
@@ -905,17 +905,25 @@ void MMFilesCompactorThread::run() {
         } catch (...) {
           collections.clear();
         }
-
+  
         for (auto& collection : collections) {
           bool worked = false;
+            
+          if (engine->isCompactionDisabled()) {
+            continue;
+          }
 
-          auto callback = [this, &collection, &worked]() -> void {
+          auto callback = [this, &collection, &worked, &engine]() -> void {
             if (collection->status() != TRI_VOC_COL_STATUS_LOADED &&
                 collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
               return;
             }
 
             bool doCompact = static_cast<MMFilesCollection*>(collection->getPhysical())->doCompact();
+
+            if (engine->isCompactionDisabled()) {
+              doCompact = false;
+            }
 
             // for document collection, compactify datafiles
             if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
@@ -1017,7 +1025,7 @@ void MMFilesCompactorThread::run() {
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(_vocbase),
-    collection->id(),
+    collection,
     AccessMode::Type::READ
   );
 
@@ -1047,6 +1055,6 @@ int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, MMFilesMarker
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  return compactor->writeElement(*result, marker, /*forceSync*/ false);
+  return compactor->writeElement(*result, marker);
 }
 

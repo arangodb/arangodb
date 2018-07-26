@@ -28,6 +28,7 @@
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -97,7 +98,8 @@ void InternalRestTraverserHandler::createEngine() {
     return;
   }
 
-  auto id = _registry->createNew(_vocbase, body, true);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto id = _registry->createNew(_vocbase, std::move(ctx), body, 600.0, true);
 
   TRI_ASSERT(id != 0);
   VPackBuilder resultBuilder;
@@ -149,7 +151,7 @@ void InternalRestTraverserHandler::queryEngine() {
       return;
     }
     generateResult(ResponseCode::OK,
-                   arangodb::basics::VelocyPackHelper::TrueValue());
+                   arangodb::velocypack::Slice::trueSlice());
     return;
   }
 
@@ -278,5 +280,5 @@ void InternalRestTraverserHandler::destroyEngine() {
   TraverserEngineID id = basics::StringUtils::uint64(suffixes[0]);
   _registry->destroy(id);
   generateResult(ResponseCode::OK,
-                 arangodb::basics::VelocyPackHelper::TrueValue());
+                 arangodb::velocypack::Slice::trueSlice());
 }

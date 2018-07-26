@@ -113,6 +113,16 @@ COUNT()
 
 This is an alias for [LENGTH()](#length).
 
+ENCODE_URI_COMPONENT()
+-----------
+
+`ENCODE_URI_COMPONENT(value) → encodedURIComponentString`
+
+Return the encoded uri component of *value*.
+
+- **value** (string): a string
+- returns **encodedURIComponentString** (string): an encoded uri component of *value*
+
 FIND_FIRST()
 ------------
 
@@ -229,6 +239,31 @@ LENGTH("foobar") // 6
 LENGTH("电脑坏了") // 4
 ```
 
+LEVENSHTEIN_DISTANCE()
+------
+
+`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
+
+Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
+
+- **value1** (string): a string
+- **value2** (string): a string
+
+`LEVENSHTEIN_DISTANCE(value1, value2) → levenshteinDistance`
+
+Return the calculated Levenshtein distance between the input strings *value1* and *value2*.
+
+- **value1** (string): a string
+- **value2** (string): a string
+- returns **levenshteinDistance** (number): calculated Levenshtein distance between the input strings *value1* and *value2*
+
+```js
+LEVENSHTEIN_DISTANCE("foobar", "bar") // 3
+LEVENSHTEIN_DISTANCE(" ", "") // 1
+LEVENSHTEIN_DISTANCE("The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox") // 13
+LEVENSHTEIN_DISTANCE("der mötör trötet", "der trötet") // 6
+```
+
 *LENGTH()* can also determine the [number of elements](Array.md#length) in an array,
 the [number of attribute keys](Document.md#length) of an object / document and
 the [amount of documents](Miscellaneous.md#length) in a collection.
@@ -343,6 +378,8 @@ using regular expression matching.
 - **search** (string): a regular expression search pattern
 - returns **bool** (bool): *true* if the pattern is contained in *text*,
   and *false* otherwise
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
@@ -412,6 +449,8 @@ Replace the pattern *search* with the string *replacement* in the string
 - returns **string** (string): the string *text* with the *search* regex
   pattern replaced with the *replacement* string wherever the pattern exists
   in *text*
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 
 For more details about the rules for characters and sequences refer
 [REGEX_TEST()](#regextest).
@@ -528,6 +567,23 @@ SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo", "bar-baz" ]
 SPLIT( "foo, bar & baz", [ ", ", " & " ] ) // [ "foo", "bar", "baz" ]
 ```
 
+SOUNDEX()
+-----------
+
+`SOUNDEX(value) → soundexString`
+
+Return the soundex fingerprint of *value*.
+
+- **value** (string): a string
+- returns **soundexString** (string): a soundex fingerprint of *value*
+
+```js
+SOUNDEX( "example" ) // "E251"
+SOUNDEX( "ekzampul")  // "E251"
+SOUNDEX( "soundex" ) // "S532"
+SOUNDEX( "sounteks" ) // "S532"
+```
+
 SUBSTITUTE()
 ------------
 
@@ -618,6 +674,26 @@ Return a substring of *value*.
   substring from *offset* to the end of the string
 - returns **substring** (string): a substring of *value*
 
+TO_BASE64()
+-----------
+
+`TO_BASE64(value) → toBase64String`
+
+Return the base64 representation of *value*.
+
+- **value** (string): a string
+- returns **toBase64String** (string): a base64 representation of *value*
+
+TO_HEX()
+-----------
+
+`TO_HEX(value) → toHexString`
+
+Return the hex representation of *value*.
+
+- **value** (string): a string
+- returns **toHexString** (string): a hex representation of *value*
+
 TRIM()
 ------
 
@@ -626,7 +702,8 @@ TRIM()
 Return the string *value* with whitespace stripped from the start and/or end.
 
 The optional *type* parameter specifies from which parts of the string the
-whitespace is stripped. [LTRIM()](#ltrim) and [RTRIM()](#rtrim) are preferred
+whitespace is stripped. [LTRIM()](#ltrim)
+and [RTRIM()](#rtrim) are preferred
 however.
 
 - **value** (string): a string
@@ -665,3 +742,12 @@ All other characters are returned unchanged.
 - **value** (string): a string
 - returns **upperCaseString** (string): *value* with lower-case characters converted
   to upper-case characters
+  
+  UUID()
+  -----------
+  
+  `UUID() → UUIDString`
+  
+  Return a random and uniquely generated UUID.
+
+  - returns **UUIDString** (string): a universally unique identifier

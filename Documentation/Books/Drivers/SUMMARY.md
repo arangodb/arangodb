@@ -1,10 +1,36 @@
 
 # Summary
+
 * [Introduction](README.md)
+
+## Official Drivers
+
 #   https://@github.com/arangodb/arangodb-java-driver.git;arangodb-java-driver;docs/Drivers;;/ 
 * [Java Driver](Java/README.md)
   * [Getting Started](Java/GettingStarted/README.md)
   * [Reference](Java/Reference/README.md)
+	* [Driver Setup](Java/Reference/Setup.md)
+	* [Database](Java/Reference/Database/README.md)
+	  * [Database Manipulation](Java/Reference/Database/DatabaseManipulation.md)
+	  * [Collection Access](Java/Reference/Database/CollectionAccess.md)
+	  * [Queries](Java/Reference/Database/Queries.md)
+	  * [AQL User Functions](Java/Reference/Database/AqlUserFunctions.md)
+	  * [Transactions](Java/Reference/Database/Transactions.md)
+	  * [Graph Access](Java/Reference/Database/GraphAccess.md)
+	  * [HTTP Routes](Java/Reference/Database/HttpRoutes.md)
+	* [Collection](Java/Reference/Collection/README.md)
+	  * [Collection Manipulation](Java/Reference/Collection/CollectionManipulation.md)
+	  * [Document Manipulation](Java/Reference/Collection/DocumentManipulation.md)
+	  * [Indexes](Java/Reference/Collection/Indexes.md)
+	  * [Bulk Import](Java/Reference/Collection/BulkImport.md)
+	* [Cursor](Java/Reference/Cursor.md)
+	* [Graph](Java/Reference/Graph/README.md)
+	  * [Vertex Collection](Java/Reference/Graph/VertexCollection.md)
+	  * [Edge Collection](Java/Reference/Graph/EdgeCollection.md)
+	  * [Vertices Manipulation](Java/Reference/Graph/Vertices.md)
+	  * [Edges Manipulation](Java/Reference/Graph/Edges.md)
+	* [Route](Java/Reference/Route.md)
+	* [Serialization](Java/Reference/Serialization.md)
 #   https://@github.com/arangodb/arangodbjs.git;arangodbjs;docs/Drivers;;/ 
 * [ArangoJS - JavaScript Driver](JS/README.md)
   * [Getting Started](JS/GettingStarted/README.md)
@@ -33,10 +59,6 @@
       * [VertexCollection](JS/Reference/Graph/VertexCollection.md)
       * [EdgeCollection](JS/Reference/Graph/EdgeCollection.md)
     * [Route](JS/Reference/Route.md) 
-#   https://@github.com/arangodb/spring-data.git;spring-data;docs/Drivers;;/ 
-* [Spring Data ArangoDB](SpringData/README.md)
-  * [Getting Started](SpringData/GettingStarted/README.md)
-  * [Reference](SpringData/Reference/README.md)
 #   https://@github.com/arangodb/arangodb-php.git;arangodb-php;docs/Drivers;;/
 * [ArangoDB-PHP](PHP/README.md)
   * [Getting Started](PHP/GettingStarted/README.md)
@@ -46,3 +68,16 @@
   * [Getting Started](GO/GettingStarted/README.md)
   * [Example Requests](GO/ExampleRequests/README.md)
   * [Connection Management](GO/ConnectionManagement/README.md)
+
+## Integrations
+
+#   https://@github.com/arangodb/spring-data.git;spring-data;docs/Drivers;;/ 
+* [Spring Data ArangoDB](SpringData/README.md)
+  * [Getting Started](SpringData/GettingStarted/README.md)
+  * [Reference](SpringData/Reference/README.md)
+#   https://@github.com/arangodb/arangodb-spark-connector.git;arangodb-spark-connector;docs/Drivers;;/
+* [ArangoDB Spark Connector](SparkConnector/README.md)
+  * [Getting Started](SparkConnector/GettingStarted/README.md)
+  * [Reference](SparkConnector/Reference/README.md)
+    * [Java](SparkConnector/Reference/Java.md)
+    * [Scala](SparkConnector/Reference/Scala.md)

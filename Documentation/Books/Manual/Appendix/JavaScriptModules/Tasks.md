@@ -4,7 +4,7 @@ Task Management
 `const tasks = require('@arangodb/tasks')`
 
 **Note**: If you are trying to schedule tasks in Foxx you should
-consider using the [Foxx queues module](../../Foxx/Reference/Scripts.md#queues) instead,
+consider using the [Foxx queues module](../../Foxx/Guides/Scripts.md#queues) instead,
 which provides a more high-level API that also persists tasks across reboots.
 
 ## Introduction to Task Management in ArangoDB

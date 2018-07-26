@@ -28,9 +28,11 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -42,8 +44,6 @@ RestJobHandler::RestJobHandler(GeneralRequest* request,
     : RestBaseHandler(request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
 }
-
-bool RestJobHandler::isDirect() const { return true; }
 
 RestStatus RestJobHandler::execute() {
   // extract the sub-request type
@@ -240,4 +240,26 @@ void RestJobHandler::deleteJob() {
   json.close();
   VPackSlice slice(json.start());
   generateResult(rest::ResponseCode::OK, slice);
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestJobHandler::forwardingTarget() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::GET &&
+      type != rest::RequestType::PUT &&
+      type != rest::RequestType::DELETE_REQ) {
+    return false;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return false;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+
+  return (sourceServer == ServerState::instance()->getShortId())
+      ? 0
+      : sourceServer;
 }

@@ -82,7 +82,7 @@ namespace basics {
 /// The idea of the algorithm is as follows: Each slot in the hash table
 /// contains a pointer to the actual element, as well as two unsigned
 /// integers "prev" and "next" (being indices in the hash table) to
-/// organise a linked list of entries, *within the same hash table*. All
+/// organize a linked list of entries, *within the same hash table*. All
 /// elements with the same key are kept in a doubly linked list. The first
 /// element in such a linked list is kept at the position determined by
 /// its hash with respect to its key (or in the first free slot after this

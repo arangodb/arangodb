@@ -40,11 +40,13 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
  public:
   MMFilesGeoIndex() = delete;
 
-  MMFilesGeoIndex(TRI_idx_iid_t, LogicalCollection*,
-                    arangodb::velocypack::Slice const&,
-                    std::string const& typeName);
+  MMFilesGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+  );
 
- public:
   struct IndexValue {
     IndexValue() : documentId(0), centroid(0,0,0) {}
     IndexValue(LocalDocumentId lid, S2Point&& c)
@@ -55,7 +57,6 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
 
   typedef gtl::btree_multimap<S2CellId, IndexValue> IndexTree;
 
- public:
   IndexType type() const override {
     if ("geo1" == _typeName) {
       return TRI_IDX_TYPE_GEO1_INDEX;
@@ -98,14 +99,6 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
-
-  /// @brief looks up all points within a given radius
-  void withinQuery(transaction::Methods*, double, double,
-                              double, std::string const&, VPackBuilder&) const;
-
-  /// @brief looks up the nearest points
-  void nearQuery(transaction::Methods*, double, double,
-                            size_t, std::string const&, VPackBuilder&) const;
 
   void load() override {}
   void unload() override;

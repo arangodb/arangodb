@@ -36,15 +36,16 @@ class SocketUnixDomain final : public Socket {
   friend class AcceptorUnixDomain;
 
  public:
-  SocketUnixDomain(asio_ns::io_context& ioService)
-      : Socket(ioService, false), _socket(ioService) {}
+  explicit SocketUnixDomain(rest::Scheduler* scheduler)
+      : Socket(scheduler, false),
+        _socket(scheduler->newDomainSocket()) {}
 
   SocketUnixDomain(SocketUnixDomain&& that) = default;
 
   std::string peerAddress() const override { return "local"; }
   int peerPort() const override { return 0; }
 
-  void setNonBlocking(bool v) override { _socket.non_blocking(v); }
+  void setNonBlocking(bool v) override { _socket->non_blocking(v); }
 
   size_t writeSome(basics::StringBuffer* buffer,
                    asio_ns::error_code& ec) override;
@@ -67,7 +68,7 @@ class SocketUnixDomain final : public Socket {
   void close(asio_ns::error_code& ec) override;
 
  private:
-  asio_ns::local::stream_protocol::socket _socket;
+  std::unique_ptr<asio_ns::local::stream_protocol::socket> _socket;
   asio_ns::local::stream_protocol::acceptor::endpoint_type _peerEndpoint;
 };
 }

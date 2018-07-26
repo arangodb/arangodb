@@ -85,6 +85,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
+    {static_cast<int>(ExecutionNode::REMOTESINGLE), "SingleRemoteOperationNode"},
 #ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
 #endif
@@ -92,9 +93,9 @@ std::unordered_map<int, std::string const> const typeNames{
 
 } // namespace
 
-/// @brief returns the type name of the node
-std::string const& ExecutionNode::getTypeString() const {
-  auto it = ::typeNames.find(static_cast<int>(getType()));
+/// @brief resolve nodeType to a string.
+std::string const& ExecutionNode::getTypeString(NodeType type) {
+  auto it = ::typeNames.find(static_cast<int>(type));
 
   if (it != ::typeNames.end()) {
     return (*it).second;
@@ -102,6 +103,12 @@ std::string const& ExecutionNode::getTypeString() const {
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                  "missing type in TypeNames");
+}
+
+
+/// @brief returns the type name of the node
+std::string const& ExecutionNode::getTypeString() const {
+  return getTypeString(getType());
 }
 
 void ExecutionNode::validateType(int type) {
@@ -289,6 +296,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+    case REMOTESINGLE:
+      return new SingleRemoteOperationNode(plan, slice);
 #ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
@@ -442,6 +451,10 @@ ExecutionNode* ExecutionNode::cloneHelper(
     // now assign a new id to the cloned node, otherwise it will fail
     // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
+
+    // cloning with properties will only work if we clone a node into
+    // a different plan
+    TRI_ASSERT(!withProperties);
   }
 
   if (withProperties) {
@@ -1145,10 +1158,29 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       }
       break;
     }
+  case ExecutionNode::REMOTESINGLE: {
+      depth++;
+      auto ep = ExecutionNode::castTo<SingleRemoteOperationNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      auto vars = ep->getVariablesSetHere();
+      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
+      RegisterId registerId =
+          static_cast<RegisterId>(vars.size() + nrRegs.back());
+      nrRegs.emplace_back(registerId);
+
+      for (auto& it : vars) {
+        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
+        totalNrRegs++;
+      }
+      break;
+  }
 
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
+      auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
       TRI_ASSERT(ep);
 
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
@@ -1313,47 +1345,25 @@ EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
-      _random(base.get("random").getBoolean()),
-      _restrictedTo("") {
-  TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_collection != nullptr);
-  VPackSlice restrictedTo = base.get("restrictedTo");
-
-  if (restrictedTo.isString()) {
-    _restrictedTo = restrictedTo.copyString();
-  }
-
-  if (_collection == nullptr) {
-    std::string msg("collection '");
-    msg.append(base.get("collection").copyString());
-    msg.append("' not found");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
-  }
+      CollectionAccessingNode(plan, base),
+      _random(base.get("random").getBoolean()) {
 }
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
-void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
 
-  // Now put info about vocbase and cid in there
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
-  nodes.add("random", VPackValue(_random));
-  nodes.add("satellite", VPackValue(_collection->isSatellite()));
-
-  if (!_restrictedTo.empty()) {
-    nodes.add("restrictedTo", VPackValue(_restrictedTo));
-  }
+  builder.add("random", VPackValue(_random));
 
   // add outvariable and projection
-  DocumentProducingNode::toVelocyPack(nodes);
+  DocumentProducingNode::toVelocyPack(builder);
+
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(builder);
 
   // And close it:
-  nodes.close();
+  builder.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1374,7 +1384,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
     TRI_ASSERT(outVariable != nullptr);
   }
 
-  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _vocbase, _collection, outVariable, _random);
+  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _collection, outVariable, _random);
 
   c->projections(_projections);
 
@@ -1562,7 +1572,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
   }
 
   nodes.add("expressionType", VPackValue(_expression->typeString()));
-  
+
   if ((flags & SERIALIZE_FUNCTIONS) &&
       _expression->node() != nullptr) {
     auto root = _expression->node();
@@ -1580,7 +1590,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic", VPackValue(func->isDeterministic));
             nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
-            nodes.add("usesV8", VPackValue(func->implementation == nullptr || (func->condition && !func->condition())));
+            nodes.add("usesV8", VPackValue(false));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {
@@ -1702,7 +1712,7 @@ bool SubqueryNode::mayAccessCollections() {
     // document, then we count this as a "yes"
     return true;
   }
-  
+
   TRI_ASSERT(_subquery != nullptr);
 
   // if the subquery contains any of these nodes, it may access data from
@@ -1724,10 +1734,10 @@ bool SubqueryNode::mayAccessCollections() {
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-     
+
   NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
   _subquery->walk(finder);
-  
+
   if (!nodes.empty()) {
     return true;
   }

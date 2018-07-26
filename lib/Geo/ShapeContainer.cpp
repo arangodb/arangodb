@@ -67,7 +67,7 @@ ShapeContainer::ShapeContainer(ShapeContainer&& other) noexcept
 }
 ShapeContainer::~ShapeContainer() { delete _data; }
 
-void ShapeContainer::reset(std::unique_ptr<S2Region>&& ptr, Type tt) noexcept {
+void ShapeContainer::reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept {
   delete _data;
   _type = tt;
   _data = ptr.release();
@@ -189,6 +189,7 @@ bool ShapeContainer::mayIntersect(S2CellId cell) const noexcept {
   return _data->MayIntersect(S2Cell(cell));
 }
 
+/// @brief adjust query parameters (specifically max distance)
 void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
   TRI_ASSERT(_data != nullptr);
   if (_data == nullptr) {

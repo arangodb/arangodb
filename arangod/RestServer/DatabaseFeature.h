@@ -97,16 +97,12 @@ class DatabaseFeature : public application_features::ApplicationFeature {
  public:
   VersionTracker* versionTracker() { return &_versionTracker; }
 
-  /// @brief get the ids of all local coordinator databases
-  std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
+  /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
-  std::vector<std::string> getDatabaseNamesCoordinator();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
   int createDatabase(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
-  int dropDatabaseCoordinator(TRI_voc_tick_t id, bool force);
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 
@@ -114,14 +110,13 @@ class DatabaseFeature : public application_features::ApplicationFeature {
                  TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
-  TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
-  TRI_vocbase_t* useDatabaseCoordinator(TRI_voc_tick_t id);
   TRI_vocbase_t* useDatabase(std::string const& name);
   TRI_vocbase_t* useDatabase(TRI_voc_tick_t id);
 
-  TRI_vocbase_t* lookupDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* lookupDatabase(std::string const& name);
-  void enumerateDatabases(std::function<void(TRI_vocbase_t*)>);
+  void enumerateDatabases(
+    std::function<void(TRI_vocbase_t& vocbase)> const& func
+  );
   std::string translateCollectionName(std::string const& dbName, std::string const& collectionName);
 
   void useSystemDatabase();
@@ -139,8 +134,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void enableUpgrade() { _upgrade = true; }
   bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
   void throwCollectionNotLoadedError(bool value) { _throwCollectionNotLoadedError.store(value); }
-  bool check30Revisions() const { return _check30Revisions == "true" || _check30Revisions == "fail"; }
-  bool fail30Revisions() const { return _check30Revisions == "fail"; }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
  private:
@@ -172,9 +165,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
-  std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
-
 
   TRI_vocbase_t* _vocbase; // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
@@ -199,6 +190,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// (addition, removal, change) of database objects  
   VersionTracker _versionTracker;
 };
+
 }
 
 #endif

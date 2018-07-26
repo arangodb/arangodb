@@ -48,8 +48,6 @@ RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
     : RestBaseHandler(request, response), _agent(agent) {}
 
-bool RestAgencyHandler::isDirect() const { return false; }
-
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
@@ -534,7 +532,7 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("term", Value(_agent->term()));
     body.add("leaderId", Value(_agent->leaderID()));
     body.add("commitIndex", Value(last));
-    body.add("lastAcked", _agent->lastAckedAgo()->slice());
+    _agent->lastAckedAgo(body);
     body.add("configuration", _agent->config().toBuilder()->slice());
   }
 
@@ -550,7 +548,9 @@ RestStatus RestAgencyHandler::handleState() {
     body.add(VPackValue(VPackValueType::Object));
     body.add("index", VPackValue(i.index));
     body.add("term", VPackValue(i.term));
-    body.add("query", VPackSlice(i.entry->data()));
+    if (i.entry != nullptr) {
+      body.add("query", VPackSlice(i.entry->data()));
+    }
     body.add("clientId", VPackValue(i.clientId));
     body.close();
   }

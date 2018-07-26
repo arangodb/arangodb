@@ -105,6 +105,8 @@ class EngineInfoContainerDBServer {
       velocypack::Builder& infoBuilder
     ) const;
 
+    /// @returns type of the "main node" if applicable,
+    ///    'ExecutionNode::MAX_NODE_TYPE_VALUE' otherwise
     ExecutionNode::NodeType type() const noexcept {
       return _type;
     }

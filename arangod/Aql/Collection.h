@@ -28,6 +28,8 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -41,33 +43,40 @@ struct Collection {
 
   Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
 
-  ~Collection() {}
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   /// @brief upgrade the access type to exclusive
   void setExclusiveAccess();
 
+  AccessMode::Type accessType() const { return _accessType; }
+  void accessType(AccessMode::Type type) { _accessType = type; }
+  
+  bool isReadWrite() const { return _isReadWrite; }
+
+  void isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
+
   /// @brief set the current shard
-  inline void setCurrentShard(std::string const& shard) {
-    currentShard = shard;
+  void setCurrentShard(std::string const& shard) {
+    _currentShard = shard;
   }
 
   /// @brief remove the current shard
-  inline void resetCurrentShard() { currentShard = ""; }
+  void resetCurrentShard() { _currentShard.clear(); }
 
   /// @brief get the collection id
-  TRI_voc_cid_t cid() const;
+  TRI_voc_cid_t id() const;
 
   /// @brief returns the name of the collection, translated for the sharding
-  /// case. this will return currentShard if it is set, and name otherwise
-  std::string const& getName() const {
-    if (!currentShard.empty()) {
+  /// case. this will return _currentShard if it is set, and name otherwise
+  std::string const& name() const {
+    if (!_currentShard.empty()) {
       // sharding case: return the current shard name instead of the collection
       // name
-      return currentShard;
+      return _currentShard;
     }
 
     // non-sharding case: simply return the name
-    return name;
+    return _name;
   }
 
   /// @brief count the LOCAL number of documents in the collection
@@ -113,20 +122,21 @@ struct Collection {
   bool isSatellite() const;
 
  private:
-  arangodb::LogicalCollection* collection;
+  arangodb::LogicalCollection* _collection;
+  
+  TRI_vocbase_t* _vocbase;
+  
+  std::string _name;
 
   /// @brief currently handled shard. this is a temporary variable that will
   /// only be filled during plan creation
-  std::string currentShard;
+  std::string _currentShard;
+  
+  int64_t mutable _numberDocuments;
+  
+  AccessMode::Type _accessType;
 
- public:
-  std::string name; // FIXME create getter instead
-  TRI_vocbase_t* vocbase;
-  AccessMode::Type accessType;
-  bool isReadWrite;
-  int64_t mutable numDocuments = UNINITIALIZED;
-
-  static int64_t const UNINITIALIZED = -1;
+  bool _isReadWrite;
 };
 }
 }

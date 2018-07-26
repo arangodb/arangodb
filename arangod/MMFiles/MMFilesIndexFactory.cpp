@@ -321,7 +321,7 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
 
 MMFilesIndexFactory::MMFilesIndexFactory() {
   emplaceFactory("edge", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -337,7 +337,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 
   emplaceFactory("fulltext", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -346,7 +346,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 
   emplaceFactory("geo1", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -355,7 +355,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 
   emplaceFactory("geo2", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -364,7 +364,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 
   emplaceFactory("geo", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -373,7 +373,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 
   emplaceFactory("hash", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -382,7 +382,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 
   emplaceFactory("persistent", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -391,7 +391,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 
   emplaceFactory("primary", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -407,7 +407,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 
   emplaceFactory("skiplist", [](
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -586,36 +586,40 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   });
 }
 
-void MMFilesIndexFactory::fillSystemIndexes(arangodb::LogicalCollection* col,
-                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+void MMFilesIndexFactory::fillSystemIndexes(
+    arangodb::LogicalCollection& col,
+    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
+) const {
     // create primary index
     systemIndexes.emplace_back(std::make_shared<arangodb::MMFilesPrimaryIndex>(col));
     
     // create edges index
-    if (col->type() == TRI_COL_TYPE_EDGE) {
+    if (TRI_COL_TYPE_EDGE == col.type()) {
       systemIndexes.emplace_back(std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
     }
   }
 
-void MMFilesIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice const& indexesSlice,
-                                         std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
-  
+void MMFilesIndexFactory::prepareIndexes(
+    LogicalCollection& col,
+    arangodb::velocypack::Slice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+) const {
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
       // We have an error here.
       // Do not add index.
       continue;
     }
-    
+
     auto idx = prepareIndexFromSlice(v, false, col, true);
-    
+
     if (!idx) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-      << "error creating index from definition '"
-      << indexesSlice.toString() << "'";
+      << "error creating index from definition '" << v.toString() << "'";
+
       continue;
     }
-    
+
     indexes.emplace_back(std::move(idx));
   }
 }

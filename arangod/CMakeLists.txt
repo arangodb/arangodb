@@ -192,6 +192,7 @@ SET(ARANGOD_SOURCES
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
   Aql/Collections.cpp
+  Aql/CollectionAccessingNode.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
@@ -219,6 +220,8 @@ SET(ARANGOD_SOURCES
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp
+  Aql/OptimizerRulesCluster.cpp
+  Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OptimizerRulesFeature.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
@@ -251,6 +254,7 @@ SET(ARANGOD_SOURCES
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
+  Aql/WakeupQueryCallback.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
   Auth/Common.cpp
@@ -285,8 +289,8 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
-  Cluster/CollectionLockState.cpp
   Cluster/CriticalThread.cpp
+  Cluster/EngineEqualityCheckFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
@@ -377,6 +381,7 @@ SET(ARANGOD_SOURCES
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
+  Replication/utilities.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
@@ -408,6 +413,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
+  RestHandler/RestTasksHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
@@ -439,9 +445,7 @@ SET(ARANGOD_SOURCES
   RestServer/VocbaseContext.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
-  Scheduler/Job.cpp
   Scheduler/JobGuard.cpp
-  Scheduler/JobQueue.cpp
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
@@ -463,6 +467,7 @@ SET(ARANGOD_SOURCES
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
+  Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
   Transaction/V8Context.cpp
@@ -497,6 +502,7 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
+  VocBase/Methods/Tasks.cpp
   VocBase/Methods/Transactions.cpp
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp

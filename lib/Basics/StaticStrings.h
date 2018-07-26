@@ -131,21 +131,25 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
-  static std::string const MultiPartContentType;
   static std::string const NoSniff;
   static std::string const Origin;
-  static std::string const ResponseCode;
   static std::string const Queue;
+  static std::string const RequestForwardedTo;
+  static std::string const ResponseCode;
   static std::string const Server;
-  static std::string const StartThread;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
+  static std::string const XArangoNoLock;
 
   // mime types
   static std::string const MimeTypeJson;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
+  static std::string const MultiPartContentType;
+
+  // misc strings
+  static std::string const LastValue;
 };
 }
 

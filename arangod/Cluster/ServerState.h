@@ -25,9 +25,7 @@
 #define ARANGOD_CLUSTER_SERVER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-
-#include <iosfwd>
+#include "Basics/ReadWriteSpinLock.h"
 
 namespace arangodb {
 class AgencyComm;
@@ -62,8 +60,6 @@ class ServerState {
     TRYAGAIN = 2,
     /// redirect to lead server if possible
     REDIRECT = 3,
-    /// redirect to lead server if possible
-    READ_ONLY = 4,
     INVALID = 255, // this mode is used to indicate shutdown
   };
 
@@ -101,24 +97,24 @@ class ServerState {
 
   /// @brief convert a string representation to a mode
   static Mode stringToMode(std::string const&);
-
+  
+  /// @brief atomically load current server mode
+  static Mode mode();
+  
   /// @brief sets server mode, returns previously held
   /// value (performs atomic read-modify-write operation)
-  static Mode setServerMode(Mode mode);
-
-  /// @brief atomically load current server mode
-  static Mode serverMode();
-
+  static  Mode setServerMode(Mode mode);
+  
   /// @brief checks maintenance mode
   static bool isMaintenance() {
-    return serverMode() == Mode::MAINTENANCE;
+    return mode() == Mode::MAINTENANCE;
   }
-
+  
   /// @brief should not allow DDL operations / transactions
-  static bool writeOpsEnabled() {
-    Mode mode = serverMode();
-    return mode == Mode::DEFAULT || mode == Mode::MAINTENANCE;
-  }
+  static bool readOnly();
+  
+  /// @brief set server read-only
+  static bool setReadOnly(bool ro);
 
  public:
   /// @brief sets the initialized flag
@@ -133,6 +129,7 @@ class ServerState {
   bool isSingleServer() { return isSingleServer(loadRole()); }
 
   static bool isSingleServer(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_SINGLE);
   }
 
@@ -141,6 +138,7 @@ class ServerState {
 
   /// @brief check whether the server is a coordinator
   static bool isCoordinator(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_COORDINATOR);
   }
 
@@ -151,11 +149,13 @@ class ServerState {
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
   static bool isDBServer(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_PRIMARY);
   }
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_PRIMARY ||
             role == ServerState::ROLE_COORDINATOR);
   }
@@ -168,6 +168,7 @@ class ServerState {
 
   /// @brief check whether the server is an agent
   static bool isAgent(ServerState::RoleEnum role) {
+    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_AGENT);
   }
 
@@ -179,27 +180,35 @@ class ServerState {
     return isClusterRole(role);
   }
 
-  /// @brief check whether the server is a single server or coordinator
+  /// @brief check whether the server is a single or coordinator
   bool isSingleServerOrCoordinator() {
     RoleEnum role = loadRole();
     return isCoordinator(role) || isSingleServer(role);
   }
 
   /// @brief get the server role
-  RoleEnum getRole();
+  inline RoleEnum getRole() const { return loadRole(); }
 
+  /// @brief register with agency, create / load server ID
   bool integrateIntoCluster(RoleEnum role, std::string const& myAddr);
 
+  /// @brief unregister this server with the agency
   bool unregister();
 
   /// @brief set the server role
   void setRole(RoleEnum);
 
   /// @brief get the server id
-  std::string getId();
+  std::string getId() const;
 
   /// @brief set the server id
   void setId(std::string const&);
+
+  /// @brief get the short id
+  uint32_t getShortId();
+
+  /// @brief set the server short id
+  void setShortId(uint32_t);
 
   /// @brief get the server address
   std::string getAddress();
@@ -224,9 +233,6 @@ class ServerState {
   /// @brief gets the JavaScript startup path
   std::string getJavaScriptPath();
 
-  /// @brief forces a specific role
-  void forceRole(RoleEnum role);
-
   /// @brief sets the JavaScript startup path
   void setJavaScriptPath(std::string const&);
 
@@ -246,14 +252,14 @@ class ServerState {
   std::string generatePersistedId(RoleEnum const&);
 
   /// @brief sets server mode and propagates new mode to agency
-  Result propagateClusterServerMode(Mode);
+  Result propagateClusterReadOnly(bool);
 
   /// file where the server persists it's UUID
   std::string getUuidFilename();
 
  private:
   /// @brief atomically fetches the server role
-  RoleEnum loadRole() {
+  inline RoleEnum loadRole() const {
     return _role.load(std::memory_order_consume);
   }
 
@@ -267,9 +273,20 @@ class ServerState {
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
+  
+private:
+  
+  /// @brief server role
+  std::atomic<RoleEnum> _role;
+  
+  /// @brief r/w lock for state
+  mutable arangodb::basics::ReadWriteSpinLock _lock;
 
   /// @brief the server's id, can be set just once
   std::string _id;
+
+  /// @brief the server's short id, can be set just once
+  std::atomic<uint32_t> _shortId;
 
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;
@@ -279,12 +296,6 @@ class ServerState {
 
   /// @brief an identification string for the host a server is running on
   std::string _host;
-
-  /// @brief r/w lock for state
-  arangodb::basics::ReadWriteLock _lock;
-
-  /// @brief the server role
-  std::atomic<RoleEnum> _role;
 
   /// @brief the current state
   StateEnum _state;

@@ -1,6 +1,11 @@
 <!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Troubleshooting datacenter to datacenter replication
 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
 The _datacenter to datacenter replication_ is a distributed system with a lot
 different components. As with any such system, it requires some, but not a lot,
 of operational support.
@@ -90,11 +95,13 @@ This is what you must do in that case:
 
    See [Stopping synchronization](../../Administration/DC2DC/README.md#stopping-synchronization)
    for how to cleanup the source datacenter when it becomes available again.
-1. Verify that configuration has completely stopped using:
+
+2. Verify that configuration has completely stopped using:
    ```bash
    arangosync get status ... -v
    ```
-1. Reconfigure your applications to use the target (backup) datacenter.
+
+3. Reconfigure your applications to use the target (backup) datacenter.
 
 When the original source datacenter is restored, you may switch roles and
 make it the target datacenter. To do so, use `arangosync configure sync ...`

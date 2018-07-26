@@ -33,12 +33,9 @@
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
@@ -64,6 +61,7 @@
 #include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
@@ -372,7 +370,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
-    auto tmpSlice = slice.get("properties").get("links");
+    auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
@@ -383,7 +381,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     arangodb::OperationOptions opt;
     TRI_voc_tick_t tick;
 
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,
@@ -550,7 +548,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
-    auto tmpSlice = slice.get("properties").get("links");
+    auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
@@ -561,7 +559,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     arangodb::OperationOptions opt;
     TRI_voc_tick_t tick;
 
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,

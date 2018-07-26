@@ -399,13 +399,13 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
   }
   _dataBuilder->openArray();
   if (lower == nullptr) {
-    _dataBuilder->add(arangodb::basics::VelocyPackHelper::NullValue());
+    _dataBuilder->add(arangodb::velocypack::Slice::nullSlice());
   } else {
     lower->toVelocyPackValue(*(_dataBuilder.get()));
   }
 
   if (upper == nullptr) {
-    _dataBuilder->add(arangodb::basics::VelocyPackHelper::NullValue());
+    _dataBuilder->add(arangodb::velocypack::Slice::nullSlice());
   } else {
     upper->toVelocyPackValue(*(_dataBuilder.get()));
   }
@@ -722,8 +722,10 @@ void MMFilesSkiplistIterator::initNextInterval() {
 
 /// @brief create the skiplist index
 MMFilesSkiplistIndex::MMFilesSkiplistIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    VPackSlice const& info)
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+)
     : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true),
       CmpElmElm(this),
       CmpKeyElm(this),
@@ -777,7 +779,7 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
 
   // insert into the index. the memory for the element will be owned or freed
   // by the index
@@ -840,13 +842,17 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
     TRI_ASSERT(found);
     LocalDocumentId rev(found->document()->localDocumentId());
     ManagedDocumentResult mmdr;
-    _collection->getPhysical()->readDocument(trx, rev, mmdr);
+
+    _collection.getPhysical()->readDocument(trx, rev, mmdr);
+
     std::string existingId(VPackSlice(mmdr.vpack())
                             .get(StaticStrings::KeyString)
                             .copyString());
+
     if (mode == OperationMode::internal) {
       return IndexResult(res, std::move(existingId));
     }
+
     return IndexResult(res, this, existingId);
   }
 
@@ -879,7 +885,7 @@ Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
   }
 
   ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, numPaths());
+  IndexLookupContext context(trx, &_collection, &result, numPaths());
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
@@ -1186,7 +1192,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
                                      // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
-      return new EmptyIndexIterator(_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx, this);
     }
   } else {
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
@@ -1201,17 +1207,35 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
   if (usesIn) {
     auto builder = std::make_unique<MMFilesSkiplistInLookupBuilder>(
         trx, mapping, reference, !opts.ascending);
-    return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
-                                       _skiplistIndex, numPaths(), CmpElmElm,
-                                       !opts.ascending, builder.release());
+
+    return new MMFilesSkiplistIterator(
+      &_collection,
+      trx,
+      mmdr,
+      this,
+      _skiplistIndex,
+      numPaths(),
+      CmpElmElm,
+      !opts.ascending,
+      builder.release()
+    );
   }
+
   auto builder = std::make_unique<MMFilesSkiplistLookupBuilder>(
       trx, mapping, reference, !opts.ascending);
-  return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
-                                     _skiplistIndex, numPaths(), CmpElmElm,
-                                     !opts.ascending, builder.release());
-}
 
+  return new MMFilesSkiplistIterator(
+    &_collection,
+    trx,
+    mmdr,
+    this,
+    _skiplistIndex,
+    numPaths(),
+    CmpElmElm,
+    !opts.ascending,
+    builder.release()
+  );
+}
 
 bool MMFilesSkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
@@ -1221,7 +1245,6 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
                                                                 estimatedItems, estimatedCost);
 }
 
-
 bool MMFilesSkiplistIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -1229,7 +1252,6 @@ bool MMFilesSkiplistIndex::supportsSortCondition(
   return SkiplistIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
                                                         itemsInIndex, estimatedCost, coveredAttributes);
 }
-
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(

@@ -11,7 +11,7 @@ An _Active Failover_ is defined as:
 _follower_ is currently officially supported. This limitation may be removed in
 future releases.
 
-![Simple Leader / Follower setup, with a single node agency](leader-follower.png)
+![ArangoDB Active Failover](leader-follower.png)
 
 The advantage of the _Active Failover_ compared to a traditional _Master-Slave_
 setup is that there is an active third party, the _Agency_ which observes and supervises
@@ -23,7 +23,8 @@ ArangoDB drivers can automatically determine the correct _leader_ server and
 redirect requests appropriately. Furthermore Foxx Services do also automatically
 perform a failover: should the _leader_ instance fail (which is also the _Foxxmaster_)
 the newly elected _leader_ will reinstall all Foxx services and resume executing
-queued [Foxx tasks](../../Foxx/Reference/Scripts.md). [Database users](../../Administration/ManagingUsers/README.md)
+queued [Foxx tasks](../../Foxx/Guides/Scripts.md).
+[Database users](../../Administration/ManagingUsers/README.md)
 which were created on the _leader_ will also be valid on the newly elected _leader_
 (always depending on the condition that they were synced already).
 

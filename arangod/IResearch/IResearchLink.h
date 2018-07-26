@@ -168,7 +168,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -189,14 +189,13 @@ class IResearchLink {
   // friend arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice const&, bool);
   friend class IResearchView;
 
-  LogicalCollection* _collection; // the linked collection
-  TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
+  LogicalCollection& _collection; // the linked collection
+  std::string _defaultGuid; // the identifier of the desired view (iff _view == nullptr)
   bool _dropCollectionInDestructor; // collection should be dropped from view in the destructor (for the case where init(..) is called folowed by distructor)
   TRI_idx_iid_t const _id; // the index identifier
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
   IResearchView* _view; // effectively the IResearch datastore itself (nullptr == not associated)
-  std::shared_ptr<arangodb::LogicalView> _wiew; // the DBServer view instance (valid only on DBServer)
   std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _viewLock; // prevent view deallocation (lock @ AsyncSelf)
 }; // IResearchLink
 

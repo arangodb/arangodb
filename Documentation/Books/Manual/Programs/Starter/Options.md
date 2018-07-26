@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com//arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Option reference
 
 The ArangoDB Starter provides a lot of options to control various aspects
@@ -95,11 +95,14 @@ and pass it through the `--auth.jwt-secret-path` option.
 For example:
 
 ```bash
-echo "MakeThisSecretMuchStronger" > jwtSecret
+arangodb create jwt-secret --secret=jwtSecret
 arangodb --auth.jwt-secret=./jwtSecret
 ```
 
 All starters used in the cluster must have the same JWT secret.
+
+To use a JWT secret to access the database, use `arangodb auth header`.
+See [Using authentication tokens](./Security.md#using-authentication-tokens) for details.
 
 ## SSL options
 
@@ -274,9 +277,26 @@ This indicates whether or not a DB server instance should be started
 path to rr executable to use if non-empty (default ""). Expert and
 debugging only.
 
+- `--log.color=bool`
+
+If set to `true`, console log output is colorized.
+The default is `true` when a terminal is attached to stdin,
+`false` otherwise or when running on Windows.
+
+- `--log.console=bool`
+
+If set to `true`, log output is written to the console (default `true`).
+
+- `--log.file=bool`
+
+If set to `true`, log output is written to the file (default `true`).
+The log file, called `arangodb.log`, can be found in the directory
+specified using `--log.dir` or if that is not set, the directory
+specified using `--starter.data-dir`.
+
 - `--log.verbose=bool`
 
-show more information (default false).
+show more information (default `false`).
 
 - `--log.dir=path`
 
@@ -284,7 +304,8 @@ set a custom directory to which all log files will be written to.
 When using the Starter in docker, make sure that this directory is
 mounted as a volume for the Starter.
 
-Note: When using a custom log directory, all files will be named as `arangod-<role>-<port>.log`.
+Note: When using a custom log directory, all database server files will be named as `arangod-<role>-<port>.log`.
+The log for the starter itself is still called `arangodb.log`.
 
 - `--log.rotate-files-to-keep=int`
 

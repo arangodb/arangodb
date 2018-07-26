@@ -34,7 +34,7 @@ bool SocketSslTcp::sslHandshake() {
 
   while (true) {
     ec.clear();
-    _sslSocket.handshake(asio_ns::ssl::stream_base::handshake_type::server, ec);
+    _sslSocket->handshake(asio_ns::ssl::stream_base::handshake_type::server, ec);
 
     if (ec.value() != asio_ns::error::would_block) {
       break;

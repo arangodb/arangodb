@@ -49,8 +49,6 @@
 #include "Aql/Query.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"

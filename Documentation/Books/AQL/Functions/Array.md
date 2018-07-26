@@ -14,7 +14,8 @@ Apart from that, AQL also offers several language constructs:
 - [array comparison operators](../Operators.md#array-comparison-operators) to compare
   each element in an array to a value or the elements of another array,
 - loop-based operations using [FOR](../Operations/For.md),
-  [SORT](../Operations/Sort.md), [LIMIT](../Operations/Limit.md),
+  [SORT](../Operations/Sort.md),
+  [LIMIT](../Operations/Limit.md),
   as well as [COLLECT](../Operations/Collect.md) for grouping,
   which also offers efficient aggregation.
 
@@ -48,6 +49,33 @@ RETURN APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
 ## COUNT()
 
 This is an alias for [LENGTH()](#length).
+
+## COUNT_DISTINCT()
+
+`COUNT_DISTINCT(anyArray) → number`
+
+Get the number of distinct elements in an array.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **number**: the number of distinct elements in *anyArray*.
+
+**Examples**
+
+@startDocuBlockInline aqlArrayCountDistinct_1
+@EXAMPLE_AQL{aqlArrayCountDistinct_1}
+RETURN COUNT_DISTINCT([ 1, 2, 3 ])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayCountDistinct_1
+
+@startDocuBlockInline aqlArrayCountDistinct_2
+@EXAMPLE_AQL{aqlArrayCountDistinct_2}
+RETURN COUNT_DISTINCT([ "yes", "no", "yes", "sauron", "no", "yes" ])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlArrayCountDistinct_2
+
+## COUNT_UNIQUE()
+
+This is an alias for [COUNT_DISTINCT()](#countdistinct).
 
 ## FIRST()
 
@@ -584,7 +612,8 @@ RETURN UNION(
 @endDocuBlock aqlArrayUnion_1
 
 Note: No duplicates will be removed. In order to remove duplicates, please use
-either [UNION_DISTINCT()](#uniondistinct) or apply [UNIQUE()](#unique) on the
+either [UNION_DISTINCT()](#uniondistinct)
+or apply [UNIQUE()](#unique) on the
 result of *UNION()*:
 
 @startDocuBlockInline aqlArrayUnion_2

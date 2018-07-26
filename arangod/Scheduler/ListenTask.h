@@ -39,7 +39,7 @@ class ListenTask : virtual public rest::Task {
   static size_t const MAX_ACCEPT_ERRORS = 128;
 
  public:
-  ListenTask(EventLoop, Endpoint*);
+  ListenTask(rest::Scheduler*, Endpoint*);
   ~ListenTask();
 
  public:

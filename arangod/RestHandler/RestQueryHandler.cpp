@@ -45,10 +45,6 @@ RestQueryHandler::RestQueryHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-bool RestQueryHandler::isDirect() const {
-  return _request->requestType() != rest::RequestType::POST;
-}
-
 RestStatus RestQueryHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -114,7 +110,7 @@ bool RestQueryHandler::readQuery(bool slow) {
     if (q.bindParameters != nullptr) {
       result.add("bindVars", q.bindParameters->slice());
     } else {
-      result.add("bindVars", arangodb::basics::VelocyPackHelper::EmptyObjectValue());
+      result.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
     }
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));

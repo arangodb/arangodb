@@ -39,10 +39,10 @@ struct ClusterTransactionData final : public TransactionData {};
 
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(
-    CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     TRI_voc_tid_t tid,
     transaction::Options const& options)
-    : TransactionState(resolver, tid, options) {}
+    : TransactionState(vocbase, tid, options) {}
 
 /// @brief free a transaction container
 ClusterTransactionState::~ClusterTransactionState() {

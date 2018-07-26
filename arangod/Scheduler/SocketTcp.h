@@ -33,9 +33,9 @@ class SocketTcp final : public Socket {
   friend class AcceptorTcp;
 
  public:
-  SocketTcp(asio_ns::io_context& ioService)
-      : Socket(ioService, /*encrypted*/ false),
-        _socket(ioService),
+  SocketTcp(rest::Scheduler* scheduler)
+      : Socket(scheduler, /*encrypted*/ false),
+        _socket(scheduler->newSocket()),
         _peerEndpoint() {}
 
   SocketTcp(SocketTcp const& that) = delete;
@@ -48,32 +48,32 @@ class SocketTcp final : public Socket {
 
   int peerPort() const override { return _peerEndpoint.port(); }
 
-  void setNonBlocking(bool v) override { _socket.non_blocking(v); }
+  void setNonBlocking(bool v) override { _socket->non_blocking(v); }
 
   size_t writeSome(basics::StringBuffer* buffer,
                    asio_ns::error_code& ec) override {
-    return _socket.write_some(
+    return _socket->write_some(
         asio_ns::buffer(buffer->begin(), buffer->length()), ec);
   }
 
   void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                   AsyncHandler const& handler) override {
-    return asio_ns::async_write(_socket, buffer, strand.wrap(handler));
+    return asio_ns::async_write(*_socket, buffer, _strand->wrap(handler));
   }
 
   size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
                   asio_ns::error_code& ec) override {
-    return _socket.read_some(buffer, ec);
+    return _socket->read_some(buffer, ec);
   }
 
   void asyncRead(asio_ns::mutable_buffers_1 const& buffer,
                  AsyncHandler const& handler) override {
-    return _socket.async_read_some(buffer, strand.wrap(handler));
+    return _socket->async_read_some(buffer, _strand->wrap(handler));
   }
 
   void close(asio_ns::error_code& ec) override {
-    if (_socket.is_open()) {
-      _socket.close(ec);
+    if (_socket->is_open()) {
+      _socket->close(ec);
       if (ec && ec != asio_ns::error::not_connected) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "closing socket failed with: " << ec.message();
@@ -82,22 +82,22 @@ class SocketTcp final : public Socket {
   }
 
   std::size_t available(asio_ns::error_code& ec) override {
-    return static_cast<size_t>(_socket.available(ec));
+    return static_cast<size_t>(_socket->available(ec));
   }
 
  protected:
   bool sslHandshake() override { return false; }
 
   void shutdownReceive(asio_ns::error_code& ec) override {
-    _socket.shutdown(asio_ns::ip::tcp::socket::shutdown_receive, ec);
+    _socket->shutdown(asio_ns::ip::tcp::socket::shutdown_receive, ec);
   }
 
   void shutdownSend(asio_ns::error_code& ec) override {
-    _socket.shutdown(asio_ns::ip::tcp::socket::shutdown_send, ec);
+    _socket->shutdown(asio_ns::ip::tcp::socket::shutdown_send, ec);
   }
 
  private:
-  asio_ns::ip::tcp::socket _socket;
+  std::unique_ptr<asio_ns::ip::tcp::socket> _socket;
   asio_ns::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
 }

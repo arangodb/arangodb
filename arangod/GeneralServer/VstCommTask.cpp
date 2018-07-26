@@ -42,7 +42,6 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 
@@ -79,14 +78,14 @@ inline std::size_t validateAndCount(char const* vpStart,
 }
 
 
-VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
+VstCommTask::VstCommTask(Scheduler* scheduler, GeneralServer* server,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
                          double timeout, ProtocolVersion protocolVersion,
                          bool skipInit)
-    : Task(loop, "VstCommTask"),
-      GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
+    : Task(scheduler, "VstCommTask"),
+      GeneralCommTask(scheduler, server, std::move(socket), std::move(info), timeout,
                       skipInit),
-      _authorized(false),
+      _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
       _authenticatedUser(),
       _protocolVersion(protocolVersion) {
@@ -119,8 +118,8 @@ void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType r
 
 void VstCommTask::addResponse(GeneralResponse& baseResponse,
                               RequestStatistics* stat) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
-    //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->runningInThisThread());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     VstResponse& response = dynamic_cast<VstResponse&>(baseResponse);
 #else
@@ -307,17 +306,16 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
     // obi: user who sends authentication expects a reply
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
-                     "authentication successful");
+                     "auth successful");
   } else {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
-                     TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed");
+                     TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 }
 
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
-  //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->runningInThisThread());
   
   auto& prv = _processReadVariables;
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;

@@ -419,12 +419,10 @@ void Conductor::startRecovery() {
   _statistics.reset();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  asio::io_context* ioService = SchedulerFeature::SCHEDULER->ioContext();
-  TRI_ASSERT(ioService != nullptr);
 
   // let's wait for a final state in the cluster
-  _boost_timer.reset(new asio::deadline_timer(
-      *ioService, boost::posix_time::seconds(2)));
+  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
+    boost::posix_time::seconds(2)));
   _boost_timer->async_wait([this](const asio::error_code& error) {
     _boost_timer.reset();
 
@@ -707,28 +705,30 @@ int Conductor::_finalizeWorkers() {
   return res;
 }
 
-VPackBuilder Conductor::collectAQLResults() {
-  _callbackMutex.assertLockedByCurrentThread();
+void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
+  MUTEX_LOCKER(guard, _callbackMutex);
 
   if (_state != ExecutionState::DONE) {
-    return VPackBuilder();
+    return;
   }
 
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.close();
-  VPackBuilder messages;
+  
+  // merge results from DBServers
+  outBuilder.openArray();
   int res = _sendToAllDBServers(Utils::aqlResultsPath, b,
                                 [&](VPackSlice const& payload) {
                                   if (payload.isArray()) {
-                                    messages.add(payload);
+                                    outBuilder.add(VPackArrayIterator(payload));
                                   }
                                 });
+  outBuilder.close();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  return messages;
 }
 
 VPackBuilder Conductor::toVelocyPack() const {

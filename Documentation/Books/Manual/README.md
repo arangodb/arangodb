@@ -10,7 +10,7 @@ New and eager to try out ArangoDB? Start right away with our beginner's guide:
 
 **Structure**
 
-The documentation is organized in four handbooks:
+The documentation is organized in five handbooks:
 
 - This manual describes ArangoDB and its features in detail for you as a user,
   developer and administrator.
@@ -21,6 +21,9 @@ The documentation is organized in four handbooks:
   the language of your choice, you can skip this handbook.
 - Our [Cookbook](../Cookbook/index.html) with recipes for specific problems and
   solutions.
+- The [Driver handbook](../Drivers/index.html) includes the documentation of the
+  available official ArangoDB drivers and integrations, and an overview of the community
+  drivers.
 
 Features are illustrated with interactive usage examples; you can cut'n'paste them
 into [arangosh](Programs/Arangosh/README.md) to try them out. The HTTP
@@ -45,14 +48,15 @@ Key features include:
 * Configurable **durability**: let the application decide if it needs more durability or more performance
 * No-nonsense storage: ArangoDB uses all of the power of **modern storage hardware**, like SSD and large caches
 * JavaScript for all: **no language zoo**, you can use one language from your browser to your back-end
-* ArangoDB can be easily deployed as a [**fault-tolerant distributed state machine**](Deployment/Agency.md), which can serve as the animal brain of distributed appliances
+* ArangoDB can be easily deployed as a [**fault-tolerant distributed state machine**](Deployment/StandaloneAgency/README.md), which can serve as the animal brain of distributed appliances
 * It is **open source** (Apache License 2.0)
 
 **Community**
  
 If you have questions regarding ArangoDB, Foxx, drivers, or this documentation don't hesitate to contact us on:
 
-- [GitHub](https://github.com/arangodb/arangodb/issues) for issues and misbehavior or [pull requests](https://www.arangodb.com/community/)
+- [GitHub](https://github.com/arangodb/arangodb/issues) for issues
+  and misbehavior or [pull requests](https://www.arangodb.com/community/)
 - [Google Groups](https://groups.google.com/forum/?hl=de#!forum/arangodb) for discussions about ArangoDB in general or to announce your new Foxx App
 - [StackOverflow](http://stackoverflow.com/questions/tagged/arangodb) for questions about AQL, usage scenarios etc.
 - [Slack](http://slack.arangodb.com), our community chat

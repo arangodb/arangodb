@@ -26,16 +26,24 @@
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Aql/ModificationOptions.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
+class IndexNode;
+class UpdateNode;
+class ReplaceNode;
+class RemoveNode;
+
 struct Collection;
 
 /// @brief class RemoteNode
@@ -195,7 +203,7 @@ class ScatterNode : public ExecutionNode {
 };
 
 /// @brief class DistributeNode
-class DistributeNode final : public ScatterNode {
+class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class DistributeBlock;
   friend class RedundantCalculationsReplacer;
@@ -210,7 +218,7 @@ class DistributeNode final : public ScatterNode {
       bool createKeys,
       bool allowKeyConversionToObject)
     : ScatterNode(plan, id),
-      _collection(collection),
+      CollectionAccessingNode(collection),
       _variable(variable),
       _alternativeVariable(alternativeVariable),
       _createKeys(createKeys),
@@ -249,7 +257,7 @@ class DistributeNode final : public ScatterNode {
 
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
-  
+
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final;
 
@@ -260,18 +268,12 @@ class DistributeNode final : public ScatterNode {
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
 
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  /// @brief set collection
-  void setCollection(Collection* coll) { _collection = coll; }
-
   void variable(Variable const* variable) { _variable = variable; }
 
   void alternativeVariable(Variable const* variable) {
     _alternativeVariable = variable;
   }
-  
+
   /// @brief set createKeys
   void setCreateKeys(bool b) { _createKeys = b; }
 
@@ -282,9 +284,6 @@ class DistributeNode final : public ScatterNode {
   void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
 
  private:
-  /// @brief the underlying collection
-  Collection const* _collection;
-
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
 
@@ -404,6 +403,123 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief sorting mode
   SortMode _sortmode;
+};
+
+
+/// @brief class RemoteNode
+class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
+  friend class ExecutionBlock;
+  friend class SingleRemoteOperationBlock;
+  /// @brief constructor with an id
+ public:
+
+  SingleRemoteOperationNode(ExecutionPlan* plan,
+                            size_t id,
+                            NodeType mode,
+                            bool replaceIndexNode,
+                            std::string const& key,
+                            aql::Collection const* collection,
+                            ModificationOptions const& options,
+                            Variable const* update,
+                            Variable const* out,
+                            Variable const* OLD,
+                            Variable const* NEW
+                            );
+
+  // We probably do not need this, because the rule will only be used on the coordinator
+  SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+  : ExecutionNode(plan, base), CollectionAccessingNode(plan, base){
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "single remote operation node deserialization not implemented.");
+  }
+
+  /// @brief return the type of the node
+  NodeType getType() const override final { return REMOTESINGLE; }
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          unsigned flags) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+  ) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final {
+    return cloneHelper(
+      std::make_unique<SingleRemoteOperationNode>(
+        plan, _id,
+        _mode, _replaceIndexNode, _key, collection(),
+        _options,
+        _inVariable, _outVariable, _outVariableOld, _outVariableNew
+      ),
+      withDependencies,
+      withProperties
+    );
+  }
+
+  /// @brief getVariablesUsedHere, returning a vector
+  std::vector<Variable const*> getVariablesUsedHere() const override final {
+    std::vector<Variable const*> vec;
+    if(_inVariable){
+      vec.push_back(_inVariable);
+    }
+    return vec;
+  }
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final {
+    if(_inVariable){
+      vars.emplace(_inVariable);
+    }
+  }
+
+  /// @brief getVariablesSetHere
+  virtual std::vector<Variable const*> getVariablesSetHere()
+      const override final {
+    std::vector<Variable const*> vec;
+
+    if (_outVariable) {
+      vec.push_back(_outVariable);
+    }
+    if (_outVariableNew) {
+      vec.push_back(_outVariableNew);
+    }
+    if (_outVariableOld) {
+      vec.push_back(_outVariableOld);
+    }
+
+    return vec;
+  }
+
+  /// @brief estimateCost
+  double estimateCost(size_t&) const override final;
+
+  std::string const& key() const { return _key; }
+
+ private:
+  // whether we replaced an index node
+  bool _replaceIndexNode;
+
+  /// the key of the document we're intending to work with
+  std::string _key;
+
+  NodeType _mode;
+  Variable const* _inVariable;
+  Variable const* _outVariable;
+
+  /// @brief output variable ($OLD)
+  Variable const* _outVariableOld;
+
+  /// @brief output variable ($NEW)
+  Variable const* _outVariableNew;
+
+  /// @brief modification operation options
+  ModificationOptions _options;
 };
 
 }  // namespace arangodb::aql

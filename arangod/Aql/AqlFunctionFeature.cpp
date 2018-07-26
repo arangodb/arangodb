@@ -30,19 +30,14 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
 
-/// @brief determines if code is executed on coordinator or not
-static ExecutionCondition const NotInCoordinator = [] {
-  return !arangodb::ServerState::instance()->isRunningInCluster() ||
-         !arangodb::ServerState::instance()->isCoordinator();
-};
-
 AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 
 AqlFunctionFeature::AqlFunctionFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
-  startsAfter("EngineSelector");
+  startsAfter("V8Phase");
+
   startsAfter("Aql");
 }
 
@@ -73,7 +68,7 @@ void AqlFunctionFeature::prepare() {
   addStorageEngineFunctions();
 
   add({"PREGEL_RESULT", ".", false, true,
-    true, &Functions::PregelResult, NotInCoordinator});
+    true, &Functions::PregelResult});
 }
 
 void AqlFunctionFeature::unprepare() {
@@ -202,6 +197,14 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SHA512", ".", true, false, true, &Functions::Sha512});
   add({"HASH", ".", true, false, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, &Functions::RandomToken});
+  add({"TO_BASE64", ".", true, false, true, &Functions::ToBase64});
+  add({"TO_HEX", ".", true, false, true, &Functions::ToHex});
+  add({"ENCODE_URI_COMPONENT", ".", true, false, true, &Functions::EncodeURIComponent});
+  add({"UUID", "", true, false, true, &Functions::UUID});
+  add({"SOUNDEX", ".", true, false, true, &Functions::Soundex});
+  add({"LEVENSHTEIN_DISTANCE", ".,.", true, false, true, &Functions::LevenshteinDistance});
+  // FULLTEXT is replaced by the AQL optimizer with an index lookup
+  add({"FULLTEXT", ".h,.,.|." , false, true, false, &Functions::NotImplemented});
 }
 
 void AqlFunctionFeature::addNumericFunctions() {
@@ -254,6 +257,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"STDDEV_SAMPLE", ".", true, false, true, &Functions::StdDevSample});
   add({"STDDEV_POPULATION", ".", true, false, true, &Functions::StdDevPopulation});
   addAlias("STDDEV", "STDDEV_POPULATION");
+  add({"COUNT_DISTINCT", ".", true, false, true, &Functions::CountDistinct});
+  addAlias("COUNT_UNIQUE", "COUNT_DISTINCT");
   add({"UNIQUE", ".", true, false, true, &Functions::Unique});
   add({"SORTED_UNIQUE", ".", true, false, true, &Functions::SortedUnique});
   add({"SORTED", ".", true, false, true, &Functions::Sorted});
@@ -296,12 +301,15 @@ void AqlFunctionFeature::addDocumentFunctions() {
 void AqlFunctionFeature::addGeoFunctions() {
   // geo functions
   add({"DISTANCE", ".,.,.,.", true, false, true, &Functions::Distance});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false, true, false });
   add({"IS_IN_POLYGON", ".,.|.", true, false, true, &Functions::IsInPolygon});
   add({"GEO_DISTANCE", ".,.", true, false, true, &Functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.", true, false, true, &Functions::GeoContains});
   add({"GEO_INTERSECTS", ".,.", true, false, true, &Functions::GeoIntersects});
   add({"GEO_EQUALS", ".,.", true, false, true, &Functions::GeoEquals});
+  // NEAR and WITHIN are replaced by the AQL optimizer with collection-based subqueries
+  add({"NEAR", ".h,.,.|.,.", false, true, false, &Functions::NotImplemented});
+  add({"WITHIN", ".h,.,.,.|.", false, true, false, &Functions::NotImplemented});
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false, true, false, &Functions::NotImplemented });
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {

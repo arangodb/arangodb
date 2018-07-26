@@ -25,6 +25,8 @@
 
 #if ARANGODB_STANDALONE_ASIO
 
+#define ASIO_HAS_MOVE 1
+
 #include <asio/buffer.hpp>
 #include <asio/error.hpp>
 #include <asio/io_context.hpp>

@@ -39,7 +39,6 @@
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -263,13 +262,14 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     propSlice,
     createWaitsForSyncReplication,
     enforceReplicationFactor,
-    [&isolate, &result](LogicalCollection* coll) {
+    [&isolate, &result](LogicalCollection& coll)->void {
       if (ServerState::instance()->isCoordinator()) {
-        std::unique_ptr<LogicalCollection> cc = coll->clone();
+        std::unique_ptr<LogicalCollection> cc = coll.clone();
+
         result = WrapCollection(isolate, cc.get());
         cc.release();
       } else {
-        result = WrapCollection(isolate, coll);
+        result = WrapCollection(isolate, &coll);
       }
     }
   );
@@ -335,4 +335,6 @@ void TRI_InitV8IndexCollection(v8::Isolate* isolate,
                        JS_LookupIndexVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getIndexes"),
                        JS_GetIndexesVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "indexes"),
+                       JS_GetIndexesVocbaseCol); // indexes() is an alias for getIndexes() now!
 }

@@ -48,7 +48,10 @@ class QuickHistogram : public arangodb::Thread {
 
  public:
   QuickHistogram()
-    : Thread("QuickHistogram"), _threadRunning(false)
+    : Thread("QuickHistogram"), 
+      _writingLatencies(nullptr),
+      _readingLatencies(nullptr), 
+      _threadRunning(false)
   {}
 
   ~QuickHistogram() {
@@ -119,12 +122,10 @@ protected:
   std::atomic<bool> _threadRunning;
 
  protected:
-  void printInterval(bool force=false) {
+  void printInterval(bool force = false) {
     std::chrono::steady_clock::time_point intervalEnd;
     std::chrono::milliseconds intervalDiff, measuringDiff;
-    std::chrono::microseconds sum, zeroMicros;
-
-    zeroMicros = std::chrono::microseconds(0);
+    std::chrono::microseconds zeroMicros = std::chrono::microseconds(0);
     intervalEnd=std::chrono::steady_clock::now();
     intervalDiff=std::chrono::duration_cast<std::chrono::milliseconds>(intervalEnd - _intervalStart);
 
@@ -134,7 +135,7 @@ protected:
       intervalDiff=std::chrono::duration_cast<std::chrono::milliseconds>(intervalEnd - _intervalStart);
       if (std::chrono::milliseconds(10000) <= intervalDiff || force) {
         double fp_measuring, fp_interval;
-        size_t num=_readingLatencies->size();
+        size_t num = _readingLatencies->size();
 
         measuringDiff = std::chrono::duration_cast<std::chrono::milliseconds>(intervalEnd - _measuringStart);
         fp_measuring = measuringDiff.count() / 1000.0;
@@ -146,7 +147,7 @@ protected:
           bool odd(num & 1);
           size_t half(num/2);
 
-          sum = std::accumulate(_readingLatencies->begin(), _readingLatencies->end(), zeroMicros);
+          std::chrono::microseconds sum = std::accumulate(_readingLatencies->begin(), _readingLatencies->end(), zeroMicros);
           mean = sum / num;
 
           if (1==num) {
@@ -157,12 +158,11 @@ protected:
             median = _readingLatencies->at(half);
           }
         } else {
-          sum = zeroMicros;
           mean = zeroMicros;
           median = zeroMicros;
         } // else
 
-        sort(_readingLatencies->begin(), _readingLatencies->end());
+        std::sort(_readingLatencies->begin(), _readingLatencies->end());
 
         // close but not exact math for percentiles
         per95 = calcPercentile(*_readingLatencies, 950);
@@ -180,13 +180,16 @@ protected:
 
         // old age string buffering & formatting
         char buffer[133];
-        snprintf(buffer, sizeof(buffer), "%.3f,%.3f,%zd,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%s",
-               fp_measuring, fp_interval, num,
-               (0!=num) ? _readingLatencies->at(0).count() : 0,
-               mean.count(),median.count(),
-               per95.count(), per99.count(), per99_9.count(),
-               (0!=num) ? _readingLatencies->at(num-1).count() : 0,
-               0, str.c_str());
+        snprintf(buffer, sizeof(buffer), "%.3f,%.3f,%llu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%s",
+                 fp_measuring, fp_interval, static_cast<unsigned long long>(num),
+                 (0!=num) ? static_cast<long>(_readingLatencies->at(0).count()) : 0,
+                 static_cast<long>(mean.count()),
+                 static_cast<long>(median.count()),
+                 static_cast<long>(per95.count()),
+                 static_cast<long>(per99.count()),
+                 static_cast<long>(per99_9.count()),
+                 (0!=num) ? static_cast<long>(_readingLatencies->at(num-1).count()) : 0,
+                 0, str.c_str());
         LOG_TOPIC(INFO, arangodb::Logger::FIXME)
           << buffer;
 
@@ -200,17 +203,14 @@ protected:
   // calculation taken from http://www.dummies.com/education/math/statistics/how-to-calculate-percentiles-in-statistics
   //  (zero and one size vector calculations not included in that link)
   std::chrono::microseconds calcPercentile(std::vector<std::chrono::microseconds> & SortedLatencies, int Percentile) {
-    size_t index, remainder, nextIndex;
-    std::chrono::microseconds retVal;
-
-    retVal=std::chrono::microseconds(0);
+    std::chrono::microseconds retVal = std::chrono::microseconds(0);
 
     if (0 < SortedLatencies.size()) {
       // useful vector size
 
       // percentiles are x10 ... so 95% is 950 and 99.9% is 999
-      index = SortedLatencies.size() * Percentile;
-      remainder = index % 1000;
+      size_t index = SortedLatencies.size() * Percentile;
+      size_t remainder = index % 1000;
       index /= 1000;
 
       // index is supposed to be x'th entry in list. x'th entry is 1 based, vector is 0 based,
@@ -218,7 +218,7 @@ protected:
       if (0 < index) {
         --index;
       } // if
-      nextIndex = ((index+1)<SortedLatencies.size()) ? index+1 : index;
+      size_t nextIndex = ((index+1)<SortedLatencies.size()) ? index+1 : index;
 
       if (0 == remainder) {
         // whole number index
@@ -246,8 +246,8 @@ protected:
 
 
 class QuickHistogramTimer {
-public:
-  QuickHistogramTimer(QuickHistogram & histo)
+ public:
+  explicit QuickHistogramTimer(QuickHistogram& histo)
     : _intervalStart(std::chrono::steady_clock::now()), _histogram(histo)
   {}
 

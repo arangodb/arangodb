@@ -85,7 +85,7 @@ class GeneralCommTask : public SocketTask {
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>,
+  GeneralCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket>,
                   ConnectionInfo&&, double keepAliveTimeout,
                   bool skipSocketInit = false);
 
@@ -103,10 +103,8 @@ class GeneralCommTask : public SocketTask {
                                  uint64_t messageId, velocypack::Buffer<uint8_t>&&) = 0;
   
   /// @brief send the response to the client.
-  virtual void addResponse(GeneralResponse &, RequestStatistics *) = 0;
+  virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
   
-  virtual bool allowDirectHandling() const = 0;
-
  protected:
   
   enum class RequestFlow : bool {
@@ -132,7 +130,9 @@ class GeneralCommTask : public SocketTask {
   
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int code, std::string const&);
+                        uint64_t messageId, int errorNum, std::string const&);
+  void addErrorResponse(rest::ResponseCode, rest::ContentType,
+                        uint64_t messageId, int errorNum);
   
  protected:
   GeneralServer* const _server;

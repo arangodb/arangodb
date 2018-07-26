@@ -69,10 +69,10 @@ static void JS_StateLoggerReplication(
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+  TRI_vocbase_t& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  auto res = engine->createLoggerState(vocbase,builder);
+  auto res = engine->createLoggerState(&vocbase, builder);
   if(res.fail()){
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -152,7 +152,7 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
   auto transactionContext = transaction::V8Context::Create(vocbase, false);
   auto builderSPtr = std::make_shared<VPackBuilder>();
   Result res = EngineSelectorFeature::ENGINE->lastLogger(
-    &vocbase, transactionContext, tickStart, tickEnd, builderSPtr
+    vocbase, transactionContext, tickStart, tickEnd, builderSPtr
   );
   v8::Handle<v8::Value> result;
 
@@ -214,7 +214,7 @@ static void SynchronizeReplication(
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  std::unique_ptr<InitialSyncer> syncer;
+  std::shared_ptr<InitialSyncer> syncer;
 
   if (applierType == APPLIER_DATABASE) { 
     // database-specific synchronization

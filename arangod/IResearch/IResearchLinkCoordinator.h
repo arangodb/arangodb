@@ -74,7 +74,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
 
   virtual bool canBeDropped() const override { return true; }
 
-  virtual int drop() override;
+  virtual int drop() override { return TRI_ERROR_NO_ERROR; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view
@@ -111,7 +111,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -159,7 +159,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(
     TRI_idx_iid_t id,
-    LogicalCollection* collection
+    LogicalCollection& collection
   );
 
   ////////////////////////////////////////////////////////////////////////////////

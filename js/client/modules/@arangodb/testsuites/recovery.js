@@ -66,8 +66,8 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
     fs.makeDirectoryRecursive(tmpDir);
 
     let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
-    args['server.threads'] = 1;
     args['wal.reserve-logfiles'] = 1;
+    args['rocksdb.wal-file-timeout-initial'] = 10;
     args['database.directory'] = instanceInfo.tmpDataDir + '/db';
 
     args = Object.assign(args, options.extraArgs);
@@ -100,10 +100,6 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
   ]);
 
   let binary = pu.ARANGOD_BIN;
-  if (setup) {
-    binary = pu.TOP_DIR + '/scripts/disable-cores.sh';
-    argv.unshift(pu.ARANGOD_BIN);
-  }
 
   instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup, !setup && options.coreCheck);
 }

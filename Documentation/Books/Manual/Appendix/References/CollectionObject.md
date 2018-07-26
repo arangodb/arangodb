@@ -20,7 +20,7 @@ The following methods exist on the collection object (returned by *db.name*):
 
 *Indexes*
 
-* [collection.dropIndex(index)](../../Indexing/WorkingWithIndexes.md#dropping-an-index)
+* [collection.dropIndex(index)](../../Indexing/WorkingWithIndexes.md#dropping-an-index-via-a-collection-handle)
 * [collection.ensureIndex(description)](../../Indexing/WorkingWithIndexes.md#creating-an-index)
 * [collection.getIndexes(name)](../../Indexing/WorkingWithIndexes.md#listing-all-indexes-of-a-collection)
 * [collection.index(index)](../../Indexing/WorkingWithIndexes.md#index-identifiers-and-handles)

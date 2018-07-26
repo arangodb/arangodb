@@ -42,8 +42,6 @@ namespace aql {
 
 class Query;
 
-typedef std::function<bool()> ExecutionCondition;
-
 typedef SmallVector<AqlValue> VPackFunctionParameters;
 
 typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
@@ -153,8 +151,18 @@ struct Functions {
                              VPackFunctionParameters const&);
    static AqlValue RegexReplace(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
-
-
+   static AqlValue ToBase64(arangodb::aql::Query*,transaction::Methods*,
+                            VPackFunctionParameters const&);
+   static AqlValue ToHex(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+   static AqlValue EncodeURIComponent(arangodb::aql::Query*, transaction::Methods*,
+                                       VPackFunctionParameters const&);
+   static AqlValue UUID(arangodb::aql::Query*, transaction::Methods*,
+                                       VPackFunctionParameters const&);
+   static AqlValue Soundex(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue LevenshteinDistance(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
    // Date
    static AqlValue DateFromParameters(arangodb::aql::Query* query,
                                       transaction::Methods* trx,
@@ -291,6 +299,8 @@ struct Functions {
                          VPackFunctionParameters const&);
     static AqlValue IsKey(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
+    static AqlValue CountDistinct(arangodb::aql::Query*, transaction::Methods*,
+                                  VPackFunctionParameters const&);
     static AqlValue Unique(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
     static AqlValue SortedUnique(arangodb::aql::Query*, transaction::Methods*,
@@ -458,9 +468,13 @@ struct Functions {
     static AqlValue Fail(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
 
-   static AqlValue CurrentUser(arangodb::aql::Query*,
+    static AqlValue CurrentUser(arangodb::aql::Query*,
                                 transaction::Methods*,
                                 VPackFunctionParameters const&);
+
+    /// @brief dummy function that will only throw an error when called
+    static AqlValue NotImplemented(arangodb::aql::Query*, transaction::Methods*,
+                                   VPackFunctionParameters const&);
 };
 
 }

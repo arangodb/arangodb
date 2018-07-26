@@ -28,8 +28,9 @@
 namespace arangodb {
 class AcceptorUnixDomain final : public Acceptor {
  public:
-  AcceptorUnixDomain(asio_ns::io_context& ioService, Endpoint* endpoint)
-      : Acceptor(ioService, endpoint), _acceptor(ioService) {}
+  AcceptorUnixDomain(rest::Scheduler* scheduler, Endpoint* endpoint)
+      : Acceptor(scheduler, endpoint),
+        _acceptor(scheduler->newDomainAcceptor()) {}
 
  public:
   void open() override;
@@ -37,7 +38,7 @@ class AcceptorUnixDomain final : public Acceptor {
   void asyncAccept(AcceptHandler const& handler) override;
 
  private:
-  asio_ns::local::stream_protocol::acceptor _acceptor;
+  std::unique_ptr<asio_ns::local::stream_protocol::acceptor> _acceptor;
 };
 }
 

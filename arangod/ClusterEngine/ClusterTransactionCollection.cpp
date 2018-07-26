@@ -22,7 +22,7 @@
 
 #include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/CollectionLockState.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
@@ -103,12 +103,9 @@ bool ClusterTransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      return true;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    return true;
   }
   return (_lockType != AccessMode::Type::NONE);
 }
@@ -165,24 +162,24 @@ int ClusterTransactionCollection::use(int nestingLevel) {
 
   if (_collection == nullptr) {
     // open the collection
-    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
-      // use and usage-lock
-      TRI_vocbase_col_status_e status;
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _collection = _transaction->vocbase().useCollection(_cid, status);
-      if (_collection != nullptr) {
-        _usageLocked = true;
-      }
-    } else {
-      // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase().lookupCollection(_cid).get();
-
-      if (_collection == nullptr) {
-        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-      }
+    ClusterInfo* ci = ClusterInfo::instance();
+    if (ci == nullptr) {
+      return TRI_ERROR_SHUTTING_DOWN;
     }
-
+    
+    try {
+      _sharedCollection = ci->getCollection(_transaction->vocbase().name(), std::to_string(_cid));
+      if (_sharedCollection) {
+        _collection = _sharedCollection.get();
+        if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+            !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+          // use and usage-lock
+          LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
+          _usageLocked = true;
+        }
+      }
+    } catch(...) {}
+    
     if (_collection == nullptr) {
       int res = TRI_errno();
       if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED) {
@@ -252,13 +249,10 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type,
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(!isLocked());
@@ -289,13 +283,10 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type,
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
+  std::string collName(_collection->name());
+  if (_transaction->isLockedShard(collName)) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(isLocked());

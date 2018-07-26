@@ -112,10 +112,21 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
+  ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/ApplicationServer.cpp
+  ApplicationFeatures/AgencyPhase.cpp
+  ApplicationFeatures/AQLPhase.cpp
+  ApplicationFeatures/BasicPhase.cpp
+  ApplicationFeatures/ClusterPhase.cpp
+  ApplicationFeatures/DatabasePhase.cpp
+  ApplicationFeatures/FinalPhase.cpp
+  ApplicationFeatures/FoxxPhase.cpp
+  ApplicationFeatures/GreetingsPhase.cpp
+  ApplicationFeatures/ServerPhase.cpp
+  ApplicationFeatures/V8Phase.cpp
+  ApplicationFeatures/V8ShellPhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
-  ApplicationFeatures/EngineEqualityCheckFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
@@ -155,6 +166,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
+  Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
   Basics/datetime.cpp

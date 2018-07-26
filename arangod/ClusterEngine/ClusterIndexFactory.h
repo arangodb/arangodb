@@ -32,14 +32,17 @@ class ClusterIndexFactory final : public IndexFactory {
   ClusterIndexFactory();
   ~ClusterIndexFactory() = default;
 
-  void fillSystemIndexes(arangodb::LogicalCollection* col,
-                         std::vector<std::shared_ptr<arangodb::Index>>&
-                             systemIndexes) const override;
+  void fillSystemIndexes(
+    arangodb::LogicalCollection& col,
+    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
+  ) const override;
 
   /// @brief create indexes from a list of index definitions
   void prepareIndexes(
-      LogicalCollection* col, velocypack::Slice const&,
-      std::vector<std::shared_ptr<arangodb::Index>>&) const override;
+    LogicalCollection& col,
+    arangodb::velocypack::Slice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+  ) const override;
 };
 
 }

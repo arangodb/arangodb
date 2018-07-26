@@ -29,13 +29,16 @@
 #include "Rest/HttpResponse.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
+class SingleCollectionTransaction;
 class VocbaseContext;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base request handler
@@ -171,6 +174,12 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string const SIMPLE_REMOVE_PATH;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief tasks path
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string const TASKS_PATH;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief upload path
@@ -311,11 +320,22 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   TRI_voc_rid_t extractRevision(char const*, bool&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a string parameter value
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extracts a string parameter value
+  ////////////////////////////////////////////////////////////////////////////////
 
   void extractStringParameter(std::string const& name, std::string& ret) const;
+
+  /**
+   * @brief Helper to create a new Transaction for a single collection. The helper method will consider
+   *        no-lock headers send via http and will lock the collection accordingly.
+   *
+   * @param collectionName Name of the collection to be locked
+   * @param mode The access mode (READ / WRITE / EXCLUSIVE)
+   *
+   * @return A freshly created transaction for the given collection with proper locking.
+   */
+  std::unique_ptr<SingleCollectionTransaction> createTransaction(std::string const& collectionName, AccessMode::Type mode) const;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -331,17 +351,15 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   TRI_vocbase_t& _vocbase;
 
  public:
-  bool isDirect() const override { return false; }
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepareExecute, to react to X-Arango-Nolock header
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepareExecute() override;
+  virtual void prepareExecute(bool isContinue) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief finalizeExecute, to react to X-Arango-Nolock header
+  /// @brief shutdownExecute, to react to X-Arango-Nolock header
   //////////////////////////////////////////////////////////////////////////////
-  virtual void finalizeExecute() override;
+  virtual void shutdownExecute(bool isFinalized) noexcept override;
 
   virtual bool cancel() override {
     _context.cancel();
@@ -349,10 +367,23 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
     return RestBaseHandler::cancel();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _nolockHeaderSet
-  //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<std::string>* _nolockHeaderSet;
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
+  ////////////////////////////////////////////////////////////////////////////////
+  void pickupNoLockHeaders();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clears the tls variable that stores the X-Arango-Nolock headers
+  ////////////////////////////////////////////////////////////////////////////////
+  void clearNoLockHeaders() noexcept;
+
+ private:
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Container that holds the no-lock header set
+  ////////////////////////////////////////////////////////////////////////////////
+  std::unique_ptr<std::unordered_set<std::string>> _nolockHeaderSet;
 };
 
 }

@@ -55,34 +55,40 @@ using basics::VelocyPackHelper;
 // Note: this entire file should run with superuser rights
 
 namespace {
-  
+
 /// create a collection if it does not exists.
 bool createSystemCollection(TRI_vocbase_t* vocbase,
                             std::string const& name) {
-  Result res = methods::Collections::lookup(vocbase, name,
-                                            [](LogicalCollection* coll) {});
+  auto res =
+    methods::Collections::lookup(vocbase, name, [](LogicalCollection& coll) {});
+
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     uint32_t defaultReplFactor = 1;
     ClusterFeature* cl =
         ApplicationServer::getFeature<ClusterFeature>("Cluster");
+
     if (cl != nullptr) {
       defaultReplFactor = cl->systemReplicationFactor();
     }
+
     VPackBuilder bb;
+
     bb.openObject();
     bb.add("isSystem", VPackSlice::trueSlice());
     bb.add("waitForSync", VPackSlice::falseSlice());
     bb.add("journalSize", VPackValue(1024 * 1024));
     bb.add("replicationFactor", VPackValue(defaultReplFactor));
+
     if (name != "_graphs") {
       bb.add("distributeShardsLike", VPackValue("_graphs"));
     }
+
     bb.close();
     res =
         Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
                             /*waitsForSyncReplication*/ true,
                             /*enforceReplicationFactor*/ true,
-                            [](LogicalCollection* coll) { TRI_ASSERT(coll); });
+                            [](LogicalCollection& coll)->void {});
   }
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -97,12 +103,19 @@ bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
                         bool sparse) {
   VPackBuilder output;
   Result res1, res2;
-  res1 = methods::Collections::lookup(vocbase, name, [&](LogicalCollection* coll) {
-        res2 = methods::Indexes::createIndex(coll, type, fields, unique, sparse);
-      });
+
+  res1 = methods::Collections::lookup(
+    vocbase,
+    name,
+    [&](LogicalCollection& coll)->void {
+      res2 = methods::Indexes::createIndex(&coll, type, fields, unique, sparse);
+    }
+  );
+
   if (res1.fail() || res2.fail()) {
     THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
   }
+
   return true;
 }
 
@@ -136,7 +149,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 
   bool created = false;
   auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
-  arangodb::SingleCollectionTransaction trx(ctx, collection.name(),
+  arangodb::SingleCollectionTransaction trx(ctx, &collection,
                                             arangodb::AccessMode::Type::EXCLUSIVE);
 
   res = trx.begin();

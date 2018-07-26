@@ -36,7 +36,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Cluster/FollowerInfo.h"
@@ -991,7 +990,7 @@ static void JS_FiguresVocbaseCol(
 
   SingleCollectionTransaction trx(
     transaction::V8Context::Create(collection->vocbase(), true),
-    collection->id(),
+    collection,
     AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -1380,16 +1379,20 @@ static void JS_PropertiesVocbaseCol(
   // in the cluster the collection object might contain outdated
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
+
   methods::Collections::lookup(
     &(consoleColl->vocbase()),
     consoleColl->name(),
-    [&](LogicalCollection* coll) {
+    [&](LogicalCollection& coll)->void {
     VPackObjectBuilder object(&builder, true);
-    Result res = methods::Collections::properties(coll, builder);
+    methods::Collections::Context ctxt(coll.vocbase(), &coll);
+    Result res = methods::Collections::properties(ctxt, builder);
+
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   });
+
   // return the current parameter set
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject());
   TRI_V8_TRY_CATCH_END
@@ -2048,7 +2051,7 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>)");
   }
   uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
   auto c = pregel::PregelFeature::instance()->conductor(executionNum);
@@ -2070,23 +2073,33 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
   uint32_t const argLength = args.Length();
   if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>)");
+  }
+  
+  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  if (!feature) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
 
   uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
     auto c = pregel::PregelFeature::instance()->conductor(executionNum);
     if (!c) {
       TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
     }
-
-    VPackBuilder docs = c->collectAQLResults();
+    
+    VPackBuilder docs;
+    c->collectAQLResults(docs);
+    if (docs.isEmpty()) {
+      TRI_V8_RETURN_NULL();
+    }
     TRI_ASSERT(docs.slice().isArray());
+    
     VPackOptions resultOptions = VPackOptions::Defaults;
     auto documents = TRI_VPackToV8(isolate, docs.slice(), &resultOptions);
     TRI_V8_RETURN(documents);
   } else {
-    TRI_V8_THROW_EXCEPTION_USAGE("Only valid on the conductor");
+    TRI_V8_THROW_EXCEPTION_USAGE("Only valid on the coordinator");
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -2110,9 +2123,9 @@ static void JS_RevisionVocbaseCol(
   }
 
   TRI_voc_rid_t revisionId;
-  auto res = methods::Collections::revisionId(
-    collection->vocbase(), collection, revisionId
-  );
+
+  methods::Collections::Context ctxt(collection->vocbase(), collection);
+  auto res = methods::Collections::revisionId(ctxt, revisionId);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2288,7 +2301,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   auto transactionContext =
       std::make_shared<transaction::V8Context>(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, collection->id(), AccessMode::Type::WRITE
+    transactionContext, collection, AccessMode::Type::WRITE
   );
 
   if (!payloadIsArray && !options.overwrite) {
@@ -2438,7 +2451,7 @@ static void JS_TruncateVocbaseCol(
 
   auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    ctx, collection->id(), AccessMode::Type::EXCLUSIVE
+    ctx, collection, AccessMode::Type::EXCLUSIVE
   );
   Result res = trx.begin();
 
@@ -2821,10 +2834,8 @@ static void JS_CountVocbaseCol(
     AccessMode::Type::READ
   );
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders->find(collectionName) != CollectionLockState::_noLockHeaders->end()) {
-      trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-    }
+  if (trx.isLockedShard(collectionName)) {
+    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
 
   Result res = trx.begin();
@@ -2833,7 +2844,7 @@ static void JS_CountVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult opResult = trx.count(collectionName, !details);
+  OperationResult opResult = trx.count(collectionName, details);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {

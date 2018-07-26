@@ -33,10 +33,7 @@
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -198,7 +195,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      collection->id(),
+      collection,
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
@@ -230,7 +227,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      collection->id(),
+      collection,
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
@@ -256,8 +253,8 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
-        "\"testCollection1\": { \"includeAllFields\": true, \"analyzers\": [ \"test_analyzer\", \"identity\" ] }"
+        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true, \"storeValues\":\"id\" },"
+        "\"testCollection1\": { \"includeAllFields\": true, \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"storeValues\":\"id\" }"
       "}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
@@ -311,7 +308,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER STARTS_WITH(d.prefix, 'abc') || PHRASE(d['duplicated'], 'z', 'test_analyzer') || EXISTS(d.same) || d['value'] != 3.14 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER STARTS_WITH(d.prefix, 'abc') || ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') || EXISTS(d.same) || d['value'] != 3.14 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -372,7 +369,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER (d['same'] == 'xyz' && STARTS_WITH(d.prefix, 'abc')) || (PHRASE(d['duplicated'], 'z', 'test_analyzer') && EXISTS(d.value)) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER (d['same'] == 'xyz' && STARTS_WITH(d.prefix, 'abc')) || (ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') && EXISTS(d.value)) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -400,7 +397,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER (d['same'] == 'xyz' && STARTS_WITH(d.prefix, 'abc')) || (PHRASE(d['duplicated'], 'z', 'test_analyzer') && EXISTS(d.value)) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq limit 5 RETURN d"
+      "FOR d IN VIEW testView FILTER (d['same'] == 'xyz' && STARTS_WITH(d.prefix, 'abc')) || (ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') && EXISTS(d.value)) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq limit 5 RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -458,7 +455,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER (d.same == 'xyz' || EXISTS(d['value'])) && (STARTS_WITH(d.prefix, 'abc') || PHRASE(d['duplicated'], 'z', 'test_analyzer') || d.seq >= -3) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER (d.same == 'xyz' || EXISTS(d['value'])) && (STARTS_WITH(d.prefix, 'abc') || ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') || d.seq >= -3) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();

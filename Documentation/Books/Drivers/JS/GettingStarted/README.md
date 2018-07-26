@@ -137,7 +137,8 @@ db.listCollections().then(function (collections) {
 ```
 
 If you are targetting browsers older than Internet Explorer 11 you
-may want to use [babel](https://babeljs.io) with a [polyfill](https://babeljs.io/docs/usage/polyfill)
+may want to use [babel](https://babeljs.io)
+with a [polyfill](https://babeljs.io/docs/usage/polyfill)
 to provide missing functionality needed to use arangojs.
 
 When loading the browser build with a script tag make sure to load the polyfill first:
@@ -212,7 +213,8 @@ AQL queries without making your code vulnerable to injection attacks.
 ## Error responses
 
 If arangojs encounters an API error, it will throw an _ArangoError_ with an
-[_errorNum_ as defined in the ArangoDB documentation](https://docs.arangodb.com/latest/Manual/Appendix/ErrorCodes.html) as well as a _code_ and _statusCode_ property indicating the intended and actual HTTP status code of the response.
+[_errorNum_ as defined in the ArangoDB documentation](../../..//Manual/Appendix/ErrorCodes.html)
+as well as a _code_ and _statusCode_ property indicating the intended and actual HTTP status code of the response.
 
 For any other error responses (4xx/5xx status code), it will throw an
 _HttpError_ error with the status code indicated by the _code_ and _statusCode_ properties.

@@ -68,9 +68,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Config");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 }
 
 void ImportFeature::collectOptions(
@@ -535,9 +533,12 @@ void ImportFeature::start() {
       }
 
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
-      for (std::string const& msg : ih.getErrorMessages()) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+      auto const& msgs = ih.getErrorMessages();
+      if (!msgs.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
+        for (std::string const& msg : msgs) {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+        }
       }
     }
   } catch (std::exception const& ex) {

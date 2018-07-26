@@ -254,17 +254,17 @@ as holes.
 - **points** (array): array of arrays of longitude/latitude pairs
 - returns **geoJson** (object|null): a valid GeoJSON Polygon
 
-Simple Polygon Builder:
+Simple Polygon:
 
 @startDocuBlockInline aqlGeoPolygon_1
 @EXAMPLE_AQL{aqlGeoPolygon_1}
 RETURN GEO_POLYGON([
-  [1.0, 2.0], [3.0, 4.0], [5.0, 6.0]
+  [0.0, 0.0], [7.5, 2.5], [0.0, 5.0]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoPolygon_1
 
-Advanced Polygon Builder with a hole inside:
+Advanced Polygon with a hole inside:
 
 @startDocuBlockInline aqlGeoPolygon_2
 @EXAMPLE_AQL{aqlGeoPolygon_2}
@@ -293,23 +293,21 @@ the query however.
 
 `NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
 
-Return at most *limit* documents from collection *coll* that are near *latitude*
-and *longitude*. The result contains at most *limit* documents, returned sorted
-by distance, with closest distances being returned first. If more than *limit*
-documents qualify, with the distance being exactly the same among multiple
-documents around the limit, it is undefined which of the qualifying documents
-are returned. Optionally, the distances in meters between the specified
-coordinate (*latitude* and *longitude*) and the document coordinates can be
-returned as well. To make use of that, the desired attribute  name for the
-distance result has to be specified in the *distanceName* argument. The result
-documents will contain the distance value in an attribute of that name.
+Return at most *limit* documents from collection *coll* that are near
+*latitude* and *longitude*. The result contains at most *limit* documents,
+returned sorted by distance, with closest distances being returned first.
+Optionally, the distances in meters between the specified coordinate
+(*latitude* and *longitude*) and the document coordinates can be returned as
+well. To make use of that, the desired attribute  name for the distance result
+has to be specified in the *distanceName* argument. The result documents will
+contain the distance value in an attribute of that name.
 
 - **coll** (collection): a collection
 - **latitude** (number): the latitude portion of the search coordinate
 - **longitude** (number): the longitude portion of the search coordinate
 - **limit** (number, *optional*): cap the result to at most this number of
-  documents. The default is 100. If more documents than *limit* are found, it is
-  undefined which ones will be returned.
+  documents. The default is 100. If more documents than *limit* are found,
+  it is undefined which ones will be returned.
 - **distanceName** (string, *optional*): include the distance to the search
   coordinate in each document in the result (in meters), using the attribute
   name *distanceName*

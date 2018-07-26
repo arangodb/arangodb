@@ -46,7 +46,9 @@ class Hints {
     NO_COMPACTION_LOCK = 128, // not supported in RocksDB
     NO_USAGE_LOCK = 256, // not supported in RocksDB
     RECOVERY = 512,
-    NO_DLD = 1024 // disable deadlock detection
+    NO_DLD = 1024, // disable deadlock detection
+    NO_TRACKING = 2048, // use Untracked RocksDB methods
+    NO_INDEXING = 4096 // use DisableIndexing for RocksDB
   };
 
   Hints() : _value(0) {}

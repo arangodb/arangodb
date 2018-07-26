@@ -62,40 +62,11 @@ namespace iresearch {
 
 IResearchLinkCoordinator::IResearchLinkCoordinator(
     TRI_idx_iid_t id,
-    LogicalCollection* collection
+    LogicalCollection& collection
 ): arangodb::Index(id, collection, IResearchLinkHelper::emptyIndexSlice()) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false; // cannot be unique since multiple fields are indexed
   _sparse = true;  // always sparse
-}
-
-int IResearchLinkCoordinator::drop() {
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
-  }
-
-  if (!_view) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
-  }
-
-  // if the collection is in the process of being removed then drop it from the view
-  if (_collection->deleted()) {
-    // revalidate all links
-    auto const result = _view->updateProperties(
-      emptyObjectSlice(), true, false
-    );
-
-    if (!result.ok()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to force view link revalidation while unloading dropped IResearch link '" << id()
-        << "' for IResearch view '" << _view->id() << "'";
-
-      return result.errorNumber();
-    }
-  }
-
-  // drop it from view
-  return _view->drop(_collection->id()).errorNumber();
 }
 
 bool IResearchLinkCoordinator::operator==(LogicalView const& view) const noexcept {
@@ -113,9 +84,9 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false; // failed to parse metadata
   }
 
-  if (!_collection
-      || !definition.isObject()
-      || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
+  if (!definition.isObject()
+      || !(definition.get(StaticStrings::ViewIdField).isString() ||
+           definition.get(StaticStrings::ViewIdField).isNumber())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error finding view for link '" << id() << "'";
     TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -123,38 +94,47 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false;
   }
 
-  auto identifier = definition.get(StaticStrings::ViewIdField);
-  auto viewId = identifier.getNumber<uint64_t>();
-  auto& vocbase = _collection->vocbase();
-    auto logicalView  = vocbase.lookupView(viewId);
+  auto idSlice = definition.get(StaticStrings::ViewIdField);
+  std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
+  auto& vocbase = _collection.vocbase();
 
-    if (!logicalView
-        || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+  TRI_ASSERT(ClusterInfo::instance());
+  auto logicalView  = ClusterInfo::instance()->getView(vocbase.name(), viewId);
+
+  if (!logicalView
+      || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error looking up view '" << viewId << "': no such view";
-      return false; // no such view
-    }
+    return false; // no such view
+  }
 
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto view = std::dynamic_pointer_cast<IResearchViewCoordinator>(logicalView);
-    #else
-      auto view = std::static_pointer_cast<IResearchViewCoordinator>(logicalView);
-    #endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto view = std::dynamic_pointer_cast<IResearchViewCoordinator>(logicalView);
+#else
+  auto view = std::static_pointer_cast<IResearchViewCoordinator>(logicalView);
+#endif
 
-    if (!view) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error finding view: '" << viewId << "' for link '" << id() << "'";
+  if (!view) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "error finding view '" << viewId << "' for link '" << id() << "'";
 
-      return false;
-    }
+    return false;
+  }
 
-    _view = view;
+  if (!view->emplace(_collection.id(), _collection.name(), definition)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "error emplacing link to collection '" << _collection.name() << "' into IResearch view '" << viewId << "' link '" << id() << "'";
 
-    return true;
+    return false;
+  }
+
+  _view = view;
+
+  return true;
 }
 
 /*static*/ IResearchLinkCoordinator::ptr IResearchLinkCoordinator::make(
-  arangodb::LogicalCollection* collection,
+  arangodb::LogicalCollection& collection,
   arangodb::velocypack::Slice const& definition,
   TRI_idx_iid_t id,
   bool // isClusterConstructor
@@ -169,12 +149,18 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     #endif
 
     return link && link->init(definition) ? ptr : nullptr;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while creating IResearch view Coordinator link '" << id << "': " << e.code() << " "  << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating IResearch view Coordinator link '" << id << "'" << e.what();
+      << "caught exception while creating IResearch view Coordinator link '" << id << "': " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while creating IResearch view Coordinator link '" << id << "'";
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -209,7 +195,7 @@ void IResearchLinkCoordinator::toVelocyPack(
   );
   builder.add(
     StaticStrings::ViewIdField,
-    arangodb::velocypack::Value(_view->id())
+    arangodb::velocypack::Value(_view->guid())
   );
 
   if (withFigures) {

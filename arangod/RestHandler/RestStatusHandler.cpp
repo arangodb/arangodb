@@ -31,8 +31,6 @@
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 
-#include <iostream>
-
 #if defined(TRI_HAVE_POSIX_THREADS)
 #include <unistd.h>
 #endif
@@ -52,8 +50,6 @@ RestStatusHandler::RestStatusHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestStatusHandler::isDirect() const { return true; }
-
 RestStatus RestStatusHandler::execute() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -61,7 +57,7 @@ RestStatus RestStatusHandler::execute() {
   result.add("version", VPackValue(ARANGODB_VERSION));
 
   result.add("pid", VPackValue(Thread::currentProcessId()));
-  
+
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
 #else
@@ -71,7 +67,8 @@ RestStatus RestStatusHandler::execute() {
   if (application_features::ApplicationServer::server != nullptr) {
     auto server = application_features::ApplicationServer::server
                       ->getFeature<ServerFeature>("Server");
-    result.add("mode", VPackValue(server->operationModeString()));
+    result.add("mode", VPackValue(server->operationModeString())); // to be deprecated - 3.3 compat
+    result.add("operationMode", VPackValue(server->operationModeString()));
   }
 
   std::string host = ServerState::instance()->getHost();
@@ -92,9 +89,9 @@ RestStatus RestStatusHandler::execute() {
     result.add("serverInfo", VPackValue(VPackValueType::Object));
 
     result.add("maintenance", VPackValue(serverState->isMaintenance()));
-    result.add("role",
-               VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add("writeOpsEnabled", VPackValue(serverState->writeOpsEnabled()));
+    result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+    result.add("writeOpsEnabled", VPackValue(!serverState->readOnly())); // to be deprecated - 3.3 compat
+    result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!serverState->isSingleServer()) {
       result.add("persistedId", VPackValue(serverState->getPersistedId()));

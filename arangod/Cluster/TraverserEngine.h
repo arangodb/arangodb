@@ -71,12 +71,14 @@ class BaseEngine {
 
   static std::unique_ptr<BaseEngine> BuildEngine(
     TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
     arangodb::velocypack::Slice info,
     bool needToLock
   );
 
   BaseEngine(
     TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
     arangodb::velocypack::Slice info,
     bool needToLock
   );
@@ -115,6 +117,7 @@ class BaseTraverserEngine : public BaseEngine {
 
   BaseTraverserEngine(
     TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
     arangodb::velocypack::Slice info,
     bool needToLock
   );
@@ -150,6 +153,7 @@ class ShortestPathEngine : public BaseEngine {
 
   ShortestPathEngine(
     TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
     arangodb::velocypack::Slice info,
     bool needToLock
   );
@@ -176,6 +180,7 @@ class TraverserEngine : public BaseTraverserEngine {
 
   TraverserEngine(
     TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
     arangodb::velocypack::Slice info,
     bool needToLock
   );

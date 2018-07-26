@@ -122,6 +122,28 @@
     c.save({ value: i, more: { value: [ i, i ] } });
   }
   
+  // custom key options
+  c = db._create("UnitTestsDumpKeygenPadded", { 
+    keyOptions: { 
+      type: "padded", 
+      allowUserKeys: false
+    } 
+  });
+  for (i = 0; i < 1000; ++i) {
+    c.save({ value: i, more: { value: [ i, i ] } });
+  }
+  
+  // custom key options
+  c = db._create("UnitTestsDumpKeygenUuid", { 
+    keyOptions: { 
+      type: "uuid", 
+      allowUserKeys: false
+    } 
+  });
+  for (i = 0; i < 1000; ++i) {
+    c.save({ value: i });
+  }
+  
   // strings
   c = db._create("UnitTestsDumpStrings");
   var texts = [
@@ -199,6 +221,19 @@
   for (i = 0; i < 10000; ++i) {
     c.save({ _key: "test" + i, value: i });
   }
+
+  try {
+    db._create("UnitTestsDumpViewCollection");
+    let view = db._createView("UnitTestsDumpView", "arangosearch", {});
+    view.properties({ links: {
+      "UnitTestsDumpViewCollection": { 
+        includeAllFields: true,
+        fields: {
+          text: { analyzers: [ "text_en" ] }
+        }
+      }
+    } });
+  } catch (err) { }
 
 })();
 

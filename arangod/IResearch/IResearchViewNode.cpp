@@ -36,6 +36,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
+#include "Cluster/ClusterInfo.h"
 #include "StorageEngine/TransactionState.h"
 #include "Basics/StringUtils.h"
 
@@ -173,6 +174,43 @@ std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
   return sorts;
 }
 
+/// negative value - value is dirty
+/// _volatilityMask & 1 == volatile filter
+/// _volatilityMask & 2 == volatile sort
+int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
+  auto const inInnerLoop = node.isInInnerLoop();
+  auto const& plan = *node.plan();
+  auto const& outVariable = node.outVariable();
+
+  std::unordered_set<arangodb::aql::Variable const*> vars;
+  int mask = 0;
+
+  // evaluate filter condition volatility
+  auto& filterCondition = node.filterCondition();
+  if (!filterConditionIsEmpty(&filterCondition) && inInnerLoop) {
+    irs::set_bit<0>(::hasDependecies(plan, filterCondition, outVariable, vars), mask);
+  }
+
+  // evaluate sort condition volatility
+  auto& sortCondition = node.sortCondition();
+  if (!sortCondition.empty() && inInnerLoop) {
+    vars.clear();
+
+    for (auto const& sort : sortCondition) {
+      if (::hasDependecies(plan, *sort.node, outVariable, vars)) {
+        irs::set_bit<1>(mask);
+        break;
+      }
+    }
+  }
+
+  return mask;
+}
+
+std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
+  return false;
+};
+
 }
 
 namespace arangodb {
@@ -212,43 +250,73 @@ IResearchViewNode::IResearchViewNode(
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(&ALL),
     _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
-  // FIXME how to check properly
-  _view = _vocbase.lookupView(
-    basics::StringUtils::uint64(base.get("viewId").copyString())
-  );
-  TRI_ASSERT(_view && iresearch::DATA_SOURCE_TYPE == _view->type());
+  // view
+  auto const viewIdSlice = base.get("viewId");
 
+  if (!viewIdSlice.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "invalid vpack format, 'viewId' attribute is intended to be a string"
+    );
+  }
+
+  auto const viewId = viewIdSlice.copyString();
+
+  if (ServerState::instance()->isSingleServer()) {
+    _view = _vocbase.lookupView(basics::StringUtils::uint64(viewId));
+  } else {
+    // need cluster wide view
+    TRI_ASSERT(ClusterInfo::instance());
+    _view = ClusterInfo::instance()->getView(_vocbase.name(), viewId);
+  }
+
+  if (!_view || iresearch::DATA_SOURCE_TYPE != _view->type()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      "unable to find ArangoSearch view with id '" + viewId + "'"
+    );
+  }
+
+  // filter condition
   auto const filterSlice = base.get("condition");
 
-  if (!filterSlice.isEmptyObject()) {
+  if (filterSlice.isObject() && !filterSlice.isEmptyObject()) {
     // AST will own the node
     _filterCondition = new aql::AstNode(
       plan.getAst(), filterSlice
     );
   }
 
+  // shards
   auto const shardsSlice = base.get("shards");
 
-  if (!shardsSlice.isArray()) {
+  if (shardsSlice.isArray()) {
+    TRI_ASSERT(plan.getAst() && plan.getAst()->query());
+    auto const* collections = plan.getAst()->query()->collections();
+    TRI_ASSERT(collections);
+
+    for (auto const shardSlice : velocypack::ArrayIterator(shardsSlice)) {
+      auto const shardId = shardSlice.copyString(); // shardID is collection name on db server
+      auto const* shard = collections->get(shardId);
+
+      if (!shard) {
+        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+            << "unable to lookup shard '" << shardId << "' for the view '" << _view->name() << "'";
+        continue;
+      }
+
+      _shards.push_back(shard->name());
+    }
+  } else {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
       << "invalid 'IResearchViewNode' json format: unable to find 'shards' array";
   }
 
-  TRI_ASSERT(plan.getAst() && plan.getAst()->query());
-  auto const* collections = plan.getAst()->query()->collections();
-  TRI_ASSERT(collections);
+  // volatility mask
+  auto const volatilityMaskSlice = base.get("volatility");
 
-  for (auto const shardSlice : velocypack::ArrayIterator(shardsSlice)) {
-    auto const shardId = shardSlice.copyString(); // shardID is collection name on db server
-    auto const* shard = collections->get(shardId);
-
-    if (!shard) {
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-          << "unable to lookup shard '" << shardId << "' for the view '" << _view->name() << "'";
-      continue;
-    }
-
-    _shards.push_back(shard->getName());
+  if (volatilityMaskSlice.isNumber()) {
+    _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
 }
 
@@ -280,27 +348,15 @@ void IResearchViewNode::planNodeRegisters(
   }
 }
 
-bool IResearchViewNode::volatile_filter() const {
-  if (!filterConditionIsEmpty(_filterCondition) && isInInnerLoop()) {
-    std::unordered_set<arangodb::aql::Variable const*> vars;
-    return ::hasDependecies(*plan(), *_filterCondition, outVariable(), vars);
+std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const {
+  if (force || _volatilityMask < 0) {
+    _volatilityMask = evaluateVolatility(*this);
   }
 
-  return false;
-}
-
-bool IResearchViewNode::volatile_sort() const {
-  if (!_sortCondition.empty() && isInInnerLoop()) {
-    std::unordered_set<aql::Variable const*> vars;
-
-    for (auto const& sort : _sortCondition) {
-      if (::hasDependecies(*plan(), *sort.node, outVariable(), vars)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  return std::make_pair(
+    irs::check_bit<0>(_volatilityMask), // filter
+    irs::check_bit<1>(_volatilityMask)  // sort
+  );
 }
 
 /// @brief toVelocyPack, for EnumerateViewNode
@@ -313,6 +369,7 @@ void IResearchViewNode::toVelocyPackHelper(
 
   // system info
   nodes.add("database", VPackValue(_vocbase.name()));
+  // need 'view' field to correctly print view name in JS explanation
   nodes.add("view", VPackValue(_view->name()));
   nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 
@@ -340,6 +397,9 @@ void IResearchViewNode::toVelocyPackHelper(
       nodes.add(VPackValue(shard));
     }
   }
+
+  // volatility mask
+  nodes.add("volatility", VPackValue(_volatilityMask));
 
   nodes.close();
 }
@@ -394,12 +454,13 @@ aql::ExecutionNode* IResearchViewNode::clone(
     decltype(_sortCondition)(_sortCondition)
   );
   node->_shards = _shards;
+  node->_volatilityMask = _volatilityMask;
 
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
 
 bool IResearchViewNode::empty() const noexcept {
-  return _view->visitCollections([](TRI_voc_cid_t){ return false; });
+  return _view->visitCollections(viewIsEmpty);
 }
 
 /// @brief the cost of an enumerate view node
@@ -439,30 +500,28 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto* trx = engine.getQuery()->trx();
 
-  if (!trx || !(trx->state())) {
+  if (!trx) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get transaction state while creating IResearchView ExecutionBlock";
+      << "failed to get transaction while creating IResearchView ExecutionBlock";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
-      "failed to get transaction state while creating IResearchView ExecutionBlock"
+      "failed to get transaction while creating IResearchView ExecutionBlock"
     );
   }
 
-  auto& state = *(trx->state());
+  auto& view = *this->view();
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    // FIXME pass list of the shards involved
-    // FIXME cache snapshot in transaction state when transaction starts
-    reader = LogicalView::cast<IResearchViewDBServer>(*this->view()).snapshot(state, true);
+    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(*trx, _shards, true);
   } else {
-    reader = LogicalView::cast<IResearchView>(*this->view()).snapshot(state);
+    reader = LogicalView::cast<IResearchView>(view).snapshot(*trx);
   }
 
   if (!reader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view()->name() << "' tid '" << state.id() << "'";
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,

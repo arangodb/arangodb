@@ -290,7 +290,7 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
 
 RocksDBIndexFactory::RocksDBIndexFactory() {
   emplaceFactory("edge",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    if (!isClusterConstructor) {
@@ -311,7 +311,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
                  });
 
   emplaceFactory("fulltext",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    return std::make_shared<RocksDBFulltextIndex>(id, collection,
@@ -319,7 +319,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
                  });
 
   emplaceFactory("geo1",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    return std::make_shared<RocksDBGeoIndex>(id, collection,
@@ -327,7 +327,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
                  });
 
   emplaceFactory("geo2",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    return std::make_shared<RocksDBGeoIndex>(id, collection,
@@ -335,7 +335,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
                  });
 
   emplaceFactory("geo",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    return std::make_shared<RocksDBGeoIndex>(id, collection,
@@ -343,7 +343,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
                  });
 
   emplaceFactory("hash",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    return std::make_shared<RocksDBHashIndex>(id, collection,
@@ -351,7 +351,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
                  });
 
   emplaceFactory("persistent",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    return std::make_shared<RocksDBPersistentIndex>(
@@ -359,7 +359,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
                  });
 
   emplaceFactory("primary",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    if (!isClusterConstructor) {
@@ -373,7 +373,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
                  });
 
   emplaceFactory("skiplist",
-                 [](LogicalCollection* collection,
+                 [](LogicalCollection& collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
                    return std::make_shared<RocksDBSkiplistIndex>(id, collection,
@@ -585,29 +585,35 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
 }
 
 
-void RocksDBIndexFactory::fillSystemIndexes(arangodb::LogicalCollection* col,
-                                            std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
-  
+void RocksDBIndexFactory::fillSystemIndexes(
+    arangodb::LogicalCollection& col,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+) const {
   // create primary index
   VPackBuilder builder;
   builder.openObject();
   builder.close();
-  
+
   indexes.emplace_back(std::make_shared<RocksDBPrimaryIndex>(col, builder.slice()));
+
   // create edges indexes
-  if (col->type() == TRI_COL_TYPE_EDGE) {
+  if (TRI_COL_TYPE_EDGE == col.type()) {
     indexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, builder.slice(), StaticStrings::FromString));
     indexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, builder.slice(), StaticStrings::ToString));
   }
 }
 
 /// @brief create indexes from a list of index definitions
-void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice const& indexesSlice,
-                                         std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+void RocksDBIndexFactory::prepareIndexes(
+    LogicalCollection& col,
+    arangodb::velocypack::Slice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+) const {
   TRI_ASSERT(indexesSlice.isArray());
-  
+
   bool splitEdgeIndex = false;
   TRI_idx_iid_t last = 0;
+
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
                                                             false)) {
@@ -616,19 +622,23 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
       // TODO Handle Properly
       continue;
     }
-    
-    bool alreadyHandled = false;
+
     // check for combined edge index from MMFiles; must split!
     auto value = v.get("type");
+
     if (value.isString()) {
       std::string tmp = value.copyString();
       arangodb::Index::IndexType const type =
       arangodb::Index::type(tmp.c_str());
+
       if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         VPackSlice fields = v.get("fields");
+
         if (fields.isArray() && fields.length() == 2) {
           VPackBuilder from;
+
           from.openObject();
+
           for (auto const& f : VPackObjectIterator(v)) {
             if (arangodb::StringRef(f.key) == "fields") {
               from.add(VPackValue("fields"));
@@ -640,10 +650,13 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
               from.add(f.value);
             }
           }
+
           from.close();
-          
+
           VPackBuilder to;
+
           to.openObject();
+
           for (auto const& f : VPackObjectIterator(v)) {
             if (arangodb::StringRef(f.key) == "fields") {
               to.add(VPackValue("fields"));
@@ -652,6 +665,7 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
               to.close();
             } else if (arangodb::StringRef(f.key) == "id") {
               auto iid = basics::StringUtils::uint64(f.value.copyString()) + 1;
+
               last = iid;
               to.add("id", VPackValue(std::to_string(iid)));
             } else {
@@ -659,20 +673,38 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
               to.add(f.value);
             }
           }
+
           to.close();
-          
+
           auto idxFrom = prepareIndexFromSlice(from.slice(), false, col, true);
-          indexes.emplace_back(std::move(idxFrom));
-          
+
+          if (!idxFrom) {
+            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              << "error creating index from definition '" << from.slice().toString() << "'";
+
+            continue;
+          }
+
           auto idxTo = prepareIndexFromSlice(to.slice(), false, col, true);
+
+          if (!idxTo) {
+            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              << "error creating index from definition '" << to.slice().toString() << "'";
+
+            continue;
+          }
+
+          indexes.emplace_back(std::move(idxFrom));
           indexes.emplace_back(std::move(idxTo));
-          
-          alreadyHandled = true;
           splitEdgeIndex = true;
+
+          continue;
         }
       } else if (splitEdgeIndex) {
         VPackBuilder b;
+
         b.openObject();
+
         for (auto const& f : VPackObjectIterator(v)) {
           if (arangodb::StringRef(f.key) == "id") {
             last++;
@@ -682,21 +714,35 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
             b.add(f.value);
           }
         }
+
         b.close();
-        
+
         auto idx = prepareIndexFromSlice(b.slice(), false, col, true);
+
+        if (!idx) {
+          LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+            << "error creating index from definition '" << b.slice().toString() << "'";
+
+          continue;
+        }
+
         indexes.emplace_back(std::move(idx));
-        
-        alreadyHandled = true;
+
+        continue;
       }
     }
-    
-    if (!alreadyHandled) {
-      auto idx = prepareIndexFromSlice(v, false, col, true);
-      indexes.emplace_back(std::move(idx));
+
+    auto idx = prepareIndexFromSlice(v, false, col, true);
+
+    if (!idx) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "error creating index from definition '" << v.toString() << "'";
+
+      continue;
     }
+
+    indexes.emplace_back(std::move(idx));
   }
-  
 }
 
 // -----------------------------------------------------------------------------
