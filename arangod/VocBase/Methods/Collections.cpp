@@ -370,7 +370,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   if (!ServerState::instance()->isCoordinator()) {
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
-                       "replicationFactor", "shardKeys"});
+                       "replicationFactor", "shardKeys", "shardingStrategy"});
 
     // this transaction is held longer than the following if...
     auto trx = ctxt.trx(AccessMode::Type::READ, true, false);

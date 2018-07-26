@@ -51,6 +51,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Agency/AgencyFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
@@ -74,6 +75,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -162,6 +164,7 @@ struct IResearchViewCoordinatorSetup {
     buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(&server), true);
     buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
     buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
     #if USE_ENTERPRISE
