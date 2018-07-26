@@ -190,6 +190,10 @@ bool FollowerInfo::remove(ServerID const& sid) {
     // such an important decision like dropping a follower.
     return false;
   }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Removing follower " << sid << " from " << _docColl->name();
+
   MUTEX_LOCKER(locker, _mutex);
 
   // First check if there is anything to do:
@@ -279,6 +283,10 @@ bool FollowerInfo::remove(ServerID const& sid) {
     LOG_TOPIC(ERR, Logger::CLUSTER)
         << "FollowerInfo::remove, timeout in agency operation for key " << path;
   }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Removing follower " << sid << " from " << _docColl->name() << "succeeded: " << success;
+
   return success;
 }
 

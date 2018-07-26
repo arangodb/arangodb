@@ -59,8 +59,6 @@ using namespace arangodb::methods;
 using namespace arangodb::transaction;
 using namespace arangodb;
 
-constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
-constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 constexpr auto REPL_HOLD_READ_LOCK = "/_api/replication/holdReadLockCollection";
 constexpr auto REPL_ADD_FOLLOWER = "/_api/replication/addFollower";
 constexpr auto REPL_REM_FOLLOWER = "/_api/replication/removeFollower";
@@ -87,10 +85,8 @@ SynchronizeShard::SynchronizeShard(
   ActionBase(feature, desc) {
   TRI_ASSERT(desc.has(COLLECTION));
   TRI_ASSERT(desc.has(DATABASE));
-  TRI_ASSERT(desc.has(ID));
+  TRI_ASSERT(desc.has(COLLECTION));
   TRI_ASSERT(desc.has(LEADER));
-  TRI_ASSERT(properties().hasKey(TYPE));
-  TRI_ASSERT(properties().get(TYPE).isInteger()); 
 }
 
 class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
@@ -234,7 +230,7 @@ arangodb::Result addShardFollower (
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
     } else {
       errorMessage += "with shortcut.";
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
+      LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMessage;
     }
     return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
   }
@@ -249,7 +245,7 @@ arangodb::Result removeShardFollower (
   std::string const& endpoint, std::string const& database,
   std::string const& shard, std::string const& clientId, double timeout = 120.0) {
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
+  LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
     "removeShardFollower: tell the leader to take us off the follower list...";
   
   auto cc = arangodb::ClusterComm::instance();
@@ -282,7 +278,7 @@ arangodb::Result removeShardFollower (
     return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
   }
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "removeShardFollower: success" ;
+  LOG_TOPIC(WARN, Logger::MAINTENANCE) << "removeShardFollower: success" ;
   return arangodb::Result();
 
 }
@@ -319,7 +315,7 @@ arangodb::Result cancelReadLockOnLeader (
     return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
   }
   
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
+  LOG_TOPIC(WARN, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
   return arangodb::Result();
   
 }
@@ -361,7 +357,7 @@ arangodb::Result cancelBarrier(
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
   
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
+  LOG_TOPIC(WARN, Logger::MAINTENANCE) << "cancelBarrier: success";
   return arangodb::Result();
   
 }
@@ -414,10 +410,10 @@ arangodb::Result SynchronizeShard::getReadLock(
           slice.get("lockHeld").getBool()) {
         return arangodb::Result();
       }
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC(WARN, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Lock not yet acquired...";
     } else {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC(WARN, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Do not see read lock yet...";
     }
 
@@ -471,8 +467,6 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
 
   result = getReadLock(endpoint, database, collection, clientId, rlid, timeout);
   
-  auto elapsed = (steady_clock::now() - start).count();
-
   return result;
   
 }
@@ -685,13 +679,14 @@ arangodb::Result SynchronizeShard::synchronise() {
     TRI_ASSERT(ci != nullptr);
 
     std::string const cid = std::to_string(ci->id());
-    std::string const& name = ci->name();
     std::shared_ptr<CollectionInfoCurrent> cic =
       ClusterInfo::instance()->getCollectionCurrent(database, cid);
-    std::vector<std::string> current;
-    auto curres = cic->servers(shard);
+    std::vector<std::string> current = cic->servers(shard);
 
-    TRI_ASSERT(!current.empty());
+    if (current.empty()) {
+      Result(TRI_ERROR_FAILED,
+             "synchronizeOneShard: cancelled, no servers in 'Current'");
+    }
     if (current.front() == leader) {
       if (std::find(current.begin(), current.end(), ourselves) == current.end()) {
         break; // start synchronization work
@@ -705,6 +700,10 @@ arangodb::Result SynchronizeShard::synchronise() {
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "synchronizeOneShard: waiting for leader, " << database
+      << "/" << shard << ", " << database << "/" << planId;
+    
     std::this_thread::sleep_for(duration<double>(0.2));
     
   }
@@ -728,7 +727,6 @@ arangodb::Result SynchronizeShard::synchronise() {
     return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
   }
   
-  bool ok = false;
   auto ep = clusterInfo->getServerEndpoint(leader);
   size_t c;
   if (!count(collection, c).ok()) {
@@ -754,7 +752,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         auto const endTime = system_clock::now();
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
           "synchronizeOneShard: shortcut worked, done, " << database << "/" <<
-          shard << ", " << database << "/" << ", started: " << startTimeStr
+          shard << ", " << database << "/" << planId <<", started: " << startTimeStr
           << " ended: " << timepointToString(endTime);
         collection->followers()->setTheLeader(leader);
         return Result();
@@ -836,6 +834,9 @@ arangodb::Result SynchronizeShard::synchronise() {
 
         // Now start a read transaction to stop writes:
         uint64_t lockJobId = 0;
+        LOG_TOPIC(ERR, Logger::MAINTENANCE)
+          << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
+          << database << ":" << collection->name();
         Result result = startReadLockOnLeader(
           ep, database, collection->name(), clientId, lockJobId);
         if (result.ok()) {
@@ -922,9 +923,8 @@ arangodb::Result SynchronizeShard::synchronise() {
 SynchronizeShard::~SynchronizeShard() {};
 
 bool SynchronizeShard::first() {
-
   arangodb::Result res = synchronise();
-  return true;
+  return false;
 }
 
 arangodb::Result SynchronizeShard::run(
