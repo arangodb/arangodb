@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #2567: the Web UI was showing the possibility to move a shard
+  from a follower to the current leader 
+
 * Bugfix: The AQL syntax variants `UPDATE/REPLACE k WITH d` now correctly take
   _rev from k instead of d (when ignoreRevs is false) and ignore d._rev.
 

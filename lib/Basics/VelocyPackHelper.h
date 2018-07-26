@@ -438,9 +438,6 @@ class VelocyPackHelper {
   // modify a VPack double value in place 
   static void patchDouble(VPackSlice slice, double value);
 
-  static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
-                                   bool, int&, std::string const& key = "");
-
   static bool hasNonClientTypes(arangodb::velocypack::Slice, bool checkExternals, bool checkCustom);
 
   static void sanitizeNonClientTypes(arangodb::velocypack::Slice input,

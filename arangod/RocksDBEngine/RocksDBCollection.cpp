@@ -1667,7 +1667,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
   auto ctx =
     transaction::StandaloneContext::Create(_logicalCollection.vocbase());
   SingleCollectionTransaction trx(
-    ctx, &_logicalCollection, AccessMode::Type::EXCLUSIVE
+    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
   );
   auto res = trx.begin();
 
@@ -1802,7 +1802,7 @@ void RocksDBCollection::recalculateIndexEstimates(
   auto ctx =
     transaction::StandaloneContext::Create(_logicalCollection.vocbase());
   arangodb::SingleCollectionTransaction trx(
-    ctx, &_logicalCollection, AccessMode::Type::EXCLUSIVE
+    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
   );
   auto res = trx.begin();
 
