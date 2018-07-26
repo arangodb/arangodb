@@ -719,18 +719,22 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   }
 
   else if (type == REPLICATION_VIEW_CREATE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view create not yet implemented");
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+    return Result();
   }
 
   else if (type == REPLICATION_VIEW_DROP) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view drop not yet implemented");
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+    return Result();
   }
 
   else if (type == REPLICATION_VIEW_CHANGE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view change not yet implemented");
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+    return Result();
+  }
+  else if (type == REPLICATION_VIEW_RENAME) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+    return Result();
   }
   
   else if (type == REPLICATION_DATABASE_CREATE ||
