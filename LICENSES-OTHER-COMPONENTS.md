@@ -1406,6 +1406,11 @@ exception from the GPL license:
 * GitHub: https://github.com/Leaflet/Leaflet
 * License: [BSD-style 2-Clause License](https://github.com/Leaflet/Leaflet/blob/master/LICENSE)
 
+#### Stamen
+
+* GitHub: https://github.com/stamen/maps.stamen.com
+* License: [BSD-style 3-Clause License](https://github.com/stamen/maps.stamen.com/blob/master/LICENSE)
+
 #### randomColor
 
 * GitHub: https://github.com/davidmerfield/randomColor

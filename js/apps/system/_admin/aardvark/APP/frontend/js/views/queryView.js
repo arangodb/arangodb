@@ -1880,15 +1880,12 @@
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
               '<div class="geoContainer" id="outputGeo' + counter + '" style="height: ' + geoHeight + 'px; maxheight: ' + maxHeight + 'px;"></div>'
             );
+
             self.maps[counter] = L.map('outputGeo' + counter).setView([51.505, -0.09], 13);
 
-            L.tileLayer(
-              'https://api.mapbox.com/styles/v1/mapbox/streets-v9/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiaGtlcm5iYWNoIiwiYSI6ImNqaGowNG40cjAwaDEzNnQ5amw5Ymh0OTUifQ.2wPZ8Wl00hLjNCNu94IqIw', {
-                tileSize: 512,
-                zoomOffset: -1,
-                attribution: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> | <a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong>'
-              })
-            .addTo(self.maps[counter]);
+            self.maps[counter].addLayer(new L.StamenTileLayer('terrain', {
+              detectRetina: true
+            }));
 
             var position = 1;
             var geojson;

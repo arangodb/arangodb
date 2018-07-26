@@ -96,6 +96,7 @@
             "frontend/js/lib/pretty-bytes.js",
             "frontend/js/lib/marked.min.js",
             "frontend/js/lib/leaflet.js",
+            "frontend/js/lib/tile.stamen.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",
