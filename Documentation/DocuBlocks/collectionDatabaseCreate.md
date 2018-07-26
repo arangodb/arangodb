@@ -83,7 +83,7 @@ to the [naming conventions](../NamingConventions/README.md).
   attribute and this can only be done efficiently if this is the
   only shard key by delegating to the individual shards.
 
- *cacheEnabled* (optional, default is *false*, **rocksdb-only**, from v. 3.4): Enable in-memory
+ *cacheEnabled* (optional, default is *false*, **rocksdb-only**, from v.3.4): Enable in-memory
   caching for documents and primary index entries. This can potentially speed up point-lookups significantly,
   especially if your collection has a subset of frequently accessed keys. Please test this feature
   carefully to ensure that it does not adversely affect the performance of your system.

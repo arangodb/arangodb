@@ -49,6 +49,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -129,7 +130,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(
 
 /// @brief run method, performs a full synchronization
 Result DatabaseInitialSyncer::runWithInventory(bool incremental,
-                                               VPackSlice inventoryColls) {
+                                               VPackSlice dbInventory) {
   if (!_config.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -196,23 +197,38 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       }
     }
 
-    VPackBuilder inventoryResponse;
-    if (!inventoryColls.isArray()) {
+    VPackSlice collections, views;
+    if (dbInventory.isObject()) {
+      collections = dbInventory.get("collections"); // required
+      views = dbInventory.get("views"); // optional
+    }
+    VPackBuilder inventoryResponse; // hold response data
+    if (!collections.isArray()) {
       // caller did not supply an inventory, we need to fetch it
       Result res = fetchInventory(inventoryResponse);
       if (!res.ok()) {
         return res;
       }
       // we do not really care about the state response
-      inventoryColls = inventoryResponse.slice().get("collections");
-      if (!inventoryColls.isArray()) {
+      collections = inventoryResponse.slice().get("collections");
+      views = inventoryResponse.slice().get("views");
+      if (!collections.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "collections section is missing from response");
       }
     }
+    
+    if (_config.applier._restrictCollections.empty()) {
+      r = handleViewCreation(views); // no requests to master
+      if (r.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "Error during initial sync: " << r.errorMessage();
+        return r;
+      }
+    }
 
     // strip eventual objectIDs and then dump the collections
-    auto pair = rocksutils::stripObjectIds(inventoryColls);
+    auto pair = rocksutils::stripObjectIds(collections);
     r = handleLeaderCollections(pair.first, incremental);
 
     // all done here, do not try to finish batch if master is unresponsive
@@ -1474,6 +1490,17 @@ Result DatabaseInitialSyncer::iterateCollections(
 
   // all ok
   return Result();
+}
+  
+/// @brief create non-existing views locally
+Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
+  for (VPackSlice slice  : VPackArrayIterator(views)) {
+    Result res = createView(vocbase(), slice);
+    if (res.fail()) {
+      return res;
+    }
+  }
+  return {};
 }
 
 }  // namespace arangodb

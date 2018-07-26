@@ -1333,68 +1333,31 @@ void RocksDBEngine::unloadCollection(
   collection.setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 }
 
-void RocksDBEngine::createView(
+Result RocksDBEngine::createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
-    arangodb::LogicalView const& /*view*/
+    arangodb::LogicalView const& view
 ) {
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;
 
-  RocksDBLogValue logValue = RocksDBLogValue::ViewCreate(vocbase.id(), id);
   RocksDBKey key;
-
   key.constructView(vocbase.id(), id);
+  RocksDBLogValue logValue = RocksDBLogValue::ViewCreate(vocbase.id(), id);
 
-  auto value = RocksDBValue::View(VPackSlice::emptyObjectSlice());
-
+  VPackBuilder props;
+  props.openObject();
+  view.toVelocyPack(props, true, true);
+  props.close();
+  RocksDBValue const value = RocksDBValue::View(props.slice());
+  
   // Write marker + key into RocksDB inside one batch
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
   auto res = _db->Write(wo, &batch);
-  auto status = rocksutils::convertStatus(res);
-
-  if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status);
-  }
+  return rocksutils::convertStatus(res);
 }
-
-// asks the storage engine to persist renaming of a view
-// This will write a renameMarker if not in recovery
-Result RocksDBEngine::renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& /*oldName*/
-) {
-  return persistView(vocbase, view);
-}
-
-arangodb::Result RocksDBEngine::persistView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view
-) {
-  auto db = rocksutils::globalRocksDB();
-  RocksDBKey key;
-
-  key.constructView(vocbase.id(), view.id());
-
-  VPackBuilder infoBuilder;
-
-  infoBuilder.openObject();
-  view.toVelocyPack(infoBuilder, true, true);
-  infoBuilder.close();
-
-  auto const value = RocksDBValue::View(infoBuilder.slice());
-
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
-
-  rocksdb::Status const status = db->Put(
-    options, RocksDBColumnFamily::definitions(), key.string(), value.string()
-  );
-
-  return rocksutils::convertStatus(status);
-}
-
+  
 arangodb::Result RocksDBEngine::dropView(
     TRI_vocbase_t& vocbase,
     LogicalView& view
@@ -1406,9 +1369,9 @@ arangodb::Result RocksDBEngine::dropView(
   builder.close();
 
   auto logValue =
-    RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), builder.slice());
+    RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
+                              StringRef(view.guid()));
   RocksDBKey key;
-
   key.constructView(vocbase.id(), view.id());
 
   rocksdb::WriteBatch batch;
@@ -1428,25 +1391,41 @@ void RocksDBEngine::destroyView(
   // nothing to do here
 }
 
-void RocksDBEngine::changeView(
+Result RocksDBEngine::changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t /*id*/,
     arangodb::LogicalView const& view,
     bool /*doSync*/
 ) {
   if (inRecovery()) {
     // nothing to do
-    return;
+    return {};
   }
 
-  auto const res = persistView(vocbase, view);
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      res.errorNumber(),
-      "could not save view properties"
-    );
+  RocksDBKey key;
+  key.constructView(vocbase.id(), view.id());
+  
+  VPackBuilder infoBuilder;
+  infoBuilder.openObject();
+  view.toVelocyPack(infoBuilder, true, true);
+  infoBuilder.close();
+  
+  RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
+  RocksDBValue const value = RocksDBValue::View(infoBuilder.slice());
+  
+  rocksdb::WriteBatch batch;
+  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
+  rocksdb::Status s;
+  s = batch.PutLogData(log.slice());
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
   }
+  s = batch.Put(RocksDBColumnFamily::definitions(),
+            key.string(), value.string());
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+  auto db = rocksutils::globalRocksDB();
+  return rocksutils::convertStatus(db->Write(wo, &batch));
 }
 
 void RocksDBEngine::signalCleanup(TRI_vocbase_t& vocbase) {

@@ -421,8 +421,6 @@ char const* TRI_NameMarkerDatafile(MMFilesMarkerType type) {
       return "create view";
     case TRI_DF_MARKER_VPACK_DROP_VIEW:
       return "drop view";
-    case TRI_DF_MARKER_VPACK_RENAME_VIEW:
-      return "rename view";
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
       return "change view";
 
