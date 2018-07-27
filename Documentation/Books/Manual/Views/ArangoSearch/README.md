@@ -159,8 +159,12 @@ During view modification the following directives apply:
   * link removal - JSON keyword *null* (i.e. nullify a link if present)
     any of the directives from the section [modifiable view properties ](#view-properties-modifiable)
 
+### View properties (non-updatable)
 
-### View properties (modifiable)
+* locale: (optional; default: `C`)
+  the default locale used for ordering processed attribute names
+
+### View properties (updatable)
 
 * commit: (optional; default: use defaults for all values)
   configure ArangoSearch View commit policy for single-item inserts/removals,
@@ -223,9 +227,6 @@ During view modification the following directives apply:
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
-
-* locale: (optional; default: `C`)
-  the default locale used for ordering processed attribute names
 
 ### Link properties
 

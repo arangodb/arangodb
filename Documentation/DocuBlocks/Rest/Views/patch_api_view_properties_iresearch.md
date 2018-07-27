@@ -120,10 +120,6 @@ additional value retrieval optimizations, one of:
 (default "none").
 
 
-@RESTSTRUCT{locale,post_api_view_props,string,optional,string}
-The default locale used for queries on analyzed string values (default: *C*).
-
-
 @RESTDESCRIPTION
 Changes the properties of a view.
 

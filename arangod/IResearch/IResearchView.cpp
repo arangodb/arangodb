@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <array>
+
 #include "formats/formats.hpp"
 #include "store/memory_directory.hpp"
 #include "store/mmap_directory.hpp"
@@ -1977,6 +1979,9 @@ arangodb::Result IResearchView::updateProperties(
     if (!meta.init(slice, error, initialMeta)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
+
+    // reset non-updatable values to match current meta
+    meta._locale = viewMeta->_locale;
 
     if (arangodb::ServerState::instance()->isDBServer()) {
       viewMeta = std::make_shared<AsyncMeta>(); // create an instance not shared with cluster-view
