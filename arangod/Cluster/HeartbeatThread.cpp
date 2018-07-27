@@ -438,6 +438,7 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
+  logThreadDeaths(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,6 +696,8 @@ void HeartbeatThread::runSingleServer() {
           << "got an unknown exception in single server heartbeat";
     }
   }
+
+  logThreadDeaths(true);
 }
 
 void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
@@ -947,6 +950,8 @@ void HeartbeatThread::runCoordinator() {
           << "Got an unknown exception in coordinator heartbeat";
     }
   }
+
+  logThreadDeaths(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
