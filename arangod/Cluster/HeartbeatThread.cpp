@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HeartbeatThread.h"
+#include <ctime>
+#include <chrono>
+#include <iomanip>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <date/date.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -66,7 +68,7 @@ std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 ///        NEVER PURGED so that it can be reposted to logs regularly
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::multimap<std::chrono::system_clock::time_point /* when */, const std::string /* threadName */> deadThreads;
+static std::multimap<std::time_t /* when */, const std::string /* threadName */> deadThreads;
 
 static std::chrono::system_clock::time_point deadThreadsPosted;  // defaults to epoch
 
@@ -1282,8 +1284,8 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
 void HeartbeatThread::recordThreadDeath(const std::string & threadName) {
   MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
 
-  deadThreads.insert(std::pair<std::chrono::system_clock::time_point, const std::string>
-                     (std::chrono::system_clock::now(), threadName));
+  deadThreads.insert(std::pair<std::time_t, const std::string>
+                     (std::time(nullptr), threadName));
 } // HeartbeatThread::recordThreadDeath
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1306,7 +1308,10 @@ void HeartbeatThread::logThreadDeaths(bool force) {
     std::string buffer;
     buffer.reserve(40);
     for (auto const& it : deadThreads) {
-      buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
+      std::ostringstream oss;
+      auto tm = *std::gmtime(&it.first);
+      oss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
+      buffer = oss.str();
 
       LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Prior crash of thread " << it.second
                                         << " occurred at " << buffer;
