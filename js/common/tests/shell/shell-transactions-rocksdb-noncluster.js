@@ -157,21 +157,6 @@ function RocksDBTransactionsInvocationsSuite () {
       assertTrue(failed);
       assertEqual(10000, db._collection(cn).count());
     },
-
-    testIntermediateCommitSizeWithFailInTheMiddle : function () {
-      var failed = false;
-
-      try {
-        db._query("FOR i IN 1..10000 FILTER i != 6532 OR FAIL('peng') INSERT { someValue: i} INTO @@cn ", {"@cn": cn}, 
-        { intermediateCommitSize: 10 });
-        // this should produce a lot of intermediate commits
-      } catch (err) {
-        failed = true;
-      }
-
-      assertTrue(failed);
-      assertEqual(6533, db._collection(cn).count());
-    },
     
     testIntermediateCommitDuplicateKeys1 : function () {
       var failed = false;

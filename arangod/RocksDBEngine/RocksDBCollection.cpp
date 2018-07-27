@@ -606,13 +606,6 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
   );
 }
 
-std::unique_ptr<IndexIterator> RocksDBCollection::getSortedAllIterator(
-    transaction::Methods* trx) const {
-  return std::unique_ptr<RocksDBSortedAllIterator>(
-    new RocksDBSortedAllIterator(&_logicalCollection, trx, primaryIndex())
-  );
-}
-
 void RocksDBCollection::invokeOnAllElements(
     transaction::Methods* trx,
     std::function<bool(LocalDocumentId const&)> callback) {
