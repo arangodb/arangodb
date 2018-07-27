@@ -83,7 +83,7 @@ class ActionBase {
   static const char OBJECT_ID[];
 
   /// @brief execution finished successfully or failed ... and race timer expired
-  bool done() const;
+  virtual bool done() const;
 
   /// @brief waiting for a worker to grab it and go!
   bool runable() const {return READY==_state;}
@@ -211,5 +211,10 @@ Result actionWarn(int errorCode, std::string const& errorMessage);
 
 } // namespace arangodb
 
+
+namespace std {
+ostream& operator<< (
+  ostream& o, arangodb::maintenance::ActionBase const& d);
+}
 #endif
 

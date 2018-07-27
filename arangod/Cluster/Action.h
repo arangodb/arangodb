@@ -164,4 +164,10 @@ private:
 };
 
 }}
+
+namespace std {
+ostream& operator<< (
+  ostream& o, arangodb::maintenance::Action const& d);
+}
 #endif
+

@@ -202,6 +202,7 @@ VPackBuilder ActionBase::toVelocyPack() const {
 
 arangodb::Result ActionBase::run(
   std::chrono::duration<double> const& duration, bool& finished) {
+  return Result();
 }
 
 
@@ -215,3 +216,10 @@ arangodb::Result ActionBase::progress(double& progress) {
   return arangodb::Result(TRI_ERROR_NO_ERROR);
 }
 
+
+namespace std {
+ostream& operator<< (
+  ostream& out, arangodb::maintenance::ActionBase const& d) {
+  out << d.toVelocyPack().toJson();
+  return out;
+}}

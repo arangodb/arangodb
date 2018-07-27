@@ -143,3 +143,10 @@ void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(_action != nullptr);
   _action->toVelocyPack(builder);
 }
+
+namespace std {
+ostream& operator<< (
+  ostream& out, arangodb::maintenance::Action const& d) {
+  out << d.toVelocyPack().toJson();
+  return out;
+}}

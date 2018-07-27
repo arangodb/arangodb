@@ -11,6 +11,7 @@ function help() {
   echo "  -j/--jwt-secret         JWT-Secret          (string           default: )"
   echo "     --log-level-agency   Log level (agency)  (string           default: )"
   echo "     --log-level-cluster  Log level (cluster) (string           default: )"
+  echo "  -l/--log-leve           Log level           (string           default: )"
   echo "  -i/--interactive        Interactive mode    (C|D|R            default: '')"
   echo "  -x/--xterm              XTerm command       (default: xterm)"
   echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
@@ -68,6 +69,10 @@ while [[ -n "$1" ]]; do
       ;;
     -t|--transport)
       TRANSPORT=${2}
+      shift
+      ;;
+    -l|--log-level)
+      LOG_LEVEL=${2}
       shift
       ;;
     --log-level-agency)

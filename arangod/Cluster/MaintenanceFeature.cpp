@@ -398,10 +398,11 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
       WRITE_LOCKER(wLock, _actionRegistryLock);
 
       for (auto loop=_actionRegistry.begin(); _actionRegistry.end()!=loop && !ret_ptr; ) {
-        if ((*loop)->runable()) {
+        auto state = (*loop)->getState();
+        if (state == maintenance::READY) {
           ret_ptr=*loop;
           ret_ptr->setState(maintenance::EXECUTING);
-        } else if ((*loop)->done()) {
+        } else if (state == maintenance::COMPLETE || state == maintenance::FAILED ) {
           loop = _actionRegistry.erase(loop);
         } else {
           ++loop;

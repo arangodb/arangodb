@@ -45,7 +45,8 @@ using namespace arangodb::methods;
 
 static std::vector<std::string> cmp {
   "journalSize", "waitForSync", "doCompact", "indexBuckets"};
-static std::string const CURRENT_COLLECTIONS("Current/Collections");
+static std::string const CURRENT_COLLECTIONS("Current/Collections/");
+static std::string const CURRENT_DATABASES("Current/Databases/");
 static std::string const ERROR_MESSAGE("errorMessage");
 static std::string const ERROR_NUM("errorNum");
 static std::string const ERROR("error");
@@ -233,14 +234,31 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
   std::vector<ActionDescription>& actions) {
 
+  arangodb::Result result;
   std::unordered_set<std::string> colis; // Intersection collections plan&local
   std::unordered_set<std::string> indis; // Intersection indexes plan&local
   
-  arangodb::Result result;
-  auto const& pdbs = plan.get("Collections");
-
   // Plan to local mismatch ----------------------------------------------------
+
+  // Create or modify if local databases are affected
+  auto pdbs = plan.get("Databases");
+  for (auto const& pdb : VPackObjectIterator(pdbs)) {
+    auto const& dbname = pdb.key.copyString();
+    if (!local.hasKey(dbname)) {
+      actions.push_back(
+        ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
+    }
+  }
+  for (auto const& ldb : VPackObjectIterator(local)) {
+    auto const& dbname = ldb.key.copyString();
+    if (!plan.hasKey(std::vector<std::string> {"Databases", dbname})) {
+      actions.push_back(
+        ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));
+    }
+  }
+
   // Create or modify if local collections are affected
+  pdbs = plan.get("Collections");
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
     if (local.hasKey(dbname)) {    // have database in both see to collections
@@ -274,8 +292,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         }
       }
     } else {
-      actions.push_back(
-        ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));
+      /*actions.push_back(
+        ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));*/
     }
   }
 
@@ -296,6 +314,7 @@ arangodb::Result arangodb::maintenance::executePlan (
   
   // enact all
   for (auto const& action : actions) {
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "adding action " << action << " to feature ";
     feature.addAction(std::make_shared<ActionDescription>(action), true);
   }
   
@@ -308,7 +327,7 @@ void addDatabaseToTransactions(
 
   // [ {"dbPath":{}}, {"dbPath":{"oldEmpty":true}} ]
   
-  std::string dbPath = CURRENT_COLLECTIONS + "/" + name;
+  std::string dbPath = CURRENT_COLLECTIONS + name;
   VPackBuilder operation; // create database in current
   { VPackObjectBuilder b(&operation);
     operation.add(dbPath, VPackSlice::emptyObjectSlice()); }
@@ -457,12 +476,36 @@ bool equivalent(VPackSlice const& local, VPackSlice const& current) {
         return false;
       }
     } else {
-      if (i.value[0] != current.get(key)[0]){
+      if (i.value[0] != current.get(key)[0]) {
         return false;
       }
     }
   }
   return true;
+}
+
+VPackBuilder assembleLocalDatabaseInfo (std::string const& database) {
+
+  VPackBuilder ret;
+  
+  auto vocbase = Databases::lookup(database);
+  if (vocbase == nullptr) {
+    std::string errorMsg(
+      "Maintenance::assembleLocalCollectioInfo: Failed to lookup database ");
+    errorMsg += database;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    { VPackObjectBuilder o(&ret); }
+    return ret;
+  }
+
+  { VPackObjectBuilder o(&ret);
+    ret.add(ERROR, VPackValue(false));
+    ret.add(ERROR_NUM, VPackValue(0));
+    ret.add(ERROR_MESSAGE, VPackValue(""));
+    ret.add(ID, VPackValue(std::to_string(vocbase->id())));
+    ret.add("name", VPackValue(vocbase->name())); }
+
+  return ret;
 }
 
 // udateCurrentForCollections
@@ -475,6 +518,17 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
   for (auto const& database : VPackObjectIterator(local)) {
     auto const dbName = database.key.copyString();
+
+    std::vector<std::string> const cdbpath {"Databases", dbName, serverId};
+
+    if (!cur.hasKey(cdbpath)) {
+      auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName);
+      if (!localDatabaseInfo.slice().isEmptyObject()) {
+        report.add(
+          CURRENT_DATABASES + dbName + "/" + serverId, localDatabaseInfo.slice());
+      }
+    }
+    
     for (auto const& shard : VPackObjectIterator(database.value)) {
       auto const shName = shard.key.copyString();
       if (shName.at(0) == '_') {
@@ -494,7 +548,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             (inCurrent && !equivalent(localCollectionInfo.slice(), cur.get(cp)))) {
 
           report.add(
-            CURRENT_COLLECTIONS + "/" + dbName + "/" + colName + "/" +shName,
+            CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName,
             localCollectionInfo.slice());
         }
       } else {
@@ -512,7 +566,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                 front = false;
               }}
             report.add(
-              CURRENT_COLLECTIONS + "/" + dbName + "/" + colName + "/" +shName
+              CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName
               + "/" + SERVERS, ns.slice());
           }
         }
