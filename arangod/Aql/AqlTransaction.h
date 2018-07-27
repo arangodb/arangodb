@@ -110,6 +110,7 @@ class AqlTransaction : public transaction::Methods {
     } else {
       addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
     }
+    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
     for (auto it : *collections) {
       if (!processCollection(it.second).ok()) {

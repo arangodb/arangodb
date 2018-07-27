@@ -131,7 +131,7 @@ void RocksDBReplicationContext::internalBind(
 
     if (_trx) {
       auto state = RocksDBTransactionState::toState(_trx.get());
-      snap = state->stealSnapshot();
+      snap = state->stealReadSnapshot();
       _trx->abort();
       _trx.reset();
     }

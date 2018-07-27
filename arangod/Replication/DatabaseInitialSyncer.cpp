@@ -750,10 +750,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
-    // do not the operations in our own transactions
+    // do not index the operations in our own transaction
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
-    // do not check for conflicts, as we have an exclusive lock
-    trx.addHint(transaction::Hints::Hint::NO_TRACKING);
 
     // smaller batch sizes should work better here
 #if VPACK_DUMP
