@@ -788,7 +788,11 @@ IResearchView::IResearchView(
       std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
     };
 
-    std::array<DataStore*, 3> dataStores = {
+    #if defined(__APPLE__)
+      std::vector<DataStore*> dataStores = {
+    #else
+      std::array<DataStore*, 3> dataStores = {
+    #endif
       &(_memoryNode[0]._store),
       &(_memoryNode[1]._store),
       &_storePersisted
