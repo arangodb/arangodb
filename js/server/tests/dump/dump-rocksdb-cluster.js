@@ -301,6 +301,41 @@ function dumpTestSuite () {
 
     }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test view restoring
+////////////////////////////////////////////////////////////////////////////////
+
+    testView : function () {
+      try {
+        db._createView("check", "arangosearch", {});
+      } catch (err) {}
+
+      let views = db._views();
+      if (views.length === 0) {
+        return; // arangosearch views are not supported
+      }
+
+      let view = db._view("UnitTestsDumpView");
+      assertTrue(view !== null);
+      let props = view.properties();
+      assertEqual(Object.keys(props.links).length, 1);
+      assertTrue(props.hasOwnProperty("links"));
+      assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
+
+      // TODO: uncomment when view restoring in cluster will work
+      /*var res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 0 RETURN doc").toArray();
+      assertEqual(10000, res.length);
+
+      res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 5000 RETURN doc").toArray();
+      assertEqual(5000, res.length);
+
+      res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 9000 RETURN doc").toArray();
+      assertEqual(1000, res.length);
+
+      res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 10000 RETURN doc").toArray();
+      assertEqual(0, res.length);*/
+    }
+
   };
 }
 
