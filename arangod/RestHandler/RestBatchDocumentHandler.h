@@ -28,15 +28,20 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+namespace rest {
+namespace batch_document_handler {
+class RemoveRequest;
+enum class BatchOperation;
+}
+}
+
 class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
  public:
   RestBatchDocumentHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;
-  char const* name() const override final {
-    return "RestBatchDocumentHandler";
-  }
+  char const* name() const override final { return "RestBatchDocumentHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  protected:
@@ -46,19 +51,19 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
 
  private:
   // replaces a document
-  void replaceDocumentsAction();
+  void replaceDocumentsAction(std::string const& collection);
 
   // updates a document
-  void updateDocumentsAction();
+  void updateDocumentsAction(std::string const& collection);
 
   // deletes a document
-  void deleteDocumentsAction();
+  void removeDocumentsAction(std::string const& collection);
 
   // helper function for replace and update
   bool modifyDocument(bool);
 
-  // The tuple contains (documents, patterns, options)
-  ResultT<std::tuple<VPackSlice, VPackSlice, OperationOptions>> parseModifyRequest() const;
+  void doRemoveDocuments(
+      rest::batch_document_handler::RemoveRequest const& request);
 };
 }
 
