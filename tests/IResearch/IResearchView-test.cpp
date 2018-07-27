@@ -2995,7 +2995,8 @@ SECTION("test_transaction_snapshot") {
 SECTION("test_update_overwrite") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\" \
+    \"type\": \"arangosearch\", \
+    \"locale\": \"en\" \
   }");
 
   // modify meta params
@@ -3009,10 +3010,10 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-        \"locale\": \"en\" \
+        \"locale\": \"de\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("en", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
       // not for persistence
@@ -3069,7 +3070,7 @@ SECTION("test_update_overwrite") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("ru", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
       // not for persistence
@@ -3138,6 +3139,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
       CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3217,7 +3219,7 @@ SECTION("test_update_overwrite") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("ru", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       CHECK((logicalView->updateProperties(updateJson->slice(), false, false).ok()));
 
       // not for persistence
@@ -3290,6 +3292,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection0->id());
       expectedLinkMeta["testCollection0"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3369,6 +3372,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection1->id());
       expectedLinkMeta["testCollection1"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
@@ -3553,7 +3557,8 @@ SECTION("test_update_overwrite") {
 SECTION("test_update_partial") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\" \
+    \"type\": \"arangosearch\", \
+    \"locale\": \"en\" \
   }");
   bool persisted = false;
   auto before = StorageEngineMock::before;
@@ -3570,10 +3575,10 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-      \"locale\": \"en\" \
+      \"locale\": \"de\" \
     }");
 
-    expectedMeta._locale = irs::locale_utils::locale("en", true);
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
     // not for persistence
@@ -3636,6 +3641,7 @@ SECTION("test_update_partial") {
       \"locale\": 123 \
     }");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     // not for persistence
@@ -3703,6 +3709,7 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
       CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3783,7 +3790,7 @@ SECTION("test_update_partial") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("ru", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
       CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3936,6 +3943,7 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
@@ -4042,6 +4050,7 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
@@ -4128,6 +4137,7 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     // not for persistence
@@ -4261,6 +4271,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
 
     {
@@ -4324,6 +4335,7 @@ SECTION("test_update_partial") {
           \"testCollection\": null \
       }}");
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.clear();
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -4388,6 +4400,7 @@ SECTION("test_update_partial") {
         \"testCollection\": null \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     // not for persistence
@@ -4453,6 +4466,7 @@ SECTION("test_update_partial") {
         \"testCollection\": null \
     }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
     // not for persistence

@@ -437,6 +437,9 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       return { TRI_ERROR_BAD_PARAMETER, error };
     }
 
+    // reset non-updatable values to match current meta
+    meta._locale = _meta._locale;
+
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {
       auto* engine = arangodb::ClusterInfo::instance();
