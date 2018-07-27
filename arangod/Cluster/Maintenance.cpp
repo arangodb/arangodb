@@ -291,10 +291,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
             dbname, shName, col.value, colis, indis, actions);
         }
       }
-    } else {
-      /*actions.push_back(
-        ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));*/
-    }
+    } 
   }
 
   return result;
