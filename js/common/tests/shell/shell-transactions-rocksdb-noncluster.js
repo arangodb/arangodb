@@ -147,7 +147,7 @@ function RocksDBTransactionsInvocationsSuite () {
       var failed = false;
 
       try {
-        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i} INTO @@cn ", {"@cn": cn}, 
+        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i} INTO @@cn", {"@cn": cn}, 
         { intermediateCommitSize: 10 });
         // this should produce a lot of intermediate commits
       } catch (err) {
@@ -186,7 +186,7 @@ function RocksDBTransactionsInvocationsSuite () {
       var failed = false;
 
       try { // should fail because intermediate commits are not allowed
-        db._query("FOR i IN ['a', 'b', 'a', 'b'] INSERT { _key: i} INTO @@cn ", {"@cn": cn}, {intermediateCommitCount: 2 });
+        db._query("FOR i IN ['a', 'b', 'a', 'b'] INSERT { _key: i} INTO @@cn", {"@cn": cn}, {intermediateCommitCount: 2 });
       } catch (err) {
         failed = true;
       }
@@ -199,7 +199,7 @@ function RocksDBTransactionsInvocationsSuite () {
       var failed = false;
 
       try {
-        db._query("FOR i IN ['a', 'b', 'a', 'b'] INSERT { _key: i} INTO @@cn ", {"@cn": cn}, {intermediateCommitCount: 10 });
+        db._query("FOR i IN ['a', 'b', 'a', 'b'] INSERT { _key: i} INTO @@cn", {"@cn": cn}, {intermediateCommitCount: 10 });
       } catch (err) {
         failed = true;
       }

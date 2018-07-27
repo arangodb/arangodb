@@ -40,7 +40,10 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery');
 
   try {
-    db._executeTransaction({
+    db._query("FOR i IN 0..199 INSERT { _key: CONCAT('test', i), value: i } INTO UnitTestsRecovery RETURN FAIL('peng')", 
+    {}, { intermediateCommitCount: 1000});
+
+    /*db._executeTransaction({
       intermediateCommitCount: 1000,
       collections: {
         write: 'UnitTestsRecovery'
@@ -54,7 +57,7 @@ function runSetup () {
         }
         fail();
       }
-    });
+    });*/
   } catch (err) {
     // intentionally fail
   }

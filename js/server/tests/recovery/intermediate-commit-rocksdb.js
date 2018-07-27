@@ -39,7 +39,13 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  db._executeTransaction({
+  db._query("FOR i IN 0..1999 INSERT {_key: 'test' + i} INTO @@cn OPTIONS { waitForSync: true }", 
+  {"@cn": 'UnitTestsRecovery'}, {intermediateCommitCount: 1000})
+  // the above should commit two times
+
+  internal.debugSegfault('crashing server');
+
+  /*db._executeTransaction({
     intermediateCommitCount: 1000,
     collections: {
       write: 'UnitTestsRecovery'
@@ -55,7 +61,7 @@ function runSetup () {
 
       internal.debugSegfault('crashing server');
     }
-  });
+  });*/
 }
 
 // //////////////////////////////////////////////////////////////////////////////

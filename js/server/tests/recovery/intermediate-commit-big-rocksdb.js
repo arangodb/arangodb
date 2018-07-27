@@ -39,7 +39,11 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  db._executeTransaction({
+  db._query(`FOR i IN 0..19999 INSERT { _key: CONCAT('test', i), value: i } INTO UnitTestsRecovery \n 
+            OPTIONS {waitForSync: true} RETURN V8("require('internal').debugSegfault('crashing server');")`, 
+  {}, {intermediateCommitCount: 1000});
+
+  /*db._executeTransaction({
     intermediateCommitCount: 1000,
     collections: {
       write: 'UnitTestsRecovery'
@@ -54,7 +58,7 @@ function runSetup () {
 
       internal.debugSegfault('crashing server');
     }
-  });
+  });*/
 }
 
 // //////////////////////////////////////////////////////////////////////////////
