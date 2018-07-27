@@ -269,14 +269,13 @@ class RocksDBEngine final : public StorageEngine {
     LogicalCollection& collection
   ) override;
 
-  void changeView(
+  arangodb::Result changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalView const& view,
     bool doSync
   ) override;
 
-  void createView(
+  arangodb::Result createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
@@ -289,19 +288,6 @@ class RocksDBEngine final : public StorageEngine {
   ) override {
     // does nothing
   }
-
-  arangodb::Result persistView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view
-  ) override;
-
-  // asks the storage engine to persist renaming of a view
-  // This will write a renameMarker if not in recovery
-  arangodb::Result renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& oldName
-  ) override;
 
   arangodb::Result dropView(
     TRI_vocbase_t& vocbase,
@@ -410,8 +396,8 @@ class RocksDBEngine final : public StorageEngine {
   }
   
   /// @brief returns a pointer to the sync thread
+  /// note: returns a nullptr if automatic syncing is turned off!
   RocksDBSyncThread* syncThread() const {
-    TRI_ASSERT(_syncThread);
     return _syncThread.get();
   }
 
@@ -470,6 +456,7 @@ class RocksDBEngine final : public StorageEngine {
   TRI_voc_tick_t _releasedTick;
   
   /// Background thread handling WAL syncing
+  /// note: this is a nullptr if automatic syncing is turned off!
   std::unique_ptr<RocksDBSyncThread> _syncThread;
 
   // WAL sync interval, specified in milliseconds by end user, but uses microseconds internally

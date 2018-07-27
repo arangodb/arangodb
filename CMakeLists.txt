@@ -630,10 +630,6 @@ endfunction()
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-
-  if (LINUX OR DARWIN)
-    add_definitions("-DARANGODB_MMAP_JEMALLOC=1")
-  endif ()
 endif ()
 
 # ------------------------------------------------------------------------------

@@ -298,7 +298,6 @@ SET(ARANGOD_SOURCES
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
-  Cluster/ShardDistributionReporter.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/v8-cluster.cpp
@@ -413,6 +412,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
+  RestHandler/RestTasksHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
@@ -451,6 +451,11 @@ SET(ARANGOD_SOURCES
   Scheduler/SocketSslTcp.cpp
   Scheduler/SocketTask.cpp
   Scheduler/Task.cpp
+  Sharding/ShardDistributionReporter.cpp
+  Sharding/ShardingFeature.cpp
+  Sharding/ShardingInfo.cpp
+  Sharding/ShardingStrategy.cpp
+  Sharding/ShardingStrategyDefault.cpp
   Statistics/ConnectionStatistics.cpp
   Statistics/Descriptions.cpp
   Statistics/RequestStatistics.cpp
@@ -501,6 +506,7 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
+  VocBase/Methods/Tasks.cpp
   VocBase/Methods/Transactions.cpp
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp

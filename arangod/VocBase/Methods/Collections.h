@@ -44,9 +44,12 @@ namespace methods {
 /// Common code for collection REST handler and v8-collections
 struct Collections {
   struct Context {
-    Context(TRI_vocbase_t& vocbase, LogicalCollection* coll);
-    Context(TRI_vocbase_t& vocbase, LogicalCollection* coll,
-            transaction::Methods* trx);
+    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll);
+    Context(
+      TRI_vocbase_t& vocbase,
+      LogicalCollection& coll,
+      transaction::Methods* trx
+    );
 
     ~Context();
 
@@ -57,12 +60,12 @@ struct Collections {
 
    private:
     TRI_vocbase_t& _vocbase;
-    LogicalCollection* _coll;
+    LogicalCollection& _coll;
     transaction::Methods* _trx;
     bool const _responsibleForTrx;
   };
 
-  typedef std::function<void(LogicalCollection*)> const& FuncCallback;
+  typedef std::function<void(LogicalCollection&)> const& FuncCallback;
   typedef std::function<void(velocypack::Slice const&)> const& DocCallback;
 
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
@@ -91,7 +94,7 @@ struct Collections {
   static Result drop(TRI_vocbase_t*, LogicalCollection* coll,
                      bool allowDropSystem, double timeout);
 
-  static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection* coll);
+  static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll);
 
   static Result revisionId(Context& ctxt, TRI_voc_rid_t& rid);
 
@@ -109,4 +112,5 @@ Result DropColCoordinatorEnterprise(LogicalCollection* collection,
 #endif
 }
 }
+
 #endif

@@ -68,6 +68,7 @@ class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
+    TRI_ASSERT(!_found.empty());
     _found.pop_back();
   }
 };

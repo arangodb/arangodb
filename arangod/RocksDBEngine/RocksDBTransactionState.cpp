@@ -159,10 +159,46 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       // inconsistencies.
       // TODO: enable this optimization once these circumstances are clear
       // and fully covered by tests
-      if (false && isExclusiveTransactionOnSingleCollection()) {
+      if (hasHint(transaction::Hints::Hint::NO_TRACKING) && isExclusiveTransactionOnSingleCollection()) {
         _rocksMethods.reset(new RocksDBTrxUntrackedMethods(this));
       } else {
         _rocksMethods.reset(new RocksDBTrxMethods(this));
+      }
+  
+      if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
+        // do not track our own writes... we can only use this in very
+        // specific scenarios, i.e. when we are sure that we will have a
+        // single operation transaction or we are sure we are writing
+        // unique keys
+    
+        // we must check if there is a unique secondary index for any of the collections
+        // we write into
+        // in case it is, we must disable NO_INDEXING here, as it wouldn't be safe
+        bool disableIndexing = true;
+
+        for (auto& trxCollection : _collections) {
+          if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
+            continue;
+          }
+          auto indexes = trxCollection->collection()->getIndexes();
+          for (auto const& idx : indexes) {
+            if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+              // primary index is unique, but we can ignore it here.
+              // we are only looking for secondary indexes
+              continue;
+            }
+            if (idx->unique()) {
+              // found secondary unique index. we need to turn off the NO_INDEXING optimization now
+              disableIndexing = false;
+              break;
+            }
+          }
+        }
+
+        if (disableIndexing) {
+          // only turn it on when safe...
+          _rocksMethods->DisableIndexing();
+        }
       }
     }
   } else {
@@ -282,6 +318,16 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       }
     });
 
+#ifdef _WIN32
+    // set wait for sync flag if required
+    // we do this only for Windows here, because all other platforms use the
+    // RocksDB SyncThread to do the syncing
+    if (waitForSync()) {
+      _rocksWriteOptions.sync = true;
+      _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
+    }
+#endif
+
     ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
     rocksdb::SequenceNumber latestSeq =
@@ -298,12 +344,22 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         committed = true;
       }
     
-      // wait for sync if required
+#ifndef _WIN32
+      // wait for sync if required, for all other platforms but Windows
       if (waitForSync()) {
         RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
         TRI_ASSERT(engine != nullptr);
-        result = engine->syncThread()->syncWal();
+        if (engine->syncThread()) {
+          // we do have a sync thread
+          result = engine->syncThread()->syncWal();
+        } else {
+          // no sync thread present... this may be the case if automatic
+          // syncing is completely turned off. in this case, use the
+          // static sync method
+          result = RocksDBSyncThread::sync(engine->db()->GetBaseDB());
+        }
       }
+#endif
     }
   } else {
     TRI_ASSERT(_rocksTransaction->GetNumKeys() == 0 &&

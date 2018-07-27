@@ -90,6 +90,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -139,11 +140,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::vector<std::string> nonServerFeatures = {
         "Action",              "Agency",
         "Cluster",             "Daemon",
-        "EngineEqualityCheck", "FoxxQueues",
-        "GeneralServer",       "Greetings",
-        "LoggerBufferFeature", "Server",
-        "SslServer",           "Statistics",
-        "Supervisor"};
+        "Endpoint",            "EngineEqualityCheck", 
+        "FoxxQueues",          "GeneralServer",       
+        "Greetings",           "LoggerBufferFeature", 
+        "Server",              "SslServer",           
+        "Statistics",          "Supervisor"};
 
     int ret = EXIT_FAILURE;
 
@@ -200,6 +201,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
     server.addFeature(new ServerIdFeature(&server));
+    server.addFeature(new ShardingFeature(&server));
     server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"Script"}));
     server.addFeature(new SslFeature(&server));

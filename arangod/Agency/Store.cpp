@@ -557,7 +557,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
         pv.pop_back();
       }
       if (copy(pv).type() == LEAF && copy(pv).slice().isNone()) {
-        copy(pv) = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+        copy(pv) = arangodb::velocypack::Slice::emptyObjectSlice();
       }
     }
   }

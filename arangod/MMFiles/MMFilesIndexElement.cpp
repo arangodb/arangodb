@@ -55,7 +55,7 @@ arangodb::velocypack::Slice MMFilesHashIndexElement::slice(IndexLookupContext* c
   
   uint32_t offset = sub->value.offset;
   if (offset == 0) {
-    return basics::VelocyPackHelper::NullValue();
+    return arangodb::velocypack::Slice::nullSlice();
   } 
   uint8_t const* vpack = context->lookup(LocalDocumentId{_localDocumentId.id()});
   if (vpack == nullptr) {
@@ -132,7 +132,7 @@ arangodb::velocypack::Slice MMFilesSkiplistIndexElement::slice(IndexLookupContex
   
   uint32_t offset = sub->value.offset;
   if (offset == 0) {
-    return basics::VelocyPackHelper::NullValue();
+    return arangodb::velocypack::Slice::nullSlice();
   } 
   uint8_t const* vpack = context->lookup(LocalDocumentId{_localDocumentId.id()});
   if (vpack == nullptr) {

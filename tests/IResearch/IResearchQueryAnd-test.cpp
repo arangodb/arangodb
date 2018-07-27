@@ -35,6 +35,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Sharding/ShardingFeature.h"
 #include "V8/v8-globals.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -98,6 +99,7 @@ struct IResearchQueryAndSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(new arangodb::ShardingFeature(&server), false); // 
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
@@ -195,7 +197,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      collection,
+      *collection,
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
@@ -227,7 +229,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      collection,
+      *collection,
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
@@ -253,8 +255,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true },"
-        "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
+        "\"testCollection0\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\":\"id\" },"
+        "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"storeValues\":\"id\" }"
       "}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));

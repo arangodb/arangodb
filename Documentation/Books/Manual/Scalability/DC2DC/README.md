@@ -1,6 +1,11 @@
 <!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Datacenter to datacenter replication
 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
 This chapter introduces ArangoDB's _datacenter to datacenter replication_ (DC2DC).
 
 **Sections:**

@@ -39,6 +39,7 @@
 #include "Utils/OperationOptions.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -106,6 +107,7 @@ struct IResearchQueryNumericTermSetup {
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::ShardingFeature(&server), false); 
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
@@ -234,7 +236,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
-    auto tmpSlice = slice.get("properties").get("links");
+    auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 

@@ -6,45 +6,111 @@ devel
 * the `@arangodb/foxx/auth` module now uses a different method to generate salts,
   so salts are no longer guaranteed to be alphanumeric
 
+* fixed internal issue #2567: the Web UI was showing the possibility to move a shard
+  from a follower to the current leader 
+
+* Renamed RocksDB engine-specific statistics figure `rocksdb.block-cache-used`
+  to `rocksdb.block-cache-usage` in output of `db._engineStats()`
+  
+  The new figure name is in line with the statistics that the RocksDB library
+  provides in its new versions.
+
+* Added RocksDB engine-specific statistics figures `rocksdb.block-cache-capacity`,
+  `rocksdb.block-cache-pinned-usage` as well as level-specific figures
+  `rocksdb.num-files-at-level` and `rocksdb.compression-ratio-at-level` in
+  output of `db._engineStats()`
+
+* Added RocksDB-engine configuration option `--rocksdb.block-align-data-blocks`
+
+  If set to true, data blocks are aligned on lesser of page size and block size,
+  which may waste some memory but may reduce the number of cross-page I/Os operations.
+
+* Usage RocksDB format version 3 for new block-based tables
+
+* Bugfix: The AQL syntax variants `UPDATE/REPLACE k WITH d` now correctly take
+  _rev from k instead of d (when ignoreRevs is false) and ignore d._rev.
+
+* Added C++ implementation, load balancer support, and user restriction to tasks API
+
+  If a task is accessed on a different coordinator than where it was created,
+  the request(s) will be forwarded to the correct coordinator. If a
+  task is accessed by a different user than the one who created it, the request
+  will be denied.
+
+* Added load balancer support and user-restriction to async jobs API.
+
+  If an async job is accessed on a different coordinator than where it was
+  created, the request(s) will be forwarded to the correct coordinator. If a
+  job is accessed by a different user than the one who created it, the request
+  will be denied.
+
+* switch default storage engine from MMFiles to RocksDB
+
+  In ArangoDB 3.4, the default storage engine for new installations is the RocksDB
+  engine. This differs to previous versions (3.2 and 3.3), in which the default
+  storage engine was the MMFiles engine.
+
+  The MMFiles engine can still be explicitly selected as the storage engine for
+  all new installations. It's only that the "auto" setting for selecting the storage
+  engine will now use the RocksDB engine instead of MMFiles engine.
+
+  In the following scenarios, the effectively selected storage engine for new
+  installations will be RocksDB:
+
+  * `--server.storage-engine rocksdb`
+  * `--server.storage-engine auto`
+  * `--server.storage-engine` option not specified
+
+  The MMFiles storage engine will be selected for new installations only when
+  explicitly selected:
+
+  * `--server.storage-engine mmfiles`
+
+  On upgrade, any existing ArangoDB installation will keep its previously selected
+  storage engine. The change of the default storage engine is thus only relevant
+  for new ArangoDB installations and/or existing cluster setups for which new server
+  nodes get added later. All server nodes in a cluster setup should use the same
+  storage engine to work reliably. Using different storage engines in a cluster is
+  unsupported.
+
 * added collection.indexes() as an alias for collection.getIndexes()
 
 * disable V8 engine and JavaScript APIs for agency nodes
 
 * renamed MMFiles engine compactor thread from "Compactor" to "MMFilesCompactor".
-  
+
   This change will be visible only on systems which allow assigning names to
   threads.
 
 * added configuration option `--rocksdb.sync-interval`
 
-  This option specifies interval (in milliseconds) that ArangoDB will use to 
-  automatically synchronize data in RocksDB's write-ahead log (WAL) files to 
-  disk. Automatic syncs will only be performed for not-yet synchronized data, 
-  and only for operations that have been executed without the *waitForSync* 
+  This option specifies interval (in milliseconds) that ArangoDB will use to
+  automatically synchronize data in RocksDB's write-ahead log (WAL) files to
+  disk. Automatic syncs will only be performed for not-yet synchronized data,
+  and only for operations that have been executed without the *waitForSync*
   attribute.
 
   Automatic synchronization is performed by a background thread. The default
   sync interval is 100 milliseconds.
+
+  Note: this option is not supported on Windows platforms. Setting the sync
+  interval to a value greater 0 will produce a startup warning.
 
 * added AQL functions `TO_BASE64`, `TO_HEX`, `ENCODE_URI_COMPONENT` and `SOUNDEX`
 
 * PR #5857: RocksDB engine would frequently request a new DelayToken.  This caused
   excessive write delay on the next Put() call.  Alternate approach taken.
 
-* changed the thread handling in the scheduler. `--server.threads` will be
+* changed the thread handling in the scheduler. `--server.maximal-threads` will be
   the maximum number of threads for the scheduler.
 
-* The hidden option `--server.maximal-threads` is now obsolete.
-
-* The hidden options `--server.queue-size`, `--server.prioN-size` (N = 1 or 2)
-  control the size of the internal queues. The defaults are sensible, do not
-  change these settings.
+* The option `--server.threads` is now obsolete.
 
 * use sparse indexes in more cases now, when it is clear that the index attribute
   value cannot be null
 
 * introduce SingleRemoteOperationNode via "optimize-cluster-single-document-operations"
-  optimizer rule, which triggers single document operations directly from the coordinator 
+  optimizer rule, which triggers single document operations directly from the coordinator
   instead of using a full-featured AQL setup. This saves cluster roundtrips.
 
   Queries directly referencing the document key benefit from this:
@@ -61,7 +127,7 @@ devel
 * if authentication is turned on requests to databases by users with insufficient rights
  will be answered with the HTTP forbidden (401) response.
 
-* upgraded bundled RocksDB library version to 5.14
+* upgraded bundled RocksDB library version to 5.15
 
 * added key generators `uuid` and `padded`
 
@@ -70,9 +136,9 @@ devel
   The `padded` key generator generates keys of a fixed length (16 bytes) in
   ascending lexicographical sort order.
 
-* The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
-  field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
-  the inverted meaning.
+* The REST API of `/_admin/status` added: "operationMode" filed with same meaning as
+  the "mode" field and field "readOnly" that has the inverted meaning of the field
+  "writeOpsEnabled". The old field names will be deprecated in upcoming versions.
 
 * added `COUNT_DISTINCT` AQL function
 
@@ -86,8 +152,6 @@ devel
 
 * the existing "fulltext-index-optimizer" optimizer rule has been removed because its
   duty is now handled by the "replace-function-with-index" rule.
-
-* The `NEAR` AQL function now does not default to a limit of 100 documents any more.
 
 * added option "--latency true" option to arangoimport. Lists microsecond latency
   statistics on 10 second intervals.
@@ -370,7 +434,7 @@ devel
 
 * fixed agency restart from compaction without data
 
-* fixed agency's log compaction for internal issue #2249 
+* fixed agency's log compaction for internal issue #2249
 
 * only load Plan and Current from agency when actually needed
 
@@ -378,7 +442,7 @@ devel
 v3.3.13 (XXXX-XX-XX)
 --------------------
 
-* fixed issue #5827: Batch request handling incompatible with .NET's default 
+* fixed issue #5827: Batch request handling incompatible with .NET's default
   ContentType format
 
 
@@ -1296,7 +1360,7 @@ v3.2.12 (2018-02-27)
 
 * fix internal bug #1726: supervision failed to remove multiple
   removed servers from health UI
-  
+
 * fixed internal issue #1969 - command apt-get purge/remove arangodb3e was failing
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
