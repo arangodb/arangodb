@@ -1,7 +1,14 @@
 Batch Document API
 ==================
 
-**This is a draft.**
+**This proposal was moved to the document repository. Don't change it here
+except to convert it to a real documentation.**
+
+**This is a draft**, or at least a basis for discussion.
+
+Note that justifications for several design choices are at the end of the
+document, and after that some possible changes to the proposal I'm thinking
+about and like to discuss.
 
 ## Overview
 
@@ -353,6 +360,89 @@ For `/repsert`:
 - If `returnNew: true`: `result[i].new` contains the new document
 - If `returnOld: true`: `result[i].old` contains the old document
 - If `silent: true`: nothing
+
+## Justification
+
+### HTTP methods and route names
+
+Considerations:
+- Its impractical to use `GET` to read batches, as the `GET` request body must
+  be ignored.
+- Besides `GET` and `HEAD`, only `POST` is allowed to be cached (if the server
+  supplies appropriate Cache-Control or Expires header fields), so may be the
+  most suitable replacement for `GET` in reading
+- Upsert and Repsert can't be distinguished by HTTP method only from
+  update/replace.
+- The whole batch idea does not match REST very well, so we may need to differ.
+
+So, to keep it simple and consistent, we use only `POST` and add the verb to the
+route instead.
+
+### Request body format
+
+It's made to be easily extensible and as consistent as possible over the
+different operations. All options are placed in `request.options` to keep it
+simple: no options in the HTTP header or query parameters. Not allowing
+`pattern` to be a string (which would be taken as `_key`) instead of an object
+allows us, for example, to maybe later lift the restriction of passing `_key`
+when another unique index is used. 
+
+Never silently ignoring unknown attributes helps not only avoiding typos in the
+client side, but also allows adding attributes later in a backwards-compatible
+way.
+
+#### New options
+
+The single transaction option is defined somewhat inconvenient:
+```
+  singleTransaction: <boolean> | on single server: (optional, default: true)
+                               | on cluster: (required to be set to false)
+```
+
+The reason behind this is, that
+- it would be very impolite to take an option `singleTransaction: true` but
+  silently ignore it and not use a transaction
+- the default `true` seems very sane
+
+Therefore, the best choice seems to be to force the user to explicitly and thus
+knowingly disable transaction in the cluster.
+
+## Possible minor changes to options
+
+### `checkGraphs` and `graphName`
+
+`checkGraphs` is to allow for normal document operations to be checked to not
+break any graphs, while `graphName` restricts it further to a single graph. I
+have in mind to use a single option instead for this, e.g.
+```
+  graph: <string|boolean> (optional, default: false)
+```
+, which would behave like this:
+
+- if `false`, like `checkGraphs: false` and `graphName` unset
+- if `true`, like `checkGraphs: true` and `graphName` unset
+- if a string `str`, like `checkGraphs: true` and `graphName: str`
+
+This would avoid invalid option combinations by design (like specifying a graph
+name but setting `checkGraphs: false`).
+
+### `silent`, `returnOld` and `returnNew`
+
+I kept those for consistency with the old APIs in the proposal, but would really
+like to change them in a way that avoids invalid or nonsensical options
+combinations. For example, they could be replaced with
+
+```
+  replyWith: {
+    new: <"off"|"meta"|"full"> (default: "meta"),
+    old: <"off"|"meta"|"full"> (default: "none")
+  }
+```
+
+This would not only avoid things like `{silent: true, returnNew: true}`, but
+also allow to ask for the metadata of the old document without getting the whole
+document (may not be useful very often, but still).
+
 
 <!-- arangod/RestHandler/RestBatchDocumentHandler.cpp -->
 @startDocuBlock batch_read_document
