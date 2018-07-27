@@ -181,7 +181,7 @@ If true, skip corrupted records in WAL recovery. Default: false.
 
 ## Non-Pass-Through Options
 
-`--rocksdb.wal-file-timeout` (Hidden)
+`--rocksdb.wal-file-timeout`
 
 Timeout after which unused WAL files are deleted (in seconds). Default: 10.0s.
 
@@ -194,6 +194,16 @@ not necessarily have ACID properties in this case.
 
 The following options can be used to control the RAM usage and automatic
 intermediate commits for the RocksDB engine:
+
+`--rocksdb.wal-file-timeout-initial` (Hidden)
+
+Timeout after which deletion of unused WAL files kicks in after server start
+(in seconds). Default: 180.0s
+
+By decreasing this option's value, the server will start the removal of obsolete
+WAL files earlier after server start. This is useful in testing environments that
+are space-restricted and do not require keeping much WAL file data at all.
+
 
 `--rocksdb.max-transaction-size`
 

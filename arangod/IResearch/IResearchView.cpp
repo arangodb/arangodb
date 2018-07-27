@@ -445,7 +445,7 @@ bool syncStore(
       continue; // skip if interval not reached or no valid policy to execute
     }
 
-    LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "registering consolidation policy '" << size_t(entry.type()) << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << " segment threshold '" << entry.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
 
     try {
@@ -465,12 +465,12 @@ bool syncStore(
       IR_LOG_EXCEPTION();
     }
 
-    LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "finished registering consolidation policy '" << size_t(entry.type()) << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
   }
 
   if (!forceCommit) {
-    LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "skipping store sync since no consolidation policies matched and sync not forced for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
 
     return false; // commit not done
@@ -480,7 +480,7 @@ bool syncStore(
   // apply data store commit
   // ...........................................................................
 
-  LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
     << "starting store sync for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "' segment count before '" << segmentCount.load() << "'";
 
   try {
@@ -502,7 +502,7 @@ bool syncStore(
     IR_LOG_EXCEPTION();
   }
 
-  LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
     << "finished store sync for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "' segment count after '" << segmentCount.load() << "'";
 
   if (!runCleanupAfterCommit) {
@@ -513,7 +513,7 @@ bool syncStore(
   // apply cleanup
   // ...........................................................................
 
-  LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
     << "starting cleanup for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
 
   try {
@@ -532,7 +532,7 @@ bool syncStore(
     IR_LOG_EXCEPTION();
   }
 
-  LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+  LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
     << "finished cleanup for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
 
   return true;
@@ -720,7 +720,7 @@ IResearchView::IResearchView(
       viewPtr->verifyKnownCollections();
 
       if (viewPtr->_storePersisted) {
-        LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
           << "starting persisted-sync sync for iResearch view '" << viewPtr->id() << "'";
 
         try {
@@ -756,7 +756,7 @@ IResearchView::IResearchView(
           );
         }
 
-        LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+        LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
           << "finished persisted-sync sync for iResearch view '" << viewPtr->id() << "'";
       }
 
@@ -782,82 +782,77 @@ IResearchView::IResearchView(
   // add asynchronous commit tasks
   if (_asyncFeature) {
     struct State: public IResearchViewMeta::CommitMeta {
-      size_t _cleanupIntervalCount;
-      std::chrono::system_clock::time_point _last;
+      size_t _cleanupIntervalCount{ 0 };
+      std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
+    };
+
+    std::array<DataStore*, 3> dataStores = {
+      &(_memoryNode[0]._store),
+      &(_memoryNode[1]._store),
+      &_storePersisted
     };
 
     State state;
-    std::vector<DataStore*> dataStores = {
-      &(_memoryNode[0]._store), &(_memoryNode[1]._store), &_storePersisted
-    };
-
-    state._cleanupIntervalCount = 0;
-    state._last = std::chrono::system_clock::now();
 
     for (auto* store: dataStores) {
-      auto task = std::bind(
-        [this, store](size_t& timeoutMsec, bool, State& state)->bool {
-          if (_asyncTerminate.load()) {
-            return false; // termination requested
+      auto task = [this, store, state](size_t& timeoutMsec, bool) mutable ->bool {
+        if (_asyncTerminate.load()) {
+          return false; // termination requested
+        }
+
+        // reload meta
+        {
+          auto meta = std::atomic_load(&_meta);
+          SCOPED_LOCK(meta->read());
+
+          if (state != meta->_commit) {
+            static_cast<IResearchViewMeta::CommitMeta&>(state) = meta->_commit;
           }
+        }
 
-          // reload meta
-          {
-            auto meta = std::atomic_load(&_meta);
-            SCOPED_LOCK(meta->read());
-
-            if (state != meta->_commit) {
-              static_cast<IResearchViewMeta::CommitMeta&>(state) =
-                meta->_commit;
-            }
-          }
-
-          if (!state._commitIntervalMsec) {
-            timeoutMsec = 0; // task not enabled
-
-            return true; // reschedule
-          }
-
-          size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now() - state._last
-          ).count();
-
-          if (usedMsec < state._commitIntervalMsec) {
-            timeoutMsec = state._commitIntervalMsec - usedMsec; // still need to sleep
-
-            return true; // reschedule (with possibly updated '_commitIntervalMsec')
-          }
-
-          state._last = std::chrono::system_clock::now(); // remember last task start time
-          timeoutMsec = state._commitIntervalMsec;
-
-          auto runCleanupAfterCommit =
-            state._cleanupIntervalCount > state._cleanupIntervalStep;
-          ReadMutex mutex(_mutex); // 'store' can be asynchronously modified
-          SCOPED_LOCK(mutex);
-
-          if (store->_directory
-              && store->_writer
-              && syncStore(*(store->_directory),
-                           store->_reader,
-                           *(store->_writer),
-                           store->_segmentCount,
-                           state._consolidationPolicies,
-                           true,
-                           runCleanupAfterCommit,
-                           name()
-                          )
-              && runCleanupAfterCommit
-              && ++state._cleanupIntervalCount >= state._cleanupIntervalStep) {
-            state._cleanupIntervalCount = 0;
-          }
+        if (!state._commitIntervalMsec) {
+          timeoutMsec = 0; // task not enabled
 
           return true; // reschedule
-        },
-        std::placeholders::_1,
-        std::placeholders::_2,
-        state
-      );
+        }
+
+        size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now() - state._last
+        ).count();
+
+        if (usedMsec < state._commitIntervalMsec) {
+          timeoutMsec = state._commitIntervalMsec - usedMsec; // still need to sleep
+
+          return true; // reschedule (with possibly updated '_commitIntervalMsec')
+        }
+
+        state._last = std::chrono::system_clock::now(); // remember last task start time
+        timeoutMsec = state._commitIntervalMsec;
+
+        auto const runCleanupAfterCommit =
+          state._cleanupIntervalCount > state._cleanupIntervalStep;
+
+        ReadMutex mutex(_mutex); // 'store' can be asynchronously modified
+        SCOPED_LOCK(mutex);
+
+        if (store->_directory
+            && store->_writer
+            && syncStore(*(store->_directory),
+                         store->_reader,
+                         *(store->_writer),
+                         store->_segmentCount,
+                         state._consolidationPolicies,
+                         true,
+                         runCleanupAfterCommit,
+                         name()
+                        )
+            && state._cleanupIntervalStep
+            && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
+          state._cleanupIntervalCount = 0;
+        };
+
+        return true; // reschedule
+      };
 
       _asyncFeature->async(self(), std::move(task));
     }
@@ -1372,6 +1367,7 @@ arangodb::Result IResearchView::commit() {
     SCOPED_LOCK(_toFlush->_reopenMutex); // do not allow concurrent reopen
     _storePersisted._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
     _storePersisted._writer->commit(); // finishing flush transaction
+
     memoryStore._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
     memoryStore._writer->clear(); // prepare the store for reuse
 
@@ -1898,17 +1894,18 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
   try {
     SCOPED_LOCK(mutex);
 
-    LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "starting active memory-store sync for iResearch view '" << id() << "'";
     _memoryNode->_store.sync();
-    LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "finished memory-store sync for iResearch view '" << id() << "'";
 
     if (maxMsec && TRI_microtime() >= thresholdSec) {
       return true; // skip if timout exceeded
     }
 
-    LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "starting pending memory-store sync for iResearch view '" << id() << "'";
     _toFlush->_store._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
     _toFlush->_store._writer->commit();
@@ -1919,7 +1916,7 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
       _toFlush->_store._segmentCount += _toFlush->_store._reader.size(); // add commited segments
     }
 
-    LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "finished pending memory-store sync for iResearch view '" << id() << "'";
 
     if (maxMsec && TRI_microtime() >= thresholdSec) {
@@ -1928,7 +1925,7 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
 
     // must sync persisted store as well to ensure removals are applied
     if (_storePersisted) {
-      LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
         << "starting persisted-sync sync for iResearch view '" << id() << "'";
       _storePersisted._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
       _storePersisted._writer->commit();
@@ -1939,7 +1936,7 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
         _storePersisted._segmentCount += _storePersisted._reader.size(); // add commited segments
       }
 
-      LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
         << "finished persisted-sync sync for iResearch view '" << id() << "'";
     }
 

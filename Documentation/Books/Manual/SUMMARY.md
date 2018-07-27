@@ -258,6 +258,7 @@
       * [Troubleshooting](Deployment/Kubernetes/Troubleshooting.md)
     * [Mesos, DC/OS](Deployment/DCOS/README.md)
       * [Cluster Deployments](Deployment/DCOS/ClusterMesos.md)
+        * [Choosing Container Engine](Deployment/DCOS/MesosContainers.md)
   * [In the Cloud](Deployment/Cloud/README.md)
     * [AWS](Deployment/Cloud/AWS.md)
     * [Azure](Deployment/Cloud/Azure.md)
