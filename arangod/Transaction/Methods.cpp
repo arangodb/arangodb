@@ -33,6 +33,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -52,8 +53,8 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/ExecContext.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -2029,36 +2030,38 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
-    if (pattern.isObject()) {
-      StringRef key{newVal.get(StaticStrings::KeyString)};
-      ManagedDocumentResult currentDoc;
-      // TODO Does a READ lock suffice, or could we run into problems with that?
-      res = collection->read(this, key, currentDoc,
-                             !isLocked(collection, AccessMode::Type::WRITE));
-
-      if (res.ok() &&
-          !aql::matches(VPackSlice(currentDoc.vpack()), vPackOptions,
-                        pattern)) {
-        res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      }
-    }
-
     ManagedDocumentResult result;
     TRI_voc_rid_t actualRevision = 0;
     ManagedDocumentResult previous;
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    if (res.ok()) {
-      if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-        res =
-            collection->replace(this, newVal, result, options, resultMarkerTick,
-                                !isLocked(collection, AccessMode::Type::WRITE),
-                                actualRevision, previous);
-      } else {
-        res =
-            collection->update(this, newVal, result, options, resultMarkerTick,
-                               !isLocked(collection, AccessMode::Type::WRITE),
-                               actualRevision, previous);
+    bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
+    {
+      CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
+                               lock);
+
+      if (pattern.isObject()) {
+        StringRef key{newVal.get(StaticStrings::KeyString)};
+        ManagedDocumentResult currentDoc;
+        res = collection->read(this, key, currentDoc, false);
+
+        if (res.ok() &&
+            !aql::matches(VPackSlice(currentDoc.vpack()), vPackOptions,
+                          pattern)) {
+          res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+        }
+      }
+
+      if (res.ok()) {
+        if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+          res = collection->replace(this, newVal, result, options,
+                                    resultMarkerTick, false, actualRevision,
+                                    previous);
+        } else {
+          res = collection->update(this, newVal, result, options,
+                                   resultMarkerTick, false, actualRevision,
+                                   previous);
+        }
       }
     }
 
@@ -2379,29 +2382,34 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     TRI_voc_tick_t resultMarkerTick = 0;
-
-    bool lock = !isLocked(collection, AccessMode::Type::WRITE);
     Result res;
+    bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
 
-    if (pattern.isObject()) {
-      res = collection->read(this, key, previous, lock);
+    {
+      CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
+                               lock);
 
-      if (res.ok() &&
-          !aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
-        res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      if (pattern.isObject()) {
+        res = collection->read(this, key, previous, false);
+
+        if (res.ok() &&
+            !aql::matches(VPackSlice(previous.vpack()), vPackOptions,
+                          pattern)) {
+          res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+        }
       }
-    }
 
-    // If we tried to lookup the document for pattern matching, and
-    // either the lookup or the pattern match failed, we don't remove because
-    // either
-    //  - something unexpected went wrong during lookup and we need to abort
-    //  - the document doesn't exist so we can't remove it anyway
-    //  - the pattern doesn't match and we mustn't remove it
-    if (res.ok()) {
-      res = collection->remove(this, value, options, resultMarkerTick, lock,
-                               actualRevision, previous);
-    }
+      // If we tried to lookup the document for pattern matching, and
+      // either the lookup or the pattern match failed, we don't remove because
+      // either
+      //  - something unexpected went wrong during lookup and we need to abort
+      //  - the document doesn't exist so we can't remove it anyway
+      //  - the pattern doesn't match and we mustn't remove it
+      if (res.ok()) {
+        res = collection->remove(this, value, options, resultMarkerTick, false,
+                                 actualRevision, previous);
+      }
+    } // the conditional write locker is destroyed here
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
