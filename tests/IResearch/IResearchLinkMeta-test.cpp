@@ -45,6 +45,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -120,6 +121,7 @@ struct IResearchLinkMetaSetup {
     // setup required application features
     buildFeatureEntry(new arangodb::AuthenticationFeature(&server), true);
     buildFeatureEntry(new arangodb::DatabaseFeature(&server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
     buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
 
     // We need this feature to be added now in order to create the system database

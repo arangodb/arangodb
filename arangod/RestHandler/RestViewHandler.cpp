@@ -53,8 +53,15 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view->toVelocyPack(builder, detailed, false);
+
+  auto res = view->toVelocyPack(builder, detailed, false);
+
   builder.close();
+
+  if (!res.ok()) {
+    generateError(res);
+  }
+
   generateOk(rest::ResponseCode::OK, builder);
 }
 
@@ -153,11 +160,6 @@ void RestViewHandler::createView() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::modifyView(bool partialUpdate) {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if ((suffixes.size() != 2) || (suffixes[1] != "properties" && suffixes[1] != "rename")) {
@@ -306,8 +308,14 @@ void RestViewHandler::getViews() {
   for (auto view: views) {
     if (view && (!excludeSystem || !view->system())) {
       builder.openObject();
-      view->toVelocyPack(builder, false, false);
+
+      auto res = view->toVelocyPack(builder, false, false);
+
       builder.close();
+
+      if (!res.ok()) {
+        generateError(res);
+      }
     }
   }
 

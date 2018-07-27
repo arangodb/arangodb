@@ -49,6 +49,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -129,7 +130,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(
 
 /// @brief run method, performs a full synchronization
 Result DatabaseInitialSyncer::runWithInventory(bool incremental,
-                                               VPackSlice inventoryColls) {
+                                               VPackSlice dbInventory) {
   if (!_config.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -196,23 +197,38 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       }
     }
 
-    VPackBuilder inventoryResponse;
-    if (!inventoryColls.isArray()) {
+    VPackSlice collections, views;
+    if (dbInventory.isObject()) {
+      collections = dbInventory.get("collections"); // required
+      views = dbInventory.get("views"); // optional
+    }
+    VPackBuilder inventoryResponse; // hold response data
+    if (!collections.isArray()) {
       // caller did not supply an inventory, we need to fetch it
       Result res = fetchInventory(inventoryResponse);
       if (!res.ok()) {
         return res;
       }
       // we do not really care about the state response
-      inventoryColls = inventoryResponse.slice().get("collections");
-      if (!inventoryColls.isArray()) {
+      collections = inventoryResponse.slice().get("collections");
+      views = inventoryResponse.slice().get("views");
+      if (!collections.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "collections section is missing from response");
       }
     }
+    
+    if (_config.applier._restrictCollections.empty()) {
+      r = handleViewCreation(views); // no requests to master
+      if (r.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "Error during initial sync: " << r.errorMessage();
+        return r;
+      }
+    }
 
     // strip eventual objectIDs and then dump the collections
-    auto pair = rocksutils::stripObjectIds(inventoryColls);
+    auto pair = rocksutils::stripObjectIds(collections);
     r = handleLeaderCollections(pair.first, incremental);
 
     // all done here, do not try to finish batch if master is unresponsive
@@ -296,9 +312,16 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
 /// @brief send a WAL flush command
 Result DatabaseInitialSyncer::sendFlush() {
   std::string const url = "/_admin/wal/flush";
-  std::string const body =
-      "{\"waitForSync\":true,\"waitForCollector\":true,"
-      "\"waitForCollectorQueue\":true}";
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("waitForSync", VPackValue(true));
+  builder.add("waitForCollector", VPackValue(true));
+  builder.add("waitForCollectorQueue", VPackValue(true));
+  builder.close();
+
+  VPackSlice bodySlice = builder.slice();
+  std::string const body = bodySlice.toJson();
 
   // send request
   _config.progress.set("sending WAL flush command to url " + url);
@@ -721,7 +744,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::EXCLUSIVE
     );
 
@@ -939,7 +962,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();
@@ -999,7 +1022,7 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 }
 
 /// @brief determine the number of documents in a collection
-int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
+int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(vocbase()),
     col,
@@ -1011,7 +1034,7 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
     return -1;
   }
 
-  OperationResult result = trx.count(col->name(), false);
+  auto result = trx.count(col.name(), false);
 
   if (result.result.fail()) {
     return -1;
@@ -1129,7 +1152,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
             SingleCollectionTransaction trx(
               transaction::StandaloneContext::Create(vocbase()),
-              col,
+              *col,
               AccessMode::Type::EXCLUSIVE
             );
             Result res = trx.begin();
@@ -1229,15 +1252,12 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                         parameters.toJson());
     }
 
-    Result res;
     std::string const& masterColl =
         !masterUuid.empty() ? masterUuid : itoa(masterCid);
-
-    if (incremental && getSize(col) > 0) {
-      res = fetchCollectionSync(col, masterColl, _config.master.lastLogTick);
-    } else {
-      res = fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
-    }
+    auto res = incremental && getSize(*col) > 0
+             ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
+             : fetchCollectionDump(col, masterColl, _config.master.lastLogTick)
+             ;
 
     if (!res.ok()) {
       return res;
@@ -1263,7 +1283,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       try {
         SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(vocbase()),
-          col,
+          *col,
           AccessMode::Type::EXCLUSIVE
         );
 
@@ -1474,6 +1494,17 @@ Result DatabaseInitialSyncer::iterateCollections(
 
   // all ok
   return Result();
+}
+  
+/// @brief create non-existing views locally
+Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
+  for (VPackSlice slice  : VPackArrayIterator(views)) {
+    Result res = createView(vocbase(), slice);
+    if (res.fail()) {
+      return res;
+    }
+  }
+  return {};
 }
 
 }  // namespace arangodb

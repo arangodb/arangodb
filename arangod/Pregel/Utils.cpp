@@ -123,16 +123,10 @@ int Utils::resolveShard(WorkerConfig const* config,
 
   TRI_ASSERT(info != nullptr);
 
-  bool usesDefaultShardingAttributes;
   VPackBuilder partial;
   partial.openObject();
   partial.add(shardKey, VPackValue(vertexKey));
   partial.close();
   //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
-  int res =
-      ci->getResponsibleShard(info.get(), partial.slice(), false,
-                              responsibleShard, usesDefaultShardingAttributes);
-  // TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
-
-  return res;
+  return info->getResponsibleShard(partial.slice(), false, responsibleShard);
 }

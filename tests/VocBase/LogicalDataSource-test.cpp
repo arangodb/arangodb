@@ -24,6 +24,7 @@
 #include "catch.hpp"
 #include "../IResearch/StorageEngineMock.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Parser.h"
 #include "VocBase/LogicalCollection.h"
@@ -43,6 +44,7 @@ struct LogicalDataSourceSetup {
 
     // setup required application features
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t
+    features.emplace_back(new arangodb::ShardingFeature(&server), false); 
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);

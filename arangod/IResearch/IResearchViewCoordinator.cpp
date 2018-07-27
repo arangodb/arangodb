@@ -81,7 +81,7 @@ arangodb::Result createLink(
     arangodb::velocypack::Value(IResearchLinkHelper::type())
   );
   builder.add(
-    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.id())
+    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.guid())
   );
 
   if (!mergeSliceSkipKeys(builder, link, acceptor)) {
@@ -436,6 +436,9 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     if (!meta.init(slice, error, defaults)) {
       return { TRI_ERROR_BAD_PARAMETER, error };
     }
+
+    // reset non-updatable values to match current meta
+    meta._locale = _meta._locale;
 
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {

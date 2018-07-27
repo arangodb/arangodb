@@ -131,7 +131,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
         "&from=" + StringUtils::itoa(fromTick) +
         "&serverId=" + _state.localServerIdString +
         "&collection=" + StringUtils::urlEncode(collectionName);
-
+    
     // send request
     std::unique_ptr<SimpleHttpResult> response(
         _state.connection.client->request(rest::RequestType::GET, url, nullptr,
