@@ -173,10 +173,18 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     std::vector<AgencyOperation> operations;
     for (auto const& ao : VPackObjectIterator(report.get("phaseTwo"))) {
-      operations.push_back(
-        AgencyOperation(
-          ao.key.copyString(), AgencyValueOperationType::SET, ao.value));
+      auto const key = ao.key.copyString();
+      auto const op = ao.value.get("op").copyString();
+      if (op == "set") {
+        auto const value = ao.value.get("payload");
+        operations.push_back(
+          AgencyOperation(key, AgencyValueOperationType::SET, value));
+      } else if (op == "delete") {
+        operations.push_back(
+          AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
+      }
     }
+    operations.push_back(AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
     AgencyWriteTransaction currentTransaction(operations);
     AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
     if (!r.successful()) {

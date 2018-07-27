@@ -444,10 +444,8 @@ VPackBuilder assembleLocalCollectioInfo(
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
   }
 
-  auto const& followers = *(collection->followers()->get());
-  
   VPackBuilder ret;
-
+  
   { VPackObjectBuilder r(&ret);
     ret.add(ERROR, VPackValue(false));
     ret.add(ERROR_MESSAGE, VPackValue(std::string()));
@@ -460,7 +458,7 @@ VPackBuilder assembleLocalCollectioInfo(
     ret.add(VPackValue(SERVERS));
     { VPackArrayBuilder a(&ret);
       ret.add(VPackValue(ourselves));
-      for (auto const& server : followers) {
+      for (auto const& server : *(collection->followers()->get())) {
         ret.add(VPackValue(server));
       }}}
   
@@ -470,15 +468,8 @@ VPackBuilder assembleLocalCollectioInfo(
 
 bool equivalent(VPackSlice const& local, VPackSlice const& current) {
   for (auto const& i : VPackObjectIterator(local)) {
-    auto const key = i.key.copyString();
-    if (key != SERVERS) {
-      if (!VPackNormalizedCompare::equals(i.value,current.get(key))) {
-        return false;
-      }
-    } else {
-      if (i.value[0] != current.get(key)[0]) {
-        return false;
-      }
+    if (!VPackNormalizedCompare::equals(i.value,current.get(i.key.copyString()))) {
+      return false;
     }
   }
   return true;
@@ -524,8 +515,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     if (!cur.hasKey(cdbpath)) {
       auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName);
       if (!localDatabaseInfo.slice().isEmptyObject()) {
-        report.add(
-          CURRENT_DATABASES + dbName + "/" + serverId, localDatabaseInfo.slice());
+        report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
+        { VPackObjectBuilder o(&report);
+          report.add("op", VPackValue("set"));
+          report.add("payload", localDatabaseInfo.slice()); }
       }
     }
     
@@ -543,13 +536,15 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         auto const localCollectionInfo =
           assembleLocalCollectioInfo(shSlice, dbName, shName, serverId);
         auto cp = std::vector<std::string> {"Collections", dbName, colName, shName};
+        
         auto inCurrent = cur.hasKey(cp);
         if (!inCurrent ||
             (inCurrent && !equivalent(localCollectionInfo.slice(), cur.get(cp)))) {
 
-          report.add(
-            CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName,
-            localCollectionInfo.slice());
+        report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName));
+          { VPackObjectBuilder o(&report); 
+            report.add("op", VPackValue("set"));
+            report.add("payload", localCollectionInfo.slice()); }
         }
       } else {
         auto servers = std::vector<std::string> {"Collections", dbName, colName, shName, SERVERS};
@@ -565,9 +560,11 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                 ns.add(VPackValue((!front) ? i.copyString() : std::string("_") + i.copyString()));
                 front = false;
               }}
-            report.add(
-              CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName
-              + "/" + SERVERS, ns.slice());
+            report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName
+                                  + "/" + shName + "/" + SERVERS));
+            { VPackObjectBuilder o(&report);
+              report.add("op", VPackValue("set"));
+              report.add("payload", ns.slice()); }
           }
         }
       }
@@ -592,7 +589,8 @@ template<typename T> int indexOf(VPackSlice const& slice, T const& t) {
   return -1;
 }
 
-template<> int indexOf<std::string> (VPackSlice const& slice, std::string const& val) {
+template<> int indexOf<std::string> (
+  VPackSlice const& slice, std::string const& val) {
   size_t counter = 0;
   TRI_ASSERT(slice.isArray());
   for (auto const& entry : VPackArrayIterator(slice)) {
