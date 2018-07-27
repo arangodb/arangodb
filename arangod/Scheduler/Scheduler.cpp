@@ -73,6 +73,13 @@ public:
   SchedulerContextThread(Scheduler &scheduler) : Thread("sched-ctx"), SchedulerThread(scheduler) {}
   void run() { _scheduler._obsoleteContext.run(); };
 };
+
+class SchedulerCronThread : public SchedulerThread {
+public:
+  SchedulerCronThread(Scheduler &scheduler) : Thread("sched-cron"), SchedulerThread(scheduler) {}
+  void run() { _scheduler.runCron(); };
+};
+
 }
 }
 
@@ -212,11 +219,23 @@ bool Scheduler::start() {
   _manager.reset(new SchedulerManagerThread(*this));
   _manager->start();
 
+  _cronThread.reset(new SchedulerCronThread(*this));
+  _cronThread->start();
+
+  postDelay(std::chrono::seconds(5), []() {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+        << "Delayed post works!";
+  }).detach();
+
   return true;
 }
 
 void Scheduler::beginShutdown() {
+  std::unique_lock<std::mutex> guard(_mutex);
+  std::unique_lock<std::mutex> guard2(_priorityQueueMutex);
   _stopping = true;
+  _conditionWork.notify_all();
+  _conditionCron.notify_one();
   _obsoleteContext.stop();
 }
 
@@ -224,6 +243,7 @@ void Scheduler::shutdown () {
   // call the destructor of all threads
   _contextThread.reset();
   _manager.reset();
+  _cronThread.reset();
 
   while (_numWorker > 0) {
     stopOneThread();
@@ -368,3 +388,58 @@ void Scheduler::stopOneThread()
   // wait for the thread to terminate
   _workerStates.pop_back();
 }
+
+Scheduler::WorkHandle Scheduler::postDelay(clock::duration delay,
+  std::function<void()> const& callback) {
+
+  if (delay < std::chrono::milliseconds(1)) {
+    post(callback);
+    return WorkHandle{};
+  }
+
+  std::unique_lock<std::mutex> guard(_priorityQueueMutex);
+
+  auto handle = std::make_shared<Scheduler::DelayedWork>(callback, delay);
+  _priorityQueue.push(handle);
+
+  if (delay < std::chrono::milliseconds(50)) {
+    // wakeup thread
+    _conditionCron.notify_one();
+  }
+
+  return handle;
+}
+
+void Scheduler::runCron() {
+
+
+  while (!_stopping) {
+
+    auto now = clock::now();
+
+    std::unique_lock<std::mutex> guard(_priorityQueueMutex);
+
+    clock::duration sleepTime = std::chrono::milliseconds(50);
+
+    while (_priorityQueue.size() > 0) {
+      auto &top = _priorityQueue.top();
+
+      if (top->_cancelled) {
+        _priorityQueue.pop();
+      } else if (top->_due < now) {
+        post(top->_handler);
+        _priorityQueue.pop();
+      } else {
+        auto then = (top->_due - now);
+
+        sleepTime = sleepTime > then ? then : sleepTime;
+        break ;
+      }
+    }
+
+    _conditionCron.wait_for(guard, sleepTime);
+
+  }
+
+}
+

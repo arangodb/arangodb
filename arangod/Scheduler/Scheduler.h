@@ -31,6 +31,7 @@
 
 #include <mutex>
 #include <condition_variable>
+#include <queue>
 
 #include "Basics/Mutex.h"
 #include "Basics/asio_ns.h"
@@ -53,6 +54,7 @@ class SocketTask;
 class SchedulerContextThread;
 class SchedulerWorkerThread;
 class SchedulerManagerThread;
+class SchedulerCronThread;
 
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
@@ -74,7 +76,41 @@ class Scheduler {
   void post(std::function<void()> const& callback);
   bool queue(RequestPriority prio, std::function<void()> const&);
 
-  //void post(uint64_t time, std::function<void()> const& callback);
+
+  typedef std::chrono::steady_clock clock;
+
+  struct DelayedWork {
+    std::function<void()> _handler;
+    clock::time_point _due;
+    std::atomic<bool> _cancelled;
+
+    DelayedWork(std::function<void()> const& handler, clock::duration delay) :
+      _handler(handler), _due(clock::now() + delay), _cancelled(false) {}
+
+    DelayedWork(std::function<void()> && handler, clock::duration delay) :
+      _handler(std::move(handler)), _due(clock::now() + delay), _cancelled(false) {}
+
+    void cancel() { _cancelled = true; };
+    bool operator <(const DelayedWork & rhs) const
+    {
+      return _due < rhs._due;
+    }
+  };
+
+  class WorkHandle {
+    std::shared_ptr<DelayedWork> _handle;
+  public:
+    WorkHandle() {};
+    WorkHandle(std::shared_ptr<DelayedWork> &handle) : _handle(handle) {}
+    ~WorkHandle() { if(_handle) { cancel(); } }
+    void cancel() { _handle->cancel(); }
+    void detach() { _handle.reset(); }
+  };
+
+
+  WorkHandle postDelay(clock::duration delay, std::function<void()> const& callback);
+
+
 
   void addQueueStatistics(velocypack::Builder&) const;
   QueueStatistics queueStatistics() const;
@@ -112,15 +148,20 @@ public:
   friend class SchedulerManagerThread;
   friend class SchedulerWorkerThread;
   friend class SchedulerContextThread;
+  friend class SchedulerCronThread;
 
-
+  std::priority_queue<std::shared_ptr<DelayedWork>> _priorityQueue;
+  std::mutex _priorityQueueMutex;
+  std::condition_variable _conditionCron;
 
   struct WorkItem {
     std::function<void()> _handler;
 
     WorkItem(std::function<void()> const& handler) : _handler(handler) {}
     WorkItem(std::function<void()> && handler) : _handler(std::move(handler)) {}
-    void operator() () { _handler(); }
+    virtual ~WorkItem() {}
+
+    virtual void operator() () { _handler(); }
   };
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
@@ -161,6 +202,7 @@ public:
   asio_ns::io_context::work _obsoleteWork;
 
   void runWorker();
+  void runCron();
   void runSupervisor();
 
   std::mutex _mutexSupervisor;
@@ -173,6 +215,7 @@ public:
   void stopOneThread();
 
   std::unique_ptr<SchedulerContextThread> _contextThread;
+  std::unique_ptr<SchedulerCronThread> _cronThread;
 };
 }
 }
