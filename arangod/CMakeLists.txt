@@ -390,6 +390,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestBaseHandler.cpp
+  RestHandler/RestBatchDocumentHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCollectionHandler.cpp
   RestHandler/RestCursorHandler.cpp

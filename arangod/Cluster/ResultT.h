@@ -26,6 +26,7 @@
 #include <boost/optional.hpp>
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 
