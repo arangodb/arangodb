@@ -42,22 +42,6 @@ function runSetup () {
   try {
     db._query("FOR i IN 0..200 FILTER i < 200 OR FAIL('peng') INSERT { _key: CONCAT('test', i), value: i } INTO UnitTestsRecovery", 
     {}, { intermediateCommitCount: 1000});
-
-    /*db._executeTransaction({
-      intermediateCommitCount: 1000,
-      collections: {
-        write: 'UnitTestsRecovery'
-      },
-      action: function () {
-        var db = require('@arangodb').db;
-
-        var i, c = db._collection('UnitTestsRecovery');
-        for (i = 0; i < 200; ++i) {
-          c.insert({ _key: 'test' + i, value: i });
-        }
-        fail();
-      }
-    });*/
   } catch (err) {
     // intentionally fail
   }
