@@ -62,38 +62,32 @@ AsioConnection<T>::~AsioConnection() {
 // Activate this connection.
 template <typename T>
 void AsioConnection<T>::startConnection() {
-  startResolveHost(); // checks _state
-}
-
-// resolve the host into a series of endpoints
-template <typename T>
-void AsioConnection<T>::startResolveHost() {
   // socket must be empty before. Check that
   assert(!_socket);
   assert(!_sslSocket);
   
+  // start connecting iff state is disconnected
   Connection::State exp = Connection::State::Disconnected;
   if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
     FUERTE_LOG_ERROR << "already resolving endpoint";
     return;
   }
   
-  // Resolve the host asynchronous.
+  // Resolve the host asynchronous into a series of endpoints
   auto self = shared_from_this();
-  _resolver.async_resolve(
-      {_configuration._host, _configuration._port},
-      [this, self](asio_ns::error_code const& ec, bt::resolver::iterator it) {
-        if (ec || it ==  bt::resolver::iterator()) {
-          FUERTE_LOG_ERROR << "resolve failed: error=" << ec << std::endl;
-          shutdownConnection(ErrorCondition::CouldNotConnect);
-          onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-                    "resolved failed: error" + ec.message());
-        } else {
-          FUERTE_LOG_CALLBACKS << "resolve succeeded" << std::endl;
-          _endpoints = it;
-          initSocket();
-        }
-      });
+  _resolver.async_resolve({_configuration._host, _configuration._port},
+    [this, self](asio_ns::error_code const& ec, bt::resolver::iterator it) {
+      if (ec || it ==  bt::resolver::iterator()) {
+        FUERTE_LOG_ERROR << "resolve failed: error=" << ec << std::endl;
+        shutdownConnection(ErrorCondition::CouldNotConnect);
+        onFailure(errorToInt(ErrorCondition::CouldNotConnect),
+                  "resolved failed: error" + ec.message());
+      } else {
+        FUERTE_LOG_CALLBACKS << "resolve succeeded" << std::endl;
+        _endpoints = it;
+        initSocket();
+      }
+    });
 }
 
 // CONNECT RECONNECT //////////////////////////////////////////////////////////
@@ -144,8 +138,7 @@ template <typename T>
 void AsioConnection<T>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
 
-  _state.store(ec == ErrorCondition::CouldNotConnect ? State::Failed : State::Disconnected,
-               std::memory_order_release);
+  _state.store(State::Disconnected, std::memory_order_release);
   
   // cancel timeouts
   _timeout.cancel();
@@ -178,7 +171,7 @@ void AsioConnection<T>::restartConnection(const ErrorCondition error) {
   // only restart connection if it was connected previously
   if (_state.load(std::memory_order_acquire) == Connection::State::Connected) {
     shutdownConnection(error); // Terminate connection
-    startResolveHost(); // will check state
+    startConnection(); // will check state
   }
 }
 

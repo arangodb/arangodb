@@ -80,9 +80,6 @@ class AsioConnection : public Connection {
   void initSocket();
   void shutdownSocket();
 
-  // resolve the host into a series of endpoints
-  void startResolveHost();
-
   // establishes connection and initiates handshake
   void startConnect(asio_ns::ip::tcp::resolver::iterator);
   void asyncConnectCallback(asio_ns::error_code const& ec,

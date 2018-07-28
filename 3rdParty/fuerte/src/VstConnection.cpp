@@ -52,12 +52,6 @@ static std::atomic<MessageID> vstMessageId(1);
 // and adds it to the send queue.
 MessageID VstConnection::sendRequest(std::unique_ptr<Request> req,
                                      RequestCallback cb) {
-  Connection::State state = _state.load(std::memory_order_acquire);
-  if (state == State::Failed) {
-    cb(fuerte::errorToInt(ErrorCondition::CouldNotConnect), std::move(req), nullptr);
-    return 0;
-  }
-  
   // it does not matter if IDs are reused on different connections
   uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   // Create RequestItem from parameters
@@ -70,14 +64,16 @@ MessageID VstConnection::sendRequest(std::unique_ptr<Request> req,
   
   // Add item to send queue
   uint32_t loop = queueRequest(std::move(item));
+  Connection::State state = _state.load(std::memory_order_acquire);
   if (state == State::Connected) {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): start sending & reading"
                         << std::endl;
     if (!(loop & WRITE_LOOP_ACTIVE)) {
       startWriting(); // try to start write loop
     }
-  } else {
+  } else if (state == State::Disconnected) {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): not connected" << std::endl;
+    startConnection();
   }
   return mid;
 }
