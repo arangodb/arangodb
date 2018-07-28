@@ -39,10 +39,15 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  db._query(`FOR i IN 0..20000 FILTER i < 20000 OR FAIL('peng')
-            INSERT { _key: CONCAT('test', i), value: i } INTO UnitTestsRecovery \n 
-            OPTIONS {waitForSync: true}`, 
-  {}, {intermediateCommitCount: 1000});
+  try {
+    db._query(`FOR i IN 0..20000 FILTER i < 20000 OR FAIL('peng')
+    INSERT { _key: CONCAT('test', i), value: i } INTO UnitTestsRecovery \n 
+    OPTIONS {waitForSync: true}`, 
+    {}, {intermediateCommitCount: 1000});
+  } catch (err) {
+    // intentionally fail
+  }
+
   internal.debugSegfault('crashing server');
 }
 
