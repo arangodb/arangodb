@@ -459,7 +459,8 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
 };
   
   
-ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
+ResponseHeader responseHeaderFromSlice(
+                                       VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   ResponseHeader header;
 #ifndef NDEBUG
@@ -467,11 +468,10 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
 #endif
   
   /*if (version == vst::VSTVersion::VST1_1) {
-   header.contentType(ContentType::VPack);
-   } else {
-   // found in params
-   header.contentType(ContentType::Unset);
-   }*/
+    header.contentType(ContentType::VPack);
+  } else { // found in params
+    header.contentType(ContentType::Unset);
+  }*/
   
   header.setVersion(headerSlice.at(0).getNumber<short>()); // version
   assert(headerSlice.at(1).getNumber<int>() == static_cast<int>(MessageType::Response));
@@ -487,6 +487,9 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
         header.meta.emplace(std::move(key), it.value.copyString());
       }
     }
+  }
+  if (header.contentType() == ContentType::Unset) {
+    header.contentType(ContentType::VPack);
   }
   return header;
 };

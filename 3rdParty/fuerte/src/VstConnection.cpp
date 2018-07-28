@@ -50,22 +50,27 @@ VstConnection::~VstConnection() {}
 static std::atomic<MessageID> vstMessageId(1);
 // sendRequest prepares a RequestItem for the given parameters
 // and adds it to the send queue.
-MessageID VstConnection::sendRequest(std::unique_ptr<Request> request,
+MessageID VstConnection::sendRequest(std::unique_ptr<Request> req,
                                      RequestCallback cb) {
+  Connection::State state = _state.load(std::memory_order_acquire);
+  if (state == State::Failed) {
+    cb(fuerte::errorToInt(ErrorCondition::CouldNotConnect), std::move(req), nullptr);
+    return 0;
+  }
+  
   // it does not matter if IDs are reused on different connections
   uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
-  
   // Create RequestItem from parameters
   std::unique_ptr<RequestItem> item(new RequestItem());
   item->_messageID = mid;
   item->_expires = std::chrono::steady_clock::time_point::max();
   item->_callback = cb;
-  item->_request = std::move(request);
+  item->_request = std::move(req);
   item->prepareForNetwork(_vstVersion);
   
   // Add item to send queue
   uint32_t loop = queueRequest(std::move(item));
-  if (_state.load(std::memory_order_acquire) != State::Connected) {
+  if (state == State::Connected) {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): start sending & reading"
                         << std::endl;
     if (!(loop & WRITE_LOOP_ACTIVE)) {
@@ -107,10 +112,9 @@ void VstConnection::finishInitialization() {
         if (ec) {
           FUERTE_LOG_ERROR << ec.message() << std::endl;
           _state.store(State::Disconnected, std::memory_order_release);
-          shutdownConnection(ErrorCondition::WriteError);
-          onFailure(
-              errorToInt(ErrorCondition::CouldNotConnect),
-              "unable to initialize connection: error=" + ec.message());
+          shutdownConnection(ErrorCondition::CouldNotConnect);
+          onFailure(errorToInt(ErrorCondition::CouldNotConnect),
+                    "unable to initialize connection: error=" + ec.message());
         } else {
           FUERTE_LOG_CALLBACKS
               << "VST connection established; starting send/read loop"
@@ -201,7 +205,7 @@ std::vector<asio_ns::const_buffer> VstConnection::prepareRequest(
 
 // Thread-Safe: activate the writer loop (if off and items are queud)
 void VstConnection::startWriting() {
-  assert(_connected.load() == State::Connected);
+  assert(_connected.load(std::memory_order_aquire) == State::Connected);
   FUERTE_LOG_TRACE << "startWriting (vst): this=" << this << std::endl;
 
   uint32_t state = _loopState.load(std::memory_order_acquire);

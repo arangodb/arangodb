@@ -51,10 +51,6 @@
 #define ENABLE_FUERTE_LOG_CALLBACKS 0
 #endif
 
-#ifndef ENABLE_FUERTE_LOG_NODE
-#define ENABLE_FUERTE_LOG_NODE 0
-#endif
-
 #if defined(ENABLE_FUERTE_LOG_TRACE) || defined(ENABLE_FUERTE_LOG_DEBUG) || \
     defined(ENABLE_FUERTE_LOG_ERROR)
 #include <iostream>

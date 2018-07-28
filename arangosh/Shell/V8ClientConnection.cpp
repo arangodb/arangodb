@@ -166,8 +166,8 @@ void V8ClientConnection::init(ClientFeature* client) {
       
     }
 
-  } catch(std::exception const& e) { // connection error
-    _lastErrorMessage = e.what();
+  } catch(fuerte::ErrorCondition const& e) { // connection error
+    _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 500;
   }
 
@@ -246,6 +246,7 @@ bool V8ClientConnection::isConnected() {
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
+#warning FIX
   return "";//_client->getEndpointSpecification();
 }
 

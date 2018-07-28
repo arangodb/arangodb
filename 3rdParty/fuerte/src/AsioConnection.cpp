@@ -82,22 +82,16 @@ void AsioConnection<T>::startResolveHost() {
   auto self = shared_from_this();
   _resolver.async_resolve(
       {_configuration._host, _configuration._port},
-      [this, self](const asio_ns::error_code& error,
-                   bt::resolver::iterator iterator) {
-        if (error) {
-          FUERTE_LOG_ERROR << "resolve failed: error=" << error << std::endl;
+      [this, self](asio_ns::error_code const& ec, bt::resolver::iterator it) {
+        if (ec || it ==  bt::resolver::iterator()) {
+          FUERTE_LOG_ERROR << "resolve failed: error=" << ec << std::endl;
+          shutdownConnection(ErrorCondition::CouldNotConnect);
           onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-                    "resolved failed: error" + error.message());
+                    "resolved failed: error" + ec.message());
         } else {
           FUERTE_LOG_CALLBACKS << "resolve succeeded" << std::endl;
-          _endpoints = iterator;
-          if (_endpoints == bt::resolver::iterator()) {
-            FUERTE_LOG_ERROR << "unable to resolve endpoints" << std::endl;
-            onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-                      "unable to resolve endpoints");
-          } else {
-            initSocket();
-          }
+          _endpoints = it;
+          initSocket();
         }
       });
 }
@@ -149,8 +143,9 @@ void AsioConnection<T>::shutdownSocket() {
 template <typename T>
 void AsioConnection<T>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
-  
-  _state.store(State::Disconnected, std::memory_order_release);
+
+  _state.store(ec == ErrorCondition::CouldNotConnect ? State::Failed : State::Disconnected,
+               std::memory_order_release);
   
   // cancel timeouts
   _timeout.cancel();
@@ -163,6 +158,12 @@ void AsioConnection<T>::shutdownConnection(const ErrorCondition ec) {
   
   // Cancel all items and remove them from the message store.
   _messageStore.cancelAll(ec);
+  
+  T* item = nullptr;
+  while (_writeQueue.pop(item)) {
+    std::unique_ptr<T> guard(item);
+    guard->invokeOnError(errorToInt(ec));
+  }
   
   // clear buffer of received messages
   _receiveBuffer.consume(_receiveBuffer.size());
@@ -227,19 +228,19 @@ void AsioConnection<T>::startConnect(bt::resolver::iterator endpointItr) {
 // callback handler for async_callback (called in startConnect).
 template <typename T>
 void AsioConnection<T>::asyncConnectCallback(
-   asio_ns::error_code const& ec, bt::resolver::iterator endpointItr) {
+   asio_ns::error_code const& ec, bt::resolver::iterator endpIt) {
   _timeout.cancel();
   
   if (ec) {
     // Connection failed
-    FUERTE_LOG_ERROR << ec.message() << std::endl;
+    FUERTE_LOG_ERROR << "could not connect to " << endpIt->host_name()
+     <<" with error " << ec << "\n";
     shutdownConnection(ErrorCondition::CouldNotConnect);
-    if (endpointItr == bt::resolver::iterator()) {
+    if (endpIt == bt::resolver::iterator()) {
       FUERTE_LOG_CALLBACKS << "no further endpoint" << std::endl;
     }
     onFailure(errorToInt(ErrorCondition::CouldNotConnect),
               "unable to connect -- " + ec.message());
-    _messageStore.cancelAll(ErrorCondition::CouldNotConnect);
   } else {
     // Connection established
     FUERTE_LOG_CALLBACKS << "TCP socket connected" << std::endl;
@@ -271,11 +272,9 @@ void AsioConnection<T>::startSSLHandshake() {
       [this, self](asio_ns::error_code const& error) {
         if (error) {
           FUERTE_LOG_ERROR << error.message() << std::endl;
-          shutdownSocket();
-          onFailure(
-              errorToInt(ErrorCondition::CouldNotConnect),
-              "unable to perform ssl handshake: error=" + error.message());
-          _messageStore.cancelAll(ErrorCondition::CouldNotConnect);
+          shutdownConnection(ErrorCondition::CouldNotConnect);
+          onFailure(errorToInt(ErrorCondition::CouldNotConnect),
+                    "unable to perform ssl handshake: error=" + error.message());
         } else {
           FUERTE_LOG_CALLBACKS << "ssl handshake done" << std::endl;
           finishInitialization();

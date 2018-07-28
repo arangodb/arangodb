@@ -115,24 +115,26 @@ HttpConnection::HttpConnection(std::shared_ptr<asio_io_context>& ctx,
   }
 }
 
-MessageID HttpConnection::sendRequest(std::unique_ptr<Request> request,
-                                      RequestCallback callback) {
-  FUERTE_LOG_HTTPTRACE << "queueRequest - start - at address: " << request.get()
-                       << std::endl;
+MessageID HttpConnection::sendRequest(std::unique_ptr<Request> req,
+                                      RequestCallback cb) {
+  Connection::State state = _state.load(std::memory_order_acquire);
+  if (state == State::Failed) {
+    cb(fuerte::errorToInt(ErrorCondition::CouldNotConnect), std::move(req), nullptr);
+    return 0;
+  }
 
   // Prepare a new request
-  auto item = createRequestItem(std::move(request), callback);
+  auto item = createRequestItem(std::move(req), cb);
   uint64_t id = item->_messageID;
   uint32_t loop = queueRequest(std::move(item));
-  if (_state.load(std::memory_order_acquire) == State::Connected) {
-    FUERTE_LOG_HTTPTRACE << "sendRequest (http): start sending & reading"
-                         << std::endl;
+  if (state == Connection::State::Connected) {
+    FUERTE_LOG_HTTPTRACE << "sendRequest (http): start sending & reading\n";
     // HTTP is half-duplex protocol: we only write if there is no reading
     if (!(loop & LOOP_FLAGS)) {
       startWriting();
     }
   } else {
-    FUERTE_LOG_HTTPTRACE << "sendRequest (http): not connected" << std::endl;
+    FUERTE_LOG_HTTPTRACE << "sendRequest (http): not connected\n";
   }
   return id;
 }
