@@ -44,24 +44,6 @@ function runSetup () {
   // the above should commit two times
 
   internal.debugSegfault('crashing server');
-
-  /*db._executeTransaction({
-    intermediateCommitCount: 1000,
-    collections: {
-      write: 'UnitTestsRecovery'
-    },
-    action: function () {
-      var db = require('@arangodb').db;
-
-      var i, c = db._collection('UnitTestsRecovery');
-      for (i = 0; i < 2000; ++i) {
-        c.insert({ _key: 'test' + i, value: i }, { waitForSync: i === 1999 });
-      }
-      // the above should commit two times
-
-      internal.debugSegfault('crashing server');
-    }
-  });*/
 }
 
 // //////////////////////////////////////////////////////////////////////////////

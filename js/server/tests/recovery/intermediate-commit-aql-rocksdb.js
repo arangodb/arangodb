@@ -42,7 +42,7 @@ function runSetup () {
   db._query("FOR i IN 1..10000 INSERT { value: i, modified: false } INTO UnitTestsRecovery");
 
   try {
-    db._query("FOR doc IN UnitTestsRecovery UPDATE doc WITH { modified: true } INTO UnitTestsRecovery RETURN FAIL('peng')", 
+    db._query("FOR doc IN UnitTestsRecovery UPDATE doc WITH { modified: true } INTO UnitTestsRecovery", 
     {}, { intermediateCommitCount: 1000});
   } catch (err) {
     // intentionally fail

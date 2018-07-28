@@ -39,8 +39,9 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  db._query(`FOR i IN 0..19999 INSERT { _key: CONCAT('test', i), value: i } INTO UnitTestsRecovery \n 
-            OPTIONS {waitForSync: true} RETURN V8("require('internal').debugSegfault('crashing server');")`, 
+  db._query(`FOR i IN 0..20000 FILTER i < 20000 OR V8("require('internal').debugSegfault('crashing server');") 
+            INSERT { _key: CONCAT('test', i), value: i } INTO UnitTestsRecovery \n 
+            OPTIONS {waitForSync: true}`, 
   {}, {intermediateCommitCount: 1000});
 
   /*db._executeTransaction({

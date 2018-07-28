@@ -40,7 +40,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery');
 
   try {
-    db._query("FOR i IN 1..10000 INSERT { value: i, modified: false } INTO UnitTestsRecovery RETURN FAIL('peng')", 
+    db._query("FOR i IN 1..10001 FILTER i < 10000 OR FAIL('peng') INSERT { value: i, modified: false } INTO UnitTestsRecovery", 
               {}, {intermediateCommitCount: 100000});
 
     /*db._executeTransaction({
