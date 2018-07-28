@@ -23,6 +23,7 @@
 
 #include "ShardingStrategyDefault.h"
 #include "Basics/Exceptions.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/hashes.h"
@@ -60,7 +61,8 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
     : ShardingStrategy(),
       _sharding(sharding),
       _shards(),
-      _usesDefaultShardKeys(false) {
+      _usesDefaultShardKeys(false),
+      _shardsSet(false) {
 
   auto shardKeys = _sharding->shardKeys();
     
@@ -83,6 +85,7 @@ int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice sl
   static constexpr size_t magicLength = 52;
 
   determineShards();
+  TRI_ASSERT(!_shards.empty());
   
   TRI_ASSERT(!_sharding->shardKeys().empty());
 
@@ -97,7 +100,14 @@ int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice sl
 }
 
 void ShardingStrategyHashBase::determineShards() {
-  if (!_shards.empty()) {
+  if (_shardsSet) {
+    TRI_ASSERT(!_shards.empty());
+    return;
+  }
+
+  MUTEX_LOCKER(mutex, _shardsSetMutex);
+  if (_shardsSet) {
+    TRI_ASSERT(!_shards.empty());
     return;
   }
 
@@ -110,6 +120,9 @@ void ShardingStrategyHashBase::determineShards() {
   if (_shards.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid shard count");
   }
+
+  TRI_ASSERT(!_shards.empty());
+  _shardsSet = true;
 }
 
 /// @brief old version of the sharding used in the community edition
