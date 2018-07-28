@@ -530,7 +530,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, VPackBuilder& report) {
   arangodb::Result result;
-
   for (auto const& database : VPackObjectIterator(local)) {
     auto const dbName = database.key.copyString();
 
@@ -623,22 +622,26 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
       for (auto const& shard : VPackObjectIterator(collection.value)) {
         auto const shName = shard.key.copyString();
+        
         // Shard in current and has servers
         if (shard.value.hasKey(SERVERS)) {
           auto servers = shard.value.get(SERVERS);
 
           if (servers.isArray() && servers.length() > 0    // servers in current
-              && servers[0].copyString() == serverId         // we are leading 
+              && servers[0].copyString() == serverId       // we are leading 
               && !local.hasKey(
                 std::vector<std::string> {dbName, shName}) // no local collection
-              && !shardMap.hasKey(shName)) {               // no such shard in plan
-            report.add(VPackValue(CURRENT_COLLECTIONS + dbName + colName + shName));
+              && !shardMap.slice().hasKey(shName)) {               // no such shard in plan
+            report.add(
+              VPackValue(
+                CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
             { VPackObjectBuilder o(&report);
               report.add(OP, VP_DELETE); }
           }
+
         }
       }
-    }    
+    }
   }
   
   return result;
