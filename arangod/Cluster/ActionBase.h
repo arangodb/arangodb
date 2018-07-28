@@ -152,6 +152,10 @@ class ActionBase {
 
   /// @brief hash value of ActionDescription
   /// @return uint64_t hash
+  std::string clientId() const { return _clientId; }
+
+  /// @brief hash value of ActionDescription
+  /// @return uint64_t hash
   uint64_t hash() const {return _hash;}
 
   /// @brief hash value of ActionDescription
@@ -180,6 +184,7 @@ protected:
   ActionModel _model;
 
   uint64_t _hash;
+  std::string _clientId;
 
   uint64_t _id;
 

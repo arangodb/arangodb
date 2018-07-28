@@ -184,7 +184,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
       }
     }
-    operations.push_back(AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
+    operations.push_back(
+      AgencyOperation(
+        "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
     AgencyWriteTransaction currentTransaction(operations);
     AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
     if (!r.successful()) {
@@ -194,8 +196,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   
   result = DBServerAgencySyncResult(
     tmp.ok(),
-    report.hasKey("Plan") ? report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
-    report.hasKey("Current") ? report.get("Current").get("Version").getNumber<uint64_t>() : 0);
+    report.hasKey("Plan") ?
+    report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
+    report.hasKey("Current") ?
+    report.get("Current").get("Version").getNumber<uint64_t>() : 0);
 
   auto took = duration<double>(clock::now()-start).count();
   if (took > 30.0) {

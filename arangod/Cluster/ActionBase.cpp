@@ -48,6 +48,7 @@ ActionBase::ActionBase(MaintenanceFeature& feature,
   : _feature(feature), _description(desc), _state(READY),
     _actionCreated(std::chrono::system_clock::now()), _progress(0) {
   _hash = _description.hash();
+  _clientId = std::to_string(_hash);
   _id = _feature.nextActionId();
 }
 
