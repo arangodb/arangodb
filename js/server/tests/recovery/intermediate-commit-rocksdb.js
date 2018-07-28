@@ -39,8 +39,8 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  db._query("FOR i IN 0..1999 INSERT {_key: 'test' + i} INTO @@cn OPTIONS { waitForSync: true }", 
-  {"@cn": 'UnitTestsRecovery'}, {intermediateCommitCount: 1000})
+  db._query("FOR i IN 0..1999 INSERT {_key: CONCAT('test', i)} INTO UnitTestsRecovery OPTIONS { waitForSync: true }", 
+  {}, {intermediateCommitCount: 1000})
   // the above should commit two times
 
   internal.debugSegfault('crashing server');
