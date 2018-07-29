@@ -68,7 +68,7 @@ inline std::size_t validateAndCount(char const* vpStart,
       vpStart += tmp.byteSize();
       numPayloads++;
     } while (vpStart != vpEnd);
-    return numPayloads - 1;
+    return numPayloads - 1; // subtract header slice
   } catch (std::exception const& e) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
       << "len: " << std::distance(vpStart, vpEnd) << " - " << VPackSlice(vpStart).toHex();
@@ -392,22 +392,22 @@ bool VstCommTask::processRead(double startTime) {
     } else {
       
       // the handler will take ownership of this pointer
-      std::unique_ptr<VstRequest> request(new VstRequest(
-          _connectionInfo, std::move(message), chunkHeader._messageID));
-      request->setAuthenticated(_authorized);
-      request->setUser(_authenticatedUser);
-      request->setAuthenticationMethod(_authMethod);
+      auto req = std::make_unique<VstRequest>(_connectionInfo, std::move(message),
+                                              chunkHeader._messageID);
+      req->setAuthenticated(_authorized);
+      req->setUser(_authenticatedUser);
+      req->setAuthenticationMethod(_authMethod);
       if (_authorized && _auth->userManager() != nullptr) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
       
-      RequestFlow cont = prepareExecution(*request.get());
+      RequestFlow cont = prepareExecution(*req.get());
       if (cont == RequestFlow::Continue) {
         auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR,
                                                   chunkHeader._messageID);
-        resp->setContentTypeRequested(request->contentTypeResponse());
-        executeRequest(std::move(request), std::move(resp));
+        resp->setContentTypeRequested(req->contentTypeResponse());
+        executeRequest(std::move(req), std::move(resp));
       }
     }
   }

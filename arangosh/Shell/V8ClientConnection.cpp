@@ -1636,9 +1636,12 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
     /*
     v8::Handle<v8::String> b = TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
     result->ForceSet(TRI_V8_ASCII_STRING(isolate, "body"), b);*/
-    if (response->contentType() == fuerte::ContentType::VPack) {
-      return TRI_VPackToV8(isolate, response->slices()[0]);
-    } else if (response->contentType() == fuerte::ContentType::Json) {
+    if (response->isContentTypeVPack()) {
+      std::vector<VPackSlice> const& slices = response->slices();
+      if (!slices.empty()) {
+        return TRI_VPackToV8(isolate, slices[0]);
+      } // no body
+    } else if (response->isContentTypeJSON()) {
       const char* str = reinterpret_cast<const char*>(sb.data());
       return TRI_FromJsonString(isolate, str, sb.size(), nullptr);
     } else {

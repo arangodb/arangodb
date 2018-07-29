@@ -44,21 +44,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-namespace {
-std::string const& lookupStringInMap(
-    std::unordered_map<std::string, std::string> const& map,
-    std::string const& key, bool& found) {
-  auto it = map.find(key);
-  if (it != map.end()) {
-    found = true;
-    return it->second;
-  }
-
-  found = false;
-  return StaticStrings::Empty;
-}
-}
-
 VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
                        VstInputMessage&& message, uint64_t messageId)
     : GeneralRequest(connectionInfo),
@@ -77,44 +62,59 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
   return _message.payload();
 }
 
-std::unordered_map<std::string, std::string> const& VstRequest::headers()
-    const {
-  if (!_headers) {
-    using namespace std;
-    _headers = make_unique<unordered_map<string, string>>();
-    VPackSlice meta = _message.header().at(6);  // get meta
-    for (auto const& it : VPackObjectIterator(meta, true)) {
-      // must lower-case the header key
-      _headers->emplace(StringUtils::tolower(it.key.copyString()),
-                        it.value.copyString());
-    }
+void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
+  if (!keySlice.isString() || !valSlice.isString()) {
+    return;
   }
-  return *_headers;
-}
+  
+  std::string key = StringUtils::tolower(keySlice.copyString());
+  std::string val = StringUtils::tolower(valSlice.copyString());
 
-std::string const& VstRequest::header(std::string const& key,
-                                      bool& found) const {
-  headers();
-  return lookupStringInMap(*_headers, key, found);
-}
-
-std::string const& VstRequest::header(std::string const& key) const {
-  bool unused = true;
-  return header(key, unused);
+  if (key == StaticStrings::Accept &&
+      val.length() >= StaticStrings::MimeTypeVPack.size() &&
+      memcmp(val.data(), StaticStrings::MimeTypeVPack.c_str(),
+             StaticStrings::MimeTypeVPack.size()) == 0) {
+    _contentTypeResponse = ContentType::VPACK;
+    return;
+  } else if (key == StaticStrings::ContentTypeHeader &&
+             val.length() >= StaticStrings::MimeTypeVPack.size() &&
+             memcmp(val.data(), StaticStrings::MimeTypeVPack.c_str(),
+                    StaticStrings::MimeTypeVPack.size()) == 0) {
+    _contentType = ContentType::VPACK;
+    // don't insert this header!!
+    return;
+  }
+  
+  // must lower-case the header key
+  _headers.emplace(std::move(key), std::move(val));
 }
 
 void VstRequest::parseHeaderInformation() {
   using namespace std;
   auto vHeader = _message.header();
+  if (!vHeader.isArray() || vHeader.length() != 7) {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION) << "invalid VST message header";
+    throw std::runtime_error("invalid VST message header");
+  }
+  
   try {
     TRI_ASSERT(vHeader.isArray());
-    // vHeader.at(0).getInt()  //version
-    // vHeader.at(1).getInt()  //type
+    int version = vHeader.at(0).getInt();  //version
+    int type = vHeader.at(1).getInt();  //type
     _databaseName = vHeader.at(2).copyString();                 // database
     _type = meta::toEnum<RequestType>(vHeader.at(3).getInt());  // request type
     _requestPath = vHeader.at(4).copyString();  // request (path)
     VPackSlice params = vHeader.at(5);          // parameter
-
+    VPackSlice meta = vHeader.at(6);            // meta
+    
+    if (version != 1) {
+      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "invalid version in vst message";
+    }
+    if (type != 1) {
+      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "not a VST request";
+      return;
+    }
+    
     for (auto const& it : VPackObjectIterator(params, true)) {
       if (it.value.isArray()) {
         vector<string> tmp;
@@ -126,6 +126,10 @@ void VstRequest::parseHeaderInformation() {
         _values.emplace(it.key.copyString(), it.value.copyString());
       }
     }
+    
+    for (auto const& it : VPackObjectIterator(meta, true)) {
+      setHeader(it.key, it.value);
+    }
 
     // fullUrl should not be necessary for Vst
     _fullUrl = _requestPath + "?";
@@ -136,24 +140,16 @@ void VstRequest::parseHeaderInformation() {
 
     for (auto const& param : _arrayValues) {
       for (auto const& value : param.second) {
-        _fullUrl.append(param.first + "[]=" +
-                        basics::StringUtils::urlEncode(value) + "&");
+        _fullUrl.append(param.first);
+        _fullUrl.append("[]=");
+        _fullUrl.append(basics::StringUtils::urlEncode(value));
+        _fullUrl.push_back('&');
       }
     }
-    _fullUrl.pop_back();
+    _fullUrl.pop_back(); // remove last &
 
   } catch (std::exception const& e) {
     throw std::runtime_error(
         std::string("Error during Parsing of VstHeader: ") + e.what());
   }
-}
-
-std::string const& VstRequest::value(std::string const& key,
-                                     bool& found) const {
-  return lookupStringInMap(_values, key, found);
-}
-
-std::string const& VstRequest::value(std::string const& key) const {
-  bool unused = true;
-  return value(key, unused);
 }

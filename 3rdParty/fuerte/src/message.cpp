@@ -93,20 +93,21 @@ void RequestHeader::addParameter(std::string const& key,
 void RequestHeader::parseHttpPath(std::string const& p) {
   size_t pos = p.rfind('?');
   if (pos != std::string::npos) {
-    path = p.substr(0, pos);
+    this->path = p.substr(0, pos);
     
     while (pos != std::string::npos && pos + 1 < p.length()) {
       size_t pos2 = p.find('=', pos + 1);
       if (pos2 == std::string::npos) {
         break;
       }
-      std::string key = p.substr(pos + 1, pos2);
+      std::string key = p.substr(pos + 1, pos2 - pos -1);
       pos = p.find('&', pos2 + 1); // points to next '&' or string::npos
-      std::string value = p.substr(pos2 + 1, pos);
+      std::string value = pos == std::string::npos ? p.substr(pos2 + 1) :
+                                                     p.substr(pos2 + 1, pos - pos2 - 1);
       parameters.emplace(std::move(key), std::move(value));
     }
   } else {
-    path = p;
+    this->path = p;
   }
 }
 
@@ -301,7 +302,7 @@ std::vector<VPackSlice> const& Response::slices() {
 
 asio_ns::const_buffer Response::payload() const {
   return asio_ns::const_buffer(_payload.data() + _payloadOffset,
-                                   _payload.byteSize());
+                               _payload.byteSize() - _payloadOffset);
 }
 
 size_t Response::payloadSize() const {

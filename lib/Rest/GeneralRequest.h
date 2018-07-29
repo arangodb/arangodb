@@ -167,24 +167,28 @@ class GeneralRequest {
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
   virtual int64_t contentLength() const = 0;
+  
   // get value from headers map. The key must be lowercase.
-  virtual std::string const& header(std::string const& key) const = 0;
-  virtual std::string const& header(std::string const& key,
-                                    bool& found) const = 0;
-  // return headers map
-  virtual std::unordered_map<std::string, std::string> const& headers()
-      const = 0;
-
+  std::string const& header(std::string const& key) const;
+  std::string const& header(std::string const& key, bool& found) const;
+  std::unordered_map<std::string, std::string> const& headers() const {
+    return _headers;
+  }
+  
   // the value functions give access to to query string parameters
-  virtual std::string const& value(std::string const& key) const = 0;
-  virtual std::string const& value(std::string const& key,
-                                   bool& found) const = 0;
+  std::string const& value(std::string const& key) const;
+  std::string const& value(std::string const& key, bool& found) const;
+  std::unordered_map<std::string, std::string> const& values() const {
+    return _values;
+  }
+  
+  std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
+    return _arrayValues;
+  }
+  
+  /// @brief returns parsed value, returns valueNotFound if parameter was not found
   template <typename T>
   T parsedValue(std::string const& key, T valueNotFound);
-
-  virtual std::unordered_map<std::string, std::string> const& values() const = 0;
-  virtual std::unordered_map<std::string, std::vector<std::string>>
-  arrayValues() const = 0;
 
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
                              &VPackOptions::Defaults) = 0;
@@ -236,6 +240,10 @@ class GeneralRequest {
   std::vector<std::string> _suffixes;
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
+  
+  std::unordered_map<std::string, std::string> _headers;
+  std::unordered_map<std::string, std::string> _values;
+  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
 };
 }
 

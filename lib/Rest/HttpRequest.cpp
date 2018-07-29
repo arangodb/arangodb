@@ -67,10 +67,10 @@ HttpRequest::HttpRequest(
       _header(nullptr),
       _body(body, contentLength),
       _allowMethodOverride(false),
-      _vpackBuilder(nullptr),
-      _headers(headers) {
+      _vpackBuilder(nullptr) {
   _contentType = contentType;
   _contentTypeResponse = contentType;
+  GeneralRequest::_headers = headers;
 }
 
 void HttpRequest::parseHeader(size_t length) {
@@ -758,44 +758,6 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     validator.validate(_body.c_str(), _body.length());
     return VPackSlice(_body.c_str());
   }
-}
-
-std::string const& HttpRequest::header(std::string const& key,
-                                       bool& found) const {
-  auto it = _headers.find(key);
-
-  if (it == _headers.end()) {
-    found = false;
-    return StaticStrings::Empty;
-  }
-
-  found = true;
-  return it->second;
-}
-
-std::string const& HttpRequest::header(std::string const& key) const {
-  bool unused = true;
-  return header(key, unused);
-}
-
-std::string const& HttpRequest::value(std::string const& key,
-                                      bool& found) const {
-  if (!_values.empty()) {
-    auto it = _values.find(key);
-
-    if (it != _values.end()) {
-      found = true;
-      return it->second;
-    }
-  }
-
-  found = false;
-  return StaticStrings::Empty;
-}
-
-std::string const& HttpRequest::value(std::string const& key) const {
-  bool unused = true;
-  return value(key, unused);
 }
 
 HttpRequest* HttpRequest::createHttpRequest(

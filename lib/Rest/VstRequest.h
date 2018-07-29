@@ -74,33 +74,21 @@ class VstRequest final : public GeneralRequest {
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
-
-  std::unordered_map<std::string, std::string> const& headers() const override;
-  // get value from headers map. The key must be lowercase.
-  std::string const& header(std::string const& key) const override;
-  std::string const& header(std::string const& key, bool& found) const override;
-
-  // values are query parameters
-  std::unordered_map<std::string, std::string> const& values() const override {
-    return _values;
-  }
-  std::unordered_map<std::string, std::vector<std::string>> arrayValues()
-      const override {
-    return _arrayValues;
-  }
-  std::string const& value(std::string const& key) const override;
-  std::string const& value(std::string const& key, bool& found) const override;
+  
+private:
+  
+  void setHeader(VPackSlice key, VPackSlice content);
+  
+  void parseHeaderInformation();
 
  private:
   VstInputMessage _message;
-  mutable std::unique_ptr<std::unordered_map<std::string, std::string>>
-      _headers;
+  std::unordered_map<std::string, std::string> _headers;
   // values are query parameters
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
   uint64_t _messageId;
 
-  void parseHeaderInformation();
 };
 }
 #endif
