@@ -98,10 +98,6 @@ void V8ClientConnection::init(ClientFeature* client) {
   _password = client->password();
   _databaseName = client->password();
 
-  SimpleHttpClientParams params(_requestTimeout, false);
-  params.setLocationRewriter(this, &rewriteLocation);
-  params.setUserNamePassword("/", _username, _password);
-
   /*if (JWT_SECRET != nullptr) {
     params.setJwt(jwtToken(*JWT_SECRET));
   }*/
@@ -119,8 +115,8 @@ void V8ClientConnection::init(ClientFeature* client) {
   }
   _connection = builder.connect(_loop);
   
-  auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version",
-                                   fuerte::StringMap{{"details","true"}});
+  fuerte::StringMap params{{"details","true"}};
+  auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
   try {
     auto res = _connection->sendRequest(std::move(req));
     _lastHttpReturnCode = res->statusCode();
@@ -205,30 +201,6 @@ void V8ClientConnection::init(ClientFeature* client) {
       }
     }
   }*/
-}
-
-std::string V8ClientConnection::rewriteLocation(void* data,
-                                                std::string const& location) {
-  V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
-
-  TRI_ASSERT(c != nullptr);
-
-  if (c->_databaseName.empty()) {
-    // no database name provided
-    return location;
-  }
-
-  if (location[0] == '/') {
-    if (location.size() >= 5 && location[1] == '_' && location[2] == 'd' &&
-        location[3] == 'b' && location[4] == '/') {
-      // location already contains /_db/
-      return location;
-    }
-
-    return "/_db/" + c->_databaseName + location;
-  }
-
-  return "/_db/" + c->_databaseName + "/" + location;
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
@@ -1464,7 +1436,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
   
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
-  req->header.parseHttpPath(location.toString());
+  req->header.database = _databaseName;
+  req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
     req->header.meta.emplace(std::move(pair));
   }
@@ -1494,7 +1467,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
 
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
-  req->header.parseHttpPath(location.toString());
+  req->header.database = _databaseName;
+  req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
     req->header.meta.emplace(std::move(pair));
   }

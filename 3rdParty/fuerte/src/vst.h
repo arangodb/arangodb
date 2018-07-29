@@ -26,7 +26,6 @@
 
 #include <chrono>
 #include <string>
-#include <unordered_map>
 
 #include <fuerte/asio_ns.h>
 #include <fuerte/message.h>

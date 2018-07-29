@@ -89,8 +89,9 @@ void RequestHeader::addParameter(std::string const& key,
   parameters.emplace(key, value);
 }
   
-/// @brief set http style path /a/b?q1=x&q2=y
-void RequestHeader::parseHttpPath(std::string const& p) {
+/// @brief analyze path and split into components
+/// strips /_db/<name> prefix, sets db name and fills parameters
+void RequestHeader::parseArangoPath(std::string const& p) {
   size_t pos = p.rfind('?');
   if (pos != std::string::npos) {
     this->path = p.substr(0, pos);
@@ -104,10 +105,33 @@ void RequestHeader::parseHttpPath(std::string const& p) {
       pos = p.find('&', pos2 + 1); // points to next '&' or string::npos
       std::string value = pos == std::string::npos ? p.substr(pos2 + 1) :
                                                      p.substr(pos2 + 1, pos - pos2 - 1);
-      parameters.emplace(std::move(key), std::move(value));
+      this->parameters.emplace(std::move(key), std::move(value));
     }
   } else {
     this->path = p;
+  }
+  
+  // extract database prefix /_db/<name>/
+  const char* q = this->path.c_str();
+  if (this->path.size() >= 4 && q[0] == '/' && q[1] == '_' &&
+      q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
+    // request contains database name
+    q += 5;
+    const char* pathBegin = q;
+    // read until end of database name
+    while (*q != '\0') {
+      if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' ||
+          *q == '\r') {
+        break;
+      }
+      ++q;
+    }
+    this->database = std::string(pathBegin, q - pathBegin);
+    if (*q == '\0') {
+      this->path = "/";
+    } else {
+      this->path = std::string(q, this->path.c_str() + this->path.size());
+    }
   }
 }
 

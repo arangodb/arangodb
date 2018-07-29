@@ -157,18 +157,17 @@ std::unique_ptr<RequestItem> HttpConnection::createRequestItem(
     header.append("/_db/");
     header.append(http::urlEncode(request->header.database));
   }
+  // must start with /, also turns /_db/abc into /_db/abc/
+  if (request->header.path.empty() || request->header.path[0] != '/') {
+    header.push_back('/');
+  }
 
-  // TODO these should throw an exception somewhere else
-  assert(!request->header.path.empty());
-  assert(request->header.path[0] == '/');
-
-  auto const& parameters = request->header.parameters;
-  if (parameters.empty()) {
+  if (request->header.parameters.empty()) {
     header.append(request->header.path);
   } else {
     header.append(request->header.path);
     header.push_back('?');
-    for (auto p : parameters) {
+    for (auto p : request->header.parameters) {
       if (header.back() != '?') {
         header.push_back('&');
       }

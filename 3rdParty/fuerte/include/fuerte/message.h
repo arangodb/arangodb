@@ -25,7 +25,6 @@
 #ifndef ARANGO_CXX_DRIVER_MESSAGE
 #define ARANGO_CXX_DRIVER_MESSAGE
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -45,7 +44,6 @@ struct MessageHeader {
   /// arangodb message format version
   short version() const { return _version; }
   void setVersion(short v) { _version = v; }
-
   
   /// Header meta data (equivalent to HTTP headers)
   StringMap meta;
@@ -73,13 +71,13 @@ protected:
   
 struct RequestHeader final : public MessageHeader {
   
-  /// Database that is the target of the request
-  std::string database;
-  
   /// HTTP method
   RestVerb restVerb = RestVerb::Illegal;
   
-  /// Local path of the request
+  /// Database that is the target of the request
+  std::string database;
+  
+  /// Local path of the request (without "/_db/" prefix)
   std::string path;
   
   /// Query parameters
@@ -96,8 +94,9 @@ public:
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
   
-  /// @brief set http style path /a/b?q1=x&q2=y
-  void parseHttpPath(std::string const&);
+  /// @brief analyze path and split into components
+  /// strips /_db/<name> prefix, sets db name and fills parameters
+  void parseArangoPath(std::string const&);
 };
   
 struct ResponseHeader final : public MessageHeader {

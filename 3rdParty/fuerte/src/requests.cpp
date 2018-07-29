@@ -24,28 +24,16 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
-// Helper and Implementation
-std::unique_ptr<Request> createRequest(RequestHeader&& messageHeader,
-                                       StringMap&& headerStrings,
-                                       RestVerb const& verb,
+  
+std::unique_ptr<Request> createRequest(RestVerb const& verb,
                                        ContentType const& contentType) {
-  if (!headerStrings.empty()) {
-    messageHeader.meta = std::move(headerStrings);
-  }
-  std::unique_ptr<Request> request(new Request(std::move(messageHeader)));
-
+  std::unique_ptr<Request> request(new Request());
+  
   request->header.restVerb = verb;
   request->header.contentType(contentType);
   request->header.acceptType(contentType);
-  // fuerte requests default to vpack content type for accept
-  //request->header.acceptType(ContentType::VPack);
-
+  
   return request;
-}
-
-std::unique_ptr<Request> createRequest(RestVerb const& verb,
-                                       ContentType const& contentType) {
-  return createRequest(RequestHeader(), StringMap(), verb, contentType);
 }
 
 // For User
@@ -66,6 +54,8 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
   request->header.path = path;
   request->header.parameters = parameters;
   request->addVPack(payload);
+  // fuerte requests default to vpack content type for accept
+  request->header.acceptType(ContentType::VPack);
   return request;
 }
 

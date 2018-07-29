@@ -46,12 +46,6 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Helper and Implementation
 
-// base case - everything uses this
-std::unique_ptr<Request> createRequest(RequestHeader&& messageHeader,
-                                       StringMap&& headerStrings,
-                                       RestVerb const& verb,
-                                       ContentType const& contentType);
-
 std::unique_ptr<Request> createRequest(RestVerb const& verb,
                                        ContentType const& contentType);
 

@@ -129,7 +129,11 @@ VPackBuffer<uint8_t> message::requestHeader(RequestHeader const& header) {
 
   // 4 - path
   // if(!header.path){ throw std::runtime_error("path" + message); }
-  builder.add(VPackValue(header.path));
+  if (header.path.empty() || header.path[0] != '/') {
+    builder.add(VPackValue("/" + header.path));
+  } else {
+    builder.add(VPackValue(header.path));
+  }
   FUERTE_LOG_DEBUG << "MessageHeader.path=" << header.path << std::endl;
 
   // 5 - parameters - not optional in current server

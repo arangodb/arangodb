@@ -110,10 +110,7 @@ class V8ClientConnection {
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context,
                   ClientFeature*);
-
- private:
-  static std::string rewriteLocation(void*, std::string const&);
-
+  
  private:
   void init(ClientFeature*);
 
