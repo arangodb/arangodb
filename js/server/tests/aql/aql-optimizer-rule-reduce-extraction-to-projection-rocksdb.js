@@ -222,7 +222,6 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        db._explain(query[0], { "@cn" : cn });
         var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
