@@ -201,7 +201,7 @@ std::vector<asio_ns::const_buffer> VstConnection::prepareRequest(
 
 // Thread-Safe: activate the writer loop (if off and items are queud)
 void VstConnection::startWriting() {
-  assert(_connected.load(std::memory_order_aquire) == State::Connected);
+  assert(_state.load(std::memory_order_acquire) == State::Connected);
   FUERTE_LOG_TRACE << "startWriting (vst): this=" << this << std::endl;
 
   uint32_t state = _loopState.load(std::memory_order_acquire);
@@ -462,8 +462,7 @@ std::unique_ptr<fu::Response> VstConnection::createResponse(
 void VstConnection::setTimeout() {
   // set to smallest point in time
   auto expires = std::chrono::steady_clock::time_point::max();
-  size_t waiting =
-  _messageStore.invokeOnAll([&](RequestItem* item) {
+  size_t waiting = _messageStore.invokeOnAll([&](RequestItem* item) {
     if (expires > item->_expires) {
       expires = item->_expires;
     }
@@ -473,7 +472,7 @@ void VstConnection::setTimeout() {
     _timeout.cancel();
     return;
   } else if (expires == std::chrono::steady_clock::time_point::max()) {
-    // use default connection
+    // use default connection timeout
     expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
   }
   
@@ -486,8 +485,7 @@ void VstConnection::setTimeout() {
 
     // cancel expired requests
     auto now = std::chrono::steady_clock::now();
-    size_t waiting =
-    _messageStore.invokeOnAll([&](RequestItem* item) {
+    size_t waiting = _messageStore.invokeOnAll([&](RequestItem* item) {
       if (item->_expires < now) {
         FUERTE_LOG_DEBUG << "VST-Request timeout";
         item->invokeOnError(errorToInt(ErrorCondition::Timeout));

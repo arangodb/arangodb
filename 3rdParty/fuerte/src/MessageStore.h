@@ -101,11 +101,11 @@ class MessageStore {
           it++;
         }
       }
+      return _map.size();
     } else {
       std::lock_guard<std::mutex> lockMap(_mutex);
       return invokeOnAll(func, true);
     }
-    return _map.size();
   }
 
   // minimumTimeout returns the lowest timeout value of all messages in this

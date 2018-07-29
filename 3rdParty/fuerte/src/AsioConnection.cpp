@@ -69,7 +69,7 @@ void AsioConnection<T>::startConnection() {
   // start connecting iff state is disconnected
   Connection::State exp = Connection::State::Disconnected;
   if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
-    FUERTE_LOG_ERROR << "already resolving endpoint";
+    FUERTE_LOG_ERROR << "already resolving endpoint\n";
     return;
   }
   
@@ -155,6 +155,7 @@ void AsioConnection<T>::shutdownConnection(const ErrorCondition ec) {
   T* item = nullptr;
   while (_writeQueue.pop(item)) {
     std::unique_ptr<T> guard(item);
+    _loopState.fetch_sub(WRITE_LOOP_QUEUE_INC, std::memory_order_release);
     guard->invokeOnError(errorToInt(ec));
   }
   
@@ -167,9 +168,9 @@ void AsioConnection<T>::restartConnection(const ErrorCondition error) {
   // Read & write loop must have been reset by now
 
   FUERTE_LOG_CALLBACKS << "restartConnection" << std::endl;
-  
   // only restart connection if it was connected previously
-  if (_state.load(std::memory_order_acquire) == Connection::State::Connected) {
+  Connection::State exp = Connection::State::Connected;
+  if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
     shutdownConnection(error); // Terminate connection
     startConnection(); // will check state
   }

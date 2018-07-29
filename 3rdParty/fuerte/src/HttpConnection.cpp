@@ -256,7 +256,7 @@ std::vector<asio_ns::const_buffer> HttpConnection::prepareRequest(
 
 // Thread-Safe: activate the combined write-read loop
 void HttpConnection::startWriting() {
-  assert(_connected.load() == State::Connected);
+  assert(_state.load(std::memory_order_acquire) == State::Connected);
   FUERTE_LOG_HTTPTRACE << "startWriting (http): this=" << this << std::endl;
 
   // we want to turn on both flags at once
