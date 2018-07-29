@@ -28,6 +28,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
@@ -47,8 +48,10 @@ using namespace arangodb::basics;
 VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
                        VstInputMessage&& message, uint64_t messageId)
     : GeneralRequest(connectionInfo),
+      _messageId(messageId),
       _message(std::move(message)),
-      _messageId(messageId) {
+      _validatedPayload(false),
+      _vpackBuilder(nullptr) {
   _protocol = "vst";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
@@ -57,9 +60,32 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
 }
 
 VPackSlice VstRequest::payload(VPackOptions const* options) {
-  // message does not need to be validated here, as it was already
-  // validated before
-  return _message.payload();
+  TRI_ASSERT(options != nullptr);
+  
+  if (_contentType == ContentType::JSON) {
+    if (!_vpackBuilder) {
+      StringRef json = _message.payload();
+      if (!json.empty()) {
+        _vpackBuilder = VPackParser::fromJson(json.data(), json.length());
+      }
+    }
+    if (_vpackBuilder) {
+      return _vpackBuilder->slice();
+    }
+  } else if (_contentType == ContentType::VPACK) {
+    StringRef vpack = _message.payload();
+    if (!vpack.empty()) {
+      if (!_validatedPayload) {
+        VPackOptions validationOptions = *options; // intentional copy
+        validationOptions.validateUtf8Strings = true;
+        VPackValidator validator(&validationOptions);
+        // will throw on error
+        _validatedPayload = validator.validate(vpack.data(), vpack.length());
+      }
+      return VPackSlice(vpack.data());
+    }
+  }
+  return VPackSlice::noneSlice();  // no body
 }
 
 void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {

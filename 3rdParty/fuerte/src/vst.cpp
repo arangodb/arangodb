@@ -394,19 +394,18 @@ std::pair<ChunkHeader, asio_ns::const_buffer> readChunkHeaderVST1_1(uint8_t cons
 MessageType validateAndExtractMessageType(uint8_t const* const vpStart,
                                           std::size_t length, size_t& hLength) {
   // there must be at least one velocypack for the header
-  VPackValidator validator;
-  bool isSubPart = true;
+  VPackOptions validationOptions = VPackOptions::Defaults;
+  validationOptions.validateUtf8Strings = true;
+  VPackValidator validator(&validationOptions);
   
   try {
     // isSubPart allows the slice to be shorter than the checked buffer.
-    validator.validate(vpStart, length, isSubPart);
-    FUERTE_LOG_VSTTRACE << "validation done" << std::endl;
+    validator.validate(vpStart, length, /*isSubPart*/ true);
+    FUERTE_LOG_VSTTRACE << "validation done\n";
   } catch (std::exception const& e) {
     FUERTE_LOG_VSTTRACE << "len: " << length
-    << std::string(reinterpret_cast<char const*>(vpStart),
-                   length);
-    throw std::runtime_error(
-                             std::string("error during validation of incoming VPack (HEADER): ") +
+    << std::string(reinterpret_cast<char const*>(vpStart), length);
+    throw std::runtime_error(std::string("error during validation of incoming VPack (HEADER): ") +
                              e.what());
   }
   VPackSlice slice = VPackSlice(vpStart);

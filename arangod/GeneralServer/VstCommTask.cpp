@@ -49,31 +49,28 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-inline std::size_t validateAndCount(char const* vpStart,
-                                    char const* vpEnd) {
+// throws on error
+inline void validateRequestMesssage(char const* vpStart, char const* vpEnd) {
   VPackOptions validationOptions = VPackOptions::Defaults;
   validationOptions.validateUtf8Strings = true;
   VPackValidator validator(&validationOptions);
 
-  try {
-    std::size_t numPayloads = 0;
-    // check for slice start to the end of Chunk
-    // isSubPart allows the slice to be shorter than the checked buffer.
-    do {
-      validator.validate(vpStart, std::distance(vpStart, vpEnd),
-                         /*isSubPart =*/true);
+  // isSubPart allows the slice to be shorter than the checked buffer.
+  validator.validate(vpStart, std::distance(vpStart, vpEnd),
+                     /*isSubPart =*/true);
 
-      // get offset to next
-      VPackSlice tmp(vpStart);
-      vpStart += tmp.byteSize();
-      numPayloads++;
-    } while (vpStart != vpEnd);
-    return numPayloads - 1; // subtract header slice
-  } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-      << "len: " << std::distance(vpStart, vpEnd) << " - " << VPackSlice(vpStart).toHex();
-    throw std::runtime_error(
-        std::string("error during validation of incoming VPack: ") + e.what());
+  VPackSlice slice = VPackSlice(vpStart);
+  if (!slice.isArray() || slice.length() != 7)  {
+    throw std::runtime_error("VST message does not contain a valid request header");
+  }
+  
+  VPackSlice vSlice = slice.at(0);
+  if (!vSlice.isNumber<short>() || vSlice.getNumber<int>() != 1) {
+    throw std::runtime_error("VST message header has an unsupported version");
+  }
+  VPackSlice typeSlice = slice.at(1);
+  if (!typeSlice.isNumber<int>() || typeSlice.getNumber<int>() != 2) {
+    throw std::runtime_error("VST message is not of type request");
   }
 }
 
@@ -450,10 +447,8 @@ bool VstCommTask::getMessageFromSingleChunk(
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                           << "chunk contains single message";
-  std::size_t payloads = 0;
-
   try {
-    payloads = validateAndCount(vpackBegin, chunkEnd);
+    validateRequestMesssage(vpackBegin, chunkEnd);
   } catch (std::exception const& e) {
     addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                       chunkHeader._messageID, VPackBuffer<uint8_t>());
@@ -473,7 +468,7 @@ bool VstCommTask::getMessageFromSingleChunk(
 
   VPackBuffer<uint8_t> buffer;
   buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
-  message.set(chunkHeader._messageID, std::move(buffer), payloads);  // fixme
+  message.set(chunkHeader._messageID, std::move(buffer));  // fixme
 
   doExecute = true;
   return true;
@@ -537,14 +532,10 @@ bool VstCommTask::getMessageFromMultiChunks(
     if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "chunk completes a message";
-      std::size_t payloads = 0;
-
       try {
-        payloads =
-            validateAndCount(reinterpret_cast<char const*>(im._buffer.data()),
-                             reinterpret_cast<char const*>(
-                                 im._buffer.data() + im._buffer.byteSize()));
-
+         validateRequestMesssage(reinterpret_cast<char const*>(im._buffer.data()),
+                                 reinterpret_cast<char const*>(im._buffer.data() +
+                                                               im._buffer.byteSize()));
       } catch (std::exception const& e) {
         addErrorResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                          chunkHeader._messageID, TRI_ERROR_BAD_PARAMETER, e.what());
@@ -562,7 +553,7 @@ bool VstCommTask::getMessageFromMultiChunks(
         return false;
       }
 
-      message.set(chunkHeader._messageID, std::move(im._buffer), payloads);
+      message.set(chunkHeader._messageID, std::move(im._buffer));
       _incompleteMessages.erase(incompleteMessageItr);
       // check length
 

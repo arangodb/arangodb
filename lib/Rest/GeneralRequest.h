@@ -26,7 +26,7 @@
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringRef.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/RequestContext.h"
@@ -164,9 +164,7 @@ class GeneralRequest {
   // return 0 for protocols that
   // do not care about message ids
   virtual uint64_t messageId() const { return 1; }
-
   virtual arangodb::Endpoint::TransportType transportType() = 0;
-  virtual int64_t contentLength() const = 0;
   
   // get value from headers map. The key must be lowercase.
   std::string const& header(std::string const& key) const;
@@ -190,6 +188,7 @@ class GeneralRequest {
   template <typename T>
   T parsedValue(std::string const& key, T valueNotFound);
 
+  virtual arangodb::StringRef rawPayload() const = 0;
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
                              &VPackOptions::Defaults) = 0;
 

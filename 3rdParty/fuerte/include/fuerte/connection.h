@@ -75,7 +75,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   virtual std::size_t requestsLeft() const = 0;
   
   /// @brief connection state
-  virtual State state() const;
+  virtual State state() const = 0;
 
   /// @brief Activate the connection.
   virtual void startConnection() = 0;

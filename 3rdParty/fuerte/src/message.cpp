@@ -285,9 +285,15 @@ bool Response::isContentTypeText() const {
 
 std::vector<VPackSlice> const& Response::slices() {
   if (_slices.empty()) {
+    assert(isContentTypeVPack());
+    VPackValidator validator;
+    
     auto length = _payload.byteSize() - _payloadOffset;
     auto cursor = _payload.data() + _payloadOffset;
     while (length) {
+      // will throw on an error
+      validator.validate(cursor, length, true);
+        
       _slices.emplace_back(cursor);
       auto sliceSize = _slices.back().byteSize();
       if (length < sliceSize) {

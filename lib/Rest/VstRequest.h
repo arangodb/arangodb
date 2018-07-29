@@ -65,11 +65,9 @@ class VstRequest final : public GeneralRequest {
 
  public:
   uint64_t messageId() const override { return _messageId; }
+  
+  arangodb::StringRef rawPayload() const override { return _message.payload(); }
   VPackSlice payload(arangodb::velocypack::Options const*) override;
-
-  int64_t contentLength() const override {
-    return _message.payload().byteSize();  // Fixme for MultiPayload message
-  }
 
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -82,13 +80,14 @@ private:
   void parseHeaderInformation();
 
  private:
-  VstInputMessage _message;
-  std::unordered_map<std::string, std::string> _headers;
-  // values are query parameters
-  std::unordered_map<std::string, std::string> _values;
-  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
+  
   uint64_t _messageId;
-
+  VstInputMessage _message;
+  
+  /// @brief was VPack payload validated
+  bool _validatedPayload;
+  /// @brief if payload was not VPack this will store parsed result
+  std::shared_ptr<velocypack::Builder> _vpackBuilder;
 };
 }
 #endif

@@ -751,13 +751,14 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
       return VPackSlice(_vpackBuilder->slice());
     }
     return VPackSlice::noneSlice();  // no body
-  } else /*VPACK*/ {
+  } else if (_contentType == ContentType::VPACK) {
     VPackOptions validationOptions = *options; // intentional copy
     validationOptions.validateUtf8Strings = true;
     VPackValidator validator(&validationOptions);
     validator.validate(_body.c_str(), _body.length());
     return VPackSlice(_body.c_str());
   }
+  return VPackSlice::noneSlice();
 }
 
 HttpRequest* HttpRequest::createHttpRequest(

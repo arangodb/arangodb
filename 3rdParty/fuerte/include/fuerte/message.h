@@ -270,6 +270,7 @@ class Response final : public Message {
   bool isContentTypeVPack() const;
   bool isContentTypeHtml() const;
   bool isContentTypeText() const;
+  /// @brief validates and returns VPack response. Only valid for velocypack
   std::vector<velocypack::Slice> const& slices() override;
   asio_ns::const_buffer payload() const override;
   size_t payloadSize() const override;
