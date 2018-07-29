@@ -94,9 +94,10 @@ V8ClientConnection::V8ClientConnection(ClientFeature* client)
 V8ClientConnection::~V8ClientConnection() {}
 
 void V8ClientConnection::init(ClientFeature* client) {
+  _endpoint = client->endpoint();
   _username = client->username();
   _password = client->password();
-  _databaseName = client->password();
+  _databaseName = client->databaseName();
 
   /*if (JWT_SECRET != nullptr) {
     params.setJwt(jwtToken(*JWT_SECRET));
@@ -218,8 +219,7 @@ bool V8ClientConnection::isConnected() {
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
-#warning FIX
-  return "";//_client->getEndpointSpecification();
+  return _endpoint;
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
@@ -235,7 +235,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
       _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME)
         << "Connected to ArangoDB "
-        << "'" << endpointSpecification() << "', "
+        << "'" << _endpoint << "', "
         << "version " << _version << " [" << _mode << "], "
         << "database '" << _databaseName << "', "
         << "username: '" << _username << "'";

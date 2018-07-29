@@ -128,6 +128,7 @@ class V8ClientConnection {
                                      std::unique_ptr<fuerte::Response> response);
 
  private:
+  std::string _endpoint;
   std::string _databaseName;
   std::string _username;
   std::string _password;
