@@ -230,8 +230,6 @@ void VstConnection::asyncWriteCallback(asio_ns::error_code const& ec,
 
   // auto pendingAsyncCalls = --_connection->_async_calls;
   if (ec) {
-    _timeout.cancel(); // leave timeout running in non-error case
-    
     // Send failed
     FUERTE_LOG_CALLBACKS << "asyncWriteCallback (vst): error "
                          << ec.message() << std::endl;
@@ -324,15 +322,13 @@ void VstConnection::stopReading() {
 }
 
 // asyncReadCallback is called when asyncReadSome is resulting in some data.
-void VstConnection::asyncReadCallback(asio_ns::error_code const& e,
+void VstConnection::asyncReadCallback(asio_ns::error_code const& ec,
                                       std::size_t transferred) {
-  _timeout.cancel(); // timer is retuned later
 
   // auto pendingAsyncCalls = --_connection->_async_calls;
-  if (e) {
+  if (ec) {
     FUERTE_LOG_CALLBACKS
-        << "asyncReadCallback: Error while reading form socket";
-    FUERTE_LOG_ERROR << e.message() << std::endl;
+    << "asyncReadCallback: Error while reading form socket: " << ec.message();
 
     // Restart connection, this will trigger a release of the readloop.
     restartConnection(ErrorCondition::ReadError);
@@ -384,7 +380,6 @@ void VstConnection::asyncReadCallback(asio_ns::error_code const& e,
       return;  // write-loop restarts read-loop if necessary
     }
 
-    setTimeout();     // readjust timeout
     asyncReadSome();  // Continue read loop
   }
 }
@@ -409,8 +404,9 @@ void VstConnection::processChunk(ChunkHeader&& chunk,
   // Try to assembly chunks in RequestItem to complete response.
   auto completeBuffer = item->assemble();
   if (completeBuffer) {
-    FUERTE_LOG_VSTTRACE << "processChunk: complete response received"
-                        << std::endl;
+    FUERTE_LOG_VSTTRACE << "processChunk: complete response received\n";
+    _timeout.cancel();
+    
     // Message is complete
     // Remove message from store
     _messageStore.removeByID(item->_messageID);
@@ -432,6 +428,8 @@ void VstConnection::processChunk(ChunkHeader&& chunk,
         << "processChunk: notifying RequestItem success callback"
         << std::endl;
     item->_callback.invoke(0, std::move(item->_request), std::move(response));
+    
+    setTimeout();     // readjust timeout
   }
 }
 
@@ -487,14 +485,14 @@ void VstConnection::setTimeout() {
     auto now = std::chrono::steady_clock::now();
     size_t waiting = _messageStore.invokeOnAll([&](RequestItem* item) {
       if (item->_expires < now) {
-        FUERTE_LOG_DEBUG << "VST-Request timeout";
+        FUERTE_LOG_DEBUG << "VST-Request timeout\n";
         item->invokeOnError(errorToInt(ErrorCondition::Timeout));
         return false;
       }
       return true;
     });
     if (waiting == 0) { // no more messages to wait on
-      FUERTE_LOG_DEBUG << "VST-Connection timeout";
+      FUERTE_LOG_DEBUG << "VST-Connection timeout\n";
       restartConnection(ErrorCondition::Timeout);
     }
   });

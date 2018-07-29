@@ -66,7 +66,7 @@ void AsioConnection<T>::startConnection() {
   assert(!_socket);
   assert(!_sslSocket);
   
-  // start connecting iff state is disconnected
+  // start connecting only if state is disconnected
   Connection::State exp = Connection::State::Disconnected;
   if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
     FUERTE_LOG_ERROR << "already resolving endpoint\n";
@@ -168,7 +168,7 @@ void AsioConnection<T>::restartConnection(const ErrorCondition error) {
   // Read & write loop must have been reset by now
 
   FUERTE_LOG_CALLBACKS << "restartConnection" << std::endl;
-  // only restart connection if it was connected previously
+  // restarting needs to be an exclusive operation
   Connection::State exp = Connection::State::Connected;
   if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
     shutdownConnection(error); // Terminate connection
