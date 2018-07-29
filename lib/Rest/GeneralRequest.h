@@ -206,7 +206,9 @@ class GeneralRequest {
     return std::make_shared<VPackBuilder>(payload());
   };
 
+  /// @brieg should reflect the Content-Type header
   ContentType contentType() const { return _contentType; }
+  /// @brief should generally reflect the Accept header
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
 
   rest::AuthenticationMethod authenticationMethod() const {
