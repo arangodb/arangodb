@@ -50,7 +50,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 // throws on error
-inline void validateRequestMesssage(char const* vpStart, char const* vpEnd) {
+inline void validateMessage(char const* vpStart, char const* vpEnd) {
   VPackOptions validationOptions = VPackOptions::Defaults;
   validationOptions.validateUtf8Strings = true;
   VPackValidator validator(&validationOptions);
@@ -60,7 +60,7 @@ inline void validateRequestMesssage(char const* vpStart, char const* vpEnd) {
                      /*isSubPart =*/true);
 
   VPackSlice slice = VPackSlice(vpStart);
-  if (!slice.isArray() || slice.length() != 7)  {
+  if (!slice.isArray() || slice.length() < 2) {
     throw std::runtime_error("VST message does not contain a valid request header");
   }
   
@@ -69,7 +69,7 @@ inline void validateRequestMesssage(char const* vpStart, char const* vpEnd) {
     throw std::runtime_error("VST message header has an unsupported version");
   }
   VPackSlice typeSlice = slice.at(1);
-  if (!typeSlice.isNumber<int>() || typeSlice.getNumber<int>() != 2) {
+  if (!typeSlice.isNumber<int>()) {
     throw std::runtime_error("VST message is not of type request");
   }
 }
@@ -364,29 +364,20 @@ bool VstCommTask::processRead(double startTime) {
         << "\"vst-request-header\",\"" << (void*)this << "/"
         << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+    /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"vst-request-payload\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.payload().toJson()
-        << "\"";
+        << chunkHeader._messageID << "\"," << VPackSlice(message.payload()).toJson()
+        << "\"";*/
 
-    // get type of request
-    int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
-    try {
-      type = header.at(1).getNumber<int>();
-    } catch (std::exception const& e) {
-      addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
-                        chunkHeader._messageID, VPackBuffer<uint8_t>());
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "VstCommTask: "
-          << "VPack Validation failed: " << e.what();
-      closeTask(rest::ResponseCode::BAD);
-      return false;
-    }
+    // get type of request, message header is validated earlier
+    TRI_ASSERT(header.isArray() && header.length() >= 2);
+    TRI_ASSERT(header.at(1).isNumber<int>()); // va
     
+    int type = header.at(1).getNumber<int>();
     // handle request types
-    if (type == 1000) {
+    if (type == 1000) { // auth
       handleAuthHeader(header, chunkHeader._messageID);
-    } else {
+    } else if (type == 1) { // request
       
       // the handler will take ownership of this pointer
       auto req = std::make_unique<VstRequest>(_connectionInfo, std::move(message),
@@ -406,6 +397,12 @@ bool VstCommTask::processRead(double startTime) {
         resp->setContentTypeRequested(req->contentTypeResponse());
         executeRequest(std::move(req), std::move(resp));
       }
+    } else { // not supported on server
+      LOG_TOPIC(ERR, Logger::REQUESTS) << "\"vst-request-header\",\"" << (void*)this << "/"
+      << chunkHeader._messageID << "\"," << message.header().toJson() << "\"" << " is unsupported";
+      addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                        chunkHeader._messageID, VPackBuffer<uint8_t>());
+      return false;
     }
   }
 
@@ -448,7 +445,7 @@ bool VstCommTask::getMessageFromSingleChunk(
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                           << "chunk contains single message";
   try {
-    validateRequestMesssage(vpackBegin, chunkEnd);
+    validateMessage(vpackBegin, chunkEnd);
   } catch (std::exception const& e) {
     addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                       chunkHeader._messageID, VPackBuffer<uint8_t>());
@@ -533,9 +530,9 @@ bool VstCommTask::getMessageFromMultiChunks(
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "chunk completes a message";
       try {
-         validateRequestMesssage(reinterpret_cast<char const*>(im._buffer.data()),
-                                 reinterpret_cast<char const*>(im._buffer.data() +
-                                                               im._buffer.byteSize()));
+         validateMessage(reinterpret_cast<char const*>(im._buffer.data()),
+                         reinterpret_cast<char const*>(im._buffer.data() +
+                                                       im._buffer.byteSize()));
       } catch (std::exception const& e) {
         addErrorResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                          chunkHeader._messageID, TRI_ERROR_BAD_PARAMETER, e.what());

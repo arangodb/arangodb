@@ -188,7 +188,11 @@ class GeneralRequest {
   template <typename T>
   T parsedValue(std::string const& key, T valueNotFound);
 
+  /// @brief the content length
+  virtual size_t contentLength() const = 0;
+  /// @brief unprocessed request payload
   virtual arangodb::StringRef rawPayload() const = 0;
+  /// @brief parsed request payload
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
                              &VPackOptions::Defaults) = 0;
 

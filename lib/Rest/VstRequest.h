@@ -54,18 +54,18 @@ using rest::VstInputMessage;
 class VstRequest final : public GeneralRequest {
   friend class rest::VstCommTask;
   friend class rest::GeneralCommTask;
-  friend class RestBatchHandler;  // TODO must be removed
-
- private:
+  
+public:
+  
   VstRequest(ConnectionInfo const& connectionInfo, VstInputMessage&& message,
              uint64_t messageId);
 
- public:
   ~VstRequest() {}
 
  public:
   uint64_t messageId() const override { return _messageId; }
   
+  size_t contentLength() const override { return _message.payloadSize(); }
   arangodb::StringRef rawPayload() const override { return _message.payload(); }
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 

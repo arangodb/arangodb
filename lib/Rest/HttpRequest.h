@@ -71,8 +71,6 @@ class HttpRequest final : public GeneralRequest {
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
   }
-  // the content length
-  int64_t contentLength() const { return _contentLength; }
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
@@ -83,6 +81,8 @@ class HttpRequest final : public GeneralRequest {
   std::string const& body() const;
   void setBody(char const* body, size_t length);
 
+  /// @brief the body content length
+  size_t contentLength() const override { return _contentLength; }
   // Payload
   arangodb::StringRef rawPayload() const override { return StringRef(_body); };
   VPackSlice payload(arangodb::velocypack::Options const*) override;

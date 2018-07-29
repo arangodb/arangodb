@@ -69,6 +69,10 @@ struct VstInputMessage {
     }
     return arangodb::StringRef();
   }
+  size_t payloadSize() const {
+    size_t len = velocypack::Slice(_buffer.data()).byteSize();
+    return _buffer.size() - len;
+  }
   
  private:
   uint64_t _id;  // id zero signals invalid state

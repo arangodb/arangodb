@@ -95,20 +95,15 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   
   std::string key = StringUtils::tolower(keySlice.copyString());
   std::string val = StringUtils::tolower(valSlice.copyString());
-
+  static const char* mime = "application/json";
   if (key == StaticStrings::Accept &&
-      val.length() >= StaticStrings::MimeTypeVPack.size() &&
-      memcmp(val.data(), StaticStrings::MimeTypeVPack.c_str(),
-             StaticStrings::MimeTypeVPack.size()) == 0) {
-    _contentTypeResponse = ContentType::VPACK;
-    return;
+      val.length() >= 16 && memcmp(val.data(), mime, 16) == 0) {
+    _contentTypeResponse = ContentType::JSON;
+    return;  // don't insert this header!!
   } else if (key == StaticStrings::ContentTypeHeader &&
-             val.length() >= StaticStrings::MimeTypeVPack.size() &&
-             memcmp(val.data(), StaticStrings::MimeTypeVPack.c_str(),
-                    StaticStrings::MimeTypeVPack.size()) == 0) {
-    _contentType = ContentType::VPACK;
-    // don't insert this header!!
-    return;
+             val.length() >= 16 && memcmp(val.data(), mime, 16) == 0) {
+    _contentType = ContentType::JSON;
+    return;  // don't insert this header!!
   }
   
   // must lower-case the header key
