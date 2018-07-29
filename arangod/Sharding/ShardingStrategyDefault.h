@@ -25,6 +25,7 @@
 #define ARANGOD_SHARDING_SHARDING_STRATEGY_DEFAULT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Sharding/ShardingStrategy.h"
 
 #include <velocypack/Slice.h>
@@ -75,6 +76,8 @@ class ShardingStrategyHashBase : public ShardingStrategy {
   ShardingInfo* _sharding;
   std::vector<ShardID> _shards;
   bool _usesDefaultShardKeys;
+  std::atomic<bool> _shardsSet;
+  Mutex _shardsSetMutex;
 };
 
 /// @brief old version of the sharding used in the community edition
