@@ -230,7 +230,7 @@ arangodb::Result addShardFollower (
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
     } else {
       errorMessage += "with shortcut.";
-      LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMessage;
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
     }
     return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
   }
