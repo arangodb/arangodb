@@ -50,6 +50,7 @@ struct RequestItem {
 
   // parser state
   bool message_complete = false;
+  bool should_keep_alive = false;
   bool last_header_was_a_value = false;
   std::string lastHeaderField;
   std::string lastHeaderValue;

@@ -273,10 +273,10 @@ std::string to_string(ErrorCondition error) {
     case ErrorCondition::ErrorCastError:
       return "Error: casting int to ErrorCondition";
 
-    case ErrorCondition::ConnectionError:
-      return "Error: in connection";
     case ErrorCondition::CouldNotConnect:
       return "Error: unable to connect";
+    case ErrorCondition::CloseRequested:
+      return "Error: peer requested connection close";
     case ErrorCondition::Timeout:
       return "Error: timeout";
     case ErrorCondition::QueueCapacityExceeded:
@@ -292,6 +292,9 @@ std::string to_string(ErrorCondition error) {
 
     case ErrorCondition::ProtocolError:
       return "Error: invalid server response";
+      
+    case ErrorCondition::InternalError:
+      return "Error: internal";
   }
   return "unkown error";
 }

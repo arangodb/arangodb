@@ -72,16 +72,18 @@ enum class ErrorCondition : Error {
   NoError = 0,
   ErrorCastError = 1,
 
-  ConnectionError = 1000,
-  CouldNotConnect = 1001,
+  CouldNotConnect = 1000,
+  CloseRequested = 1001,
   Timeout = 1002,
   QueueCapacityExceeded = 1003,
+  
   ReadError = 1102,
   WriteError = 1103,
   Canceled = 1104,
   MalformedURL = 1105,
 
   ProtocolError = 3000,
+  InternalError = 4000
 };
 
 inline Error errorToInt(ErrorCondition cond) {

@@ -71,6 +71,11 @@ static int on_header_complete(http_parser* parser) {
     data->_response->header.meta.emplace(std::move(data->lastHeaderField),
                                          std::move(data->lastHeaderValue));
   }
+  data->should_keep_alive = http_should_keep_alive(parser);
+  // head has no body, but may have a Content-Length
+  if (data->_request->header.restVerb == RestVerb::Head) {
+    data->message_complete = true;
+  }
   return 0;
 }
 static int on_body(http_parser* parser, const char* at, size_t len) {
@@ -337,8 +342,11 @@ void HttpConnection::asyncReadCallback(asio_ns::error_code const& ec,
         << "asyncReadCallback: received " << transferred
         << " bytes\n";  // async-calls=" << pendingAsyncCalls << std::endl;
 
-
-    assert(_inFlight);
+    if (!_inFlight) { // should not happen
+      assert(false);
+      shutdownConnection(ErrorCondition::InternalError);
+    }
+    
     // Inspect the data we've received so far.
     size_t parsedBytes = 0;
     auto buffers = _receiveBuffer.data(); // no copy
@@ -374,6 +382,10 @@ void HttpConnection::asyncReadCallback(asio_ns::error_code const& ec,
         _inFlight->_response->setPayload(std::move(_inFlight->_responseBuffer), 0);
         _inFlight->_callback.invoke(0, std::move(_inFlight->_request),
                                     std::move(_inFlight->_response));
+        if (!_inFlight->should_keep_alive) {
+          shutdownConnection(ErrorCondition::CloseRequested);
+          return;
+        }
         _inFlight.reset();
         
         FUERTE_LOG_HTTPTRACE
