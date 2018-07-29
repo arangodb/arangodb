@@ -53,8 +53,8 @@ Incompatible changes
 --------------------
 
 For a list of incompatible changes, please refer to one of the following sections.
-Also see [Upgrading](../Upgrading/README.md) in the 
-Administration chapter.
+Also see [Version Specific Upgrade Information](../Upgrading/VersionSpecific/README.md)
+in the _Upgrading_ chapter.
 
 - Incompatible changes in 3.x:
   [3.4](UpgradingChanges34.md),
