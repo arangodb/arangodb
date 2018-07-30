@@ -312,10 +312,12 @@ void HttpConnection<ST>::startWriting() {
   assert(_state.load(std::memory_order_acquire) == State::Connected);
   FUERTE_LOG_HTTPTRACE << "startWriting (http): this=" << this << std::endl;
   
-  if (!_active.exchange(true, std::memory_order_acq_rel)) {
+  if (!_active) {
     auto self = shared_from_this();
     asio_ns::post(*_io_context, [this, self] {
-      asyncWriteNextRequest();
+      if (!_active.exchange(true)) {
+        asyncWriteNextRequest();
+      }
     });
   }
 }
@@ -324,10 +326,11 @@ void HttpConnection<ST>::startWriting() {
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_TRACE << "asyncWrite: preparing to send next" << std::endl;
-  if (!_active.load(std::memory_order_seq_cst)) {
+  assert(_active.load(std::memory_order_acquire));
+  /*if (!_active.load(std::memory_order_seq_cst)) {
     FUERTE_LOG_HTTPTRACE << "asyncWrite: deactivated" << std::endl;
     return;
-  }
+  }*/
   
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
@@ -335,7 +338,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     if (!_queue.pop(ptr)) {
       return;
     }
-    // a request got queued in the last minute
+    // a request got queued in-between last minute
     _active.store(true, std::memory_order_release);
   }
   std::shared_ptr<http::RequestItem> item(ptr);
