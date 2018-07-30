@@ -1,6 +1,7 @@
 devel
 -----
 
+* The AQL Editor now supports detailed AQL query profiling
 
 * The AQL Editor in the Web UI now supports GeoJSON types and is able to render them.
 
