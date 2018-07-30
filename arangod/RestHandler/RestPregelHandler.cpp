@@ -28,6 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Cluster/ServerState.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
 #include "VocBase/ticks.h"
@@ -109,7 +110,7 @@ RestStatus RestPregelHandler::execute() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestCursorHandler::forwardingTarget() {
+uint32_t RestPregelHandler::forwardingTarget() {
   if (_request->requestType() != rest::RequestType::POST) {
     return 0;
   }
@@ -130,7 +131,7 @@ uint32_t RestCursorHandler::forwardingTarget() {
     }
     VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
     if (sExecutionNum.isInteger()) {
-      uint64_t exeNum = sExecutionNum.getUInt();
+      exeNum = sExecutionNum.getUInt();
     }
   } catch (...) {
     return 0;
