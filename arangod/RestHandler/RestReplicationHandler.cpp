@@ -352,6 +352,16 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       handleCommandRestoreData();
+    } else if (command == "restore-view") {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+      if (type != rest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+      VPackBuilder result;
+      result.openObject();
+      result.close();
+      generateResult(rest::ResponseCode::OK, result.slice());
+      return RestStatus::DONE;
     } else if (command == "sync") {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
