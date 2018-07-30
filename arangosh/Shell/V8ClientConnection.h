@@ -132,7 +132,7 @@ class V8ClientConnection {
   std::string _databaseName;
   std::string _username;
   std::string _password;
-  double _requestTimeout;
+  std::chrono::duration<double> _requestTimeout;
   
   //std::unique_ptr<httpclient::SimpleHttpClient> _client;
   int _lastHttpReturnCode;

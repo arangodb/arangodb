@@ -43,72 +43,99 @@
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // HttpConnection implements a client->server connection using
-//  the HTTP protocol.
+// the node http-parser 
 template<SocketType ST>
-class HttpConnection : public AsioConnection<fuerte::v1::http::RequestItem, ST> {
+class HttpConnection final : public fuerte::Connection {
  public:
   explicit HttpConnection(std::shared_ptr<asio_io_context>& ctx,
                           detail::ConnectionConfiguration const&);
+  ~HttpConnection();
 
  public:
   // Start an asynchronous request.
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
-
+  
   // Return the number of unfinished requests.
-  /*std::size_t requestsLeft() const override {
-    return _curlm->requestsLeft();
-  }*/
-
- protected:
-  // socket connection is up (with optional SSL), now initiate the VST protocol.
-  void finishInitialization() override;
-
+  virtual size_t requestsLeft() const override {
+    return _numQueued.load(std::memory_order_acquire);
+  }
+  
+  /// @brief connection state
+  Connection::State state() const override final {
+    return _state.load(std::memory_order_acquire);
+  }
+  
+  // Activate this connection
+  void startConnection() override;
+  
   // called on shutdown, always call superclass
   void shutdownConnection(const ErrorCondition) override;
 
-  // fetch the buffers for the write-loop (called from IO thread)
-  std::vector<asio_ns::const_buffer> prepareRequest(
-      std::shared_ptr<RequestItem> const&) override;
-
-  // called by the async_read handler (called from IO thread)
-  void asyncReadCallback(asio_ns::error_code const&,
-                         size_t transferred) override;
-
+private:
+  // restart connection
+  void restartConnection(const ErrorCondition);
+  
+  // createRequestItem prepares a RequestItem for the given parameters.
+  std::unique_ptr<RequestItem> createRequestItem(std::unique_ptr<Request> request,
+                                                 RequestCallback cb);
+  
+  /// set the timer accordingly
+  void setTimeout(std::chrono::milliseconds);
+  
   /// Thread-Safe: activate the writer if needed
   void startWriting();
-      
-  /// Thread-Safe: disable write loop if nothing is queued
-  uint32_t tryStopWriting();
-
+  
+  ///  Call on IO-Thread: writes out one queued request
+  void asyncWriteNextRequest();
+  
   // called by the async_write handler (called from IO thread)
   void asyncWriteCallback(asio_ns::error_code const& error,
                           size_t transferred,
-                          std::shared_ptr<RequestItem>) override;
+                          std::shared_ptr<RequestItem>);
+  
+  // Call on IO-Thread: read from socket
+  void asyncReadSome();
+
+  // called by the async_read handler (called from IO thread)
+  void asyncReadCallback(asio_ns::error_code const&,
+                         size_t transferred);
 
  private:
   class Options {
    public:
     double connectionTimeout = 2.0;
   };
-
- private:
-  // createRequestItem prepares a RequestItem for the given parameters.
-  std::unique_ptr<RequestItem> createRequestItem(
-      std::unique_ptr<Request> request, RequestCallback cb);
-  
-  /// set the timer accordingly
-  void setTimeout(std::chrono::milliseconds);
   
  private:
+  
+  /// @brief io context to use
+  std::shared_ptr<asio_ns::io_context> _io_context;
+  Socket<ST> _protocol;
+  /// @brief timer to handle connection / request timeouts
+  asio_ns::steady_timer _timeout;
+  
+  /// @brief is the connection established
+  std::atomic<Connection::State> _state;
+  
+  /// is loop active
+  std::atomic<uint32_t> _numQueued;
+  std::atomic<bool> _active;
+  
+  /// elements to send out
+  boost::lockfree::queue<fuerte::v1::http::RequestItem*> _queue;
+  
   /// cached authentication header
   std::string _authHeader;
+  
   /// currently in fligth request
   std::shared_ptr<RequestItem> _inFlight;
   /// the node http-parser
   http_parser _parser;
   http_parser_settings _parserSettings;
-
-  // int _stillRunning;
+  
+  /// default max chunksize is 30kb in arangodb
+  static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
+  ::asio_ns::streambuf _receiveBuffer;
 };
 }}}}  // namespace arangodb::fuerte::v1::http
 

@@ -25,7 +25,7 @@
 #include <fuerte/connection.h>
 #include <fuerte/FuerteLogger.h>
 
-//#include "HttpConnection.h"
+#include "HttpConnection.h"
 #include "VstConnection.h"
 #include "http_parser/http_parser.h"
 
@@ -41,15 +41,15 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
     } else if (_conf._socketType == SocketType::Ssl) {
       result = std::make_shared<vst::VstConnection<SocketType::Ssl>>(loop.nextIOContext(), _conf);
     }
-  } /*else {
+  } else {
     // throw std::logic_error("http in vst test");
     FUERTE_LOG_DEBUG << "fuerte - creating http connection\n";
     if (_conf._socketType == SocketType::Tcp) {
-      result = std::make_shared<vst::HttpConnection<SocketType::Tcp>>(loop.nextIOContext(), _conf);
+      result = std::make_shared<http::HttpConnection<SocketType::Tcp>>(loop.nextIOContext(), _conf);
     } else if (_conf._socketType == SocketType::Ssl) {
-      result = std::make_shared<vst::HttpConnection<SocketType::Ssl>>(loop.nextIOContext(), _conf);
+      result = std::make_shared<http::HttpConnection<SocketType::Ssl>>(loop.nextIOContext(), _conf);
     }
-  }*/
+  }
   if (!result) {
     throw std::logic_error("unsupported socket type");
   }

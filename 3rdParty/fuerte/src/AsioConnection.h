@@ -189,33 +189,15 @@ class AsioConnection : public Connection {
     return _state.load(std::memory_order_acquire);
   }
 
-  bool hasCapacity() const {
+  /*bool hasCapacity() const {
     return (_loopState.load() & WRITE_LOOP_QUEUE_MASK) < 1024;
-  }
-
- private:
-  // SOCKET HANDLING /////////////////////////////////////////////////////////
-  void initSocket();
-  void shutdownSocket();
-
-  // establishes connection and initiates handshake
-  void startConnect(asio_ns::ip::tcp::resolver::iterator);
-  void asyncConnectCallback(asio_ns::error_code const& ec,
-                            asio_ns::ip::tcp::resolver::iterator);
-
-  // start intiating an SSL connection (on top of an established TCP socket)
-  void startSSLHandshake();
+  }*/
 
  protected:
   void restartConnection(const ErrorCondition);
 
   // Thread-Safe: reset io loop flags
   void stopIOLoops();
-
-  // Thread-Safe: activate the writer loop (if off and items are queud)
-  // void startWriting();
-  // Thread-Safe: stop the write loop
-  // void stopWriting();
 
   // Thread-Safe: queue a new request. Returns loop state
   uint32_t queueRequest(std::unique_ptr<RT>);
@@ -249,24 +231,10 @@ class AsioConnection : public Connection {
  public:
   /// io context to use
   std::shared_ptr<asio_ns::io_context> _io_context;
-
-  /// endpoints to use
-  asio_ns::ip::tcp::resolver::iterator _endpoints;
-
-  /// mutex to make socket setup and shutdown exclusive
-  //std::mutex _socket_mutex;
-  /// socket to use
-  //std::shared_ptr<asio_ns::ip::tcp::socket> _socket;
   Socket<ST> _protocol;
   
   /// @brief timer to handle connection / request timeouts
   asio_ns::steady_timer _timeout;
-
-  /// SSL context, may be null
-  /*std::shared_ptr<asio_ns::ssl::context> _sslContext;
-  /// SSL steam socket, may be null
-  std::shared_ptr<asio_ns::ssl::stream<::asio_ns::ip::tcp::socket&>>
-      _sslSocket;*/
 
   /// @brief is the connection established
   std::atomic<Connection::State> _state;

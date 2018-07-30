@@ -1452,6 +1452,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
     req->addBinary(reinterpret_cast<uint8_t const*>(body.data()), body.length());
     req->header.contentType(fuerte::ContentType::Json);
   }
+  req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
   std::unique_ptr<fuerte::Response> response;
   try {
@@ -1483,6 +1484,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     req->addBinary(reinterpret_cast<uint8_t const*>(body.data()), body.length());
     req->header.contentType(fuerte::ContentType::Json);
   }
+  req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
   std::unique_ptr<fuerte::Response> response;
   try {

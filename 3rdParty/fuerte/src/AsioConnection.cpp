@@ -71,7 +71,7 @@ void AsioConnection<RT, ST>::startConnection() {
   auto self = shared_from_this();
   _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
     if (ec) {
-      FUERTE_LOG_ERROR << "connecting failed: error=" << ec.message() << std::endl;
+      FUERTE_LOG_DEBUG << "connecting failed: error=" << ec.message() << std::endl;
       this->shutdownConnection(ErrorCondition::CouldNotConnect);
       this->onFailure(errorToInt(ErrorCondition::CouldNotConnect),
                       "connecting failed: error" + ec.message());
