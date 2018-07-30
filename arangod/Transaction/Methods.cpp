@@ -2020,10 +2020,10 @@ OperationResult transaction::Methods::modifyLocal(
 
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
-                             &resultBuilder, &cid, &vPackOptions](VPackSlice const newVal,
-                                                   VPackSlice pattern,
-                                                   bool isBabies) -> Result {
-    pattern = pattern.resolveExternals();
+                             &resultBuilder, &cid, &vPackOptions](
+      VPackSlice const newVal, VPackSlice const patternArg,
+      bool isBabies) -> Result {
+    VPackSlice const pattern = patternArg.resolveExternals();
     TRI_ASSERT(pattern.isNone() || pattern.isObject());
     Result res;
     if (!newVal.isObject()) {
@@ -2314,7 +2314,8 @@ OperationResult transaction::Methods::removeCoordinator(
 /// if it fails, clean up after itself
 OperationResult transaction::Methods::removeLocal(
     std::string const& collectionName, VPackSlice const value,
-    OperationOptions& options, VPackSlice const pattern) {
+    OperationOptions& options, VPackSlice const patternArg) {
+  VPackSlice const pattern = patternArg.resolveExternals();
   TRI_ASSERT(pattern.isNone() || pattern.isObject() || pattern.isArray());
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
@@ -2356,9 +2357,9 @@ OperationResult transaction::Methods::removeLocal(
   TRI_voc_tick_t maxTick = 0;
   VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
 
-  auto workForOneDocument = [&](VPackSlice value, VPackSlice pattern,
+  auto workForOneDocument = [&](VPackSlice value, VPackSlice const patternArg,
                                 bool isBabies) -> Result {
-    pattern = pattern.resolveExternals();
+    VPackSlice const pattern = patternArg.resolveExternals();
     TRI_ASSERT(pattern.isNone() || pattern.isObject());
     TRI_voc_rid_t actualRevision = 0;
     ManagedDocumentResult previous;

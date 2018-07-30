@@ -380,8 +380,15 @@ OperationOptions const& RemoveRequest::getOptions() const {
   return options;
 }
 
-// builds an array of "_key"s
+// builds an array of "_key"s, or a single string in case data.size() == 1
 void RemoveRequest::toSearch(VPackBuilder &builder) const {
+  // TODO I'm in favour of removing the special case for 1, but the existing
+  // methods currently somewhat rely on an array containing at least 2 elements.
+  if (size() == 1) {
+    builder.add(VPackValue(data.at(0).key));
+    return;
+  }
+
   builder.openArray();
   for (auto const& it : data) {
     builder.add(VPackValue(it.key));
@@ -389,8 +396,15 @@ void RemoveRequest::toSearch(VPackBuilder &builder) const {
   builder.close();
 }
 
-// builds an array of patterns as externals
+// builds an array of patterns as externals, or a single pattern in case data.size() == 1
 void RemoveRequest::toPattern(VPackBuilder &builder) const {
+  // TODO I'm in favour of removing the special case for 1, but the existing
+  // methods currently somewhat rely on an array containing at least 2 elements.
+  if (size() == 1) {
+    builder.addExternal(data.at(0).pattern.start());
+    return;
+  }
+
   builder.openArray();
   for (auto const& it : data) {
     builder.addExternal(it.pattern.start());
@@ -536,9 +550,11 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
 
   auto trx = createTransaction(collection, AccessMode::Type::WRITE);
 
-  if (request.size() == 1) {
-    trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  // TODO I don't know why yet, but this causes a deadlock currently.
+  // It may be a bug introduced in Methods.cpp
+  // if (request.size() == 1) {
+  //   trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  // }
 
   Result res = trx->begin();
 
