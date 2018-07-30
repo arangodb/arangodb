@@ -83,16 +83,16 @@ class Connection : public std::enable_shared_from_this<Connection> {
 
  protected:
   Connection(detail::ConnectionConfiguration const& conf)
-      : _configuration(conf) {}
+      : _config(conf) {}
 
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
-    if (_configuration._onFailure) {
-      _configuration._onFailure(errorCode, errorMessage);
+    if (_config._onFailure) {
+      _config._onFailure(errorCode, errorMessage);
     }
   }
 
-  const detail::ConnectionConfiguration _configuration;
+  const detail::ConnectionConfiguration _config;
 };
 
 /** The connection Builder is a class that allows the easy configuration of

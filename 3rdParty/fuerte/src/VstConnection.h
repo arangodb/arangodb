@@ -34,12 +34,12 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 
+template<SocketType ST>
 class VstConnection final
-    : public AsioConnection<arangodb::fuerte::v1::vst::RequestItem> {
+    : public AsioConnection<arangodb::fuerte::v1::vst::RequestItem, ST> {
  public:
   explicit VstConnection(std::shared_ptr<asio_ns::io_context> const&,
                          detail::ConnectionConfiguration const&);
-  virtual ~VstConnection();
 
  public:
   // this function prepares the request for sending

@@ -114,6 +114,7 @@ void V8ClientConnection::init(ClientFeature* client) {
     builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
     builder.authenticationType(fuerte::AuthenticationType::Jwt);
   }
+  _connection.reset();
   _connection = builder.connect(_loop);
   
   fuerte::StringMap params{{"details","true"}};
@@ -205,11 +206,13 @@ void V8ClientConnection::init(ClientFeature* client) {
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
-  if (interrupted) {
-    _connection->shutdownConnection(fuerte::ErrorCondition::Canceled);
-  } else {
-    if (_connection->state() == fuerte::Connection::State::Disconnected) {
-      _connection->startConnection();
+  if (_connection) {
+    if (interrupted) {
+      _connection->shutdownConnection(fuerte::ErrorCondition::Canceled);
+    } else {
+      if (_connection->state() == fuerte::Connection::State::Disconnected) {
+        _connection->startConnection();
+      }
     }
   }
 }
@@ -223,7 +226,6 @@ std::string V8ClientConnection::endpointSpecification() const {
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
-  _connection.reset();
   try {
     init(client);
   } catch (...) {
@@ -1433,6 +1435,11 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
     std::unordered_map<std::string, std::string> const& headerFields) {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
+  if (!_connection) {
+    _lastErrorMessage = "not connected";
+    _lastHttpReturnCode = 500;
+    return v8::Null(isolate);
+  }
   
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;

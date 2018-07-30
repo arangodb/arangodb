@@ -42,10 +42,10 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
-// HttpConnection implements a client->server connection using the HTTP
-// protocol.
-class HttpConnection
-    : public AsioConnection<arangodb::fuerte::v1::http::RequestItem> {
+// HttpConnection implements a client->server connection using
+//  the HTTP protocol.
+template<SocketType ST>
+class HttpConnection : public AsioConnection<fuerte::v1::http::RequestItem, ST> {
  public:
   explicit HttpConnection(std::shared_ptr<asio_io_context>& ctx,
                           detail::ConnectionConfiguration const&);
