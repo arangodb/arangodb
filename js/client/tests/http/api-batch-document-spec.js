@@ -40,6 +40,52 @@ describe('_api/batch/document', () => {
     });
   };
 
+  // Consider these variations (working requests) when writing tests:
+  // - how many documents are requested
+  // - how does the pattern look like
+  //   - does it contain an attribute more than _key?
+  //   - does it contain _rev? (*should* work like regular attribute, but is
+  //     still handled specially in a lot of code!)
+  // - how does options look like?
+  //   which options are omitted/default, true, false?
+  //   - splitTransaction
+  //   - silent
+  //   - returnOld
+  //   - returnNew
+  //   - waitForSync
+  //   - checkGraphs
+  //   - graphName
+
+  // In addition to that, check failures:
+  // - send invalid requests:
+  //   - invalid structure (e.g. request body object or string instead of array)
+  //   - invalid data and invalid options
+  //     - missing required fields
+  //     - fields that exist in other, but not this, request (e.g. waitForSync
+  //       for /read)
+  //     - fields that don't exist at all
+  //     - invalid values (e.g. returnOld: 0 or silent: "true")
+  // - ask for nonexistent documents (with and without splitTransaction)
+  //   - mix asking for existing and non-existing documents
+  //   - try different kinds of non-existent:
+  //     non-existent _key, wrong _rev, wrong regular attribute
+  // (the following tests may not belong in this suite:
+  //   - try illegal modifications
+  //     - inserts/replace with invalid / missing attributes
+  //     - update/replace read-only attributes
+  // )
+
+  // Tests for checkGraph:
+  // - when removing a vertex, removals of incident edges over all edge
+  //   definitions
+  // - when inserting/updating/replacing an edge, validity checks of _from and
+  //   _to over edge definitions (on all graphs!)
+  // Tests for graphName (in addition to above checks):
+  // - when edges are inserted, validity check that an edge definition exists
+  //   in this graph
+  // - when vertices are inserted, validity check that the vertex collection
+  //   is either part of an edge or orphan collection in this graph
+
   beforeEach(() => {
     db._create(colName);
     db._create(edgeColName);
@@ -52,7 +98,7 @@ describe('_api/batch/document', () => {
 
   // READ IS NOT YET IMPLEMENTED! Replace the xit() calls by it() when it's done.
   describe('read document suite', () => {
-    const n = 20;
+    const n = 2000;
     let docsByKey;
     let docsByVal;
 
