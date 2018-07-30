@@ -200,6 +200,7 @@ Connection::Connection(Syncer* syncer,
     }
     params.setLocationRewriter(syncer, &(syncer->rewriteLocation));
     client.reset(new httpclient::SimpleHttpClient(connection, params));
+//    client->checkForGlobalAbort(true);
   }
 }
 

@@ -620,5 +620,5 @@ In certain types of ArangoDB instances you can now completely disable the V8 Jav
 an **highly experimental** feature and it is to be expected that certain functionality (e.g. some API endpoints, the WebUI, 
 some AQL functions etc) will be missing or severly broken. Nevertheless you may whish to reduce the footprint of ArangoDB by disabling V8.
 
-This option is expected to **only** work reliably on a _Single-Server_, _Agency_ or _Active-Failover_ setup. Do not try to use
-this feature on a _Coordinator_, or _DBServer_
+This option is expected to **only** work reliably on a _single server_, _agency_ or in an _active failover_ setup. Do not try to use
+this feature on a _coordinator_, or _cluster database server_.

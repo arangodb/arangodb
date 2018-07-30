@@ -160,11 +160,6 @@ void RestViewHandler::createView() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::modifyView(bool partialUpdate) {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if ((suffixes.size() != 2) || (suffixes[1] != "properties" && suffixes[1] != "rename")) {
