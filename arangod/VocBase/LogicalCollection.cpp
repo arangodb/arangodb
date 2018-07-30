@@ -47,6 +47,7 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
+#include <arangod/Aql/Functions.h>
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -152,6 +153,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _status(other.status()),
       _isSmart(other.isSmart()),
       _isLocal(false),
+      _isDBServer(ServerState::instance()->isDBServer()),
       _waitForSync(other.waitForSync()),
       _version(other._version),
       _replicationFactor(other.replicationFactor()),
@@ -205,6 +207,7 @@ LogicalCollection::LogicalCollection(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
       _isLocal(!ServerState::instance()->isCoordinator()),
+      _isDBServer(ServerState::instance()->isDBServer()),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _version(Helper::readNumericValue<uint32_t>(info, "version",
                                                   currentVersion())),
@@ -876,8 +879,8 @@ void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
     bool forPersistence) const {
   TRI_ASSERT(result.isOpenObject());
   VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence);
-  result.add(VPackObjectIterator(b.slice())); 
-} 
+  result.add(VPackObjectIterator(b.slice()));
+}
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(
     std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
@@ -908,7 +911,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // ... probably a few others missing here ...
 
   MUTEX_LOCKER(guard, _infoLock); // prevent simultanious updates
-  
+
   size_t rf = _replicationFactor;
   VPackSlice rfSl = slice.get("replicationFactor");
   if (!rfSl.isNone()) {
@@ -923,7 +926,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
       if ((!isSatellite() && rf == 0) || rf > 10) {
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
       }
-      
+
       if (!_isLocal && rf != _replicationFactor) { // sanity checks
         if (!_distributeShardsLike.empty()) {
           return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
@@ -1111,45 +1114,222 @@ Result LogicalCollection::insert(transaction::Methods* trx,
 /// @brief updates a document or edge in a collection
 Result LogicalCollection::update(transaction::Methods* trx,
                                  VPackSlice const newSlice,
-                                 ManagedDocumentResult& result,
+                                 ManagedDocumentResult& mdr,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous) {
-  resultMarkerTick = 0;
+                                 ManagedDocumentResult& previous,
+                                 velocypack::Slice const pattern) {
 
   if (!newSlice.isObject()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  prevRev = 0;
+
 
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick,
-                               lock, prevRev, previous, key);
+  prevRev = 0;
+  resultMarkerTick = 0;
+
+  /////////////////////////////////////////////////////////////////////////////
+  //      WRITE LOCK MISSING HERE FOR MMFILES!!!!!!!!
+  /////////////////////////////////////////////////////////////////////////////
+
+  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _type);
+  LocalDocumentId const documentId = LocalDocumentId::create();
+
+  // execute a read to check pattern and merge objects
+  Result res = getPhysical()->read(trx, key, previous, lock);
+  if (res.fail()) {
+    return res;
+  }
+
+  TRI_ASSERT(!previous.empty());
+
+  if (newSlice.length() <= 1) {
+    // shortcut. no need to do anything
+    // clone previous into mdr
+    previous.clone(mdr);
+
+    TRI_ASSERT(!mdr.empty());
+
+    getPhysical()->trackWaitForSync(trx, options);
+    return Result();
+  }
+
+
+  LocalDocumentId const oldDocumentId = previous.localDocumentId();
+  VPackSlice const oldDoc(previous.vpack());
+  TRI_voc_rid_t const oldRevisionId =
+      transaction::helpers::extractRevFromDocument(oldDoc);
+  prevRev = oldRevisionId;
+
+  // Check old revision:
+  if (!options.ignoreRevs) {
+    TRI_voc_rid_t expectedRev = 0;
+
+    if (newSlice.isObject()) {
+      expectedRev = TRI_ExtractRevisionId(newSlice);
+    }
+
+    int result = checkRevision(trx, expectedRev, prevRev);
+
+    if (result != TRI_ERROR_NO_ERROR) {
+      return Result(result);
+    }
+  }
+
+  // check if the pattern matches
+  if (pattern.isObject()) {
+
+    if (!aql::matches(VPackSlice(previous.vpack()),
+                      trx->transactionContextPtr()->getVPackOptions(),
+                      pattern)) {
+      res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return res;
+    }
+  }
+
+  // merge old and new values
+  TRI_voc_rid_t revisionId;
+  transaction::BuilderLeaser builder(trx);
+  res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
+                              options.mergeObjects, options.keepNull, *builder.get(),
+                              options.isRestore, revisionId);
+
+  if (res.fail()) {
+    return res;
+  }
+
+  if (_isDBServer) {
+    // Need to check that no sharding keys have changed:
+    if (arangodb::shardKeysChanged(
+          vocbase().name(),
+          trx->resolver()->getCollectionNameCluster(
+            planId()
+          ),
+          oldDoc,
+          builder->slice(),
+          false
+       )) {
+      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+    }
+  }
+
+  VPackSlice const newDoc(builder->slice());
+
+  return getPhysical()->update(
+    trx, mdr, revisionId, newDoc, documentId, oldDoc, oldDocumentId, resultMarkerTick, options
+  );
 }
 
 /// @brief replaces a document or edge in a collection
 Result LogicalCollection::replace(transaction::Methods* trx,
-                                  VPackSlice const newSlice,
-                                  ManagedDocumentResult& result,
-                                  OperationOptions& options,
-                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                  TRI_voc_rid_t& prevRev,
-                                  ManagedDocumentResult& previous) {
-  resultMarkerTick = 0;
+                                 VPackSlice const newSlice,
+                                 ManagedDocumentResult& mdr,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
+                                 TRI_voc_rid_t& prevRev,
+                                 ManagedDocumentResult& previous,
+                                 velocypack::Slice const pattern) {
 
   if (!newSlice.isObject()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
+
+
+  VPackSlice key = newSlice.get(StaticStrings::KeyString);
+  if (key.isNone()) {
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
   prevRev = 0;
-  return getPhysical()->replace(trx, newSlice, result, options,
-                                resultMarkerTick, lock, prevRev, previous);
+  resultMarkerTick = 0;
+
+  /////////////////////////////////////////////////////////////////////////////
+  //      WRITE LOCK MISSING HERE FOR MMFILES!!!!!!!!
+  /////////////////////////////////////////////////////////////////////////////
+
+  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _type);
+  LocalDocumentId const documentId = LocalDocumentId::create();
+
+  // execute a read to check pattern and merge objects
+  // TODO: WHAT ABOUT THE LOCK PARAMETER?
+  Result res = getPhysical()->read(trx, key, previous, lock);
+  if (res.fail()) {
+    return res;
+  }
+
+  TRI_ASSERT(!previous.empty());
+
+
+  LocalDocumentId const oldDocumentId = previous.localDocumentId();
+  VPackSlice const oldDoc(previous.vpack());
+  TRI_voc_rid_t const oldRevisionId =
+      transaction::helpers::extractRevFromDocument(oldDoc);
+  prevRev = oldRevisionId;
+
+  // Check old revision:
+  if (!options.ignoreRevs) {
+    TRI_voc_rid_t expectedRev = 0;
+
+    if (newSlice.isObject()) {
+      expectedRev = TRI_ExtractRevisionId(newSlice);
+    }
+
+    int result = checkRevision(trx, expectedRev, prevRev);
+
+    if (result != TRI_ERROR_NO_ERROR) {
+      return Result(result);
+    }
+  }
+
+  // check if the pattern matches
+  if (pattern.isObject()) {
+
+    if (!aql::matches(oldDoc,
+                      trx->transactionContextPtr()->getVPackOptions(),
+                      pattern)) {
+      res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return res;
+    }
+  }
+
+  // create the new object for replace
+  TRI_voc_rid_t revisionId;
+  transaction::BuilderLeaser builder(trx);
+  res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection, *builder.get(),
+                            options.isRestore, revisionId);
+
+  if (res.fail()) {
+    return res;
+  }
+
+  if (_isDBServer) {
+    // Need to check that no sharding keys have changed:
+    if (arangodb::shardKeysChanged(
+          vocbase().name(),
+          trx->resolver()->getCollectionNameCluster(
+            planId()
+          ),
+          oldDoc,
+          builder->slice(),
+          false
+       )) {
+      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+    }
+  }
+
+  VPackSlice const newDoc(builder->slice());
+
+  return getPhysical()->replace(
+    trx, mdr, revisionId, newDoc, documentId, oldDoc, oldDocumentId, resultMarkerTick, options
+  );
 }
 
 /// @brief removes a document or edge
@@ -1219,7 +1399,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
     if (collection->readDocument(&trx, token, mmdr)) {
       VPackSlice const slice(mmdr.vpack());
 
-      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
+      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
 
       if (withRevisions) {
         localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
@@ -1236,7 +1416,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
           // was already handled before
           VPackValueLength keyLength;
           char const* key = it.key.getString(keyLength);
-          if (keyLength >= 3 && 
+          if (keyLength >= 3 &&
               key[0] == '_' &&
               ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
               (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
@@ -1244,8 +1424,8 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
             continue;
           }
 
-          localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
-          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
+          localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
+          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
         }
       }
 
@@ -1289,6 +1469,253 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
 
   return Result();
 }
+
+/// @brief checks the revision of a document
+int LogicalCollection::checkRevision(transaction::Methods* trx,
+                                      TRI_voc_rid_t expected,
+                                      TRI_voc_rid_t found) const {
+  if (expected != 0 && found != expected) {
+    return TRI_ERROR_ARANGO_CONFLICT;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+/// @brief merge two objects for update, oldValue must have correctly set
+/// _key and _id attributes
+Result LogicalCollection::mergeObjectsForUpdate(
+    transaction::Methods* trx, VPackSlice const& oldValue,
+    VPackSlice const& newValue, bool isEdgeCollection,
+    bool mergeObjects, bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
+  b.openObject();
+
+  VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
+  VPackSlice idSlice = oldValue.get(StaticStrings::IdString);
+  TRI_ASSERT(!keySlice.isNone());
+  TRI_ASSERT(!idSlice.isNone());
+
+  // Find the attributes in the newValue object:
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
+
+  std::unordered_map<StringRef, VPackSlice> newValues;
+  {
+    VPackObjectIterator it(newValue, true);
+    while (it.valid()) {
+      StringRef key(it.key());
+      if (!key.empty() && key[0] == '_' &&
+          (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
+           key == StaticStrings::RevString ||
+           key == StaticStrings::FromString ||
+           key == StaticStrings::ToString)) {
+        // note _from and _to and ignore _id, _key and _rev
+        if (isEdgeCollection) {
+          if (key == StaticStrings::FromString) {
+            fromSlice = it.value();
+          } else if (key == StaticStrings::ToString) {
+            toSlice = it.value();
+          }
+        }  // else do nothing
+      } else {
+        // regular attribute
+        newValues.emplace(key, it.value());
+      }
+
+      it.next();
+    }
+  }
+
+  if (isEdgeCollection) {
+    if (fromSlice.isNone()) {
+      fromSlice = oldValue.get(StaticStrings::FromString);
+    } else if (!isValidEdgeAttribute(fromSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+    if (toSlice.isNone()) {
+      toSlice = oldValue.get(StaticStrings::ToString);
+    } else if (!isValidEdgeAttribute(toSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+  }
+
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
+
+  // _key
+  b.add(StaticStrings::KeyString, keySlice);
+
+  // _id
+  b.add(StaticStrings::IdString, idSlice);
+
+  // _from, _to
+  if (isEdgeCollection) {
+    TRI_ASSERT(fromSlice.isString());
+    TRI_ASSERT(toSlice.isString());
+    b.add(StaticStrings::FromString, fromSlice);
+    b.add(StaticStrings::ToString, toSlice);
+  }
+
+  // _rev
+  bool handled = false;
+  if (isRestore) {
+    // copy revision id verbatim
+    VPackSlice s = newValue.get(StaticStrings::RevString);
+    if (s.isString()) {
+      b.add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getString(l);
+      revisionId = TRI_StringToRid(p, l, false);
+      handled = true;
+    }
+  }
+  if (!handled) {
+    revisionId = newRevisionId();
+    b.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+  }
+
+  // add other attributes after the system attributes
+  {
+    VPackObjectIterator it(oldValue, true);
+    while (it.valid()) {
+      StringRef key(it.key());
+      // exclude system attributes in old value now
+      if (!key.empty() && key[0] == '_' &&
+          (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
+           key == StaticStrings::RevString ||
+           key == StaticStrings::FromString ||
+           key == StaticStrings::ToString)) {
+        it.next();
+        continue;
+      }
+
+      auto found = newValues.find(key);
+
+      if (found == newValues.end()) {
+        // use old value
+        b.addUnchecked(key.data(), key.size(), it.value());
+      } else if (mergeObjects && it.value().isObject() &&
+                 (*found).second.isObject()) {
+        // merge both values
+        auto& value = (*found).second;
+        if (keepNull || (!value.isNone() && !value.isNull())) {
+          VPackBuilder sub =
+              VPackCollection::merge(it.value(), value, true, !keepNull);
+          b.addUnchecked(key.data(), key.size(), sub.slice());
+        }
+        // clear the value in the map so its not added again
+        (*found).second = VPackSlice();
+      } else {
+        // use new value
+        auto& value = (*found).second;
+        if (keepNull || (!value.isNone() && !value.isNull())) {
+          b.addUnchecked(key.data(), key.size(), value);
+        }
+        // clear the value in the map so its not added again
+        (*found).second = VPackSlice();
+      }
+      it.next();
+    }
+  }
+
+  // add remaining values that were only in new object
+  for (auto const& it : newValues) {
+    VPackSlice const& s = it.second;
+    if (s.isNone()) {
+      continue;
+    }
+    if (!keepNull && s.isNull()) {
+      continue;
+    }
+    b.addUnchecked(it.first.data(), it.first.size(), s);
+  }
+
+  b.close();
+  return Result();
+}
+
+bool LogicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
+  if (!slice.isString()) {
+    return false;
+  }
+
+  // validate id string
+  VPackValueLength len;
+  char const* docId = slice.getString(len);
+  if (len < 3) {
+    return false;
+  }
+  size_t split;
+  return TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split);
+}
+
+TRI_voc_rid_t LogicalCollection::newRevisionId() const {
+  return TRI_HybridLogicalClock();
+}
+
+/// @brief new object for replace, oldValue must have _key and _id correctly
+/// set
+Result LogicalCollection::newObjectForReplace(
+    transaction::Methods* trx, VPackSlice const& oldValue,
+    VPackSlice const& newValue, bool isEdgeCollection,
+    VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
+  builder.openObject();
+
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
+
+  // _key
+  VPackSlice s = oldValue.get(StaticStrings::KeyString);
+  TRI_ASSERT(!s.isNone());
+  builder.add(StaticStrings::KeyString, s);
+
+  // _id
+  s = oldValue.get(StaticStrings::IdString);
+  TRI_ASSERT(!s.isNone());
+  builder.add(StaticStrings::IdString, s);
+
+  // _from and _to
+  if (isEdgeCollection) {
+    VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
+    if (!isValidEdgeAttribute(fromSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+
+    VPackSlice toSlice = newValue.get(StaticStrings::ToString);
+    if (!isValidEdgeAttribute(toSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+
+    TRI_ASSERT(fromSlice.isString());
+    TRI_ASSERT(toSlice.isString());
+    builder.add(StaticStrings::FromString, fromSlice);
+    builder.add(StaticStrings::ToString, toSlice);
+  }
+
+  // _rev
+  bool handled = false;
+  if (isRestore) {
+    // copy revision id verbatim
+    s = newValue.get(StaticStrings::RevString);
+    if (s.isString()) {
+      builder.add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getString(l);
+      revisionId = TRI_StringToRid(p, l, false);
+      handled = true;
+    }
+  }
+  if (!handled) {
+    revisionId = newRevisionId();
+    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+  }
+
+  // add other attributes after the system attributes
+  TRI_SanitizeObjectWithEdges(newValue, builder);
+
+  builder.close();
+  return Result();
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

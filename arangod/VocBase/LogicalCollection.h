@@ -299,12 +299,15 @@ class LogicalCollection: public LogicalDataSource {
   Result update(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,
                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous);
+                ManagedDocumentResult& previous,
+                velocypack::Slice const pattern);
 
   Result replace(transaction::Methods*, velocypack::Slice const,
                  ManagedDocumentResult& result, OperationOptions&,
                  TRI_voc_tick_t&, bool /*lock*/, TRI_voc_rid_t& prevRev,
-                 ManagedDocumentResult& previous);
+                 ManagedDocumentResult& previous,
+                 velocypack::Slice const pattern);
+
 
   Result remove(transaction::Methods*, velocypack::Slice const,
                 OperationOptions&, TRI_voc_tick_t&, bool,
@@ -365,6 +368,46 @@ class LogicalCollection: public LogicalDataSource {
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
+  int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
+                    TRI_voc_rid_t found) const;
+
+
+  TRI_voc_rid_t newRevisionId() const;
+
+  bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
+
+  /// @brief new object for insert, value must have _key set correctly.
+  Result newObjectForInsert(transaction::Methods* trx,
+                            velocypack::Slice const& value,
+                            bool isEdgeCollection, velocypack::Builder& builder,
+                            bool isRestore,
+                            TRI_voc_rid_t& revisionId) const;
+
+  /// @brief new object for remove, must have _key set
+  void newObjectForRemove(transaction::Methods* trx,
+                          velocypack::Slice const& oldValue,
+                          velocypack::Builder& builder,
+                          bool isRestore, TRI_voc_rid_t& revisionId) const;
+
+  /// @brief merge two objects for update
+  Result mergeObjectsForUpdate(transaction::Methods* trx,
+                               velocypack::Slice const& oldValue,
+                               velocypack::Slice const& newValue,
+                               bool isEdgeCollection,
+                               bool mergeObjects, bool keepNull,
+                               velocypack::Builder& builder,
+                               bool isRestore, TRI_voc_rid_t& revisionId) const;
+
+  /// @brief new object for replace
+  Result newObjectForReplace(transaction::Methods* trx,
+                             velocypack::Slice const& oldValue,
+                             velocypack::Slice const& newValue,
+                             bool isEdgeCollection,
+                             velocypack::Builder& builder,
+                             bool isRestore, TRI_voc_rid_t& revisionId) const;
+
+
+
   // SECTION: Meta Information
   //
   // @brief Internal version used for caching
@@ -394,7 +437,7 @@ class LogicalCollection: public LogicalDataSource {
 
   // SECTION: Properties
   bool _isLocal;
-
+  bool const _isDBServer;
   bool _waitForSync;
 
   uint32_t _version;
