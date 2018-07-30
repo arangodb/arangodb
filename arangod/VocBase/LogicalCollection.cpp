@@ -1127,6 +1127,7 @@ Result LogicalCollection::update(transaction::Methods* trx,
 
 
 
+
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1135,9 +1136,9 @@ Result LogicalCollection::update(transaction::Methods* trx,
   prevRev = 0;
   resultMarkerTick = 0;
 
-  /////////////////////////////////////////////////////////////////////////////
-  //      WRITE LOCK MISSING HERE FOR MMFILES!!!!!!!!
-  /////////////////////////////////////////////////////////////////////////////
+  if (lock) {
+    getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
+  }
 
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _type);
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -1222,9 +1223,15 @@ Result LogicalCollection::update(transaction::Methods* trx,
 
   VPackSlice const newDoc(builder->slice());
 
-  return getPhysical()->update(
+  res = getPhysical()->update(
     trx, mdr, revisionId, newDoc, documentId, oldDoc, oldDocumentId, resultMarkerTick, options
   );
+
+  if (lock) {
+    getPhysical()->unlockWrite(false, trx->state());
+  }
+
+  return res;
 }
 
 /// @brief replaces a document or edge in a collection

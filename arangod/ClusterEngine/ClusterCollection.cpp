@@ -538,6 +538,28 @@ Result ClusterCollection::remove(arangodb::transaction::Methods* trx,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+int ClusterCollection::lockRead(bool useDeadlockDetector,
+                       TransactionState const* state,
+                       double timeout) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+int ClusterCollection::lockWrite(bool useDeadlockDetector,
+                       TransactionState const* state,
+                       double timeout) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+int ClusterCollection::unlockRead(bool useDeadlockDetector,
+                       TransactionState const* state){
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+int ClusterCollection::unlockWrite(bool useDeadlockDetector,
+                       TransactionState const* state){
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 void ClusterCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& /*callback*/
 ) {

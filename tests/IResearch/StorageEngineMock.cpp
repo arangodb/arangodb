@@ -894,6 +894,24 @@ void PhysicalCollectionMock::truncate(arangodb::transaction::Methods* trx, arang
   documents.clear();
 }
 
+int PhysicalCollectionMock::lockRead(bool useDeadlockDetector,
+  arangodb::TransactionState const* state, double timeout) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+int PhysicalCollectionMock::lockWrite(bool useDeadlockDetector,
+  arangodb::TransactionState const* state, double timeout) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+int PhysicalCollectionMock::unlockRead(bool useDeadlockDetector, arangodb::TransactionState const* state) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+int PhysicalCollectionMock::unlockWrite(bool useDeadlockDetector, arangodb::TransactionState const* state) {
+  return TRI_ERROR_NO_ERROR;
+}
+
 /*
 arangodb::Result PhysicalCollectionMock::update(
 arangodb::transaction::Methods* trx,

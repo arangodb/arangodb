@@ -188,10 +188,15 @@ class RocksDBCollection final : public PhysicalCollection {
   void adjustNumberDocuments(int64_t adjustment);
   uint64_t objectId() const { return _objectId; }
 
-  int lockWrite(double timeout = 0.0);
-  int unlockWrite();
+  int lockRead(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
+  int lockWrite(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
+  int unlockRead(bool useDeadlockDetector, TransactionState const* state);
+  int unlockWrite(bool useDeadlockDetector, TransactionState const* state);
+
   int lockRead(double timeout = 0.0);
+  int lockWrite(double timeout = 0.0);
   int unlockRead();
+  int unlockWrite();
 
   /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();

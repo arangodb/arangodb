@@ -29,6 +29,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
+#include "StorageEngine/TransactionState.h"
 
 #include <velocypack/Builder.h>
 
@@ -214,6 +215,17 @@ class PhysicalCollection {
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev,
                         TRI_voc_rid_t& revisionId) = 0;
+
+  virtual int lockRead(bool useDeadlockDetector,
+                       TransactionState const* state,
+                       double timeout) = 0;
+  virtual int lockWrite(bool useDeadlockDetector,
+                       TransactionState const* state,
+                       double timeout) = 0;
+  virtual int unlockRead(bool useDeadlockDetector,
+                       TransactionState const* state) = 0;
+  virtual int unlockWrite(bool useDeadlockDetector,
+                       TransactionState const* state) = 0;
 
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);

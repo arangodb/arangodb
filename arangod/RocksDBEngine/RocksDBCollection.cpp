@@ -1541,6 +1541,24 @@ int RocksDBCollection::unlockRead() {
   return TRI_ERROR_NO_ERROR;
 }
 
+int RocksDBCollection::lockRead(bool useDeadlockDetector,
+  TransactionState const* state, double timeout) {
+  return lockRead(timeout);
+}
+
+int RocksDBCollection::lockWrite(bool useDeadlockDetector,
+  TransactionState const* state, double timeout) {
+  return lockWrite(timeout);
+}
+
+int RocksDBCollection::unlockRead(bool useDeadlockDetector, TransactionState const* state) {
+  return unlockRead();
+}
+
+int RocksDBCollection::unlockWrite(bool useDeadlockDetector, TransactionState const* state) {
+  return unlockWrite();
+}
+
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
