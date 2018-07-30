@@ -36,6 +36,7 @@
 #include "Aql/QueryString.h"
 #include "Aql/RegexCache.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
@@ -288,45 +289,9 @@ class Query {
 
   QueryExecutionState::ValueType state() const { return _state; }
 
-  /// @brief continueAfterPause is to be called on the query object to
-  /// continue execution in this query part, if the query got paused
-  /// because it is waiting for network responses. The idea is that a
-  /// RemoteBlock that does an asynchronous cluster-internal request can
-  /// register a callback with the asynchronous request and then return
-  /// with the result `ExecutionState::WAITING`, which will bubble up
-  /// the stack and eventually lead to a suspension of the work on the
-  /// RestHandler. In the callback function one can first store the
-  /// results in the RemoteBlock object and can then call this method on
-  /// the query.
-  /// This will lead to the following: The original request that lead to
-  /// the network communication will be rescheduled on the ioservice and
-  /// continues its execution where it left off.
-  void continueAfterPause() {
-    TRI_ASSERT(!hasHandler());
-    _continueCallback();
-  }
-
-  std::function<void()> continueHandler() {
-    TRI_ASSERT(hasHandler());
-    return _continueCallback;
-  }
-
-  bool hasHandler() {
-    return _hasHandler;
-  }
-
-  /// @brief setter for the continue callback:
-  ///        We can either have a handler or a callback
-  void setContinueCallback(std::function<void()> const& cb) {
-    _continueCallback = cb;
-    _hasHandler = false;
-  }
-
-  /// @brief setter for the continue handler:
-  ///        We can either have a handler or a callback
-  void setContinueHandler(std::function<void()> const& handler) {
-    _continueCallback = handler;
-    _hasHandler = true;
+  /// @brief return the query's shared state
+  std::shared_ptr<SharedQueryState> sharedState() const { 
+    return _sharedState;
   }
 
  private:
@@ -458,49 +423,19 @@ class Query {
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
 
-  /// @brief a callback function which is used to implement continueAfterPause.
-  /// Typically, the RestHandler using the Query object will put a closure
-  /// in here, which continueAfterPause simply calls.
-  std::function<void()> _continueCallback;
-
-  /// @brief decide if the _continueCallback needs to be pushed onto the ioservice
-  ///        or if it has to be executed in this thread.
-  bool _hasHandler;
-
   /// Create the result in this builder. It is also used to determine
   /// if we are continuing the query or of we called
   std::shared_ptr<arangodb::velocypack::Builder> _resultBuilder;
 
-  /// Options for _resultBuilder. Optimally, it's lifetime should be linked to
+  /// Options for _resultBuilder. Optimally, its lifetime should be linked to
   /// it, but this is hard to do.
   std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
 
   /// Track in which phase of execution we are, in order to implement repeatability.
   ExecutionPhase _executionPhase;
 
-  /// Temporary Section only used during the development of
-  /// async AQL
-  /// TODO REMOVE
- private:
-  basics::ConditionVariable _tempWaitForAsyncResponse;
-  bool _wasNotified = false;
-
- public:
-  void tempSignalAsyncResponse() {
-    CONDITION_LOCKER(guard, _tempWaitForAsyncResponse);
-    _wasNotified = true;
-    guard.signal();
-  }
-
-  /// TODO This has to stay for a backwards-compatible AQL HTTP API (hasMore).
-  /// So it needs to be renamed.
-  void tempWaitForAsyncResponse() {
-    CONDITION_LOCKER(guard, _tempWaitForAsyncResponse);
-    if (!_wasNotified) {
-      _tempWaitForAsyncResponse.wait();
-    }
-    _wasNotified = false;
-  }
+  /// @brief shared state 
+  std::shared_ptr<SharedQueryState> _sharedState;
 };
 
 }

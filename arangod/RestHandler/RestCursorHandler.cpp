@@ -164,11 +164,12 @@ bool RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     arangodb::aql::PART_MAIN
   );
 
+  std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
   auto self = shared_from_this();
-  auto continueHandler = [this, self]() {
+  ss->setContinueHandler([this, self, ss] {
     continueHandlerExecution();
-  };
-  query->setContinueHandler(continueHandler);
+  });
+
   registerQuery(std::move(query));
   return true;
 }

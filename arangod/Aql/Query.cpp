@@ -95,8 +95,8 @@ Query::Query(
       _killed(false),
       _isModificationQuery(false),
       _preparedV8Context(false),
-      _hasHandler(false),
-      _executionPhase(ExecutionPhase::INITIALIZE) {
+      _executionPhase(ExecutionPhase::INITIALIZE),
+      _sharedState(std::make_shared<SharedQueryState>()) {
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
     TransactionState* state = transaction::V8Context::getParentState();
@@ -181,8 +181,8 @@ Query::Query(
       _killed(false),
       _isModificationQuery(false),
       _preparedV8Context(false),
-      _hasHandler(false),
-      _executionPhase(ExecutionPhase::INITIALIZE) {
+      _executionPhase(ExecutionPhase::INITIALIZE),
+      _sharedState(std::make_shared<SharedQueryState>()) {
   
   // populate query options
   if (_options != nullptr) {
@@ -754,15 +754,17 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
  * @return The result of this query. The result is always complete
  */
 QueryResult Query::executeSync(QueryRegistry* registry) {
+  std::shared_ptr<SharedQueryState> ss = sharedState();
+  ss->setContinueCallback();
+
   QueryResult queryResult;
-  setContinueCallback([&]() { tempSignalAsyncResponse(); });
   while(true) {
     auto state = execute(registry, queryResult);
     if (state != aql::ExecutionState::WAITING) {
       TRI_ASSERT(state == aql::ExecutionState::DONE);
       return queryResult;
     }
-    tempWaitForAsyncResponse();
+    ss->waitForAsyncResponse();
   }
 }
 
@@ -773,7 +775,9 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
                                     << " this: " << (uintptr_t) this;
   TRI_ASSERT(registry != nullptr);
 
-  setContinueCallback([&]() { tempSignalAsyncResponse(); });
+  std::shared_ptr<SharedQueryState> ss = sharedState();
+  ss->setContinueCallback();
+
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryHash = hash();
@@ -830,6 +834,8 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
     std::unique_ptr<AqlItemBlock> value;
 
     try {
+      std::shared_ptr<SharedQueryState> ss = sharedState();
+
       if (useQueryCache) {
         VPackOptions options = VPackOptions::Defaults;
         options.buildUnindexedArrays = true;
@@ -846,7 +852,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
           state = res.first;
           // TODO MAX: We need to let the thread sleep here instead of while loop
           while (state == ExecutionState::WAITING) {
-            tempWaitForAsyncResponse();
+            ss->waitForAsyncResponse();
             res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
             state = res.first;
           }
@@ -891,7 +897,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
           state = res.first;
           // TODO MAX: We need to let the thread sleep here instead of while loop
           while (state == ExecutionState::WAITING) {
-            tempWaitForAsyncResponse();
+            ss->waitForAsyncResponse();
             res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
             state = res.first;
           }
@@ -935,7 +941,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(queryResult);
     while (state == ExecutionState::WAITING) {
-      tempWaitForAsyncResponse();
+      ss->waitForAsyncResponse();
       state = finalize(queryResult);
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -1378,10 +1384,12 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) noexcept {
   try {
-    setContinueCallback([&]() { tempSignalAsyncResponse(); });
+    std::shared_ptr<SharedQueryState> ss = sharedState();
+    ss->setContinueCallback();
+    
     ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
     while (state == ExecutionState::WAITING) {
-      tempWaitForAsyncResponse();
+      ss->waitForAsyncResponse();
       state = cleanupPlanAndEngine(errorCode, statsBuilder);
     }
   } catch (...) {
@@ -1408,6 +1416,8 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
     }
     _engine.reset();
   }
+
+  _sharedState->invalidate();
 
   // If the transaction was not committed, it is automatically aborted
   delete _trx;
