@@ -16,7 +16,7 @@ The result is an object describing the view with the following attributes:
 - *id*: The identifier of the view
 - *name*: The name of the view
 - *type*: The type of the view as string
-- any additional view implementation specific propertiesG
+- any additional view implementation specific properties
 
 @RESTRETURNCODES
 

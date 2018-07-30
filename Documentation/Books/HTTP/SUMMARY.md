@@ -44,6 +44,7 @@
   * [Fulltext](Indexes/Fulltext.md)
 * [Views](Views/README.md)
   * [Creating](Views/Creating.md)
+  * [Deleting](Views/Dropping.md)
   * [Modifying](Views/Modifying.md)
   * [Retrieving](Views/Getting.md)
   * [ArangoSearch Views](Views/ArangoSearch.md)

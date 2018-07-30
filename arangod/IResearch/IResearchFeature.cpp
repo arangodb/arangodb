@@ -570,9 +570,9 @@ void IResearchFeature::Async::Thread::run() {
 IResearchFeature::Async::Async(): _terminate(false) {
   static const unsigned int MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
   static const unsigned int MIN_THREADS = 1; // at least one thread is required
-  auto poolSize = std::max(
+  auto const poolSize = std::max(
     MIN_THREADS,
-    std::min(MAX_THREADS, std::thread::hardware_concurrency())
+    std::min(MAX_THREADS, std::thread::hardware_concurrency() / 4) // arbitrary fraction of available cores
   );
 
   for (size_t i = 0; i < poolSize; ++i) {
@@ -635,10 +635,14 @@ void IResearchFeature::Async::start() {
   for (auto& thread: _pool) {
     thread.start(&_join);
   }
+
+  LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+    << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
+    _async(std::make_unique<Async>()),
     _running(false) {
   setOptional(true);
   startsAfter("V8Phase");
@@ -651,12 +655,10 @@ void IResearchFeature::async(
     std::shared_ptr<ResourceMutex> const& mutex,
     Async::Fn &&fn
 ) {
-  TRI_ASSERT(_async);
   _async->emplace(mutex, std::move(fn));
 }
 
 void IResearchFeature::asyncNotify() const {
-  TRI_ASSERT(_async);
   _async->notify();
 }
 
@@ -679,14 +681,6 @@ void IResearchFeature::collectOptions(
 void IResearchFeature::prepare() {
   if (!isEnabled()) {
     return;
-  }
-
-  if (!ServerState::instance()->isCoordinator() &&
-      !ServerState::instance()->isAgent()) {  
-    // no need to start the thread pool on the coordinator or on an agent.
-    // threads are only needed on single server or DB servers
-    // in a cluster
-    _async = std::make_unique<Async>();
   }
 
   _running = false;
@@ -755,6 +749,7 @@ void IResearchFeature::unprepare() {
   if (!isEnabled()) {
     return;
   }
+
   _running = false;
   ApplicationFeature::unprepare();
 }

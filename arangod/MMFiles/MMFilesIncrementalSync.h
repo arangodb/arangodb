@@ -127,7 +127,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::READ
     );
     Result res = trx.begin();
@@ -158,7 +158,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::READ
     );
     Result res = trx.begin();
@@ -312,7 +312,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // first chunk
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::WRITE
     );
 
@@ -391,7 +391,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::WRITE
     );
 

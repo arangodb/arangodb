@@ -762,7 +762,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-    collection,
+    *collection,
     AccessMode::Type::WRITE
   );
 

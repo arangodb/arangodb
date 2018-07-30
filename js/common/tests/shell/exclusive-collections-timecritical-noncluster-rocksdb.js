@@ -130,6 +130,7 @@ function ExclusiveSuite () {
     }, // testExclusiveExpectConflict
 
     testExclusiveExpectNoConflict : function () {
+      assertEqual(0, c2.count());
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
       let task = tasks.register({
         command: function() {

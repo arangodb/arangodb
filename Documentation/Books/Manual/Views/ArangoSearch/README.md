@@ -159,8 +159,12 @@ During view modification the following directives apply:
   * link removal - JSON keyword *null* (i.e. nullify a link if present)
     any of the directives from the section [modifiable view properties ](#view-properties-modifiable)
 
+### View properties (non-updatable)
 
-### View properties (modifiable)
+* locale: (optional; default: `C`)
+  the default locale used for ordering processed attribute names
+
+### View properties (updatable)
 
 * commit: (optional; default: use defaults for all values)
   configure ArangoSearch View commit policy for single-item inserts/removals,
@@ -224,9 +228,6 @@ During view modification the following directives apply:
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
-* locale: (optional; default: `C`)
-  the default locale used for ordering processed attribute names
-
 ### Link properties
 
 * analyzers: (optional; default: `[ 'identity' ]`)
@@ -255,8 +256,8 @@ During view modification the following directives apply:
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr == 'valueY'`
 
-* trackValues: (optional; default: "none")
+* storeValues: (optional; default: "none")
   how should the view track the attribute values, this setting allows for
   additional value retrieval optimizations, one of:
-  * none: Do not track values by the view
-  * exists: Track only value presence, to allow use of the EXISTS() function
+  * none: Do not store values by the view
+  * id: Store only information about value presence, to allow use of the EXISTS() function

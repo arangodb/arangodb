@@ -898,9 +898,7 @@ Result RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
-        SingleCollectionTransaction trx(
-          ctx, col, AccessMode::Type::EXCLUSIVE
-        );
+        SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
 
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
@@ -1074,7 +1072,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // Always ignore `shadowCollections` they were accidentially dumped in arangodb versions
   // earlier than 3.3.6
-  toMerge.add("shadowCollections", arangodb::basics::VelocyPackHelper::NullValue());
+  toMerge.add("shadowCollections", arangodb::velocypack::Slice::nullSlice());
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
@@ -1852,7 +1850,7 @@ void RestReplicationHandler::handleCommandSync() {
   engine->waitForSyncTimeout(waitForSyncTimeout);
 
   TRI_ASSERT(!config._skipCreateDrop);
-  std::unique_ptr<InitialSyncer> syncer;
+  std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(config));
@@ -2109,9 +2107,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (readLockId.isNone()) {
     // Short cut for the case that the collection is empty
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(
-      ctx, col.get(), AccessMode::Type::EXCLUSIVE
-    );
+    SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
     auto res = trx.begin();
 
     if (res.ok()) {
@@ -2323,8 +2319,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  auto trx =
-      std::make_shared<SingleCollectionTransaction>(ctx, col.get(), access);
+  auto trx = std::make_shared<SingleCollectionTransaction>(ctx, *col, access);
+
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   Result res = trx->begin();

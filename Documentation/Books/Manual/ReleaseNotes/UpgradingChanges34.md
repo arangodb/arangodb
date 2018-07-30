@@ -6,6 +6,41 @@ upgrading to ArangoDB 3.4, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.4:
 
+
+Supported platforms
+-------------------
+
+The minimum supported architecture for the official release packages of ArangoDB is
+now the Nehalem architecture.
+
+All release packages are built with compiler optimizations that require at least
+this architecture. The following CPU features are required for running an official
+release package (note: these are all included in the Nehalem architecture and upwards):
+
+* SSE2
+* SSE3
+* SSE4.1
+* SSE4.2
+
+In case the target platform does not conform to these requirements, ArangoDB may
+not work correctly.
+
+The compiled-in architecture optimizations can be retrieved on most platforms by 
+invoking the *arangod* binary with the `--version` option. The optimization switches
+will then show up in the output in the line starting with `optimization-flags`, e.g.
+
+```
+$ arangod --version
+...
+optimization-flags: -march=nehalem -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mno-sse4a -mno-avx -mno-fma -mno-bmi2 -mno-avx2 -mno-xop -mno-fma4 -mno-avx512f -mno-avx512vl -mno-avx512pf -mno-avx512er -mno-avx512cd -mno-avx512dq -mno-avx512bw -mno-avx512ifma -mno-avx512vbmi
+platform: linux
+```
+
+Note that to get even more target-specific optimizations, it is possible for end
+users to compile ArangoDB on their own with compiler optimizations tailored to the
+target environment.
+
+
 Storage engine
 --------------
 
@@ -29,13 +64,21 @@ explicitly selected:
 
 * `--server.storage-engine mmfiles`
 
+
+To make users aware of that the RocksDB storage engine was chosen automatically
+due to an explicit other storage engine selection, 3.4 will come up with the following
+startup warning:
+
+    using default storage engine 'rocksdb', as no storage engine was explicitly selected via the `--server.storage-engine` option.
+    please note that default storage engine has changed from 'mmfiles' to 'rocksdb' in ArangoDB 3.4
+
+
 On upgrade, any existing ArangoDB installation will keep its previously selected
-storage engine. The change of the default storage engine is thus only relevant
+storage engine. The change of the default storage engine in 3.4 is thus only relevant
 for new ArangoDB installations and/or existing cluster setups for which new server 
 nodes get added later. All server nodes in a cluster setup should use the same
 storage engine to work reliably. Using different storage engines in a cluster is
 unsupported.
-
 
 To validate that the different nodes in a cluster deployment use the same storage
 engine throughout the entire cluster, there is now a startup check performed by
@@ -67,11 +110,14 @@ RocksDB engine data storage format
 ----------------------------------
 
 Installations that start using ArangoDB 3.4 will use an optimized on-disk format
-for storing documents using the RocksDB storage engine. This format cannot be used
-on ArangoDB 3.3 or before, meaning it is not possible to perform an in-place downgrade
-from a fresh 3.4 install to 3.3 or earlier when using the RocksDB engine. For more
-information on how to downgrade, please refer to the [Downgrading](../Downgrading/README.md)
-chapter.
+for storing documents using the RocksDB storage engine. The RocksDB engine will also
+a new table format version that was added in a recent version of the RocksDB library
+and that is not available in ArangoDB versions before 3.4.
+  
+This format cannot be used with ArangoDB 3.3 or before, meaning it is not possible to 
+perform an in-place downgrade from a fresh 3.4 install to 3.3 or earlier when using the 
+RocksDB engine. For more information on how to downgrade, please refer to the 
+[Downgrading](../Downgrading/README.md) chapter.
 
 Installations that were originally set up with older versions of ArangoDB (e.g. 3.2
 or 3.3) will continue to use the existing on-disk format for the RocksDB engine
@@ -147,6 +193,27 @@ APIs:
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
 
+- `GET /_admin/status` now returns the attribute `operationMode` in addition to
+  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
+  attribute `readOnly`, which is has an inverted value compared to the original
+  attribute. In future releases the old attributes will be deprecated in favor
+  of the new ones.
+
+- if authentication is turned on, requests to databases by users with insufficient 
+  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
+
+
+The following APIs have been added or augmented:
+
+- `POST /_api/document/{collection}` now supports repsert (replace-insert). 
+  
+  This can be achieved by using the URL parameter `overwrite=true`. When set to 
+  `true`, insertion will not fail in case of a primary key conflict, but turn 
+  into a replace operation.
+
+  When an insert turns into a replace, the previous version of the document can
+  be retrieved by passing the URL parameter `returnOld=true`
+
 - `POST /_api/aqlfunction` now includes an "isNewlyCreated" attribute that indicates
   if a new function was created or if an existing one was replaced (in addition to the
   "code" attribute, which remains 200 for replacement and 201 for creation):
@@ -168,25 +235,6 @@ APIs:
     "deletedCount": 10
   }
   ```
-
-- `GET /_admin/status` now returns the attribute `operationMode` instead of `mode`.
-  The previously existing attribute `writeOpsEnabled` is no longer returned and was
-  replaced with an attribute `readOnly` with the inverted meaning.
-
-- if authentication is turned on, requests to databases by users with insufficient 
-  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
-
-
-The following APIs have been added or augmented:
-
-- `POST /_api/document/{collection}` now supports repsert (replace-insert). 
-  
-  This can be achieved by using the URL parameter `overwrite=true`. When set to 
-  `true`, insertion will not fail in case of a primary key conflict, but turn 
-  into a replace operation.
-
-  When an insert turns into a replace, the previous version of the document can
-  be retrieved by passing the URL parameter `returnOld=true`
 
 - APIs for view management have been added at endpoint `/_api/view`.
 
@@ -219,9 +267,6 @@ AQL
 - the AQL functions `CALL` and `APPLY` may now throw the errors 1540
 (`ERROR_QUERY_FUNCTION_NAME_UNKNOWN`) and 1541 (`ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH`)
 instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
-
-- the `NEAR` AQL function now does not default to a limit of 100 documents 
-  any more, but will return all documents if no limit is specified.
 
 - the existing "fulltext-index-optimizer" optimizer rule has been removed 
   because its duty is now handled by the new "replace-function-with-index" rule.
@@ -300,7 +345,7 @@ numbers of V8 contexts to start. In terms of configuration options, these
 are:
 
 - `--javascript.v8-contexts`: the maximum number of V8 contexts to create
-- `--javascript.v8-contexts-minimim`: the minimum number of V8 contexts to 
+- `--javascript.v8-contexts-minimum`: the minimum number of V8 contexts to 
   create at server start and to keep around
 
 The default values for these startup options have not been changed in ArangoDB
@@ -349,6 +394,14 @@ For arangod, the following startup options have changed:
 
   Using the old option name will still work in ArangoDB 3.4, but support for the old 
   option name will be removed in future versions of ArangoDB.
+
+- the option `--rocksdb.block-align-data-blocks` has been added
+
+  If set to true, data blocks stored by the RocksDB engine are aligned on lesser of page 
+  size and block size, which may waste some memory but may reduce the number of cross-page 
+  I/Os operations.
+
+  The default value for this option is *false*.
 
 
 Permissions

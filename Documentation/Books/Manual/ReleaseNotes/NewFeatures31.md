@@ -15,7 +15,7 @@ The SmartGraph feature is suggested for all graph database use cases that requir
 a cluster of database servers for what ever reason.
 You can either have a graph that is too large to be stored on a single machine only.
 Or you can have a small graph, but at the same time need additional data with has to be
-sharded and you want to keep all of them in the same envirenment.
+sharded and you want to keep all of them in the same environment.
 Or you simply use the cluster for high-availability.
 In all the above cases SmartGraphs will significantly increase the performance of
 graph operations.
@@ -214,7 +214,7 @@ Foxx
 
 ### GraphQL
 
-It is now easy to get started with providing GraphQL APIs in Foxx, see [Foxx GraphQL](../Foxx/Reference/GraphQL.md).
+It is now easy to get started with providing GraphQL APIs in Foxx, see [Foxx GraphQL](../Foxx/Reference/Modules/GraphQL.md).
 
 ### OAuth2
 

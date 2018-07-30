@@ -61,12 +61,18 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
     #endif
 
     return link && link->init(definition) ? ptr : nullptr;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, Logger::DEVEL)
+      << "caught exception while creating IResearch view MMFiles link '" << id << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "'" << e.what();
+      << "caught exception while creating IResearch view MMFiles link '" << id << "': " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, Logger::DEVEL)
       << "caught exception while creating IResearch view MMFiles link '" << id << "'";
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
