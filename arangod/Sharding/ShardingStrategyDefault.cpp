@@ -92,6 +92,7 @@ int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice sl
   int res = TRI_ERROR_NO_ERROR;
   usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
+
   uint64_t hash = hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
   // To improve our hash function result:
   hash = TRI_FnvHashBlock(hash, magicPhrase, magicLength);
@@ -153,9 +154,9 @@ uint64_t ShardingStrategyCommunityCompat::hashByAttributes(
   if (slice.isObject()) {
     for (auto const& attr : attributes) {
       VPackSlice sub = slice.get(attr).resolveExternal();
+      VPackBuilder tempBuilder;
       if (sub.isNone()) {
         if (attr == StaticStrings::KeyString && !key.empty()) {
-          VPackBuilder tempBuilder;
           tempBuilder.add(VPackValue(key));
           sub = tempBuilder.slice();
         } else {
