@@ -108,6 +108,14 @@ class Query {
   TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
+  
+/// @brief whether or not the query is killed
+  bool killed() const;
+
+  /// @brief set the query to killed
+  void kill();
+
+  void setExecutionTime();
 
   QueryString const& queryString() const { return _queryString; }
 
@@ -142,12 +150,6 @@ class Query {
 
   /// @brief return the current runtime of the query
   double runTime() const { return runTime(TRI_microtime()); }
-
-  /// @brief whether or not the query is killed
-  inline bool killed() const { return _killed; }
-
-  /// @brief set the query to killed
-  inline void killed(bool) { _killed = true; }
 
   /// @brief the part of the query
   inline QueryPart part() const { return _part; }
@@ -231,8 +233,6 @@ class Query {
 
   /// @brief inject the engine
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
-
-  void releaseEngine();
 
   /// @brief return the transaction, if prepared
   TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
@@ -339,8 +339,6 @@ class Query {
   /// QueryRegistry.
   ExecutionPlan* preparePlan();
 
-  void setExecutionTime();
-
   /// @brief log a query
   void log();
 
@@ -392,7 +390,7 @@ class Query {
   V8Context* _context;
 
   /// @brief graphs used in query, identified by name
-  std::unordered_map<std::string, Graph*> _graphs;
+  std::unordered_map<std::string, std::unique_ptr<Graph>> _graphs;
 
   /// @brief the actual query string
   QueryString _queryString;

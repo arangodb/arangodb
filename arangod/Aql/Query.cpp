@@ -97,12 +97,6 @@ Query::Query(
       _preparedV8Context(false),
       _hasHandler(false),
       _executionPhase(ExecutionPhase::INITIALIZE) {
-  AqlFeature* aql = AqlFeature::lease();
-
-  if (aql == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
     TransactionState* state = transaction::V8Context::getParentState();
@@ -153,6 +147,12 @@ Query::Query(
   }
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
+  
+  AqlFeature* aql = AqlFeature::lease();
+
+  if (aql == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
 }
 
 /// @brief creates a query from VelocyPack
@@ -183,12 +183,7 @@ Query::Query(
       _preparedV8Context(false),
       _hasHandler(false),
       _executionPhase(ExecutionPhase::INITIALIZE) {
-  AqlFeature* aql = AqlFeature::lease();
-
-  if (aql == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
+  
   // populate query options
   if (_options != nullptr) {
     _queryOptions.fromVelocyPack(_options->slice());
@@ -210,6 +205,12 @@ Query::Query(
   }
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
+  
+  AqlFeature* aql = AqlFeature::lease();
+
+  if (aql == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
 }
 
 /// @brief destroys a query
@@ -225,10 +226,8 @@ Query::~Query() {
   exitContext();
 
   _ast.reset();
+  _graphs.clear();
 
-  for (auto& it : _graphs) {
-    delete it.second;
-  }
   LOG_TOPIC(DEBUG, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::~Query this: " << (uintptr_t) this;
@@ -282,6 +281,16 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   }
 
   return clone.release();
+}
+
+/// @brief whether or not the query is killed
+bool Query::killed() const { 
+  return _killed; 
+}
+
+/// @brief set the query to killed
+void Query::kill() { 
+  _killed = true; 
 }
 
 void Query::setExecutionTime() {
@@ -781,7 +790,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
         ExecContext const* exe = ExecContext::CURRENT;
 
         // got a result from the query cache
-        if(exe != nullptr) {
+        if (exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
             if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -850,7 +859,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
             size_t const n = value->size();
 
             for (size_t i = 0; i < n; ++i) {
-              AqlValue const &val = value->getValueReference(i, resultRegister);
+              AqlValue const& val = value->getValueReference(i, resultRegister);
 
               if (!val.isEmpty()) {
                 resArray->Set(j++, val.toV8(isolate, _trx));
@@ -1147,10 +1156,6 @@ void Query::setEngine(ExecutionEngine* engine) {
   _engine.reset(engine);
 }
 
-void Query::releaseEngine() {
-  _engine.release();
-}
-
 /// @brief prepare a V8 context for execution for this expression
 /// this needs to be called once before executing any V8 function in this
 /// expression
@@ -1404,11 +1409,9 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
     _engine.reset();
   }
 
-  if (_trx != nullptr) {
-    // If the transaction was not committed, it is automatically aborted
-    delete _trx;
-    _trx = nullptr;
-  }
+  // If the transaction was not committed, it is automatically aborted
+  delete _trx;
+  _trx = nullptr;
 
   _plan.reset();
   return ExecutionState::DONE;
@@ -1432,20 +1435,21 @@ std::shared_ptr<transaction::Context> Query::createTransactionContext() {
 Graph const* Query::lookupGraphByName(std::string const& name) {
   auto it = _graphs.find(name);
 
-  if (it != _graphs.end()) {
-    return it->second;
+  if (it == _graphs.end()) {
+    std::unique_ptr<arangodb::aql::Graph> g(
+        arangodb::lookupGraphByName(createTransactionContext(), name));
+ 
+    if (g == nullptr) {
+      return nullptr;
+    }
+ 
+    auto result = _graphs.emplace(name, std::move(g));
+    TRI_ASSERT(result.second);
+    it = result.first;
   }
-
-  std::unique_ptr<arangodb::aql::Graph> g(
-      arangodb::lookupGraphByName(createTransactionContext(), name));
-
-  if (g == nullptr) {
-    return nullptr;
-  }
-
-  _graphs.emplace(name, g.get());
-
-  return g.release();
+ 
+  TRI_ASSERT((*it).second != nullptr);
+  return (*it).second.get();
 }
 
 /// @brief returns the next query id

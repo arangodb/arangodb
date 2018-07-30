@@ -48,7 +48,6 @@ RestCursorHandler::RestCursorHandler(
       _query(nullptr),
       _queryResult(),
       _queryRegistry(queryRegistry),
-      _queryLock(),
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false) {}
@@ -341,7 +340,7 @@ bool RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
-    _query->killed(true);
+    _query->kill();
     _queryKilled = true;
     _hasStarted = true;
     return true;
