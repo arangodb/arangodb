@@ -148,13 +148,11 @@ void VstConnection<ST>::shutdownConnection(const ErrorCondition ec) {
 // -----------------------------------------------------------------------------
   
 template <SocketType ST>
-void VstConnection<ST>::restartConnection(const ErrorCondition error) {
-  // Read & write loop must have been reset by now
-  
-  FUERTE_LOG_CALLBACKS << "restartConnection" << std::endl;
+void VstConnection<ST>::restartConnection(const ErrorCondition error) {  
   // restarting needs to be an exclusive operation
   Connection::State exp = Connection::State::Connected;
   if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
+    FUERTE_LOG_CALLBACKS << "restartConnection" << std::endl;
     shutdownConnection(error); // Terminate connection
     startConnection(); // will check state
   }
@@ -217,7 +215,7 @@ void VstConnection<ST>::finishInitialization() {
 // Send out the authentication message on this connection
 template<SocketType ST>
 void VstConnection<ST>::sendAuthenticationRequest() {
-  assert(_configuration._authenticationType != AuthenticationType::None);
+  assert(_config._authenticationType != AuthenticationType::None);
   
   // Part 1: Build ArangoDB VST auth message (1000)
   auto item = std::make_shared<RequestItem>();
@@ -441,7 +439,6 @@ void VstConnection<ST>::asyncReadSome() {
   std::cout << "_messageMap = " << _messageStore.keys() << std::endl;
 #endif
   
-  assert(_socket);
   auto self = shared_from_this();
   auto cb = [this, self](asio_ns::error_code const& ec, size_t transferred) {
     // received data is "committed" from output sequence to input sequence

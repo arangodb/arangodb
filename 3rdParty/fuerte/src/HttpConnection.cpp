@@ -27,6 +27,8 @@
 #include <atomic>
 #include <boost/algorithm/string.hpp>
 #include <cassert>
+
+#include <fuerte/FuerteLogger.h>
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
@@ -192,15 +194,9 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
   
   _state.store(State::Disconnected, std::memory_order_release);
-  
-  // cancel timeouts
-  _timeout.cancel();
-  
-  // Close socket
-  _protocol.shutdown();
-  
-  // Stop the read & write loop
-  //stopIOLoops();
+  _timeout.cancel();    // cancel timeouts
+  _protocol.shutdown(); // Close socket
+  _active.store(false); // no IO operations running
   
   RequestItem* item = nullptr;
   while (_queue.pop(item)) {
@@ -227,12 +223,10 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   
 template<SocketType ST>
 void HttpConnection<ST>::restartConnection(const ErrorCondition error) {
-  // Read & write loop must have been reset by now
-  
-  FUERTE_LOG_CALLBACKS << "restartConnection" << std::endl;
   // restarting needs to be an exclusive operation
   Connection::State exp = Connection::State::Connected;
   if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
+    FUERTE_LOG_CALLBACKS << "restartConnection" << std::endl;
     shutdownConnection(error); // Terminate connection
     startConnection(); // will check state
   }
@@ -332,7 +326,7 @@ void HttpConnection<ST>::startWriting() {
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_TRACE << "asyncWrite: preparing to send next" << std::endl;
-  assert(_active.load(std::memory_order_aquire));
+  assert(_active.load(std::memory_order_acquire));
   
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
@@ -518,7 +512,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
   _timeout.expires_after(millis);
   _timeout.async_wait([this, self] (asio_ns::error_code const& e) {
     if (!e) {  // expired
-      FUERTE_LOG_DEBUG << "HTTP-Request timeout";
+      FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
       restartConnection(ErrorCondition::Timeout);
     }
   });
