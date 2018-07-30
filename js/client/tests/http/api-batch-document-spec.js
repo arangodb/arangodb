@@ -50,6 +50,7 @@ describe('_api/batch/document', () => {
     db._drop(edgeColName);
   });
 
+  // READ IS NOT YET IMPLEMENTED! Replace the xit() calls by it() when it's done.
   describe('read document suite', () => {
     const n = 20;
     let docsByKey;
@@ -71,22 +72,30 @@ describe('_api/batch/document', () => {
       });
     });
 
-    it('read one document at a time', () => {
-      internal.print('Iterating over ' + docsByVal.length + ' docs');
-      docsByVal.forEach((doc, i) => {
-        internal.print({i, doc});
-        let body;
-        const response = readDocs(body = {
-          data: [{_key: doc._key}],
+    xit('read one document at a time', () => {
+      docsByVal.forEach(doc => {
+        const response = readDocs({
+          data: [{pattern: {_key: doc._key}}],
           options: {},
         });
-        internal.print({body, response});
         expect(response.statusCode).to.equal(200);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
-        expect(response.json).to.be.an('object').that.has.all.keys(['error']); // just a check that the expect doesn't allow superfluous keys; remove this line when it failed once
         expect(response.json.error).to.equal(false);
-        expect(response.json.result).to.deep.equal([doc]);
+        expect(response.json.result).to.deep.equal([{doc}]);
       });
+    });
+
+    xit('read all documents in a batch', () => {
+      let body;
+      const response = readDocs(body = {
+        data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
+        options: {},
+      });
+
+      expect(response.statusCode).to.equal(200);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+      expect(response.json.error).to.equal(false);
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({doc})));
 
     });
   });
