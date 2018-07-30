@@ -831,7 +831,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       requestOptions.method = 'PUT';
 
       print(coords[0].url + "/_admin/cluster/maintenance");
-      download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify({ body: "on" }), requestOptions);
+      download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
     }
   } catch (err) {
     print("error while setting cluster maintenance mode:", err);
