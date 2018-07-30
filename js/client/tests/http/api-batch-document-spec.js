@@ -40,6 +40,12 @@ describe('_api/batch/document', () => {
     });
   };
 
+  const metaOfDoc = doc => ({
+    _key: doc._key,
+    _rev: doc._rev,
+    _id: doc._id,
+  });
+
   // Consider these variations (working requests) when writing tests:
   // - how many documents are requested
   // - how does the pattern look like
@@ -118,6 +124,10 @@ describe('_api/batch/document', () => {
       });
     });
 
+    afterEach(() => {
+      db[colName].truncate();
+    });
+
     xit('read one document at a time', () => {
       docsByVal.forEach(doc => {
         const response = readDocs({
@@ -143,6 +153,63 @@ describe('_api/batch/document', () => {
       expect(response.json.error).to.equal(false);
       expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({doc})));
 
+    });
+  });
+
+  describe('remove document suite', () => {
+    const n = 2000;
+    let docsByKey;
+    let docsByVal;
+
+    const removeDocs = batchRequest('remove')(colName);
+
+    beforeEach(() => {
+      docsByKey = {};
+      docsByVal = [];
+      const docs = db._query(
+        'FOR i IN 0..@n INSERT {val: i} IN @@col RETURN NEW',
+        {n: n-1, '@col': colName}
+      ).toArray();
+      expect(docs).to.be.an('array').and.to.have.lengthOf(n);
+      docs.forEach((doc, i) => {
+        docsByVal[i] = doc;
+        docsByKey[doc._key] = doc;
+      });
+    });
+
+    afterEach(() => {
+      db[colName].truncate();
+    });
+
+    it('remove one document at a time', () => {
+      let docsLeft = n;
+      docsByVal.forEach(doc => {
+        const response = removeDocs({
+          data: [{pattern: {_key: doc._key}}],
+          options: {},
+        });
+        expect(response.statusCode).to.equal(200);
+        expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+        expect(response.json.error).to.equal(false);
+        expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]);
+        --docsLeft;
+        expect(db[colName].count()).to.equal(docsLeft);
+      });
+      expect(db[colName].count()).to.equal(0);
+    });
+
+    it('remove all documents in a batch', () => {
+      let body;
+      const response = removeDocs(body = {
+        data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
+        options: {},
+      });
+
+      expect(response.statusCode).to.equal(200);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+      expect(response.json.error).to.equal(false);
+      expect(response.json.result).to.deep.equal(docsByVal.map(metaOfDoc));
+      expect(db[colName].count()).to.equal(0);
     });
   });
 
