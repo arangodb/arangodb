@@ -30,22 +30,24 @@
 
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
-RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* response)
-: RestVocbaseBaseHandler(request, response) {}
+RestPregelHandler::RestPregelHandler(GeneralRequest* request,
+                                     GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestPregelHandler::execute() {
-  try {    
+  try {
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
-    parseVelocyPackBody(parseSuccess);
-    VPackSlice body(parsedBody->start());// never nullptr
-    
+        parseVelocyPackBody(parseSuccess);
+    VPackSlice body(parsedBody->start());  // never nullptr
+
     if (!parseSuccess || !body.isObject()) {
       LOG_TOPIC(ERR, Logger::PREGEL) << "Bad request body\n";
       // error message generated in parseVelocyPackBody
@@ -53,16 +55,16 @@ RestStatus RestPregelHandler::execute() {
     }
     if (_request->requestType() != rest::RequestType::POST) {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/pregel");
+                    TRI_ERROR_NOT_IMPLEMENTED,
+                    "illegal method for /_api/pregel");
       return RestStatus::DONE;
-
     }
-    
+
     VPackBuilder response;
     std::vector<std::string> const& suffix = _request->suffixes();
     if (suffix.size() != 2) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_NOT_IMPLEMENTED, "you are missing a prefix");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
       PregelFeature::handleConductorRequest(suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, response.slice());
@@ -84,21 +86,57 @@ RestStatus RestPregelHandler::execute() {
        }
        */
     } else {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_NOT_IMPLEMENTED, "the prefix is incorrect");
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+                    "the prefix is incorrect");
     }
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Exception in pregel REST handler: " << ex.what();
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Exception in pregel REST handler: " << ex.what();
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Exception in pregel REST handler: " << ex.what();
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, ex.what());
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Exception in pregel REST handler: " << ex.what();
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  ex.what());
   } catch (...) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Exception in pregel REST handler";
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_INTERNAL, "error in pregel handler");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                  "error in pregel handler");
   }
-    
+
   return RestStatus::DONE;
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestCursorHandler::forwardingTarget() {
+  if (_request->requestType() != rest::RequestType::POST) {
+    return 0;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() != 2) {
+    return 0;
+  }
+
+  uint64_t exeNum = 0;
+  try {
+    bool parseSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody =
+        parseVelocyPackBody(parseSuccess);
+    VPackSlice body(parsedBody->start());
+    if (!parseSuccess || !body.isObject()) {
+      return 0;
+    }
+    VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+    if (sExecutionNum.isInteger()) {
+      uint64_t exeNum = sExecutionNum.getUInt();
+    }
+  } catch (...) {
+    return 0;
+  }
+
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(exeNum);
+  return (sourceServer == ServerState::instance()->getShortId()) ? 0
+                                                                 : sourceServer;
 }

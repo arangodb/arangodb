@@ -42,11 +42,7 @@ static PregelFeature* Instance = nullptr;
 static std::atomic<uint64_t> _uniqueId;
 
 uint64_t PregelFeature::createExecutionNumber() {
-  if (ServerState::instance()->isRunningInCluster()) {
-    return ClusterInfo::instance()->uniqid();
-  } else {
-    return ++_uniqueId;
-  }
+  return TRI_NewServerSpecificTick();
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
@@ -150,7 +146,7 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   if (SchedulerFeature::SCHEDULER->isStopping()) {
     return; // shutdown ongoing
   }
-  
+
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
   if (!sExecutionNum.isInteger()) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
@@ -219,7 +215,7 @@ void PregelFeature::handleConductorRequest(std::string const& path,
                                   "Handling request %s, but worker %lld does not exist.", path.c_str(),
                                   exeNum);
   }
-  
+
   if (path == Utils::prepareGSSPath) {
     w->prepareGlobalStep(body, outBuilder);
   } else if (path == Utils::startGSSPath) {
