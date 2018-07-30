@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
+/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
 /* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
@@ -15,6 +15,7 @@
     outputDiv: '#outputEditors',
     outputTemplate: templateEngine.createTemplate('queryViewOutput.ejs'),
     outputCounter: 0,
+    maps: {},
 
     allowUpload: false,
     renderComplete: false,
@@ -460,14 +461,23 @@
 
         $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
+        $('#outputGeo' + count).hide();
       } else if (string === 'Table') {
         $('#outputTable' + count).show();
 
         $('#outputGraph' + count).hide();
         $('#outputEditor' + count).hide();
+        $('#outputGeo' + count).hide();
       } else if (string === 'Graph') {
         $('#outputGraph' + count).show();
 
+        $('#outputTable' + count).hide();
+        $('#outputEditor' + count).hide();
+        $('#outputGeo' + count).hide();
+      } else if (string === 'Geo') {
+        $('#outputGeo' + count).show();
+
+        $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
         $('#outputEditor' + count).hide();
       }
@@ -1871,13 +1881,15 @@
       if (window.location.hash === '#queries') {
         var outputEditor = ace.edit('outputEditor' + counter);
 
+        var maxHeight = $('.centralRow').height() - 250;
         var success;
+        var invalidGeoJSON = 0;
 
         // handle explain query case
         if (!data.msg) {
           // handle usual query
           result = self.analyseQuery(data.result);
-          if (result.defaultType === 'table') {
+          if (result.defaultType === 'table' || result.defaultType === 'geotable') {
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
               '<div id="outputTable' + counter + '" class="outputTable"></div>'
             );
@@ -1885,7 +1897,6 @@
             self.renderOutputTable(result, counter);
 
             // apply max height for table output dynamically
-            var maxHeight = $('.centralRow').height() - 250;
             $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
 
             $('#outputEditor' + counter).hide();
@@ -1906,10 +1917,106 @@
               $('#outputGraph' + counter).remove();
             }
           }
+          if (result.defaultType === 'geo' || result.defaultType === 'geotable') {
+            var geoHeight = 500;
+            $('#outputEditor' + counter).hide();
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
+              '<div class="geoContainer" id="outputGeo' + counter + '" style="height: ' + geoHeight + 'px; maxheight: ' + maxHeight + 'px;"></div>'
+            );
+
+            self.maps[counter] = L.map('outputGeo' + counter).setView([51.505, -0.09], 13);
+
+            self.maps[counter].addLayer(new L.StamenTileLayer('terrain', {
+              detectRetina: true
+            }));
+
+            var position = 1;
+            var geojson;
+
+            var geoStyle = {
+              color: '#3498db',
+              opacity: 1,
+              weight: 3
+            };
+
+            var geojsonMarkerOptions = {
+              radius: 8,
+              fillColor: '#2ecc71',
+              color: 'white',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.64
+            };
+
+            var markers = [];
+            _.each(data.result, function (geo) {
+              if (geo.type === 'Point' || geo.type === 'MultiPoint') {
+                // reverse neccessary if we are using GeoJSON order
+                // L.marker(geo.coordinates.reverse()).addTo(self.maps[counter]);
+                try {
+                  geojson = new L.GeoJSON(geo, {
+                    pointToLayer: function (feature, latlng) {
+                      var res = L.circleMarker(latlng, geojsonMarkerOptions);
+                      markers.push(res);
+                      return res;
+                    }
+                  }).addTo(self.maps[counter]);
+                } catch (ignore) {
+                  invalidGeoJSON++;
+                }
+              } else if (geo.type === 'Polygon' || geo.type === 'LineString' || geo.type === 'MultiLineString' || geo.type === 'MultiPolygon') {
+                try {
+                  geojson = new L.GeoJSON(geo, {
+                    style: geoStyle
+                  }).addTo(self.maps[counter]);
+                  markers.push(geojson);
+                } catch (ignore) {
+                  invalidGeoJSON++;
+                }
+              }
+
+              // positioning
+              if (position === data.result.length) {
+                if (markers.length > 0) {
+                  try {
+                    var show = new L.featureGroup(markers);
+                    self.maps[counter].fitBounds(show.getBounds());
+                  } catch (ignore) {
+                  }
+                } else {
+                  try {
+                    self.maps[counter].fitBounds(geojson.getBounds());
+                  } catch (ignore) {
+                  }
+                }
+              }
+              position++;
+            });
+          }
 
           // add active class to choosen display method
           if (success !== false) {
-            $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+            if (result.defaultType === 'geotable' || result.defaultType === 'geo') {
+              $('#outputTable' + counter).hide();
+              if (result.defaultType === 'geotable') {
+                $('#table-switch').css('display', 'inline');
+              }
+
+              if (data.result.length === invalidGeoJSON) {
+                $('#outputGeo' + counter).remove();
+                if (result.defaultType === 'geotable') {
+                  $('#outputTable' + counter).show();
+                  $('#table-switch').addClass('active').css('display', 'inline');
+                } else {
+                  $('#outputEditor' + counter).show();
+                  $('#json-switch').addClass('active').css('display', 'inline');
+                }
+              } else {
+                $('#geo-switch').addClass('active').css('display', 'inline');
+              }
+            } else {
+              $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+            }
           } else {
             $('#json-switch').addClass('active').css('display', 'inline');
           }
@@ -2023,7 +2130,7 @@
           outputEditor.setValue(data.msg, 1);
         }
 
-        if (result.defaultType === 'table') {
+        if (result.defaultType === 'table' || result.defaultType === 'geotable') {
           // show csv download button
           self.checkCSV(counter);
         }
@@ -2418,6 +2525,7 @@
       }
 
       // check if result could be displayed as table
+      var geojson = 0;
       if (!found) {
         var check = true;
         var attributes = {};
@@ -2431,6 +2539,16 @@
             if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
               // not a document and not suitable for tabluar display
               return;
+            }
+
+            if (typeof obj === 'object') {
+              if (obj.hasOwnProperty('coordinates') && obj.hasOwnProperty('type')) {
+                if (obj.type === 'Point' || obj.type === 'MultiPoint' ||
+                    obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
+                    obj.type === 'LineString' || obj.type === 'MultiLineString') {
+                  geojson++;
+                }
+              }
             }
 
             _.each(obj, function (value, key) {
@@ -2460,13 +2578,33 @@
 
         if (check) {
           found = true;
-          toReturn.defaultType = 'table';
+          if (result.length === geojson) {
+            toReturn.defaultType = 'geotable';
+          } else {
+            toReturn.defaultType = 'table';
+          }
         }
       }
 
       if (!found) {
       // if all check fails, then just display as json
-        toReturn.defaultType = 'json';
+        if (result.length === geojson) {
+          toReturn.defaultType = 'geo';
+        } else {
+          toReturn.defaultType = 'json';
+        }
+      }
+
+      if (toReturn.defaultType === 'geo' || toReturn.defaultType === 'geotable') {
+        if (!window.activeInternetConnection) {
+          if (toReturn.defaultType === 'geo') {
+            toReturn.defaultType = 'json';
+          } else {
+            toReturn.defaultType = 'table';
+          }
+          // notify user
+          arangoHelper.arangoMessage('Map', 'No internet connection available. Not able to render the map. Falling back to: ' + toReturn.defaultType);
+        }
       }
 
       return toReturn;
