@@ -125,7 +125,7 @@ arangodb::Result getReadLockId (
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
-      id = idSlice.get(ID).getNumber<uint64_t>();
+      id = std::stoll(idSlice.get(ID).copyString());
     } catch (std::exception const& e) {
       error += " expecting id to be int64_t ";
       error += idSlice.toJson();
@@ -378,12 +378,12 @@ arangodb::Result SynchronizeShard::getReadLock(
 
   VPackBuilder body;
   { VPackObjectBuilder o(&body);
-    body.add(ID, VPackValue(rlid));
+    body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout)); }
 
   auto url = DB + database + REPL_HOLD_READ_LOCK;
-  
+
   cc->asyncRequest(
     clientId, 2, endpoint, rest::RequestType::POST, url,
     std::make_shared<std::string>(body.toJson()),
@@ -396,6 +396,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   
   size_t count = 0;
   while (++count < 20) { // wait for some time until read lock established:
+
     // Now check that we hold the read lock:
     auto putres = cc->syncRequest(
       clientId, 1, endpoint, rest::RequestType::PUT, url, body.toJson(),
@@ -413,17 +414,20 @@ arangodb::Result SynchronizeShard::getReadLock(
       LOG_TOPIC(WARN, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Lock not yet acquired...";
     } else {
+      
       LOG_TOPIC(WARN, Logger::MAINTENANCE)
-        << "startReadLockOnLeader: Do not see read lock yet...";
+        << "startReadLockOnLeader: Do not see read lock yet:"
+        << putres->stringifyErrorMessage();
     }
 
-    // std::hash<ActionDescription>(_description)
-    std::this_thread::sleep_for(duration<double>(.5));
-    if ((steady_clock::now() - start).count() > timeout) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
-      return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
-    }  
   }
+
+  std::this_thread::sleep_for(duration<double>(.5));
+  if (std::chrono::duration_cast<std::chrono::seconds>(
+        steady_clock::now() - start).count() > timeout) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
+    return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
+  }  
 
   LOG_TOPIC(ERR, Logger::MAINTENANCE) << "startReadLockOnLeader: giving up";
 
@@ -461,6 +465,8 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   if (!result.ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << result.errorMessage();
     return result;
+  } else {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << result.errorMessage();
   }
 
   result = getReadLock(endpoint, database, collection, clientId, rlid, timeout);
@@ -481,43 +487,32 @@ enum ApplierType {
 };
 
 arangodb::Result replicationSynchronize(
-  VPackSlice const& config, ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
+  std::shared_ptr<arangodb::LogicalCollection> const col, VPackSlice const& config,
+  ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
 
-  auto database = config.get(DATABASE).copyString();
-  auto shard = config.get(SHARD).copyString();
+  auto& vocbase = col->vocbase();
+
+  auto database = vocbase.name();
+
+  auto shard = col->name();
+
   bool keepBarrier = config.get(KEEP_BARRIER).getBool();
   std::string leaderId;
   if (config.hasKey(LEADER_ID)) {
     leaderId = config.get(LEADER_ID).copyString();
   }
 
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
-    std::string errorMsg(
-      "SynchronizeShard::addShardFollower: Failed to lookup database ");
-    errorMsg += database;
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-  }
-
-  auto collection = vocbase->lookupCollection(shard);
-  if (collection == nullptr) {
-    std::string errorMsg(
-      "SynchronizeShard::addShardFollower: Failed to lookup collection ");
-    errorMsg += shard;
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
-  }
-
   ReplicationApplierConfiguration configuration =
     ReplicationApplierConfiguration::fromVelocyPack(config, database);
   configuration.validate();
 
-  std::unique_ptr<InitialSyncer> syncer;
+  std::shared_ptr<InitialSyncer> syncer;
  
+  config.toJson();
+
   if (applierType == APPLIER_DATABASE) { 
     // database-specific synchronization
-    syncer.reset(new DatabaseInitialSyncer(*vocbase, configuration));
+    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
 
     if (!leaderId.empty()) {
       syncer->setLeaderId(leaderId);
@@ -534,7 +529,7 @@ arangodb::Result replicationSynchronize(
     
     if (r.fail()) {
       LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "initial sync failed for database '" << vocbase->name() << "': "
+        << "initial sync failed for database '" << database << "': "
         << r.errorMessage();
       THROW_ARANGO_EXCEPTION_MESSAGE(
         r.errorNumber(), "cannot sync from remote endpoint: " +
@@ -574,7 +569,7 @@ arangodb::Result replicationSynchronize(
 }
 
 arangodb::Result syncCollection(
-  std::shared_ptr<arangodb::LogicalCollection> const col,
+  std::shared_ptr<arangodb::LogicalCollection> const col, 
   VPackSlice const& config, std::shared_ptr<VPackBuilder> sy) {
 
   VPackBuilder builder;
@@ -590,8 +585,7 @@ arangodb::Result syncCollection(
     if (!config.hasKey("verbose")) {
       builder.add("verbose", VPackValue(false));
     }}
-
-  return replicationSynchronize(builder.slice(), APPLIER_DATABASE, sy);
+  return replicationSynchronize(col, builder.slice(), APPLIER_DATABASE, sy);
 
 }
 
@@ -762,10 +756,10 @@ arangodb::Result SynchronizeShard::synchronise() {
         _state=COMPLETE;
         return Result();
       }
-    } catch (...) { }
+    } catch (...) {}
   }
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC(ERR, Logger::MAINTENANCE)
     << "synchronizeOneShard: trying to synchronize local shard '" << database
     << "/" << shard << "' for central '" << database << "/" << planId << "'";
 
@@ -779,6 +773,17 @@ arangodb::Result SynchronizeShard::synchronise() {
 
     collection->followers()->setTheLeader(leader);
 
+    if (leader.empty()) {
+      collection->followers()->clear();
+    }
+
+    // do not reset followers when we resign at this time...we are
+    // still the only source of truth to trust, in particular, in the
+    // planned leader resignation, we will shortly after the call to
+    // this function here report the controlled resignation to the
+    // agency. This report must still contain the correct follower list
+    // or else the supervision is super angry with us.
+
     startTime = system_clock::now();
 
     VPackBuilder config;
@@ -788,6 +793,7 @@ arangodb::Result SynchronizeShard::synchronise() {
       config.add(KEEP_BARRIER, VPackValue(true));
       config.add(LEADER_ID, VPackValue(leader));
       config.add(SKIP_CREATE_DROP, VPackValue(true));
+      config.add("verbose", VPackValue(true));
     }
 
     auto details = std::make_shared<VPackBuilder>();
@@ -818,6 +824,8 @@ arangodb::Result SynchronizeShard::synchronise() {
 
       VPackSlice collections = sy.get(COLLECTIONS);
 
+        
+      
       if (collections.length() == 0 ||
           collections[0].get("name").copyString() != shard) {
 
@@ -848,7 +856,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         Result result = startReadLockOnLeader(
           ep, database, collection->name(), clientId, lockJobId);
         if (result.ok()) {
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "lockJobId: " <<  lockJobId;
+          LOG_TOPIC(ERR, Logger::FIXME) << "lockJobId: " <<  lockJobId;
         } else {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
             << "synchronizeOneShard: error in startReadLockOnLeader:"
@@ -899,7 +907,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         }
           
         if (result.ok()) {
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE) 
             << "synchronizeOneShard: synchronization worked for shard " << shard;
         } else {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
