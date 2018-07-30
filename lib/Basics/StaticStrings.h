@@ -163,6 +163,7 @@ class StaticStrings {
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
   static std::string const GraphOrphans;
+  static std::string const GraphInitial;
 
   // misc strings
   static std::string const LastValue;

@@ -174,6 +174,7 @@ std::string const StaticStrings::GraphSmartGraphAttribute(
     "smartGraphAttribute");
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
+std::string const StaticStrings::GraphInitial("initial");
 
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
