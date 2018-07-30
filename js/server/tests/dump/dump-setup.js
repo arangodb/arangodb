@@ -222,6 +222,7 @@
     c.save({ _key: "test" + i, value: i });
   }
 
+  // setup a view
   try {
     db._create("UnitTestsDumpViewCollection");
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});

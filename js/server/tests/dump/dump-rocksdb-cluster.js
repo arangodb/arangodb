@@ -585,7 +585,31 @@ function dumpTestEnterpriseSuite () {
       assertEqual("9", res[1].value);
       assertEqual("11", res[2].value);
       assertEqual("12", res[3].value);
+    },
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test view restoring
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testView : function () {
+      try {
+        db._createView("check", "arangosearch", {});
+      } catch (err) {}
+
+      let views = db._views();
+      if (views.length === 0) {
+        return; // arangosearch views are not supported
+      }
+
+      let view = db._view("UnitTestsDumpView");
+      assertTrue(view !== null);
+      let props = view.properties();
+      assertEqual(Object.keys(props.links).length, 1);
+      assertTrue(props.hasOwnProperty("links"));
+      assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
     }
+
 
   };
 
