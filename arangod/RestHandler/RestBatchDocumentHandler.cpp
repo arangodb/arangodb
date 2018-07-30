@@ -23,10 +23,16 @@
 #include "RestBatchDocumentHandler.h"
 
 #include "Cluster/ResultT.h"
+#include "Transaction/Hints.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <boost/optional.hpp>
+#include <boost/range/join.hpp>
 #include <utility>
 
 using namespace arangodb;
@@ -75,7 +81,7 @@ static std::string batchToString(BatchOperation op) {
 }
 
 static void ensureStringToBatchMapIsInitialized() {
-  if (!batchToStringMap.empty()) {
+  if (!stringToBatchMap.empty()) {
     return;
   }
 
@@ -107,6 +113,118 @@ namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 
+// The following stuff is for named parameters:
+template <typename Tag, typename Type>
+struct tagged_argument {
+  Type const& value;
+};
+
+template <typename Tag, typename Type>
+struct keyword {
+  // NOLINTNEXTLINE(cppcoreguidelines-c-copy-assignment-signature,misc-unconventional-assign-operator)
+  struct tagged_argument<Tag, Type> const operator=(Type const& arg) const {
+    return tagged_argument<Tag, Type>{arg};
+  }
+
+  static keyword<Tag, Type> const instance;
+};
+
+template <typename Tag, typename Type>
+struct keyword<Tag, Type> const keyword<Tag, Type>::instance = {};
+
+// Parameters
+namespace tag {
+struct required;
+struct optional;
+struct deprecated;
+}
+
+using AttributeSet = std::unordered_set<std::string>;
+
+namespace {
+keyword<tag::required, AttributeSet> _required = decltype(_required)::instance;
+keyword<tag::optional, AttributeSet> _optional = decltype(_optional)::instance;
+keyword<tag::deprecated, AttributeSet> _deprecated =
+    decltype(_deprecated)::instance;
+}
+// Named parameters end here
+
+// Helper functions for parsers:
+
+static Result expectedButGotValidationError(const char* expected,
+                                            const char* got) {
+  std::stringstream err;
+  err << "Expected type " << expected << ", got " << got << " instead.";
+  return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
+}
+
+static Result unexpectedAttributeError(AttributeSet const& required,
+                                       AttributeSet const& optional,
+                                       AttributeSet const& deprecated,
+                                       std::string const& got) {
+  std::stringstream err;
+  err << "Encountered unexpected attribute `" << got
+      << "`, allowed attributes are {";
+
+  auto attributes = boost::join(boost::join(required, optional), deprecated);
+  bool first = true;
+  for (auto const& it : attributes) {
+    if (!first) {
+      err << ", ";
+    }
+    first = false;
+
+    err << it;
+  }
+  err << "}.";
+
+  return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
+}
+
+static Result withMessagePrefix(std::string const& prefix, Result const& res) {
+  std::stringstream err;
+  err << prefix << ": " << res.errorMessage();
+  return Result{res.errorNumber(), err.str()};
+}
+
+static Result isObjectAndDoesNotHaveExtraAttributes(
+    VPackSlice slice, tagged_argument<tag::required, AttributeSet> required_,
+    tagged_argument<tag::optional, AttributeSet> optional_,
+    tagged_argument<tag::deprecated, AttributeSet> deprecated_) {
+  AttributeSet const& required = required_.value;
+  AttributeSet const& optional = optional_.value;
+  AttributeSet const& deprecated = deprecated_.value;
+
+  if (!slice.isObject()) {
+    return {expectedButGotValidationError("object", slice.typeName())};
+  }
+
+  auto contains = [](AttributeSet const& set,
+                     std::string const& needle) -> bool {
+    return set.find(needle) != set.end();
+  };
+
+  for (auto const& it : VPackObjectIterator(slice)) {
+    std::string const key = it.key.copyString();
+
+    if (contains(required, key) || contains(optional, key)) {
+      // ok, continue
+    } else if (contains(deprecated, key)) {
+      // ok but warn
+      // TODO some more context information would be nice, but this would have
+      // have to be passed down somehow.
+      LOG_TOPIC(WARN, Logger::FIXME)
+          << "Deprecated attribute `" << key
+          << "` encountered during request to "
+          << RestVocbaseBaseHandler::BATCH_DOCUMENT_PATH;
+    } else {
+      return unexpectedAttributeError(required, optional, deprecated, key);
+    }
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
 class BatchRequest {
  public:
  protected:
@@ -130,19 +248,6 @@ struct PatternWithKey {
       : key(std::move(key_)), pattern(pattern_) {}
 };
 
-static Result expectedButGotValidationError(const char* expected,
-                                            const char* got) {
-  std::stringstream err;
-  err << "Expected type " << expected << ", got " << got << " instead.";
-  return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
-}
-
-static Result withMessagePrefix(std::string const& prefix, Result const& res) {
-  std::stringstream err;
-  err << prefix << ": " << res.errorMessage();
-  return Result{res.errorNumber(), err.str()};
-}
-
 ResultT<PatternWithKey> PatternWithKey::fromVelocypack(VPackSlice const slice) {
   if (!slice.isObject()) {
     return {expectedButGotValidationError("object", slice.typeName())};
@@ -150,7 +255,7 @@ ResultT<PatternWithKey> PatternWithKey::fromVelocypack(VPackSlice const slice) {
 
   VPackSlice key = slice.get("_key");
 
-  if (!key.isNone()) {
+  if (key.isNone()) {
     std::stringstream err;
     err << "Attribute '_key' missing";
     return ResultT<PatternWithKey>::error(TRI_ERROR_ARANGO_VALIDATION_FAILED,
@@ -171,17 +276,30 @@ class RemoveRequest : public BatchRequest {
  public:
   static ResultT<RemoveRequest> fromVelocypack(VPackSlice);
 
- public:
-  std::vector<PatternWithKey> const data;
-  OperationOptions const options;
+  void toSearch(VPackBuilder& builder) const;
+  void toPattern(VPackBuilder& builder) const;
+
+  bool empty() const;
+  size_t size() const;
+
+  OperationOptions const& getOptions() const;
+
+  std::vector<PatternWithKey> const& getData() const;
 
  protected:
   explicit RemoveRequest(std::vector<PatternWithKey>&& data_,
                          OperationOptions options_)
       : data(data_), options(std::move(options_)){};
+
+  std::vector<PatternWithKey> const data;
+  OperationOptions const options;
 };
 
 ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
+  isObjectAndDoesNotHaveExtraAttributes(
+      slice, _required = AttributeSet{"data", "options"},
+      _optional = AttributeSet{}, _deprecated = AttributeSet{});
+
   if (!slice.isObject()) {
     return expectedButGotValidationError("object", slice.typeName());
   }
@@ -195,8 +313,21 @@ ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
     data.reserve(dataSlice.length());
 
     size_t i = 0;
-    for (auto const& it : VPackArrayIterator(dataSlice)) {
-      auto maybePattern = PatternWithKey::fromVelocypack(it);
+    for (auto const& dataItemSlice : VPackArrayIterator(dataSlice)) {
+      isObjectAndDoesNotHaveExtraAttributes(
+          dataItemSlice, _required = AttributeSet{"pattern"},
+          _optional = AttributeSet{}, _deprecated = AttributeSet{});
+
+      VPackSlice patternSlice = dataItemSlice.get("pattern");
+
+      if (patternSlice.isNone()) {
+        std::stringstream err;
+        err << "Attribute 'pattern' missing";
+        return ResultT<PatternWithKey>::error(
+            TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str());
+      }
+
+      auto maybePattern = PatternWithKey::fromVelocypack(patternSlice);
       if (maybePattern.fail()) {
         std::stringstream err;
         err << "In array index " << i;
@@ -213,12 +344,19 @@ ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
 
   auto optionsFromVelocypack =
       [](VPackSlice const optionsSlice) -> ResultT<OperationOptions> {
-    if (!optionsSlice.isObject()) {
-      return expectedButGotValidationError("object", optionsSlice.typeName());
+    // TODO add possible options
+    Result res = isObjectAndDoesNotHaveExtraAttributes(
+        optionsSlice, _required = AttributeSet{}, _optional = AttributeSet{},
+        _deprecated = AttributeSet{});
+    if (res.fail()) {
+      return {res};
     }
 
-    // TODO parse options
-    return ResultT<OperationOptions>::error(TRI_ERROR_NOT_IMPLEMENTED);
+    OperationOptions options{};
+
+    // TODO parse and set options
+
+    return ResultT<OperationOptions>::success(options);
   };
 
   VPackSlice const dataSlice = slice.get("data");
@@ -231,12 +369,47 @@ ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
   VPackSlice const optionsSlice = slice.get("options");
   auto const maybeOptions = optionsFromVelocypack(optionsSlice);
   if (maybeOptions.fail()) {
-    return withMessagePrefix("When parsing attribute 'options'", maybeData);
+    return withMessagePrefix("When parsing attribute 'options'", maybeOptions);
   }
   auto const& options = maybeOptions.get();
 
   return RemoveRequest(std::move(data), options);
 }
+
+OperationOptions const& RemoveRequest::getOptions() const {
+  return options;
+}
+
+// builds an array of "_key"s
+void RemoveRequest::toSearch(VPackBuilder &builder) const {
+  builder.openArray();
+  for (auto const& it : data) {
+    builder.add(VPackValue(it.key));
+  }
+  builder.close();
+}
+
+// builds an array of patterns as externals
+void RemoveRequest::toPattern(VPackBuilder &builder) const {
+  builder.openArray();
+  for (auto const& it : data) {
+    builder.addExternal(it.pattern.start());
+  }
+  builder.close();
+}
+
+bool RemoveRequest::empty() const {
+  return data.empty();
+}
+
+size_t RemoveRequest::size() const {
+  return data.size();
+}
+
+std::vector<PatternWithKey> const &RemoveRequest::getData() const {
+  return data;
+}
+
 }
 }
 }
@@ -317,7 +490,7 @@ void RestBatchDocumentHandler::removeDocumentsAction(
   }
   RemoveRequest const& removeRequest = parseResult.get();
 
-  doRemoveDocuments(removeRequest);
+  doRemoveDocuments(collection, removeRequest);
 
   // TODO take a result from doRemoveDocuments and generate a response with it.
 }
@@ -334,8 +507,66 @@ void RestBatchDocumentHandler::updateDocumentsAction(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+// TODO This method should not generate the response but only return some
+// result(s) - the response-handling should be done in removeDocumentsAction()!
+// TODO This is more or less a copy&paste from the RestDocumentHandler.
+// However, our response looks quite different, so this has to be reimplemented.
 void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
-    const RemoveRequest& request) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    std::string const& collection, const RemoveRequest& request) {
+  if (request.empty()) {
+    // If request.data = [], the operation succeeds unless the collection lookup
+    // fails.
+    TRI_col_type_e colType;
+    Result res = arangodb::methods::Collections::lookup(
+        &_vocbase, collection,
+        [&colType](LogicalCollection const& coll) { colType = coll.type(); });
+
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    generateDeleted(OperationResult{res}, collection, colType,
+                    ctx->getVPackOptionsForDump());
+    return;
+  }
+
+  VPackBuilder searchBuilder;
+  VPackBuilder patternBuilder;
+  request.toSearch(searchBuilder);
+  request.toPattern(patternBuilder);
+  VPackSlice const search = searchBuilder.slice();
+  VPackSlice const pattern = patternBuilder.slice();
+
+  auto trx = createTransaction(collection, AccessMode::Type::WRITE);
+
+  if (request.size() == 1) {
+    trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  }
+
+  Result res = trx->begin();
+
+  if (!res.ok()) {
+    generateTransactionError(collection, res, "");
+    return;
+  }
+
+  OperationResult result =
+      trx->remove(collection, search, request.getOptions(), pattern);
+
+  res = trx->finish(result.result);
+
+  if (result.fail()) {
+    generateTransactionError(result);
+    return;
+  }
+
+  if (!res.ok()) {
+    std::string key;
+    if (request.size() == 1) {
+      key = request.getData().at(0).key;
+    }
+    generateTransactionError(collection, res, key);
+    return;
+  }
+
+  generateDeleted(result, collection,
+    TRI_col_type_e(trx->getCollectionType(collection)),
+    trx->transactionContextPtr()->getVPackOptionsForDump());
 }
