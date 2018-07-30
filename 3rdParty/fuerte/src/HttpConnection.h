@@ -28,7 +28,6 @@
 
 #include <boost/lockfree/queue.hpp>
 
-#include <fuerte/FuerteLogger.h>
 #include <fuerte/connection.h>
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>

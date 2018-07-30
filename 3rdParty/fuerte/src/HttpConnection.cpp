@@ -312,12 +312,10 @@ void HttpConnection<ST>::startWriting() {
   assert(_state.load(std::memory_order_acquire) == State::Connected);
   FUERTE_LOG_HTTPTRACE << "startWriting (http): this=" << this << std::endl;
   
-  if (!_active.exchange(true)) {
+  if (!_active.exchange(true, std::memory_order_acq_rel)) {
     auto self = shared_from_this();
     asio_ns::post(*_io_context, [this, self] {
-      if (_active) { // someone might have come first
-        asyncWriteNextRequest();
-      }
+      asyncWriteNextRequest();
     });
   }
 }
@@ -326,7 +324,10 @@ void HttpConnection<ST>::startWriting() {
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_TRACE << "asyncWrite: preparing to send next" << std::endl;
-  assert(_active.load(std::memory_order_acquire));
+  if (!_active.load(std::memory_order_seq_cst)) {
+    FUERTE_LOG_HTTPTRACE << "asyncWrite: deactivated" << std::endl;
+    return;
+  }
   
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
@@ -334,7 +335,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     if (!_queue.pop(ptr)) {
       return;
     }
-    // someone popped in last minute
+    // a request got queued in the last minute
     _active.store(true, std::memory_order_release);
   }
   std::shared_ptr<http::RequestItem> item(ptr);
@@ -357,7 +358,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     buffers.emplace_back(item->_request->payload());
   }
   asio_ns::async_write(_protocol.socket, buffers, cb);
-  FUERTE_LOG_TRACE << "asyncWrite: done" << std::endl;
+  FUERTE_LOG_HTTPTRACE << "asyncWrite: done" << std::endl;
 }
 
 // called by the async_write handler (called from IO thread)
@@ -420,7 +421,7 @@ void HttpConnection<ST>::asyncReadSome() {
   auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
   _protocol.socket.async_read_some(mutableBuff, std::move(cb));
   
-  FUERTE_LOG_TRACE << "asyncReadSome: done" << std::endl;
+  FUERTE_LOG_HTTPTRACE << "asyncReadSome: done" << std::endl;
 }
 
 // called by the async_read handler (called from IO thread)

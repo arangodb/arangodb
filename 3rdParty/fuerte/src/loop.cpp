@@ -26,21 +26,9 @@
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 
-#include "VpackInit.h"
-
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
-GlobalService::GlobalService() : _vpack_init(nullptr/*new impl::VpackInit()*/) {
-  FUERTE_LOG_DEBUG << "GlobalService init" << std::endl;
-  //::curl_global_init(CURL_GLOBAL_ALL);
-}
-GlobalService::~GlobalService() {
-  FUERTE_LOG_DEBUG << "GlobalService cleanup" << std::endl;
-  //::curl_global_cleanup();
-}
-
-EventLoopService::EventLoopService(unsigned int threadCount)
-    : global_service_(GlobalService::get()), _lastUsed(0) {
+EventLoopService::EventLoopService(unsigned int threadCount) : _lastUsed(0) {
   for (unsigned i = 0; i < threadCount; i++) {
     _ioContexts.emplace_back(new asio_ns::io_context(1));
     _guards.emplace_back(asio_ns::make_work_guard(*_ioContexts.back()));
