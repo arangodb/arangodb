@@ -240,6 +240,7 @@ SET(ARANGOD_SOURCES
   Aql/RegexCache.cpp
   Aql/RestAqlHandler.cpp
   Aql/Scopes.cpp
+  Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathBlock.cpp
   Aql/ShortestPathNode.cpp

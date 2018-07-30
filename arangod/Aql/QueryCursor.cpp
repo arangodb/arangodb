@@ -207,7 +207,8 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
                                     << _query->queryString().extract(1024) << "'";
 
   // We will get a different RestHandler on every dump, so we need to update the Callback
-  _query->setContinueHandler(continueHandler);
+  std::shared_ptr<SharedQueryState> ss = _query->sharedState();
+  ss->setContinueHandler(continueHandler);
 
   try {
     ExecutionState state = prepareDump();
@@ -249,9 +250,9 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _query->queryString().extract(1024) << "'";
 
+  std::shared_ptr<SharedQueryState> ss = _query->sharedState();
   // We will get a different RestHandler on every dump, so we need to update the Callback
-  auto continueCallback = [&]() { _query->tempSignalAsyncResponse(); };
-  _query->setContinueCallback(continueCallback);
+  ss->setContinueCallback();
 
   try {
     aql::ExecutionEngine* engine = _query->engine();
@@ -264,7 +265,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     while (state == ExecutionState::WAITING) {
       state = prepareDump();
       if (state == ExecutionState::WAITING) {
-        _query->tempWaitForAsyncResponse();
+        ss->waitForAsyncResponse();
       }
     }
 
@@ -350,11 +351,13 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
     builder.add("cached", VPackValue(false));
 
     if (!hasMore) {
+      std::shared_ptr<SharedQueryState> ss = _query->sharedState();
+      ss->setContinueCallback(); 
+
       QueryResult result;
-      _query->setContinueCallback([&]() { _query->tempSignalAsyncResponse(); });
       ExecutionState state = _query->finalize(result); // will commit transaction
       while (state == ExecutionState::WAITING) {
-        _query->tempWaitForAsyncResponse();
+        ss->waitForAsyncResponse();
         state = _query->finalize(result);
       }
       if (result.extra && result.extra->slice().isObject()) {
