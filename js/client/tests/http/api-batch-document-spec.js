@@ -188,7 +188,7 @@ describe('_api/batch/document', () => {
           data: [{pattern: {_key: doc._key}}],
           options: {},
         });
-        expect(response.statusCode).to.equal(200);
+        expect(response.statusCode).to.equal(202);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
         expect(response.json.error).to.equal(false);
         expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]);
@@ -205,7 +205,7 @@ describe('_api/batch/document', () => {
         options: {},
       });
 
-      expect(response.statusCode).to.equal(200);
+      expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
       expect(response.json.error).to.equal(false);
       expect(response.json.result).to.deep.equal(docsByVal.map(metaOfDoc));
