@@ -332,11 +332,7 @@ void HttpConnection<ST>::startWriting() {
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_TRACE << "asyncWrite: preparing to send next" << std::endl;
-  if (_state.load(std::memory_order_acquire) != State::Connected) {
-    FUERTE_LOG_TRACE << "asyncReadSome: permanent failure\n";
-    _active.store(false, std::memory_order_release);
-    return;
-  }
+  assert(_active.load(std::memory_order_aquire));
   
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
@@ -418,11 +414,6 @@ void HttpConnection<ST>::asyncWriteCallback(
 template<SocketType ST>
 void HttpConnection<ST>::asyncReadSome() {
   FUERTE_LOG_TRACE << "asyncReadSome: this=" << this << std::endl;
-  if (_state.load(std::memory_order_acquire) != State::Connected) {
-    FUERTE_LOG_TRACE << "asyncReadSome: permanent failure\n";
-    _active.store(false, std::memory_order_release);
-    return;
-  }
   
   auto self = shared_from_this();
   auto cb = [this, self](asio_ns::error_code const& ec, size_t transferred) {
@@ -536,5 +527,6 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
   
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Tcp>;
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Ssl>;
+template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Unix>;
 
 }}}}  // namespace arangodb::fuerte::v1::http

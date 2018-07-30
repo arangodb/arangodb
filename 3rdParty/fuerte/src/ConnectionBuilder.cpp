@@ -40,6 +40,8 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
       result = std::make_shared<vst::VstConnection<SocketType::Tcp>>(loop.nextIOContext(), _conf);
     } else if (_conf._socketType == SocketType::Ssl) {
       result = std::make_shared<vst::VstConnection<SocketType::Ssl>>(loop.nextIOContext(), _conf);
+    } else if (_conf._socketType == SocketType::Unix) {
+      result = std::make_shared<vst::VstConnection<SocketType::Unix>>(loop.nextIOContext(), _conf);
     }
   } else {
     // throw std::logic_error("http in vst test");
@@ -48,6 +50,8 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
       result = std::make_shared<http::HttpConnection<SocketType::Tcp>>(loop.nextIOContext(), _conf);
     } else if (_conf._socketType == SocketType::Ssl) {
       result = std::make_shared<http::HttpConnection<SocketType::Ssl>>(loop.nextIOContext(), _conf);
+    } else if (_conf._socketType == SocketType::Unix) {
+      result = std::make_shared<http::HttpConnection<SocketType::Unix>>(loop.nextIOContext(), _conf);
     }
   }
   if (!result) {
@@ -61,6 +65,18 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
 }
 
 ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& host) {
+  
+#warning FIXME
+  /*size_t pos = host.find("://");
+  if (pos == std::string::npos) {
+    throw std::runtime_error(std::string("invalid endpoint spec: ") + host);
+  }
+  std::string schema = host.substr(0, pos);
+  if (schema.empty()) {
+    throw std::runtime_error(std::string("invalid schema: ") + host);
+  }
+  size_t pos2 = host.find(":", pos + 3);
+  */
   
   // Step 1. Parse provided host
   struct http_parser_url parsed;

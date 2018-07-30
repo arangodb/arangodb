@@ -96,7 +96,6 @@ set(LIB_ARANGO_FUERTE
     ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/types.cpp
     ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/vst.cpp
     ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/VstConnection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/AsioConnection.cpp
     ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/connection.cpp
     ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/http_parser/http_parser.c
   )

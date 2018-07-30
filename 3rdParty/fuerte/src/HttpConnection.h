@@ -25,8 +25,8 @@
 
 #include <atomic>
 #include <chrono>
-#include <mutex>
-#include <stdexcept>
+
+#include <boost/lockfree/queue.hpp>
 
 #include <fuerte/FuerteLogger.h>
 #include <fuerte/connection.h>
@@ -35,10 +35,10 @@
 #include <fuerte/message.h>
 #include <fuerte/types.h>
 
-#include "AsioConnection.h"
-#include "CallOnceRequestCallback.h"
+#include "AsioSockets.h"
 #include "http.h"
 #include "http_parser/http_parser.h"
+#include "MessageStore.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
