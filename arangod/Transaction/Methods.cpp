@@ -2021,8 +2021,9 @@ OperationResult transaction::Methods::modifyLocal(
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
                              &resultBuilder, &cid, &vPackOptions](VPackSlice const newVal,
-                                                   VPackSlice const pattern,
+                                                   VPackSlice pattern,
                                                    bool isBabies) -> Result {
+    pattern = pattern.resolveExternals();
     TRI_ASSERT(pattern.isNone() || pattern.isObject());
     Result res;
     if (!newVal.isObject()) {
@@ -2357,6 +2358,7 @@ OperationResult transaction::Methods::removeLocal(
 
   auto workForOneDocument = [&](VPackSlice value, VPackSlice pattern,
                                 bool isBabies) -> Result {
+    pattern = pattern.resolveExternals();
     TRI_ASSERT(pattern.isNone() || pattern.isObject());
     TRI_voc_rid_t actualRevision = 0;
     ManagedDocumentResult previous;
