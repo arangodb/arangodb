@@ -35,38 +35,11 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
-namespace impl {
-class VpackInit;
-}
-
 // need partial rewrite so it can be better integrated in client applications
 
 typedef asio_ns::io_context asio_io_context;
 typedef asio_ns::executor_work_guard<asio_ns::io_context::executor_type>
     asio_work_guard;
-
-// GlobalService is intended to be instantiated once for the entire
-// lifetime of a program using fuerte.
-// It initializes all global state, needed by fuerte.
-class GlobalService {
- public:
-  // get GlobalService singelton.
-  static GlobalService& get() {
-    static GlobalService service;
-    return service;
-  }
-
- private:
-  GlobalService();
-  ~GlobalService();
-
-  // Prevent copying
-  GlobalService(GlobalService const& other) = delete;
-  GlobalService& operator=(GlobalService const& other) = delete;
-
- private:
-  std::unique_ptr<impl::VpackInit> _vpack_init;
-};
 
 /// @brief EventLoopService implements single-threaded event loops
 /// Idea is to shard connections across io context's to avoid
@@ -94,7 +67,6 @@ class EventLoopService {
   }
 
  private:
-  GlobalService& global_service_;
   std::atomic<uint32_t> _lastUsed;
 
   /// io contexts
