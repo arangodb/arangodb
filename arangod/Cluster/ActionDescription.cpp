@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,6 +45,11 @@ ActionDescription::~ActionDescription() {}
 /// @brief Does this description have a "p" parameter?
 bool ActionDescription::has(std::string const& p) const {
   return _description.find(p) != _description.end();
+}
+
+/// @brief Does this description have a "p" parameter?
+std::string ActionDescription::operator()(std::string const& p) const {
+  return _description.at(p);
 }
 
 /// @brief Does this description have a "p" parameter?

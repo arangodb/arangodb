@@ -1,6 +1,5 @@
 R"=(
 {
-  "arango": {
     "Current": {
       "Databases": {
         "_system": {
@@ -1171,5 +1170,5 @@ R"=(
       "AsyncReplication": {}
     }
   }
-}
+
 )="

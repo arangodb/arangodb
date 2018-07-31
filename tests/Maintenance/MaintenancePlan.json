@@ -1,6 +1,5 @@
 R"=(
 {
-  "arango": {
     "Plan": {
       "Databases": {
         "_system": {
@@ -1394,6 +1393,6 @@ R"=(
         "PRMR-297e18fd-15cb-4b29-b5be-8beb06a3bcea": "none"
       }
     }
-  }
+
 }
 )="

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,6 +122,14 @@ public:
    * @return       Value to specified key
    */
   std::string get(std::string const& key) const;
+
+  /**
+   * @brief Get a string value from description
+   * @param  key   Key to get
+   * @exception    std::out_of_range if the we do not have this key in discrimatory container
+   * @return       Value to specified key
+   */
+  std::string operator()(std::string const& key) const;
 
   /**
    * @brief Get a string value from description

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -751,7 +751,7 @@ arangodb::Result SynchronizeShard::synchronise() {
     } catch (...) {}
   }
 
-  LOG_TOPIC(ERR, Logger::MAINTENANCE)
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "synchronizeOneShard: trying to synchronize local shard '" << database
     << "/" << shard << "' for central '" << database << "/" << planId << "'";
 

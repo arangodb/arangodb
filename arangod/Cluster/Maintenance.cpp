@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -290,10 +290,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     if (pdbs.hasKey(dbname)) {
       for (auto const& col : VPackObjectIterator(db.value)) {
         std::string shName = col.key.copyString();
-        if (shName.front() != '_') {
+        if (shName.front() != '_') { // exclude local system collections
           handleLocalShard(
             dbname, shName, col.value, colis, indis, actions);
-        }
+        } 
       }
     } 
   }
@@ -554,6 +554,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       auto const colName = shSlice.get(PLAN_ID).copyString();
       VPackBuilder error;
 
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << shName << " " << shSlice.get(LEADER).copyString();
+
       if (shSlice.get(LEADER).copyString().empty()) { // Leader
         auto const localCollectionInfo =
           assembleLocalCollectioInfo(shSlice, dbName, shName, serverId);
@@ -581,6 +583,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           if (cur.get(servers)[0].copyString() == serverId) {
             // we were previously leader and we are done resigning.
             // update current and let supervision handle the rest
+            LOG_TOPIC(ERR, Logger::MAINTENANCE) << " +++++++++++ LOL +++++++++++++++";
             VPackBuilder ns;
             { VPackArrayBuilder a(&ns);
               bool front = true;

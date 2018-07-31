@@ -56,7 +56,7 @@ char const* dbs3Str =
 #include "MaintenanceDBServer0003.json"
 ;
 
-std::string PLAN_COL_PATH = "/arango/Plan/Collections/";
+std::string PLAN_COL_PATH = "/Plan/Collections/";
 
 Node createNodeFromBuilder(Builder const& builder) {
 
@@ -222,7 +222,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   auto current = createNode(currentStr);
 
   std::vector<std::string> dbsIds;
-  for (auto const& dbs : plan("/arango/Plan/DBServers").children()) {
+  for (auto const& dbs : plan("Plan/DBServers").children()) {
     dbsIds.push_back(dbs.first);
   }
   
