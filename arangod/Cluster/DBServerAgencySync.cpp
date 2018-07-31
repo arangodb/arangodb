@@ -112,7 +112,6 @@ Result getLocalCollections(VPackBuilder& collections) {
   
 }
 
-#warning return type should be Result
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 

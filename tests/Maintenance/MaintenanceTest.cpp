@@ -253,7 +253,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
     std::vector<ActionDescription> actions;
     localNodes.begin()->second("db3") =
-      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+      arangodb::velocypack::Slice::emptyObjectSlice();
     
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
@@ -270,7 +270,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
     std::vector<ActionDescription> actions;
     localNodes.begin()->second("db3/col") =
-      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+      arangodb::velocypack::Slice::emptyObjectSlice();
     
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
@@ -287,7 +287,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
     std::vector<ActionDescription> actions;
     localNodes.begin()->second("db3") =
-      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+      arangodb::velocypack::Slice::emptyObjectSlice();
     
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
@@ -321,7 +321,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       std::vector<ActionDescription> actions;
 
       node.second("db3") =
-        arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+        arangodb::velocypack::Slice::emptyObjectSlice();
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
@@ -353,7 +353,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       std::vector<ActionDescription> actions;
 
       node.second("db3") =
-        arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+        arangodb::velocypack::Slice::emptyObjectSlice();
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
@@ -372,9 +372,9 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
       node.second("db3/1111111") =
-        arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+        arangodb::velocypack::Slice::emptyObjectSlice();
       plan(PLAN_COL_PATH + "db3") =
-        arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+        arangodb::velocypack::Slice::emptyObjectSlice();
       
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
@@ -445,7 +445,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     "Empty db3 in plan should drop all local db3 collections on all servers") {
 
     plan(PLAN_COL_PATH + "db3") =
-      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+      arangodb::velocypack::Slice::emptyObjectSlice();
 
     for (auto& node : localNodes) {
       
@@ -483,7 +483,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   SECTION("Indexes missing in local") {
 
     plan(PLAN_COL_PATH  + "_system/1010021/indexes") =
-      arangodb::basics::VelocyPackHelper::EmptyArrayValue();
+      arangodb::velocypack::Slice::emptyArraySlice();
 
     for (auto& node : localNodes) {
 

@@ -91,12 +91,10 @@ SynchronizeShard::SynchronizeShard(
 
 class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
 public:
-  SynchronizeShardCallback(SynchronizeShard* callie) : _callie(callie) {};
+  SynchronizeShardCallback(SynchronizeShard* callie) {};
   virtual bool operator()(arangodb::ClusterCommResult*) override final {
     return true;
   }
-private:
-  std::shared_ptr<SynchronizeShard> _callie;
 };
 
 
