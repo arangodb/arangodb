@@ -23,31 +23,24 @@
 #include "WakeupQueryCallback.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/Query.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 WakeupQueryCallback::WakeupQueryCallback(ExecutionBlock* initiator,
                                          Query* query)
-    : _initiator(initiator), _query(query) {}
+    : _initiator(initiator), 
+      _query(query),
+      _sharedState(query->sharedState()) {}
+  
+WakeupQueryCallback::~WakeupQueryCallback() {}
 
 bool WakeupQueryCallback::operator()(ClusterCommResult* result) {
-  TRI_ASSERT(_initiator != nullptr);
-  TRI_ASSERT(_query != nullptr);
-  // TODO Validate that _initiator and _query have not been deleted (ttl)
-  // TODO Handle exceptions
-  bool res = _initiator->handleAsyncResult(result);
-  if (_query->hasHandler()) {
-    auto scheduler = SchedulerFeature::SCHEDULER;
-    TRI_ASSERT(scheduler != nullptr);
-    if (scheduler == nullptr) {
-      // We are shutting down
-      return false;
-    }
-    scheduler->post(_query->continueHandler());
-  } else {
-    _query->continueAfterPause();
-  }
-  return res;
+  return _sharedState->execute([&, this]() {
+    TRI_ASSERT(_initiator != nullptr);
+    TRI_ASSERT(_query != nullptr);
+    // TODO Validate that _initiator and _query have not been deleted (ttl)
+    // TODO Handle exceptions
+    return _initiator->handleAsyncResult(result);
+  });
 }

@@ -191,7 +191,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
 
     if (q->second->_isOpen) {
       // query in use by another thread/request
-      q->second->_query->killed(true);
+      q->second->_query->kill();
       return;
     }
 
