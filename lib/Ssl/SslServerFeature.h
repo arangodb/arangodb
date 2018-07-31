@@ -49,7 +49,7 @@ class SslServerFeature : public application_features::ApplicationFeature {
   virtual void verifySslOptions();
 
  public:
-  virtual asio::ssl::context createSslContext() const;
+
 
  protected:
   std::string _cafile;
@@ -59,9 +59,10 @@ class SslServerFeature : public application_features::ApplicationFeature {
   uint64_t _sslProtocol;
   uint64_t _sslOptions;
   std::string _ecdhCurve;
+  std::unique_ptr<asio::ssl::context> _context;
 
- private:
-  std::string stringifySslOptions(uint64_t opts) const;
+ public:
+  asio::ssl::context& getSslContext() { return *_context.get(); }
 
  private:
   std::string _rctx;

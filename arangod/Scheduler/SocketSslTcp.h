@@ -33,10 +33,9 @@ class SocketSslTcp final : public Socket {
   friend class AcceptorTcp;
 
  public:
-  SocketSslTcp(rest::Scheduler* scheduler, asio_ns::ssl::context&& context)
+  SocketSslTcp(rest::Scheduler* scheduler, asio_ns::ssl::context& context)
       : Socket(scheduler, /*encrypted*/ true),
-        _sslContext(std::move(context)),
-        _sslSocket(scheduler->newSslSocket(_sslContext)),
+        _sslSocket(scheduler->newSslSocket(context)),
         _socket(_sslSocket->next_layer()),
         _peerEndpoint() {}
 
@@ -100,7 +99,6 @@ class SocketSslTcp final : public Socket {
   }
 
  private:
-  asio_ns::ssl::context _sslContext;
   std::unique_ptr<asio_ns::ssl::stream<asio_ns::ip::tcp::socket>> _sslSocket;
   asio_ns::ip::tcp::socket& _socket;
   asio_ns::ip::tcp::acceptor::endpoint_type _peerEndpoint;

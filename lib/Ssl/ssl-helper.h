@@ -41,7 +41,7 @@ enum SslProtocol {
   //   Changes between 1.0.2f and 1.0.2g [1 Mar 2016]
   //   * Disable SSLv2 default build, default negotiation and weak ciphers.  SSLv2
   //     is by default disabled at build-time.  Builds that are not configured with
-  //     "enable-ssl2" will not support SSLv2.  
+  //     "enable-ssl2" will not support SSLv2.
   // SSL_V2 = 1,
   SSL_V23 = 2,
   SSL_V3 = 3,
@@ -57,12 +57,14 @@ enum SslProtocol {
 #define SSL_CONST const
 #endif
 
-asio::ssl::context sslContext(
+std::unique_ptr<asio::ssl::context> sslContext(
     SslProtocol, std::string const& keyfile);
 
 std::string protocolName(SslProtocol protocol);
 
 std::string lastSSLError();
+
+std::string stringifySslOptions(uint64_t opts);
 }
 
 #endif
