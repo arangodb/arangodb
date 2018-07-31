@@ -97,9 +97,6 @@ class Graph {
   virtual void createCollectionOptions(VPackBuilder& builder,
                                        bool waitForSync) const;
 
-  static void createCollectionOptions(VPackBuilder& builder, bool waitForSync,
-                                      VPackSlice options);
-
  public:
   /// @brief get the cids of all vertexCollections
   std::unordered_set<std::string> const& vertexCollections() const;
@@ -206,7 +203,7 @@ class Graph {
 // SECTION: Variables
 //
 /////////////////////////////////////////////////////////////////////////////////
- private:
+ protected:
   /// @brief name of this graph
   std::string const _graphName;
 

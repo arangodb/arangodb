@@ -143,7 +143,9 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
   }
 
   VPackBuilder collectionOptions;
+  collectionOptions.openObject();
   _graph.createCollectionOptions(collectionOptions, waitForSync);
+  collectionOptions.close();
   for (auto const& newCollection : newCollections) {
     // While the collection is new in the graph, it may still already exist.
     if (GraphManager::getCollectionByName(_vocbase, newCollection)) {
@@ -340,7 +342,9 @@ OperationResult GraphOperations::editEdgeDefinition(
 
   GraphManager gmngr{_vocbase};
   VPackBuilder collectionsOptions;
+  collectionsOptions.openObject();
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
+  collectionsOptions.close();
   result = gmngr.findOrCreateCollectionsByEdgeDefinition(
       edgeDefinition, waitForSync, collectionsOptions.slice());
   if (result.fail()) {
@@ -394,7 +398,9 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
 
   OperationResult result;
   VPackBuilder collectionsOptions;
+  collectionsOptions.openObject();
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
+  collectionsOptions.close();
   if (result.fail()) {
     return result;
   }
@@ -589,7 +595,9 @@ OperationResult GraphOperations::addEdgeDefinition(
   }
 
   VPackBuilder collectionsOptions;
+  collectionsOptions.openObject();
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
+  collectionsOptions.close();
 
   result = gmngr.findOrCreateCollectionsByEdgeDefinition(
       edgeDefinition, waitForSync, collectionsOptions.slice());

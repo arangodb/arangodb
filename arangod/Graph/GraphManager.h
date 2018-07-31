@@ -32,10 +32,10 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ResultT.h"
+#include "Graph/Graph.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
-#include "Graph/Graph.h"
 
 namespace arangodb {
 namespace graph {
@@ -171,7 +171,7 @@ class GraphManager {
    *
    * @return A temporary Graph object 
    */
-  std::pair<Result, std::shared_ptr<Graph>> buildGraphFromInput(std::string const& graphName, arangodb::velocypack::Slice input) const;
+  ResultT<std::shared_ptr<Graph>> buildGraphFromInput(std::string const& graphName, arangodb::velocypack::Slice input) const;
 
   Result checkCreateGraphPermissions(Graph const* graph) const;
 

@@ -502,32 +502,12 @@ bool Graph::isSmart() const {
 }
 
 void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
-  bool isCluster = arangodb::ServerState::instance()->isRunningInCluster();
+  TRI_ASSERT(builder.isOpenObject());
 
-  builder.openObject();
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
-  if (isCluster) {
-    builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
-  }
-  builder.close();
+  builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
+  builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
 }
-
-void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync, VPackSlice options) {
-  bool isCluster = arangodb::ServerState::instance()->isRunningInCluster();
-
-  builder.openObject();
-  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
-  if (isCluster) {
-    builder.add(StaticStrings::NumberOfShards,
-                VPackValue(options.get(StaticStrings::NumberOfShards).getUInt()));
-    builder.add(
-            StaticStrings::ReplicationFactor,
-        VPackValue(options.get(StaticStrings::ReplicationFactor).getUInt()));
-  }
-  builder.close();
-}
-
 
 boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(
     std::string const& collectionName) const {

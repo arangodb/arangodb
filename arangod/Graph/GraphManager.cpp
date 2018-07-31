@@ -55,7 +55,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/SmartGraph.h"
-#include "Enterprise/Graph/GraphManagerEE.h"
 #endif
 
 using namespace arangodb;
@@ -392,14 +391,14 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   }
   TRI_ASSERT(graph == nullptr);
 
-  Result res;
-  std::tie(res, graph) = buildGraphFromInput(graphName, document);
-  if (res.fail()) {
-    return OperationResult{res};
+  auto graphRes = buildGraphFromInput(graphName, document);
+  if (graphRes.fail()) {
+    return OperationResult{graphRes.copy_result()};
   }
+  graph = graphRes.get();
 
   // check permissions
-  res = checkCreateGraphPermissions(graph.get());
+  Result res = checkCreateGraphPermissions(graph.get());
   if (res.fail()) {
     return OperationResult{res};
   }
@@ -449,6 +448,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 }
 
 Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) const {
+  TRI_ASSERT(graph != nullptr);
 #ifdef USE_ENTERPRISE
   {
     Result res = ensureSmartCollectionSharding(graph, waitForSync);
@@ -458,7 +458,9 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   }
 #endif
   VPackBuilder optionsBuilder;
+  optionsBuilder.openObject();
   graph->createCollectionOptions(optionsBuilder, waitForSync);
+  optionsBuilder.close();
   VPackSlice options = optionsBuilder.slice();
   TRI_vocbase_t* vocbase = &(ctx()->vocbase());
   Result innerRes{TRI_ERROR_NO_ERROR};
@@ -915,27 +917,19 @@ Result GraphManager::checkDropGraphPermissions(
   return TRI_ERROR_NO_ERROR;
 }
 
-std::pair<Result, std::shared_ptr<Graph>> GraphManager::buildGraphFromInput(std::string const& graphName, VPackSlice input) const {
+#ifndef USE_ENTERPRISE
+ResultT<std::shared_ptr<Graph>> GraphManager::buildGraphFromInput(std::string const& graphName, VPackSlice input) const {
   try {
-#ifdef USE_ENTERPRISE
-    // TODO move this into ENTERPRISE
-    bool isSmart = velocypackhelper::getBoolValue(document, "isSmart", false);
-    if (isSmart) {
-      return {TRI_ERROR_NO_ERROR, std::make_shared<SmartGraph>(graphName, input)};
-    }
-    return {TRI_ERROR_NO_ERROR, std::make_shared<Graph>(graphName, input)};
-#endif
-    return {TRI_ERROR_NO_ERROR, std::make_shared<Graph>(graphName, input)};
+    return {std::make_shared<Graph>(graphName, input)};
   } catch (arangodb::basics::Exception const& e) {
-    return {Result{e.code(), e.message()}, nullptr};
+    return Result{e.code(), e.message()};
   } catch (...) {
-    return {TRI_ERROR_INTERNAL, nullptr};
+    return {TRI_ERROR_INTERNAL};
   }
   TRI_ASSERT(false); // Catch all above!
-  return {TRI_ERROR_INTERNAL, nullptr};
+  return {TRI_ERROR_INTERNAL };
 }
-
-
+#endif
 
 /*
   // validate edgeDefinitions
