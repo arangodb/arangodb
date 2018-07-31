@@ -107,6 +107,10 @@ void SslServerFeature::prepare() {
                                            << _cipherList << "'";
   }
 
+  SSL = this;
+}
+
+void SslServerFeature::createSslContext() {
   try
   {
     _context = arangodb::sslContext(SslProtocol(_sslProtocol), _keyfile);
@@ -184,9 +188,6 @@ void SslServerFeature::prepare() {
         << "failed to create SSL context, cannot create HTTPS server";
     throw std::runtime_error("cannot create SSL context");
   }
-
-
-  SSL = this;
 }
 
 void SslServerFeature::unprepare() {
@@ -220,4 +221,6 @@ void SslServerFeature::verifySslOptions() {
                                             << _keyfile << "'";
     FATAL_ERROR_EXIT();
   }
+
+  createSslContext();
 }

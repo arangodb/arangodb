@@ -48,9 +48,8 @@ class SslServerFeature : public application_features::ApplicationFeature {
  public:
   virtual void verifySslOptions();
 
- public:
-
-
+ private:
+  void createSslContext();
  protected:
   std::string _cafile;
   std::string _keyfile;
