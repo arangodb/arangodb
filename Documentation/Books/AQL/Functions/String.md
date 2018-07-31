@@ -369,34 +369,34 @@ RANDOM_TOKEN(8) // "m9w50Ft9"
 REGEX_SPLIT()
 ------------
 
-`REGEX_SPLIT(text, search, caseInsensitive, limit) -> strArray `
+`REGEX_SPLIT(text, splitExpression, caseInsensitive, limit) → strArray`
 
-Split the given string *value* into a list of strings, using the *separator*.
+Split the given string *text* into a list of strings, using the *separator*.
 
-- **text** (string): the string to search in
-- **search** (string): a regular expression search pattern
+- **text** (string): the string to split
+- **splitExpression** (string): a regular expression to use for splitting the *text*
 - **limit** (number, *optional*): limit the number of split values in the result.
-If no *limit* is given, the number of splits returned is not bounded.
+  If no *limit* is given, the number of splits returned is not bounded.
 - returns **strArray** (array): an array of strings
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
 
 - `.` – the dot matches any single character except line terminators.
-To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+  To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
 - `\d` – matches a single digit, equivalent to `[0-9]`
 - `\s` – matches a single whitespace character
 - `\S` – matches a single non-whitespace character
 - `\t` – matches a tab character
 - `\r` – matches a carriage return
 - `\n` – matches a line-feed character
-- `[xyz]` – set of characters. matches any of the enclosed characters (i.e.
-*x*, *y* or *z* in this case
-- `[^xyz]` – negated set of characters. matches any other character than the
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+  (here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
 enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
 - `[x-z]` – range of characters. Matches any of the characters in the 
-specified range, e.g. `[0-9A-F]` to match any character in
-*0123456789ABCDEF*
+  specified range, e.g. `[0-9A-F]` to match any character in
+  *0123456789ABCDEF*
 - `[^x-z]` – negated range of characters. Matches any other character than the
 ones specified in the range
 - `(xyz)` – defines and matches a pattern group
@@ -424,7 +424,7 @@ Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
 you need to define a pattern group by wrapping the subexpression in parentheses
 and place the quantifier right behind it: `(xyz)+`.
 
-If the regular expression in *search* is invalid, a warning will be raised
+If the regular expression in *splitExpression* is invalid, a warning will be raised
 and the function will return *null*.
 
 ```js
@@ -459,9 +459,9 @@ characters and sequences:
 - `\t` – matches a tab character
 - `\r` – matches a carriage return
 - `\n` – matches a line-feed character
-- `[xyz]` – set of characters. matches any of the enclosed characters (i.e.
-  *x*, *y* or *z* in this case
-- `[^xyz]` – negated set of characters. matches any other character than the
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+  (here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
   enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
 - `[x-z]` – range of characters. Matches any of the characters in the 
   specified range, e.g. `[0-9A-F]` to match any character in
