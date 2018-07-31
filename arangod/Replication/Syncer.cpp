@@ -221,7 +221,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
 namespace arangodb {
 
-Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> syncer) 
+Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> const& syncer) 
     : _syncer(syncer), 
       _gotResponse(false),
       _jobsInFlight(0) {}
