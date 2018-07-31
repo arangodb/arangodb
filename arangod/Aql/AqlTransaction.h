@@ -96,7 +96,9 @@ class AqlTransaction : public transaction::Methods {
   AqlTransaction(
       std::shared_ptr<transaction::Context> const& transactionContext,
       transaction::Options const& options)
-      : transaction::Methods(transactionContext, options) {}
+      : transaction::Methods(transactionContext, options) {
+        addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      }
 
   /// protected so we can create different subclasses
   AqlTransaction(
