@@ -62,7 +62,10 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::unique_ptr<asio::ssl::context> _context;
 
  public:
-  asio::ssl::context& getSslContext() { return *_context.get(); }
+  asio::ssl::context& getSslContext() {
+    TRI_ASSERT(_context);
+    return *_context.get();
+  }
 
  private:
   std::string _rctx;
