@@ -176,14 +176,6 @@ class PhysicalCollection {
     return insert(trx, newSlice, result, options, resultMarkerTick, lock, unused);
   }
 
-  /*virtual Result update(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice const newSlice,
-                        ManagedDocumentResult& result,
-                        OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                        arangodb::velocypack::Slice const key) = 0;*/
-
   virtual Result update(
     arangodb::transaction::Methods* trx,
     ManagedDocumentResult& mdr,

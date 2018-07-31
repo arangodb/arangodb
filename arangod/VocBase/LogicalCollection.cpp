@@ -1125,9 +1125,6 @@ Result LogicalCollection::update(transaction::Methods* trx,
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-
-
-
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1135,6 +1132,8 @@ Result LogicalCollection::update(transaction::Methods* trx,
 
   prevRev = 0;
   resultMarkerTick = 0;
+
+  TRI_IF_FAILURE("UpdateDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
 
   if (lock) {
     getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());

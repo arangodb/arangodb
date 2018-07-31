@@ -3219,6 +3219,16 @@ Result MMFilesCollection::update(
 
   Result res;
 
+  TRI_IF_FAILURE("UpdateDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return Result(TRI_ERROR_DEBUG);
+  }
+
+  TRI_IF_FAILURE("UpdateDocumentNoMarkerExcept") {
+    // test what happens when no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   // create marker
   MMFilesCrudMarker updateMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
@@ -3283,6 +3293,16 @@ Result MMFilesCollection::replace(
   ) {
 
   Result res;
+
+  TRI_IF_FAILURE("ReplaceDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return Result(TRI_ERROR_DEBUG);
+  }
+
+  TRI_IF_FAILURE("ReplaceDocumentNoMarkerExcept") {
+    // test what happens when no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   // create marker
   MMFilesCrudMarker replaceMarker(

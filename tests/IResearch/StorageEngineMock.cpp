@@ -912,18 +912,6 @@ int PhysicalCollectionMock::unlockWrite(bool useDeadlockDetector, arangodb::Tran
   return TRI_ERROR_NO_ERROR;
 }
 
-/*
-arangodb::Result PhysicalCollectionMock::update(
-arangodb::transaction::Methods* trx,
-arangodb::velocypack::Slice const newSlice,
-arangodb::ManagedDocumentResult& result,
-arangodb::OperationOptions& options,
-TRI_voc_tick_t& resultMarkerTick,
-bool lock,
-TRI_voc_rid_t& prevRev,
-arangodb::ManagedDocumentResult& previous,
-arangodb::velocypack::Slice const key) {
-*/
 arangodb::Result PhysicalCollectionMock::update(
   arangodb::transaction::Methods* trx,
   arangodb::ManagedDocumentResult& mdr,
