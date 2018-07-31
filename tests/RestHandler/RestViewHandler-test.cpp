@@ -114,6 +114,7 @@ struct RestViewHandlerSetup {
   }
 
   ~RestViewHandlerSetup() {
+    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
@@ -126,6 +127,8 @@ struct RestViewHandlerSetup {
     for (auto& f : features) {
       f.first->unprepare();
     }
+
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
 
