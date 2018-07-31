@@ -43,20 +43,8 @@ function runSetup () {
     c.insert({ _key: 'test' + i, value: i });
   }
 
-  c.truncate({ waitForSync: true });
+  c.truncate({ waitForSync: true, intermediateCommitCount: 1000 });
   internal.debugSegfault('crashing server');
-
-  db._executeTransaction({
-    intermediateCommitCount: 1000,
-    collections: {
-      write: 'UnitTestsRecovery'
-    },
-    action: function () {
-      var db = require('@arangodb').db;
-
-      
-    }
-  });
 }
 
 // //////////////////////////////////////////////////////////////////////////////
