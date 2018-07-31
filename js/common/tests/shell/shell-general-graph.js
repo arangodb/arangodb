@@ -767,19 +767,28 @@ function GeneralGraphCreationSuite() {
       graph._create(gN2, [dr2]);
 
       const loadG1 = () => graph._graph(gN1);
-
+      let sortEdgeDefinitions = function (a,b) {
+        if (a.collection < b.collection) {
+          return -1;
+        }
+        if (a.collection > b.collection) {
+          return 1;
+        }
+        return 0;
+      };
+ 
       assertEqual([dr1], g1.__edgeDefinitions);
       g1._addVertexCollection(vc3);
       assertEqual([vc3], g1._orphanCollections());
       assertEqual([vc3], loadG1()._orphanCollections());
       g1._extendEdgeDefinitions(dr3);
-      assertEqual([dr1, dr3], g1.__edgeDefinitions);
-      assertEqual([dr1, dr3], loadG1().__edgeDefinitions);
+      assertEqual([dr1, dr3].sort(sortEdgeDefinitions), g1.__edgeDefinitions);
+      assertEqual([dr1, dr3].sort(sortEdgeDefinitions), loadG1().__edgeDefinitions);
       assertEqual([], g1._orphanCollections());
       assertEqual([], loadG1()._orphanCollections());
       g1._extendEdgeDefinitions(dr2);
-      assertEqual([dr1, dr3, dr2], g1.__edgeDefinitions);
-      assertEqual([dr1, dr3, dr2], loadG1().__edgeDefinitions);
+      assertEqual([dr1, dr3, dr2].sort(sortEdgeDefinitions), g1.__edgeDefinitions);
+      assertEqual([dr1, dr3, dr2].sort(sortEdgeDefinitions), loadG1().__edgeDefinitions);
     },
 
     test_extendEdgeDefinitionFromExistingGraph4: function() {
