@@ -404,7 +404,7 @@ Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
   // _edgeDefs first (which would be a logical error), or if the same collection
   // is defined multiple times (which the user should not be allowed to do).
   if (!inserted) {
-    return Result(TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,
+    return Result(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
                   "Relation '" + collection + "' defined twice in same graph!");
   }
 
