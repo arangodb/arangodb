@@ -90,40 +90,6 @@ class Graph {
   /// attribute.
   static Graph fromSlice(const velocypack::Slice &info);
 
- private:
-  /// @brief name of this graph
-  std::string const _graphName;
-
-  /// @brief the names of all vertexCollections
-  std::unordered_set<std::string> _vertexColls;
-
-  /// @brief the names of all orphanCollections
-  std::set<std::string> _orphanColls;
-
-  /// @brief the names of all edgeCollections
-  std::set<std::string> _edgeColls;
-
-  /// @brief edge definition names of this graph, ordered as in the database
-  std::vector<std::string> _edgeDefsNames;
-
-  /// @brief edge definitions of this graph
-  std::map<std::string, EdgeDefinition> _edgeDefs;
-
-  /// @brief state if smart graph enabled
-  bool _isSmart;
-
-  /// @brief number of shards of this graph
-  uint64_t _numberOfShards;
-
-  /// @brief replication factor of this graph
-  uint64_t _replicationFactor;
-
-  /// @brief id of this graph
-  std::string _id;
-
-  /// @brief revision of this graph
-  std::string _rev;
-
  public:
   static Result validateOrphanCollection(
       const velocypack::Slice& orphanDefinition);
@@ -161,7 +127,7 @@ class Graph {
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
-  std::string const& id() const;
+  std::string const id() const;
   std::string const& rev() const;
 
   std::string const& name() const { return _graphName; }
@@ -232,11 +198,44 @@ class Graph {
   /// @brief Set isSmart to the graph definition
   void setSmartState(bool state);
 
-  /// @brief Set id to the graph definition
-  void setId(std::string&& id);
-
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+// SECTION: Variables
+//
+/////////////////////////////////////////////////////////////////////////////////
+ private:
+  /// @brief name of this graph
+  std::string const _graphName;
+
+  /// @brief the names of all vertexCollections
+  std::unordered_set<std::string> _vertexColls;
+
+  /// @brief the names of all orphanCollections
+  std::set<std::string> _orphanColls;
+
+  /// @brief the names of all edgeCollections
+  std::set<std::string> _edgeColls;
+
+  /// @brief edge definition names of this graph, ordered as in the database
+  std::vector<std::string> _edgeDefsNames;
+
+  /// @brief edge definitions of this graph
+  std::map<std::string, EdgeDefinition> _edgeDefs;
+
+  /// @brief state if smart graph enabled
+  bool _isSmart;
+
+  /// @brief number of shards of this graph
+  uint64_t _numberOfShards;
+
+  /// @brief replication factor of this graph
+  uint64_t _replicationFactor;
+
+  /// @brief revision of this graph
+  std::string _rev;
 };
 
 // helper functions

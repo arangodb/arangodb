@@ -92,7 +92,9 @@ uint64_t Graph::numberOfShards() const { return _numberOfShards; }
 
 uint64_t Graph::replicationFactor() const { return _replicationFactor; }
 
-std::string const& Graph::id() const { return _id; }
+std::string const Graph::id() const {
+  return std::string(StaticStrings::GraphCollection + "/" + _graphName);
+}
 
 std::string const& Graph::rev() const { return _rev; }
 
@@ -117,8 +119,6 @@ void Graph::setNumberOfShards(uint64_t numberOfShards) {
 void Graph::setReplicationFactor(uint64_t replicationFactor) {
   _replicationFactor = replicationFactor;
 }
-
-void Graph::setId(std::string&& id) { _id = std::move(id); }
 
 void Graph::setRev(std::string&& rev) { _rev = std::move(rev); }
 
@@ -171,8 +171,15 @@ void Graph::toPersistence(VPackBuilder& builder) const {
 }
 
 Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
-    : _graphName(graphName_), _vertexColls(), _edgeColls(),
-    _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString, "")) {
+    : _graphName(graphName_),
+      _vertexColls(),
+      _edgeColls(),
+      _numberOfShards(basics::VelocyPackHelper::readNumericValue<uint64_t>(
+          slice, StaticStrings::NumberOfShards, 1)),
+      _replicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
+          slice, StaticStrings::ReplicationFactor, 1)),
+      _rev(basics::VelocyPackHelper::getStringValue(
+          slice, StaticStrings::RevString, "")) {
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
     VPackSlice edgeDefs = slice.get(StaticStrings::GraphEdgeDefinitions);
     TRI_ASSERT(edgeDefs.isArray());
@@ -236,14 +243,6 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
   }
 #endif
 */
-
-  if (slice.hasKey(StaticStrings::NumberOfShards)) {
-    setNumberOfShards(slice.get(StaticStrings::NumberOfShards).getUInt());
-  }
-  if (slice.hasKey(StaticStrings::ReplicationFactor)) {
-    setReplicationFactor(slice.get(StaticStrings::ReplicationFactor).getUInt());
-  }
-  setId(StaticStrings::GraphCollection + "/" + graphName_);
 
 }
 
@@ -406,7 +405,7 @@ Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
   // is defined multiple times (which the user should not be allowed to do).
   if (!inserted) {
     return Result(TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,
-                  "Collection '" + collection + "' already added!");
+                  "Relation '" + collection + "' defined twice in same graph!");
   }
 
   return Result();
