@@ -166,6 +166,10 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
       if (!first) {
         // need a new query instance on the coordinator
         localQuery = query->clone(PART_DEPENDENT, false);
+        if (localQuery == nullptr) {
+          // clone() cannot return nullptr, but some mocks seem to do it
+          return ExecutionEngineResult(TRI_ERROR_INTERNAL, "cannot clone query");
+        }
         TRI_ASSERT(localQuery != nullptr);
       }
       try {
