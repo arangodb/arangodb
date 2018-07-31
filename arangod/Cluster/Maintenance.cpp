@@ -554,7 +554,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       auto const colName = shSlice.get(PLAN_ID).copyString();
       VPackBuilder error;
 
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << shName << " " << shSlice.get(LEADER).copyString();
+//      LOG_TOPIC(ERR, Logger::MAINTENANCE) << shName << " " << shSlice.get(LEADER).copyString();
 
       if (shSlice.get(LEADER).copyString().empty()) { // Leader
         auto const localCollectionInfo =
