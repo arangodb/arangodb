@@ -168,7 +168,7 @@ asio::ssl::context SslServerFeature::createSslContext() const {
   try {
     // create context
     asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
-    
+
     // and use this native handle
     asio::ssl::context::native_handle_type nativeContext =
         sslContext.native_handle();
@@ -225,7 +225,7 @@ asio::ssl::context SslServerFeature::createSslContext() const {
       SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
     }
 #endif
-    
+
     // set ssl context
     int res = SSL_CTX_set_session_id_context(
         nativeContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());

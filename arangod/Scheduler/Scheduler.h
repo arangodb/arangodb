@@ -79,38 +79,48 @@ class Scheduler {
 
   typedef std::chrono::steady_clock clock;
 
-  struct DelayedWork {
-    std::function<void()> _handler;
-    clock::time_point _due;
+  struct DelayedWorkItem {
+    std::function<void(bool cancelled)> _handler;
+    const clock::time_point _due;
     std::atomic<bool> _cancelled;
 
-    DelayedWork(std::function<void()> const& handler, clock::duration delay) :
+    DelayedWorkItem() {};
+
+    DelayedWorkItem(std::function<void(bool cancelled)> const& handler, clock::duration delay) :
       _handler(handler), _due(clock::now() + delay), _cancelled(false) {}
 
-    DelayedWork(std::function<void()> && handler, clock::duration delay) :
+    DelayedWorkItem(std::function<void(bool cancelled)> && handler, clock::duration delay) :
       _handler(std::move(handler)), _due(clock::now() + delay), _cancelled(false) {}
 
     void cancel() { _cancelled = true; };
-    bool operator <(const DelayedWork & rhs) const
+    bool operator <(const DelayedWorkItem & rhs) const
     {
       return _due < rhs._due;
     }
   };
 
+  class WorkGuard {
+    std::shared_ptr<DelayedWorkItem> _item;
+  public:
+    WorkGuard() {};
+    WorkGuard(std::shared_ptr<DelayedWorkItem> &item) : _item(item) {}
+    ~WorkGuard() { cancel(); }
+    void cancel() { if(_item) { _item->cancel(); } }
+    void detach() { _item.reset(); }
+  };
+
   class WorkHandle {
-    std::shared_ptr<DelayedWork> _handle;
+    std::shared_ptr<WorkGuard> _guard;
   public:
     WorkHandle() {};
-    WorkHandle(std::shared_ptr<DelayedWork> &handle) : _handle(handle) {}
-    ~WorkHandle() { if(_handle) { cancel(); } }
-    void cancel() { _handle->cancel(); }
-    void detach() { _handle.reset(); }
+    WorkHandle(std::shared_ptr<DelayedWorkItem> &item) : _guard(std::make_shared<WorkGuard>(item)) {}
+    WorkHandle(WorkHandle const &handle) : _guard(handle._guard) {}
+    void cancel() { _guard->cancel(); }
+    void detach() { _guard->detach(); }
   };
 
 
-  WorkHandle postDelay(clock::duration delay, std::function<void()> const& callback);
-
-
+  WorkHandle postDelay(clock::duration delay, std::function<void(bool cancelled)> const& callback);
 
   void addQueueStatistics(velocypack::Builder&) const;
   QueueStatistics queueStatistics() const;
@@ -128,11 +138,11 @@ public:
   void beginShutdown();
   void shutdown();
 
-
+  /*
   template <typename T>
   asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
     return new asio_ns::deadline_timer(_obsoleteContext, timeout);
-  }
+  }*/
 
   asio_ns::steady_timer* newSteadyTimer() {
     return new asio_ns::steady_timer(_obsoleteContext);
@@ -150,7 +160,9 @@ public:
   friend class SchedulerContextThread;
   friend class SchedulerCronThread;
 
-  std::priority_queue<std::shared_ptr<DelayedWork>> _priorityQueue;
+  std::priority_queue<std::shared_ptr<DelayedWorkItem>,
+                      std::vector<std::shared_ptr<DelayedWorkItem>>,
+                      std::greater<std::shared_ptr<DelayedWorkItem>>> _priorityQueue;
   std::mutex _priorityQueueMutex;
   std::condition_variable _conditionCron;
 

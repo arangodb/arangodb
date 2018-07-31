@@ -91,7 +91,6 @@ class Conductor {
   double _startTimeSecs = 0;
   double _computationStartTimeSecs = 0;
   double _endTimeSecs = 0;
-  std::unique_ptr<asio::deadline_timer> _boost_timer;
 
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& path, VPackSlice additional);
@@ -128,7 +127,7 @@ class Conductor {
     return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs
                              : _endTimeSecs - _startTimeSecs;
   }
- 
+
  private:
   void cancelNoLock();
 };

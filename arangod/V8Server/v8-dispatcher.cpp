@@ -100,7 +100,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   void toVelocyPack(VPackBuilder&) const;
   void work(ExecContext const*);
   void queue(std::chrono::microseconds offset);
-  std::function<void(asio::error_code const&)> callbackFunction();
+  std::function<void(bool cancelled)> callbackFunction();
   std::string const& name() const { return _name; }
 
  private:
@@ -109,7 +109,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   double const _created;
   std::string _user;
 
-  std::unique_ptr<asio::steady_timer> _timer;
+  Scheduler::WorkHandle _taskHandle;
 
   // guard to make sure the database is not dropped while used by us
   std::unique_ptr<DatabaseGuard> _dbGuard;
@@ -271,11 +271,11 @@ void V8Task::setParameter(
 
 void V8Task::setUser(std::string const& user) { _user = user; }
 
-std::function<void(const asio::error_code&)> V8Task::callbackFunction() {
+std::function<void(bool cancelled)> V8Task::callbackFunction() {
   auto self = shared_from_this();
 
-  return [self, this](const asio::error_code& error) {
-    if (error) {
+  return [self, this](bool cancelled) {
+    if (cancelled) {
       MUTEX_LOCKER(guard, _tasksLock);
 
       auto itr = _tasks.find(_id);
@@ -333,7 +333,6 @@ void V8Task::start() {
              ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
 
-  _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
 
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
@@ -344,16 +343,14 @@ void V8Task::start() {
 }
 
 void V8Task::queue(std::chrono::microseconds offset) {
-  _timer->expires_from_now(offset);
-  _timer->async_wait(callbackFunction());
+  _taskHandle = SchedulerFeature::SCHEDULER->postDelay(offset, callbackFunction());
 }
 
 void V8Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic = false;
 
-  asio::error_code ec;
-  _timer->cancel(ec);
+  _taskHandle.cancel();
 }
 
 std::shared_ptr<VPackBuilder> V8Task::toVelocyPack() const {

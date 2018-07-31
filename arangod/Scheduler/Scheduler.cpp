@@ -222,11 +222,6 @@ bool Scheduler::start() {
   _cronThread.reset(new SchedulerCronThread(*this));
   _cronThread->start();
 
-  postDelay(std::chrono::seconds(5), []() {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-        << "Delayed post works!";
-  }).detach();
-
   return true;
 }
 
@@ -390,16 +385,16 @@ void Scheduler::stopOneThread()
 }
 
 Scheduler::WorkHandle Scheduler::postDelay(clock::duration delay,
-  std::function<void()> const& callback) {
+  std::function<void(bool cancelled)> const& callback) {
 
   if (delay < std::chrono::milliseconds(1)) {
-    post(callback);
+    post([callback]() {callback(false);});
     return WorkHandle{};
   }
 
   std::unique_lock<std::mutex> guard(_priorityQueueMutex);
 
-  auto handle = std::make_shared<Scheduler::DelayedWork>(callback, delay);
+  auto handle = std::make_shared<Scheduler::DelayedWorkItem>(callback, delay);
   _priorityQueue.push(handle);
 
   if (delay < std::chrono::milliseconds(50)) {
@@ -424,10 +419,8 @@ void Scheduler::runCron() {
     while (_priorityQueue.size() > 0) {
       auto &top = _priorityQueue.top();
 
-      if (top->_cancelled) {
-        _priorityQueue.pop();
-      } else if (top->_due < now) {
-        post(top->_handler);
+      if (top->_cancelled || top->_due < now) {
+        post([top]() { top->_handler(top->_cancelled); });
         _priorityQueue.pop();
       } else {
         auto then = (top->_due - now);

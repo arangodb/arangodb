@@ -156,7 +156,7 @@ void Worker<V, E, M>::setupWorker() {
     package.close();
     _callConductor(Utils::finishedStartupPath, package);
   };
-  
+
   if (_config.lazyLoading()) {
     // TODO maybe lazy loading needs to be performed on another thread too
     std::set<std::string> activeSet = _algorithm->initialActiveSet();
@@ -581,10 +581,10 @@ void Worker<V, E, M>::_continueAsync() {
   int64_t milli =
       _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
-      boost::posix_time::millisec(milli)));
-  _boost_timer->async_wait([this](const asio::error_code& error) {
-    if (error != asio::error::operation_aborted) {
+  SchedulerFeature::SCHEDULER->postDelay(std::chrono::milliseconds(milli),
+    [this](bool cancelled) {
+
+    if (!cancelled) {
       {  // swap these pointers atomically
         MY_WRITE_LOCKER(guard, _cacheRWLock);
         std::swap(_readCache, _writeCache);
@@ -598,7 +598,6 @@ void Worker<V, E, M>::_continueAsync() {
       _conductorAggregators->aggregateValues(*_workerAggregators.get());
       _workerAggregators->resetValues();
       _startProcessing();
-      _boost_timer.reset();
     }
   });
 }

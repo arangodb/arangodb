@@ -421,13 +421,10 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  _boost_timer.reset(SchedulerFeature::SCHEDULER->newDeadlineTimer(
-    boost::posix_time::seconds(2)));
-  _boost_timer->async_wait([this](const asio::error_code& error) {
-    _boost_timer.reset();
+  SchedulerFeature::SCHEDULER->postDelay(std::chrono::seconds(2),
+    [this](bool cancelled) {
 
-    if (error == asio::error::operation_aborted ||
-        _state != ExecutionState::RECOVERING) {
+    if (cancelled || _state != ExecutionState::RECOVERING) {
       return;  // seems like we are canceled
     }
     std::vector<ServerID> goodServers;
@@ -716,7 +713,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.close();
-  
+
   // merge results from DBServers
   outBuilder.openArray();
   int res = _sendToAllDBServers(Utils::aqlResultsPath, b,
