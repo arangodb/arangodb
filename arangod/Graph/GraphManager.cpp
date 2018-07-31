@@ -577,6 +577,7 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
 
   return checkForEdgeDefinitionConflicts(edgeDefs);
 }
+
 Result GraphManager::checkCreateGraphPermissions(
     Graph const* graph) const {
   std::string const& databaseName = ctx()->vocbase().name();
@@ -599,14 +600,43 @@ Result GraphManager::checkCreateGraphPermissions(
   // However, in case a collection has to be created but can't, we have to throw
   // FORBIDDEN instead of READ_ONLY for backwards compatibility.
   if (!execContext->canUseDatabase(auth::Level::RW)) {
-    // Issue read-only if we have access to the collections
-    if (!execContext->canUseCollection(StaticStrings::GraphCollection, auth::Level::RO)) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No write access to "
-                                       << databaseName << "."
-                                       << StaticStrings::GraphCollection;
-      return {TRI_ERROR_ARANGO_READ_ONLY, "Createing Graphs requires RW access on the database (" + databaseName + ")"};
+    // Check for all collections: if it exists and if we have RO access to it.
+    // If none fails the check above we need to return READ_ONLY.
+    // Otherwise we return FORBIDDEN
+     auto checkCollectionAccess = [&](std::string const& col) -> bool {
+      // We need RO on all collections. And, in case any collection does not
+      // exist, we need RW on the database.
+      if (!collectionExists(col)) {
+        LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Cannot create collection "
+                                         << databaseName << "." << col;
+        return false;
+      }
+      if (!execContext->canUseCollection(col, auth::Level::RO)) {
+        LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No read access to "
+                                         << databaseName << "." << col;
+        return false;
+      }
+      return true;
+    };
+
+    // Test all edge Collections
+    for (auto const& it : graph->edgeCollections()) {
+      if (!checkCollectionAccess(it)) {
+        return {TRI_ERROR_FORBIDDEN, "Createing Graphs requires RW access on the database (" + databaseName + ")"};
+      }
     }
-    return {TRI_ERROR_FORBIDDEN, "Createing Graphs requires RW access on the database (" + databaseName + ")"};
+
+    // Test all vertex Collections
+    for (auto const& it : graph->vertexCollections()) {
+      if (!checkCollectionAccess(it)) {
+        return {TRI_ERROR_FORBIDDEN, "Createing Graphs requires RW access on the database (" + databaseName + ")"};
+      }
+    }
+ 
+    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No write access to "
+                                     << databaseName << "."
+                                     << StaticStrings::GraphCollection;
+    return {TRI_ERROR_ARANGO_READ_ONLY, "Createing Graphs requires RW access on the database (" + databaseName + ")"};
   }
 
   auto checkCollectionAccess = [&](std::string const& col) -> bool {
