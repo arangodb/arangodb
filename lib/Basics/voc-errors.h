@@ -1527,6 +1527,12 @@ constexpr int TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET              
 /// the orphan list argument is malformed. It has to be an array of strings.
 constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      = 1943;
 
+/// 1944: ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT
+/// "edge definition collection is a document collection"
+/// the collection used as a relation is existing, but is a document
+/// collection, it cannot be used here.
+constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.
