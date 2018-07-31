@@ -31,16 +31,18 @@ namespace aql {
 
 class ExecutionBlock;
 class Query;
+class SharedQueryState;
 
 struct WakeupQueryCallback : public ClusterCommCallback {
   WakeupQueryCallback(ExecutionBlock* initiator, Query* query);
-  ~WakeupQueryCallback() {};
+  ~WakeupQueryCallback();
 
   bool operator()(ClusterCommResult*) override;
 
-  private:
-    ExecutionBlock* _initiator;
-    Query* _query;
+ private:
+  ExecutionBlock* _initiator;
+  Query* _query;
+  std::shared_ptr<SharedQueryState> _sharedState;
 };
 
 } // aql

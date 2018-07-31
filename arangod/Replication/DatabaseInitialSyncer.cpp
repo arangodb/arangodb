@@ -474,6 +474,11 @@ void DatabaseInitialSyncer::orderDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
                                            uint64_t chunkSize) {
   
   using ::arangodb::basics::StringUtils::itoa;
+      
+  if (isAborted()) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED), nullptr);
+    return;
+  }
   
   std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
     
@@ -715,7 +720,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       }
     }
     
-    if (checkMore) {
+    if (checkMore && !isAborted()) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
       
@@ -805,8 +810,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       return Result();
     }
 
-
     batch++;
+    
+    if (isAborted()) {
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+    }
   }
 
   TRI_ASSERT(false);
@@ -1259,6 +1267,10 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     if (!res.ok()) {
       return res;
+    }
+    
+    if (isAborted()) {
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     if (masterName == TRI_COL_NAME_USERS) {

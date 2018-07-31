@@ -295,6 +295,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpJson(
     VPackDumper dumper(&adapter, &collectionIter->vpackOptions);
     dumper.dump(velocypack::Slice(rocksValue.data()));
     buff.appendText("}\n");
+    return true;
   };
 
   TRI_ASSERT(collectionIter->iter && !collectionIter->sorted());
@@ -350,12 +351,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpVPack(TRI_vocbase_t* voc
 
   VPackBuilder builder(buffer, &collectionIter->vpackOptions);
   auto cb = [&builder](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-
     builder.openObject();
     builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
     builder.add(VPackValue("data"));
     builder.add(velocypack::Slice(rocksValue.data()));
     builder.close();
+    return true;
   };
 
   TRI_ASSERT(collectionIter->iter && !collectionIter->sorted());
@@ -413,7 +414,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
       if (_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
         TRI_ASSERT(false);
-        return;
+        return true;
       }
       VPackSlice doc(_collection->mdr.vpack());
       docRev = TRI_ExtractRevisionId(doc);
@@ -433,6 +434,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
     builder.clear();
     builder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
     hash ^= builder.slice().hashString();
+
+    return true;
   }; //cb
 
   b.openArray(true);
@@ -532,7 +535,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
       if (_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
         TRI_ASSERT(false);
-        return;
+        return true;
       }
       VPackSlice doc(_collection->mdr.vpack());
       docRev = TRI_ExtractRevisionId(doc);
@@ -543,6 +546,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
     b.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
     b.close();
+
+    return true;
   };
 
   b.openArray(true);
@@ -619,11 +624,12 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     bool ok = _collection->logical.readDocument(_trx.get(), documentId, _collection->mdr);
     if (!ok) {
       // TODO: do something here?
-      return;
+      return true;
     }
     VPackSlice current(_collection->mdr.vpack());
     TRI_ASSERT(current.isObject());
     b.add(current);
+    return true;
   };
 
   auto buffer = b.buffer();
@@ -657,6 +663,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
       hasMore = _collection->iter->next(
           [&b](rocksdb::Slice const&, rocksdb::Slice const&) {
             b.add(VPackValue(VPackValueType::Null));
+            return true;
           },
           1);
     } else {

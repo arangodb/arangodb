@@ -77,9 +77,9 @@ using namespace arangodb;
 // back on later in its dtor 
 // this is just a performance optimization for small transactions
 struct IndexingDisabler {
-  IndexingDisabler(RocksDBMethods* mthd, bool disableIndexing) 
-      : mthd(mthd), disableIndexing(disableIndexing) {
-    if (disableIndexing) {
+  IndexingDisabler(RocksDBMethods* mthd, bool disable) 
+      : mthd(mthd), disableIndexing(disable) {
+    if (disable) {
       disableIndexing = mthd->DisableIndexing();
     }
   }

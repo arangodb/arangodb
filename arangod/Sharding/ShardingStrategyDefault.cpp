@@ -154,18 +154,20 @@ uint64_t ShardingStrategyCommunityCompat::hashByAttributes(
   if (slice.isObject()) {
     for (auto const& attr : attributes) {
       VPackSlice sub = slice.get(attr).resolveExternal();
-      VPackBuilder tempBuilder;
       if (sub.isNone()) {
         if (attr == StaticStrings::KeyString && !key.empty()) {
+          VPackBuilder tempBuilder;
           tempBuilder.add(VPackValue(key));
           sub = tempBuilder.slice();
-        } else {
-          if (!docComplete) {
-            error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-          }
-          // Null is equal to None/not present
-          sub = VPackSlice::nullSlice();
+          hash = sub.normalizedHash(hash);
+          continue;
         }
+
+        if (!docComplete) {
+          error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+        }
+        // Null is equal to None/not present
+        sub = VPackSlice::nullSlice();
       }
       hash = sub.normalizedHash(hash);
     }

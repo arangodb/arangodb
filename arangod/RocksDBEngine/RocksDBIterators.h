@@ -41,7 +41,8 @@ namespace arangodb {
 class RocksDBCollection;
 class RocksDBPrimaryIndex;
 
-typedef std::function<void(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
+/// @brief return false to stop iteration
+typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
 
 /// @brief iterator over all documents in the collection
 /// basically sorted after LocalDocumentId
@@ -107,18 +108,15 @@ class RocksDBGenericIterator {
 
   // the following functions return if the iterator
   // is valid and in bounds on return.
-  bool next(GenericCallback const& cb // void(rocksdb::Slice const& key,rocksd:Slice const& value)
-           , size_t count //number of documents the callback should be applied to
-           );
+  bool next(GenericCallback const& cb, size_t count); //number of documents the callback should be applied to
 
-  bool skip(uint64_t count // documents to skip
-           ,uint64_t& skipped // skipped documents
-           );
+  // documents to skip, skipped documents
+  bool skip(uint64_t count, uint64_t& skipped);
   bool seek(rocksdb::Slice const& key);
   bool reset();
   bool hasMore() const;
 
-  //return bounds
+  // return bounds
   RocksDBKeyBounds const& bounds() const { return _bounds; }
 
  private:

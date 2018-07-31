@@ -27,7 +27,9 @@
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBIterators.h"
+#include "RocksDBEngine/RocksDBIterators.h"
+#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -44,6 +46,105 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
+// remove all keys that are below first remote key or beyond last remote key
+Result removeKeysOutsideRange(VPackSlice chunkSlice, 
+                              LogicalCollection* col,
+                              OperationOptions& options,
+                              InitialSyncerIncrementalSyncStats& stats) {
+  size_t const numChunks = chunkSlice.length();
+
+  if (numChunks == 0) {
+    // no need to do anything
+    return Result();
+  }
+  
+  // first chunk
+  SingleCollectionTransaction trx(
+    transaction::StandaloneContext::Create(col->vocbase()),
+    *col,
+    AccessMode::Type::EXCLUSIVE
+  );
+
+  trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
+  trx.addHint(transaction::Hints::Hint::NO_INDEXING);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return Result(
+        res.errorNumber(),
+        std::string("unable to start transaction: ") + res.errorMessage());
+  }
+
+  VPackSlice chunk = chunkSlice.at(0);
+
+  TRI_ASSERT(chunk.isObject());
+  auto lowSlice = chunk.get("low");
+  TRI_ASSERT(lowSlice.isString());
+  StringRef lowRef(lowSlice);
+
+  // last high
+  chunk = chunkSlice.at(numChunks - 1);
+  TRI_ASSERT(chunk.isObject());
+
+  auto highSlice = chunk.get("high");
+  TRI_ASSERT(highSlice.isString());
+  StringRef highRef(highSlice);
+
+  LogicalCollection* coll = trx.documentCollection();
+  auto iterator = createPrimaryIndexIterator(&trx, coll);
+
+  VPackBuilder builder;
+
+  // remove everything from the beginning of the key range until the lowest
+  // remote key
+  iterator.next(
+      [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+        StringRef docKey(RocksDBKey::primaryKey(rocksKey));
+        if (docKey.compare(lowRef) < 0) {
+          builder.clear();
+          builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
+                                            velocypack::ValueType::String));
+          trx.remove(col->name(), builder.slice(), options);
+          ++stats.numDocsRemoved;
+          // continue iteration
+          return true;
+        }
+
+        // stop iteration
+        return false;
+      },
+      std::numeric_limits<std::uint64_t>::max());
+  
+  // remove everything from the highest remote key until the end of the key range
+  auto index = col->lookupIndex(0); //RocksDBCollection->primaryIndex() is private
+  TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
+
+  RocksDBKeyLeaser key(&trx);
+  key->constructPrimaryIndexValue(primaryIndex->objectId(), highRef);
+  iterator.seek(key->string());
+
+  iterator.next(
+      [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+        StringRef docKey(RocksDBKey::primaryKey(rocksKey));
+        if (docKey.compare(highRef) > 0) {
+          builder.clear();
+          builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
+                                            velocypack::ValueType::String));
+          trx.remove(col->name(), builder.slice(), options);
+          ++stats.numDocsRemoved;
+        }
+
+        // continue iteration until end
+        return true;
+      },
+      std::numeric_limits<std::uint64_t>::max());
+
+  return trx.commit();
+}
+
 Result syncChunkRocksDB(
     DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
     InitialSyncerIncrementalSyncStats& stats,
@@ -505,7 +606,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   ManagedDocumentResult mmdr;
   OperationOptions options;
-
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
@@ -514,67 +614,16 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
   }
 
-  size_t const numChunks = static_cast<size_t>(chunkSlice.length());
+  {
+    // remove all keys that are below first remote key or beyond last remote key
+    Result res = removeKeysOutsideRange(chunkSlice, col, options, stats);
 
-  // remove all keys that are below first remote key or beyond last remote key
-  if (numChunks > 0) {
-    // first chunk
-    SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(syncer.vocbase()),
-      *col,
-      AccessMode::Type::EXCLUSIVE
-    );
-
-    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
-    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
-
-    Result res = trx.begin();
-
-    if (!res.ok()) {
-      return Result(
-          res.errorNumber(),
-          std::string("unable to start transaction: ") + res.errorMessage());
-    }
-
-    VPackSlice chunk = chunkSlice.at(0);
-
-    TRI_ASSERT(chunk.isObject());
-    auto lowSlice = chunk.get("low");
-    TRI_ASSERT(lowSlice.isString());
-
-    // last high
-    chunk = chunkSlice.at(numChunks - 1);
-    TRI_ASSERT(chunk.isObject());
-
-    auto highSlice = chunk.get("high");
-    TRI_ASSERT(highSlice.isString());
-
-    StringRef lowRef(lowSlice);
-    StringRef highRef(highSlice);
-
-    LogicalCollection* coll = trx.documentCollection();
-    auto iterator = createPrimaryIndexIterator(&trx, coll);
-
-    VPackBuilder builder;
-    iterator.next(
-        [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-          StringRef docKey(RocksDBKey::primaryKey(rocksKey));
-          if (docKey.compare(lowRef) < 0 || docKey.compare(highRef) > 0) {
-            builder.clear();
-            builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
-                                              velocypack::ValueType::String));
-            trx.remove(col->name(), builder.slice(), options);
-            ++stats.numDocsRemoved;
-          }
-        },
-        std::numeric_limits<std::uint64_t>::max());
-
-    res = trx.commit();
-
-    if (!res.ok()) {
+    if (res.fail()) {
       return res;
     }
   }
+
+  size_t const numChunks = static_cast<size_t>(chunkSlice.length());
 
   {
     if (syncer.isAborted()) {
@@ -744,12 +793,13 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                 rocksValue);  // we want probably to do this instead
             if (col->readDocument(&trx, documentId, mmdr) == false) {
               TRI_ASSERT(false);
-              return;
+              return true;
             }
             VPackSlice doc(mmdr.vpack());
             docRev = TRI_ExtractRevisionId(doc);
           }
           compareChunk(docKey, docRev);
+          return true;
         },
         std::numeric_limits<std::uint64_t>::max());  // no limit on documents
 
