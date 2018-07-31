@@ -1686,6 +1686,12 @@ constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
 
+/// 4005: ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH
+/// "smart graph attribute mismatch"
+/// The smart graph attribute of the given collection does not match the smart
+/// graph attribute of the graph.
+constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
+
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"
 /// General error during cluster repairs
