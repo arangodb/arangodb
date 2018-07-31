@@ -1,3 +1,9 @@
+v3.3.14 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #6031: Broken LIMIT in nested list iterations 
+
+
 v3.3.13 (2018-07-26)
 --------------------
 
