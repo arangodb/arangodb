@@ -456,12 +456,6 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                        "invalid response type");
       }
 
-      /*std::string ll(TRI_BeginStringBuffer(dump._buffer),
-                       TRI_LengthStringBuffer(dump._buffer));
-      for (std::string const& str : basics::StringUtils::split(ll, '\n')) {
-        if (!str.empty()) LOG_TOPIC(WARN, Logger::FIXME) << str;
-      }*/
-
       // transfer ownership of the buffer contents
       httpResponse->body().set(dump._buffer);
 
@@ -983,7 +977,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
       << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
   if (flush) {
-    MMFilesLogfileManager::instance()->flush(true, true, false);
+    MMFilesLogfileManager::instance()->flush(true, true, false, static_cast<double>(flushWait));
 
     // additionally wait for the collector
     if (flushWait > 0) {

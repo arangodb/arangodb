@@ -82,7 +82,7 @@ bool SharedQueryState::execute(std::function<bool()> const& cb) {
 
 /// @brief setter for the continue callback:
 ///        We can either have a handler or a callback
-void SharedQueryState::setContinueCallback() {
+void SharedQueryState::setContinueCallback() noexcept {
   CONDITION_LOCKER(guard, _condition);
   _hasHandler = false;
 }

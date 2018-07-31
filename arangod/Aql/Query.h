@@ -293,6 +293,10 @@ class Query {
   std::shared_ptr<SharedQueryState> sharedState() const { 
     return _sharedState;
   }
+  
+  std::shared_ptr<SharedQueryState> const& sharedStateRef() const noexcept { 
+    return _sharedState;
+  }
 
  private:
   /// @brief initializes the query
