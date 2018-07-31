@@ -92,6 +92,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   if (!res.ok()) {
     generateError(res);
+
+    return;
   }
 
   generateOk(rest::ResponseCode::OK, builder);
@@ -126,6 +128,7 @@ RestStatus RestViewHandler::execute() {
 void RestViewHandler::createView() {
   if (_request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+
     return;
   }
 
@@ -134,6 +137,7 @@ void RestViewHandler::createView() {
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting POST /_api/view");
+
     return;
   }
 
@@ -182,7 +186,15 @@ void RestViewHandler::createView() {
       VPackBuilder props;
 
       props.openObject();
-      view->toVelocyPack(props, true, false);
+
+      auto res = view->toVelocyPack(props, true, false);
+
+      if (!res.ok()) {
+        generateError(res);
+
+        return;
+      }
+
       props.close();
       generateResult(rest::ResponseCode::CREATED, props.slice());
     } else {
@@ -207,6 +219,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   if ((suffixes.size() != 2) || (suffixes[1] != "properties" && suffixes[1] != "rename")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting [PUT, PATCH] /_api/view/<view-name>/properties or PUT /_api/view/<view-name>/rename");
+
     return;
   }
 
@@ -216,6 +229,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+
     return;
   }
 
@@ -234,6 +248,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       if (!newName.isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "expecting \"name\" parameter to be a string");
+
         return;
       }
 
@@ -277,8 +292,17 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       VPackBuilder updated;
 
       updated.openObject();
-      view->toVelocyPack(updated, true, false);
+
+      auto res = view->toVelocyPack(updated, true, false);
+
       updated.close();
+
+      if (!res.ok()) {
+        generateError(res);
+
+        return;
+      }
+
       generateResult(rest::ResponseCode::OK, updated.slice());
 
       return;
@@ -354,6 +378,7 @@ void RestViewHandler::getViews() {
       ((suffixes.size() == 2) && (suffixes[1] != "properties"))) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting GET /_api/view[/<view-name>[/properties]]");
+
     return;
   }
 
@@ -404,6 +429,8 @@ void RestViewHandler::getViews() {
 
         if (!res.ok()) {
           generateError(res);
+
+          return;
         }
       } catch (arangodb::basics::Exception& e) {
         if (TRI_ERROR_FORBIDDEN != e.code()) {
