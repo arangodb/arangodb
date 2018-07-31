@@ -620,9 +620,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
         transaction::StandaloneContext::Create(vocbase()), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
 
-    trx.addHint(
-        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
-    trx.addHint(transaction::Hints::Hint::UNTRACKED);
+    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
