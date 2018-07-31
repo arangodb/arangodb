@@ -41,12 +41,14 @@ namespace arangodb {
 namespace graph {
 
 class GraphManager {
+
  private:
-  std::shared_ptr<transaction::Context> _ctx;
 
-  std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
+  TRI_vocbase_t& _vocbase;
 
-  std::shared_ptr<transaction::Context> const& ctx() const { return _ctx; };
+  bool _isInTransaction;
+
+  std::shared_ptr<transaction::Context> ctx() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create vertex collection by name
@@ -61,10 +63,11 @@ class GraphManager {
                           bool waitForSync, VPackSlice options);
 
  public:
-  GraphManager() = delete;
+  explicit GraphManager(TRI_vocbase_t& vocbase) : GraphManager(vocbase, false) {};
 
-  explicit GraphManager(std::shared_ptr<transaction::Context> ctx_)
-      : _ctx(std::move(ctx_)) {}
+  GraphManager(TRI_vocbase_t& vocbase, bool isInTransaction)
+      : _vocbase(vocbase), _isInTransaction(isInTransaction) {
+      }
 
   OperationResult readGraphs(velocypack::Builder& builder,
                              arangodb::aql::QueryPart queryPart) const;
@@ -115,20 +118,13 @@ class GraphManager {
   OperationResult createEdgeCollection(std::string const& name,
                                        bool waitForSync, VPackSlice options);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief assert that the edge definition is valid, that there are no
-  /// duplicate edge definitions in the argument, and that there are no
-  /// mismatching edge definitions in existing graphs.
-  ////////////////////////////////////////////////////////////////////////////////
-  Result assertFeasibleEdgeDefinitions(VPackSlice edgeDefinitionsSlice) const;
-
   /// @brief rename a collection used in an edge definition
   bool renameGraphCollection(std::string oldName, std::string newName);
 
   /// @brief check if the edge definitions conflicts with one in an existing
   /// graph
   Result checkForEdgeDefinitionConflicts(
-    std::unordered_map<std::string, arangodb::graph::EdgeDefinition> const&
+    std::map<std::string, arangodb::graph::EdgeDefinition> const&
     edgeDefinitions) const;
 
   /// @brief check if the edge definition conflicts with one in an existing
@@ -148,10 +144,36 @@ class GraphManager {
 
  private:
 
-  Result checkCreateGraphPermissions(
-      std::string const& graphName,
-      std::map<std::string, EdgeDefinition> const& edgeDefinitions,
-      std::set<std::string> const& orphanCollections) const;
+  /**
+   * @brief Helper function to make sure all collections required
+   *        for this graph are created or exist.
+   *        Will fail if the collections cannot be created, or
+   *        if they have a non-compatible sharding in SmartGraph-case.
+   *
+   * @param graph The graph information used to make sure all collections exist
+   *
+   * @return Either OK or an error.
+   */
+  Result ensureCollections(Graph const* graph, bool waitForSync) const;
+
+#ifdef USE_ENTERPRISE
+  Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync) const;
+#endif
+
+  /**
+   * @brief Create a new in memory graph object from the given input.
+   *        This graph object does not create collections and does
+   *        not check them. It cannot be used to access any kind
+   *        of data. In order to get a "usable" Graph object use
+   *        lookup by name.
+   *
+   * @param input The slice containing the graph data.
+   *
+   * @return A temporary Graph object 
+   */
+  std::pair<Result, std::shared_ptr<Graph>> buildGraphFromInput(std::string const& graphName, arangodb::velocypack::Slice input) const;
+
+  Result checkCreateGraphPermissions(Graph const* graph) const;
 
   Result checkDropGraphPermissions(
       Graph const& graph,

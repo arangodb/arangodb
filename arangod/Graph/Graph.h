@@ -94,13 +94,13 @@ class Graph {
   /// @brief name of this graph
   std::string const _graphName;
 
-  /// @brief the cids of all vertexCollections
+  /// @brief the names of all vertexCollections
   std::unordered_set<std::string> _vertexColls;
 
-  /// @brief the cids of all orphanCollections
+  /// @brief the names of all orphanCollections
   std::set<std::string> _orphanColls;
 
-  /// @brief the cids of all edgeCollections
+  /// @brief the names of all edgeCollections
   std::set<std::string> _edgeColls;
 
   /// @brief edge definition names of this graph, ordered as in the database
@@ -117,9 +117,6 @@ class Graph {
 
   /// @brief replication factor of this graph
   uint64_t _replicationFactor;
-
-  /// @brief smarGraphAttribute of this graph
-  std::string _smartGraphAttribute;
 
   /// @brief id of this graph
   std::string _id;
@@ -164,7 +161,6 @@ class Graph {
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
-  std::string const& smartGraphAttribute() const;
   std::string const& id() const;
   std::string const& rev() const;
 
@@ -173,7 +169,33 @@ class Graph {
   /// @brief return a VelocyPack representation of the graph
   void toVelocyPack(velocypack::Builder&) const;
 
+  /**
+   * @brief Create the GraphDocument to be stored in the database.
+   *
+   * @param builder The builder the result should be written in. Expects an open object.
+   */
+  virtual void toPersistence(velocypack::Builder& builder) const;
+
+  /**
+   * @brief Create the Graph Json Representation to be given to the client.
+   *        Uses toPersistence, but also includes _rev and _id values and encapsulates
+   *        the date into a graph attribute.
+   *
+   * @param builder The builder the result should be written in. Expects an open object.
+   */
   void graphToVpack(VPackBuilder& builder) const;
+
+
+  /**
+   * @brief Check if the collection is allowed to be used
+   * within this graph
+   *
+   * @param col The collection
+   *
+   * @return TRUE if we are safe to use it.
+   */
+  virtual Result validateCollection(LogicalCollection* col) const;
+
   void edgesToVpack(VPackBuilder& builder) const;
   void verticesToVpack(VPackBuilder& builder) const;
 
@@ -209,9 +231,6 @@ class Graph {
 
   /// @brief Set isSmart to the graph definition
   void setSmartState(bool state);
-
-  /// @brief Set smartGraphAttribute to the graph definition
-  void setSmartGraphAttribute(std::string&& smartGraphAttribute);
 
   /// @brief Set id to the graph definition
   void setId(std::string&& id);

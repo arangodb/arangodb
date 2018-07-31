@@ -59,6 +59,16 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
+std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
+  /* TODO Is this relevant?
+  if (_isInTransaction) {
+    // we must use v8
+    return transaction::V8Context::Create(_vocbase, true);
+  }
+  */
+  return transaction::StandaloneContext::Create(_vocbase);
+};
+
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
     const Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
@@ -92,7 +102,7 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
   }
   builder.close();  // array 'edgeDefinitions'
 
-  GraphManager gmngr{ctx()};
+  GraphManager gmngr{_vocbase};
 
   { // add orphans:
 
@@ -136,7 +146,7 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
   _graph.createCollectionOptions(collectionOptions, waitForSync);
   for (auto const& newCollection : newCollections) {
     // While the collection is new in the graph, it may still already exist.
-    if (GraphManager::getCollectionByName(ctx()->vocbase(), newCollection)) {
+    if (GraphManager::getCollectionByName(_vocbase, newCollection)) {
       continue;
     }
 
@@ -249,7 +259,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
-    GraphManager gmngr{ctx()};
+    GraphManager gmngr{_vocbase};
 
     // add the edge collection itself for removal
     gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(),
@@ -257,8 +267,8 @@ OperationResult GraphOperations::eraseEdgeDefinition(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
-            resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
+          &_vocbase, collection, [&](LogicalCollection* coll) {
+            resIn = methods::Collections::drop(&_vocbase, coll, false,
                                                -1.0);
           });
 
@@ -295,7 +305,7 @@ OperationResult GraphOperations::checkEdgeCollectionAvailability(
 OperationResult GraphOperations::checkVertexCollectionAvailability(
     std::string vertexCollectionName) {
   std::shared_ptr<LogicalCollection> def =
-      GraphManager::getCollectionByName(ctx()->vocbase(), vertexCollectionName);
+      GraphManager::getCollectionByName(_vocbase, vertexCollectionName);
 
   if (def == nullptr) {
     return OperationResult(Result(
@@ -328,7 +338,7 @@ OperationResult GraphOperations::editEdgeDefinition(
     return OperationResult{permRes};
   }
 
-  GraphManager gmngr{ctx()};
+  GraphManager gmngr{_vocbase};
   VPackBuilder collectionsOptions;
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
   result = gmngr.findOrCreateCollectionsByEdgeDefinition(
@@ -378,7 +388,7 @@ OperationResult GraphOperations::editEdgeDefinition(
 OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
                                                      bool waitForSync,
                                                      bool createCollection) {
-  GraphManager gmngr{ctx()};
+  GraphManager gmngr{_vocbase};
   std::string collectionName = document.get("collection").copyString();
   std::shared_ptr<LogicalCollection> def;
 
@@ -388,7 +398,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   if (result.fail()) {
     return result;
   }
-  def = GraphManager::getCollectionByName(ctx()->vocbase(), collectionName);
+  def = GraphManager::getCollectionByName(_vocbase, collectionName);
   if (def == nullptr && createCollection) {
     result = gmngr.createVertexCollection(collectionName, waitForSync,
                                           collectionsOptions.slice());
@@ -514,14 +524,14 @@ OperationResult GraphOperations::eraseOrphanCollection(
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
-    GraphManager gmngr{ctx()};
+    GraphManager gmngr{_vocbase};
     gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
 
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
-            resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
+          &_vocbase, collection, [&](LogicalCollection* coll) {
+            resIn = methods::Collections::drop(&_vocbase, coll, false,
                                                -1.0);
           });
 
@@ -566,7 +576,7 @@ OperationResult GraphOperations::addEdgeDefinition(
   }
 
   // ... in different graph
-  GraphManager gmngr{ctx()};
+  GraphManager gmngr{_vocbase};
 
   OperationResult result{gmngr.checkForEdgeDefinitionConflicts(edgeDefinition)};
   if (result.fail()) {
@@ -1029,7 +1039,7 @@ OperationResult GraphOperations::removeVertex(
       bindVars->add("vertexId", VPackValue(vertexId));
       bindVars->close();
 
-      arangodb::aql::Query query(true, ctx()->vocbase(), queryString, bindVars,
+      arangodb::aql::Query query(true, _vocbase, queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
 
       auto queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
@@ -1049,7 +1059,7 @@ OperationResult GraphOperations::removeVertex(
 }
 
 bool GraphOperations::collectionExists(std::string const& collection) const {
-  GraphManager gmngr{ctx()};
+  GraphManager gmngr{_vocbase};
   return gmngr.collectionExists(collection);
 }
 
@@ -1063,7 +1073,7 @@ bool GraphOperations::hasRWPermissionsFor(std::string const& collection) const {
 
 bool GraphOperations::hasPermissionsFor(std::string const& collection,
                                         auth::Level level) const {
-  std::string const& databaseName = ctx()->vocbase().name();
+  std::string const& databaseName = _vocbase.name();
 
   std::stringstream stringstream;
   stringstream << "When checking " << convertFromAuthLevel(level)
@@ -1088,7 +1098,7 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection,
 
 Result GraphOperations::checkEdgeDefinitionPermissions(
     EdgeDefinition const& edgeDefinition) const {
-  std::string const& databaseName = ctx()->vocbase().name();
+  std::string const& databaseName = _vocbase.name();
 
   std::stringstream stringstream;
   stringstream << "When checking permissions for edge definition `"

@@ -78,8 +78,7 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<Graph const> graph;
   graph.reset(lookupGraphByName(ctx, graphName));
 
-  ctx = transaction::V8Context::Create(vocbase, false);
-  GraphManager gmngr{ctx};
+  GraphManager gmngr{vocbase};
   OperationResult result = gmngr.removeGraph(*graph, true, dropCollections);
 
   VPackBuilder obj;
@@ -113,10 +112,7 @@ static void JS_RenameGraphCollection(
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, false);
-
-  ctx = transaction::V8Context::Create(vocbase, false);
-  GraphManager gmngr{ctx};
+  GraphManager gmngr{vocbase};
   bool r = gmngr.renameGraphCollection(oldName, newName);
 
   TRI_V8_RETURN(r);
@@ -140,10 +136,8 @@ static void JS_GraphExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, false);
-
   // check if graph already exists
-  GraphManager gmngr{ctx};
+  GraphManager gmngr{vocbase};
   bool r = gmngr.graphExists(graphName);
 
   TRI_V8_RETURN(r);
@@ -172,7 +166,9 @@ static void JS_GetGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   graph.reset(lookupGraphByName(ctx, graphName));
 
   VPackBuilder result;
+  result.openObject();
   graph->graphToVpack(result);
+  result.close();
   VPackSlice resSlice = result.slice().get("graph");
 
   if (!result.isEmpty()) {
@@ -189,9 +185,8 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, false);
 
-  GraphManager gmngr{ctx};
+  GraphManager gmngr{vocbase};
   VPackBuilder result;
   OperationResult r = gmngr.readGraphs(result, arangodb::aql::PART_DEPENDENT);
 
@@ -212,9 +207,8 @@ static void JS_GetGraphKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, false);
 
-  GraphManager gmngr{ctx};
+  GraphManager gmngr{vocbase};
   VPackBuilder result;
   OperationResult r =
       gmngr.readGraphKeys(result, arangodb::aql::PART_DEPENDENT);
@@ -269,22 +263,24 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   builder.close();
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, false);
 
-  GraphManager gmngr{ctx};
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << builder.toJson();
+  GraphManager gmngr{vocbase};
   OperationResult r = gmngr.createGraph(builder.slice(), false);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
-  ctx = transaction::V8Context::Create(vocbase, false);
+  auto ctx = transaction::V8Context::Create(vocbase, false);
 
   // TODO: use cache?
   std::shared_ptr<Graph const> graph;
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
+  result.openObject();
   graph->graphToVpack(result);
+  result.close();
 
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
@@ -319,8 +315,7 @@ static void JS_AddEdgeDefinitions(
   std::shared_ptr<Graph const> graph;
   graph.reset(lookupGraphByName(ctx, graphName));
 
-  ctx = transaction::V8Context::Create(vocbase, false);
-  GraphOperations gops{*graph, ctx};
+  GraphOperations gops{*graph, vocbase};
   OperationResult r = gops.addEdgeDefinition(edgeDefinition.slice(), false);
 
   if (r.fail()) {
@@ -331,7 +326,9 @@ static void JS_AddEdgeDefinitions(
   // TODO: use cache?
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
+  result.openObject();
   graph->graphToVpack(result);
+  result.close();
 
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
@@ -366,8 +363,7 @@ static void JS_EditEdgeDefinitions(
   std::shared_ptr<Graph const> graph;
   graph.reset(lookupGraphByName(ctx, graphName));
 
-  ctx = transaction::V8Context::Create(vocbase, false);
-  GraphOperations gops{*graph, ctx};
+  GraphOperations gops{*graph, vocbase};
   OperationResult r = gops.editEdgeDefinition(
       edgeDefinition.slice(), false,
       edgeDefinition.slice().get("collection").copyString());
@@ -380,7 +376,9 @@ static void JS_EditEdgeDefinitions(
   // TODO: use cache?
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
+  result.openObject();
   graph->graphToVpack(result);
+  result.close();
 
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
@@ -426,16 +424,14 @@ static void JS_RemoveVertexCollection(
   std::shared_ptr<Graph const> graph;
   graph.reset(lookupGraphByName(ctx, graphName));
 
-  ctx = transaction::V8Context::Create(vocbase, false);
-  GraphOperations gops{*graph, ctx};
-  OperationResult r;
 
   VPackBuilder builder;
   builder.openObject();
   builder.add("collection", VPackValue(vertexName));
   builder.close();
 
-  r = gops.eraseOrphanCollection(false, vertexName, dropCollection);
+  GraphOperations gops{*graph, vocbase};
+  OperationResult r = gops.eraseOrphanCollection(false, vertexName, dropCollection);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -445,7 +441,9 @@ static void JS_RemoveVertexCollection(
   // TODO: use cache?
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
+  result.openObject();
   graph->graphToVpack(result);
+  result.close();
 
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
@@ -491,8 +489,7 @@ static void JS_AddVertexCollection(
   std::shared_ptr<Graph const> graph;
   graph.reset(lookupGraphByName(ctx, graphName));
 
-  ctx = transaction::V8Context::Create(vocbase, false);
-  GraphOperations gops{*graph, ctx};
+  GraphOperations gops{*graph, vocbase};
 
   VPackBuilder builder;
   builder.openObject();
@@ -510,7 +507,9 @@ static void JS_AddVertexCollection(
   // TODO: use cache?
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
+  result.openObject();
   graph->graphToVpack(result);
+  result.close();
 
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
@@ -558,7 +557,7 @@ static void JS_DropEdgeDefinition(
   graph.reset(lookupGraphByName(ctx, graphName));
 
   ctx = transaction::V8Context::Create(vocbase, false);
-  GraphOperations gops{*graph, ctx};
+  GraphOperations gops{*graph, vocbase};
   OperationResult r =
       gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
 
@@ -570,7 +569,9 @@ static void JS_DropEdgeDefinition(
   // TODO: use cache?
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
+  result.openObject();
   graph->graphToVpack(result);
+  result.close();
 
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));

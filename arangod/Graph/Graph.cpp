@@ -92,10 +92,6 @@ uint64_t Graph::numberOfShards() const { return _numberOfShards; }
 
 uint64_t Graph::replicationFactor() const { return _replicationFactor; }
 
-std::string const& Graph::smartGraphAttribute() const {
-  return _smartGraphAttribute;
-}
-
 std::string const& Graph::id() const { return _id; }
 
 std::string const& Graph::rev() const { return _rev; }
@@ -113,10 +109,6 @@ void Graph::addOrphanCollection(std::string&& name) {
 }
 
 void Graph::setSmartState(bool state) { _isSmart = state; }
-
-void Graph::setSmartGraphAttribute(std::string&& smartGraphAttribute) {
-  _smartGraphAttribute = std::move(smartGraphAttribute);
-}
 
 void Graph::setNumberOfShards(uint64_t numberOfShards) {
   _numberOfShards = numberOfShards;
@@ -150,8 +142,37 @@ void Graph::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
+void Graph::toPersistence(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+
+  // The name
+  builder.add(StaticStrings::KeyString, VPackValue(_graphName));
+
+  // Cluster Information
+  builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
+  builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+  builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
+
+  // EdgeDefinitions
+  builder.add(VPackValue(StaticStrings::GraphEdgeDefinitions));
+  builder.openArray();
+  for (auto const& it : edgeDefinitions()) {
+    it.second.addToBuilder(builder);
+  }
+  builder.close(); // EdgeDefinitions
+
+  // Orphan Collections
+  builder.add(VPackValue(StaticStrings::GraphOrphans));
+  builder.openArray();
+  for (auto const& on : _orphanColls) {
+    builder.add(VPackValue(on));
+  }
+  builder.close(); // Orphans
+}
+
 Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
-    : _graphName(graphName_), _vertexColls(), _edgeColls() {
+    : _graphName(graphName_), _vertexColls(), _edgeColls(),
+    _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString, "")) {
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
     VPackSlice edgeDefs = slice.get(StaticStrings::GraphEdgeDefinitions);
     TRI_ASSERT(edgeDefs.isArray());
@@ -204,6 +225,7 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
     insertOrphanCollections(orphans);
   }
 
+  /*
 #ifdef USE_ENTERPRISE
   if (slice.hasKey(StaticStrings::GraphIsSmart)) {
     setSmartState(slice.get(StaticStrings::GraphIsSmart).getBool());
@@ -213,6 +235,7 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
         slice.get(StaticStrings::GraphSmartGraphAttribute).copyString());
   }
 #endif
+*/
 
   if (slice.hasKey(StaticStrings::NumberOfShards)) {
     setNumberOfShards(slice.get(StaticStrings::NumberOfShards).getUInt());
@@ -221,7 +244,7 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
     setReplicationFactor(slice.get(StaticStrings::ReplicationFactor).getUInt());
   }
   setId(StaticStrings::GraphCollection + "/" + graphName_);
-  setRev(slice.get(StaticStrings::RevString).copyString());
+
 }
 
 void Graph::enhanceEngineInfo(VPackBuilder&) const {}
@@ -363,10 +386,10 @@ Result Graph::validateOrphanCollection(VPackSlice const& orphanCollection) {
 Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
   auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
 
-  TRI_ASSERT(res.ok());
   if (res.fail()) {
     return res.copy_result();
   }
+  TRI_ASSERT(res.ok());
 
   EdgeDefinition const& edgeDefinition = res.get();
 
@@ -381,7 +404,6 @@ Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
   // This can only happen if addEdgeDefinition is called without clearing
   // _edgeDefs first (which would be a logical error), or if the same collection
   // is defined multiple times (which the user should not be allowed to do).
-  TRI_ASSERT(inserted);
   if (!inserted) {
     return Result(TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,
                   "Collection '" + collection + "' already added!");
@@ -436,50 +458,19 @@ bool Graph::hasOrphanCollection(std::string const& collectionName) const {
 }
 
 void Graph::graphToVpack(VPackBuilder& builder) const {
-  builder.add(VPackValue(VPackValueType::Object));
-  builder.add("graph", VPackValue(VPackValueType::Object));
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue("graph"));
+  builder.openObject();
 
-  builder.add("name", VPackValue(name()));
-
-  builder.add(StaticStrings::GraphEdgeDefinitions, VPackValue(VPackValueType::Array));
-  auto edgeDefs = edgeDefinitions();
-  for (auto const& name : edgeDefinitionNames()) {
-    EdgeDefinition const& def = edgeDefs.at(name);
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add("collection", VPackValue(def.getName()));
-    builder.add(StaticStrings::GraphFrom, VPackValue(VPackValueType::Array));
-    for (auto const& from : def.getFrom()) {
-      builder.add(VPackValue(from));
-    }
-    builder.close();  // array from
-    builder.add(StaticStrings::GraphTo, VPackValue(VPackValueType::Array));
-    for (auto const& to : def.getTo()) {
-      builder.add(VPackValue(to));
-    }
-    builder.close();  // array to
-    builder.close();  // object
-  }
-  builder.close();  // object edgedefs
-
-  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-  for (auto const& orphan : orphanCollections()) {
-    builder.add(VPackValue(orphan));
-  }
-  builder.close();  // orphan array
-
-  if (isSmart()) {
-    builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
-    builder.add(StaticStrings::GraphSmartGraphAttribute, VPackValue(smartGraphAttribute()));
-  }
-
-  builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
-  builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
+  toPersistence(builder);
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::RevString, VPackValue(rev()));
   builder.add(StaticStrings::IdString, VPackValue(id()));
+  builder.close();  // graph object
+}
 
-  builder.close();  // object
-  builder.close();  // object
-
+Result Graph::validateCollection(LogicalCollection* col) const {
+  return {TRI_ERROR_NO_ERROR};
 }
 
 void Graph::edgesToVpack(VPackBuilder& builder) const {

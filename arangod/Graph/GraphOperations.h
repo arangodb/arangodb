@@ -47,17 +47,16 @@ namespace graph {
 class GraphOperations {
  private:
   Graph const& _graph;
-  std::shared_ptr<transaction::Context> _ctx;
+  TRI_vocbase_t& _vocbase;
 
   Graph const& graph() const { return _graph; };
-  std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
-  std::shared_ptr<transaction::Context> const& ctx() const { return _ctx; };
+  std::shared_ptr<transaction::Context> ctx() const;
 
  public:
   GraphOperations() = delete;
   GraphOperations(Graph const& graph_,
-                  std::shared_ptr<transaction::Context> ctx_)
-      : _graph(graph_), _ctx(std::move(ctx_)) {}
+                  TRI_vocbase_t& vocbase)
+      : _graph(graph_), _vocbase(vocbase) {}
 
   // TODO I added the complex result type for the get* methods to exactly
   // reproduce (in the RestGraphHandler) the behaviour of the similar methods
