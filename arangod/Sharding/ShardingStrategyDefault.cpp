@@ -92,6 +92,7 @@ int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice sl
   int res = TRI_ERROR_NO_ERROR;
   usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
+
   uint64_t hash = hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
   // To improve our hash function result:
   hash = TRI_FnvHashBlock(hash, magicPhrase, magicLength);
@@ -158,13 +159,15 @@ uint64_t ShardingStrategyCommunityCompat::hashByAttributes(
           VPackBuilder tempBuilder;
           tempBuilder.add(VPackValue(key));
           sub = tempBuilder.slice();
-        } else {
-          if (!docComplete) {
-            error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-          }
-          // Null is equal to None/not present
-          sub = VPackSlice::nullSlice();
+          hash = sub.normalizedHash(hash);
+          continue;
         }
+
+        if (!docComplete) {
+          error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+        }
+        // Null is equal to None/not present
+        sub = VPackSlice::nullSlice();
       }
       hash = sub.normalizedHash(hash);
     }

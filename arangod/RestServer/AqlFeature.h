@@ -36,7 +36,7 @@ class AqlFeature final : public application_features::ApplicationFeature {
 
  public:
   static AqlFeature* lease();
-  static void unlease();
+  static void unlease() noexcept;
   void start() override final;
   void stop() override final;
  

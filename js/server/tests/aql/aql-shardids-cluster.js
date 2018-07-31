@@ -252,7 +252,12 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               FILTER joined.joinValue == doc.joinValue
             RETURN [doc, joined]
         `;
-        validatePlan(query, "IndexNode", collectionByKey);
+        
+        const isEnterprise = require("internal").isEnterprise();
+        if (isEnterprise) {
+          // enterprise distributes all numeric keys onto one shard
+          validatePlan(query, "IndexNode", collectionByKey);
+        }
         let res = db._query(query).toArray();
         // we find 4 in first Loop, and 4 joins each
         assertEqual(16, res.length);
@@ -261,6 +266,24 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(i % 5, joined.value);
           assertEqual(doc.joinValue, joined.joinValue);
         }
+      }
+    },
+    
+    testRestrictMultipleShardsStringKeys : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == "key${i}"
+            FOR joined IN ${cnKey}
+              FILTER joined.${shardKey} == "key${i}"
+              FILTER joined.joinValue == doc.joinValue
+            RETURN [doc, joined]
+        `;
+        
+        validatePlan(query, "IndexNode", collectionByKey);
       }
     },
 
