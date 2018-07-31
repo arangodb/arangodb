@@ -72,6 +72,7 @@ class ActionBase {
   static const char FIELDS[];
   static const char TYPE[];
   static const char INDEXES[];
+  static const char INDEX[];
   static const char SHARDS[];
   static const char DATABASE[];
   static const char COLLECTION[];

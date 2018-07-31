@@ -220,13 +220,12 @@ void handleLocalShard(
         auto const& type = index.get(TYPE).copyString();
         if (type != PRIMARY && type != EDGE) {
           std::string const id = index.get(ID).copyString();
-          if (indis.find(id) != indis.end()) {
+          if (indis.find(colname + "/" + id) != indis.end()) {
             indis.erase(id);
           } else {
-            #warning DropIndex
-            /*actions.push_back(
-              ActionDescription({{NAME, "DropIndex"}, {DATABASE, dbname},
-              {COLLECTION, colname}, {ID, id}}));*/
+            actions.push_back(
+              ActionDescription(
+                {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
           }
         }
       }

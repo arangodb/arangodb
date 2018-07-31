@@ -302,6 +302,7 @@ SET(ARANGOD_SOURCES
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp
+  Cluster/DropIndex.cpp
   Cluster/EnsureIndex.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp

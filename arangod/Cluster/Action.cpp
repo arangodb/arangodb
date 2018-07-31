@@ -28,6 +28,7 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropCollection.h"
 #include "Cluster/DropDatabase.h"
+#include "Cluster/DropIndex.h"
 #include "Cluster/EnsureIndex.h"
 #include "Cluster/SynchronizeShard.h"
 #include "Cluster/UpdateCollection.h"
@@ -66,6 +67,8 @@ void Action::create(
     _action.reset(new DropCollection(feature, description));
   } else if (name == "DropDatabase") {
     _action.reset(new DropDatabase(feature, description));
+  } else if (name == "DropIndex") {
+    _action.reset(new DropIndex(feature, description));
   } else if (name == "EnsureIndex") {
     _action.reset(new EnsureIndex(feature, description));
   } else if (name == "SynchronizeShard") {

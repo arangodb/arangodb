@@ -466,7 +466,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << result.errorMessage();
     return result;
   } else {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << result.errorMessage();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
   }
 
   result = getReadLock(endpoint, database, collection, clientId, rlid, timeout);
@@ -474,12 +474,6 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   return result;
   
 }
-
-
-arangodb::Result terminateAndStartOther() {
-  return arangodb::Result();
-}
-
 
 enum ApplierType {
   APPLIER_DATABASE,
@@ -822,8 +816,6 @@ arangodb::Result SynchronizeShard::synchronise() {
     } else {
 
       VPackSlice collections = sy.get(COLLECTIONS);
-
-        
       
       if (collections.length() == 0 ||
           collections[0].get("name").copyString() != shard) {
@@ -925,14 +917,12 @@ arangodb::Result SynchronizeShard::synchronise() {
   }
   
   // Tell others that we are done:
-  terminateAndStartOther();
   auto const endTime = system_clock::now();
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC(INFO, Logger::MAINTENANCE)
     << "synchronizeOneShard: done, " << database << "/" << shard << ", "
     << database << "/" << planId << ", started: "
     << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
   
-  _state=COMPLETE;
   return Result();
   
 }
@@ -941,6 +931,7 @@ SynchronizeShard::~SynchronizeShard() {};
 
 bool SynchronizeShard::first() {
   arangodb::Result res = synchronise();
+  _state=COMPLETE;
   return false;
 }
 

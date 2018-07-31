@@ -32,6 +32,7 @@ const char ActionBase::KEY[]="key";
 const char ActionBase::FIELDS[]="fields";
 const char ActionBase::TYPE[]="type";
 const char ActionBase::INDEXES[]="indexes";
+const char ActionBase::INDEX[]="index";
 const char ActionBase::SHARDS[]="shards";
 const char ActionBase::DATABASE[]="database";
 const char ActionBase::COLLECTION[]="collection";

@@ -65,7 +65,7 @@ void MaintenanceFeature::init() {
   requiresElevatedPrivileges(false); // ??? this mean admin priv?
 
   // these parameters might be updated by config and/or command line options
-  _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors()/4 +1);
+  _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors() +1);
   _secondsActionsBlock = 30;
   _secondsActionsLinger = 300;
 
@@ -412,7 +412,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
 
     // no pointer ... wait 1 second
     if (!_isShuttingDown && !ret_ptr) {
-      _actionRegistryCond.wait(1000000);
+      _actionRegistryCond.wait(100000);
     } // if
 
   } // while
@@ -427,7 +427,7 @@ VPackBuilder  MaintenanceFeature::toVelocyPack() const {
   READ_LOCKER(rLock, _actionRegistryLock);
 
   { VPackArrayBuilder ab(&vb);
-    for (auto action : _actionRegistry ) {
+    for (auto const& action : _actionRegistry ) {
       action->toVelocyPack(vb);
     } // for
 
