@@ -1506,6 +1506,57 @@ function aqlUpsertOptionsSuite () {
   };
 };
 
+function aqlUpsertSuite () {
+  return {
+    setUp: function () {
+      col = db._create(collectionName, {numberOfShards: 5, shardKeys: ["sk"]});
+
+      let list = [];
+      for (let i = 0; i < 2000; ++i) {
+        list.push({sk: "" + i, mod: i % 200, val: i});
+      }
+      col.save(list);
+      // check that all shards contain at least 1 document
+      assertEqual(5, Object.values(col.count(true)).filter(cnt => cnt > 0).length);
+      assertEqual(2000, col.count());
+    },
+
+    tearDown: function () {
+      db._drop(collectionName);
+    },
+
+    testUpsertWithMultipleMatchingDocuments: function () {
+      const q = `UPSERT {mod: 42}
+               INSERT {inserted: true}
+               UPDATE {updated: true}
+               IN ${collectionName}`;
+      db._query(q);
+      const docs = col.toArray();
+
+      assertEqual(2000, docs.length, `We falsely triggered an INSERT`);
+      assertEqual(0, docs.filter(d => d.inserted).length, `We falsely triggered an INSERT`);
+      assertEqual(0, docs.filter(d => d.mod !== 42 && d.updated).length, `We did update a wrong document`);
+      assertEqual(1, docs.filter(d => d.mod === 42 && d.updated).length, `We did not update exactly one document`);
+    },
+
+    testUpsertWithDifferingShards: function () {
+      for (let i = 0; i < 50; i++) {
+        const q = `UPSERT {val: ${i}}
+               INSERT {inserted: true}
+               UPDATE {updated: true}
+               IN ${collectionName}`;
+        db._query(q);
+      }
+
+      const docs = col.toArray();
+      assertEqual(2000, docs.length, `We falsely triggered an INSERT`);
+      assertEqual(0, docs.filter(d => d.inserted).length, `We falsely triggered an INSERT`);
+      assertEqual(50, docs.filter(d => d.val < 50 && d.updated).length, `We did not update exactly 50 documents`);
+      assertEqual(50, docs.filter(d => d.updated).length, `We did not update the right documents`);
+    },
+  };
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
@@ -1518,4 +1569,5 @@ jsunity.run(aqlReplaceWithOptionsSuite);
 jsunity.run(aqlReplaceWithRevOptionsSuite);
 jsunity.run(aqlRemoveOptionsSuite);
 jsunity.run(aqlUpsertOptionsSuite);
+jsunity.run(aqlUpsertSuite);
 return jsunity.done();

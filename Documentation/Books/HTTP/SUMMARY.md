@@ -14,6 +14,7 @@
 * [Documents](Document/README.md)
   * [Basics and Terminology](Document/AddressAndEtag.md)
   * [Working with Documents](Document/WorkingWithDocuments.md)
+  * [Batch document API](Document/BatchDocumentApi.md)
 * [Edges](Edge/README.md)
   * [Address and Etag](Edge/AddressAndEtag.md)
   * [Working with Edges](Edge/WorkingWithEdges.md)

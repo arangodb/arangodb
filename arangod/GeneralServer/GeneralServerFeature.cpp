@@ -49,6 +49,7 @@
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
+#include "RestHandler/RestBatchDocumentHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestCursorHandler.h"
@@ -67,9 +68,9 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
-#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
@@ -321,6 +322,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::DOCUMENT_PATH,
       RestHandlerCreator<RestDocumentHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::BATCH_DOCUMENT_PATH,
+      RestHandlerCreator<RestBatchDocumentHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::EDGES_PATH,

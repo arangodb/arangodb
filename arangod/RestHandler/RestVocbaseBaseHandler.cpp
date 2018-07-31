@@ -89,6 +89,7 @@ std::string const RestVocbaseBaseHandler::DATABASE_PATH = "/_api/database";
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
+std::string const RestVocbaseBaseHandler::BATCH_DOCUMENT_PATH = "/_api/batch/document";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edges path
