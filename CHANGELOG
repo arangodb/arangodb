@@ -1,6 +1,7 @@
 devel
 -----
 
+* fixed issue #5884: Subquery nodes are no longer created on DBServers
 
 * The AQL Editor in the Web UI now supports GeoJSON types and is able to render them.
 
