@@ -149,7 +149,7 @@ class Graph {
    *
    * @param builder The builder the result should be written in. Expects an open object.
    */
-  void graphToVpack(VPackBuilder& builder) const;
+  void graphForClient(VPackBuilder& builder) const;
 
 
   /**

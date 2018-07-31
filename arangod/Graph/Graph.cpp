@@ -51,6 +51,82 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
+Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
+    : _graphName(graphName_),
+      _vertexColls(),
+      _edgeColls(),
+      _numberOfShards(basics::VelocyPackHelper::readNumericValue<uint64_t>(
+          slice, StaticStrings::NumberOfShards, 1)),
+      _replicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
+          slice, StaticStrings::ReplicationFactor, 1)),
+      _rev(basics::VelocyPackHelper::getStringValue(
+          slice, StaticStrings::RevString, "")) {
+  if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    VPackSlice edgeDefs = slice.get(StaticStrings::GraphEdgeDefinitions);
+    TRI_ASSERT(edgeDefs.isArray());
+    if (!edgeDefs.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_GRAPH_INVALID_GRAPH,
+          "'edgeDefinitions' are not an array in the graph definition");
+    }
+
+    for (auto const& def : VPackArrayIterator(edgeDefs)) {
+      Result res = addEdgeDefinition(def);
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      // TODO maybe the following code can be simplified using _edgeDefs
+      // and/or after def is already validated.
+      // Or, this can be done during addEdgeDefinition as well.
+      TRI_ASSERT(def.isObject());
+      try {
+        std::string eCol =
+            basics::VelocyPackHelper::getStringValue(def, "collection", "");
+        addEdgeCollection(std::move(eCol));
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_INVALID_GRAPH,
+            "didn't find 'collection' in the graph definition");
+      }
+      // TODO what if graph is not in a valid format any more
+      try {
+        VPackSlice tmp = def.get(StaticStrings::GraphFrom);
+        insertVertexCollections(tmp);
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_INVALID_GRAPH,
+            "didn't find from-collection in the graph definition");
+      }
+      try {
+        VPackSlice tmp = def.get(StaticStrings::GraphTo);
+        insertVertexCollections(tmp);
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_INVALID_GRAPH,
+            "didn't find to-collection in the graph definition");
+      }
+    }
+  }
+  if (slice.hasKey(StaticStrings::GraphOrphans)) {
+    auto orphans = slice.get(StaticStrings::GraphOrphans);
+    insertVertexCollections(orphans);
+    insertOrphanCollections(orphans);
+  }
+
+  /*
+#ifdef USE_ENTERPRISE
+  if (slice.hasKey(StaticStrings::GraphIsSmart)) {
+    setSmartState(slice.get(StaticStrings::GraphIsSmart).getBool());
+  }
+  if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute)) {
+    setSmartGraphAttribute(
+        slice.get(StaticStrings::GraphSmartGraphAttribute).copyString());
+  }
+#endif
+*/
+
+}
+
 void Graph::insertVertexCollections(VPackSlice const arr) {
   TRI_ASSERT(arr.isArray());
   for (auto const& c : VPackArrayIterator(arr)) {
@@ -168,82 +244,6 @@ void Graph::toPersistence(VPackBuilder& builder) const {
     builder.add(VPackValue(on));
   }
   builder.close(); // Orphans
-}
-
-Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
-    : _graphName(graphName_),
-      _vertexColls(),
-      _edgeColls(),
-      _numberOfShards(basics::VelocyPackHelper::readNumericValue<uint64_t>(
-          slice, StaticStrings::NumberOfShards, 1)),
-      _replicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
-          slice, StaticStrings::ReplicationFactor, 1)),
-      _rev(basics::VelocyPackHelper::getStringValue(
-          slice, StaticStrings::RevString, "")) {
-  if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
-    VPackSlice edgeDefs = slice.get(StaticStrings::GraphEdgeDefinitions);
-    TRI_ASSERT(edgeDefs.isArray());
-    if (!edgeDefs.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_GRAPH_INVALID_GRAPH,
-          "'edgeDefinitions' are not an array in the graph definition");
-    }
-
-    for (auto const& def : VPackArrayIterator(edgeDefs)) {
-      Result res = addEdgeDefinition(def);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      // TODO maybe the following code can be simplified using _edgeDefs
-      // and/or after def is already validated.
-      // Or, this can be done during addEdgeDefinition as well.
-      TRI_ASSERT(def.isObject());
-      try {
-        std::string eCol =
-            basics::VelocyPackHelper::getStringValue(def, "collection", "");
-        addEdgeCollection(std::move(eCol));
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_GRAPH_INVALID_GRAPH,
-            "didn't find 'collection' in the graph definition");
-      }
-      // TODO what if graph is not in a valid format any more
-      try {
-        VPackSlice tmp = def.get(StaticStrings::GraphFrom);
-        insertVertexCollections(tmp);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_GRAPH_INVALID_GRAPH,
-            "didn't find from-collection in the graph definition");
-      }
-      try {
-        VPackSlice tmp = def.get(StaticStrings::GraphTo);
-        insertVertexCollections(tmp);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_GRAPH_INVALID_GRAPH,
-            "didn't find to-collection in the graph definition");
-      }
-    }
-  }
-  if (slice.hasKey(StaticStrings::GraphOrphans)) {
-    auto orphans = slice.get(StaticStrings::GraphOrphans);
-    insertVertexCollections(orphans);
-    insertOrphanCollections(orphans);
-  }
-
-  /*
-#ifdef USE_ENTERPRISE
-  if (slice.hasKey(StaticStrings::GraphIsSmart)) {
-    setSmartState(slice.get(StaticStrings::GraphIsSmart).getBool());
-  }
-  if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute)) {
-    setSmartGraphAttribute(
-        slice.get(StaticStrings::GraphSmartGraphAttribute).copyString());
-  }
-#endif
-*/
-
 }
 
 void Graph::enhanceEngineInfo(VPackBuilder&) const {}
@@ -456,7 +456,7 @@ bool Graph::hasOrphanCollection(std::string const& collectionName) const {
   return orphanCollections().find(collectionName) != orphanCollections().end();
 }
 
-void Graph::graphToVpack(VPackBuilder& builder) const {
+void Graph::graphForClient(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("graph"));
   builder.openObject();
@@ -465,6 +465,7 @@ void Graph::graphToVpack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::RevString, VPackValue(rev()));
   builder.add(StaticStrings::IdString, VPackValue(id()));
+  builder.add(StaticStrings::GraphName, VPackValue(_graphName));
   builder.close();  // graph object
 }
 

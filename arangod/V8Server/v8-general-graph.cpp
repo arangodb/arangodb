@@ -167,7 +167,7 @@ static void JS_GetGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder result;
   result.openObject();
-  graph->graphToVpack(result);
+  graph->graphForClient(result);
   result.close();
   VPackSlice resSlice = result.slice().get("graph");
 
@@ -279,7 +279,7 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
   result.openObject();
-  graph->graphToVpack(result);
+  graph->graphForClient(result);
   result.close();
 
   if (!result.isEmpty()) {
@@ -327,7 +327,7 @@ static void JS_AddEdgeDefinitions(
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
   result.openObject();
-  graph->graphToVpack(result);
+  graph->graphForClient(result);
   result.close();
 
   if (!result.isEmpty()) {
@@ -377,7 +377,7 @@ static void JS_EditEdgeDefinitions(
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
   result.openObject();
-  graph->graphToVpack(result);
+  graph->graphForClient(result);
   result.close();
 
   if (!result.isEmpty()) {
@@ -442,7 +442,7 @@ static void JS_RemoveVertexCollection(
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
   result.openObject();
-  graph->graphToVpack(result);
+  graph->graphForClient(result);
   result.close();
 
   if (!result.isEmpty()) {
@@ -508,7 +508,7 @@ static void JS_AddVertexCollection(
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
   result.openObject();
-  graph->graphToVpack(result);
+  graph->graphForClient(result);
   result.close();
 
   if (!result.isEmpty()) {
@@ -570,7 +570,7 @@ static void JS_DropEdgeDefinition(
   graph.reset(lookupGraphByName(ctx, graphName));
   VPackBuilder result;
   result.openObject();
-  graph->graphToVpack(result);
+  graph->graphForClient(result);
   result.close();
 
   if (!result.isEmpty()) {

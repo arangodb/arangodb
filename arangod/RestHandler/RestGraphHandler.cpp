@@ -760,7 +760,7 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   graph = _graphCache.getGraph(ctx, graph->name());
   VPackBuilder builder;
   builder.openObject();
-  graph->graphToVpack(builder);
+  graph->graphForClient(builder);
   builder.close();
 
   generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
@@ -809,7 +809,7 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
   graph = _graphCache.getGraph(ctx, graph->name());
   VPackBuilder builder;
   builder.openObject();
-  graph->graphToVpack(builder);
+  graph->graphForClient(builder);
   builder.close();
 
   generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
@@ -989,7 +989,7 @@ Result RestGraphHandler::graphActionReadGraphConfig(
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   VPackBuilder builder;
   builder.openObject();
-  graph->graphToVpack(builder);
+  graph->graphForClient(builder);
   builder.close();
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
@@ -1046,7 +1046,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
 
   VPackBuilder builder;
   builder.openObject();
-  graph->graphToVpack(builder);
+  graph->graphForClient(builder);
   builder.close();
 
   generateCreatedGraphConfig(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
