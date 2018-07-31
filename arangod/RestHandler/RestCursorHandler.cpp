@@ -48,7 +48,6 @@ RestCursorHandler::RestCursorHandler(
       _query(nullptr),
       _queryResult(),
       _queryRegistry(queryRegistry),
-      _queryLock(),
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false) {}
@@ -165,11 +164,12 @@ bool RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     arangodb::aql::PART_MAIN
   );
 
+  std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
   auto self = shared_from_this();
-  auto continueHandler = [this, self]() {
+  ss->setContinueHandler([this, self, ss] {
     continueHandlerExecution();
-  };
-  query->setContinueHandler(continueHandler);
+  });
+
   registerQuery(std::move(query));
   return true;
 }
@@ -341,7 +341,7 @@ bool RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
-    _query->killed(true);
+    _query->kill();
     _queryKilled = true;
     _hasStarted = true;
     return true;

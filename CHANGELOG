@@ -1,6 +1,18 @@
 devel
 -----
 
+
+* The AQL Editor in the Web UI now supports GeoJSON types and is able to render them.
+
+* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+
+* PR 5552: add "--latency true" option to arangoimport.  Lists microsecond latency
+
+* added `"pbkdf2"` method to `@arangodb/foxx/auth` module
+
+* the `@arangodb/foxx/auth` module now uses a different method to generate salts,
+  so salts are no longer guaranteed to be alphanumeric
+
 * fixed internal issue #2567: the Web UI was showing the possibility to move a shard
   from a follower to the current leader 
 
@@ -204,8 +216,6 @@ devel
 
   This saves copying the document data from the subquery to the outer scope and may
   enable follow-up optimizations.
-
-* fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header

@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <array>
+
 #include "formats/formats.hpp"
 #include "store/memory_directory.hpp"
 #include "store/mmap_directory.hpp"
@@ -786,7 +788,11 @@ IResearchView::IResearchView(
       std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
     };
 
-    std::array<DataStore*, 3> dataStores = {
+    #if defined(__APPLE__)
+      std::vector<DataStore*> dataStores = {
+    #else
+      std::array<DataStore*, 3> dataStores = {
+    #endif
       &(_memoryNode[0]._store),
       &(_memoryNode[1]._store),
       &_storePersisted
@@ -1977,6 +1983,9 @@ arangodb::Result IResearchView::updateProperties(
     if (!meta.init(slice, error, initialMeta)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
+
+    // reset non-updatable values to match current meta
+    meta._locale = viewMeta->_locale;
 
     if (arangodb::ServerState::instance()->isDBServer()) {
       viewMeta = std::make_shared<AsyncMeta>(); // create an instance not shared with cluster-view
