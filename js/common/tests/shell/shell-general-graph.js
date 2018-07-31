@@ -1130,10 +1130,7 @@ function EdgesAndVerticesSuite() {
         );
         fail();
       } catch (e) {
-        assertEqual(
-          e.errorMessage,
-          myED + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message
-        );
+        assertEqual(e.errorNum, arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code)
       }
       assertFalse(graph._exists(myGraphName));
       assertTrue(db._collection(myVD1) === null);
@@ -1260,14 +1257,14 @@ function EdgesAndVerticesSuite() {
         g[ec1].save(vertexId1, vertexId2, {});
         fail();
       } catch (e) {
-        assertEqual(e.errorNum, 1906);
+        assertEqual(e.errorNum, arangodb.errors.ERROR_GRAPH_INVALID_EDGE.code);
       }
 
       try {
         g[ec1].insert(vertexId1, vertexId2, {});
         fail();
       } catch (e) {
-        assertEqual(e.errorNum, 1906);
+        assertEqual(e.errorNum, arangodb.errors.ERROR_GRAPH_INVALID_EDGE.code);
       }
 
       g[vc1].remove(vertexId1);
