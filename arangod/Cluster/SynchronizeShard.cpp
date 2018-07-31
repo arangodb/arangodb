@@ -296,7 +296,7 @@ arangodb::Result cancelReadLockOnLeader (
 
   VPackBuilder body;
   { VPackObjectBuilder b(&body);
-    body.add(ID, VPackValue(lockJobId)); }
+    body.add(ID, VPackValue(std::to_string(lockJobId))); }
 
   // Note that we always use the _system database here because the actual
   // database might be gone already on the leader and we need to cancel
@@ -323,10 +323,10 @@ arangodb::Result cancelReadLockOnLeader (
 
 arangodb::Result cancelBarrier(
   std::string const& endpoint, std::string const& database,
-  std::string const& barrierId, std::string const& clientId,
+  int64_t barrierId, std::string const& clientId,
   double timeout = 120.0) {
   
-  if (std::stol(barrierId) <= 0) {
+  if (barrierId <= 0) {
     return Result();;
   }
 
@@ -338,7 +338,7 @@ arangodb::Result cancelBarrier(
 
   auto comres = cc->syncRequest(
     clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
-    DB + database + REPL_BARRIER_API + barrierId, std::string(),
+    DB + database + REPL_BARRIER_API + std::to_string(barrierId), std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
 
   if (comres->status == CL_COMM_SENT) { 
@@ -357,7 +357,7 @@ arangodb::Result cancelBarrier(
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
   
-  LOG_TOPIC(WARN, Logger::MAINTENANCE) << "cancelBarrier: success";
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
   return arangodb::Result();
   
 }
@@ -793,7 +793,6 @@ arangodb::Result SynchronizeShard::synchronise() {
       config.add(KEEP_BARRIER, VPackValue(true));
       config.add(LEADER_ID, VPackValue(leader));
       config.add(SKIP_CREATE_DROP, VPackValue(true));
-      config.add("verbose", VPackValue(true));
     }
 
     auto details = std::make_shared<VPackBuilder>();
@@ -834,7 +833,7 @@ arangodb::Result SynchronizeShard::synchronise() {
             << "synchronizeOneShard: long sync, before cancelBarrier" 
             << timepointToString(system_clock::now());
         }
-        cancelBarrier(ep, database, sy.get(BARRIER_ID).copyString(), clientId);
+        cancelBarrier(ep, database, sy.get(BARRIER_ID).getNumber<int64_t>(), clientId);
         if (longSync) {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
             << "synchronizeOneShard: long sync, after cancelBarrier" 
@@ -850,20 +849,20 @@ arangodb::Result SynchronizeShard::synchronise() {
 
         // Now start a read transaction to stop writes:
         uint64_t lockJobId = 0;
-        LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
           << database << ":" << collection->name();
         Result result = startReadLockOnLeader(
           ep, database, collection->name(), clientId, lockJobId);
         if (result.ok()) {
-          LOG_TOPIC(ERR, Logger::FIXME) << "lockJobId: " <<  lockJobId;
+          LOG_TOPIC(DEBUG, Logger::FIXME) << "lockJobId: " <<  lockJobId;
         } else {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
             << "synchronizeOneShard: error in startReadLockOnLeader:"
             << result.errorMessage();
         }
 
-        cancelBarrier(ep, database, sy.get("barrierId").copyString(), clientId); 
+        cancelBarrier(ep, database, sy.get("barrierId").getNumber<int64_t>(), clientId); 
 
         if (lockJobId != 0) {
 

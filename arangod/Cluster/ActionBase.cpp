@@ -52,6 +52,8 @@ ActionBase::ActionBase(MaintenanceFeature& feature,
   _id = _feature.nextActionId();
 }
 
+ActionBase::~ActionBase() {}
+
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
   bool ret_flag;
@@ -69,8 +71,6 @@ bool ActionBase::done() const {
   return (ret_flag);
 
 } // ActionBase::done
-
-ActionBase::~ActionBase() {}
 
 ActionDescription const& ActionBase::describe() const {
   return _description;
