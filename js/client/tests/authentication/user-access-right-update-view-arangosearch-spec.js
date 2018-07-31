@@ -63,6 +63,9 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
+    if (db._views() === 0) {
+      return; // arangosearch views are not supported
+    }
     expect(userSet.size).to.be.greaterThan(0); 
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
@@ -180,7 +183,7 @@ describe('User Rights Management', () => {
 
           const rootGetViewProps = (viewName, switchBack = true) => {
             helper.switchUser('root', dbName);
-            let properties = db._view(viewName).properties().properties;
+            let properties = db._view(viewName).properties();
             if (switchBack) {
                 helper.switchUser(name, dbName);
             }
@@ -201,8 +204,8 @@ describe('User Rights Management', () => {
           const rootGetDefaultViewProps = () => {
             helper.switchUser('root', dbName);
             try {
-              var tmpView = db._createView(this.title + "_tmpView");
-              var properties = tmpView.properties().properties;
+              var tmpView = db._createView(this.title + "_tmpView", testViewType, {});
+              var properties = tmpView.properties();
               db._dropView(this.title + "_tmpView");
             } catch (ignored) { }
             helper.switchUser(name, dbName);
@@ -219,7 +222,7 @@ describe('User Rights Management', () => {
 
           describe('update a', () => {
             beforeEach(() => {
-              rootCreateView(testViewName, { properties : { links: { [testCol1Name] : {includeAllFields: true } } } });
+              rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
             });
 
             afterEach(() => {
@@ -252,11 +255,11 @@ describe('User Rights Management', () => {
             it('view by property except links (partial)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name)) {
-                db._view(testViewName).properties({ properties : { 'locale' : "de_DE.UTF-8" } }, true);
-                expect(rootGetViewProps(testViewName)["locale"]).to.equal("de_DE.UTF-8", 'View property update reported success, but property was not updated');
+                db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, true);
+                expect(rootGetViewProps(testViewName)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
               } else {
                 try {
-                  db._view(testViewName).properties({ properties : { 'locale' : "de_DE.UTF-8" } }, true);
+                  db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, true);
                 } catch (e) {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }
@@ -268,12 +271,12 @@ describe('User Rights Management', () => {
 
             it('view by property except links (full)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
-              if (dbLevel['rw']) {
-                db._view(testViewName).properties({ properties : { "locale" : "de_DE.UTF-8" } }, false);
-                expect(rootGetViewProps(testViewName)["locale"]).to.equal("de_DE.UTF-8", 'View property update reported success, but property was not updated');
+              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+                db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, false);
+                expect(rootGetViewProps(testViewName)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
               } else {
                 try {
-                  db._view(testViewName).properties({ properties : { "locale" : "de_DE.UTF-8" } }, false);
+                  db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, false);
                 } catch (e) {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }
@@ -287,7 +290,7 @@ describe('User Rights Management', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                 db._view(testViewName).properties({}, false);
-                expect(rootGetViewProps(testViewName)).to.deep.equal(rootGetDefaultViewProps(), 'View properties update reported success, but properties were not updated');
+                expect(JSON.stringify(rootGetViewProps(testViewName))).to.equal(JSON.stringify(rootGetDefaultViewProps()), 'View properties update reported success, but properties were not updated');
               } else {
                 try {
                   db._view(testViewName).properties({}, false);
@@ -303,11 +306,11 @@ describe('User Rights Management', () => {
             it('view by existing link update (partial)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
-                db._view(testViewName).properties({ properties : { links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } } }, true);
+                db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
                 expect(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
               } else {
                 try {
-                  db._view(testViewName).properties({ properties : { links: { [testCol1Name]: { includeAllFields: true, analyzer: "text_de" } } } }, true);
+                  db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzer: "text_de" } } }, true);
                 } catch (e) {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }
@@ -318,11 +321,11 @@ describe('User Rights Management', () => {
             it('view by existing link update (full)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
-                db._view(testViewName).properties({ properties : { links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } } }, false);
+                db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
                 expect(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
               } else {
                 try {
-                  db._view(testViewName).properties({ properties : { links: { [testCol1Name]: { includeAllFields: true, analyzer: "text_de" } } } }, true);
+                  db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzer: "text_de" } } }, true);
                 } catch (e) {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }
@@ -334,11 +337,11 @@ describe('User Rights Management', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               rootGrantCollection(testCol2Name, name, 'rw');
               if (dbLevel['rw'].has(name)) {
-                db._view(testViewName).properties({ properties : { links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } } }, true);
+                db._view(testViewName).properties({ links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } }, true);
                 expect(rootGetViewProps(testViewName)["links"][testCol2Name]["analyzers"]).to.eql(["text_de"], 'View link update reported success, but property was not updated');
               } else {
                 try {
-                  db._view(testViewName).properties({ properties : { links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } } }, true);
+                  db._view(testViewName).properties({ links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } }, true);
                 } catch (e) {
                   expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
                 }

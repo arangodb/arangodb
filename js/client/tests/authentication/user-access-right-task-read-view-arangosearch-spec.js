@@ -113,6 +113,9 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
+    if (db._views() === 0) {
+      return; // arangosearch views are not supported
+    }
     expect(userSet.size).to.be.greaterThan(0); 
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
@@ -148,10 +151,10 @@ describe('User Rights Management', () => {
               rootCreateCollection(testCol1Name);
               rootCreateCollection(testCol2Name);
               var properties = { properties : {} };
-              properties['properties']['links'] = {};
-              properties['properties']['links'][testCol1Name] = { includeAllFields: true };
+              properties['links'] = {};
+              properties['links'][testCol1Name] = { includeAllFields: true };
               rootCreateView(testView1Name, properties);
-              properties['properties']['links'][testCol2Name] = { includeAllFields: true };
+              properties['links'][testCol2Name] = { includeAllFields: true };
               rootCreateView(testView2Name, properties);
               rootPrepareCollection(testCol1Name, testNumDocs);
               rootPrepareCollection(testCol2Name, testNumDocs, false);
@@ -364,40 +367,75 @@ describe('User Rights Management', () => {
                 }
               });
 
-              it('by AQL with links to multiple collections with none access level to one of them', () => {
-                expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
-                rootGrantCollection(testCol2Name, name, 'none');
-                setKey(keySpaceId, name);
-                const taskId = 'task_read_view_multi_collections_with_1of_none_access_' + name;
-                const task = {
-                  id: taskId,
-                  name: taskId,
-                  command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      let query = \"FOR d IN VIEW ${testView2Name} RETURN d\";
-                      let result = db._query(query, null, { waitForSync: true });
-                      global.KEY_SET('${keySpaceId}', '${name}_length', result.toArray().length);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
-                    }
-                  })(params);`
-                };
-                if (dbLevel['rw'].has(name)) {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to read the view with insufficient rights`);
-                } else {
-                  try {
+              describe('with links to multiple collections with none access level to one of them', () => {
+                before(() => {
+                    rootGrantCollection(testCol2Name, name, 'none');
+                    expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
+                });
+
+                it('by AQL query (data)', () => {
+                  setKey(keySpaceId, name);
+                  const taskId = 'task_read_view_multi_collections_with_1of_none_access_data_' + name;
+                  const task = {
+                    id: taskId,
+                    name: taskId,
+                    command: `(function (params) {
+                      try {
+                        const db = require('@arangodb').db;
+                        let query = \"FOR d IN VIEW ${testView2Name} RETURN d\";
+                        let result = db._query(query, null, { waitForSync: true });
+                        global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      } catch (e) {
+                        global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      }finally {
+                        global.KEY_SET('${keySpaceId}', '${name}', true);
+                      }
+                    })(params);`
+                  };
+                  if (dbLevel['rw'].has(name)) {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                  } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to perform a query on view with insufficient rights`);
+                  } else {
+                    try {
+                      tasks.register(task);
+                      expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    } catch (e) {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
+                    }
                   }
-                }
+                });
+                it('by its properties', () => {
+                  setKey(keySpaceId, name);
+                  const taskId = 'task_read_view_multi_collections_with_1of_none_access_props_' + name;
+                  const task = {
+                    id: taskId,
+                    name: taskId,
+                    command: `(function (params) {
+                      try {
+                        const db = require('@arangodb').db;
+                        db._view('${testView2Name}').properties();
+                        global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      } catch (e) {
+                        global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      }finally {
+                        global.KEY_SET('${keySpaceId}', '${name}', true);
+                      }
+                    })(params);`
+                  };
+                  if (dbLevel['rw'].has(name)) {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to get a view properties with insufficient rights`);
+                  } else {
+                    try {
+                      tasks.register(task);
+                      expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    } catch (e) {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
+                    }
+                  }
+                });
               });
             });
           });

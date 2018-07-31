@@ -101,6 +101,9 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
+    if (db._views() === 0) {
+      return; // arangosearch views are not supported
+    }
     expect(userSet.size).to.be.greaterThan(0); 
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
@@ -187,7 +190,7 @@ describe('User Rights Management', () => {
               var view = db._view(viewName);
               if (view != null) {
                 links.every(function(link) {
-                  const links = view.properties().properties.links;
+                  const links = view.properties().links;
                   if (links != null && links.hasOwnProperty([link])){
                     return true;
                   } else {
@@ -266,7 +269,7 @@ describe('User Rights Management', () => {
                     try {
                       const db = require('@arangodb').db;
                       var view = db._createView('${testViewName}', '${testViewType}', {});
-                      view.properties({ properties : { links : { '${testColName}': { includeAllFields: true } } } }, true);
+                      view.properties( { links : { '${testColName}': { includeAllFields: true } } }, true);
                     } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
@@ -283,7 +286,12 @@ describe('User Rights Management', () => {
                       tasks.register(task);
                       wait(keySpaceId, name);
                     } catch (e) {
-                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
+                      if(colLevel['ro'].has(name)) {
+                        expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code, "Expected to get read only error code, but got another one");
+                      }
+                      else {
+                        expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error code, but got another one");
+                      }
                     }
                     if(!dbLevel['rw'].has(name)) {
                       expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
