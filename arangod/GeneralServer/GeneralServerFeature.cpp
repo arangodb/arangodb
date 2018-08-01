@@ -221,12 +221,16 @@ void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
     server->stopListening();
   }
+  
+  _jobManager->deleteJobs();
 }
 
 void GeneralServerFeature::unprepare() {
   for (auto& server : _servers) {
     delete server;
   }
+
+  _jobManager.reset();
 
   GENERAL_SERVER = nullptr;
   JOB_MANAGER = nullptr;

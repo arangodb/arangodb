@@ -246,6 +246,14 @@
 
 #define UNUSED(par) (void)(par)
 
+#ifndef AGB_IGNORE_UNUSED
+#if defined(__GNUC__)
+#define ADB_IGNORE_UNUSED __attribute__((unused))
+#else
+#define ADB_IGNORE_UNUSED /* unused */
+#endif
+#endif
+
 #define NS_BEGIN(ns) namespace ns {
 #define NS_LOCAL namespace {
 #define NS_ROOT NS_BEGIN(iresearch)
