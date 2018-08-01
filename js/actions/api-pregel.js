@@ -62,18 +62,18 @@ function post_api_pregel (req, res) {
   if (!json.algorithm || typeof json.algorithm !== 'string') {
     return notFound(req, res, 'invalid algorithm');
   }
-  
+
   var params = json.params || {};
   var executionNum;
   if (json.vertexCollections && json.vertexCollections instanceof Array
       && json.edgeCollections && typeof json.edgeCollection === 'string') {
-    
+
     executionNum = db._pregelStart(json.algorithm,
                                    json.vertexCollections,
                                    json.edgeCollections,
                                    params);
     actions.resultOk(req, res, actions.HTTP_OK, executionNum);
-    
+
   } else if (json.graphName &&  typeof json.graphName === 'string') {
     var graph_module;
     if (internal.isEnterprise()) {
@@ -94,7 +94,7 @@ function post_api_pregel (req, res) {
         executionNum = db._pregelStart(json.algorithm, vertexCollections,
                                        edgeCollections, params);
         actions.resultOk(req, res, actions.HTTP_OK, executionNum);
-        
+
       } else {
         return badParam(req, res, "No edge collection specified");
       }
@@ -131,7 +131,7 @@ function delete_api_pregel(req, res) {
 // / @brief gateway
 // //////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
+/*actions.defineHttp({
   url: '_api/control_pregel',
 
   callback: function (req, res) {
@@ -140,15 +140,15 @@ actions.defineHttp({
         case actions.POST:
           post_api_pregel(req, res);
           break;
-                   
+
         case actions.GET:
           get_api_pregel(req, res);
           break;
-        
+
         case actions.DELETE:
           delete_api_pregel(req, res);
           break;
-        
+
         default:
           actions.resultUnsupported(req, res);
       }
@@ -156,4 +156,4 @@ actions.defineHttp({
       actions.resultException(req, res, err);
     }
   }
-});
+});*/

@@ -58,20 +58,15 @@ function getCoordinators() {
 
 const servers = getCoordinators();
 
-function TasksAuthSuite () {
+function PregelAuthSuite () {
   'use strict';
-  const cns = ["animals", "fruits"];
-  const keys = [
-    ["ant", "bird", "cat", "dog"],
-    ["apple", "banana", "coconut", "date"]
-  ];
   let cs = [];
   let coordinators = [];
   const users = [
     { username: 'alice', password: 'pass1' },
     { username: 'bob', password: 'pass2' },
   ];
-  const baseTasksUrl = `/_api/tasks`;
+  const baseUrl = `/_api/control_pregel`;
 
   function sendRequest(auth, method, endpoint, body, usePrimary) {
     let res;
@@ -114,13 +109,15 @@ function TasksAuthSuite () {
       }
 
       cs = [];
-      for (let i = 0; i < cns.length; i++) {
-        db._drop(cns[i]);
-        cs.push(db._create(cns[i]));
-        assertTrue(cs[i].name() === cns[i]);
-        for (let key in keys[i]) {
-          cs[i].save({ _key: key });
+      cs.push(db._create("vertices"));
+      cs.push(db._createEdgeCollection("edges", {shardKeys: ["vertex"]}));
+      for (let i = 1; i <= 250; ++i) {
+        cs[0].save({ _key: `v_${i}` });
+        const edges = [];
+        for (let j = 1; j < i; ++j) {
+          edges.push({ _from: `vertices/v_${j}`, _to: `vertices/v_${i}` });
         }
+        cs[1].save(edges);
       }
 
       try {
@@ -132,82 +129,90 @@ function TasksAuthSuite () {
 
       userModule.grantDatabase(users[0].username, '_system', 'rw');
       userModule.grantDatabase(users[1].username, '_system', 'rw');
-      userModule.grantCollection(users[0].username, '_system', cns[0], 'ro');
-      userModule.grantCollection(users[1].username, '_system', cns[0], 'ro');
-      userModule.grantCollection(users[0].username, '_system', cns[1], 'ro');
-      userModule.grantCollection(users[1].username, '_system', cns[1], 'none');
+      userModule.grantCollection(users[0].username, '_system', 'vertices', 'rw');
+      userModule.grantCollection(users[1].username, '_system', 'vertices', 'rw');
+      userModule.grantCollection(users[0].username, '_system', 'edges', 'rw');
+      userModule.grantCollection(users[1].username, '_system', 'edges', 'ro');
 
       require("internal").wait(2);
     },
 
     tearDown: function() {
-      db._drop(cns[0]);
-      db._drop(cns[1]);
+      db._drop("edges");
+      db._drop("vertices");
       userModule.remove(users[0].username);
       userModule.remove(users[1].username);
       cs = [];
       coordinators = [];
     },
 
-    testTaskForwardingSameUser: function() {
-      let url = baseTasksUrl;
+    testPregelForwardingSameUser: function() {
+      let url = baseUrl;
       const task = {
-        command: `const time = Date.now();`,
-        period: 2
+        algorithm: "pagerank",
+        vertexCollections: ["vertices"],
+        edgeCollections: ["edges"],
+        params: {
+          resultField: "result"
+        }
       };
       let result = sendRequest(users[0], 'POST', url, task, true);
 
+      assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertFalse(result.body.id === undefined);
-      assertEqual(result.body.period, 2);
+      assertTrue(result.body > 1)
 
-      const taskId = result.body.id;
-      url = `${baseTasksUrl}/${taskId}`;
+      const taskId = result.body;
+      url = `${baseUrl}/${taskId}`;
       result = sendRequest(users[0], 'GET', url, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertEqual(taskId, result.body.id);
+      assertEqual("running", result.body.state);
 
       require('internal').wait(5.0, false);
 
-      url = `${baseTasksUrl}/${taskId}`;
+      url = `${baseUrl}/${taskId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
-      assertFalse(result.body.error);
       assertEqual(result.status, 200);
+      require('internal').print(JSON.stringify(result));
+      assertEqual(result.body, "");
     },
 
-    testTaskForwardingDifferentUser: function() {
-      let url = baseTasksUrl;
+    testPregelForwardingDifferentUser: function() {
+      let url = baseUrl;
       const task = {
-        command: `const time = Date.now();`,
-        period: 2
+        algorithm: "pagerank",
+        vertexCollections: ["vertices"],
+        edgeCollections: ["edges"],
+        params: {
+          resultField: "result"
+        }
       };
       let result = sendRequest(users[0], 'POST', url, task, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertFalse(result.body.id === undefined);
-      assertEqual(result.body.period, 2);
+      assertTrue(result.body > 1)
 
-      const taskId = result.body.id;
-      url = `${baseTasksUrl}/${taskId}`;
+      const taskId = result.body;
+      url = `${baseUrl}/${taskId}`;
       result = sendRequest(users[1], 'GET', url, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.body.error);
       assertEqual(result.status, 404);
 
-      url = `${baseTasksUrl}/${taskId}`;
+      url = `${baseUrl}/${taskId}`;
       result = sendRequest(users[1], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.body.error);
       assertEqual(result.status, 404);
 
-      url = `${baseTasksUrl}/${taskId}`;
+      url = `${baseUrl}/${taskId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
@@ -218,6 +223,6 @@ function TasksAuthSuite () {
   };
 }
 
-jsunity.run(TasksAuthSuite);
+jsunity.run(PregelAuthSuite);
 
 return jsunity.done();
