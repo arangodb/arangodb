@@ -18,7 +18,11 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Tobias Gödderz
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
+
+
+// current draft at: https://github.com/arangodb/documents/blob/proposal/batch-document-api/FeatureProposals/BatchDocumentApi.md
 
 #ifndef ARANGOD_REST_HANDLER_REST_BATCH_DOCUMENT_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_BATCH_DOCUMENT_HANDLER_H 1
@@ -65,6 +69,16 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
   void doRemoveDocuments(
     std::string const &collection, const rest::batch_document_handler::RemoveRequest &request
   );
+
+  void generateHttpResponseSuccess(
+      VPackSlice resultArray,
+      std::unique_ptr<VPackBuilder> extra,
+      VPackOptions const* options);
+  void generateHttpResponse(
+      rest::ResponseCode restResponseCode,
+      VPackSlice resultArray,
+      std::unique_ptr<VPackBuilder> extra,
+      VPackOptions const* options);
 };
 }
 

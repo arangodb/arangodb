@@ -28,6 +28,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "Basics/StringRef.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -582,7 +583,101 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
     return;
   }
 
-  generateDeleted(result, collection,
-    TRI_col_type_e(trx->getCollectionType(collection)),
+
+  OperationOptions ops = request.getOptions();
+  LOG_DEVEL << "return old" << ops.returnOld;
+
+  generateHttpResponseSuccess(result.slice(), nullptr,
     trx->transactionContextPtr()->getVPackOptionsForDump());
+//    TRI_col_type_e(trx->getCollectionType(collection)),
+//  generateDeleted(result, collection,
+//    TRI_col_type_e(trx->getCollectionType(collection)),
+//    trx->transactionContextPtr()->getVPackOptionsForDump());
 }
+
+void RestBatchDocumentHandler::generateHttpResponse(
+    rest::ResponseCode restResponseCode,
+    VPackSlice resultArray,
+    std::unique_ptr<VPackBuilder> extra,
+    VPackOptions const* options){
+
+  TRI_ASSERT(resultArray.isArray() || resultArray.isObject());
+  TRI_ASSERT(extra->isOpenObject());
+
+  VPackBuilder builder;
+  {
+    // open response object
+    builder.openObject();
+    if (resultArray.isObject()) {
+      // fix that we do not always return arrays form internal operiatons
+      if(resultArray.hasKey(StaticStrings::KeyString)){
+        builder.add(VPackValue("result"));
+        builder.openArray();
+        builder.add(resultArray);
+        builder.close();
+      } else {
+        // error FIXME
+      }
+    } else if (resultArray.isArray()){
+      builder.add("result", resultArray);
+    }
+
+    // add extra  - mostly for errors
+    extra->close();
+    for(auto item : VPackObjectIterator(extra->slice())){
+      StringRef ref(item.key);
+      builder.add(ref.data(),ref.size(), item.value);
+    }
+    // close response object
+    builder.close();
+  }
+  resetResponse(restResponseCode);
+
+//  if (slice.isNone()) {
+//    // will happen if silent == true
+//    slice = VelocyPackHelper::EmptyObjectValue();
+//  } else {
+//    TRI_ASSERT(slice.isObject() || slice.isArray());
+//    if (slice.isObject()) {
+//      _response->setHeaderNC(
+//          StaticStrings::Etag,
+//          "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
+//      // pre 1.4 location headers withdrawn for >= 3.0
+//      std::string escapedHandle(assembleDocumentId(
+//          collectionName, slice.get(StaticStrings::KeyString).copyString(),
+//          true));
+//      _response->setHeaderNC(StaticStrings::Location,
+//                             std::string("/_db/" + _request->databaseName() +
+//                                         DOCUMENT_PATH + "/" + escapedHandle));
+//    }
+//  }
+
+  LOG_DEVEL << builder.slice().toJson();
+  writeResult(builder.slice(), *options);
+
+}
+
+void RestBatchDocumentHandler::generateHttpResponseSuccess(
+    VPackSlice result,
+    std::unique_ptr<VPackBuilder> extra,
+    VPackOptions const* options) {
+
+  if (!extra) {
+    extra = std::make_unique<VPackBuilder>();
+    extra->openObject();
+  }
+
+  extra->add(StaticStrings::Error, VPackValue(false));
+
+  auto restResponseCode = rest::ResponseCode::ACCEPTED;
+   //  if (result._options.waitForSync) {
+   //    resetResponse(rest::ResponseCode::OK);
+   //  } else {
+   //    resetResponse(rest::ResponseCode::ACCEPTED);
+   //  }
+
+  LOG_DEVEL << result.toJson();
+
+  generateHttpResponse(restResponseCode, result, std::move(extra), options);
+}
+

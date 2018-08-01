@@ -104,7 +104,7 @@ describe('_api/batch/document', () => {
 
   // READ IS NOT YET IMPLEMENTED! Replace the xit() calls by it() when it's done.
   describe('read document suite', () => {
-    const n = 2000;
+    const n = 4;
     let docsByKey;
     let docsByVal;
 
@@ -157,7 +157,7 @@ describe('_api/batch/document', () => {
   });
 
   describe('remove document suite', () => {
-    const n = 2000;
+    const n = 3;
     let docsByKey;
     let docsByVal;
 
@@ -188,10 +188,18 @@ describe('_api/batch/document', () => {
           data: [{pattern: {_key: doc._key}}],
           options: {},
         });
+
+        print("############################################")
+        print(JSON.stringify(response))
+        print("############################################")
+        print(response.json)
+        print("############################################")
+
         expect(response.statusCode).to.equal(202);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
         expect(response.json.error).to.equal(false);
-        expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]);
+        expect(response.json.result).to.deep.equal([ metaOfDoc(doc)]);
+        //expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
         --docsLeft;
         expect(db[colName].count()).to.equal(docsLeft);
       });
@@ -204,6 +212,12 @@ describe('_api/batch/document', () => {
         data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
         options: {},
       });
+
+      print("############################################")
+      print(JSON.stringify(response))
+      print("############################################")
+      print(response.json)
+      print("############################################")
 
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
