@@ -188,12 +188,12 @@ void CheckVersionFeature::checkVersion() {
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
   } else if (*_result > 1) {
-    if (*_result == 2) {
+    if (*_result == 3) {
       // downgrade needed
       LOG_TOPIC(FATAL, Logger::FIXME)
           << "Database version check failed: downgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_DOWNGRADE_REQUIRED);
-    } else if (*_result == 3) {
+    } else if (*_result == 2) {
       LOG_TOPIC(FATAL, Logger::FIXME)
           << "Database version check failed: upgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_UPGRADE_REQUIRED);
