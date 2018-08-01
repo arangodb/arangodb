@@ -29,6 +29,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
+#include "StorageEngine/TransactionState.h"
 
 #include <velocypack/Builder.h>
 
@@ -70,7 +71,7 @@ class PhysicalCollection {
   virtual int close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
-  
+
   /// @brief rotate the active journal - will do nothing if there is no journal
   virtual int rotateActiveJournal() { return TRI_ERROR_NO_ERROR; }
 
@@ -84,13 +85,13 @@ class PhysicalCollection {
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
-  
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
 
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
-  
+
   bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
   /// @brief Find index by definition
@@ -101,10 +102,10 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-                       
+
   void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
-  
+
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures();
 
@@ -146,7 +147,7 @@ class PhysicalCollection {
   virtual Result read(transaction::Methods*,
                       arangodb::StringRef const& key,
                       ManagedDocumentResult& result, bool) = 0;
-  
+
   virtual Result read(transaction::Methods*,
                       arangodb::velocypack::Slice const& key,
                       ManagedDocumentResult& result, bool) = 0;
@@ -154,7 +155,7 @@ class PhysicalCollection {
   virtual bool readDocument(transaction::Methods* trx,
                             LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
-  
+
   virtual bool readDocumentWithCallback(transaction::Methods* trx,
                                         LocalDocumentId const& token,
                                         IndexIterator::DocumentCallback const& cb) const = 0;
@@ -165,7 +166,7 @@ class PhysicalCollection {
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_tick_t& revisionId) = 0;
-  
+
   Result insert(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
                 arangodb::ManagedDocumentResult& result,
@@ -175,21 +176,29 @@ class PhysicalCollection {
     return insert(trx, newSlice, result, options, resultMarkerTick, lock, unused);
   }
 
-  virtual Result update(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice const newSlice,
-                        ManagedDocumentResult& result,
-                        OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                        arangodb::velocypack::Slice const key) = 0;
+  virtual Result update(
+    arangodb::transaction::Methods* trx,
+    ManagedDocumentResult& mdr,
+    TRI_voc_rid_t revisionId,
+    arangodb::velocypack::Slice const newDoc,
+    LocalDocumentId const newDocumentId,
+    arangodb::velocypack::Slice const oldDoc,
+    LocalDocumentId const oldDocumentId,
+    TRI_voc_tick_t& resultMarkerTick,
+    OperationOptions& options
+  ) = 0;
 
-  virtual Result replace(transaction::Methods* trx,
-                         arangodb::velocypack::Slice const newSlice,
-                         ManagedDocumentResult& result,
-                         OperationOptions& options,
-                         TRI_voc_tick_t& resultMarkerTick, bool lock,
-                         TRI_voc_rid_t& prevRev,
-                         ManagedDocumentResult& previous) = 0;
+  virtual Result replace(
+    arangodb::transaction::Methods* trx,
+    ManagedDocumentResult& mdr,
+    TRI_voc_rid_t revisionId,
+    arangodb::velocypack::Slice const newDoc,
+    LocalDocumentId const newDocumentId,
+    arangodb::velocypack::Slice const oldDoc,
+    LocalDocumentId const oldDocumentId,
+    TRI_voc_tick_t& resultMarkerTick,
+    OperationOptions& options
+  ) = 0;
 
   virtual Result remove(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice const slice,
@@ -198,6 +207,20 @@ class PhysicalCollection {
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev,
                         TRI_voc_rid_t& revisionId) = 0;
+
+  virtual int lockRead(bool useDeadlockDetector,
+                       TransactionState const* state,
+                       double timeout) = 0;
+  virtual int lockWrite(bool useDeadlockDetector,
+                       TransactionState const* state,
+                       double timeout) = 0;
+  virtual int unlockRead(bool useDeadlockDetector,
+                       TransactionState const* state) = 0;
+  virtual int unlockWrite(bool useDeadlockDetector,
+                       TransactionState const* state) = 0;
+
+  /// @brief track the usage of waitForSync option in an operation
+  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
  protected:
   PhysicalCollection(
@@ -209,6 +232,10 @@ class PhysicalCollection {
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
   // SECTION: Document pre commit preperation
+
+  int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
+                    TRI_voc_rid_t found) const;
+
 
   TRI_voc_rid_t newRevisionId() const;
 
@@ -244,8 +271,6 @@ class PhysicalCollection {
                              velocypack::Builder& builder,
                              bool isRestore, TRI_voc_rid_t& revisionId) const;
 
-  int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
-                    TRI_voc_rid_t found) const;
 
   LogicalCollection& _logicalCollection;
   bool const _isDBServer;

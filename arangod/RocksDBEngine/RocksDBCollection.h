@@ -154,19 +154,29 @@ class RocksDBCollection final : public PhysicalCollection {
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& revisionId) override;
 
-  Result update(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous,
-                arangodb::velocypack::Slice const key) override;
+  Result update(
+    arangodb::transaction::Methods* trx,
+    ManagedDocumentResult& mdr,
+    TRI_voc_rid_t revisionId,
+    arangodb::velocypack::Slice const newDoc,
+    LocalDocumentId const newDocumentId,
+    arangodb::velocypack::Slice const oldDoc,
+    LocalDocumentId const oldDocumentId,
+    TRI_voc_tick_t& resultMarkerTick,
+    OperationOptions& options
+  ) override;
 
-  Result replace(transaction::Methods* trx,
-                 arangodb::velocypack::Slice const newSlice,
-                 ManagedDocumentResult& result, OperationOptions& options,
-                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
+  Result replace(
+    arangodb::transaction::Methods* trx,
+    ManagedDocumentResult& mdr,
+    TRI_voc_rid_t revisionId,
+    arangodb::velocypack::Slice const newDoc,
+    LocalDocumentId const newDocumentId,
+    arangodb::velocypack::Slice const oldDoc,
+    LocalDocumentId const oldDocumentId,
+    TRI_voc_tick_t& resultMarkerTick,
+    OperationOptions& options
+  ) override;
 
   Result remove(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const slice,
@@ -178,10 +188,15 @@ class RocksDBCollection final : public PhysicalCollection {
   void adjustNumberDocuments(int64_t adjustment);
   uint64_t objectId() const { return _objectId; }
 
-  int lockWrite(double timeout = 0.0);
-  int unlockWrite();
+  int lockRead(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
+  int lockWrite(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
+  int unlockRead(bool useDeadlockDetector, TransactionState const* state);
+  int unlockWrite(bool useDeadlockDetector, TransactionState const* state);
+
   int lockRead(double timeout = 0.0);
+  int lockWrite(double timeout = 0.0);
   int unlockRead();
+  int unlockWrite();
 
   /// recalculte counts for collection in case of failure
   uint64_t recalculateCounts();
@@ -202,8 +217,6 @@ class RocksDBCollection final : public PhysicalCollection {
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
  private:
-  /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;

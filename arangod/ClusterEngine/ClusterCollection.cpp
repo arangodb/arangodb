@@ -500,24 +500,31 @@ Result ClusterCollection::insert(arangodb::transaction::Methods* trx,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::update(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const newSlice,
-                                 arangodb::ManagedDocumentResult& mdr,
-                                 OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous,
-                                 arangodb::velocypack::Slice const key) {
+Result ClusterCollection::update(
+    arangodb::transaction::Methods* trx,
+    ManagedDocumentResult& mdr,
+    TRI_voc_rid_t revisionId,
+    arangodb::velocypack::Slice const newDoc,
+    LocalDocumentId const newDocumentId,
+    arangodb::velocypack::Slice const oldDoc,
+    LocalDocumentId const oldDocumentId,
+    TRI_voc_tick_t& resultMarkerTick,
+    OperationOptions& options
+  ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::replace(transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
-                                  ManagedDocumentResult& mdr,
-                                  OperationOptions& options,
-                                  TRI_voc_tick_t& resultMarkerTick,
-                                  bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                  ManagedDocumentResult& previous) {
+Result ClusterCollection::replace(
+    arangodb::transaction::Methods* trx,
+    ManagedDocumentResult& mdr,
+    TRI_voc_rid_t revisionId,
+    arangodb::velocypack::Slice const newDoc,
+    LocalDocumentId const newDocumentId,
+    arangodb::velocypack::Slice const oldDoc,
+    LocalDocumentId const oldDocumentId,
+    TRI_voc_tick_t& resultMarkerTick,
+    OperationOptions& options
+  ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -528,6 +535,28 @@ Result ClusterCollection::remove(arangodb::transaction::Methods* trx,
                                  TRI_voc_tick_t& resultMarkerTick,
                                  bool /*lock*/, TRI_voc_rid_t& prevRev,
                                  TRI_voc_rid_t& revisionId) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+int ClusterCollection::lockRead(bool useDeadlockDetector,
+                       TransactionState const* state,
+                       double timeout) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+int ClusterCollection::lockWrite(bool useDeadlockDetector,
+                       TransactionState const* state,
+                       double timeout) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+int ClusterCollection::unlockRead(bool useDeadlockDetector,
+                       TransactionState const* state){
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+int ClusterCollection::unlockWrite(bool useDeadlockDetector,
+                       TransactionState const* state){
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

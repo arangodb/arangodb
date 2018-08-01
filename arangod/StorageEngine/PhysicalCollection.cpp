@@ -71,7 +71,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
     return false;
   }
 
-  // validate id string    
+  // validate id string
   VPackValueLength len;
   char const* docId = slice.getString(len);
   if (len < 3) {
@@ -101,7 +101,19 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
   }
   return nullptr;
 }
-  
+
+
+/// @brief checks the revision of a document
+int PhysicalCollection::checkRevision(transaction::Methods* trx,
+                                      TRI_voc_rid_t expected,
+                                      TRI_voc_rid_t found) const {
+  if (expected != 0 && found != expected) {
+    return TRI_ERROR_ARANGO_CONFLICT;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+
 TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
   return TRI_HybridLogicalClock();
 }
@@ -154,12 +166,12 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
     } else if (!isValidEdgeAttribute(fromSlice)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE); 
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
     if (toSlice.isNone()) {
       toSlice = oldValue.get(StaticStrings::ToString);
     } else if (!isValidEdgeAttribute(toSlice)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE); 
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
   }
 
@@ -407,7 +419,7 @@ Result PhysicalCollection::newObjectForReplace(
     if (!isValidEdgeAttribute(fromSlice)) {
       return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
-  
+
     VPackSlice toSlice = newValue.get(StaticStrings::ToString);
     if (!isValidEdgeAttribute(toSlice)) {
       return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
@@ -444,16 +456,6 @@ Result PhysicalCollection::newObjectForReplace(
   return Result();
 }
 
-/// @brief checks the revision of a document
-int PhysicalCollection::checkRevision(transaction::Methods* trx,
-                                      TRI_voc_rid_t expected,
-                                      TRI_voc_rid_t found) const {
-  if (expected != 0 && found != expected) {
-    return TRI_ERROR_ARANGO_CONFLICT;
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<arangodb::Index>>
 PhysicalCollection::getIndexes() const {
@@ -461,7 +463,7 @@ PhysicalCollection::getIndexes() const {
   return _indexes;
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures, bool forPersistence, 
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures, bool forPersistence,
                                          std::function<bool(arangodb::Index const*)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
@@ -482,7 +484,7 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   // add index information
   size_t sizeIndexes = memory();
   size_t numIndexes = 0;
-  
+
   {
     bool seenEdgeIndex = false;
     READ_LOCKER(guard, _indexesLock);
@@ -508,5 +510,17 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   builder->close();
   return builder;
 }
+
+void PhysicalCollection::trackWaitForSync(arangodb::transaction::Methods* trx,
+                                         OperationOptions& options) {
+  if (_logicalCollection.waitForSync() && !options.isRestore) {
+    options.waitForSync = true;
+  }
+
+  if (options.waitForSync) {
+    trx->state()->waitForSync(true);
+  }
+}
+
 
 } // arangodb

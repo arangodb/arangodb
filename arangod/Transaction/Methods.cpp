@@ -742,7 +742,7 @@ transaction::Methods::Methods(
     ).release();
     TRI_ASSERT(_state != nullptr);
     TRI_ASSERT(_state->isTopLevelTransaction());
-    
+
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
   }
@@ -1621,7 +1621,7 @@ OperationResult transaction::Methods::insertLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      
+
       auto const& followerInfo = collection->followers();
       // fetch followers
       followers = followerInfo->get();
@@ -1669,7 +1669,7 @@ OperationResult transaction::Methods::insertLocal(
       resultMarkerTick = 0;
       res = collection->replace( this, value, documentResult, options
                                , resultMarkerTick, needsLock, previousRevisionId
-                               , previousDocumentResult);
+                               , previousDocumentResult, VPackSlice::nullSlice());
       if(res.ok()){
          revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
       }
@@ -1739,7 +1739,7 @@ OperationResult transaction::Methods::insertLocal(
       "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
       "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
       "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId() +
-      "&" + StaticStrings::SilentString + "=true" + 
+      "&" + StaticStrings::SilentString + "=true" +
       "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
 
     transaction::BuilderLeaser payload(this);
@@ -1779,7 +1779,7 @@ OperationResult transaction::Methods::insertLocal(
       // Now prepare the requests:
       std::vector<ClusterCommRequest> requests;
       requests.reserve(followers->size());
-      
+
       for (auto const& f : *followers) {
         requests.emplace_back("server:" + f, arangodb::rest::RequestType::POST,
             path, body);
@@ -1833,7 +1833,7 @@ OperationResult transaction::Methods::insertLocal(
       }
     }
   }
-  
+
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
@@ -1983,7 +1983,7 @@ OperationResult transaction::Methods::modifyLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-      
+
       auto const& followerInfo = collection->followers();
       // fetch followers
       followers = followerInfo->get();
@@ -2041,27 +2041,17 @@ OperationResult transaction::Methods::modifyLocal(
       CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
                                lock);
 
-      if (pattern.isObject()) {
-        StringRef key{newVal.get(StaticStrings::KeyString)};
-        ManagedDocumentResult currentDoc;
-        res = collection->read(this, key, currentDoc, false);
-
-        if (res.ok() &&
-            !aql::matches(VPackSlice(currentDoc.vpack()), vPackOptions,
-                          pattern)) {
-          res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        }
-      }
-
       if (res.ok()) {
         if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-          res = collection->replace(this, newVal, result, options,
-                                    resultMarkerTick, false, actualRevision,
-                                    previous);
+          res =
+              collection->replace(this, newVal, result, options, resultMarkerTick,
+                                  !isLocked(collection, AccessMode::Type::WRITE),
+                                  actualRevision, previous, pattern);
         } else {
-          res = collection->update(this, newVal, result, options,
-                                   resultMarkerTick, false, actualRevision,
-                                   previous);
+          res =
+              collection->update(this, newVal, result, options, resultMarkerTick,
+                                 !isLocked(collection, AccessMode::Type::WRITE),
+                                 actualRevision, previous, pattern);
         }
       }
     }
@@ -2136,7 +2126,7 @@ OperationResult transaction::Methods::modifyLocal(
     TRI_ASSERT(followers != nullptr);
 
     // Now replicate the same operation on all followers:
-      
+
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
     // get here, in the single document case, we do not try to replicate
     // in case of an error.
@@ -2245,7 +2235,7 @@ OperationResult transaction::Methods::modifyLocal(
       }
     }
   }
-  
+
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
@@ -2319,7 +2309,7 @@ OperationResult transaction::Methods::removeLocal(
   TRI_ASSERT(pattern.isNone() || pattern.isObject() || pattern.isArray());
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-      
+
   std::shared_ptr<std::vector<ServerID> const> followers;
 
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2330,9 +2320,9 @@ OperationResult transaction::Methods::removeLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-  
+
       auto const& followerInfo = collection->followers();
-      // fetch followers 
+      // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
         replicationType = ReplicationType::LEADER;
@@ -2579,7 +2569,7 @@ OperationResult transaction::Methods::removeLocal(
       }
     }
   }
-  
+
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
@@ -2703,9 +2693,9 @@ OperationResult transaction::Methods::truncateLocal(
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-      
+
       auto const& followerInfo = collection->followers();
-      // fetch followers 
+      // fetch followers
       followers = followerInfo->get();
       if (followers->size() > 0) {
         replicationType = ReplicationType::LEADER;
@@ -2880,7 +2870,7 @@ OperationResult transaction::Methods::countCoordinator(
     std::string const& collectionName, bool details) {
   std::vector<std::pair<std::string, uint64_t>> count;
   auto res = arangodb::countOnCoordinator(
-    vocbase().name(), collectionName, *this, count 
+    vocbase().name(), collectionName, *this, count
   );
 
   if (res != TRI_ERROR_NO_ERROR) {
