@@ -107,8 +107,6 @@ enum class RestVerb {
   Patch = 5,
   Options = 6
 };
-
-RestVerb to_RestVerb(std::string const& val);
 std::string to_string(RestVerb type);
 
 // -----------------------------------------------------------------------------

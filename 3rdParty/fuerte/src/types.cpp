@@ -22,44 +22,6 @@
 #include <fuerte/types.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
-RestVerb to_RestVerb(std::string const& value) {
-  std::string lowercase;
-  lowercase.reserve(value.size());
-  std::transform(value.begin(), value.end(), std::back_inserter(lowercase),
-                 ::tolower);
-
-  auto p = lowercase.c_str();
-
-  if (strcasecmp(p, "delete") == 0) {
-    return RestVerb::Delete;
-  }
-
-  if (strcasecmp(p, "get") == 0) {
-    return RestVerb::Get;
-  }
-
-  if (strcasecmp(p, "post") == 0) {
-    return RestVerb::Post;
-  }
-
-  if (strcasecmp(p, "put") == 0) {
-    return RestVerb::Put;
-  }
-
-  if (strcasecmp(p, "head") == 0) {
-    return RestVerb::Head;
-  }
-
-  if (strcasecmp(p, "patch") == 0) {
-    return RestVerb::Patch;
-  }
-
-  if (strcasecmp(p, "options") == 0) {
-    return RestVerb::Options;
-  }
-
-  return RestVerb::Illegal;
-}
 
 std::string to_string(RestVerb type) {
   switch (type) {
