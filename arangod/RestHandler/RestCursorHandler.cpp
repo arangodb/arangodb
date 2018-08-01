@@ -165,13 +165,8 @@ bool RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   );
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
-  auto self = weak_from_this();
+  auto self = shared_from_this();
   ss->setContinueHandler([this, self, ss] {
-    auto s = self.lock();
-    if (!s) {
-      // RestHandler already gone!!
-      return;
-    }
     continueHandlerExecution();
   });
 
@@ -189,20 +184,22 @@ RestStatus RestCursorHandler::processQuery() {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Illegal state in RestQueryHandler, query not found.");
   }
+  
   {
     // always clean up
     auto guard = scopeGuard([this]() {
       unregisterQuery();
     });
-
+  
     auto state = _query->execute(_queryRegistry, _queryResult);
     if (state == aql::ExecutionState::WAITING) {
+      guard.cancel();
       return RestStatus::WAITING;
     }
     TRI_ASSERT(state == aql::ExecutionState::DONE);
   }
   
-  // We cannot get into HASMORE here, or we would loose results.
+  // We cannot get into HASMORE here, or we would lose results.
   handleQueryResult();
   return RestStatus::DONE;
 }
@@ -308,7 +305,7 @@ uint32_t RestCursorHandler::forwardingTarget() {
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
-
+  
   return (sourceServer == ServerState::instance()->getShortId())
       ? 0
       : sourceServer;
@@ -349,11 +346,11 @@ bool RestCursorHandler::cancelQuery() {
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
-  
+ 
     // cursor is canceled. now remove the continue handler we may have registered in the query
     std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
     ss->setContinueCallback();
-
+    
     return true;
   } 
   
@@ -447,12 +444,6 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
                                              arangodb::Cursor* cursor) {
   // always clean up
   auto guard = scopeGuard([this, &cursor]() {
-    if (cursor->isDeleted()) {
-      // cursor done...
-      std::shared_ptr<aql::SharedQueryState> const& ss = _query->sharedStateRef();
-      ss->setContinueCallback();
-    }
-  
     auto cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     cursors->release(cursor);

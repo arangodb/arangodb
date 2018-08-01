@@ -333,7 +333,7 @@ void ClusterFeature::prepare() {
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
-          (DBServers.size() > 1 || TRI_microtime() - start > 15.0)) {
+          (DBServers.size() > 1 || TRI_microtime() - start > 2.0)) {
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "Found " << DBServers.size() << " DBservers.";
         break;
       }

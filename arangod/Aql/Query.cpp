@@ -221,8 +221,9 @@ Query::~Query() {
       << "Query::~Query queryString: "
       << " this: " << (uintptr_t) this;
   }
+  
   cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
-
+  
   exitContext();
 
   _ast.reset();
@@ -1386,7 +1387,7 @@ void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) 
   try {
     std::shared_ptr<SharedQueryState> ss = sharedState();
     ss->setContinueCallback();
-    
+
     ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
     while (state == ExecutionState::WAITING) {
       ss->waitForAsyncResponse();
@@ -1414,10 +1415,10 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
       // shutdown may fail but we must not throw here
       // (we're also called from the destructor)
     }
+  
+    _sharedState->invalidate();
     _engine.reset();
   }
-
-  _sharedState->invalidate();
 
   // If the transaction was not committed, it is automatically aborted
   delete _trx;
