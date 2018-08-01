@@ -223,7 +223,7 @@ bool V8ClientConnection::isConnected() {
 
 std::string V8ClientConnection::endpointSpecification() const {
   if (_connection) {
-    _connection->endpoint();
+    return _connection->endpoint();
   }
   return "";
 }
