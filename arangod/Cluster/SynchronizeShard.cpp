@@ -313,7 +313,7 @@ arangodb::Result cancelReadLockOnLeader (
     return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
   }
   
-  LOG_TOPIC(WARN, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
   return arangodb::Result();
   
 }

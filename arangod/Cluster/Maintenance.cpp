@@ -60,6 +60,7 @@ static std::string const FOLLOWER_ID("followerId");
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
 static std::string const OP("op");
+static std::string const UNDERSCORE("_");
 
 std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
   auto builder = std::make_shared<VPackBuilder>();
@@ -97,34 +98,38 @@ VPackBuilder compareIndexes(
   
   VPackBuilder builder;
   { VPackArrayBuilder a(&builder);
-    for (auto const& pindex : VPackArrayIterator(plan)) {
+    if (plan.isArray()) {
+      for (auto const& pindex : VPackArrayIterator(plan)) {
 
-      // Skip unique on _key
-      auto const& ptype   = pindex.get(TYPE).copyString();
-      if (ptype == PRIMARY || ptype == EDGE) { 
-        continue;
-      }
-      auto const& pfields = pindex.get(FIELDS);
-      indis.emplace(shname + "/" + pindex.get(ID).copyString());
-      
-      bool found = false;
-      for (auto const& lindex : VPackArrayIterator(local)) {
-
-        // Skip unique and edge indexes
-        auto const& ltype   = lindex.get(TYPE).copyString();
-        if (ltype == PRIMARY || ltype == EDGE) { 
+        // Skip unique on _key
+        auto const& ptype   = pindex.get(TYPE).copyString();
+        if (ptype == PRIMARY || ptype == EDGE) { 
           continue;
         }
-        auto const& lfields = lindex.get(FIELDS);
+        auto const& pfields = pindex.get(FIELDS);
+        indis.emplace(shname + "/" + pindex.get(ID).copyString());
+      
+        bool found = false;
+        if (local.isArray()) {
+          for (auto const& lindex : VPackArrayIterator(local)) {
 
-        // Already have
-        if (VPackNormalizedCompare::equals(pfields, lfields) && ptype == ltype) { 
-          found = true;
-          break;
+            // Skip unique and edge indexes
+            auto const& ltype   = lindex.get(TYPE).copyString();
+            if (ltype == PRIMARY || ltype == EDGE) { 
+              continue;
+            }
+            auto const& lfields = lindex.get(FIELDS);
+
+            // Already have
+            if (VPackNormalizedCompare::equals(pfields, lfields) && ptype == ltype) { 
+              found = true;
+              break;
+            }
+          }
         }
-      }
-      if (!found) {
-        builder.add(pindex);
+        if (!found) {
+          builder.add(pindex);
+        }
       }
     }
   }
@@ -140,7 +145,7 @@ void handlePlanShard(
   std::unordered_set<std::string>& colis, std::unordered_set<std::string>& indis,
   std::vector<ActionDescription>& actions) {
 
-  bool shouldBeLeader = serverId == leaderId;
+  bool shouldBeLeading = serverId == leaderId;
   
   // We only care for shards, where we find our own ID
   if (db.copyString() == serverId)  {
@@ -149,14 +154,16 @@ void handlePlanShard(
 
     if (ldb.hasKey(shname)) {   // Have local collection with that name
       auto const lcol = ldb.get(shname);
+      bool leading = lcol.get(LEADER).copyString().empty();
       auto const properties = compareRelevantProps(cprops, lcol);
 
       // If comparison has brought any updates
-      if (properties->slice() != VPackSlice::emptyObjectSlice()) {
+      if (properties->slice() != VPackSlice::emptyObjectSlice()
+          || leading != shouldBeLeading) {
         actions.push_back(
           ActionDescription(
             {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, shname},
-              {LEADER, shouldBeLeader ? std::string() : leaderId},
+              {LEADER, shouldBeLeading ? std::string() : leaderId},
               {LOCAL_LEADER, lcol.get(LEADER).copyString()}},
             properties));
       }
@@ -167,12 +174,12 @@ void handlePlanShard(
         auto const& lindexes = lcol.get(INDEXES);
         auto difference = compareIndexes(shname, pindexes, lindexes, indis);
 
-        if (difference.slice().length() != 0) {
+        if (difference.slice().isArray()) {
           for (auto const& index : VPackArrayIterator(difference.slice())) {
             actions.push_back(
               ActionDescription({{NAME, "EnsureIndex"}, {COLLECTION, shname},
-                  {DATABASE, dbname}, {TYPE, index.get(TYPE).copyString()},
-                  {FIELDS, index.get(FIELDS).toJson()}
+                {DATABASE, dbname}, {TYPE, index.get(TYPE).copyString()},
+                {FIELDS, index.get(FIELDS).toJson()}
                 }, std::make_shared<VPackBuilder>(index))
               );
           }
@@ -182,7 +189,7 @@ void handlePlanShard(
       actions.push_back(
         ActionDescription(
           {{NAME, "CreateCollection"}, {COLLECTION, colname}, {SHARD, shname},
-            {DATABASE, dbname}, {LEADER, shouldBeLeader ? std::string() : leaderId}},
+            {DATABASE, dbname}, {LEADER, shouldBeLeading ? std::string() : leaderId}},
           props));
     }
   }
@@ -191,47 +198,78 @@ void handlePlanShard(
 
 void handleLocalShard(
   std::string const& dbname, std::string const& colname, VPackSlice const& cprops, 
-  std::unordered_set<std::string>& colis, std::unordered_set<std::string>& indis,
+  VPackSlice const& shardMap, std::unordered_set<std::string>& colis,
+  std::unordered_set<std::string>& indis, std::string serverId,
   std::vector<ActionDescription>& actions) {
   
   bool drop = false;
   std::unordered_set<std::string>::const_iterator it;
 
-  if (colis.empty()) {
-    drop = true;
-  } else {
-    it = std::find(colis.begin(), colis.end(), colname);
-    if (it == colis.end()) {
-      drop = true;
-    }
+  std::string plannedLeader ;
+  if (shardMap.hasKey(colname) && shardMap.get(colname).isArray()) {
+    plannedLeader = shardMap.get(colname)[0].copyString();
   }
-
-  if (drop) {
+  bool localLeader = cprops.get(LEADER).copyString().empty();
+  if (plannedLeader == UNDERSCORE + serverId && localLeader) {
     actions.push_back(
-      ActionDescription({{NAME, "DropCollection"},
-          {DATABASE, dbname}, {COLLECTION, colname}}));
+      ActionDescription (
+        {{NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}}));
   } else {
-    colis.erase(it);
 
-    // We only drop indexes, when collection is not being dropped already
-    if (cprops.hasKey(INDEXES)) {
-      for (auto const& index :
-             VPackArrayIterator(cprops.get(INDEXES))) {
-        auto const& type = index.get(TYPE).copyString();
-        if (type != PRIMARY && type != EDGE) {
-          std::string const id = index.get(ID).copyString();
-          if (indis.find(colname + "/" + id) != indis.end()) {
-            indis.erase(id);
-          } else {
-            actions.push_back(
-              ActionDescription(
-                {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
+    if (colis.empty()) {
+      drop = true;
+    } else {
+      it = std::find(colis.begin(), colis.end(), colname);
+      if (it == colis.end()) {
+        drop = true;
+      }
+    }
+
+    if (drop) {
+      actions.push_back(
+        ActionDescription({{NAME, "DropCollection"},
+            {DATABASE, dbname}, {COLLECTION, colname}}));
+    } else {
+      colis.erase(it);
+
+      // We only drop indexes, when collection is not being dropped already
+      if (cprops.hasKey(INDEXES)) {
+        if (cprops.get(INDEXES).isArray()) {
+          for (auto const& index :
+                 VPackArrayIterator(cprops.get(INDEXES))) {
+            auto const& type = index.get(TYPE).copyString();
+            if (type != PRIMARY && type != EDGE) {
+              std::string const id = index.get(ID).copyString();
+              if (indis.find(colname + "/" + id) != indis.end()) {
+                indis.erase(id);
+              } else {
+                actions.push_back(
+                  ActionDescription(
+                    {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
+              }
+            }
           }
         }
       }
     }
   }
 }
+
+/// @brief Get a map shardName -> servers
+VPackBuilder getShardMap (VPackSlice const& plan) {
+  VPackBuilder shardMap;
+  { VPackObjectBuilder o(&shardMap);
+    for (auto database : VPackObjectIterator(plan)) {
+      for (auto collection : VPackObjectIterator(database.value)) {
+        for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
+          std::string const shName = shard.key.copyString();
+          shardMap.add(shName, shard.value);
+        }
+      }
+    }}
+  return shardMap;
+}
+
 
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
@@ -243,7 +281,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   std::unordered_set<std::string> indis; // Intersection indexes plan&local
   
   // Plan to local mismatch ----------------------------------------------------
-
   // Create or modify if local databases are affected
   auto pdbs = plan.get("Databases");
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
@@ -253,6 +290,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
     }
   }
+
   for (auto const& ldb : VPackObjectIterator(local)) {
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string> {"Databases", dbname})) {
@@ -270,11 +308,13 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
       for (auto const& pcol : VPackObjectIterator(pdb.value)) {
         auto const& cprops = pcol.value;
         for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) {
-          for (auto const& db : VPackArrayIterator(shard.value)) {
-            handlePlanShard(
-              db, cprops, ldb, dbname, pcol.key.copyString(),
-              shard.key.copyString(), serverId, shard.value[0].copyString(),
-              colis, indis, actions);
+          if (shard.value.isArray()) {
+            for (auto const& db : VPackArrayIterator(shard.value)) {
+              handlePlanShard(
+                db, cprops, ldb, dbname, pcol.key.copyString(),
+                shard.key.copyString(), serverId, shard.value[0].copyString(),
+                colis, indis, actions);
+            }
           }
         }
       }
@@ -285,14 +325,15 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   }
   
   // Compare local to plan -----------------------------------------------------
+  auto const shardMap = getShardMap(pdbs);
   for (auto const& db : VPackObjectIterator(local)) {
     auto const& dbname = db.key.copyString();
     if (pdbs.hasKey(dbname)) {
       for (auto const& col : VPackObjectIterator(db.value)) {
         std::string shName = col.key.copyString();
         if (shName.front() != '_') { // exclude local system collections
-          handleLocalShard(
-            dbname, shName, col.value, colis, indis, actions);
+          handleLocalShard(dbname, shName, col.value, shardMap.slice(), colis,
+                           indis, serverId, actions);
         } 
       }
     } 
@@ -457,9 +498,10 @@ VPackBuilder assembleLocalCollectioInfo(
     ret.add(ERROR_NUM, VPackValue(0));
     ret.add(VPackValue(INDEXES));
     { VPackArrayBuilder ixs(&ret);
-      for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
-        ret.add(removeSelectivityEstimate(index).slice());
-      }}
+      if (info.get(INDEXES).isArray()) {
+        for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
+          ret.add(removeSelectivityEstimate(index).slice());
+        }}}
     ret.add(VPackValue(SERVERS));
     { VPackArrayBuilder a(&ret);
       ret.add(VPackValue(ourselves));
@@ -505,23 +547,6 @@ VPackBuilder assembleLocalDatabaseInfo (std::string const& database) {
 }
 
 
-VPackBuilder getShardMap (VPackSlice const& plan) {
-  VPackBuilder shardMap;
-  { VPackObjectBuilder o(&shardMap);
-
-    for (auto database : VPackObjectIterator(plan)) {
-      for (auto collection : VPackObjectIterator(database.value)) {
-        for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
-          std::string const shName = shard.key.copyString();
-          shardMap.add(shName, shard.value);
-        }
-      }
-    }}
-  
-  return shardMap;
-}
-
-
 // udateCurrentForCollections
 // diff current and local and prepare agency transactions or whatever
 // to update current. Will report the errors created locally to the agency
@@ -529,6 +554,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, VPackBuilder& report) {
   arangodb::Result result;
+
   for (auto const& database : VPackObjectIterator(local)) {
     auto const dbName = database.key.copyString();
 
@@ -546,15 +572,13 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     
     for (auto const& shard : VPackObjectIterator(database.value)) {
       auto const shName = shard.key.copyString();
-      if (shName.at(0) == '_') {
+      if (shName.at(0) == '_') { // local system collection
         continue;
       }
       auto const shSlice = shard.value;
 
       auto const colName = shSlice.get(PLAN_ID).copyString();
       VPackBuilder error;
-
-//      LOG_TOPIC(ERR, Logger::MAINTENANCE) << shName << " " << shSlice.get(LEADER).copyString();
 
       if (shSlice.get(LEADER).copyString().empty()) { // Leader
         auto const localCollectionInfo =
@@ -569,33 +593,37 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         
         auto inCurrent = cur.hasKey(cp);
         if (!inCurrent ||
-            (inCurrent && !equivalent(localCollectionInfo.slice(), cur.get(cp)))) {
+            (inCurrent &&
+             !equivalent(localCollectionInfo.slice(), cur.get(cp)))) {
 
-        report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName));
+        report.add(
+          VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName));
           { VPackObjectBuilder o(&report); 
             report.add(OP, VP_SET);
             report.add("payload", localCollectionInfo.slice()); }
         }
       } else {
-        auto servers = std::vector<std::string> {COLLECTIONS, dbName, colName, shName, SERVERS};
+        auto servers = std::vector<std::string>
+          {COLLECTIONS, dbName, colName, shName, SERVERS};
         if (cur.hasKey(servers)) {
           auto s = cur.get(servers);
           if (cur.get(servers)[0].copyString() == serverId) {
             // we were previously leader and we are done resigning.
             // update current and let supervision handle the rest
-            LOG_TOPIC(ERR, Logger::MAINTENANCE) << " +++++++++++ LOL +++++++++++++++";
             VPackBuilder ns;
             { VPackArrayBuilder a(&ns);
               bool front = true;
-              for (auto const& i : VPackArrayIterator(s)) {
-                ns.add(VPackValue((!front) ? i.copyString() : std::string("_") + i.copyString()));
-                front = false;
-              }}
-            report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName
-                                  + "/" + shName + "/" + SERVERS));
-            { VPackObjectBuilder o(&report);
-              report.add(OP, VP_SET);
-              report.add("payload", ns.slice()); }
+              if (s.isArray()) {
+                for (auto const& i : VPackArrayIterator(s)) {
+                  ns.add(VPackValue((!front) ? i.copyString() : std::string("_") + i.copyString()));
+                  front = false;
+                }}
+              report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName
+                                    + "/" + shName + "/" + SERVERS));
+              { VPackObjectBuilder o(&report);
+                report.add(OP, VP_SET);
+                report.add("payload", ns.slice()); }
+            }
           }
         }
       }

@@ -57,11 +57,10 @@ ResignShardLeadership::ResignShardLeadership(
   
   if (!desc.has(SHARD)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "ResignShardLeadership: shard must be stecified";
+      << "ResignShardLeadership: shard must be specified";
     _state = FAILED;
   }
   
-  TRI_ASSERT(desc.has(INDEX));
 }
 
 ResignShardLeadership::~ResignShardLeadership() {};
@@ -74,13 +73,14 @@ bool ResignShardLeadership::first() {
   auto const& collection = _description.get(SHARD);
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "trying to withdraw as leader of shard '%s/%s'";
+    << "trying to withdraw as leader of shard '" << database << "/" << collection;
   
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
     std::string errorMsg("ResignShardLeadership: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     setState(FAILED);
     return false;
   }
@@ -90,10 +90,10 @@ bool ResignShardLeadership::first() {
     std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
     errorMsg += collection + " in database " + database;
     _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     setState(FAILED);
     return false;
   }
-
   // This starts a write transaction, just to wait for any ongoing
   // write transaction on this shard to terminate. We will then later
   // report to Current about this resignation. If a new write operation
@@ -124,6 +124,8 @@ bool ResignShardLeadership::first() {
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "exception thrown when resigning:" << e.what();
+    setState(FAILED);
+    return false;
   }
 
   setState(COMPLETE);

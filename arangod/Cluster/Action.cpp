@@ -30,6 +30,7 @@
 #include "Cluster/DropDatabase.h"
 #include "Cluster/DropIndex.h"
 #include "Cluster/EnsureIndex.h"
+#include "Cluster/ResignShardLeadership.h"
 #include "Cluster/SynchronizeShard.h"
 #include "Cluster/UpdateCollection.h"
 
@@ -71,6 +72,8 @@ void Action::create(
     _action.reset(new DropIndex(feature, description));
   } else if (name == "EnsureIndex") {
     _action.reset(new EnsureIndex(feature, description));
+  } else if (name == "ResignShardLeadership") {
+    _action.reset(new ResignShardLeadership(feature, description));
   } else if (name == "SynchronizeShard") {
     _action.reset(new SynchronizeShard(feature, description));
   } else if (name == "UpdateCollection") {

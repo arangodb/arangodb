@@ -102,6 +102,7 @@ bool UpdateCollection::first() {
     std::string errorMsg("UpdateCollection: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    setState(FAILED);
     return false;
   }
 
@@ -113,9 +114,7 @@ bool UpdateCollection::first() {
       // We adjust local leadership, note that the planned
       // resignation case is not handled here, since then
       // ourselves does not appear in shards[shard] but only
-      // "_" + ourselves. See below
-      // under "Drop local shards" to see the proper handling
-      // of this case. Place is marked with *** in comments.
+      // "_" + ourselves. 
       handleLeadership(coll, localLeader, plannedLeader);
       _result = Collections::updateProperties(&coll, props);
     });
@@ -124,8 +123,11 @@ bool UpdateCollection::first() {
     std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
     errorMsg += collection + "in database " + database;
     _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    setState(FAILED);
+    return false;
   }
-  
+
+  setState(COMPLETE);
   return false;
 
 }
