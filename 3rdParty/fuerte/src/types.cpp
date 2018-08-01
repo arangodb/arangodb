@@ -274,27 +274,26 @@ std::string to_string(ErrorCondition error) {
       return "Error: casting int to ErrorCondition";
 
     case ErrorCondition::CouldNotConnect:
-      return "Error: unable to connect";
+      return "Unable to connect";
     case ErrorCondition::CloseRequested:
-      return "Error: peer requested connection close";
+      return "peer requested connection close";
+    case ErrorCondition::ConnectionClosed:
+      return "Connection reset by peer";
     case ErrorCondition::Timeout:
-      return "Error: timeout";
+      return "Timeout";
     case ErrorCondition::QueueCapacityExceeded:
-      return "Error: queue capacity exceeded";
+      return "Request queue capacity exceeded";
     case ErrorCondition::ReadError:
-      return "Error: reading from connection";
+      return "Error while reading";
     case ErrorCondition::WriteError:
-      return "Error: writing to connection";
+      return "Error while writing ";
     case ErrorCondition::Canceled:
-      return "Error: connection canceled";
+      return "Eonnection was locally canceled";
     case ErrorCondition::MalformedURL:
-      return "Error: malformed URL";
+      return "Error malformed URL";
 
     case ErrorCondition::ProtocolError:
       return "Error: invalid server response";
-      
-    case ErrorCondition::InternalError:
-      return "Error: internal";
   }
   return "unkown error";
 }

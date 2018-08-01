@@ -74,16 +74,17 @@ enum class ErrorCondition : Error {
 
   CouldNotConnect = 1000,
   CloseRequested = 1001,
-  Timeout = 1002,
-  QueueCapacityExceeded = 1003,
+  ConnectionClosed = 1002,
+  Timeout = 1003,
+  QueueCapacityExceeded = 1004,
   
   ReadError = 1102,
   WriteError = 1103,
+  
   Canceled = 1104,
   MalformedURL = 1105,
 
   ProtocolError = 3000,
-  InternalError = 4000
 };
 
 inline Error errorToInt(ErrorCondition cond) {

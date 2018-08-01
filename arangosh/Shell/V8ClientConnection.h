@@ -125,7 +125,8 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Handle<v8::Value> handleResult(v8::Isolate* isolate,
-                                     std::unique_ptr<fuerte::Response> response);
+                                     std::unique_ptr<fuerte::Response> response,
+                                     fuerte::ErrorCondition ec);
 
  private:
   std::string _endpoint;

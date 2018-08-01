@@ -114,6 +114,11 @@ void V8ClientConnection::init(ClientFeature* client) {
     builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
     builder.authenticationType(fuerte::AuthenticationType::Jwt);
   }
+  builder.onFailure([this](int error, std::string const& msg) {
+    _lastHttpReturnCode = 505;
+    _lastErrorMessage = msg;
+  });
+  
   _connection.reset();
   _connection = builder.connect(_loop);
   
@@ -161,12 +166,10 @@ void V8ClientConnection::init(ClientFeature* client) {
           return;
         }
       }
-      
     }
-
   } catch(fuerte::ErrorCondition const& e) { // connection error
     _lastErrorMessage = fuerte::to_string(e);
-    _lastHttpReturnCode = 500;
+    _lastHttpReturnCode = 505;
   }
 
   // connect to server and get version number
@@ -1437,7 +1440,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
   _lastHttpReturnCode = 0;
   if (!_connection) {
     _lastErrorMessage = "not connected";
-    _lastHttpReturnCode = 500;
+    _lastHttpReturnCode = 505;
     return v8::Null(isolate);
   }
   
@@ -1457,12 +1460,11 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
   std::unique_ptr<fuerte::Response> response;
   try {
     response = _connection->sendRequest(std::move(req));
-  } catch (fuerte::ErrorCondition e) {
-    _lastErrorMessage.assign(fuerte::to_string(e));
-    _lastHttpReturnCode = 500;
+  } catch (fuerte::ErrorCondition ec) {
+    return handleResult(isolate, nullptr, ec);
   }
   
-  return handleResult(isolate, std::move(response));
+  return handleResult(isolate, std::move(response), fuerte::ErrorCondition::NoError);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
@@ -1491,17 +1493,10 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     response = _connection->sendRequest(std::move(req));
   } catch (fuerte::ErrorCondition e) {
     _lastErrorMessage.assign(fuerte::to_string(e));
-    _lastHttpReturnCode = 500;
+    _lastHttpReturnCode = 505;
   }
-  /*if (_httpResult == nullptr) {
-    // create a fake response to prevent crashes when accessing the response
-    _httpResult.reset(new SimpleHttpResult());
-    _httpResult->setHttpReturnCode(500);
-    _httpResult->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
-  }*/
-
+  
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
   if (!response) {
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, true));
@@ -1559,19 +1554,11 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
 }
 
 v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
-                                                       std::unique_ptr<fuerte::Response> response) {
-  if (!response) {
-    return v8::Undefined(isolate);
-  }
-
+                                                       std::unique_ptr<fuerte::Response> res,
+                                                       fuerte::ErrorCondition ec) {
   // not complete
-  /*if (!_httpResult->isComplete()) {
-    _lastErrorMessage = _client->getErrorMessage();
-
-    if (_lastErrorMessage.empty()) {
-      _lastErrorMessage = "Unknown error";
-    }
-
+  if (!res) {
+    _lastErrorMessage = fuerte::to_string(ec);
     _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     v8::Local<v8::Object> result = v8::Object::New(isolate);
@@ -1583,17 +1570,17 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
                          static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
-
-    switch (_httpResult->getResultType()) {
-      case (SimpleHttpResult::COULD_NOT_CONNECT):
+    switch (ec) {
+      case fuerte::ErrorCondition::CouldNotConnect:
+      case fuerte::ErrorCondition::ConnectionClosed:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
         break;
 
-      case (SimpleHttpResult::READ_ERROR):
+      case fuerte::ErrorCondition::ReadError:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
         break;
 
-      case (SimpleHttpResult::WRITE_ERROR):
+      case fuerte::ErrorCondition::WriteError:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_WRITE;
         break;
 
@@ -1608,23 +1595,20 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
                      TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
     return result;
-  }*/
+  }
 
   // complete
-  _lastHttpReturnCode = response->statusCode();
+  _lastHttpReturnCode = res->statusCode();
 
   // got a body
-  auto sb = response->payload();
+  auto sb = res->payload();
   if (sb.size() > 0) {
-    /*
-    v8::Handle<v8::String> b = TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "body"), b);*/
-    if (response->isContentTypeVPack()) {
-      std::vector<VPackSlice> const& slices = response->slices();
+    if (res->isContentTypeVPack()) {
+      std::vector<VPackSlice> const& slices = res->slices();
       if (!slices.empty()) {
         return TRI_VPackToV8(isolate, slices[0]);
       } // no body
-    } else if (response->isContentTypeJSON()) {
+    } else if (res->isContentTypeJSON()) {
       const char* str = reinterpret_cast<const char*>(sb.data());
       return TRI_FromJsonString(isolate, str, sb.size(), nullptr);
     } else {

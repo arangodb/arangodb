@@ -103,10 +103,10 @@ void VstConnection<ST>::startConnection() {
   auto self = shared_from_this();
   _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
     if (ec) {
-      FUERTE_LOG_DEBUG << "connecting failed: error=" << ec.message() << std::endl;
+      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << std::endl;
       shutdownConnection(ErrorCondition::CouldNotConnect);
       onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-               "connecting failed: error" + ec.message());
+               "connecting failed: " + ec.message());
     } else {
       finishInitialization();
     }
@@ -348,8 +348,8 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                            std::move(item->_request), nullptr);
 
     // Stop current connection and try to restart a new one.
-    // This will reset the current write loop.
-    restartConnection(ErrorCondition::WriteError);
+    restartConnection(ec == asio_ns::error::misc_errors::eof ?
+                      ErrorCondition::WriteError : ErrorCondition::ConnectionClosed);
     return;
   }
   // Send succeeded
@@ -462,9 +462,8 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
   if (ec) {
     FUERTE_LOG_CALLBACKS
     << "asyncReadCallback: Error while reading form socket: " << ec.message();
-
-    // Restart connection, this will trigger a release of the readloop.
-    restartConnection(ErrorCondition::ReadError);
+    restartConnection(ec == asio_ns::error::misc_errors::eof ?
+                      ErrorCondition::ReadError : ErrorCondition::ConnectionClosed);
     return;
   }
   

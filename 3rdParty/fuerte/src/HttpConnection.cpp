@@ -177,10 +177,10 @@ void HttpConnection<ST>::startConnection() {
   auto self = shared_from_this();
   _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
     if (ec) {
-      FUERTE_LOG_DEBUG << "connecting failed: error=" << ec.message() << std::endl;
+      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << std::endl;
       shutdownConnection(ErrorCondition::CouldNotConnect);
       onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-                      "connecting failed: error" + ec.message());
+                           "connecting failed: " + ec.message());
     } else {
       _state.store(Connection::State::Connected, std::memory_order_release);
       startWriting();  // starts writing queue if non-empty
@@ -377,8 +377,8 @@ void HttpConnection<ST>::asyncWriteCallback(
     item->_callback.invoke(errorToInt(ErrorCondition::WriteError),
                            std::move(item->_request), nullptr);
     // Stop current connection and try to restart a new one.
-    // This will reset the current write loop.
-    restartConnection(ErrorCondition::WriteError);
+    restartConnection(ec == asio_ns::error::misc_errors::eof ?
+                      ErrorCondition::WriteError : ErrorCondition::ConnectionClosed);
     return;
   }
   
@@ -436,9 +436,9 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
     FUERTE_LOG_CALLBACKS
         << "asyncReadCallback: Error while reading from socket";
     FUERTE_LOG_ERROR << ec.message() << std::endl;
-
-    // Restart connection, this will trigger a release of the readloop.
-    restartConnection(ErrorCondition::ReadError);  // will invoke _inFlight cb
+    // Restart connection, will invoke _inFlight cb
+    restartConnection(ec == asio_ns::error::misc_errors::eof ?
+                      ErrorCondition::ReadError : ErrorCondition::ConnectionClosed);
     return;
   }
   FUERTE_LOG_CALLBACKS
@@ -446,7 +446,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
 
   if (!_inFlight) { // should not happen
     assert(false);
-    shutdownConnection(ErrorCondition::InternalError);
+    shutdownConnection(ErrorCondition::Canceled);
   }
   
   // Inspect the data we've received so far.
