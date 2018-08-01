@@ -176,9 +176,8 @@ function PregelAuthSuite () {
       result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
 
       assertFalse(result === undefined || result === {});
+      assertFalse(result.body.error);
       assertEqual(result.status, 200);
-      require('internal').print(JSON.stringify(result));
-      assertEqual(result.body, "");
     },
 
     testPregelForwardingDifferentUser: function() {
