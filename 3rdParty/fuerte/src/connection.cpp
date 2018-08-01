@@ -67,4 +67,19 @@ std::unique_ptr<Response> Connection::sendRequest(
 
   return rv;
 }
+  
+std::string Connection::endpoint() const {
+  std::string endpoint;
+  endpoint.reserve(16);
+  endpoint.append(fuerte::to_string(_config._protocolType));
+  endpoint.push_back('+');
+  endpoint.append(fuerte::to_string(_config._socketType));
+  endpoint.append("://");
+  endpoint.append(_config._host);
+  if (_config._socketType != SocketType::Unix) {
+    endpoint.push_back(':');
+    endpoint.append(_config._port);
+  }
+  return endpoint;
+}
 }}}  // namespace arangodb::fuerte::v1

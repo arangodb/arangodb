@@ -25,6 +25,7 @@
 #ifndef ARANGO_CXX_DRIVER_SERVER
 #define ARANGO_CXX_DRIVER_SERVER
 
+#include <mutex>
 #include <thread>
 #include <utility>
 
@@ -62,10 +63,16 @@ class EventLoopService {
     return _ioContexts[_lastUsed.fetch_add(1, std::memory_order_relaxed) % _ioContexts.size()];
   }
   
-  asio_ns::ssl::context& sslContext() { return _sslContext; }
+  asio_ns::ssl::context& sslContext();
 
  private:
+  /// number of last used io_context
   std::atomic<uint32_t> _lastUsed;
+  
+  /// protect ssl context creation
+  std::mutex _sslContextMutex;
+  /// global SSL context to use here
+  std::unique_ptr<asio_ns::ssl::context> _sslContext;
 
   /// io contexts
   std::vector<std::shared_ptr<asio_io_context>> _ioContexts;
@@ -73,8 +80,6 @@ class EventLoopService {
   std::vector<asio_work_guard> _guards;
   /// Threads powering each io_context
   std::vector<std::thread> _threads;
-  /// global SSL context to use here
-  asio_ns::ssl::context _sslContext;
 };
 }}}  // namespace arangodb::fuerte::v1
 #endif

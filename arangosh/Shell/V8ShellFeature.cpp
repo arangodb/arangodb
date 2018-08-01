@@ -294,7 +294,8 @@ std::unique_ptr<V8ClientConnection> V8ShellFeature::setup(
       if (!jwtSecret.empty()) {
         V8ClientConnection::setJwtSecret(jwtSecret);
       }*/
-      v8connection = std::make_unique<V8ClientConnection>(client);
+      v8connection = std::make_unique<V8ClientConnection>();
+      v8connection->connect(client);
     } else {
       client = nullptr;
     }

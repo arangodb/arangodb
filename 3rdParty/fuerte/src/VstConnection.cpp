@@ -45,7 +45,7 @@ VstConnection<ST>::VstConnection(
     : Connection(config),
       _vstVersion(config._vstVersion),
       _io_context(loop.nextIOContext()),
-      _protocol(*_io_context, loop.sslContext()),
+      _protocol(loop, *_io_context),
       _timeout(*_io_context),
       _state(Connection::State::Disconnected),
       _loopState(0),

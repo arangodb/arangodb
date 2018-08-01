@@ -80,6 +80,8 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief Activate the connection.
   virtual void startConnection() = 0;
   virtual void shutdownConnection(const ErrorCondition) = 0;
+  
+  std::string endpoint() const;
 
  protected:
   Connection(detail::ConnectionConfiguration const& conf)

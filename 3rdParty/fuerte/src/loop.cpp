@@ -29,9 +29,7 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
 EventLoopService::EventLoopService(unsigned int threadCount)
-  : _lastUsed(0), _sslContext(asio_ns::ssl::context::sslv23) {
-  _sslContext.set_default_verify_paths();
-  
+  : _lastUsed(0), _sslContext(nullptr) {
   for (unsigned i = 0; i < threadCount; i++) {
     _ioContexts.emplace_back(new asio_ns::io_context(1));
     _guards.emplace_back(asio_ns::make_work_guard(*_ioContexts.back()));
@@ -50,4 +48,13 @@ EventLoopService::~EventLoopService() {
     ctx->stop();
   }
 }
+  
+asio_ns::ssl::context& EventLoopService::sslContext() {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  if (!_sslContext) {
+    _sslContext.reset(new asio_ns::ssl::context(asio_ns::ssl::context::sslv23));
+    _sslContext->set_default_verify_paths();
+  }
+  return *_sslContext; }
+  
 }}}  // namespace arangodb::fuerte::v1

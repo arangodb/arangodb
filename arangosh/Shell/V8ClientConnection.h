@@ -62,12 +62,14 @@ class V8ClientConnection {
   //static std::shared_ptr<std::string> JWT_SECRET;
 
  public:
-  V8ClientConnection(ClientFeature*);
+  V8ClientConnection();
   ~V8ClientConnection();
 
  public:
   void setInterrupted(bool value);
   bool isConnected();
+  
+  void connect(ClientFeature*);
   void reconnect(ClientFeature*);
 
   std::string const& databaseName() const { return _databaseName; }
@@ -129,7 +131,6 @@ class V8ClientConnection {
                                      fuerte::ErrorCondition ec);
 
  private:
-  std::string _endpoint;
   std::string _databaseName;
   std::string _username;
   std::string _password;

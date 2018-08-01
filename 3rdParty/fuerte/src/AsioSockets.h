@@ -24,6 +24,7 @@
 #define ARANGO_CXX_DRIVER_ASIO_CONNECTION_H 1
 
 #include <fuerte/asio_ns.h>
+#include <fuerte/loop.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
   
@@ -32,7 +33,8 @@ struct Socket {};
 
 template<>
 struct Socket<SocketType::Tcp>  {
-  Socket(asio_ns::io_context& ctx, asio_ns::ssl::context&)
+  Socket(EventLoopService&,
+         asio_ns::io_context& ctx)
     : resolver(ctx), socket(ctx) {}
   
   ~Socket() {
@@ -74,8 +76,9 @@ struct Socket<SocketType::Tcp>  {
 
 template<>
 struct Socket<fuerte::SocketType::Ssl> {
-  Socket(asio_ns::io_context& ctx, asio_ns::ssl::context& ssl)
-  : resolver(ctx), socket(ctx, ssl) {}
+  Socket(EventLoopService& loop,
+         asio_ns::io_context& ctx)
+  : resolver(ctx), socket(ctx, loop.sslContext()) {}
   
   ~Socket() {
     resolver.cancel();
@@ -137,7 +140,7 @@ struct Socket<fuerte::SocketType::Ssl> {
 template<>
 struct Socket<fuerte::SocketType::Unix> {
   
-  Socket(asio_ns::io_context& ctx, asio_ns::ssl::context&) : socket(ctx) {}
+  Socket(EventLoopService&, asio_ns::io_context& ctx) : socket(ctx) {}
   ~Socket() {
     shutdown();
   }

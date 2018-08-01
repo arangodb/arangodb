@@ -80,21 +80,18 @@ using namespace arangodb::import;
   return fullMessage + "." + StringUtils::encodeBase64U(signature);
 }*/
 
-V8ClientConnection::V8ClientConnection(ClientFeature* client)
-    : _requestTimeout(client->requestTimeout()),
-      _lastHttpReturnCode(0),
+V8ClientConnection::V8ClientConnection()
+    : _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
       _mode("unknown mode"),
       _loop(1),
-      _connection(nullptr) {
-  init(client);
-}
+      _connection(nullptr) {}
 
 V8ClientConnection::~V8ClientConnection() {}
 
 void V8ClientConnection::init(ClientFeature* client) {
-  _endpoint = client->endpoint();
+  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _username = client->username();
   _password = client->password();
   _databaseName = client->databaseName();
@@ -225,7 +222,14 @@ bool V8ClientConnection::isConnected() {
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
-  return _endpoint;
+  if (_connection) {
+    _connection->endpoint();
+  }
+  return "";
+}
+
+void V8ClientConnection::connect(ClientFeature* client) {
+  this->init(client);
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
@@ -240,7 +244,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
       _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME)
         << "Connected to ArangoDB "
-        << "'" << _endpoint << "', "
+        << "'" << endpointSpecification() << "', "
         << "version " << _version << " [" << _mode << "], "
         << "database '" << _databaseName << "', "
         << "username: '" << _username << "'";
@@ -364,20 +368,8 @@ static void ClientConnection_ConstructorCallback(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  /*std::unique_ptr<GeneralClientConnection> connection;
-
-  try {
-    if (args.Length() > 0 && args[0]->IsString()) {
-      std::string definition = TRI_ObjectToString(isolate, args[0]);
-      connection = client->createConnection(definition);
-    } else {
-      connection = client->createConnection();
-    }
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot connect to client");
-  }*/
-
-  auto v8connection = std::make_unique<V8ClientConnection>(client);
+  auto v8connection = std::make_unique<V8ClientConnection>();
+  v8connection->connect(client);
 
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
