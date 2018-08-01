@@ -311,7 +311,7 @@ SET(ARANGOD_SOURCES
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
-  Cluster/ResignLeadership.cpp
+  Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
