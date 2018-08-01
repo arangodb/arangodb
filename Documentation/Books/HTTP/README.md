@@ -12,7 +12,7 @@ In general, as a user of ArangoDB you will use one of the language
 **Interactive Swagger documentation**
 
 Please note that your ArangoDB comes with an interactive version of
-this docmunentation using [Swagger](https://swagger.io):
+this documentation using [Swagger](https://swagger.io):
 
 ![accessing the documentation via swagger](assets/swagger_serverapi_overview.png)
 
