@@ -742,7 +742,7 @@ Function UpgradeExisting
       DetailPrint "Copying old database from $DATADIR to backup directory $BackupPath"
       CopyFiles "$DATADIR" "$BackupPath"
       IfErrors 0 +2
-      MessageBox MB_INFORMATION "The upgrade failed to create a backup $\r$\nfrom '$DATADIR'$\r$\nto '$BackupPath'; please do it manually.$\r$\n$\r$\nClick OK when you did and we can continue."
+      MessageBox MB_ICONINFORMATION "The upgrade failed to create a backup $\r$\nfrom '$DATADIR'$\r$\nto '$BackupPath'; please do it manually.$\r$\n$\r$\nClick OK when you did and we can continue."
     ${EndIf}
     DetailPrint "Attempting to run database upgrade: "
     ; Now actually do the upgrade
