@@ -130,6 +130,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
+  /// this function will also take care of the cursor and return it to the
+  /// registry if required
   //////////////////////////////////////////////////////////////////////////////
 
   void generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
