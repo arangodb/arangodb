@@ -121,6 +121,7 @@ void V8ClientConnection::init(ClientFeature* client) {
   
   fuerte::StringMap params{{"details","true"}};
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
+  req->header.database = _databaseName;
   try {
     auto res = _connection->sendRequest(std::move(req));
     _lastHttpReturnCode = res->statusCode();
