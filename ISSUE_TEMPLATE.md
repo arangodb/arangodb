@@ -1,12 +1,13 @@
 ## My Environment
 
 * __ArangoDB Version__:        <!-- e.g. 3.3.10 or self-compiled devel branch -->
-* __Storage Engine__:             <!-- MMFiles / RocksDB -->
-* __Deployment Mode__:       <!-- Single Server | Master/Slave | Active Failover | Cluster | DC2DC -->
-* __Configuration__:               <!-- cluster setup details, notable server settings, etc. -->
-* __Infrastructure__:               <!-- AWS | Azure | ... | own -->
+* __Storage Engine__:          <!-- MMFiles / RocksDB -->
+* __Deployment Mode__:         <!-- Single Server | Master/Slave | Active Failover | Cluster | DC2DC -->
+* __Deployment Strategy__:     <!-- Manual Start | ArangoDB Starter | Kubernetes | DCOS -->
+* __Configuration__:           <!-- cluster setup details, notable server settings, etc. -->
+* __Infrastructure__:          <!-- AWS | Azure | ... | own -->
 * __Operating System__:        <!-- Ubuntu 18.04 | Windows 10 | MacOS 10.13.4 | DCOS 1.10 | ... -->
-* __Used Package__:              <!-- Debian or Ubuntu .deb | SUSE or RedHat .rpm | Docker - official Docker library | other -->
+* __Used Package__:            <!-- Debian or Ubuntu .deb | SUSE or RedHat .rpm | Docker - official Docker library | other -->
 
 ## Component, Query & Data
 
@@ -23,6 +24,10 @@ __AQL explain (if applicable)__:
 
 __Dataset__:
 <!-- description, or if possible, please share an example dataset to reproduce the issue either as Gist with an arangodump, or an arangosh script with db.collection.save({my: "values"}) statements -->
+
+
+__Replication Factor & Number of Shards (Cluster only)__:
+<!-- please share some information about the Replication Factor and Number of Shards in use -->
 
 
 ## Steps to reproduce
