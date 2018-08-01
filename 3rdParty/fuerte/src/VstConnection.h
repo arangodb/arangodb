@@ -44,7 +44,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 template<SocketType ST>
 class VstConnection final : public Connection {
  public:
-  explicit VstConnection(std::shared_ptr<asio_ns::io_context> const&,
+  explicit VstConnection(EventLoopService& loop,
                          detail::ConnectionConfiguration const&);
 
  public:

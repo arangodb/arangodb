@@ -40,13 +40,13 @@ using arangodb::fuerte::v1::SocketType;
 
 template<SocketType ST>
 VstConnection<ST>::VstConnection(
-    std::shared_ptr<asio_ns::io_context> const& ctx,
+    EventLoopService& loop,
     fu::detail::ConnectionConfiguration const& config)
     : Connection(config),
       _vstVersion(config._vstVersion),
-      _io_context(ctx),
-      _protocol(*ctx),
-      _timeout(*ctx),
+      _io_context(loop.nextIOContext()),
+      _protocol(*_io_context, loop.sslContext()),
+      _timeout(*_io_context),
       _state(Connection::State::Disconnected),
       _loopState(0),
       _writeQueue(1024){}

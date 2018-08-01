@@ -96,18 +96,19 @@ namespace fu = ::arangodb::fuerte::v1;
 using namespace arangodb::fuerte::detail;
 
 template<SocketType ST>
-HttpConnection<ST>::HttpConnection(std::shared_ptr<asio_io_context>& ctx,
-                               ConnectionConfiguration const& config)
+HttpConnection<ST>::HttpConnection(EventLoopService& loop,
+                                   ConnectionConfiguration const& config)
     : Connection(config),
-  _io_context(ctx),
-  _protocol(*ctx),
-  _timeout(*ctx),
+  _io_context(loop.nextIOContext()),
+  _protocol(*_io_context, loop.sslContext()),
+  _timeout(*_io_context),
   _state(Connection::State::Disconnected),
   _numQueued(0),
   _active(false),
   _queue(1024),
   _authHeader(""),
   _inFlight(nullptr) {
+  // initialize http parsing code
   _parserSettings.on_message_begin = ::on_message_began;
   _parserSettings.on_status = ::on_status;
   _parserSettings.on_header_field = ::on_header_field;

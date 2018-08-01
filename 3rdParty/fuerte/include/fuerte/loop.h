@@ -47,8 +47,6 @@ typedef asio_ns::executor_work_guard<asio_ns::io_context::executor_type>
 /// linux epoll has max 64 instances, so there is a limit on the
 /// number of io_context instances.
 class EventLoopService {
-  friend class ConnectionBuilder;
-
  public:
   // Initialize an EventLoopService with a given number of threads
   //  and a given number of io_context
@@ -59,12 +57,12 @@ class EventLoopService {
   EventLoopService(EventLoopService const& other) = delete;
   EventLoopService& operator=(EventLoopService const& other) = delete;
 
- protected:
-
   // io_service returns a reference to the boost io_service.
   std::shared_ptr<asio_io_context>& nextIOContext() {
     return _ioContexts[_lastUsed.fetch_add(1, std::memory_order_relaxed) % _ioContexts.size()];
   }
+  
+  asio_ns::ssl::context& sslContext() { return _sslContext; }
 
  private:
   std::atomic<uint32_t> _lastUsed;
@@ -75,6 +73,8 @@ class EventLoopService {
   std::vector<asio_work_guard> _guards;
   /// Threads powering each io_context
   std::vector<std::thread> _threads;
+  /// global SSL context to use here
+  asio_ns::ssl::context _sslContext;
 };
 }}}  // namespace arangodb::fuerte::v1
 #endif

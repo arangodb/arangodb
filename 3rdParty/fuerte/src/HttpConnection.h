@@ -46,7 +46,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 template<SocketType ST>
 class HttpConnection final : public fuerte::Connection {
  public:
-  explicit HttpConnection(std::shared_ptr<asio_io_context>& ctx,
+  explicit HttpConnection(EventLoopService& loop,
                           detail::ConnectionConfiguration const&);
   ~HttpConnection();
 

@@ -32,7 +32,7 @@ struct Socket {};
 
 template<>
 struct Socket<SocketType::Tcp>  {
-  Socket(asio_ns::io_context& ctx)
+  Socket(asio_ns::io_context& ctx, asio_ns::ssl::context&)
     : resolver(ctx), socket(ctx) {}
   
   ~Socket() {
@@ -50,7 +50,6 @@ struct Socket<SocketType::Tcp>  {
       }
       // A successful resolve operation is guaranteed to pass a
       // non-empty range to the handler.
-      // Start the asynchronous connect operation.
       asio_ns::async_connect(socket, it,
                              [done](asio_ns::error_code const& ec,
                                     asio_ns::ip::tcp::resolver::iterator const&) {
@@ -75,8 +74,8 @@ struct Socket<SocketType::Tcp>  {
 
 template<>
 struct Socket<fuerte::SocketType::Ssl> {
-  Socket(asio_ns::io_context& ctx)
-  : context(asio_ns::ssl::context::sslv23), resolver(ctx), socket(ctx, context) {}
+  Socket(asio_ns::io_context& ctx, asio_ns::ssl::context& ssl)
+  : resolver(ctx), socket(ctx, ssl) {}
   
   ~Socket() {
     resolver.cancel();
@@ -100,16 +99,15 @@ struct Socket<fuerte::SocketType::Ssl> {
           return;
         }
         
-        /*if (config._verifyHost) {
-          // Perform SSL handshake and verify the remote host's certificate.
-          socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+        // Perform SSL handshake and verify the remote host's certificate.
+        socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+        if (config._verifyHost) {
           socket.set_verify_mode(asio_ns::ssl::verify_peer);
           socket.set_verify_callback(asio_ns::ssl::rfc2818_verification(config._host));
-        } else {*/
+        } else {
           socket.set_verify_mode(asio_ns::ssl::verify_none);
-        //}
+        }
         
-        //FUERTE_LOG_CALLBACKS << "starting ssl handshake " << std::endl;
         socket.async_handshake(asio_ns::ssl::stream_base::client,
                                [done](asio_ns::error_code const& ec) {
                                  done(ec);
@@ -132,8 +130,6 @@ struct Socket<fuerte::SocketType::Ssl> {
     }
   }
   
-  // TODO move to EventLoop
-  asio_ns::ssl::context context;
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
 };
@@ -141,7 +137,7 @@ struct Socket<fuerte::SocketType::Ssl> {
 template<>
 struct Socket<fuerte::SocketType::Unix> {
   
-  Socket(asio_ns::io_context& ctx) : socket(ctx) {}
+  Socket(asio_ns::io_context& ctx, asio_ns::ssl::context&) : socket(ctx) {}
   ~Socket() {
     shutdown();
   }

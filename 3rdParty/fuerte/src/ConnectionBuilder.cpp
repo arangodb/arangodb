@@ -37,21 +37,21 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
   if (_conf._protocolType == ProtocolType::Vst) {
     FUERTE_LOG_DEBUG << "fuerte - creating velocystream connection\n";
     if (_conf._socketType == SocketType::Tcp) {
-      result = std::make_shared<vst::VstConnection<SocketType::Tcp>>(loop.nextIOContext(), _conf);
+      result = std::make_shared<vst::VstConnection<SocketType::Tcp>>(loop, _conf);
     } else if (_conf._socketType == SocketType::Ssl) {
-      result = std::make_shared<vst::VstConnection<SocketType::Ssl>>(loop.nextIOContext(), _conf);
+      result = std::make_shared<vst::VstConnection<SocketType::Ssl>>(loop, _conf);
     } else if (_conf._socketType == SocketType::Unix) {
-      result = std::make_shared<vst::VstConnection<SocketType::Unix>>(loop.nextIOContext(), _conf);
+      result = std::make_shared<vst::VstConnection<SocketType::Unix>>(loop, _conf);
     }
   } else {
     // throw std::logic_error("http in vst test");
     FUERTE_LOG_DEBUG << "fuerte - creating http connection\n";
     if (_conf._socketType == SocketType::Tcp) {
-      result = std::make_shared<http::HttpConnection<SocketType::Tcp>>(loop.nextIOContext(), _conf);
+      result = std::make_shared<http::HttpConnection<SocketType::Tcp>>(loop, _conf);
     } else if (_conf._socketType == SocketType::Ssl) {
-      result = std::make_shared<http::HttpConnection<SocketType::Ssl>>(loop.nextIOContext(), _conf);
+      result = std::make_shared<http::HttpConnection<SocketType::Ssl>>(loop, _conf);
     } else if (_conf._socketType == SocketType::Unix) {
-      result = std::make_shared<http::HttpConnection<SocketType::Unix>>(loop.nextIOContext(), _conf);
+      result = std::make_shared<http::HttpConnection<SocketType::Unix>>(loop, _conf);
     }
   }
   if (!result) {

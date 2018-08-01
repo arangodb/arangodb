@@ -161,6 +161,14 @@ class ConnectionBuilder {
     _conf._vstVersion = c;
     return *this;
   }
+  
+  /// @brief should we verify the SSL host
+  inline bool verifyHost() const { return _conf._verifyHost; }
+  ConnectionBuilder& verifyHost(bool b) {
+    _conf._verifyHost = b;
+    return *this;
+  }
+  
   // Set a callback for connection failures that are not request specific.
   ConnectionBuilder& onFailure(ConnectionFailureCallback c) {
     _conf._onFailure = c;
