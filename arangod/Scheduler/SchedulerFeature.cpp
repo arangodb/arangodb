@@ -221,6 +221,17 @@ size_t SchedulerFeature::defaultNumberOfThreads() const {
   return result;
 }
 
+
+void SchedulerFeature::buildScheduler() {
+  _scheduler = std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
+                                           _queueSize, _fifo1Size, _fifo2Size);
+
+  SCHEDULER = _scheduler.get();
+}
+
+
+
+
 #ifdef _WIN32
 bool CtrlHandler(DWORD eventType) {
   bool shutdown = false;
@@ -293,13 +304,45 @@ bool CtrlHandler(DWORD eventType) {
   return true;
 }
 
+#else
+
+extern "C" void c_exit_handler(int signal) {
+
+  static bool seen = false;
+
+  if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
+    if (!seen) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+        << "control-c received, beginning shut down sequence";
+
+      if (application_features::ApplicationServer::server != nullptr) {
+        application_features::ApplicationServer::server->beginShutdown();
+      }
+
+      seen = true;
+    } else {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+          << "control-c received (again!), terminating";
+      FATAL_ERROR_EXIT();
+    }
+  }
+}
+
+extern "C" void c_hangup_handler(int signal) {
+  if (signal == SIGHUP) {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+        << "hangup received, about to reopen logfile";
+    LogAppender::reopen();
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+        << "hangup received, reopened logfile";
+  }
+}
 #endif
 
-void SchedulerFeature::buildScheduler() {
-  _scheduler = std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                           _queueSize, _fifo1Size, _fifo2Size);
-
-  SCHEDULER = _scheduler.get();
+void SchedulerFeature::buildHangupHandler() {
+#ifndef _WIN32
+  std::signal(SIGHUP, c_hangup_handler);
+#endif
 }
 
 void SchedulerFeature::buildControlCHandler() {
@@ -324,61 +367,9 @@ void SchedulerFeature::buildControlCHandler() {
   sigemptyset(&all);
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
-  _exitSignals.reset(_scheduler->newSignalSet());
-  _exitSignals->add(SIGINT);
-  _exitSignals->add(SIGTERM);
-  _exitSignals->add(SIGQUIT);
+  std::signal(SIGINT, c_exit_handler);
+  std::signal(SIGQUIT, c_exit_handler);
+  std::signal(SIGTERM, c_exit_handler);
 
-  _signalHandler = [this](const asio_ns::error_code& error, int number) {
-    if (error) {
-      return;
-    }
-
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "control-c received, beginning shut down sequence";
-    server()->beginShutdown();
-
-    auto exitSignals = _exitSignals;
-
-    if (exitSignals.get() != nullptr) {
-      exitSignals->async_wait(_exitHandler);
-    }
-  };
-
-  _exitHandler = [](const asio_ns::error_code& error, int number) {
-    if (error) {
-      return;
-    }
-
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
-        << "control-c received (again!), terminating";
-    FATAL_ERROR_EXIT();
-  };
-
-  _exitSignals->async_wait(_signalHandler);
-
-#endif
-}
-
-void SchedulerFeature::buildHangupHandler() {
-#ifndef _WIN32
-  _hangupSignals.reset(_scheduler->newSignalSet());
-  _hangupSignals->add(SIGHUP);
-
-  _hangupHandler = [this](const asio_ns::error_code& error, int number) {
-    if (error) {
-      return;
-    }
-
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-        << "hangup received, about to reopen logfile";
-    LogAppender::reopen();
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-        << "hangup received, reopened logfile";
-
-    _hangupSignals->async_wait(_hangupHandler);
-  };
-
-  _hangupSignals->async_wait(_hangupHandler);
 #endif
 }

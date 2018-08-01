@@ -102,13 +102,6 @@ public:
   std::mutex _mutex;
   std::condition_variable _conditionWork;
 
-  // This asio context is here to provide functionallity
-  // for signal handlers.
-  //
-  // However in feature this should be replaced:
-  //  Steady and deadline timer could be implemented using a priority queue
-  asio_ns::io_context _obsoleteContext;
-
   void runWorker();
   void runSupervisor();
 

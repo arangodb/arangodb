@@ -131,11 +131,6 @@ public:
   virtual void beginShutdown();
   virtual void shutdown();
 
-  asio_ns::signal_set* newSignalSet() {
-    return new asio_ns::signal_set(_obsoleteContext);
-  }
-
-
  private:
   friend class SchedulerCronThread;
 
@@ -146,13 +141,6 @@ public:
   std::condition_variable _conditionCron;
 
   void runCron();
-
-  // This asio context is here to provide functionallity
-  // for signal handlers.
-  //
-  // However in feature this should be replaced:
-  //  Steady and deadline timer could be implemented using a priority queue
-  asio_ns::io_context _obsoleteContext;
 
 
   std::unique_ptr<SchedulerCronThread> _cronThread;
