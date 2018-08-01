@@ -1394,6 +1394,7 @@ void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) 
       state = cleanupPlanAndEngine(errorCode, statsBuilder);
     }
   } catch (...) {
+    // this is called from the destructor... we must not leak exceptions from here
   }
 }
 
