@@ -39,6 +39,8 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
 
+#include "Scheduler/SupervisedScheduler.h"
+
 #include <chrono>
 #include <thread>
 
@@ -294,7 +296,7 @@ bool CtrlHandler(DWORD eventType) {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
+  _scheduler = std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
                                            _queueSize, _fifo1Size, _fifo2Size);
 
   SCHEDULER = _scheduler.get();
@@ -332,7 +334,7 @@ void SchedulerFeature::buildControlCHandler() {
       return;
     }
 
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "control-c received, beginning shut down sequence";
     server()->beginShutdown();
 
@@ -348,12 +350,13 @@ void SchedulerFeature::buildControlCHandler() {
       return;
     }
 
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
         << "control-c received (again!), terminating";
     FATAL_ERROR_EXIT();
   };
 
   _exitSignals->async_wait(_signalHandler);
+
 #endif
 }
 

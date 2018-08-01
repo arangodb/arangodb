@@ -51,20 +51,14 @@ namespace rest {
 class GeneralCommTask;
 class SocketTask;
 
-class SchedulerContextThread;
-class SchedulerWorkerThread;
-class SchedulerManagerThread;
 class SchedulerCronThread;
 
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
-
-
  public:
-  Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-            uint64_t fifo1Size, uint64_t fifo2Size);
+  Scheduler();
   virtual ~Scheduler();
 
   struct QueueStatistics {
@@ -73,8 +67,8 @@ class Scheduler {
     uint64_t _queued;
   };
 
-  void post(std::function<void()> const& callback);
-  bool queue(RequestPriority prio, std::function<void()> const&);
+  virtual void post(std::function<void()> const& callback) = 0;
+  virtual bool queue(RequestPriority prio, std::function<void()> const&) = 0;
 
 
   typedef std::chrono::steady_clock clock;
@@ -119,45 +113,30 @@ class Scheduler {
     void detach() { _guard->detach(); }
   };
 
-
   WorkHandle postDelay(clock::duration delay, std::function<void(bool cancelled)> const& callback);
 
-  void addQueueStatistics(velocypack::Builder&) const;
-  QueueStatistics queueStatistics() const;
-  std::string infoStatus();
+  virtual void addQueueStatistics(velocypack::Builder&) const = 0;
+  virtual QueueStatistics queueStatistics() const = 0;
+  virtual std::string infoStatus() const = 0;
 
 private:
   std::atomic<size_t> _numWorker;
   std::atomic<bool> _stopping;
 
 public:
-  bool isRunning() const { return _numWorker > 0; }
-  bool isStopping() const noexcept { return _stopping; }
+  virtual bool isRunning() const = 0;
+  virtual bool isStopping() const noexcept = 0;
 
-  bool start();
-  void beginShutdown();
-  void shutdown();
-
-  /*
-  template <typename T>
-  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
-    return new asio_ns::deadline_timer(_obsoleteContext, timeout);
-  }*/
-
-  asio_ns::steady_timer* newSteadyTimer() {
-    return new asio_ns::steady_timer(_obsoleteContext);
-  }
+  virtual bool start();
+  virtual void beginShutdown();
+  virtual void shutdown();
 
   asio_ns::signal_set* newSignalSet() {
     return new asio_ns::signal_set(_obsoleteContext);
   }
 
 
-
  private:
-  friend class SchedulerManagerThread;
-  friend class SchedulerWorkerThread;
-  friend class SchedulerContextThread;
   friend class SchedulerCronThread;
 
   std::priority_queue<std::shared_ptr<DelayedWorkItem>,
@@ -166,67 +145,16 @@ public:
   std::mutex _priorityQueueMutex;
   std::condition_variable _conditionCron;
 
-  struct WorkItem {
-    std::function<void()> _handler;
-
-    WorkItem(std::function<void()> const& handler) : _handler(handler) {}
-    WorkItem(std::function<void()> && handler) : _handler(std::move(handler)) {}
-    virtual ~WorkItem() {}
-
-    virtual void operator() () { _handler(); }
-  };
-
-  // Since the lockfree queue can only handle PODs, one has to wrap lambdas
-  // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItem*> _queue[3];
-
-  std::atomic<uint64_t> _jobsSubmitted, _jobsDone;
-
-  std::atomic<uint64_t> _wakeupQueueLength;                        // q1
-  std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
-
-
-  struct WorkerState {
-    uint64_t _queueRetryCount;     // t1
-    uint64_t _sleepTimeout_ms;    // t2
-    bool _stop;
-
-    std::unique_ptr<SchedulerWorkerThread> _thread;
-
-    // initialise with harmless defaults: spin once, sleep forever
-    WorkerState(Scheduler &scheduler);
-  };
-
-  size_t _maxNumWorker;
-  size_t _numIdleWorker;
-  std::vector<WorkerState> _workerStates;
-
-  std::mutex _mutex;
-  std::condition_variable _conditionWork;
+  void runCron();
 
   // This asio context is here to provide functionallity
-  // for signal handlers, deadline and steady timer.
-  // It runs in a seperate thread.
+  // for signal handlers.
   //
   // However in feature this should be replaced:
   //  Steady and deadline timer could be implemented using a priority queue
   asio_ns::io_context _obsoleteContext;
-  asio_ns::io_context::work _obsoleteWork;
 
-  void runWorker();
-  void runCron();
-  void runSupervisor();
 
-  std::mutex _mutexSupervisor;
-  std::condition_variable _conditionSupervisor;
-  std::unique_ptr<SchedulerManagerThread> _manager;
-
-  bool getWork (WorkItem *&, WorkerState &);
-
-  void startOneThread();
-  void stopOneThread();
-
-  std::unique_ptr<SchedulerContextThread> _contextThread;
   std::unique_ptr<SchedulerCronThread> _cronThread;
 };
 }
