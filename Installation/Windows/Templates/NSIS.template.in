@@ -56,12 +56,12 @@ Var ADD_TO_PATH               ; x bool
 Var AUTOMATIC_UPDATE
 Var AUTOMATIC_BACKUP
 
+# determine_possible_install_scope sets:
 Var AllowGlobalInstall
 
 Var ChooseInstallPath
 
 Var BackupPath
-
 
 VAR TRI_INSTALL_SERVICE       ; x bool
 VAR TRI_INSTALL_SCOPE_ALL     ; x bool => All / ThisUser
@@ -72,11 +72,11 @@ Var ServiceUp                 ; did the service start?
 
 Var DATADIR
 Var APPDIR
-Var LOGFILE
+; Var LOGFILE
 
 Var ini_DATADIR
 Var ini_APPDIR
-Var ini_LOGFILE
+; Var ini_LOGFILE
 
 Var UpgradeInstall
 Var LaunchAfterInstall
@@ -123,6 +123,17 @@ RequestExecutionLevel highest
 !include "AddToRegistry.nsh"
 !include "WaitForService.nsh"
 !include "ReadINIFileKeys.nsh"
+
+!macro determine_possible_install_scope
+    UserInfo::GetAccountType
+    pop $0
+    ${If} $0 == "admin"
+      StrCpy $AllowGlobalInstall "1"
+    ${Else}
+      StrCpy $AllowGlobalInstall "0"
+    ${EndIf}
+!macroend
+
 
 !macro determine_install_scope un
   Function ${un}determine_install_scope
@@ -208,11 +219,6 @@ Function check_previous_install
   return
 OldFound:
   StrCpy $UpgradeInstall "1"
-FunctionEnd
-
-Function disableBackButton
-     GetDlgItem $0 $HWNDParent 3
-     EnableWindow $0 0
 FunctionEnd
 
 Function stop_old_service
@@ -498,7 +504,6 @@ Function InstallOptionsPage1
 continueUI:
   !insertmacro determineInstallScope 1
   Push ${TEMP1}
-displayAgain:
 
   !insertmacro MUI_HEADER_TEXT "Install Options" "Choose options for installing @CPACK_NSIS_PACKAGE_NAME@"
 
@@ -720,7 +725,7 @@ Function UpgradeExisting
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
   ${If} $0 != 0
   ${AndIf} $0 != 11
-    !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade"
+    !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade" ""
   ${ElseIf} $0 == 11
   ${AndIf} $AUTOMATIC_UPDATE == "1"
     DetailPrint "Yes."
@@ -744,7 +749,7 @@ Function UpgradeExisting
     ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false  --log.level error --database.auto-upgrade true" $0
     DetailPrint "Done running database upgrade: $0"
     ${If} $0 != 0
-      !insertmacro printExitCode $0 "the Upgrade failed, please do a manual upgrade"
+      !insertmacro printExitCode $0 "the Upgrade failed, please do a manual upgrade" ""
       Abort
     ${EndIf}
   ${EndIf}
@@ -761,7 +766,7 @@ Function SetDBPassword
   ${If} $0 == 0
     return
   ${Else}
-    !insertmacro printExitCode $0 "Failed to initialize database password.$\r$\nPlease check the Windows event log for more details$\r$\n"
+    !insertmacro printExitCode $0 "Failed to initialize database password$\r$\n" "Please check the Windows event log for more details$\r$\n"
     Abort
   ${EndIf}
   error:
@@ -792,8 +797,9 @@ Function InstallService
          ${If} $2 == "1"
            MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with an error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
            Abort
-         ${ElseIf} $2 == "2"
-           MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+         ${Else}
+           !insertmacro printExitCode $2 "${SC_WAITED}$\r$\nbut it exited with a fatal error" "$\r$\n${SC_SV}$\r$\n${SC_EVLOG};$\r$\nExit status: $2"
+           ; MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
            Abort
          ${EndIf}
        ${ElseIf} $1 != "0"
@@ -928,9 +934,9 @@ Section "-Core installation"
   ${If} $APPDIR != ""
     StrCpy $ini_APPDIR "[javascript]$\r$\napp-path = $APPDIR$\r$\n"
   ${EndIf}
-  ${If} $LOGFILE != ""
-    StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGFILE$\r$\n"
-  ${EndIf}
+  ;${If} $LOGFILE != ""
+  ;  StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGFILE$\r$\n"
+  ;${EndIf}
   StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
   StrCpy $newCfgValuesFile "$INSTDIR\etc\arangodb3\newValues.ini"
   FileOpen $4  "$newCfgValuesFile" w
@@ -1021,13 +1027,8 @@ FunctionEnd
 ;--------------------------------
 ; determine admin versus local install
 Function un.onInit
-  UserInfo::GetAccountType
-  pop $0
-  ${If} $0 == "admin"
-    StrCpy $AllowGlobalInstall "1"
-  ${Else}
-    StrCpy $AllowGlobalInstall "0"
-  ${EndIf}
+  ; are we allowed to un.install admin in first place?
+  !insertmacro determine_possible_install_scope
 
 ; ArangoDB may be installed in different places
 ; Determine if the ArangoDB was installed for a local user
@@ -1227,18 +1228,11 @@ SectionEnd
 ; Choose different default installation folder based on SV_ALLUSERS...
 ; "Program Files" for AllUsers, "My Documents" for JustMe...
 
-var allPathOpts
 var CMDINSTDIR
 
 Function .onInit
-  UserInfo::GetAccountType
-  pop $0
-  ${If} $0 == "admin"
-    StrCpy $AllowGlobalInstall "1"
-  ${Else}
-    StrCpy $AllowGlobalInstall "0"
-  ${EndIf}
-
+  ; are we allowed to install admin in first place?
+  !insertmacro determine_possible_install_scope
   ${GetParameters} $R0
   ClearErrors
   ${GetOptions} $R0 "/INSTALL_SCOPE_ALL=" $0
