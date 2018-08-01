@@ -36,7 +36,12 @@ Creates an authenticator.
     * `"sha512"`
     * `"pbkdf2"`
 
-    **Note**: PBKDF2 is more secure but also takes considerably more resources to compute, which will impact ArangoDB performance, especially when verifying/hashing multiple passwords at a time. If you need a secure authentication mechanism consider performing authentication outside the database or using a third-party identity provider that [supports OAuth 1.0a](OAuth1.md) or [OAuth 2.0](OAuth2.md).
+    **Note**: PBKDF2 is more secure but also takes considerably more resources
+ to compute, which will impact ArangoDB performance, especially when
+ verifying/hashing multiple passwords at a time. If you need a secure
+ authentication mechanism consider performing authentication outside the database
+ or using a third-party identity provider that [supports OAuth 1.0a](OAuth1.md)
+ or [OAuth 2.0](OAuth2.md).
 
   * **saltLength**: `number` (Default: `16`)
 
