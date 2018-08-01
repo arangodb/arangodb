@@ -170,7 +170,7 @@ void CheckVersionFeature::checkVersion() {
       *_result = 3;
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
-          << "': upgrade needed";
+          << "': downgrade needed";
     } else if (res.status == methods::VersionResult::UPGRADE_NEEDED &&
                *_result == 1) {
       // this is safe to do even if further databases will be checked
@@ -178,7 +178,7 @@ void CheckVersionFeature::checkVersion() {
       *_result = 2;
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
-          << "': downgrade needed";
+          << "': upgrade needed";
     }
   }
 
