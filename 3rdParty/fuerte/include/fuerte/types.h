@@ -25,6 +25,7 @@
 #define ARANGO_CXX_DRIVER_FUERTE_TYPES
 
 #include <chrono>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>

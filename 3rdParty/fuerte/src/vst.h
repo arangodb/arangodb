@@ -43,9 +43,6 @@ static size_t const minChunkHeaderSize = 16;
 static size_t const maxChunkHeaderSize = 24;
 static size_t const defaultMaxChunkSize = 30000;
 
-static const char* vstHeader1_0 = "VST/1.0\r\n\r\n";
-static const char* vstHeader1_1 = "VST/1.1\r\n\r\n";
-
 /////////////////////////////////////////////////////////////////////////////////////
 // DataStructures
 /////////////////////////////////////////////////////////////////////////////////////

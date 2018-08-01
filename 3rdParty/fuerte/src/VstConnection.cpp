@@ -176,14 +176,13 @@ void VstConnection<ST>::stopIOLoops() {
 template<SocketType ST>
 void VstConnection<ST>::finishInitialization() {
   FUERTE_LOG_CALLBACKS << "finishInitialization (vst)" << std::endl;
-
   const char* vstHeader;
   switch (_vstVersion) {
     case VST1_0:
-      vstHeader = vstHeader1_0;
+      vstHeader = "VST/1.0\r\n\r\n";
       break;
     case VST1_1:
-      vstHeader = vstHeader1_1;
+      vstHeader = "VST/1.1\r\n\r\n";
       break;
     default:
       throw std::logic_error("Unknown VST version");
