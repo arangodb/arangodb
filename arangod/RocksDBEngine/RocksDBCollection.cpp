@@ -606,13 +606,6 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
   );
 }
 
-std::unique_ptr<IndexIterator> RocksDBCollection::getSortedAllIterator(
-    transaction::Methods* trx) const {
-  return std::unique_ptr<RocksDBSortedAllIterator>(
-    new RocksDBSortedAllIterator(&_logicalCollection, trx, primaryIndex())
-  );
-}
-
 void RocksDBCollection::invokeOnAllElements(
     transaction::Methods* trx,
     std::function<bool(LocalDocumentId const&)> callback) {
@@ -642,7 +635,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
   rocksdb::Comparator const* cmp =
       RocksDBColumnFamily::documents()->GetComparator();
-  rocksdb::ReadOptions ro = mthd->readOptions();
+  rocksdb::ReadOptions ro = mthd->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
 
@@ -1337,7 +1330,7 @@ Result RocksDBCollection::removeDocument(
 
   /*LOG_TOPIC(ERR, Logger::FIXME)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+      << " seq: " << mthd->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
   Result resInner;
@@ -1474,7 +1467,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
     mdr.reset();
   }
@@ -1537,7 +1530,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
   }
   return res;
