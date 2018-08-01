@@ -3,7 +3,7 @@
 * __ArangoDB Version__:        <!-- e.g. 3.3.14 or self-compiled devel branch -->
 * __Storage Engine__:             <!-- MMFiles / RocksDB -->
 * __Deployment Mode__:       <!-- Single Server | Master/Slave | Active Failover | Cluster | DC2DC -->
-* __Deployment Strategy__:   <!-- Manual Start | ArangoDB Starter | Kubernetes | DCOS -->
+* __Deployment Strategy__:   <!-- Manual Start | Manual Start in Docker | ArangoDB Starter | ArangoDB Starter in Docker | Kubernetes | DCOS -->
 * __Configuration__:               <!-- cluster setup details, notable server settings, etc. -->
 * __Infrastructure__:               <!-- AWS | Azure | ... | own -->
 * __Operating System__:        <!-- Ubuntu 18.04 | Windows 10 | MacOS 10.13.4 | DCOS 1.10 | ... -->
