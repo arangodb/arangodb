@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/* global describe, beforeEach, afterEach, it */
+/* global describe, beforeEach, afterEach, it, xit, print */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,11 +189,11 @@ describe('_api/batch/document', () => {
           options: {},
         });
 
-        print("############################################")
-        print(JSON.stringify(response))
-        print("############################################")
-        print(response.json)
-        print("############################################")
+        print("############################################");
+        print(JSON.stringify(response));
+        print("############################################");
+        print(response.json);
+        print("############################################");
 
         expect(response.statusCode).to.equal(202);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
@@ -213,11 +213,11 @@ describe('_api/batch/document', () => {
         options: {},
       });
 
-      print("############################################")
-      print(JSON.stringify(response))
-      print("############################################")
-      print(response.json)
-      print("############################################")
+      print("############################################");
+      print(JSON.stringify(response));
+      print("############################################");
+      print(response.json);
+      print("############################################");
 
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
