@@ -414,7 +414,7 @@ bool Worker<V, E, M>::_processVertices(
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
-  if (TRI_UNLIKELY(!_writeCache)) {  // ~Worker was called
+  if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
     LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
     return false;
   }

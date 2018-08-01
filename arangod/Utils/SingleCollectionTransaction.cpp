@@ -25,42 +25,24 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationResult.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
+#include "VocBase/LogicalDataSource.h"
 
-using namespace arangodb;
+namespace arangodb {
 
-/// @brief create the transaction, using a collection
+/// @brief create the transaction, using a data-source
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<transaction::Context> const& transactionContext,
-  LogicalCollection const* col, AccessMode::Type accessType)
-      : transaction::Methods(transactionContext),
-        _cid(col->id()),
-        _trxCollection(nullptr),
-        _documentCollection(nullptr),
-        _accessType(accessType) {
-
-  // add the (sole) collection
-  addCollection(col->id(), col->name(), _accessType);
-  addHint(transaction::Hints::Hint::NO_DLD);
-}
-
-
-/// @brief create the transaction, using a collection id
-SingleCollectionTransaction::SingleCollectionTransaction(
-   std::shared_ptr<transaction::Context> const& transactionContext,
-   LogicalView const& view, AccessMode::Type accessType)
-      : transaction::Methods(transactionContext),
-      _cid(view.id()),
-      _trxCollection(nullptr),
-      _documentCollection(nullptr),
-      _accessType(accessType) {
-  
-  // add the (sole) view
-  addCollection(view.id(), view.name(), _accessType);
+  LogicalDataSource const& dataSource,
+  AccessMode::Type accessType
+): transaction::Methods(transactionContext),
+   _cid(dataSource.id()),
+   _trxCollection(nullptr),
+   _documentCollection(nullptr),
+   _accessType(accessType) {
+  // add the (sole) data-source
+  addCollection(dataSource.id(), dataSource.name(), _accessType);
   addHint(transaction::Hints::Hint::NO_DLD);
 }
 
@@ -113,3 +95,5 @@ std::string SingleCollectionTransaction::name() {
    // will ensure we have the _trxCollection object set
   return resolveTrxCollection()->collectionName();
 }
+
+} // arangodb

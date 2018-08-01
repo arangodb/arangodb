@@ -138,7 +138,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
   } else {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(collection->vocbase()),
-      collection,
+      *collection,
       AccessMode::Type::READ
     );
 
@@ -260,7 +260,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   SingleCollectionTransaction trx(
     transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-    collection,
+    *collection,
     create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -271,6 +271,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
+
   if (create) {
     try {
       idx = collection->createIndex(&trx, definition, created);
@@ -285,7 +286,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
       return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
-    
+
   TRI_ASSERT(idx != nullptr);
 
   VPackBuilder tmp;
@@ -592,7 +593,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
     SingleCollectionTransaction trx(
       transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-      collection,
+      *collection,
       AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();

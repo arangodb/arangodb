@@ -898,9 +898,7 @@ Result RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
-        SingleCollectionTransaction trx(
-          ctx, col, AccessMode::Type::EXCLUSIVE
-        );
+        SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
 
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
@@ -2109,9 +2107,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (readLockId.isNone()) {
     // Short cut for the case that the collection is empty
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(
-      ctx, col.get(), AccessMode::Type::EXCLUSIVE
-    );
+    SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
     auto res = trx.begin();
 
     if (res.ok()) {
@@ -2323,8 +2319,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  auto trx =
-      std::make_shared<SingleCollectionTransaction>(ctx, col.get(), access);
+  auto trx = std::make_shared<SingleCollectionTransaction>(ctx, *col, access);
+
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   Result res = trx->begin();

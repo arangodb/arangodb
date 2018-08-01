@@ -77,9 +77,9 @@ using namespace arangodb;
 // back on later in its dtor 
 // this is just a performance optimization for small transactions
 struct IndexingDisabler {
-  IndexingDisabler(RocksDBMethods* mthd, bool disableIndexing) 
-      : mthd(mthd), disableIndexing(disableIndexing) {
-    if (disableIndexing) {
+  IndexingDisabler(RocksDBMethods* mthd, bool disable) 
+      : mthd(mthd), disableIndexing(disable) {
+    if (disable) {
       disableIndexing = mthd->DisableIndexing();
     }
   }
@@ -1667,7 +1667,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
   auto ctx =
     transaction::StandaloneContext::Create(_logicalCollection.vocbase());
   SingleCollectionTransaction trx(
-    ctx, &_logicalCollection, AccessMode::Type::EXCLUSIVE
+    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
   );
   auto res = trx.begin();
 
@@ -1802,7 +1802,7 @@ void RocksDBCollection::recalculateIndexEstimates(
   auto ctx =
     transaction::StandaloneContext::Create(_logicalCollection.vocbase());
   arangodb::SingleCollectionTransaction trx(
-    ctx, &_logicalCollection, AccessMode::Type::EXCLUSIVE
+    ctx, _logicalCollection, AccessMode::Type::EXCLUSIVE
   );
   auto res = trx.begin();
 

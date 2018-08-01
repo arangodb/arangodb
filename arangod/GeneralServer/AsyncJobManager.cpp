@@ -54,16 +54,15 @@ AsyncJobResult::AsyncJobResult()
     : _jobId(0),
       _response(nullptr),
       _stamp(0.0),
-      _status(JOB_UNDEFINED),
-      _handler(nullptr) {}
+      _status(JOB_UNDEFINED) {}
 
 AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
-                               RestHandler* handler)
+                               std::shared_ptr<RestHandler>&& handler)
     : _jobId(jobId),
       _response(nullptr),
       _stamp(TRI_microtime()),
       _status(status),
-      _handler(handler) {}
+      _handler(std::move(handler)) {}
 
 AsyncJobResult::~AsyncJobResult() {}
 
@@ -193,7 +192,8 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
   }
 
   bool ok = true;
-  RestHandler* handler = it->second.second._handler;
+  std::shared_ptr<RestHandler>& handler = it->second.second._handler;
+
   if (handler != nullptr) {
     ok = handler->cancel();
   }
@@ -211,9 +211,10 @@ Result AsyncJobManager::clearAllJobs() {
   Result rv;
   WRITE_LOCKER(writeLocker, _lock);
 
-  for (auto const& it : _jobs) {
+  for (auto& it : _jobs) {
     bool ok = true;
-    RestHandler* handler = it.second.second._handler;
+    std::shared_ptr<RestHandler>& handler = it.second.second._handler;
+
     if (handler != nullptr) {
       ok = handler->cancel();
     }
@@ -277,16 +278,16 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob(RestHandler* handler) {
+void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
   handler->assignHandlerId();
   AsyncJobResult::IdType jobId = handler->handlerId();
 
-  AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, handler);
   std::string user = handler->request()->user();
+  AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, std::move(handler));
 
   WRITE_LOCKER(writeLocker, _lock);
 
-  _jobs.emplace(jobId, std::make_pair(user, ajr));
+  _jobs.emplace(jobId, std::make_pair(std::move(user), ajr));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -63,7 +63,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     JobSynchronizer(JobSynchronizer const&) = delete;
     JobSynchronizer& operator=(JobSynchronizer const&) = delete;
 
-    explicit JobSynchronizer(std::shared_ptr<Syncer const> syncer); 
+    explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer); 
     ~JobSynchronizer() = default;
 
     /// @brief will be called whenever a response for the job comes in

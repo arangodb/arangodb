@@ -27,6 +27,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -98,6 +99,7 @@ struct CollectionNameResolverSetup {
     // setup required application features
     features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::dropCollection(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
+    features.emplace_back(new arangodb::ShardingFeature(&server), false); 
     features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
 
     for (auto& f: features) {

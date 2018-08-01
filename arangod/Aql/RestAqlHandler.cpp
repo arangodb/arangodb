@@ -676,9 +676,11 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                                           VPackSlice const querySlice) {
   auto self = shared_from_this();
-  query->setContinueHandler([this, self]() {
+  std::shared_ptr<SharedQueryState> ss = query->sharedState();
+  ss->setContinueHandler([this, self, ss]() {
     continueHandlerExecution();
   });
+
   bool found;
   std::string const& shardId = _request->header("shard-id", found);
 

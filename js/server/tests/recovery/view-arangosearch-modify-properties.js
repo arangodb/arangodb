@@ -37,7 +37,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecoveryView');
-  var view = db._createView('UnitTestsRecoveryView', 'arangosearch', {});
+  var view = db._createView('UnitTestsRecoveryView', 'arangosearch', { "locale": "de_DE.UTF-16" });
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
 
@@ -56,7 +56,7 @@ function runSetup () {
         count: {}
       }
     },
-    locale: "de_DE.UTF-16"
+    locale: "en_US.UTF-8"
   };
   view.properties(meta, true); // partial update
 
@@ -102,7 +102,7 @@ function recoverySuite () {
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-8", properties.locale);
+      assertEqual("de_DE.UTF-16", properties.locale);
     }
 
   };

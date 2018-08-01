@@ -175,7 +175,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   do {
     std::shared_ptr<std::vector<ServerID>> servers =
         ci->getResponsibleServer(shard);
-    if (servers) {
+    if (servers && !servers->empty()) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {
         _primaryServers[shard] = nextPrimary;
