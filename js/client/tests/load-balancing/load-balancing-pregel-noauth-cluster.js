@@ -109,7 +109,7 @@ function PregelSuite () {
         cs[1].save(edges);
       }
 
-      require("internal").wait(2);
+      require("internal").wait(5.0);
     },
 
     tearDown: function() {

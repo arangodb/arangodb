@@ -77,7 +77,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
     std::vector<std::string> const& vertexCollections,
     std::vector<std::string> const& edgeCollections, VPackSlice const& params) {
-  if (Instance == nullptr) {
+  if (nullptr == Instance) {
     return std::make_pair(
         Result{TRI_ERROR_INTERNAL, "pregel system not yet ready"}, 0);
   }

@@ -194,8 +194,15 @@ void RestControlPregelHandler::cancelExecution() {
     return;
   }
 
+  auto pf = pregel::PregelFeature::instance();
+  if (nullptr == pf) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "pregel feature not available");
+    return;
+  }
+
   uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
-  auto c = pregel::PregelFeature::instance()->conductor(executionNumber);
+  auto c = pf->conductor(executionNumber);
 
   if (nullptr == c) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_INTERNAL,
@@ -204,7 +211,7 @@ void RestControlPregelHandler::cancelExecution() {
   }
 
   c->cancel();
-  pregel::PregelFeature::instance()->cleanupConductor(executionNumber);
+  pf->cleanupConductor(executionNumber);
 
   VPackBuilder builder;
   builder.add(VPackValue(""));
