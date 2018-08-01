@@ -43,13 +43,15 @@ const std::codecvt<wchar_t, char, std::mbstate_t>& fs_codecvt() {
 
 typedef irs::basic_string_ref<wchar_t> wstring_ref;
 
-bool append_path(std::string& buf, const irs::string_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::string& buf, const irs::string_ref& value) {
   buf.append(value.c_str(), value.size());
 
   return true;
 }
 
-bool append_path(std::string& buf, const wstring_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::string& buf, const wstring_ref& value) {
   static auto& fs_cvt = fs_codecvt();
   auto size = value.size() * 4; // same ratio as boost::filesystem
   auto start = buf.size();
@@ -85,7 +87,8 @@ bool append_path(std::string& buf, const wstring_ref& value) {
   #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
-bool append_path(std::wstring& buf, const irs::string_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::wstring& buf, const irs::string_ref& value) {
   static auto& fs_cvt = fs_codecvt();
   auto size = value.size() * 3; // same ratio as boost::filesystem
   auto start = buf.size();
@@ -116,7 +119,8 @@ bool append_path(std::wstring& buf, const irs::string_ref& value) {
   return true;
 }
 
-bool append_path(std::wstring& buf, const wstring_ref& value) {
+// use inline to avoid GCC warning
+inline bool append_path(std::wstring& buf, const wstring_ref& value) {
   buf.append(value.c_str(), value.size());
 
   return true;

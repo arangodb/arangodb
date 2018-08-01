@@ -2855,6 +2855,137 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
   result.close();
   return AqlValue(result);
 }
+
+/// @brief function REGEX_SPLIT
+AqlValue Functions::RegexSplit(arangodb::aql::Query* query,
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& parameters) {
+    static char const* AFN = "REGEX_SPLIT";
+    ValidateParameters(parameters, AFN, 2, 4);
+    
+    int64_t limitNumber = -1;
+    if (parameters.size() == 4) {
+        AqlValue aqlLimit = ExtractFunctionParameterValue(parameters, 3);
+        if (aqlLimit.isNumber()) {
+            limitNumber = aqlLimit.toInt64(trx);
+        } else {
+            ::registerInvalidArgumentWarning(query, AFN);
+            return AqlValue(AqlValueHintNull());
+        }
+        
+        if (limitNumber < 0) {
+            return AqlValue(AqlValueHintNull());
+        }
+        if (limitNumber == 0) {
+            return AqlValue(VPackSlice::emptyArraySlice());
+        }
+    }
+    
+    AqlValueMaterializer materializer(trx);
+    AqlValue aqlValueToSplit = ExtractFunctionParameterValue(parameters, 0);
+    
+    if (parameters.size() == 1) {
+        // pre-documented edge-case: if we only have the first parameter, return it.
+        VPackBuilder result;
+        result.openArray();
+        result.add(aqlValueToSplit.slice());
+        result.close();
+        return AqlValue(result);
+    }
+    
+    bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
+
+    // build pattern from parameter #1
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+    AqlValue regex = ExtractFunctionParameterValue(parameters, 1);
+    ::appendAsString(trx, adapter, regex);
+    bool isEmptyExpression = (buffer->length() == 0);
+
+    // the matcher is owned by the query!
+    ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(
+      buffer->c_str(), buffer->length(), caseInsensitive);
+    
+    if (matcher == nullptr) {
+        ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+        return AqlValue(AqlValueHintNull());
+    }
+    
+    buffer->clear();
+    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    ::appendAsString(trx, adapter, value);
+    UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+    
+    VPackBuilder result;
+    result.openArray();
+    if (!isEmptyExpression && (buffer->length() == 0)) {
+        // Edge case: splitting an empty string by non-empty expression produces an empty string again.
+        result.add(VPackValue(""));
+        result.close();
+        return AqlValue(result);
+    }
+    
+    std::string utf8;
+    static const uint16_t nrResults = 16;
+    UnicodeString uResults[nrResults];
+    int64_t totalCount = 0;
+    while (true) {
+        UErrorCode errorCode = U_ZERO_ERROR;
+        auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
+        uint16_t copyThisTime = uCount;
+        
+        if (U_FAILURE(errorCode)) {
+            ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+            return AqlValue(AqlValueHintNull());
+        }
+        
+        if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
+            // last hit is the remaining string to be fed into split in a subsequent invocation
+            copyThisTime --;
+        }
+        
+        if ((copyThisTime > 0) && ((copyThisTime == nrResults) || isEmptyExpression)) {
+            // ICU will give us a traling empty string we don't care for if we split
+            // with empty strings.
+            copyThisTime --;
+        }
+        
+        int64_t i = 0;
+        while ((i < copyThisTime) &&
+               ((limitNumber < 0 ) || (totalCount < limitNumber))) {
+            if ((i == 0) && isEmptyExpression) {
+                // ICU will give us an empty string that we don't care for
+                // as first value of one match-chunk
+                i++;
+                continue;
+            }
+            uResults[i].toUTF8String(utf8);
+            result.add(VPackValue(utf8));
+            utf8.clear();
+            i++;
+            totalCount++;
+        }
+        
+        if (((uCount != nrResults)) || // fetch any / found less then N
+            ((limitNumber >= 0) && (totalCount >= limitNumber))) { // fetch N
+            break;
+        }
+        // ok, we have more to parse in the last result slot, reiterate with it:
+        if(uCount == nrResults) {
+            valueToSplit = uResults[nrResults - 1];
+        }
+        else {
+            // should not go beyound the last match!
+            TRI_ASSERT(false);
+            break;
+        }
+    }
+    
+    result.close();
+    return AqlValue(result);
+}
+
 /// @brief function REGEX_TEST
 AqlValue Functions::RegexTest(arangodb::aql::Query* query,
                               transaction::Methods* trx,

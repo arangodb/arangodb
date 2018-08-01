@@ -198,7 +198,7 @@ typedef long suseconds_t;
 
 #define TRI_ASSERT(expr)                             \
   do {                                               \
-    if (!(TRI_LIKELY(expr))) {                       \
+    if (!(ADB_LIKELY(expr))) {                       \
       TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
       TRI_PrintBacktrace();                          \
       std::abort();                                  \

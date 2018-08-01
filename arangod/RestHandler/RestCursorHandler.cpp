@@ -145,7 +145,7 @@ bool RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       TRI_ASSERT(cursors != nullptr);
       Cursor* cursor = cursors->createQueryStream(
           querySlice.copyString(), bindVarsBuilder, _options, batchSize, ttl);
-      TRI_DEFER(cursors->release(cursor));
+   
       generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }
     return false;  // done
@@ -184,19 +184,22 @@ RestStatus RestCursorHandler::processQuery() {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Illegal state in RestQueryHandler, query not found.");
   }
-  try {
+  
+  {
+    // always clean up
+    auto guard = scopeGuard([this]() {
+      unregisterQuery();
+    });
+  
     auto state = _query->execute(_queryRegistry, _queryResult);
     if (state == aql::ExecutionState::WAITING) {
+      guard.cancel();
       return RestStatus::WAITING;
     }
     TRI_ASSERT(state == aql::ExecutionState::DONE);
-  } catch (...) {
-    // In case something on the query is wrong, we need to clear it.
-    unregisterQuery();
-    throw;
   }
-  // We cannot get into HASMORE here, or we would loose results.
-  unregisterQuery();
+  
+  // We cannot get into HASMORE here, or we would lose results.
   handleQueryResult();
   return RestStatus::DONE;
 }
@@ -283,8 +286,7 @@ void RestCursorHandler::handleQueryResult() {
     // steal the query result, cursor will take over the ownership
     Cursor* cursor = cursors->createFromQueryResult(std::move(_queryResult),
                                                     batchSize, ttl, count);
-
-    TRI_DEFER(cursors->release(cursor));
+    
     generateCursorResult(rest::ResponseCode::CREATED, cursor);
   }
 }
@@ -303,7 +305,7 @@ uint32_t RestCursorHandler::forwardingTarget() {
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
-
+  
   return (sourceServer == ServerState::instance()->getShortId())
       ? 0
       : sourceServer;
@@ -344,8 +346,15 @@ bool RestCursorHandler::cancelQuery() {
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
+ 
+    // cursor is canceled. now remove the continue handler we may have registered in the query
+    std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
+    ss->setContinueCallback();
+    
     return true;
-  } else if (!_hasStarted) {
+  } 
+  
+  if (!_hasStarted) {
     _queryKilled = true;
     return true;
   }
@@ -427,10 +436,19 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief append the contents of the cursor into the response body
+/// this function will also take care of the cursor and return it to the
+/// registry if required
 //////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
                                              arangodb::Cursor* cursor) {
+  // always clean up
+  auto guard = scopeGuard([this, &cursor]() {
+    auto cursors = _vocbase.cursorRepository();
+    TRI_ASSERT(cursors != nullptr);
+    cursors->release(cursor);
+  });
+
   // dump might delete the cursor
   std::shared_ptr<transaction::Context> ctx = cursor->context();
 
@@ -524,7 +542,6 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
     return RestStatus::DONE;
   }
 
-  TRI_DEFER(cursors->release(cursor));
   generateCursorResult(rest::ResponseCode::OK, cursor);
   return RestStatus::DONE;
 }
