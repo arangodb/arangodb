@@ -165,7 +165,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
  private:
   /// @brief order a new chunk from the /dump API
-  void orderDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+  void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       std::string const& baseUrl, 
                       arangodb::LogicalCollection* coll, 
                       std::string const& leaderColl,
