@@ -35,14 +35,13 @@
 
 using namespace arangodb;
 
-#ifndef USE_ENTERPRISE
 std::string const GRAPHS = "_graphs";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::graph::Graph* arangodb::lookupGraphByName(
+std::unique_ptr<arangodb::graph::Graph> arangodb::lookupGraphByName(
     std::shared_ptr<transaction::Context> transactionContext,
     std::string const& name) {
   SingleCollectionTransaction trx(transactionContext, GRAPHS,
@@ -85,12 +84,5 @@ arangodb::graph::Graph* arangodb::lookupGraphByName(
     res.reset(res.errorNumber(), ss.str());
     THROW_ARANGO_EXCEPTION(res);
   }
-
-  VPackSlice info = result.slice();
-  if (info.isExternal()) {
-    info = info.resolveExternal();
-  }
-
-  return new arangodb::graph::Graph(name, info);
+  return Graph::fromPersistence(result.slice());
 }
-#endif
