@@ -118,8 +118,8 @@ class DumpFeature : public application_features::ApplicationFeature {
   Result runDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
   Result runClusterDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
   
-  Result storeDumpJson(VPackSlice const& body, std::string const& dbName);
-  Result storeViews(velocypack::Slice const&);
+  Result storeDumpJson(VPackSlice const& body, std::string const& dbName) const;
+  Result storeViews(velocypack::Slice const&) const;
 };
 }  // namespace arangodb
 

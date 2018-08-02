@@ -862,7 +862,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
 }
   
 Result DumpFeature::storeDumpJson(VPackSlice const& body,
-                                  std::string const& dbName) {
+                                  std::string const& dbName) const {
   
   // read the server's max tick value
   std::string const tickString =
@@ -908,7 +908,7 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body,
   return {};
 }
   
-Result DumpFeature::storeViews(VPackSlice const& views) {
+Result DumpFeature::storeViews(VPackSlice const& views) const {
   for (VPackSlice view : VPackArrayIterator(views)) {
     auto nameSlice = view.get(StaticStrings::DataSourceName);
     if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {

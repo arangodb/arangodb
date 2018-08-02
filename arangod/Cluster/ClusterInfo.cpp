@@ -1207,7 +1207,6 @@ std::shared_ptr<LogicalView> ClusterInfo::getViewCurrent(
 std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(
     DatabaseID const& databaseID) {
   std::vector<std::shared_ptr<LogicalView>> result;
-  std::set<TRI_voc_cid_t> dedup;
 
   // always reload
   loadPlan();
@@ -1223,8 +1222,9 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(
   // iterate over all collections
   DatabaseViews::const_iterator it2 = (*it).second.begin();
   while (it2 != it->second.end()) {
-    if (dedup.find(it2->second->id()) == dedup.end()) {
-      dedup.emplace(it2->second->id());
+    char c = it2->first[0];
+    if (c >= '0' && c <= '9') {
+      // skip views indexed by name
       result.emplace_back(it2->second);
     }
     ++it2;
