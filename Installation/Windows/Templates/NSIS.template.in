@@ -14,6 +14,7 @@
   !include "WinMessages.nsh"
   !include "MUI2.nsh"
   !include "StripSlashes.nsh"
+  !include "xcopy.nsh"
 ;   !include "GetTime.nsh"
 ;--------------------------------
 ; get commandline parameters
@@ -726,9 +727,9 @@ Function UpgradeExisting
   ${If} $0 != 0
   ${AndIf} $0 != 11
     !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade" ""
-  ${ElseIf} $0 == 11
+  ${ElseIf} $0 == ARANGO_EXIT_UPGRADE_REQUIRED
   ${AndIf} $AUTOMATIC_UPDATE == "1"
-    DetailPrint "Yes."
+    DetailPrint "Update required."
 
     ${If} $AUTOMATIC_BACKUP == "1"
       ; We should and we should keep a backup:
@@ -738,11 +739,9 @@ Function UpgradeExisting
       ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
       StrCpy $BackupPath "$BackupPath_$2-$1-$0_$4_$5_$6"
       CreateDirectory "$BackupPath"
-      ClearErrors
-      DetailPrint "Copying old database from $DATADIR to backup directory $BackupPath"
-      CopyFiles "$DATADIR" "$BackupPath"
-      IfErrors 0 +2
-      MessageBox MB_ICONINFORMATION "The upgrade failed to create a backup $\r$\nfrom '$DATADIR'$\r$\nto '$BackupPath'; please do it manually.$\r$\n$\r$\nClick OK when you did and we can continue."
+      DetailPrint "Copying old database from $DATADIR"
+      DetailPrint "to backup directory $BackupPath"
+      !insertmacro xCopyDir "$DATADIR" "$BackupPath"
     ${EndIf}
     DetailPrint "Attempting to run database upgrade: "
     ; Now actually do the upgrade
