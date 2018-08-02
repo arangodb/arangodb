@@ -328,7 +328,7 @@ Result Indexes::ensureIndexCoordinator(
 }
 
 Result Indexes::ensureIndex(LogicalCollection* collection,
-                            VPackSlice const& definition, bool create,
+                            VPackSlice const& input, bool create,
                             VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const* exec = ExecContext::CURRENT;
@@ -346,10 +346,10 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
     }
   }
 
-  VPackBuilder defBuilder;
+  VPackBuilder normalized;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = engine->indexFactory().enhanceIndexDefinition(
-    definition, defBuilder, create, ServerState::instance()->isCoordinator()
+    input, normalized, create, ServerState::instance()->isCoordinator()
   ).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -359,7 +359,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   TRI_ASSERT(collection);
   auto& dbname = collection->vocbase().name();
   std::string const collname(collection->name());
-  VPackSlice indexDef = defBuilder.slice();
+  VPackSlice indexDef = normalized.slice();
 
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
