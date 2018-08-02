@@ -603,6 +603,9 @@ void RestBatchDocumentHandler::generateBatchResponse(
   TRI_ASSERT(result->slice().isArray());
   TRI_ASSERT(extra->slice().isObject());
 
+  // set code
+  resetResponse(restResponseCode);
+
   VPackBuilder builder;
   {
     // open response object
@@ -619,7 +622,6 @@ void RestBatchDocumentHandler::generateBatchResponse(
     // close response object
     builder.close();
   }
-  resetResponse(restResponseCode);
 
   LOG_DEVEL << builder.slice().toJson();
   writeResult(builder.slice(), *options);
@@ -676,30 +678,107 @@ void RestBatchDocumentHandler::generateBatchResponseSuccess(
 }
 
 
-
-
-
-
-
-
-
 void RestBatchDocumentHandler::generateBatchResponseFailed(
-    OperationResult const& result,
+    std::vector<OperationResult> const& opVec,
     std::unique_ptr<VPackBuilder> extra,
-    VPackOptions const* options
+    VPackOptions const* vOptions
   ){
 
-  auto restResponseCode = rest::ResponseCode::NOT_FOUND; //find first error
+  TRI_ASSERT(opVec.size() > 0); //at least one result
+  auto& opOptions = opVec[0]._options;
 
+  // set response code - it is assumend that all other options are the same
+  auto restResponseCode = rest::ResponseCode::ACCEPTED;
+  if (opOptions.waitForSync) {
+    restResponseCode = rest::ResponseCode::OK;
+  }
+
+  // create and open extra if no open object has been passed
   if (!extra) {
     extra = std::make_unique<VPackBuilder>();
     extra->openObject();
   }
 
   extra->add(StaticStrings::Error, VPackValue(false));
+
+  std::size_t indexOfFailed = 0;
+  bool foundFirstFailed = false;
+  // flatten result vector
+  // search for first failed result
+  auto result = std::make_unique<VPackBuilder>();
+
+  auto addErrorInfo = [&extra, &indexOfFailed, &foundFirstFailed]
+    (VPackSlice errorSlice, std::string message = "defult error message", int code = TRI_ERROR_FAILED) {
+    if(foundFirstFailed) {
+      return;
+    }
+    foundFirstFailed = true;
+
+    if(errorSlice.isNull()){
+      extra->add(StaticStrings::ErrorMessage
+                ,VPackValue(message));
+      extra->add(StaticStrings::ErrorNum
+                ,VPackValue(code));
+    } else {
+      extra->add(StaticStrings::ErrorMessage
+                ,errorSlice.get(StaticStrings::ErrorMessage)); //if silent?
+      extra->add(StaticStrings::ErrorNum
+                ,errorSlice.get(StaticStrings::ErrorNum));
+    }
+    extra->add("errorDataIndex", VPackValue(indexOfFailed));
+  };
+
+  auto addSingle = [&](VPackSlice slice, OperationResult const& item){
+    if(slice.hasKey("error")){
+      if(slice.get("error").getBool()){
+        result->add(slice.get("errorMessage")); //if silent?
+        result->add(slice.get("errorNum")); //if silent?
+        addErrorInfo(slice);
+      } else {
+        result->add(VPackSlice::emptyObjectSlice()); //if silent?
+      }
+    } else {
+      result->add(slice);
+    }
+
+    if(!foundFirstFailed) {
+      indexOfFailed++;
+    }
+  };
+
+  result->openArray();
+  for(auto& item : opVec) {
+    if (item.buffer) { //check for vaild buffer
+      VPackSlice slice = item.slice();
+      if (slice.isObject()) {
+        if(slice.hasKey(StaticStrings::KeyString)){
+          addSingle(slice, item);
+        } else {
+          generateError(rest::ResponseCode::I_AM_A_TEAPOT
+                       ,TRI_ERROR_FAILED
+                       ,"Invalid object in OperationResult"
+                       );
+        }
+      } else if (slice.isArray()){
+        for (auto r : VPackArrayIterator(slice)){
+          addSingle(r, item);
+        }
+      } else {
+        //error - internal error?!
+      }
+    } else { // no valid buffer
+      addErrorInfo(VPackSlice::nullSlice()
+                  ,item.errorMessage()
+                  ,item.errorNumber()
+                  );
+    }// if(item.buffer)
+  } // item : opVec
+  result->close();
   extra->close();
 
-  generateBatchResponse(restResponseCode, nullptr, std::move(extra), options);
+  LOG_DEVEL << result->slice().toJson();
+
+  generateBatchResponse(restResponseCode, nullptr, std::move(extra), vOptions);
 }
 
 
