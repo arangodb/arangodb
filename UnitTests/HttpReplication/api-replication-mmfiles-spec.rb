@@ -265,7 +265,7 @@ describe ArangoDB do
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
 
         server = all['server']
-        server['serverId'].should eq("mmfiles")
+        server['engine'].should eq("mmfiles")
         server['serverId'].should match(/^\d+$/)
         server.should have_key('version')
       end
