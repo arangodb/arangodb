@@ -239,6 +239,86 @@ static void mergeResults(
   resultBody->close();
 }
 
+// UPDATED VERSION FOR NEW DOCUMENT API
+static void mergeResults____2(
+    std::vector<std::pair<ShardID, VPackValueLength>> const& reverseMapping,
+    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> const& resultMap,
+    std::shared_ptr<VPackBuilder>& resultBody) {
+
+
+  bool hasError = false, hasResult = false;
+  int errNum;
+  std::string errMsg;
+
+  resultBody->clear();
+  resultBody->openObject();
+
+  // Maybe we have luck and there is no result at all.
+  // Unless we found one, don't create the result attribute.
+  //  Just count the number of empty objects.
+  uint64_t resultCount = 0;
+
+  for (auto const& pair : reverseMapping) {
+
+    VPackSlice obj = resultMap.find(pair.first)->second->slice();
+    TRI_ASSERT(obj.isObject());
+
+    if (obj.hasKey("result")) {
+
+      VPackSlice arr = obj.get("result");
+      TRI_ASSERT(arr.isArray() && arr.length() > pair.second);
+      VPackSlice response = arr.at(pair.second);
+
+      if (!hasResult) {
+        // we have to generate the result attribute
+        resultBody->add("result", VPackValue(VPackValueType::Array));
+        // and add many empty objects
+        for (uint64_t i = 0; i < resultCount; i++) {
+          resultBody->add(VPackSlice::emptyObjectSlice());
+        }
+      }
+
+      resultBody->add(arr.at(pair.second));
+      hasResult = true;
+    } else {
+      // check if the result attribute is opened
+      if (!hasResult) {
+        resultCount++;
+      } else {
+        // more empty objects
+        resultBody->add(VPackSlice::emptyObjectSlice());
+      }
+    }
+
+    // we should rely on the peer to indicate an error in its result
+    // at the top level.
+    if (obj.hasKey(StaticStrings::Error) &&
+        obj.get(StaticStrings::Error).isBoolean() && obj.get(StaticStrings::Error).getBoolean()) {
+
+      if (!hasError) {
+        // found first error
+        hasError = true;
+        errNum = obj.get(StaticStrings::ErrorNum).getNumericValue<int>();
+        errMsg = arangodb::basics::VelocyPackHelper::getStringValue(
+                    obj, StaticStrings::ErrorMessage, TRI_errno_string(errNum));
+      }
+    }
+  }
+
+  if (hasResult) {
+    // close the result attribute if opended
+    resultBody->close();
+  }
+
+  if (hasError) {
+    resultBody->add(StaticStrings::Error, VPackValue(true));
+    resultBody->add(StaticStrings::ErrorNum, VPackValue(errNum));
+    resultBody->add(StaticStrings::ErrorMessage, VPackValue(errMsg));
+  }
+
+  resultBody->close();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge the baby-object results. (all shards version)
 ///        results contians the result from all shards in any order.
@@ -1258,6 +1338,9 @@ int deleteDocumentOnCoordinator(
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  LOG_TOPIC(INFO, Logger::FIXME) << "slice: " << slice.toJson()
+    << "pattern: " << pattern.toJson();
+
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   try {
@@ -1404,6 +1487,8 @@ int deleteDocumentOnCoordinator(
           arangodb::rest::RequestType::POST,
           baseUrl + StringUtils::urlEncode(it.first) + "/remove", body,
           ::CreateNoLockHeader(trx, it.first));
+
+      LOG_TOPIC(INFO, Logger::FIXME) << "body: " << reqBuilder.slice().toJson();
     }
 
     // Perform the requests
@@ -1424,6 +1509,7 @@ int deleteDocumentOnCoordinator(
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
       auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
+
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1431,7 +1517,9 @@ int deleteDocumentOnCoordinator(
     std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
     collectResultsFromAllShards<VPackBuilder>(
         shardMap, requests, errorCounter, resultMap, responseCode);
-    mergeResults(reverseMapping, resultMap, resultBody);
+
+    mergeResults____2(reverseMapping, resultMap, resultBody);
+    //LOG_TOPIC(INFO, Logger::FIXME) << "Got delete result: " << resultBody->toJson();
     return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
                                 // the DBserver could have reported an error.
   }
