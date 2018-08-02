@@ -8,7 +8,8 @@ This _Chapter_ introduces ArangoDB's _Active Failover_ environment.
 - [Active Failover Architecture](Architecture.md)
 - [Active Failover Limitations](Limitations.md)
 
-For further information about _Active Failover_ in ArangoDB, please refer to the following sections included in other chapters of this Manual:
+For further information about _Active Failover_ in ArangoDB, please refer to the following
+sections included in other chapters of this Manual:
 
 - [Active Failover Deployment](../../Deployment/ActiveFailover/README.md)
 - [Active Failover Administration](../../Administration/ActiveFailover/README.md)
