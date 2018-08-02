@@ -51,7 +51,7 @@ RestStatus RestDocumentHandler::execute() {
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::DELETE_REQ:
-      deleteDocument();
+      removeDocument();
       break;
     case rest::RequestType::GET:
       readDocument();
@@ -60,7 +60,7 @@ RestStatus RestDocumentHandler::execute() {
       checkDocument();
       break;
     case rest::RequestType::POST:
-      createDocument();
+      insertDocument();
       break;
     case rest::RequestType::PUT:
       replaceDocument();
@@ -79,7 +79,7 @@ RestStatus RestDocumentHandler::execute() {
 /// @brief was docuBlock REST_DOCUMENT_CREATE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::createDocument() {
+bool RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
@@ -469,7 +469,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 /// @brief was docuBlock REST_DOCUMENT_DELETE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::deleteDocument() {
+bool RestDocumentHandler::removeDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() < 1 || suffixes.size() > 2) {
