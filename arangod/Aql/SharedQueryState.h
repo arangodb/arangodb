@@ -53,7 +53,7 @@ class SharedQueryState {
   
   /// @brief setter for the continue callback:
   ///        We can either have a handler or a callback
-  void setContinueCallback();
+  void setContinueCallback() noexcept;
 
   /// @brief setter for the continue handler:
   ///        We can either have a handler or a callback

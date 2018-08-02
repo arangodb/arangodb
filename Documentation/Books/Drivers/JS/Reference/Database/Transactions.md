@@ -56,16 +56,6 @@ Performs a server-side transaction and returns its return value.
 
     Determines the transaction size limit in bytes. Honored by the RocksDB storage engine only.
 
-  * **intermediateCommitCount**: `number` (optional)
-
-    Determines the maximum number of operations after which an intermediate commit is
-    performed automatically. Honored by the RocksDB storage engine only.
-
-  * **intermediateCommitSize**: `number` (optional)
-
-    Determine the maximum total size of operations after which an intermediate commit is
-    performed automatically. Honored by the RocksDB storage engine only.
-
 If _collections_ is an array or string, it will be treated as
 _collections.write_.
 

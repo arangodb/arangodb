@@ -293,7 +293,7 @@ class Query {
   std::shared_ptr<SharedQueryState> sharedState() const { 
     return _sharedState;
   }
-
+  
  private:
   /// @brief initializes the query
   void init();
