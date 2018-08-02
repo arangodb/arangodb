@@ -140,7 +140,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   VPackBuilder rb;
   auto clusterInfo = ClusterInfo::instance();
   auto plan = clusterInfo->getPlan();
-  auto current = clusterInfo->getCurrent();
   auto serverId = arangodb::ServerState::instance()->getId();
 
   DatabaseGuard guard(*vocbase);
@@ -157,7 +156,24 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto start = clock::now();
   try {
     // in previous life handlePlanChange
-    tmp = arangodb::maintenance::handleChange(
+
+    
+    VPackObjectBuilder o(&rb);
+    
+    tmp = arangodb::maintenance::phaseOne(
+      plan->slice(), local.slice(), serverId, *mfeature, rb);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    try {
+      glc = getLocalCollections(local);
+    } catch (std::exception const& e) {
+      auto error = std::string("failed to collect local collection info") + e.what();
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << error;
+      return result;
+    }
+    
+    auto current = clusterInfo->getCurrent();
+    tmp = arangodb::maintenance::phaseTwo(
       plan->slice(), current->slice(), local.slice(), serverId, *mfeature, rb);
     
   } catch (std::exception const& e) {

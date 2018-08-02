@@ -1004,8 +1004,8 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   if (doSleep) {
     // Sleep a little longer, since this might be due to some synchronization
     // of shards going on in the background
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+//    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+//    std::this_thread::sleep_for(std::chrono::microseconds(500000));
   }
   CONDITION_LOCKER(guard, _condition);
   _wasNotified = true;
@@ -1150,7 +1150,7 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
   //  perform a safety execution of job in case other plan changes somehow incomplete or undetected
   double now = TRI_microtime();
-  if (now > _lastSyncTime + 7.4 || asyncPush) {
+  if (now > _lastSyncTime + .4 || asyncPush) {
     shouldUpdate = true;
   }
 

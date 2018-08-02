@@ -345,7 +345,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan (
-  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
+  VPackSlice const& plan, VPackSlice const& local,
   std::string const& serverId, MaintenanceFeature& feature) {
 
   arangodb::Result result;
@@ -408,47 +408,29 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent (
 }
 
 
-arangodb::Result arangodb::maintenance::handleChange(
-  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
-  arangodb::Result result;
-
-  VPackObjectBuilder o(&report);
-  result = phaseOne(plan, current, local, serverId, feature, report);
-  if (result.ok()) {
-    report.add(VPackValue("Plan"));
-    { VPackObjectBuilder p(&report);
-      report.add("Version", plan.get("Version"));}
-    result = phaseTwo(plan, current, local, serverId, feature, report);
-    if (result.ok()) {
-      report.add(VPackValue("Current"));
-      { VPackObjectBuilder p(&report);
-        report.add("Version", current.get("Version"));}
-    }
-  }
-  return result;
-}
-
-
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne (
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature,
-  VPackBuilder& report) {
+  VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
+  MaintenanceFeature& feature, VPackBuilder& report) {
 
-  report.add(VPackValue("phaseOne"));
-  VPackObjectBuilder por(&report);
-
-  // Execute database changes
   arangodb::Result result;
-  try {
-    result = executePlan(plan, cur, local, serverId, feature);
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "Error executing plan: " << e.what()
-      << ". " << __FILE__ << ":" << __LINE__;
-  }
+  
+  report.add(VPackValue("phaseOne"));
+  { VPackObjectBuilder por(&report);
 
+    // Execute database changes
+    try {
+      result = executePlan(plan, local, serverId, feature);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "Error executing plan: " << e.what()
+        << ". " << __FILE__ << ":" << __LINE__;
+    }}
+
+  report.add(VPackValue("Plan"));
+  { VPackObjectBuilder p(&report);
+    report.add("Version", plan.get("Version"));}
+  
   return result;
   
 }
@@ -788,32 +770,37 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
 
-  report.add(VPackValue("phaseTwo"));
-  VPackObjectBuilder p2(&report);
-
-  // Update Current
   arangodb::Result result;
-  try {
-    result = reportInCurrent(plan, cur, local, serverId, report);
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "Error reporting in current: " << e.what() << ". "
-      << __FILE__ << ":" << __LINE__;
-  }
 
-  try {
-    std::vector<ActionDescription> actions;
-    result = syncReplicatedShardsWithLeaders(plan, cur, local, serverId, actions);
+  report.add(VPackValue("phaseTwo"));
+  { VPackObjectBuilder p2(&report);
 
-    for (auto const& action : actions) {
-      feature.addAction(std::make_shared<ActionDescription>(action), true);
+    // Update Current
+    try {
+      result = reportInCurrent(plan, cur, local, serverId, report);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "Error reporting in current: " << e.what() << ". "
+        << __FILE__ << ":" << __LINE__;
     }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "Error scheduling shards: " << e.what() << ". "
-      << __FILE__ << ":" << __LINE__;
-  }
 
+    try {
+      std::vector<ActionDescription> actions;
+      result = syncReplicatedShardsWithLeaders(plan, cur, local, serverId, actions);
+
+      for (auto const& action : actions) {
+        feature.addAction(std::make_shared<ActionDescription>(action), true);
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "Error scheduling shards: " << e.what() << ". "
+        << __FILE__ << ":" << __LINE__;
+    }}
+
+  report.add(VPackValue("Current"));
+  { VPackObjectBuilder p(&report);
+    report.add("Version", cur.get("Version"));}
+  
   return result;
   
 }
