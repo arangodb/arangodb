@@ -528,7 +528,8 @@ class Methods {
 
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const value,
-                                    OperationOptions& options);
+                                    OperationOptions& options,
+                                    VPackSlice const pattern);
 
   // TODO could the value slice be replaced by a string containing _key?
   OperationResult removeLocal(std::string const& collectionName,

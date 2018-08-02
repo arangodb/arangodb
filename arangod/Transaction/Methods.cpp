@@ -2270,8 +2270,7 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   OperationOptions optionsCopy = options;
 
   if (_state->isCoordinator()) {
-    assertPatternIsNotSet(pattern);
-    return removeCoordinator(collectionName, value, optionsCopy);
+    return removeCoordinator(collectionName, value, optionsCopy, pattern);
   }
 
   return removeLocal(collectionName, value, optionsCopy, pattern);
@@ -2282,14 +2281,16 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::removeCoordinator(
-    std::string const& collectionName, VPackSlice const value,
-    OperationOptions& options) {
+    std::string const& collectionName,
+    VPackSlice const value,
+    OperationOptions& options,
+    VPackSlice const pattern) {
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::deleteDocumentOnCoordinator(
       vocbase().name(), collectionName, *this, value, options, responseCode,
-      errorCounter, resultBody);
+      errorCounter, resultBody, pattern);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultRemove(responseCode, resultBody, errorCounter);
