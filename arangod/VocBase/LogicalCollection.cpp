@@ -1033,12 +1033,8 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   std::string const revisionId = TRI_RidToString(physical->revision(&trx));
   uint64_t hash = 0;
 
-  ManagedDocumentResult mmdr;
-
-  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](LocalDocumentId const& token) {
-    if (collection->readDocument(&trx, token, mmdr)) {
-      VPackSlice const slice(mmdr.vpack());
-
+  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection](LocalDocumentId const& token) {
+    collection->readDocumentWithCallback(&trx, token, [&](LocalDocumentId const&, VPackSlice slice) {
       uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
 
       if (withRevisions) {
@@ -1070,7 +1066,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
       }
 
       hash ^= localHash;
-    }
+    });
     return true;
   });
 

@@ -129,7 +129,6 @@ class RocksDBCollection final : public PhysicalCollection {
 
   bool lookupRevision(transaction::Methods* trx,
                       velocypack::Slice const& key,
-                      ManagedDocumentResult& mmdr,
                       TRI_voc_rid_t& revisionId) const;
 
   Result read(transaction::Methods*, arangodb::StringRef const& key,

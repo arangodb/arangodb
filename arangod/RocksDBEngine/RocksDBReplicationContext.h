@@ -31,7 +31,6 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
 #include "Utils/DatabaseGuard.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Buffer.h>
@@ -57,7 +56,6 @@ class RocksDBReplicationContext {
     uint64_t currentTick;
     std::atomic<bool> isUsed;
     bool hasMore;
-    ManagedDocumentResult mdr;
 
     /// @brief type handler used to render documents
     std::shared_ptr<arangodb::velocypack::CustomTypeHandler> customTypeHandler;

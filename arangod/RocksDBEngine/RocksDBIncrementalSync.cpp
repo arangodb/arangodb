@@ -38,7 +38,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -242,7 +241,6 @@ Result syncChunkRocksDB(
   TRI_ASSERT(numKeys > 0);
 
   transaction::BuilderLeaser keyBuilder(trx);
-  ManagedDocumentResult mmdr;
   std::vector<size_t> toFetch;
   size_t i = 0;
   size_t nextStart = 0;
@@ -303,7 +301,7 @@ Result syncChunkRocksDB(
     } else {
       // see if key exists
       TRI_voc_rid_t currentRevisionId = 0;
-      if (!physical->lookupRevision(trx, keySlice, mmdr, currentRevisionId)) { 
+      if (!physical->lookupRevision(trx, keySlice, currentRevisionId)) { 
         // key not found locally
         toFetch.emplace_back(i);
       } else {
@@ -449,25 +447,28 @@ Result syncChunkRocksDB(
                           ": document revision is invalid");
       }
 
-      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
-
       auto removeConflict =
-          [&](std::string const& conflictingKey) -> OperationResult {
-        VPackBuilder conflict;
-        conflict.add(VPackValue(conflictingKey));
-        LocalDocumentId conflictId = physical->lookupKey(trx, conflict.slice());
+          [&](std::string const& conflictingKey) -> Result {
+        Result res(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+
+        keyBuilder->clear();
+        keyBuilder->add(VPackValue(conflictingKey));
+
+        LocalDocumentId conflictId = physical->lookupKey(trx, keyBuilder->slice());
+
         if (conflictId.isSet()) {
-          bool success = physical->readDocument(trx, conflictId, mmdr);
-          if (success) {
-            VPackSlice conflictingKey(mmdr.vpack());
-            return trx->remove(collectionName, conflictingKey, options);
-          }
+          physical->readDocumentWithCallback(trx, conflictId, [&](LocalDocumentId const&, VPackSlice doc) {
+            res = trx->remove(collectionName, doc, options).result;
+          });
         }
-        return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+        return res;
       };
 
+      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
       if (!documentId.isSet()) {
         // INSERT
+        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+
         OperationResult opRes = trx->insert(collectionName, it, options);
         if (opRes.fail()) {
           if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
@@ -481,12 +482,15 @@ Result syncChunkRocksDB(
             if (opRes.fail()) {
               return opRes.result;
             }
+            // fall-through
           } else {
             return opRes.result;
           }
         }
       } else {
         // REPLACE
+        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+        
         OperationResult opRes = trx->replace(collectionName, it, options);
         if (opRes.fail()) {
           if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
@@ -500,6 +504,7 @@ Result syncChunkRocksDB(
             if (opRes.fail()) {
               return opRes.result;
             }
+            // fall-through
           } else {
             return opRes.result;
           }
@@ -590,7 +595,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                       syncer._state.master.endpoint + ": response is no array");
   }
 
-  ManagedDocumentResult mmdr;
   OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
@@ -781,12 +785,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(
                 rocksValue);  // we want probably to do this instead
-            if (col->readDocument(&trx, documentId, mmdr) == false) {
-              TRI_ASSERT(false);
-              return true;
-            }
-            VPackSlice doc(mmdr.vpack());
-            docRev = TRI_ExtractRevisionId(doc);
+            col->readDocumentWithCallback(&trx, documentId, [&docRev](LocalDocumentId const&, VPackSlice doc) {
+              docRev = TRI_ExtractRevisionId(doc);
+            });
           }
           compareChunk(docKey, docRev);
           return true;
