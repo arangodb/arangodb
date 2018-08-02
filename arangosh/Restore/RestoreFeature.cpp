@@ -968,11 +968,11 @@ void RestoreFeature::start() {
     result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
                                      _options, *_directory, _stats);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
     result = {TRI_ERROR_INTERNAL};
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::RESTORE)
-        << "Error: caught unknown exception";
+        << "caught unknown exception";
     result = {TRI_ERROR_INTERNAL};
   }
 
