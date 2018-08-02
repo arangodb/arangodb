@@ -88,17 +88,18 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   
   std::string copy = specification;
   StringUtils::trimInPlace(copy);
+  
+  if (specification.back() == '/') {
+    // address ends with a slash => remove
+    copy.pop_back();
+  }
+  
   size_t pos = copy.find("://");
   if (pos == std::string::npos) {
     return illegal;
   }
   // lowercase schema for prefix-checks
   std::string schema = StringUtils::tolower(copy.substr(0, pos + 3));
-
-  if (specification.back() == '/') {
-    // address ends with a slash => remove
-    copy.pop_back();
-  }
   
   // read protocol from string
   if (StringUtils::isPrefix(schema, "http+") ||
@@ -118,7 +119,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
   if (StringUtils::isPrefix(schema, "unix://")) {
 #if ARANGODB_HAVE_DOMAIN_SOCKETS
-    return prefix + copy;
+    return prefix + schema + copy.substr(7);
 #else
     // no unix socket for windows
     return illegal;
@@ -127,31 +128,34 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
   if (StringUtils::isPrefix(schema, "srv://")) {
 #ifndef _WIN32
-    return prefix + copy;
+    return prefix + schema + copy.substr(6);
 #else
     return illegal;
 #endif
   }
-
-  if (!StringUtils::isPrefix(schema, "ssl://") &&
-      !StringUtils::isPrefix(schema, "tcp://")) {
+  
+  // strip tcp:// or ssl://
+  if (StringUtils::isPrefix(schema, "ssl://")) {
+    prefix.append("ssl://");
+  } else if (StringUtils::isPrefix(schema, "tcp://")) {
+    prefix.append("tcp://");
+  } else {
     return illegal;
   }
+  copy = StringUtils::tolower(copy.substr(6, copy.length()));
 
   // handle tcp or ssl
   size_t found;
-  std::string temp = copy.substr(6, copy.length());  // strip tcp:// or ssl://
-
-  if (temp[0] == '[') {
+  if (copy[0] == '[') {
     // ipv6
-    found = temp.find("]:", 1);
-    if (found != std::string::npos && found > 2 && found + 2 < temp.size()) {
+    found = copy.find("]:", 1);
+    if (found != std::string::npos && found > 2 && found + 2 < copy.size()) {
       // hostname and port (e.g. [address]:port)
       return prefix + copy;
     }
 
-    found = temp.find("]", 1);
-    if (found != std::string::npos && found > 2 && found + 1 == temp.size()) {
+    found = copy.find("]", 1);
+    if (found != std::string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
       if (protocol == TransportType::VST) {
         return prefix + copy + ":" +
@@ -173,8 +177,8 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   }
   
   // ipv4
-  found = temp.find(':');  
-  if (found != std::string::npos && found + 1 < temp.size()) {
+  found = copy.find(':');
+  if (found != std::string::npos && found + 1 < copy.size()) {
     // hostname and port
     return prefix + copy;
   }
