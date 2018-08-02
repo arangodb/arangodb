@@ -78,19 +78,60 @@ class EdgeDefinition {
 };
 
 class Graph {
+
  public:
-  Graph(std::string&& graphName, velocypack::Slice const& info);
 
-  Graph(std::string const& graphName, velocypack::Slice const& info)
-      : Graph(std::string{graphName}, info) {}
+   /**
+    * @brief Create graph from persistence.
+    *
+    * @param document The stored document
+    *
+    * @return A graph object corresponding to this document
+    */
+  static std::unique_ptr<Graph> fromPersistence(
+      velocypack::Slice document);
 
+  /**
+   * @brief Create graph from user input.
+   *        NOTE: This is purely in memory and will NOT persist anything.
+   *
+   * @param name The name of the Graph
+   * @param collectionInformation Collection information about relations and orphans
+   * @param options The collection creation options.
+   *
+   * @return A graph object corresponding to the user input
+   */
+  static std::unique_ptr<Graph> fromUserInput(
+      std::string&& name, velocypack::Slice collectionInformation,
+      velocypack::Slice options);
+
+  // Wrapper for Move constructor
+  static std::unique_ptr<Graph> fromUserInput(
+      std::string const& name, velocypack::Slice collectionInformation,
+      velocypack::Slice options);
+
+ protected:
+
+   /**
+    * @brief Create graph from persistence.
+    *
+    * @param info The stored document
+    */
+  explicit Graph(velocypack::Slice const& info);
+
+
+  /**
+   * @brief Create graph from user input.
+   *
+   * @param graphName The name of the graph
+   * @param info Collection information, including relations and orphans
+   * @param options The options to be used for collections
+   */
+  Graph(std::string&& graphName, velocypack::Slice const& info, velocypack::Slice const& options);
+
+ public:
   virtual ~Graph() = default;
 
-  /// @brief named constructor. extracts the graph's name from the _key
-  /// attribute.
-  static Graph fromSlice(const velocypack::Slice &info);
-
- public:
   static Result validateOrphanCollection(
       const velocypack::Slice& orphanDefinition);
 
@@ -167,6 +208,9 @@ class Graph {
   std::ostream& operator<<(std::ostream& ostream);
 
  private:
+  /// @brief Parse the edgeDefinition slice and inject it into this graph
+  void parseEdgeDefinitions(velocypack::Slice  edgeDefs);
+
   /// @brief adds one edge definition. the edge definition must not have been
   /// added before.
   Result addEdgeDefinition(velocypack::Slice const& edgeDefinitionSlice);

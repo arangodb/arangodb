@@ -38,7 +38,11 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       VocbaseTempl(),
       EnvTempl(),
       UsersTempl(),
-      GeneralGraphsTempl(),
+      GeneralGraphModuleTempl(),
+      GeneralGraphTempl(),
+#ifdef USE_ENTERPRISE
+      SmartGraphTempl(),
+#endif
 
       BufferTempl(),
 

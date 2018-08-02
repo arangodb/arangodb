@@ -41,10 +41,6 @@ class RestHandlerFactory;
 class GeneralServer;
 }
 
-namespace graph {
-class GraphCache;
-}
-
 class RestServerThread;
 
 class GeneralServerFeature final
@@ -126,7 +122,6 @@ class GeneralServerFeature final
       std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>>
       _combinedRegistries;
   std::vector<rest::GeneralServer*> _servers;
-  std::unique_ptr<graph::GraphCache> _graphCache;
 };
 }
 

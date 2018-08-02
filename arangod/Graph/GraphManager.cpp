@@ -49,7 +49,6 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/Graphs.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -151,10 +150,13 @@ bool GraphManager::renameGraphCollection(std::string oldName, std::string newNam
     }
     std::unique_ptr<Graph> graph;
     try {
-      graph = std::make_unique<Graph>(graphSlice.get(StaticStrings::KeyString).copyString(),
-                                      graphSlice);
+      graph = Graph::fromPersistence(graphSlice);
     } catch (basics::Exception& e) {
       // return {e.message(), e.code()};
+      return false;
+    }
+    TRI_ASSERT(graph != nullptr);
+    if (graph == nullptr) {
       return false;
     }
 
@@ -240,10 +242,13 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
     }
     std::unique_ptr<Graph> graph;
     try {
-      graph = std::make_unique<Graph>(graphSlice.get("_key").copyString(),
-                                      graphSlice);
+      graph = Graph::fromPersistence(graphSlice);
     } catch (basics::Exception& e) {
       return {e.code(), e.message()};
+    }
+    TRI_ASSERT(graph != nullptr);
+    if (graph == nullptr) {
+      return {TRI_ERROR_OUT_OF_MEMORY};
     }
 
     for (auto const& sGED : graph->edgeDefinitions()) {
@@ -338,7 +343,7 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
   return nullptr;
 }
 
-bool GraphManager::graphExists(std::string graphName) const {
+bool GraphManager::graphExists(std::string const& graphName) const {
   VPackBuilder checkDocument;
   {
     VPackObjectBuilder guard(&checkDocument);
@@ -369,33 +374,67 @@ bool GraphManager::graphExists(std::string graphName) const {
   return true;
 }
 
+ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
+    std::string const& name) const {
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection, AccessMode::Type::READ);
+
+  Result res = trx.begin();
+
+  if (res.fail()) {
+    std::stringstream ss;
+    ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
+    res.reset(res.errorNumber(), ss.str());
+    return {res};
+  }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder guard(&b);
+    b.add(StaticStrings::KeyString, VPackValue(name));
+  }
+
+  // Default options are enough here
+  OperationOptions options;
+
+  OperationResult result = trx.document(StaticStrings::GraphCollection, b.slice(), options);
+
+  // Commit or abort.
+  res = trx.finish(result.result);
+
+  if (result.fail()) {
+    if (result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      return {TRI_ERROR_GRAPH_NOT_FOUND};
+    } else {
+      return Result{result.errorNumber(), "while looking up graph '" + name + "'"};
+    }
+  }
+
+  if (res.fail()) {
+    std::stringstream ss;
+    ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
+    res.reset(res.errorNumber(), ss.str());
+    return {res};
+  }
+  return {Graph::fromPersistence(result.slice())};
+}
+
 OperationResult GraphManager::createGraph(VPackSlice document,
-                                          bool waitForSync) {
+                                          bool waitForSync) const {
   VPackSlice graphNameSlice = document.get("name");
   if (!graphNameSlice.isString()) {
     return OperationResult{TRI_ERROR_GRAPH_CREATE_MISSING_NAME};
   }
   std::string const graphName = graphNameSlice.copyString();
- 
-  std::shared_ptr<Graph> graph;
-  try {
-    graph.reset(lookupGraphByName(ctx(), graphName));
+  
+  if (graphExists(graphName)) {
     return OperationResult{TRI_ERROR_GRAPH_DUPLICATE};
-  } catch (arangodb::basics::Exception const& e) {
-    if (e.code() != TRI_ERROR_GRAPH_NOT_FOUND) {
-      // This is a real error throw it.
-      throw e;
-    }
-  } catch (...) {
-    throw;
   }
-  TRI_ASSERT(graph == nullptr);
 
   auto graphRes = buildGraphFromInput(graphName, document);
   if (graphRes.fail()) {
     return OperationResult{graphRes.copy_result()};
   }
-  graph = graphRes.get();
+  std::unique_ptr<Graph> graph = std::move(graphRes.get());
 
   // check permissions
   Result res = checkCreateGraphPermissions(graph.get());
@@ -917,10 +956,11 @@ Result GraphManager::checkDropGraphPermissions(
   return TRI_ERROR_NO_ERROR;
 }
 
-#ifndef USE_ENTERPRISE
-ResultT<std::shared_ptr<Graph>> GraphManager::buildGraphFromInput(std::string const& graphName, VPackSlice input) const {
+ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string const& graphName, VPackSlice input) const {
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Creating graph with: " << input.toJson();
   try {
-    return {std::make_shared<Graph>(graphName, input)};
+    TRI_ASSERT(input.isObject());
+    return Graph::fromUserInput(graphName, input, input.get(StaticStrings::GraphOptions));
   } catch (arangodb::basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (...) {
@@ -929,7 +969,6 @@ ResultT<std::shared_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   TRI_ASSERT(false); // Catch all above!
   return {TRI_ERROR_INTERNAL };
 }
-#endif
 
 /*
   // validate edgeDefinitions

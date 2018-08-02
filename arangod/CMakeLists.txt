@@ -321,7 +321,6 @@ SET(ARANGOD_SOURCES
   Graph/ClusterTraverserCache.cpp
   Graph/EdgeCollectionInfo.cpp
   Graph/Graph.cpp
-  Graph/GraphCache.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
   Graph/NeighborsEnumerator.cpp
@@ -511,7 +510,6 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
-  VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp

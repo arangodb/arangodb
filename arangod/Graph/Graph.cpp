@@ -43,16 +43,35 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/Graphs.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
+using VelocyPackHelper = basics::VelocyPackHelper;
 
-Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
-    : _graphName(graphName_),
+#ifndef USE_ENTERPRISE
+// Factory methods
+std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document) {
+  std::unique_ptr<Graph> result{new Graph{document}};
+  return result;
+}
+
+std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document, VPackSlice options) {
+  std::unique_ptr<Graph> result{new Graph{std::move(name), document, options}};
+  return result;
+}
+#endif
+
+std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name, VPackSlice document, VPackSlice options) {
+  return Graph::fromUserInput(std::string{name}, document, options);
+
+}
+
+// From persistence
+Graph::Graph(velocypack::Slice const& slice)
+    : _graphName(VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "")),
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(basics::VelocyPackHelper::readNumericValue<uint64_t>(
@@ -61,69 +80,101 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
           slice, StaticStrings::ReplicationFactor, 1)),
       _rev(basics::VelocyPackHelper::getStringValue(
           slice, StaticStrings::RevString, "")) {
-  if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
-    VPackSlice edgeDefs = slice.get(StaticStrings::GraphEdgeDefinitions);
-    TRI_ASSERT(edgeDefs.isArray());
-    if (!edgeDefs.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_GRAPH_INVALID_GRAPH,
-          "'edgeDefinitions' are not an array in the graph definition");
-    }
+  // If this happens we have a document without an _key Attribute.
+  TRI_ASSERT(!_graphName.empty());
+  if (_graphName.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Persisted graph is invalid. It does not have a _key set. Please contact support.");
+  }
 
-    for (auto const& def : VPackArrayIterator(edgeDefs)) {
-      Result res = addEdgeDefinition(def);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      // TODO maybe the following code can be simplified using _edgeDefs
-      // and/or after def is already validated.
-      // Or, this can be done during addEdgeDefinition as well.
-      TRI_ASSERT(def.isObject());
-      try {
-        std::string eCol =
-            basics::VelocyPackHelper::getStringValue(def, "collection", "");
-        addEdgeCollection(std::move(eCol));
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_GRAPH_INVALID_GRAPH,
-            "didn't find 'collection' in the graph definition");
-      }
-      // TODO what if graph is not in a valid format any more
-      try {
-        VPackSlice tmp = def.get(StaticStrings::GraphFrom);
-        insertVertexCollections(tmp);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_GRAPH_INVALID_GRAPH,
-            "didn't find from-collection in the graph definition");
-      }
-      try {
-        VPackSlice tmp = def.get(StaticStrings::GraphTo);
-        insertVertexCollections(tmp);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_GRAPH_INVALID_GRAPH,
-            "didn't find to-collection in the graph definition");
-      }
-    }
+  // If this happens we have a document without an _rev Attribute.
+  TRI_ASSERT(!_rev.empty());
+  if (_rev.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Persisted graph is invalid. It does not have a _rev set. Please contact support.");
+  }
+
+  if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    parseEdgeDefinitions(slice.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (slice.hasKey(StaticStrings::GraphOrphans)) {
     auto orphans = slice.get(StaticStrings::GraphOrphans);
     insertVertexCollections(orphans);
     insertOrphanCollections(orphans);
   }
+}
 
-  /*
-#ifdef USE_ENTERPRISE
-  if (slice.hasKey(StaticStrings::GraphIsSmart)) {
-    setSmartState(slice.get(StaticStrings::GraphIsSmart).getBool());
+// From user input
+Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& options)
+    : _graphName(graphName),
+      _vertexColls(),
+      _edgeColls(),
+      _numberOfShards(1),
+      _replicationFactor(1),
+      _rev("") {
+  if (_graphName.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
   }
-  if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute)) {
-    setSmartGraphAttribute(
-        slice.get(StaticStrings::GraphSmartGraphAttribute).copyString());
+  TRI_ASSERT(_rev.empty());
+
+  if (info.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    parseEdgeDefinitions(info.get(StaticStrings::GraphEdgeDefinitions));
   }
-#endif
-*/
+  if (info.hasKey(StaticStrings::GraphOrphans)) {
+    auto orphans = info.get(StaticStrings::GraphOrphans);
+    insertVertexCollections(orphans);
+    insertOrphanCollections(orphans);
+  }
+  if (options.isObject()) {
+    _numberOfShards = VelocyPackHelper::readNumericValue<uint64_t>(
+        options, StaticStrings::NumberOfShards, 1);
+    _replicationFactor = VelocyPackHelper::readNumericValue<uint64_t>(
+        options, StaticStrings::ReplicationFactor, 1);
+  }
+}
+
+void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
+  TRI_ASSERT(edgeDefs.isArray());
+  if (!edgeDefs.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_GRAPH_INVALID_GRAPH,
+        "'edgeDefinitions' are not an array in the graph definition");
+  }
+
+  for (auto const& def : VPackArrayIterator(edgeDefs)) {
+    Result res = addEdgeDefinition(def);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    // TODO maybe the following code can be simplified using _edgeDefs
+    // and/or after def is already validated.
+    // Or, this can be done during addEdgeDefinition as well.
+    TRI_ASSERT(def.isObject());
+    try {
+      std::string eCol =
+          basics::VelocyPackHelper::getStringValue(def, "collection", "");
+      addEdgeCollection(std::move(eCol));
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_GRAPH_INVALID_GRAPH,
+          "didn't find 'collection' in the graph definition");
+    }
+    // TODO what if graph is not in a valid format any more
+    try {
+      VPackSlice tmp = def.get(StaticStrings::GraphFrom);
+      insertVertexCollections(tmp);
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_GRAPH_INVALID_GRAPH,
+          "didn't find from-collection in the graph definition");
+    }
+    try {
+      VPackSlice tmp = def.get(StaticStrings::GraphTo);
+      insertVertexCollections(tmp);
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_GRAPH_INVALID_GRAPH,
+          "didn't find to-collection in the graph definition");
+    }
+  }
 
 }
 
@@ -519,19 +570,4 @@ boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(
 
   TRI_ASSERT(hasEdgeCollection(collectionName));
   return {it->second};
-}
-
-Graph Graph::fromSlice(velocypack::Slice const &info) {
-  if (!info.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_GRAPH_INVALID_GRAPH,
-      "invalid graph: expected an object");
-  }
-  if (!info.get(StaticStrings::KeyString).isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_GRAPH_INVALID_GRAPH,
-      "invalid graph: _key is not a string");
-  }
-
-  return Graph(info.get(StaticStrings::KeyString).copyString(), info);
 }

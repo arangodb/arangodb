@@ -26,22 +26,17 @@
 #include <boost/optional.hpp>
 
 #include "Actions/RestActionHandler.h"
+#include "Graph/GraphManager.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 
 namespace graph {
 class Graph;
-class GraphCache;
-}
-
-namespace transaction {
-class StandaloneContext;
 }
 
 class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
  private:
-  graph::GraphCache& _graphCache;
   enum class GraphProperty {
     VERTICES, EDGES
   };
@@ -55,8 +50,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   };
 
  public:
-  RestGraphHandler(GeneralRequest* request, GeneralResponse* response,
-                   graph::GraphCache* graphCache);
+  RestGraphHandler(GeneralRequest* request, GeneralResponse* response);
 
   ~RestGraphHandler() override = default;
 
@@ -74,86 +68,85 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   // /_api/gharial/{graph-name}
   arangodb::Result graphAction(
-      std::shared_ptr<const graph::Graph> graph);
+      graph::Graph const& graph);
 
   // /_api/gharial/{graph-name}/vertex
   arangodb::Result vertexSetsAction(
-      std::shared_ptr<const graph::Graph> graph);
+      graph::Graph const& graph);
 
   // /_api/gharial/{graph-name}/edge
   arangodb::Result edgeSetsAction(
-      std::shared_ptr<const graph::Graph> graph);
+      graph::Graph const& graph);
 
   // /_api/gharial/{graph-name}/vertex/{collection-name}
   arangodb::Result vertexSetAction(
-      std::shared_ptr<const graph::Graph> graph,
+      graph::Graph const& graph,
       const std::string& vertexCollectionName);
 
   // /_api/gharial/{graph-name}/edge/{definition-name}
   arangodb::Result edgeSetAction(
-      std::shared_ptr<const graph::Graph> graph,
+      graph::Graph const& graph,
       const std::string& edgeDefinitionName);
 
   // /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
   arangodb::Result vertexAction(
-      std::shared_ptr<const graph::Graph> graph,
+      graph::Graph const& graph,
       const std::string& vertexCollectionName, const std::string& vertexKey);
 
   // /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
   arangodb::Result edgeAction(
-      std::shared_ptr<const graph::Graph> graph,
+      graph::Graph const& graph,
       const std::string& edgeDefinitionName, const std::string& edgeKey);
 
   // GET /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-  void vertexActionRead(const std::shared_ptr<const graph::Graph> graph,
+  void vertexActionRead(graph::Graph const& graph,
                         const std::string &collectionName,
                         const std::string &key);
 
   // DELETE /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-  arangodb::Result vertexActionRemove(std::shared_ptr<const graph::Graph> graph,
+  arangodb::Result vertexActionRemove(graph::Graph const& graph,
                             const std::string& collectionName,
                             const std::string& key);
 
   // PATCH /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-  arangodb::Result vertexActionUpdate(std::shared_ptr<const graph::Graph> graph,
+  arangodb::Result vertexActionUpdate(graph::Graph const& graph,
                             const std::string& collectionName,
                             const std::string& key);
 
   // PUT /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-  arangodb::Result vertexActionReplace(std::shared_ptr<const graph::Graph> graph,
+  arangodb::Result vertexActionReplace(graph::Graph const& graph,
                              const std::string& collectionName,
                              const std::string& key);
 
   // POST /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-  arangodb::Result vertexActionCreate(std::shared_ptr<const graph::Graph> graph,
+  arangodb::Result vertexActionCreate(graph::Graph const& graph,
                              const std::string& collectionName);
 
   // GET /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-  void edgeActionRead(std::shared_ptr<const graph::Graph> graph,
+  void edgeActionRead(graph::Graph const& graph,
                       const std::string &definitionName,
                       const std::string &key);
 
   // DELETE /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-  arangodb::Result edgeActionRemove(std::shared_ptr<const graph::Graph> graph,
+  arangodb::Result edgeActionRemove(graph::Graph const& graph,
                           const std::string& definitionName,
                           const std::string& key);
   
   // POST /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-  arangodb::Result edgeActionCreate(std::shared_ptr<const graph::Graph> graph,
+  arangodb::Result edgeActionCreate(graph::Graph const& graph,
                           const std::string& definitionName);
 
   // PATCH /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-  arangodb::Result edgeActionUpdate(std::shared_ptr<const graph::Graph> graph,
+  arangodb::Result edgeActionUpdate(graph::Graph const& graph,
                           const std::string& collectionName,
                           const std::string& key);
 
   // PUT /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-  arangodb::Result edgeActionReplace(std::shared_ptr<const graph::Graph> graph,
+  arangodb::Result edgeActionReplace(graph::Graph const& graph,
                            const std::string& collectionName,
                            const std::string& key);
 
-  std::shared_ptr<graph::Graph const> getGraph(
-      std::shared_ptr<transaction::Context> ctx, const std::string& graphName);
+  std::unique_ptr<graph::Graph const> getGraph(const std::string& graphName);
 
   void generateVertexRead(VPackSlice vertex, VPackOptions const& options);
 
@@ -182,11 +175,11 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   void addEtagHeader(velocypack::Slice slice);
 
-  Result vertexModify(std::shared_ptr<const graph::Graph> graph,
+  Result vertexModify(graph::Graph const& graph,
                       const std::string& collectionName, const std::string& key,
                       bool isPatch);
 
-  Result vertexCreate(std::shared_ptr<const graph::Graph> graph,
+  Result vertexCreate(graph::Graph const& graph,
                       const std::string& collectionName);
 
   void generateVertexModified(bool wasSynchronous, VPackSlice resultSlice,
@@ -203,36 +196,36 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                         VPackSlice resultSlice,
                         const velocypack::Options& options);
 
-  Result edgeModify(std::shared_ptr<const graph::Graph> graph,
+  Result edgeModify(graph::Graph const& graph,
                     const std::string& collectionName, const std::string& key,
                     bool isPatch);
 
-  Result edgeCreate(std::shared_ptr<const graph::Graph> graph,
+  Result edgeCreate(graph::Graph const& graph,
                     const std::string& collectionName);
 
-  Result documentModify(std::shared_ptr<const graph::Graph> graph,
+  Result documentModify(graph::Graph const& graph,
                         const std::string& collectionName,
                         const std::string& key, bool isPatch,
                         TRI_col_type_e colType);
 
   Result documentCreate(
-    std::shared_ptr<const graph::Graph> graph, const std::string &collectionName,
+    graph::Graph const& graph, const std::string &collectionName,
     TRI_col_type_e colType
   );
 
   Result graphActionReadGraphConfig(
-    std::shared_ptr<const graph::Graph> graph
+    graph::Graph const& graph
   );
 
   Result graphActionRemoveGraph(
-    std::shared_ptr<const graph::Graph> graph
+    graph::Graph const& graph
   );
 
   Result graphActionCreateGraph();
   Result graphActionReadGraphs();
 
   Result graphActionReadConfig(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     TRI_col_type_e colType, GraphProperty property
   );
 
@@ -249,34 +242,36 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   // edges
   // PATCH /_api/gharial/{graph-name}/edge/{definition-name}
   Result editEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& edgeDefinitionName
   );
 
   // DELETE /_api/gharial/{graph-name}/edge/{definition-name}
   Result removeEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& edgeDefinitionName
   );
 
   // POST /_api/gharial/{graph-name}/edge/
   Result createEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph
+    graph::Graph const& graph
   );
 
   // edgeDefinitionName may be omitted when action == CREATE
   Result modifyEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     EdgeDefinitionAction action,
     std::string edgeDefinitionName = {}
   );
 
   Result modifyVertexDefinition(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     VertexDefinitionAction action,
     std::string vertexDefinitionName
   );
 
+  private:
+   graph::GraphManager _gmngr;
   };
 }  // namespace arangodb
 

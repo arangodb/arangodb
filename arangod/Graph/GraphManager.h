@@ -88,12 +88,17 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks wheter a graph exists or not
   ////////////////////////////////////////////////////////////////////////////////
-  bool graphExists(std::string graphName) const;
+  bool graphExists(std::string const& graphName) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lookup a graph by name
+  ////////////////////////////////////////////////////////////////////////////////
+  ResultT<std::unique_ptr<Graph>> lookupGraphByName(std::string const& name) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createGraph(VPackSlice document, bool waitForSync);
+  OperationResult createGraph(VPackSlice document, bool waitForSync) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
@@ -171,7 +176,7 @@ class GraphManager {
    *
    * @return A temporary Graph object 
    */
-  ResultT<std::shared_ptr<Graph>> buildGraphFromInput(std::string const& graphName, arangodb::velocypack::Slice input) const;
+  ResultT<std::unique_ptr<Graph>> buildGraphFromInput(std::string const& graphName, arangodb::velocypack::Slice input) const;
 
   Result checkCreateGraphPermissions(Graph const* graph) const;
 

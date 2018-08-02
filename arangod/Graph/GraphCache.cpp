@@ -39,12 +39,12 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Graph/GraphManager.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/Graphs.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -141,30 +141,22 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
   // if the graph wasn't found in the cache, lookup the graph and insert or
   // replace the entry. if the graph doesn't exist, erase a possible entry from
   // the cache.
-  std::shared_ptr<Graph const> graph;
+  std::unique_ptr<Graph const> graph;
   try {
     WRITE_LOCKER(guard, _lock);
 
     std::chrono::steady_clock::time_point now =
         std::chrono::steady_clock::now();
 
-    bool graphNotFound = false;
-
-    try {
-      graph.reset(lookupGraphByName(ctx, name));
-    } catch (arangodb::basics::Exception& exception) {
-      switch (exception.code()) {
-        case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-        case TRI_ERROR_GRAPH_NOT_FOUND:
-          graphNotFound = true;
-        default:
-            // something else went wrong
-            ;
+    GraphManager gmngr{ctx->vocbase(), true};
+    auto result = gmngr.lookupGraphByName(name);
+    if (result.fail()) {
+      if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
+          result.is(TRI_ERROR_GRAPH_NOT_FOUND)) {
+        _cache.erase(name);
       }
-    }
-
-    if (graphNotFound) {
-      _cache.erase(name);
+    } else {
+      graph.reset(result.get());
     }
 
     if (graph == nullptr) {

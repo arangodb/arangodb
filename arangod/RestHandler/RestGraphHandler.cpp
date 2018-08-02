@@ -29,25 +29,20 @@
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
-#include "Graph/GraphCache.h"
 #include "Graph/GraphManager.h"
 #include "Graph/GraphOperations.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "V8Server/V8DealerFeature.h"
-#include "VocBase/Graphs.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 RestGraphHandler::RestGraphHandler(GeneralRequest* request,
-                                   GeneralResponse* response,
-                                   GraphCache* graphCache_)
-    : RestVocbaseBaseHandler(request, response), _graphCache(*graphCache_) {}
+                                   GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response), _gmngr(_vocbase) {}
 
 RestStatus RestGraphHandler::execute() {
   Result res = executeGharial();
@@ -59,8 +54,6 @@ RestStatus RestGraphHandler::execute() {
   return RestStatus::DONE;
 }
 
-// Note: boost::none indicates "not (yet) implemented".
-// Error-handling for nonexistent routes is, for now, taken from the fallback.
 Result RestGraphHandler::executeGharial() {
   auto suffix = request()->suffixes().begin();
   auto end = request()->suffixes().end();
@@ -76,26 +69,14 @@ Result RestGraphHandler::executeGharial() {
 
   std::string const& graphName = getNextSuffix();
 
-  V8Context* v8Context = V8DealerFeature::DEALER->enterContext(
-      &_vocbase, true /*allow use database*/);
+  std::unique_ptr<Graph const> graph = getGraph(graphName);
 
-  if (!v8Context) {
-    return {TRI_ERROR_INTERNAL, "could not acquire v8 context"};
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(v8Context));
-
-  // auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  auto ctx = transaction::V8Context::Create(_vocbase, true);
-  // ctx->makeGlobal(); // TODO ???
-
-  TRI_ASSERT(ctx);
-
-  std::shared_ptr<Graph const> graph = getGraph(ctx, graphName);
+  // Guaranteed
+  TRI_ASSERT(graph != nullptr);
 
   if (noMoreSuffixes()) {
     // /_api/gharial/{graph-name}
-    return graphAction(graph);
+    return graphAction(*(graph.get()));
   }
 
   std::string const& collType = getNextSuffix();
@@ -109,10 +90,10 @@ Result RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex
-      return vertexSetsAction(graph);
+      return vertexSetsAction(*(graph.get()));
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge
-      return edgeSetsAction(graph);
+      return edgeSetsAction(*(graph.get()));
     }
   }
 
@@ -150,10 +131,10 @@ Result RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex/{collection-name}
-      return vertexSetAction(graph, setName);
+      return vertexSetAction(*(graph.get()), setName);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge/{definition-name}
-      return edgeSetAction(graph, setName);
+      return edgeSetAction(*(graph.get()), setName);
     }
   }
 
@@ -162,10 +143,10 @@ Result RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-      return vertexAction(graph, setName, elementKey);
+      return vertexAction(*(graph.get()), setName, elementKey);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-      return edgeAction(graph, setName, elementKey);
+      return edgeAction(*(graph.get()), setName, elementKey);
     }
   }
 
@@ -173,7 +154,7 @@ Result RestGraphHandler::executeGharial() {
 }
 
 Result RestGraphHandler::graphAction(
-    const std::shared_ptr<const Graph> graph) {
+    Graph const& graph) {
   switch (request()->requestType()) {
     case RequestType::GET:
       return graphActionReadGraphConfig(graph);
@@ -196,7 +177,7 @@ Result RestGraphHandler::graphsAction() {
 }
 
 Result RestGraphHandler::vertexSetsAction(
-    const std::shared_ptr<const Graph> graph) {
+    Graph const& graph) {
 
   switch (request()->requestType()) {
     case RequestType::GET:
@@ -209,7 +190,7 @@ Result RestGraphHandler::vertexSetsAction(
 }
 
 Result RestGraphHandler::edgeSetsAction(
-    const std::shared_ptr<const Graph> graph) {
+    Graph const& graph) {
 
   switch (request()->requestType()) {
     case RequestType::GET:
@@ -222,7 +203,7 @@ Result RestGraphHandler::edgeSetsAction(
 }
 
 Result RestGraphHandler::edgeSetAction(
-    const std::shared_ptr<const Graph> graph,
+    Graph const& graph,
     const std::string& edgeDefinitionName) {
 
   switch (request()->requestType()) {
@@ -238,7 +219,7 @@ Result RestGraphHandler::edgeSetAction(
 }
 
 Result RestGraphHandler::vertexSetAction(
-    const std::shared_ptr<const Graph> graph,
+    Graph const& graph,
     const std::string& vertexCollectionName) {
 
   switch (request()->requestType()) {
@@ -252,7 +233,7 @@ Result RestGraphHandler::vertexSetAction(
 }
 
 Result RestGraphHandler::vertexAction(
-    const std::shared_ptr<const Graph> graph,
+    Graph const& graph,
     const std::string& vertexCollectionName, const std::string& vertexKey) {
 
   switch (request()->requestType()) {
@@ -272,7 +253,7 @@ Result RestGraphHandler::vertexAction(
 }
 
 Result RestGraphHandler::edgeAction(
-    const std::shared_ptr<const Graph> graph,
+    Graph const& graph,
     const std::string& edgeDefinitionName, const std::string& edgeKey) {
 
   switch (request()->requestType()) {
@@ -292,7 +273,7 @@ Result RestGraphHandler::edgeAction(
 }
 
 void RestGraphHandler::vertexActionRead(
-        const std::shared_ptr<const Graph> graph, const std::string &collectionName,
+        Graph const& graph, const std::string &collectionName,
         const std::string &key) {
 
   bool isValidRevision;
@@ -303,7 +284,7 @@ void RestGraphHandler::vertexActionRead(
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  GraphOperations gops{*graph, _vocbase};
+  GraphOperations gops{graph, _vocbase};
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
 
   if (!result.ok()) {
@@ -557,7 +538,7 @@ void RestGraphHandler::generateResultMergedWithObject(
 
 // TODO this is nearly exactly the same as vertexActionRead. reuse somehow?
 void RestGraphHandler::edgeActionRead(
-        const std::shared_ptr<const Graph> graph,
+        Graph const& graph,
         const std::string &definitionName, const std::string &key) {
 
   bool isValidRevision;
@@ -568,7 +549,7 @@ void RestGraphHandler::edgeActionRead(
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  GraphOperations gops{*graph, _vocbase};
+  GraphOperations gops{graph, _vocbase};
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
   if (result.fail()) {
@@ -580,16 +561,13 @@ void RestGraphHandler::edgeActionRead(
   generateEdgeRead(result.slice(), *ctx->getVPackOptionsForDump());
 }
 
-std::shared_ptr<Graph const> RestGraphHandler::getGraph(
-    std::shared_ptr<transaction::Context> ctx, const std::string& graphName) {
-  std::shared_ptr<Graph const> graph = _graphCache.getGraph(std::move(ctx), graphName);
-
-  // TODO remove exception, handle return value instead
-  if (graph == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+std::unique_ptr<Graph const> RestGraphHandler::getGraph(const std::string& graphName) {
+  auto graphResult = _gmngr.lookupGraphByName(graphName);
+  if (graphResult.fail()) {
+    THROW_ARANGO_EXCEPTION(graphResult);
   }
-
-  return graph;
+  TRI_ASSERT(graphResult.get() != nullptr);
+  return std::move(graphResult.get());
 }
 
 // TODO this is very similar to (edge|vertex)ActionRead. find a way to reduce
@@ -598,7 +576,7 @@ std::shared_ptr<Graph const> RestGraphHandler::getGraph(
 // contains the old value in the field "old". This is not documented in
 // HTTP/Gharial!
 Result RestGraphHandler::edgeActionRemove(
-    const std::shared_ptr<const Graph> graph, const std::string& definitionName,
+    Graph const& graph, const std::string& definitionName,
     const std::string& key) {
 
   bool waitForSync =
@@ -614,7 +592,7 @@ Result RestGraphHandler::edgeActionRemove(
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  GraphOperations gops{*graph, _vocbase};
+  GraphOperations gops{graph, _vocbase};
 
   OperationResult result =
       gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
@@ -641,62 +619,62 @@ void RestGraphHandler::addEtagHeader(velocypack::Slice rev) {
 }
 
 Result RestGraphHandler::vertexActionUpdate(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName, const std::string& key) {
   return vertexModify(std::move(graph), collectionName, key, true);
 }
 
 Result RestGraphHandler::vertexActionReplace(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName, const std::string& key) {
   return vertexModify(std::move(graph), collectionName, key, false);
 }
 
 Result RestGraphHandler::vertexActionCreate(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName) {
   return vertexCreate(std::move(graph), collectionName);
 }
 
 Result RestGraphHandler::edgeActionUpdate(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName, const std::string& key) {
   return edgeModify(std::move(graph), collectionName, key, true);
 }
 
 Result RestGraphHandler::edgeActionReplace(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName, const std::string& key) {
   return edgeModify(std::move(graph), collectionName, key, false);
 }
 
-Result RestGraphHandler::edgeModify(std::shared_ptr<const graph::Graph> graph,
+Result RestGraphHandler::edgeModify(graph::Graph const& graph,
                                     const std::string& collectionName,
                                     const std::string& key, bool isPatch) {
   return documentModify(std::move(graph), collectionName, key, isPatch,
                         TRI_COL_TYPE_EDGE);
 }
 
-Result RestGraphHandler::edgeCreate(std::shared_ptr<const graph::Graph> graph,
+Result RestGraphHandler::edgeCreate(graph::Graph const& graph,
                                     const std::string& collectionName) {
   return documentCreate(std::move(graph), collectionName,
                         TRI_COL_TYPE_EDGE);
 }
 
 Result RestGraphHandler::edgeActionCreate(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName) {
   return edgeCreate(std::move(graph), collectionName);
 }
 
-Result RestGraphHandler::vertexModify(std::shared_ptr<const graph::Graph> graph,
+Result RestGraphHandler::vertexModify(graph::Graph const& graph,
                                       const std::string& collectionName,
                                       const std::string& key, bool isPatch) {
   return documentModify(std::move(graph), collectionName, key, isPatch,
                         TRI_COL_TYPE_DOCUMENT);
 }
 
-Result RestGraphHandler::vertexCreate(std::shared_ptr<const graph::Graph> graph,
+Result RestGraphHandler::vertexCreate(graph::Graph const& graph,
                                       const std::string& collectionName) {
   return documentCreate(std::move(graph), collectionName,
                         TRI_COL_TYPE_DOCUMENT);
@@ -704,19 +682,19 @@ Result RestGraphHandler::vertexCreate(std::shared_ptr<const graph::Graph> graph,
 
 // /_api/gharial/{graph-name}/edge/{definition-name}
 Result RestGraphHandler::editEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& edgeDefinitionName) {
   return modifyEdgeDefinition(std::move(graph), EdgeDefinitionAction::EDIT,
                               edgeDefinitionName);
 }
 
 Result RestGraphHandler::createEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph) {
+    graph::Graph const& graph) {
   return modifyEdgeDefinition(std::move(graph), EdgeDefinitionAction::CREATE);
 }
 
 // /_api/gharial/{graph-name}/edge
-Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
+Result RestGraphHandler::modifyEdgeDefinition(graph::Graph const& graph,
     EdgeDefinitionAction action, std::string edgeDefinitionName) {
 
   // edgeDefinitionName == "" <=> action == CREATE
@@ -732,7 +710,7 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   bool dropCollections =
           _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
-  GraphOperations gops{*graph, _vocbase};
+  GraphOperations gops{graph, _vocbase};
   OperationResult result;
 
   if (action == EdgeDefinitionAction::CREATE) {
@@ -754,13 +732,13 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
     return result.result;
   }
 
-  // TODO invalidate graph in _graphCache
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
-  graph = _graphCache.getGraph(ctx, graph->name());
+  auto newGraph = getGraph(graph.name());
+  TRI_ASSERT(newGraph != nullptr);
   VPackBuilder builder;
   builder.openObject();
-  graph->graphForClient(builder);
+  newGraph->graphForClient(builder);
   builder.close();
 
   generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
@@ -768,7 +746,7 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   return Result();
 }
 
-Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Graph> graph,
+Result RestGraphHandler::modifyVertexDefinition(graph::Graph const& graph,
                                               VertexDefinitionAction action, std::string vertexDefinitionName) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -784,7 +762,7 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
   bool createCollection =
           _request->parsedValue(StaticStrings::GraphCreateCollection, true);
 
-  GraphOperations gops{*graph, _vocbase};
+  GraphOperations gops{graph, _vocbase};
   OperationResult result;
 
   if (action == VertexDefinitionAction::CREATE) {
@@ -802,14 +780,13 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
     return result.result;
   }
 
-  // TODO invalidate graph in _graphCache
-
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
-  graph = _graphCache.getGraph(ctx, graph->name());
+  auto newGraph = getGraph(graph.name());
+  TRI_ASSERT(newGraph != nullptr);
   VPackBuilder builder;
   builder.openObject();
-  graph->graphForClient(builder);
+  newGraph->graphForClient(builder);
   builder.close();
 
   generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
@@ -817,7 +794,7 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
   return Result();
 }
 
-Result RestGraphHandler::removeEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
+Result RestGraphHandler::removeEdgeDefinition(graph::Graph const& graph,
                                                const std::string& edgeDefinitionName) {
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::REMOVE, edgeDefinitionName);
 }
@@ -830,7 +807,7 @@ Result RestGraphHandler::removeEdgeDefinition(std::shared_ptr<const graph::Graph
 // TODO the document API also supports mergeObjects, silent and ignoreRevs;
 // should gharial, too?
 Result RestGraphHandler::documentModify(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName, const std::string& key, bool isPatch,
     TRI_col_type_e colType) {
 
@@ -857,7 +834,7 @@ Result RestGraphHandler::documentModify(
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  GraphOperations gops{*graph, _vocbase};
+  GraphOperations gops{graph, _vocbase};
 
   OperationResult result;
   // TODO get rid of this branching, rather use several functions and reuse the
@@ -901,7 +878,7 @@ Result RestGraphHandler::documentModify(
 }
 
 Result RestGraphHandler::documentCreate(
-    std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName,
     TRI_col_type_e colType) {
 
@@ -915,7 +892,7 @@ Result RestGraphHandler::documentCreate(
     _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
-  GraphOperations gops{*graph, _vocbase};
+  GraphOperations gops{graph, _vocbase};
 
   OperationResult result;
   if (colType == TRI_COL_TYPE_DOCUMENT) {
@@ -950,7 +927,7 @@ Result RestGraphHandler::documentCreate(
 }
 
 Result RestGraphHandler::vertexActionRemove(
-    const std::shared_ptr<const graph::Graph> graph,
+    graph::Graph const& graph,
     const std::string& collectionName, const std::string& key) {
 
   bool waitForSync =
@@ -966,7 +943,7 @@ Result RestGraphHandler::vertexActionRemove(
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  GraphOperations gops{*graph, _vocbase};
+  GraphOperations gops{graph, _vocbase};
 
   OperationResult result =
       gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);
@@ -984,12 +961,12 @@ Result RestGraphHandler::vertexActionRemove(
 }
 
 Result RestGraphHandler::graphActionReadGraphConfig(
-    const std::shared_ptr<const graph::Graph> graph) {
+    graph::Graph const& graph) {
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   VPackBuilder builder;
   builder.openObject();
-  graph->graphForClient(builder);
+  graph.graphForClient(builder);
   builder.close();
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
@@ -997,15 +974,14 @@ Result RestGraphHandler::graphActionReadGraphConfig(
 }
 
 Result RestGraphHandler::graphActionRemoveGraph(
-    const std::shared_ptr<const graph::Graph> graph) {
+    graph::Graph const& graph) {
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool dropCollections =
       _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
-  GraphManager gmngr{_vocbase};
   OperationResult result =
-      gmngr.removeGraph(*graph, waitForSync, dropCollections);
+      _gmngr.removeGraph(graph, waitForSync, dropCollections);
 
   if (result.fail()) {
     generateTransactionError(result);
@@ -1030,8 +1006,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
   {
-    GraphManager gmngr{_vocbase};
-    OperationResult result = gmngr.createGraph(body, waitForSync);
+    OperationResult result = _gmngr.createGraph(body, waitForSync);
 
     if (result.fail()) {
       generateTransactionError(result);
@@ -1042,7 +1017,8 @@ Result RestGraphHandler::graphActionCreateGraph() {
   std::string graphName = body.get(StaticStrings::DataSourceName).copyString();
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  std::shared_ptr<Graph const> graph = getGraph(ctx, graphName);
+  std::unique_ptr<Graph const> graph = getGraph(graphName);
+  TRI_ASSERT(graph != nullptr);
 
   VPackBuilder builder;
   builder.openObject();
@@ -1057,9 +1033,8 @@ Result RestGraphHandler::graphActionCreateGraph() {
 Result RestGraphHandler::graphActionReadGraphs() {
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
-  GraphManager gmngr{_vocbase};
   VPackBuilder builder;
-  gmngr.readGraphs(builder, arangodb::aql::PART_MAIN);
+  _gmngr.readGraphs(builder, arangodb::aql::PART_MAIN);
 
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
@@ -1067,14 +1042,14 @@ Result RestGraphHandler::graphActionReadGraphs() {
 }
 
 Result RestGraphHandler::graphActionReadConfig(
-    const std::shared_ptr<const graph::Graph> graph, TRI_col_type_e colType,
+    graph::Graph const& graph, TRI_col_type_e colType,
     GraphProperty property) {
   VPackBuilder builder;
 
   if (colType == TRI_COL_TYPE_DOCUMENT && property == GraphProperty::VERTICES) {
-    graph->verticesToVpack(builder);
+    graph.verticesToVpack(builder);
   } else if (colType == TRI_COL_TYPE_EDGE && property == GraphProperty::EDGES) {
-    graph->edgesToVpack(builder);
+    graph.edgesToVpack(builder);
   } else {
     TRI_ASSERT(false);
   }

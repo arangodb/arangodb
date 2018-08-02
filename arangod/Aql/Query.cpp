@@ -40,6 +40,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -50,7 +51,6 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/Graphs.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -225,9 +225,6 @@ Query::~Query() {
 
   _ast.reset();
 
-  for (auto& it : _graphs) {
-    delete it.second;
-  }
   LOG_TOPIC(DEBUG, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::~Query this: " << (uintptr_t) this;
@@ -1432,19 +1429,20 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
   auto it = _graphs.find(name);
 
   if (it != _graphs.end()) {
-    return it->second;
+    return it->second.get();
   }
+  graph::GraphManager graphManager{_vocbase, _contextOwnedByExterior};
 
-  std::unique_ptr<::arangodb::graph::Graph> g(
-      arangodb::lookupGraphByName(createTransactionContext(), name));
+  auto g = graphManager.lookupGraphByName(name);
 
-  if (g == nullptr) {
+  if (g.fail()) {
     return nullptr;
   }
 
-  _graphs.emplace(name, g.get());
+  auto graph = g.get().get();
+  _graphs.emplace(name, std::move(g.get()));
 
-  return g.release();
+  return graph;
 }
 
 /// @brief returns the next query id

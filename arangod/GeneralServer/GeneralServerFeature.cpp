@@ -39,7 +39,6 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Graph/Graph.h"
-#include "Graph/GraphCache.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -201,8 +200,6 @@ void GeneralServerFeature::start() {
 
   _handlerFactory.reset(new RestHandlerFactory());
 
-  _graphCache = std::make_unique<graph::GraphCache>();
-
   HANDLER_FACTORY = _handlerFactory.get();
 
   defineHandlers();
@@ -333,8 +330,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::GHARIAL_PATH,
-      RestHandlerCreator<RestGraphHandler>::createData<graph::GraphCache*>,
-      _graphCache.get());
+      RestHandlerCreator<RestGraphHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::ENDPOINT_PATH,

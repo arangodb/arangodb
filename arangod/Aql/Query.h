@@ -396,7 +396,7 @@ class Query {
   V8Context* _context;
 
   /// @brief graphs used in query, identified by name
-  std::unordered_map<std::string, graph::Graph*> _graphs;
+  std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
   /// @brief the actual query string
   QueryString _queryString;

@@ -46,7 +46,6 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/Graphs.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -374,9 +373,9 @@ OperationResult GraphOperations::editEdgeDefinition(
   }
 
   for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-    Graph graph = Graph::fromSlice(singleGraph.resolveExternals());
+    std::unique_ptr<Graph> graph = Graph::fromPersistence(singleGraph.resolveExternals());
     result =
-        changeEdgeDefinitionForGraph(graph, edgeDefinition, waitForSync, trx);
+        changeEdgeDefinitionForGraph(*(graph.get()), edgeDefinition, waitForSync, trx);
   }
   if (result.fail()) {
     return result;
