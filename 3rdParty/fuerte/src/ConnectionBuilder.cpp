@@ -112,6 +112,9 @@ void parseSchema( std::string const& schema,
     } else if (proto == "https" || proto == "ssl") {
       conf._socketType = SocketType::Ssl;
       conf._protocolType = ProtocolType::Http;
+    } else if (proto == "unix") {
+      conf._socketType = SocketType::Unix;
+      conf._protocolType = ProtocolType::Http;
     } else {
       throw std::runtime_error(std::string("invalid protocol: ") + proto);
     }
