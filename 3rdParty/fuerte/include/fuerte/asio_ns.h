@@ -61,6 +61,9 @@ using system_error = boost::system::system_error;
 
 namespace asio_ns = boost::asio;
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+#define ASIO_HAS_LOCAL_SOCKETS
 #endif
 
+#endif
 #endif

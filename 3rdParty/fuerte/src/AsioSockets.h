@@ -42,8 +42,8 @@ struct Socket<SocketType::Tcp>  {
     shutdown();
   }
   
-  void connect(detail::ConnectionConfiguration const& config,
-               std::function<void(asio_ns::error_code const&)> done) {
+  template<typename CallbackT>
+  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
     auto cb = [this, done](asio_ns::error_code const& ec,
                      asio_ns::ip::tcp::resolver::iterator it) {
       if (ec) { // error
@@ -85,8 +85,8 @@ struct Socket<fuerte::SocketType::Ssl> {
     shutdown();
   }
   
-  void connect(detail::ConnectionConfiguration const& config,
-               std::function<void(asio_ns::error_code const&)> done) {
+  template<typename CallbackT>
+  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
     auto rcb = [this, done, &config](asio_ns::error_code const& ec,
                             asio_ns::ip::tcp::resolver::iterator it) {
       if (ec) { // error
@@ -137,6 +137,7 @@ struct Socket<fuerte::SocketType::Ssl> {
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
 };
 
+#ifdef ASIO_HAS_LOCAL_SOCKETS
 template<>
 struct Socket<fuerte::SocketType::Unix> {
   
@@ -145,8 +146,8 @@ struct Socket<fuerte::SocketType::Unix> {
     shutdown();
   }
   
-  void connect(detail::ConnectionConfiguration const& config,
-               std::function<void(asio_ns::error_code const&)> done) {
+  template<typename CallbackT>
+  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
     asio_ns::local::stream_protocol::endpoint ep(config._host);
     socket.async_connect(ep, [done](asio_ns::error_code const& ec) {
       done(ec);
@@ -163,6 +164,7 @@ struct Socket<fuerte::SocketType::Unix> {
   
   asio_ns::local::stream_protocol::socket socket;
 };
+#endif // ASIO_HAS_LOCAL_SOCKETS
 
 }}}  // namespace arangodb::fuerte::v1
 #endif

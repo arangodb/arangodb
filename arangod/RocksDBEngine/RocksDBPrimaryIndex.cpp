@@ -64,10 +64,6 @@
 
 using namespace arangodb;
 
-namespace {
-constexpr bool PrimaryIndexFillBlockCache = false;
-}
-
 // ================ Primary Index Iterator ================
 
 /// @brief hard-coded vector of the index attributes

@@ -40,9 +40,12 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
       result = std::make_shared<vst::VstConnection<SocketType::Tcp>>(loop, _conf);
     } else if (_conf._socketType == SocketType::Ssl) {
       result = std::make_shared<vst::VstConnection<SocketType::Ssl>>(loop, _conf);
-    } else if (_conf._socketType == SocketType::Unix) {
+    }
+#ifdef ASIO_HAS_LOCAL_SOCKETS
+     else if (_conf._socketType == SocketType::Unix) {
       result = std::make_shared<vst::VstConnection<SocketType::Unix>>(loop, _conf);
     }
+#endif
   } else {
     // throw std::logic_error("http in vst test");
     FUERTE_LOG_DEBUG << "fuerte - creating http connection\n";
@@ -50,9 +53,12 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
       result = std::make_shared<http::HttpConnection<SocketType::Tcp>>(loop, _conf);
     } else if (_conf._socketType == SocketType::Ssl) {
       result = std::make_shared<http::HttpConnection<SocketType::Ssl>>(loop, _conf);
-    } else if (_conf._socketType == SocketType::Unix) {
+    }
+#ifdef ASIO_HAS_LOCAL_SOCKETS
+     else if (_conf._socketType == SocketType::Unix) {
       result = std::make_shared<http::HttpConnection<SocketType::Unix>>(loop, _conf);
     }
+#endif
   }
   if (!result) {
     throw std::logic_error("unsupported socket type");

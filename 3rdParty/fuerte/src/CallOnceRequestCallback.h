@@ -33,9 +33,13 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace impl {
 // no more than one time.
 class CallOnceRequestCallback {
  public:
-  CallOnceRequestCallback() : _invoked(ATOMIC_FLAG_INIT), _cb(nullptr) {}
+  CallOnceRequestCallback() : _invoked(), _cb(nullptr) {
+    _invoked.clear();
+  }
   CallOnceRequestCallback(RequestCallback cb)
-      : _invoked(ATOMIC_FLAG_INIT), _cb(std::move(cb)) {}
+      : _invoked(), _cb(std::move(cb)) {
+    _invoked.clear();
+  }
   CallOnceRequestCallback& operator=(RequestCallback cb) {
     _cb = cb;
     return *this;
