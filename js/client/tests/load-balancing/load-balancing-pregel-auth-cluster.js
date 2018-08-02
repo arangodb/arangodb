@@ -109,8 +109,8 @@ function PregelAuthSuite () {
       }
 
       cs = [];
-      cs.push(db._create("vertices"));
-      cs.push(db._createEdgeCollection("edges", {shardKeys: ["vertex"]}));
+      cs.push(db._create("vertices", {numberOfShards: 8}));
+      cs.push(db._createEdgeCollection("edges", {shardKeys: ["vertex"], distributeShardsLike: "vertices", numberOfShards: 8}));
       for (let i = 1; i <= 250; ++i) {
         cs[0].save({ _key: `v_${i}` });
         const edges = [];
