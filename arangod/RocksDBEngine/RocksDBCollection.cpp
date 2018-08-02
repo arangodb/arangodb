@@ -382,13 +382,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   // We are sure that we do not have an index of this type.
-  // We also hold the lock.
-  // Create it
+  // We also hold the lock. Create it
 
   idx = engine->indexFactory().prepareIndexFromSlice(
     info, true, _logicalCollection, false
   );
-  TRI_ASSERT(idx != nullptr);
+  if (!idx) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  }
 
   int res = saveIndex(trx, idx);
 
