@@ -50,12 +50,15 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
-ClusterCollection::ClusterCollection(LogicalCollection* collection,
-                                     ClusterEngineType engineType,
-                                     VPackSlice const& info)
+namespace arangodb {
+
+ClusterCollection::ClusterCollection(
+  LogicalCollection& collection,
+  ClusterEngineType engineType,
+  arangodb::velocypack::Slice const& info
+)
     : PhysicalCollection(collection, info),
       _engineType(engineType),
       _info(info) {
@@ -63,7 +66,8 @@ ClusterCollection::ClusterCollection(LogicalCollection* collection,
   if (_engineType == ClusterEngineType::MMFilesEngine) {
     bool isVolatile =
         Helper::readBooleanValue(_info.slice(), "isVolatile", false);
-    if (isVolatile && _logicalCollection->waitForSync()) {
+
+    if (isVolatile && _logicalCollection.waitForSync()) {
       // Illegal collection configuration
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -71,10 +75,12 @@ ClusterCollection::ClusterCollection(LogicalCollection* collection,
     }
 
     VPackSlice journalSlice = _info.slice().get("journalSize");
+
     if (journalSlice.isNone()) {
       // In some APIs maximalSize is allowed instead
       journalSlice = _info.slice().get("maximalSize");
     }
+
     if (journalSlice.isNumber()) {
       if (journalSlice.getNumericValue<uint32_t>() < TRI_JOURNAL_MINIMAL_SIZE) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -96,8 +102,10 @@ ClusterCollection::ClusterCollection(LogicalCollection* collection,
   }
 }
 
-ClusterCollection::ClusterCollection(LogicalCollection* collection,
-                                     PhysicalCollection const* physical)
+ClusterCollection::ClusterCollection(
+    LogicalCollection& collection,
+    PhysicalCollection const* physical
+)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _engineType(static_cast<ClusterCollection const*>(physical)->_engineType),
       _info(static_cast<ClusterCollection const*>(physical)->_info) {}
@@ -133,8 +141,9 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
     bool isVolatile =
         Helper::readBooleanValue(_info.slice(), "isVolatile", false);
     if (isVolatile &&
-        Helper::getBooleanValue(slice, "waitForSync",
-                                _logicalCollection->waitForSync())) {
+        arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "waitForSync", _logicalCollection.waitForSync()
+        )) {
       // the combination of waitForSync and isVolatile makes no sense
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -191,7 +200,7 @@ arangodb::Result ClusterCollection::persistProperties() {
   return Result();
 }
 
-PhysicalCollection* ClusterCollection::clone(LogicalCollection* logical) const {
+PhysicalCollection* ClusterCollection::clone(LogicalCollection& logical) const {
   return new ClusterCollection(logical, this);
 }
 
@@ -228,12 +237,16 @@ std::shared_ptr<VPackBuilder> ClusterCollection::figures() {
   builder->openObject();
   builder->close();
 
-  int res =
-      figuresOnCoordinator(_logicalCollection->vocbase().name(),
-                           std::to_string(_logicalCollection->id()), builder);
+  auto res = figuresOnCoordinator(
+    _logicalCollection.vocbase().name(),
+    std::to_string(_logicalCollection.id()),
+    builder
+  );
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   return builder;
 }
 
@@ -286,11 +299,13 @@ void ClusterCollection::prepareIndexes(
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   std::vector<std::shared_ptr<Index>> indexes;
+
   if (indexesSlice.length() == 0 && _indexes.empty()) {
     engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
   } else {
-    engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice,
-                                          indexes);
+    engine->indexFactory().prepareIndexes(
+      _logicalCollection, indexesSlice, indexes
+    );
   }
 
   for (std::shared_ptr<Index>& idx : indexes) {
@@ -298,13 +313,15 @@ void ClusterCollection::prepareIndexes(
   }
 
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
+      (_logicalCollection.type() == TRI_COL_TYPE_EDGE &&
        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
         (_indexes.size() >= 3 && _engineType == ClusterEngineType::RocksDBEngine &&
          _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
-    std::string msg = "got invalid indexes for collection '" +
-                      _logicalCollection->name() + "'";
+    std::string msg =
+      "got invalid indexes for collection '" + _logicalCollection.name() + "'";
+
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
@@ -358,9 +375,10 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // prevent concurrent dropping
   bool isLocked =
-      trx->isLocked(_logicalCollection, AccessMode::Type::EXCLUSIVE);
+      trx->isLocked(&_logicalCollection, AccessMode::Type::EXCLUSIVE);
   CONDITIONAL_WRITE_LOCKER(guard, _exclusiveLock, !isLocked);
   std::shared_ptr<Index> idx;
+
   {
     WRITE_LOCKER(guard, _indexesLock);
     idx = findIndex(info, _indexes);
@@ -378,7 +396,9 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   // We also hold the lock.
   // Create it
 
-  idx = engine->indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = engine->indexFactory().prepareIndexFromSlice(
+    info, true, _logicalCollection, false
+  );
   TRI_ASSERT(idx != nullptr);
 
   // In the coordinator case we do not fill the index
@@ -512,7 +532,8 @@ Result ClusterCollection::remove(arangodb::transaction::Methods* trx,
 }
 
 void ClusterCollection::deferDropCollection(
-    std::function<bool(LogicalCollection*)> /*callback*/) {
+    std::function<bool(LogicalCollection&)> const& /*callback*/
+) {
   // nothing to do here
 }
 
@@ -527,3 +548,5 @@ void ClusterCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   }
   _indexes.emplace_back(idx);
 }
+
+} // arangodb

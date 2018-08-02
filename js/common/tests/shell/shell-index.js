@@ -50,7 +50,7 @@ function indexSuite() {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      collection = internal.db._create(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +66,23 @@ function indexSuite() {
       catch (err) {
       }
       collection = null;
-      internal.wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexes : function () {
+      var res = collection.indexes();
+
+      assertEqual(1, res.length);
+
+      collection.ensureGeoIndex("a");
+      collection.ensureGeoIndex("a", "b");
+
+      res = collection.indexes();
+
+      assertEqual(3, res.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +265,6 @@ function getIndexesSuite() {
     tearDown : function () {
       collection.drop();
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -721,7 +736,6 @@ function getIndexesEdgesSuite() {
     tearDown : function () {
       collection.drop();
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

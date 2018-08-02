@@ -26,22 +26,13 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-
-namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view properties
-////////////////////////////////////////////////////////////////////////////////
-const std::string PROPERTIES_FIELD("properties");
-
-}
 
 namespace arangodb {
 
@@ -141,18 +132,70 @@ LogicalView::LogicalView(
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               DBServerLogicalView
+// --SECTION--                                            LogicalViewClusterInfo
 // -----------------------------------------------------------------------------
 
-DBServerLogicalView::DBServerLogicalView(
+LogicalViewClusterInfo::LogicalViewClusterInfo(
     TRI_vocbase_t& vocbase,
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalView(vocbase, definition, planVersion) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  TRI_ASSERT(
+    ServerState::instance()->isCoordinator()
+    || ServerState::instance()->isDBServer()
+  );
 }
 
-DBServerLogicalView::~DBServerLogicalView() {
+arangodb::Result LogicalViewClusterInfo::appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+) const {
+  if (!builder.isOpenObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid builder provided for LogicalView definition")
+    );
+  }
+
+  builder.add(
+    StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(type().name())
+  );
+
+  // implementation Information
+  if (detailed) {
+    auto res = appendVelocyPackDetailed(builder, forPersistence);
+
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  // ensure that the object is still open
+  if (!builder.isOpenObject()) {
+    return arangodb::Result(TRI_ERROR_INTERNAL);
+  }
+
+  return arangodb::Result();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          LogicalViewStorageEngine
+// -----------------------------------------------------------------------------
+
+LogicalViewStorageEngine::LogicalViewStorageEngine(
+    TRI_vocbase_t& vocbase,
+    VPackSlice const& definition,
+    uint64_t planVersion
+): LogicalView(vocbase, definition, planVersion) {
+  TRI_ASSERT(
+    ServerState::instance()->isDBServer()
+    || ServerState::instance()->isSingleServer()
+  );
+}
+
+LogicalViewStorageEngine::~LogicalViewStorageEngine() {
   if (deleted()) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
@@ -161,7 +204,7 @@ DBServerLogicalView::~DBServerLogicalView() {
   }
 }
 
-arangodb::Result DBServerLogicalView::appendVelocyPack(
+arangodb::Result LogicalViewStorageEngine::appendVelocyPack(
     arangodb::velocypack::Builder& builder,
     bool detailed,
     bool forPersistence
@@ -169,7 +212,7 @@ arangodb::Result DBServerLogicalView::appendVelocyPack(
   if (!builder.isOpenObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("invalid builder provided for IResearchViewDBServer definition")
+      std::string("invalid builder provided for LogicalView definition")
     );
   }
 
@@ -183,7 +226,7 @@ arangodb::Result DBServerLogicalView::appendVelocyPack(
   // includeSystem if we are persisting the properties
   if (forPersistence) {
     // storage engine related properties
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    auto* engine = EngineSelectorFeature::ENGINE;
 
     if (!engine) {
       return TRI_ERROR_INTERNAL;
@@ -192,26 +235,25 @@ arangodb::Result DBServerLogicalView::appendVelocyPack(
     engine->getViewProperties(vocbase(), *this, builder);
   }
 
+  // implementation Information
   if (detailed) {
-    // implementation Information
-    builder.add(
-      PROPERTIES_FIELD,
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-    );
-    getPropertiesVPack(builder, forPersistence);
-    builder.close();
+    auto res = appendVelocyPackDetailed(builder, forPersistence);
+
+    if (!res.ok()) {
+      return res;
+    }
   }
 
   // ensure that the object is still open
   if (!builder.isOpenObject()) {
-    return TRI_ERROR_INTERNAL;
+    return arangodb::Result(TRI_ERROR_INTERNAL);
   }
 
   return arangodb::Result();
 }
 
-/*static*/ arangodb::Result DBServerLogicalView::create(
-    DBServerLogicalView const& view
+/*static*/ arangodb::Result LogicalViewStorageEngine::create(
+    LogicalViewStorageEngine const& view
 ) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -246,9 +288,7 @@ arangodb::Result DBServerLogicalView::appendVelocyPack(
       }
     #endif
 
-    engine->createView(view.vocbase(), view.id(), view);
-
-    return engine->persistView(view.vocbase(), view);
+    return engine->createView(view.vocbase(), view.id(), view);
   } catch (std::exception const& e) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
@@ -262,7 +302,7 @@ arangodb::Result DBServerLogicalView::appendVelocyPack(
   }
 }
 
-arangodb::Result DBServerLogicalView::drop() {
+arangodb::Result LogicalViewStorageEngine::drop() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
@@ -276,7 +316,7 @@ arangodb::Result DBServerLogicalView::drop() {
   return res;
 }
 
-Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
+Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
@@ -288,7 +328,8 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
 
     // store new view definition to disk
     if (!engine->inRecovery()) {
-      engine->changeView(vocbase(), id(), *this, doSync);
+      // write WAL 'change' marker
+      return engine->changeView(vocbase(), *this, doSync);
     }
   } catch (basics::Exception const& ex) {
     name(std::move(oldName));
@@ -300,11 +341,10 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
     return TRI_ERROR_INTERNAL;
   }
 
-  // write WAL 'rename' marker
-  return engine->renameView(vocbase(), *this, oldName);
+  return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::Result DBServerLogicalView::updateProperties(
+arangodb::Result LogicalViewStorageEngine::updateProperties(
     VPackSlice const& slice,
     bool partialUpdate,
     bool doSync
@@ -326,7 +366,7 @@ arangodb::Result DBServerLogicalView::updateProperties(
   }
 
   try {
-    engine->changeView(vocbase(), id(), *this, doSync);
+    engine->changeView(vocbase(), *this, doSync);
   } catch (arangodb::basics::Exception const& e) {
     return { e.code() };
   } catch (...) {

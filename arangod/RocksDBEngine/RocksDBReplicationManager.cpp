@@ -299,15 +299,15 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
          /* no hoisting */) {
       auto context = it->second;
 
-      if (force || context->expires() < now) {
-        // expire contexts
-        context->deleted();
-      }
-
-      if (context->isUsed()) {
+      if (!force && context->isUsed()) {
         // must not physically destroy contexts that are currently used
         ++it;
         continue;
+      }
+      
+      if (force || context->expires() < now) {
+        // expire contexts
+        context->deleted();
       }
 
       if (context->isDeleted()) {

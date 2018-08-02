@@ -28,9 +28,18 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/AgencyPhase.h"
+#include "ApplicationFeatures/AQLPhase.h"
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/FinalPhase.h"
+#include "ApplicationFeatures/FoxxPhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/ServerPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
-#include "ApplicationFeatures/EngineEqualityCheckFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -50,6 +59,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/EngineEqualityCheckFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -80,6 +90,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -129,14 +140,27 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::vector<std::string> nonServerFeatures = {
         "Action",              "Agency",
         "Cluster",             "Daemon",
-        "EngineEqualityCheck", "FoxxQueues",
-        "GeneralServer",       "Greetings",
-        "LoggerBufferFeature", "Server",
-        "SslServer",           "Statistics",
-        "Supervisor"};
+        "Endpoint",            "EngineEqualityCheck", 
+        "FoxxQueues",          "GeneralServer",       
+        "Greetings",           "LoggerBufferFeature", 
+        "Server",              "SslServer",           
+        "Statistics",          "Supervisor"};
 
     int ret = EXIT_FAILURE;
 
+    // Adding the Phases
+    server.addFeature(new application_features::AgencyFeaturePhase(&server));
+    server.addFeature(new application_features::AQLFeaturePhase(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(&server, false));
+    server.addFeature(new application_features::ClusterFeaturePhase(&server));
+    server.addFeature(new application_features::DatabaseFeaturePhase(&server));
+    server.addFeature(new application_features::FinalFeaturePhase(&server));
+    server.addFeature(new application_features::FoxxFeaturePhase(&server));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server, false));
+    server.addFeature(new application_features::ServerFeaturePhase(&server));
+    server.addFeature(new application_features::V8FeaturePhase(&server));
+
+    // Adding the features
     server.addFeature(new ActionFeature(&server));
     server.addFeature(new AgencyFeature(&server));
     server.addFeature(new AqlFeature(&server));
@@ -177,6 +201,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
     server.addFeature(new ServerIdFeature(&server));
+    server.addFeature(new ShardingFeature(&server));
     server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"Script"}));
     server.addFeature(new SslFeature(&server));

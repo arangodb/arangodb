@@ -90,14 +90,14 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration() {
   return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), std::string());
 }
 
-std::unique_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
-  return std::make_unique<arangodb::GlobalInitialSyncer>(_configuration);
+std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
+  return std::make_shared<arangodb::GlobalInitialSyncer>(_configuration);
 }
 
-std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
+std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
                                                                             bool useTick,
                                                                             TRI_voc_tick_t barrierId) const {
-  return std::make_unique<arangodb::GlobalTailingSyncer>(_configuration, initialTick, useTick, barrierId);
+  return std::make_shared<arangodb::GlobalTailingSyncer>(_configuration, initialTick, useTick, barrierId);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,6 +55,7 @@ class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
+class RocksDBSyncThread;
 class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
@@ -83,7 +84,7 @@ class RocksDBEngine final : public StorageEngine {
   // inherited from ApplicationFeature
   // ---------------------------------
 
-  // add the storage engine's specifc options to the global list of options
+  // add the storage engine's specific options to the global list of options
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   // validate the storage engine's specific options
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -268,14 +269,13 @@ class RocksDBEngine final : public StorageEngine {
     LogicalCollection& collection
   ) override;
 
-  void changeView(
+  arangodb::Result changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalView const& view,
     bool doSync
   ) override;
 
-  void createView(
+  arangodb::Result createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
@@ -288,19 +288,6 @@ class RocksDBEngine final : public StorageEngine {
   ) override {
     // does nothing
   }
-
-  arangodb::Result persistView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view
-  ) override;
-
-  // asks the storage engine to persist renaming of a view
-  // This will write a renameMarker if not in recovery
-  arangodb::Result renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& oldName
-  ) override;
 
   arangodb::Result dropView(
     TRI_vocbase_t& vocbase,
@@ -392,6 +379,10 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const EngineName;
   static std::string const FeatureName;
 
+  rocksdb::Options const& rocksDBOptions() const {
+    return _options;
+  }
+
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
     TRI_ASSERT(_settingsManager);
@@ -402,6 +393,12 @@ class RocksDBEngine final : public StorageEngine {
   RocksDBReplicationManager* replicationManager() const {
     TRI_ASSERT(_replicationManager);
     return _replicationManager.get();
+  }
+
+  /// @brief returns a pointer to the sync thread
+  /// note: returns a nullptr if automatic syncing is turned off!
+  RocksDBSyncThread* syncThread() const {
+    return _syncThread.get();
   }
 
   static arangodb::Result registerRecoveryHelper(
@@ -450,7 +447,7 @@ class RocksDBEngine final : public StorageEngine {
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
-  
+
   // number of seconds to wait initially after server start before WAL file deletion
   // kicks in
   double _pruneWaitTimeInitial;
@@ -458,8 +455,18 @@ class RocksDBEngine final : public StorageEngine {
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
 
+  /// Background thread handling WAL syncing
+  /// note: this is a nullptr if automatic syncing is turned off!
+  std::unique_ptr<RocksDBSyncThread> _syncThread;
+
+  // WAL sync interval, specified in milliseconds by end user, but uses microseconds internally
+  uint64_t _syncInterval;
+
   // use write-throttling
   bool _useThrottle;
+
+  // activate rocksdb's debug logging
+  bool _debugLogging;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes

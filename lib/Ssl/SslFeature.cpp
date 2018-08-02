@@ -27,7 +27,6 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/locks.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -47,8 +46,7 @@ const asio::ssl::detail::openssl_init<true> SslFeature::sslBase{};
 SslFeature::SslFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Ssl") {
   setOptional(true);
-  startsAfter("Logger");
-  startsAfter("Greetings");
+  startsAfter("GreetingsPhase");
 }
 
 void SslFeature::prepare() {

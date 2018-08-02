@@ -145,6 +145,7 @@ class ExecutionNode {
     TRAVERSAL = 22,
     INDEX = 23,
     SHORTEST_PATH = 24,
+    REMOTESINGLE = 25,
 #ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
 #endif
@@ -200,6 +201,9 @@ class ExecutionNode {
 
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
+
+  /// @brief resolve nodeType to a string.
+  static std::string const& getTypeString(NodeType type);
 
   /// @brief return the type name of the node
   std::string const& getTypeString() const;
@@ -371,6 +375,14 @@ class ExecutionNode {
   /// @brief toVelocyPack
   virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
                                   unsigned flags) const = 0;
+
+
+  /** Variables used and set are disjunct!
+  *   Variables that are read from must be returned by the
+  *   UsedHere functions and variables that are filled by
+  *   the corresponding ExecutionBlock must be added in
+  *   the SetHere functions.
+  */
 
   /// @brief getVariablesUsedHere, returning a vector
   virtual std::vector<Variable const*> getVariablesUsedHere() const {

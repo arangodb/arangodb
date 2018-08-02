@@ -873,8 +873,8 @@ void transaction::Methods::buildDocumentIdentity(
   builder.add(StaticStrings::KeyString,
               VPackValuePair(key.data(), key.length(), VPackValueType::String));
 
-  // TRI_ASSERT(rid != 0);
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
+  char ridBuffer[21];
+  builder.add(StaticStrings::RevString, TRI_RidToValuePair(rid, &ridBuffer[0]));
 
   if (oldRid != 0) {
     builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
@@ -2926,7 +2926,7 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
 
   auto indexes = indexesForCollection(collectionName);
 
-  // Const cast is save here. Giving computeSpecialisation == false
+  // Const cast is save here. Giving computeSpecialization == false
   // Makes sure node is NOT modified.
   return findIndexHandleForAndNode(indexes, node, reference, itemsInCollection,
                                    usedIndex);

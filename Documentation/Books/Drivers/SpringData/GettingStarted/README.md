@@ -3,14 +3,17 @@
 
 ## Supported versions
 
-| Spring Data ArangoDB | Spring Data | ArangoDB       |
-|----------------------|-------------|----------------|
-| 1.0.0                | 1.13.x      | 3.0*, 3.1, 3.2 |
-| 2.0.0                | 2.0.x       | 3.0*, 3.1, 3.2 |
+| Spring Data ArangoDB | Spring Data | ArangoDB    |
+| -------------------- | ----------- | ----------- |
+| 1.x.x                | 1.13.x      | 3.0\*, 3.1+ |
+| 2.x.x                | 2.0.x       | 3.0\*, 3.1+ |
 
 Spring Data ArangoDB requires ArangoDB 3.0 or higher - which you can download [here](https://www.arangodb.com/download/) - and Java 8 or higher.
 
-**Note**: ArangoDB 3.0 does not support the default transport protocol [VelocyStream](https://github.com/arangodb/velocystream). A manual switch to HTTP is required. See chapter [configuration](#configuration). Also ArangoDB 3.0 does not support geospatial queries.
+**Note**: ArangoDB 3.0 does not support the default transport protocol
+[VelocyStream](https://github.com/arangodb/velocystream). A manual switch to
+HTTP is required. See chapter [configuration](#configuration). Also ArangoDB 3.0
+does not support geospatial queries.
 
 ## Maven
 
@@ -20,7 +23,7 @@ To use Spring Data ArangoDB in your project, your build automation tool needs to
 <dependency>
   <groupId>com.arangodb</groupId>
   <artifactId>arangodb-spring-data</artifactId>
-  <version>{version}</version>
+  <version>2.2.2</version>
 </dependency>
 ```
 
@@ -51,14 +54,14 @@ public class MyConfiguration extends AbstractArangoConfiguration {
 
 The driver is configured with some default values:
 
-property-key | description | default value
--------------|-------------|--------------
-arangodb.host | ArangoDB host | 127.0.0.1
-arangodb.port | ArangoDB port | 8529
-arangodb.timeout | socket connect timeout(millisecond) | 0
-arangodb.user | Basic Authentication User |
-arangodb.password | Basic Authentication Password |
-arangodb.useSsl | use SSL connection | false
+| property-key      | description                         | default value |
+| ----------------- | ----------------------------------- | ------------- |
+| arangodb.host     | ArangoDB host                       | 127.0.0.1     |
+| arangodb.port     | ArangoDB port                       | 8529          |
+| arangodb.timeout  | socket connect timeout(millisecond) | 0             |
+| arangodb.user     | Basic Authentication User           |
+| arangodb.password | Basic Authentication Password       |
+| arangodb.useSsl   | use SSL connection                  | false         |
 
 To customize the configuration, the parameters can be changed in the Java code.
 
@@ -67,24 +70,24 @@ To customize the configuration, the parameters can be changed in the Java code.
 public ArangoDB.Builder arango() {
   ArangoDB.Builder arango = new ArangoDB.Builder()
     .host("127.0.0.1")
-    .port(8429)
+    .port(8529)
     .user("root");
   return arango;
 }
 ```
 
-In addition you can use the *arangodb.properties* or a custom properties file to supply credentials to the driver.
+In addition you can use the _arangodb.properties_ or a custom properties file to supply credentials to the driver.
 
-*Properties file*
+_Properties file_
+
 ```
-arangodb.host=127.0.0.1
-arangodb.port=8529
-# arangodb.hosts=127.0.0.1:8529 could be used instead
+arangodb.hosts=127.0.0.1:8529
 arangodb.user=root
 arangodb.password=
 ```
 
-*Custom properties file*
+_Custom properties file_
+
 ```java
 @Override
 public ArangoDB.Builder arango() {
@@ -105,6 +108,7 @@ public ArangoDB.Builder arango() {
   return arango;
 }
 ```
+
 ```xml
 <dependency>
   <groupId>org.apache.httpcomponents</groupId>

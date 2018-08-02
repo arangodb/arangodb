@@ -136,9 +136,10 @@ db.listCollections().then(function (collections) {
 </script>
 ```
 
-If you are targetting browsers older than Internet Explorer 11 you
-may want to use [babel](https://babeljs.io) with a [polyfill](https://babeljs.io/docs/usage/polyfill)
-to provide missing functionality needed to use arangojs.
+If you are targetting browsers older than Internet Explorer 11 you may want to
+use [babel](https://babeljs.io) with a
+[polyfill](https://babeljs.io/docs/usage/polyfill) to provide missing
+functionality needed to use arangojs.
 
 When loading the browser build with a script tag make sure to load the polyfill first:
 

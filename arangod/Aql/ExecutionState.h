@@ -26,19 +26,34 @@
 namespace arangodb {
 namespace aql {
 
-enum class ExecutionState { 
+enum class ExecutionState {
   // done with this block, definitely no more results
-  DONE, 
+  DONE,
   // (potentially) more results available. this may "lie" and
   // report that there are more results when in fact there are
   // none (background: to accurately determine that there are
   // more results we may need to execute expensive operations
-  // on the preceeding blocks, which we want to avoid) 
-  HASMORE, 
+  // on the preceeding blocks, which we want to avoid)
+  HASMORE,
   // unclear if more results available or not. caller is asked
   // to try again
-  WAITING 
+  WAITING
 };
+
+inline std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
+  switch (state) {
+    case ExecutionState::DONE:
+      ostream << "DONE";
+      break;
+    case ExecutionState::HASMORE:
+      ostream << "HASMORE";
+      break;
+    case ExecutionState::WAITING:
+      ostream << "WAITING";
+      break;
+  }
+  return ostream;
+}
 
 } // aql
 } // arangodb

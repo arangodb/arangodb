@@ -438,50 +438,6 @@ class VelocyPackHelper {
   // modify a VPack double value in place 
   static void patchDouble(VPackSlice slice, double value);
 
-  static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
-                                   bool, int&, std::string const& key = "");
-
-  static constexpr arangodb::velocypack::Slice NullValue() {
-    return arangodb::velocypack::Slice::nullSlice();
-  }
-
-  static constexpr arangodb::velocypack::Slice TrueValue() {
-    return arangodb::velocypack::Slice::trueSlice();
-  }
-
-  static constexpr arangodb::velocypack::Slice FalseValue() {
-    return arangodb::velocypack::Slice::falseSlice();
-  }
-
-  static constexpr arangodb::velocypack::Slice BooleanValue(bool value) {
-    return value ? arangodb::velocypack::Slice::trueSlice() : arangodb::velocypack::Slice::falseSlice();
-  }
-
-  static constexpr arangodb::velocypack::Slice ZeroValue() {
-    return arangodb::velocypack::Slice::zeroSlice();
-  }
-
-  static constexpr arangodb::velocypack::Slice EmptyArrayValue() {
-    return arangodb::velocypack::Slice::emptyArraySlice();
-  }
-
-  static constexpr arangodb::velocypack::Slice EmptyObjectValue() {
-    return arangodb::velocypack::Slice::emptyObjectSlice();
-  }
-  
-  static constexpr arangodb::velocypack::Slice EmptyString() {
-    return arangodb::velocypack::Slice("\x40");
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief "constant" global object for illegal slices
-  ///        Are used in Array Indexes to distinguish NULL and not existent.
-  //////////////////////////////////////////////////////////////////////////////
-
-  static constexpr arangodb::velocypack::Slice IllegalValue() {
-    return arangodb::velocypack::Slice::illegalSlice();
-  }
-  
   static bool hasNonClientTypes(arangodb::velocypack::Slice, bool checkExternals, bool checkCustom);
 
   static void sanitizeNonClientTypes(arangodb::velocypack::Slice input,

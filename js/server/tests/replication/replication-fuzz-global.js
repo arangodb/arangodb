@@ -403,6 +403,8 @@ function ReplicationSuite() {
           }
 
           let total = "";
+          db._useDatabase('_system');
+
           db._databases().forEach(function(d) {
             if (d === '_system') {
               return;

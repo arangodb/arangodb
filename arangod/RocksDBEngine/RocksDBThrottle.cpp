@@ -55,7 +55,7 @@ namespace arangodb {
 ///
 /// To get full performance benefit of this code, the server needs three settings:
 ///
-///  1. /etc/pam.d/login must contain the line "auth	   require    pam_cap.so"
+///  1. /etc/pam.d/login must contain the line "auth   require    pam_cap.so"
 ///  2. /etc/security/capability.conf must contain "cap_sys_nice      arangodb"
 ///  3. root must execute this command "setcap cap_sys_nice+ie arangod" on
 ///      the arangodb binary executable
@@ -418,10 +418,24 @@ void RocksDBThrottle::SetThrottle() {
         // hard casting away of "const" ...
         if (((WriteController&)_internalRocksDB->write_controller()).max_delayed_write_rate() < _throttleBps) {
           ((WriteController&)_internalRocksDB->write_controller()).set_max_delayed_write_rate(_throttleBps);
-        } //if
-        _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
+        } // if
+
+        // Only replace the token when absolutely necessary.  GetDelayToken()
+        //  also resets internal timers which can result in long pauses if
+        //  flushes/compactions are happening often.
+        if (nullptr == _delayToken.get()) {
+          _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "SetThrottle(): GetDelayTokey(" << _throttleBps << ")";
+        } else {
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "SetThrottle(): set_delayed_write_rate(" << _throttleBps << ")";
+          ((WriteController&)_internalRocksDB->write_controller()).set_delayed_write_rate(_throttleBps);
+        } // else
       } else {
         _delayToken.reset();
+        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "SetThrottle(): _delaytoken.reset()";
       } // else
     } // if
   } // lock

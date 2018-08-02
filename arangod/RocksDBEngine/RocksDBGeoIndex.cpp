@@ -55,7 +55,7 @@ class RDBNearIterator final : public IndexIterator {
         _mmdr(mmdr),
         _near(std::move(params)) {
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->readOptions();
+    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     TRI_ASSERT(options.prefix_same_as_start);
     _iter = mthds->NewIterator(options, _index->columnFamily());
     TRI_ASSERT(_index->columnFamily()->GetID() ==
@@ -233,10 +233,12 @@ class RDBNearIterator final : public IndexIterator {
 };
 typedef RDBNearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
-                                     LogicalCollection* collection,
-                                     VPackSlice const& info,
-                                     std::string const& typeName)
+RocksDBGeoIndex::RocksDBGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
@@ -382,10 +384,12 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
 
   if (params.ascending) {
     return new RDBNearIterator<geo_index::DocumentsAscending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, mmdr, this, std::move(params)
+    );
   } else {
     return new RDBNearIterator<geo_index::DocumentsDescending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, mmdr, this, std::move(params)
+    );
   }
 }
 

@@ -70,7 +70,7 @@ class TailingSyncer : public Syncer {
   void setProgress(std::string const&);
   
   /// @brief abort all ongoing transactions
-  void abortOngoingTransactions();
+  void abortOngoingTransactions() noexcept;
 
   /// @brief whether or not a collection should be excluded
   bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&);
@@ -97,9 +97,13 @@ class TailingSyncer : public Syncer {
   /// @brief renames a collection, based on the VelocyPack provided
   Result renameCollection(arangodb::velocypack::Slice const&);
 
-  /// @brief changes the properties of a collection, based on the VelocyPack
-  /// provided
+  /// @brief changes the properties of a collection,
+  /// based on the VelocyPack provided
   Result changeCollection(arangodb::velocypack::Slice const&);
+  
+  /// @brief changes the properties of a collection,
+  /// based on the VelocyPack provided
+  Result changeView(arangodb::velocypack::Slice const&);
 
   /// @brief apply a single marker from the continuous log
   Result applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t);
@@ -172,7 +176,7 @@ class TailingSyncer : public Syncer {
   bool _ignoreDatabaseMarkers;
 
   /// @brief which transactions were open and need to be treated specially
-  std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*>
+  std::unordered_map<TRI_voc_tid_t, std::unique_ptr<ReplicationTransaction>>
       _ongoingTransactions;
 
   /// @brief recycled builder for repeated document creation
