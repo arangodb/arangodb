@@ -24,27 +24,42 @@
 #define ARANGO_CXX_DRIVER_FORMAT_H 1
 
 #include "Endian.h"
-#include "operating-system.h"
 
-// enable unalgined little-endian data access
-#undef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
-#ifdef TRI_UNALIGNED_ACCESS
+// aligned / unaligned access
+
+#if defined(__sparc__) || defined(__arm__)
+/* unaligned accesses not allowed */
+#undef FUERTE_UNALIGNED_ACCESS
+#elif defined(__ppc__) || defined(__POWERPC__) || defined(_M_PPC)
+/* unaligned accesses are slow */
+#undef FUERTE_UNALIGNED_ACCESS
+#elif defined(__i386__) || defined(__x86_64__) || \
+defined(_M_IX86) || defined(_M_X64)
+/* unaligned accesses should work */
+#define FUERTE_UNALIGNED_ACCESS 1
+#else
+/* unknown platform. better not use unaligned accesses */
+#undef FUERTE_UNALIGNED_ACCESS
+#endif
+
+// enable unaligned little-endian data access
+#undef FUERTE_USE_FAST_UNALIGNED_DATA_ACCESS
+#ifdef FUERTE_UNALIGNED_ACCESS
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+#define FUERTE_USE_FAST_UNALIGNED_DATA_ACCESS
 #endif
 #endif
 
-namespace arangodb {
-namespace basics {
+namespace arangodb { namespace fuerte { namespace basics {
   
 /*
- * Alignment aware serialization and desirialization functions
+ * Alignment aware serialization and deserialization functions
  */
 
 template<typename T> 
 inline T uintFromPersistentLittleEndian(uint8_t const* ptr) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+#ifdef FUERTE_USE_FAST_UNALIGNED_DATA_ACCESS
   static_assert(basics::isLittleEndian(), "");
   return *reinterpret_cast<T const*>(ptr);
 #else
@@ -63,7 +78,7 @@ inline T uintFromPersistentLittleEndian(uint8_t const* ptr) {
 inline T uintFromPersistentBigEndian(uint8_t const* p) {
   //return basics::bigToHost(uintFromPersistentLittleEndian<T>(p));
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+#ifdef FUERTE_USE_FAST_UNALIGNED_DATA_ACCESS
   return basics::bigToHost(*reinterpret_cast<T const*>(p));
 #else
   T value = 0;
@@ -81,7 +96,7 @@ inline T uintFromPersistentBigEndian(uint8_t const* p) {
 template<typename T>
 inline void uintToPersistentLittleEndian(uint8_t* ptr, T value) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+#ifdef FUERTE_USE_FAST_UNALIGNED_DATA_ACCESS
   static_assert(basics::isLittleEndian(), "");
   *reinterpret_cast<T*>(ptr) = value;
 #else
@@ -97,7 +112,7 @@ inline void uintToPersistentLittleEndian(uint8_t* ptr, T value) {
 inline void uintToPersistentBigEndian(std::string& p, T value) {
   //uintToPersistentLittleEndian<T>(p, basics::hostToBig(value));
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
-#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+#ifdef FUERTE_USE_FAST_UNALIGNED_DATA_ACCESS
   value = basics::hostToBig(value);
   p.append(reinterpret_cast<const char*>(&value), sizeof(T));
 #else
@@ -109,7 +124,6 @@ inline void uintToPersistentBigEndian(std::string& p, T value) {
 #endif
 }*/
 
-}  // namespace rocksutils
-}  // namespace arangodb
+}}} 
 
 #endif

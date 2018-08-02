@@ -17,11 +17,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Kaveh Vahedipour
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ENDIAN_H
-#define ARANGODB_BASICS_ENDIAN_H 1
+#ifndef ARANGO_CXX_DRIVER_ENDIAN_H
+#define ARANGO_CXX_DRIVER_ENDIAN_H 1
 
 #include <cstdint>
 #include <cstring>
@@ -37,8 +38,7 @@
   #pragma messsage("unsupported os or compiler")
 #endif
 
-namespace arangodb {
-namespace basics {
+namespace arangodb { namespace fuerte { namespace basics {
   
 #ifdef __APPLE__
   #if BYTE_ORDER == LITTLE_ENDIAN
@@ -270,6 +270,6 @@ template<typename T> inline T bigToHost(T in) {
     EndianTraits<T,sizeof(T)>::betoh(cp<std::is_signed<T>::value>::mu(in)));
 }
 
-}}
+}}}
 
 #endif

@@ -436,19 +436,6 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
 #ifndef NDEBUG
   header.byteSize = headerSlice.byteSize();  // for debugging
 #endif
-  
-  /*if (version == vst::VSTVersion::VST1_1) {
-    header.contentType(ContentType::VPack);
-  } else {
-    // found in params
-    header.contentType(ContentType::Unset);
-  }*/
-  
-  /*case MessageType::Authentication:
-   // header.encryption = headerSlice.at(6); //encryption (plain) should be 2
-   header.user = headerSlice.at(2).copyString();      // user
-   header.password = headerSlice.at(3).copyString();  // password
-   break;*/
 
   header.setVersion( headerSlice.at(0).getNumber<short>()); // version
   assert(headerSlice.at(1).getNumber<int>() == static_cast<int>(MessageType::Request));
@@ -462,19 +449,12 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
 };
   
   
-ResponseHeader responseHeaderFromSlice(
-                                       VPackSlice const& headerSlice) {
+ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   ResponseHeader header;
 #ifndef NDEBUG
   header.byteSize = headerSlice.byteSize();  // for debugging
 #endif
-  
-  /*if (version == vst::VSTVersion::VST1_1) {
-    header.contentType(ContentType::VPack);
-  } else { // found in params
-    header.contentType(ContentType::Unset);
-  }*/
   
   header.setVersion(headerSlice.at(0).getNumber<short>()); // version
   assert(headerSlice.at(1).getNumber<int>() == static_cast<int>(MessageType::Response));

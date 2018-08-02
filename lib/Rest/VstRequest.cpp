@@ -93,8 +93,9 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
     return;
   }
   
+  std::string value = valSlice.copyString();
   std::string key = StringUtils::tolower(keySlice.copyString());
-  std::string val = StringUtils::tolower(valSlice.copyString());
+  std::string val = StringUtils::tolower(value);
   static const char* mime = "application/json";
   if (key == StaticStrings::Accept &&
       val.length() >= 16 && memcmp(val.data(), mime, 16) == 0) {
@@ -107,7 +108,7 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   }
   
   // must lower-case the header key
-  _headers.emplace(std::move(key), std::move(val));
+  _headers.emplace(std::move(key), std::move(value));
 }
 
 void VstRequest::parseHeaderInformation() {

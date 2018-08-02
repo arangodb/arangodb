@@ -52,7 +52,11 @@ EventLoopService::~EventLoopService() {
 asio_ns::ssl::context& EventLoopService::sslContext() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContext) {
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    _sslContext.reset(new asio_ns::ssl::context(asio_ns::ssl::context::tls));
+#else
     _sslContext.reset(new asio_ns::ssl::context(asio_ns::ssl::context::sslv23));
+#endif
     _sslContext->set_default_verify_paths();
   }
   return *_sslContext; }

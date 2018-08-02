@@ -53,33 +53,6 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::import;
 
-/*std::string V8ClientConnection::jwtToken(std::string const& secret) {
-  VPackBuilder headerBuilder;
-  {
-    VPackObjectBuilder h(&headerBuilder);
-    headerBuilder.add("alg", VPackValue("HS256"));
-    headerBuilder.add("typ", VPackValue("JWT"));
-  }
-
-  VPackBuilder bodyBuilder;
-  {
-    VPackObjectBuilder p(&bodyBuilder);
-    bodyBuilder.add("server_id", VPackValue("arangosh"));
-    bodyBuilder.add("iss", VPackValue("arangodb"));
-    bodyBuilder.add("iat", VPackValue(TRI_microtime() / 1000));
-  }
-
-  std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
-                          "." +
-                          StringUtils::encodeBase64(bodyBuilder.toJson()));
-
-  std::string signature = sslHMAC(
-      secret.c_str(), secret.length(), fullMessage.c_str(),
-      fullMessage.length(), rest::SslInterface::Algorithm::ALGORITHM_SHA256);
-
-  return fullMessage + "." + StringUtils::encodeBase64U(signature);
-}*/
-
 V8ClientConnection::V8ClientConnection()
     : _lastHttpReturnCode(0),
       _lastErrorMessage(""),
@@ -96,12 +69,6 @@ void V8ClientConnection::init(ClientFeature* client) {
   _password = client->password();
   _databaseName = client->databaseName();
 
-  /*if (JWT_SECRET != nullptr) {
-    params.setJwt(jwtToken(*JWT_SECRET));
-  }*/
-
-  //_client.reset(new SimpleHttpClient(connection, params));
-  
   fuerte::ConnectionBuilder builder;
   builder.endpoint(client->endpoint());
   if (!client->username().empty()) {
@@ -169,41 +136,6 @@ void V8ClientConnection::init(ClientFeature* client) {
     _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 505;
   }
-
-  // connect to server and get version number
-  /*std::unordered_map<std::string, std::string> headerFields;
-  std::unique_ptr<SimpleHttpResult> result(
-      _client->request(fuerte::RestVerb::Get, "/_api/version?details=true",
-                       nullptr, 0, headerFields));
-
-  if (result.get() == nullptr || !result->isComplete()) {
-    // save error message
-    _lastErrorMessage = _client->getErrorMessage();
-    _lastHttpReturnCode = 500;
-  } else {
-    _lastHttpReturnCode = result->getHttpReturnCode();
-
-    if (result->getHttpReturnCode() ==
-        static_cast<int>(rest::ResponseCode::OK)) {
-      try {
-        std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
-        VPackSlice const body = parsedBody->slice();
-        
-
-      } catch (...) {
-        // Ignore all parse errors
-      }
-    } else {
-      // initial request for /_api/version returned some non-HTTP 200 response.
-      // now set up an error message
-      _lastErrorMessage = _client->getErrorMessage();
-
-      if (result->getHttpReturnCode() > 0) {
-        _lastErrorMessage = StringUtils::itoa(result->getHttpReturnCode()) +
-                            ": " + result->getHttpReturnMessage();
-      }
-    }
-  }*/
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {

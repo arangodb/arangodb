@@ -147,7 +147,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   auto item = createRequestItem(std::move(req), cb);
   uint64_t id = item->_messageID;
   if (!_queue.push(item.get())) {
-    FUERTE_LOG_ERROR << "connection queue capactiy exceeded" << std::endl;
+    FUERTE_LOG_ERROR << "connection queue capactiy exceeded\n";
     throw std::length_error("connection queue capactiy exceeded");
   }
   item.release();
@@ -158,7 +158,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
     FUERTE_LOG_HTTPTRACE << "sendRequest (http): start sending & reading\n";
     startWriting();
   } else if (state == State::Disconnected) {
-    FUERTE_LOG_VSTTRACE << "sendRequest (http): not connected" << std::endl;
+    FUERTE_LOG_VSTTRACE << "sendRequest (http): not connected\n";
     startConnection();
   }
   return id;
@@ -178,7 +178,7 @@ void HttpConnection<ST>::startConnection() {
   auto self = shared_from_this();
   _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
     if (ec) {
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << std::endl;
+      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
       shutdownConnection(ErrorCondition::CouldNotConnect);
       onFailure(errorToInt(ErrorCondition::CouldNotConnect),
                            "connecting failed: " + ec.message());
@@ -227,7 +227,7 @@ void HttpConnection<ST>::restartConnection(const ErrorCondition error) {
   // restarting needs to be an exclusive operation
   Connection::State exp = Connection::State::Connected;
   if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
-    FUERTE_LOG_CALLBACKS << "restartConnection" << std::endl;
+    FUERTE_LOG_CALLBACKS << "restartConnection\n";
     shutdownConnection(error); // Terminate connection
     startConnection(); // will check state
   }
@@ -311,7 +311,7 @@ std::unique_ptr<RequestItem> HttpConnection<ST>::createRequestItem(
 template<SocketType ST>
 void HttpConnection<ST>::startWriting() {
   assert(_state.load(std::memory_order_acquire) == State::Connected);
-  FUERTE_LOG_HTTPTRACE << "startWriting (http): this=" << this << std::endl;
+  FUERTE_LOG_HTTPTRACE << "startWriting (http): this=" << this << "\n";
   
   if (!_active) {
     auto self = shared_from_this();
@@ -326,12 +326,8 @@ void HttpConnection<ST>::startWriting() {
 // writes data from task queue to network using asio_ns::async_write
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
-  FUERTE_LOG_TRACE << "asyncWrite: preparing to send next" << std::endl;
+  FUERTE_LOG_TRACE << "asyncWrite: preparing to send next\n";
   assert(_active.load(std::memory_order_acquire));
-  /*if (!_active.load(std::memory_order_seq_cst)) {
-    FUERTE_LOG_HTTPTRACE << "asyncWrite: deactivated" << std::endl;
-    return;
-  }*/
   
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
@@ -362,7 +358,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     buffers.emplace_back(item->_request->payload());
   }
   asio_ns::async_write(_protocol.socket, buffers, cb);
-  FUERTE_LOG_HTTPTRACE << "asyncWrite: done" << std::endl;
+  FUERTE_LOG_HTTPTRACE << "asyncWrite: done\n";
 }
 
 // called by the async_write handler (called from IO thread)
@@ -373,7 +369,7 @@ void HttpConnection<ST>::asyncWriteCallback(
   if (ec) {
     // Send failed
     FUERTE_LOG_CALLBACKS << "asyncWriteCallback (http): error "
-                         << ec.message() << std::endl;
+                         << ec.message() << "\n";
     // let user know that this request caused the error
     item->_callback.invoke(errorToInt(ErrorCondition::WriteError),
                            std::move(item->_request), nullptr);
@@ -412,7 +408,7 @@ void HttpConnection<ST>::asyncWriteCallback(
 // asyncReadSome reads the next bytes from the server.
 template<SocketType ST>
 void HttpConnection<ST>::asyncReadSome() {
-  FUERTE_LOG_TRACE << "asyncReadSome: this=" << this << std::endl;
+  FUERTE_LOG_TRACE << "asyncReadSome: this=" << this << "\n";
   
   auto self = shared_from_this();
   auto cb = [this, self](asio_ns::error_code const& ec, size_t transferred) {
@@ -425,7 +421,7 @@ void HttpConnection<ST>::asyncReadSome() {
   auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
   _protocol.socket.async_read_some(mutableBuff, std::move(cb));
   
-  FUERTE_LOG_HTTPTRACE << "asyncReadSome: done" << std::endl;
+  FUERTE_LOG_HTTPTRACE << "asyncReadSome: done\n";
 }
 
 // called by the async_read handler (called from IO thread)
@@ -436,7 +432,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
   if (ec) {
     FUERTE_LOG_CALLBACKS
         << "asyncReadCallback: Error while reading from socket";
-    FUERTE_LOG_ERROR << ec.message() << std::endl;
+    FUERTE_LOG_ERROR << ec.message() << "\n";
     // Restart connection, will invoke _inFlight cb
     restartConnection(ec == asio_ns::error::misc_errors::eof ?
                       ErrorCondition::ReadError : ErrorCondition::ConnectionClosed);
@@ -465,12 +461,12 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
     
     if (_parser.upgrade) {
       /* handle new protocol */
-      FUERTE_LOG_ERROR << "Upgrading is not supported" << std::endl;
+      FUERTE_LOG_ERROR << "Upgrading is not supported\n";
       shutdownConnection(ErrorCondition::ProtocolError);  // will cleanup _inFlight
       return;
     } else if (nparsed != transferred) {
       /* Handle error. Usually just close the connection. */
-      FUERTE_LOG_ERROR << "Invalid HTTP response in parser" << std::endl;
+      FUERTE_LOG_ERROR << "Invalid HTTP response in parser\n";
       shutdownConnection(ErrorCondition::ProtocolError);  // will cleanup _inFlight
       return;
     } else if (_inFlight->message_complete) {

@@ -32,7 +32,6 @@ std::unique_ptr<Request> createRequest(RestVerb const& verb,
   request->header.restVerb = verb;
   request->header.contentType(contentType);
   request->header.acceptType(contentType);
-  
   return request;
 }
 
@@ -43,6 +42,8 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
   auto request = createRequest(verb, ContentType::VPack);
   request->header.path = path;
   request->header.parameters = parameters;
+  request->header.contentType(ContentType::VPack);
+  request->header.acceptType(ContentType::VPack);
   request->addVPack(std::move(payload));
   return request;
 }
@@ -53,9 +54,9 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
   auto request = createRequest(verb, ContentType::VPack);
   request->header.path = path;
   request->header.parameters = parameters;
-  request->addVPack(payload);
-  // fuerte requests default to vpack content type for accept
+  request->header.contentType(ContentType::VPack);
   request->header.acceptType(ContentType::VPack);
+  request->addVPack(payload);
   return request;
 }
 
@@ -64,6 +65,7 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
   auto request = createRequest(verb, ContentType::VPack);
   request->header.path = path;
   request->header.parameters = parameters;
+  request->header.acceptType(ContentType::VPack);
   return request;
 }
 }}}  // namespace arangodb::fuerte::v1

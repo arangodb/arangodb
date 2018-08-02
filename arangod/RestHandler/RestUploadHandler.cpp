@@ -42,12 +42,6 @@ RestUploadHandler::RestUploadHandler(GeneralRequest* request,
 RestUploadHandler::~RestUploadHandler() {}
 
 RestStatus RestUploadHandler::execute() {
-  // cast is ok because http request is required
-  /*HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
-
-  if (request == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }*/
 
   // extract the request type
   auto const type = _request->requestType();
