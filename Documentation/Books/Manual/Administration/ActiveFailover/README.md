@@ -5,7 +5,7 @@ This _Section_ includes information related to the administration of an _Active 
 setup.
 
 For a general introduction to the ArangoDB _Active Failover_ setup, please refer
-to the _Active Failover_ [chapter](../../Scalability/ActiveFailover/README.md).
+to the _Active Failover_ [chapter](../../Architecture/DeploymentModes/ActiveFailover/README.md).
 
 Introduction
 ------------
