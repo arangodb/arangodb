@@ -1,5 +1,14 @@
-v3.3.13 (2018-07-25)
+v3.3.14 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #6031: Broken LIMIT in nested list iterations 
+
+
+v3.3.13 (2018-07-26)
+--------------------
+
+* fixed internal issue #2567: the Web UI was showing the possibility to move a
+  shard from a follower to the current leader 
 
 * fixed issue #5977: Unexpected execution plan when subquery contains COLLECT
 
@@ -53,6 +62,9 @@ v3.3.13 (2018-07-25)
   sync interval is 0, meaning the automatic background syncing is turned off.
   Background syncing in 3.3 is opt-in, whereas in ArangoDB 3.4 the default sync
   interval will be 100 milliseconds.
+
+  Note: this option is not supported on Windows platforms. Setting the sync
+  interval to a value greater 0 will produce a startup warning.
 
 * fixed graph creation sometimes failing with 'edge collection
   already used in edge def' when the edge definition contained multiple vertex

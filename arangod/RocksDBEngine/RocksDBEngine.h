@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -280,7 +280,7 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
-  
+
   rocksdb::Options const& rocksDBOptions() const {
     return _options;
   }
@@ -296,7 +296,7 @@ class RocksDBEngine final : public StorageEngine {
     TRI_ASSERT(_replicationManager);
     return _replicationManager.get();
   }
-  
+
   /// @brief returns a pointer to the sync thread
   /// note: returns a nullptr if automatic syncing is turned off!
   RocksDBSyncThread* syncThread() const {
@@ -350,6 +350,9 @@ class RocksDBEngine final : public StorageEngine {
 
   // use write-throttling
   bool _useThrottle;
+
+  // activate rocksdb's debug logging
+  bool _debugLogging;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes

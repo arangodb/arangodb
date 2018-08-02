@@ -111,12 +111,13 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
     else {
       sizeInVar = inVarReg.length();
     }
+        
 
     if (sizeInVar == 0) {
       res = nullptr;
     } else {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
-
+        
       // create the result
       res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
@@ -146,6 +147,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
 
     if (_index == sizeInVar) {
       _index = 0;
+        
       // advance read position in the current block . . .
       if (++_pos == cur->size()) {
         returnBlock(cur);
@@ -169,7 +171,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   size_t skipped = 0;
-
+        
   while (skipped < atLeast) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
@@ -202,13 +204,15 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     else {
       sizeInVar = inVarReg.length();
     }
-
+        
     if (atMost < sizeInVar - _index) {
       // eat just enough of inVariable . . .
+      atLeast -= atMost;
       _index += atMost;
       skipped += atMost;
     } else {
       // eat the whole of the current inVariable and proceed . . .
+      atLeast -= (sizeInVar - _index);
       skipped += (sizeInVar - _index);
       _index = 0;
       if (++_pos == cur->size()) {

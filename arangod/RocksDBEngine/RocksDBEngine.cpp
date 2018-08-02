@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,11 +131,12 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
           transaction::Options::defaultIntermediateCommitCount),
       _pruneWaitTime(10.0),
       _syncInterval(0),
-      _useThrottle(true) {
+      _useThrottle(true),
+      _debugLogging(false) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
-  
+
   server->addFeature(new RocksDBRecoveryFinalizer(server));
 }
 
@@ -188,7 +189,7 @@ void RocksDBEngine::collectOptions(
                      "when this number of "
                      "operations is reached in a transaction",
                      new UInt64Parameter(&_intermediateCommitCount));
-  
+
   options->addOption("--rocksdb.sync-interval",
                      "interval for automatic, non-requested disk syncs (in milliseconds, use 0 to turn automatic syncing off)",
                      new UInt64Parameter(&_syncInterval));
@@ -196,10 +197,14 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
-  
+
   options->addOption("--rocksdb.throttle",
                      "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
+
+  options->addHiddenOption("--rocksdb.debug-logging",
+                           "true to enable rocksdb debug logging",
+                           new BooleanParameter(&_debugLogging));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -214,12 +219,17 @@ void RocksDBEngine::validateOptions(
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
-  
+
   if (_syncInterval > 0 && _syncInterval < minSyncInterval) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --rocksdb.sync-interval. Please use a value "
+    LOG_TOPIC(FATAL, arangodb::Logger::ROCKSDB) << "invalid value for --rocksdb.sync-interval. Please use a value "
                   "of at least " << minSyncInterval;
     FATAL_ERROR_EXIT();
   }
+#ifdef _WIN32
+  if (_syncInterval > 0) {
+    LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB) << "automatic syncing of RocksDB WAL via background thread is not supported on this platform";
+  }
+#endif
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -360,10 +370,18 @@ void RocksDBEngine::start() {
 
   // intentionally set the RocksDB logger to warning because it will
   // log lots of things otherwise
-  _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
+  if (!_debugLogging) {
+    _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
+  } else {
+    _options.info_log_level = rocksdb::InfoLogLevel::DEBUG_LEVEL;
+  } // else
+
   auto logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
   _options.info_log = logger;
-  logger->disable();
+
+  if (!_debugLogging) {
+    logger->disable();
+  } // if
 
   if (opts->_enableStatistics) {
     _options.statistics = rocksdb::CreateDBStatistics();
@@ -579,7 +597,7 @@ void RocksDBEngine::start() {
 
   // only enable logger after RocksDB start
   logger->enable();
-  
+
   if (_syncInterval > 0) {
     _syncThread.reset(
         new RocksDBSyncThread(this, std::chrono::milliseconds(_syncInterval)));
@@ -645,7 +663,7 @@ void RocksDBEngine::stop() {
     }
     _backgroundThread.reset();
   }
-  
+
   if (_syncThread) {
     _syncThread->beginShutdown();
 
@@ -1370,7 +1388,7 @@ std::vector<std::string> RocksDBEngine::currentWalFiles() {
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
   rocksdb::VectorLogPtr files;
-  
+
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
     return;  // TODO: error here?
