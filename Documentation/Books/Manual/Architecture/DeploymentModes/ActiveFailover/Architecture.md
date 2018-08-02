@@ -25,8 +25,8 @@ ArangoDB drivers can automatically determine the correct _leader_ server and
 redirect requests appropriately. Furthermore Foxx Services do also automatically
 perform a failover: should the _leader_ instance fail (which is also the _Foxxmaster_)
 the newly elected _leader_ will reinstall all Foxx services and resume executing
-queued [Foxx tasks](../../Foxx/Guides/Scripts.md).
-[Database users](../../Administration/ManagingUsers/README.md)
+queued [Foxx tasks](../../../Foxx/Guides/Scripts.md).
+[Database users](../../../Administration/ManagingUsers/README.md)
 which were created on the _leader_ will also be valid on the newly elected _leader_
 (always depending on the condition that they were synced already).
 
@@ -65,7 +65,7 @@ are by calling the `/_api/cluster/endpoints` REST API. This API is accessible
 on _Leader_ and _Followers_ alike.
 
 The tool _ArangoDB Starter_ supports starting two servers with asynchronous
-replication and failover [out of the box](../../Deployment/ActiveFailover/UsingTheStarter.md).
+replication and failover [out of the box](../../../Deployment/ActiveFailover/UsingTheStarter.md).
 
 The _arangojs_ driver for JavaScript, the Go driver, the Java driver, ArangoJS and
 the PHP driver support active failover in case the currently accessed server endpoint
