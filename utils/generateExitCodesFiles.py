@@ -59,6 +59,15 @@ def genNSISFile(errors, filename):
 
   impl = """
 !include "LogicLib.nsh"
+"""
+  for e in errors:
+    impl += """!define ARANGO_%s %s
+""" % (
+  e[0],
+  e[1]
+  )
+
+  impl +="""
 !macro printExitCode exitCode Message DetailMessage
   Push "${exitCode}"
   Push "${Message}"
