@@ -58,6 +58,7 @@ if (USE_IRESEARCH)
     IResearch/VelocyPackHelper-test.cpp
     RestHandler/RestViewHandler-test.cpp
     Utils/CollectionNameResolver-test.cpp
+    V8Server/v8-views-test.cpp
     VocBase/LogicalDataSource-test.cpp
     VocBase/vocbase-test.cpp
   )
