@@ -52,7 +52,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
       InitialSyncerIncrementalSyncStats& stats,
       std::string const& keysId, uint64_t chunkId, std::string const& lowString,
       std::string const& highString,
-      std::vector<std::pair<std::string, uint64_t>> const& markers);
+      std::vector<std::string> const& markers);
 
  public:
   /// @brief apply phases

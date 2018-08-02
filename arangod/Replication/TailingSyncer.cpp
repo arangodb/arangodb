@@ -1825,6 +1825,12 @@ void TailingSyncer::checkParallel() {
   // the default is to not work in parallel
   _workInParallel = false;
 
+  if (_state.master.majorVersion < 3 ||
+      (_state.master.majorVersion == 3 && _state.master.minorVersion < 4)) {
+    // requires ArangoDB 3.4 or higher
+    return;
+  }
+
   std::string engineName = EngineSelectorFeature::ENGINE->typeName();
   if (engineName == "rocksdb" && _state.master.engine == engineName) {
     // master and slave are both on RocksDB... that means we do not need

@@ -724,6 +724,34 @@ LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
   return primaryIndex()->lookupKey(trx, StringRef(key));
 }
 
+bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
+                                       VPackSlice const& key,
+                                       ManagedDocumentResult& mmdr,
+                                       TRI_voc_rid_t& revisionId) const {
+  TRI_ASSERT(key.isString());
+  LocalDocumentId documentId;
+  revisionId = 0;
+  // lookup the revision id in the primary index
+  if (!primaryIndex()->lookupRevision(trx, StringRef(key), documentId, revisionId)) {
+    // document not found
+    TRI_ASSERT(revisionId == 0);
+    return false;
+  }
+
+  // document found, but revisionId may not have been present in the primary index
+  // this can happen for "older" collections
+  TRI_ASSERT(documentId.isSet());
+
+  // now look up the revision id in the actual document data
+        
+  if (!readDocument(trx, documentId, mmdr)) {
+    // should not happen
+    return false;
+  }
+
+  return transaction::helpers::extractRevFromDocument(VPackSlice(mmdr.vpack()));
+}
+
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
