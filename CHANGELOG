@@ -1,6 +1,8 @@
 devel
 -----
 
+* Intermediate commits in the rocksdb engine are now only enabled in standalone AQL queries 
+  (not within a JS transaction), standalone truncate as well as for the "import" API
 
 * The AQL Editor in the Web UI now supports GeoJSON types and is able to render them.
 

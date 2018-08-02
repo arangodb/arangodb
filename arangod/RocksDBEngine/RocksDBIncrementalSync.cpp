@@ -66,9 +66,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
     AccessMode::Type::EXCLUSIVE
   );
 
-  trx.addHint(
-      transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
-  trx.addHint(transaction::Hints::Hint::NO_TRACKING);
+  trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
   trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
   Result res = trx.begin();
@@ -638,9 +636,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       AccessMode::Type::EXCLUSIVE
     );
 
-    trx.addHint(
-        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
-    trx.addHint(transaction::Hints::Hint::NO_TRACKING);
+    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
@@ -676,8 +672,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
       // read remote chunk
       TRI_ASSERT(chunkSlice.isArray());
-      TRI_ASSERT(chunkSlice.length() >
-                 0);  // chunkSlice.at will throw otherwise
+      TRI_ASSERT(chunkSlice.length() > 0);  // chunkSlice.at will throw otherwise
       VPackSlice chunk = chunkSlice.at(currentChunkId);
       if (!chunk.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
