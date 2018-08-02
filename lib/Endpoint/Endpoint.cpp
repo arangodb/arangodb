@@ -83,32 +83,40 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   TransportType protocol = TransportType::HTTP;
 
   std::string prefix("http+");
-  std::string copy(StringUtils::tolower(specification));
   std::string const localName("localhost");
   std::string const localIP("127.0.0.1");
-    
+  
+  std::string copy = specification;
   StringUtils::trimInPlace(copy);
+  size_t pos = copy.find("://");
+  if (pos == std::string::npos) {
+    return illegal;
+  }
+  // lowercase schema for prefix-checks
+  std::string schema = StringUtils::tolower(copy.substr(0, pos + 3));
 
   if (specification.back() == '/') {
     // address ends with a slash => remove
     copy.pop_back();
   }
-
+  
   // read protocol from string
-  if (StringUtils::isPrefix(copy, "http+") ||
-      StringUtils::isPrefix(copy, "http@")) {
+  if (StringUtils::isPrefix(schema, "http+") ||
+      StringUtils::isPrefix(schema, "http@")) {
     protocol = TransportType::HTTP;
     prefix = "http+";
     copy = copy.substr(5);
+    schema = schema.substr(5);
   }
 
-  if (StringUtils::isPrefix(copy, "vst+")) {
+  if (StringUtils::isPrefix(schema, "vst+")) {
     protocol = TransportType::VST;
     prefix = "vst+";
     copy = copy.substr(4);
+    schema = schema.substr(4);
   }
 
-  if (StringUtils::isPrefix(copy, "unix://")) {
+  if (StringUtils::isPrefix(schema, "unix://")) {
 #if ARANGODB_HAVE_DOMAIN_SOCKETS
     return prefix + copy;
 #else
@@ -117,7 +125,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 #endif
   }
 
-  if (StringUtils::isPrefix(copy, "srv://")) {
+  if (StringUtils::isPrefix(schema, "srv://")) {
 #ifndef _WIN32
     return prefix + copy;
 #else
@@ -125,8 +133,8 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 #endif
   }
 
-  if (!StringUtils::isPrefix(copy, "ssl://") &&
-      !StringUtils::isPrefix(copy, "tcp://")) {
+  if (!StringUtils::isPrefix(schema, "ssl://") &&
+      !StringUtils::isPrefix(schema, "tcp://")) {
     return illegal;
   }
 

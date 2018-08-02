@@ -25,6 +25,8 @@
 #include <fuerte/connection.h>
 #include <fuerte/FuerteLogger.h>
 
+#include <boost/algorithm/string.hpp>
+
 #include "HttpConnection.h"
 #include "VstConnection.h"
 #include "http_parser/http_parser.h"
@@ -128,6 +130,7 @@ ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& host) {
     throw std::runtime_error(std::string("invalid endpoint spec: ") + host);
   }
   std::string schema = host.substr(0, pos);
+  boost::algorithm::to_lower(schema); // in-place
   parseSchema(schema, _conf);
   
   if (_conf._socketType == SocketType::Unix) {
