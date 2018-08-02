@@ -70,13 +70,19 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
     std::string const &collection, const rest::batch_document_handler::RemoveRequest &request
   );
 
-  void generateHttpResponseSuccess(
-      VPackSlice resultArray,
+  void generateBatchResponseSuccess(
+      std::vector<OperationResult> const& result,
       std::unique_ptr<VPackBuilder> extra,
       VPackOptions const* options);
-  void generateHttpResponse(
+
+  void generateBatchResponseFailed(
+      OperationResult const& result,
+      std::unique_ptr<VPackBuilder> extra,
+      VPackOptions const* options);
+
+  void generateBatchResponse(
       rest::ResponseCode restResponseCode,
-      VPackSlice resultArray,
+      std::unique_ptr<VPackBuilder> result,
       std::unique_ptr<VPackBuilder> extra,
       VPackOptions const* options);
 };

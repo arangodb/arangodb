@@ -548,6 +548,7 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
   request.toPattern(patternBuilder);
   VPackSlice const search = searchBuilder.slice();
   VPackSlice const pattern = patternBuilder.slice();
+  std::vector<OperationResult> opResults; // will hold the result
 
   auto trx = createTransaction(collection, AccessMode::Type::WRITE);
 
@@ -583,47 +584,34 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
     return;
   }
 
+  opResults.push_back(std::move(result));
 
-  OperationOptions ops = request.getOptions();
-  LOG_DEVEL << "return old" << ops.returnOld;
-
-  generateHttpResponseSuccess(result.slice(), nullptr,
-    trx->transactionContextPtr()->getVPackOptionsForDump());
-//    TRI_col_type_e(trx->getCollectionType(collection)),
-//  generateDeleted(result, collection,
-//    TRI_col_type_e(trx->getCollectionType(collection)),
-//    trx->transactionContextPtr()->getVPackOptionsForDump());
+  generateBatchResponseSuccess(
+      opResults,
+      nullptr,
+      trx->transactionContextPtr()->getVPackOptionsForDump()
+  );
 }
 
-void RestBatchDocumentHandler::generateHttpResponse(
+void RestBatchDocumentHandler::generateBatchResponse(
     rest::ResponseCode restResponseCode,
-    VPackSlice resultArray,
+    std::unique_ptr<VPackBuilder> result,
     std::unique_ptr<VPackBuilder> extra,
-    VPackOptions const* options){
+    VPackOptions const* options
+  ){
 
-  TRI_ASSERT(resultArray.isArray() || resultArray.isObject());
-  TRI_ASSERT(extra->isOpenObject());
+  TRI_ASSERT(result->slice().isArray());
+  TRI_ASSERT(extra->slice().isObject());
 
   VPackBuilder builder;
   {
     // open response object
     builder.openObject();
-    if (resultArray.isObject()) {
-      // fix that we do not always return arrays form internal operiatons
-      if(resultArray.hasKey(StaticStrings::KeyString)){
-        builder.add(VPackValue("result"));
-        builder.openArray();
-        builder.add(resultArray);
-        builder.close();
-      } else {
-        // error FIXME
-      }
-    } else if (resultArray.isArray()){
-      builder.add("result", resultArray);
-    }
+    // add result
+    builder.add("result", result->slice());
+    result.release();
 
-    // add extra  - mostly for errors
-    extra->close();
+    // add other values
     for(auto item : VPackObjectIterator(extra->slice())){
       StringRef ref(item.key);
       builder.add(ref.data(),ref.size(), item.value);
@@ -633,34 +621,75 @@ void RestBatchDocumentHandler::generateHttpResponse(
   }
   resetResponse(restResponseCode);
 
-//  if (slice.isNone()) {
-//    // will happen if silent == true
-//    slice = VelocyPackHelper::EmptyObjectValue();
-//  } else {
-//    TRI_ASSERT(slice.isObject() || slice.isArray());
-//    if (slice.isObject()) {
-//      _response->setHeaderNC(
-//          StaticStrings::Etag,
-//          "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
-//      // pre 1.4 location headers withdrawn for >= 3.0
-//      std::string escapedHandle(assembleDocumentId(
-//          collectionName, slice.get(StaticStrings::KeyString).copyString(),
-//          true));
-//      _response->setHeaderNC(StaticStrings::Location,
-//                             std::string("/_db/" + _request->databaseName() +
-//                                         DOCUMENT_PATH + "/" + escapedHandle));
-//    }
-//  }
-
   LOG_DEVEL << builder.slice().toJson();
   writeResult(builder.slice(), *options);
-
 }
 
-void RestBatchDocumentHandler::generateHttpResponseSuccess(
-    VPackSlice result,
+
+// accepting a single operation result is not feasible because
+// there might be multiple transactions involved
+void RestBatchDocumentHandler::generateBatchResponseSuccess(
+    std::vector<OperationResult> const& opVec,
     std::unique_ptr<VPackBuilder> extra,
-    VPackOptions const* options) {
+    VPackOptions const* vOptions
+  ){
+
+  TRI_ASSERT(opVec.size() > 0); //at least one result
+  auto& opOptions = opVec[0]._options;
+
+  // set response code - it is assumend that all other options are the same
+  auto restResponseCode = rest::ResponseCode::ACCEPTED;
+  if (opOptions.waitForSync) {
+    restResponseCode = rest::ResponseCode::OK;
+  }
+
+  // create and open extra if no open object has been passed
+  if (!extra) {
+    extra = std::make_unique<VPackBuilder>();
+    extra->openObject();
+  }
+
+  extra->add(StaticStrings::Error, VPackValue(false));
+  extra->close();
+
+  // flatten result vector
+  auto  result = std::make_unique<VPackBuilder>();
+  result->openArray();
+  for(auto& item : opVec) {
+    auto slice = item.slice();
+    if (slice.isObject()) {
+      if(slice.hasKey(StaticStrings::KeyString)){
+        result->add(slice);
+      } else {
+        generateError(rest::ResponseCode::I_AM_A_TEAPOT, TRI_ERROR_FAILED, "Invalid object in OperationResult");
+      }
+    } else if (slice.isArray()){
+      for (auto r : VPackArrayIterator(slice)){
+        result->add(r);
+      }
+    }
+  }
+  result->close();
+
+  LOG_DEVEL << result->slice().toJson();
+  generateBatchResponse(restResponseCode, std::move(result), std::move(extra), vOptions);
+}
+
+
+
+
+
+
+
+
+
+void RestBatchDocumentHandler::generateBatchResponseFailed(
+    OperationResult const& result,
+    std::unique_ptr<VPackBuilder> extra,
+    VPackOptions const* options
+  ){
+
+  auto restResponseCode = rest::ResponseCode::NOT_FOUND; //find first error
 
   if (!extra) {
     extra = std::make_unique<VPackBuilder>();
@@ -668,16 +697,38 @@ void RestBatchDocumentHandler::generateHttpResponseSuccess(
   }
 
   extra->add(StaticStrings::Error, VPackValue(false));
+  extra->close();
 
-  auto restResponseCode = rest::ResponseCode::ACCEPTED;
-   //  if (result._options.waitForSync) {
-   //    resetResponse(rest::ResponseCode::OK);
-   //  } else {
-   //    resetResponse(rest::ResponseCode::ACCEPTED);
-   //  }
-
-  LOG_DEVEL << result.toJson();
-
-  generateHttpResponse(restResponseCode, result, std::move(extra), options);
+  generateBatchResponse(restResponseCode, nullptr, std::move(extra), options);
 }
 
+
+// void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
+//                                 std::string const& message) {
+//   resetResponse(code);
+//
+//   VPackBuffer<uint8_t> buffer;
+//   VPackBuilder builder(buffer);
+//   try {
+//     builder.add(VPackValue(VPackValueType::Object));
+//     builder.add(StaticStrings::Error, VPackValue(true));
+//     builder.add(StaticStrings::ErrorMessage, VPackValue(message));
+//     builder.add(StaticStrings::Code,
+//                 VPackValue(static_cast<int>(code)));
+//     builder.add(StaticStrings::ErrorNum,
+//                 VPackValue(errorNumber));
+//     builder.close();
+//
+//     VPackOptions options(VPackOptions::Defaults);
+//     options.escapeUnicode = true;
+//
+//     TRI_ASSERT(options.escapeUnicode);
+//     if (_request != nullptr) {
+//       _response->setContentType(_request->contentTypeResponse());
+//     }
+//     _response->setPayload(std::move(buffer), true, options);
+//   } catch (...) {
+//     // exception while generating error
+//   }
+// }
+//
