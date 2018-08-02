@@ -204,7 +204,6 @@
     * [Sessions](Foxx/Migrating2x/Sessions.md)
     * [Auth and OAuth2](Foxx/Migrating2x/Auth.md)
     * [Foxx Queries](Foxx/Migrating2x/Queries.md)
-* [Scaling](Scaling/README.md)
 * [Satellite Collections](Administration/Satellites.md)
 
 ## OPERATIONS
@@ -284,6 +283,7 @@
     * [Upgrading to 2.3](Upgrading/VersionSpecific/Upgrading23.md)
     * [Upgrading to 2.2](Upgrading/VersionSpecific/Upgrading22.md)
 * [Downgrading](Downgrading/README.md)
+* [Scaling](Scaling/README.md)
 * [Administration](Administration/README.md)
   * [Backup & Restore](Administration/BackupRestore.md)
   * [Import & Export](Administration/ImportExport.md)
