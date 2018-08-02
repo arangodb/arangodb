@@ -21,6 +21,7 @@ EXIT_ALREADY_RUNNING,20,"already running","Will be returned when arangod is alre
 EXIT_COULD_NOT_BIND_PORT,21,"port blocked","Will be returned when the configured tcp endpoint is already occupied by another process"
 EXIT_COULD_NOT_LOCK,22,"could not lock - another process could be running","Will be returned if another ArangoDB process is running, or the state can not be cleared"
 EXIT_RECOVERY,23,"recovery failed","Will be returned if the automatic database startup recovery fails"
+EXIT_DB_NOT_EMPTY,24,"database not empty","Will be returned when commanding to initialize a non empty directory as database"
 
 # network
 #EXIT_NO_COORDINATOR

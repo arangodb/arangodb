@@ -70,19 +70,15 @@ void TRI_InitializeExitMessages ();
 /// @brief 2: EXIT_CODE_RESOLVING_FAILED
 ///
 /// exit code resolving failed
-///
-/// fill me
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_EXIT_CODE_RESOLVING_FAILED                                    (2)
+/// unspecified exit code
+constexpr int TRI_EXIT_CODE_RESOLVING_FAILED                                    = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 5: EXIT_BINARY_NOT_FOUND
 ///
 /// binary not found
-///
-/// fill me
-////////////////////////////////////////////////////////////////////////////////
+/// Will be returned if a referenced binary was not found
+constexpr int TRI_EXIT_BINARY_NOT_FOUND                                         = 5;
 
 #define TRI_EXIT_BINARY_NOT_FOUND                                         (5)
 
@@ -90,11 +86,8 @@ void TRI_InitializeExitMessages ();
 /// @brief 6: EXIT_CONFIG_NOT_FOUND
 ///
 /// config not found
-///
-/// fill me
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_EXIT_CONFIG_NOT_FOUND                                         (6)
+/// Will be returned if no valid configuration was found
+constexpr int TRI_EXIT_CONFIG_NOT_FOUND                                         = 6;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10: EXIT_UPGRADE_FAILED
@@ -150,19 +143,28 @@ void TRI_InitializeExitMessages ();
 /// @brief 21: EXIT_COULD_NOT_BIND_PORT
 ///
 /// port blocked
-///
-/// Will be returned when endpoint is taken by another process
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_EXIT_COULD_NOT_BIND_PORT                                      (21)
+/// Will be returned when the configured tcp endpoint is already occupied by
+/// another process
+constexpr int TRI_EXIT_COULD_NOT_BIND_PORT                                      = 21;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 22: EXIT_COULD_NOT_LOCK
 ///
 /// could not lock - another process could be running
-///
-/// fill me
-////////////////////////////////////////////////////////////////////////////////
+/// Will be returned if another ArangoDB process is running, or the state can
+/// not be cleared
+constexpr int TRI_EXIT_COULD_NOT_LOCK                                           = 22;
+
+/// 23: EXIT_RECOVERY
+/// recovery failed
+/// Will be returned if the automatic database startup recovery fails
+constexpr int TRI_EXIT_RECOVERY                                                 = 23;
+
+/// 24: EXIT_DB_NOT_EMPTY
+/// database not empty
+/// Will be returned when commanding to initialize a non empty directory as
+/// database
+constexpr int TRI_EXIT_DB_NOT_EMPTY                                             = 24;
 
 #define TRI_EXIT_COULD_NOT_LOCK                                           (22)
 
