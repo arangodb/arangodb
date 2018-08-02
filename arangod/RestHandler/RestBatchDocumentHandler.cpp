@@ -632,8 +632,8 @@ void RestBatchDocumentHandler::generateBatchResponse(
   TRI_ASSERT(opVec.size() > 0); //at least one result
   auto& opOptions = opVec[0]._options;
 
-  // set response code - it is assumend that all other options are the same
-
+  // set response code
+  // on error the rest code will be updated in the addErrorInfo lambda
   auto restResponseCode = rest::ResponseCode::ACCEPTED;
   if (opOptions.waitForSync) {
     restResponseCode = rest::ResponseCode::OK;
@@ -684,7 +684,7 @@ void RestBatchDocumentHandler::generateBatchResponse(
         result->close();
         addErrorInfo(slice);
       } else {
-        result->add(VPackSlice::emptyObjectSlice()); //if silent?
+        result->add(slice);
       }
     } else {
       result->add(slice);
@@ -723,11 +723,13 @@ void RestBatchDocumentHandler::generateBatchResponse(
                   ,item.errorNumber()
                   );
     }// if(item.buffer)
-    if(item.fail() && !foundFirstFailed){
+    if(item.fail()){
+      if(!foundFirstFailed) {
       addErrorInfo(VPackSlice::nullSlice()
                   ,item.errorMessage()
                   ,item.errorNumber()
                   );
+      }
       result->openObject();
       result->add(StaticStrings::ErrorMessage
                  ,VPackValue(item.errorMessage())

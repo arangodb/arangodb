@@ -72,7 +72,7 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
 
   void generateBatchResponse(
       std::vector<OperationResult> const&,
-      std::unique_ptr<VPackBuilder>, //other attributes
+      std::unique_ptr<VPackBuilder>, //other attributes -- TODO - remove parameter
       VPackOptions const* options);
 
   void generateBatchResponse(
