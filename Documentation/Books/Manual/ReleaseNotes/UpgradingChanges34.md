@@ -132,6 +132,16 @@ that replicates the original data; once the replication has reached completion,
 you can switch the instances.
 
 
+RocksDB intermediate commits
+-----------------------------
+
+Intermediate commits in the rocksdb engine are now only enabled in standalone AQL queries 
+(not within a JS transaction), standalone truncate as well as for the "import" API.
+
+The options `intermediateCommitCount` and `intermediateCommitSize` will have no affect
+anymore on transactions started via `/_api/transaction`, or `db._executeTransaction()`.
+
+
 Threading and request handling
 ------------------------------
 
