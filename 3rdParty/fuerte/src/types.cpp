@@ -241,7 +241,7 @@ std::string to_string(ErrorCondition error) {
     case ErrorCondition::WriteError:
       return "Error while writing ";
     case ErrorCondition::Canceled:
-      return "Eonnection was locally canceled";
+      return "Connection was locally canceled";
     case ErrorCondition::MalformedURL:
       return "Error malformed URL";
 
