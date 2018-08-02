@@ -33,7 +33,7 @@ Rule of thumb is, the closer the UDF is to your final `RETURN` statement
 (or maybe even inside it), the better. 
 
 When used in clusters, UDFs are always executed on the
-[coordinator](../../Manual/Scalability/Cluster/Architecture.html).
+[coordinator](../../Manual/Architecture/DeploymentModes/Cluster/Architecture.html).
 
 Using UDFs in clusters may result in a higher resource allocation
 in terms of used V8 contexts and server threads. If you run out 

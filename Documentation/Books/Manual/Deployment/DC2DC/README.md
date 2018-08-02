@@ -12,7 +12,7 @@ datacenter replication_.
 For a general introduction to _datacenter to datacenter replication_, please refer
 to the [Datacenter to datacenter replication](../../Scalability/DC2DC/README.md) chapter.
 
-[Requirements](../../Scalability/DC2DC/Requirements.md) can be found in this section.
+[Requirements](../../Architecture/DeploymentModes/DC2DC/Requirements.md) can be found in this section.
 
 Deployment steps:
 

@@ -4,7 +4,7 @@ Upgrading _Starter_ Deployments
 
 Starting from versions 3.2.15 and 3.3.8, the ArangoDB [_Starter_](../../Programs/Starter/README.md)
 supports a new, automated, procedure to perform upgrades, including rolling upgrades
-of a [Cluster](../../Scalability/Cluster/README.md) setup.
+of a [Cluster](../../Architecture/DeploymentModes/Cluster/README.md) setup.
 
 The upgrade procedure of the _Starter_ described in this _Section_ can be used to
 upgrade to a new hotfix, or to perform an upgrade to a new minor version of ArangoDB.

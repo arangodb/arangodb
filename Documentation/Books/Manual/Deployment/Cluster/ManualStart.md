@@ -7,7 +7,7 @@ form the Cluster.
 This section describes how to start a Cluster by manually starting all the needed
 processes.
 
-Before continuing, be sure to read the [Architecture](../../Scalability/Cluster/Architecture.md)
+Before continuing, be sure to read the [Architecture](../../Architecture/DeploymentModes/Cluster/Architecture.md)
 section to get a basic understanding of the underlying architecture and the involved
 roles in an ArangoDB Cluster.
 
