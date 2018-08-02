@@ -87,12 +87,15 @@ public:
   struct WorkerState {
     uint64_t _queueRetryCount;     // t1
     uint64_t _sleepTimeout_ms;    // t2
-    bool _stop;
-
+    std::atomic<bool> _stop;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
+    char padding[40];
 
     // initialise with harmless defaults: spin once, sleep forever
     WorkerState(SupervisedScheduler &scheduler);
+    WorkerState(WorkerState &&that);
+
+    bool start();
   };
 
   size_t _maxNumWorker;
@@ -109,7 +112,7 @@ public:
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  bool getWork (WorkItem *&, WorkerState &);
+  std::unique_ptr<WorkItem> getWork (WorkerState &state);
 
   void startOneThread();
   void stopOneThread();

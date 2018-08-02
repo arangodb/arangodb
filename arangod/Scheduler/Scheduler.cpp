@@ -50,7 +50,7 @@ namespace arangodb {
 namespace rest {
 class SchedulerThread : virtual public Thread {
 public:
-  SchedulerThread(Scheduler &scheduler) : Thread("scheduler"), _scheduler(scheduler) {}
+  SchedulerThread(Scheduler &scheduler) : Thread("Scheduler"), _scheduler(scheduler) {}
   ~SchedulerThread() { shutdown(); }
 protected:
   Scheduler &_scheduler;
@@ -58,7 +58,7 @@ protected:
 
 class SchedulerCronThread : public SchedulerThread {
 public:
-  SchedulerCronThread(Scheduler &scheduler) : Thread("sched-cron"), SchedulerThread(scheduler) {}
+  SchedulerCronThread(Scheduler &scheduler) : Thread("SchedCron"), SchedulerThread(scheduler) {}
   void run() { _scheduler.runCron(); };
 };
 
@@ -87,9 +87,7 @@ Scheduler::Scheduler()
 #endif
 }
 
-Scheduler::~Scheduler() {
-
-}
+Scheduler::~Scheduler() {}
 
 
 bool Scheduler::start() {
@@ -111,7 +109,6 @@ void Scheduler::shutdown () {
 }
 
 void Scheduler::runCron() {
-
 
   while (!isStopping()) {
 

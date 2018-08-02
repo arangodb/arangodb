@@ -110,7 +110,7 @@ GeneralServer::IoThread::~IoThread() {
 }
 
 GeneralServer::IoThread::IoThread(IoContext &iocontext) :
-  Thread("io"), _iocontext(iocontext) {}
+  Thread("Io"), _iocontext(iocontext) {}
 
 void GeneralServer::IoThread::run() {
   // run the asio io context

@@ -43,12 +43,22 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+static uint64_t getTickCount_ns () {
+  auto now = std::chrono::high_resolution_clock::now();
+
+  return std::chrono::duration_cast<std::chrono::nanoseconds>
+    (now.time_since_epoch()).count();
+}
+}
+
 namespace arangodb {
 namespace rest {
+
 class SupervisedSchedulerThread : virtual public Thread {
 public:
   SupervisedSchedulerThread(SupervisedScheduler &scheduler) :
-   Thread("scheduler"), _scheduler(scheduler) {}
+   Thread("Scheduler"), _scheduler(scheduler) {}
   ~SupervisedSchedulerThread() { shutdown(); }
 protected:
   SupervisedScheduler &_scheduler;
@@ -57,26 +67,18 @@ protected:
 class SupervisedSchedulerManagerThread final : public SupervisedSchedulerThread {
 public:
   SupervisedSchedulerManagerThread(SupervisedScheduler &scheduler) :
-   Thread("sched-man"), SupervisedSchedulerThread(scheduler) {}
+   Thread("SchedMan"), SupervisedSchedulerThread(scheduler) {}
   void run() { _scheduler.runSupervisor(); };
 };
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 public:
   SupervisedSchedulerWorkerThread(SupervisedScheduler &scheduler) :
-   Thread("sched-work"), SupervisedSchedulerThread(scheduler) {}
+   Thread("SchedWorker"), SupervisedSchedulerThread(scheduler) {}
   void run() { _scheduler.runWorker(); };
 };
 
 }
-}
-
-static uint64_t getTickCount_ns ()
-{
-  auto now = std::chrono::high_resolution_clock::now();
-
-  return std::chrono::duration_cast<std::chrono::nanoseconds>
-    (now.time_since_epoch()).count();
 }
 
 SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
@@ -119,9 +121,7 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
 #endif
 }
 
-SupervisedScheduler::~SupervisedScheduler() {
-
-}
+SupervisedScheduler::~SupervisedScheduler() {}
 
 void SupervisedScheduler::post(std::function<void()> const& callback)
 {
@@ -228,10 +228,7 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler &scheduler) :
   _queueRetryCount(100),
   _sleepTimeout_ms(100),
   _stop(false),
-  _thread(new SupervisedSchedulerWorkerThread(scheduler))
-{
-  _thread->start();
-}
+  _thread(new SupervisedSchedulerWorkerThread(scheduler)) {}
 
 void SupervisedScheduler::runWorker()
 {
@@ -245,11 +242,23 @@ void SupervisedScheduler::runWorker()
   }
 
   auto &state = _workerStates[id];
-  WorkItem *work;
 
-  while (getWork(work, state)) {
-    work->_handler();
-    delete work;
+  while (true) {
+    std::unique_ptr<WorkItem> work = getWork(state);
+    if (work == nullptr) {
+      break ;
+    }
+
+    try {
+      work->_handler();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::THREADS) << "scheduler loop caught exception: "
+                                      << ex.what();
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::THREADS)
+          << "scheduler loop caught unknown exception";
+    }
+
     _jobsDone.fetch_add(1, std::memory_order_release);
   }
 
@@ -306,8 +315,10 @@ void SupervisedScheduler::runSupervisor()
   }
 }
 
-bool SupervisedScheduler::getWork (WorkItem *&work, WorkerState &state)
+std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork (WorkerState &state)
 {
+  WorkItem *work;
+
   while (!_stopping && !state._stop) {
 
     uint64_t triesCount = 0;
@@ -315,7 +326,7 @@ bool SupervisedScheduler::getWork (WorkItem *&work, WorkerState &state)
 
       // access queue via 0 1 2 0 1 2 0 1 ...
       if (_queue[triesCount % 3].pop(work)) {
-        return true;
+        return std::unique_ptr<WorkItem>(work);
       }
 
       triesCount++;
@@ -335,7 +346,7 @@ bool SupervisedScheduler::getWork (WorkItem *&work, WorkerState &state)
     }
   }
 
-  return false;
+  return nullptr;
 }
 
 void SupervisedScheduler::startOneThread()
@@ -345,7 +356,14 @@ void SupervisedScheduler::startOneThread()
 
   // start a new thread
   _workerStates.emplace_back(*this);
-  _conditionSupervisor.wait(guard);
+  if (!_workerStates.back().start()) {
+    // failed to start a worker
+    _workerStates.pop_back();
+    LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not start additional worker thread";
+
+  } else {
+    _conditionSupervisor.wait(guard);
+  }
 }
 
 void SupervisedScheduler::stopOneThread()
@@ -360,4 +378,15 @@ void SupervisedScheduler::stopOneThread()
 
   // wait for the thread to terminate
   _workerStates.pop_back();
+}
+
+SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler::WorkerState &&that) :
+  _queueRetryCount(that._queueRetryCount),
+  _sleepTimeout_ms(that._sleepTimeout_ms),
+  _stop(that._stop.load()),
+  _thread(std::move(that._thread)) {}
+
+
+bool SupervisedScheduler::WorkerState::start() {
+  return _thread->start();
 }
