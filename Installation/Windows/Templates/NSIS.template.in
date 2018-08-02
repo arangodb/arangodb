@@ -725,9 +725,9 @@ Function UpgradeExisting
   ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
   ${If} $0 != 0
-  ${AndIf} $0 != 11
+  ${AndIf} $0 != ${ARANGO_EXIT_UPGRADE_REQUIRED}
     !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade" ""
-  ${ElseIf} $0 == ARANGO_EXIT_UPGRADE_REQUIRED
+  ${ElseIf} $0 == ${ARANGO_EXIT_UPGRADE_REQUIRED}
   ${AndIf} $AUTOMATIC_UPDATE == "1"
     DetailPrint "Update required."
 
