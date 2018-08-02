@@ -635,6 +635,8 @@ void VstConnection<ST>::setTimeout() {
 
 template class arangodb::fuerte::v1::vst::VstConnection<SocketType::Tcp>;
 template class arangodb::fuerte::v1::vst::VstConnection<SocketType::Ssl>;
+#ifdef ASIO_HAS_LOCAL_SOCKETS
 template class arangodb::fuerte::v1::vst::VstConnection<SocketType::Unix>;
+#endif
 
 }}}}  // namespace arangodb::fuerte::v1::vst

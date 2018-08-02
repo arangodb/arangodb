@@ -522,6 +522,8 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
   
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Tcp>;
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Ssl>;
+#ifdef ASIO_HAS_LOCAL_SOCKETS
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Unix>;
+#endif
 
 }}}}  // namespace arangodb::fuerte::v1::http
