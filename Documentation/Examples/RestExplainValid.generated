@@ -1,6 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain &amp;lt;&amp;lt;EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain &lt;&lt;EOF
 { 
-  "query" : "FOR p IN products RETURN p" 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products RETURN p"</span> 
 }
 EOF
 

@@ -73,7 +73,7 @@ describe('Foxx service', () => {
       FOR queue IN _queues
       RETURN queue
     `).toArray();
-    expect(queuesAfter.length - queuesBefore.length).to.equal(1, 'Could not register foxx queue');
+    expect(queuesAfter.length - queuesBefore.length).to.equal(1, 'Could not register Foxx queue');
   });
   it('should not register a queue two times', () => {
     const queuesBefore = db._query(aql`

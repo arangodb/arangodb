@@ -1,6 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/products1/rename &amp;lt;&amp;lt;EOF
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/products1/rename &lt;&lt;EOF
 { 
-  "name" : "newname" 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"newname"</span> 
 }
 EOF
 
@@ -15,7 +15,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products1/rename
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"newname"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD71802E03B2/12025"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hF19302E5DB1C/12284"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"12025"</span> 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"12284"</span> 
 }

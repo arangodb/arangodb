@@ -46,7 +46,7 @@ struct AsyncJobResult {
  public:
   AsyncJobResult();
 
-  AsyncJobResult(IdType jobId, Status status, RestHandler* handler);
+  AsyncJobResult(IdType jobId, Status status, std::shared_ptr<RestHandler>&& handler);
 
   ~AsyncJobResult();
 
@@ -55,7 +55,7 @@ struct AsyncJobResult {
   GeneralResponse* _response;
   double _stamp;
   Status _status;
-  RestHandler* _handler;
+  std::shared_ptr<RestHandler> _handler;
 };
 
 // -----------------------------------------------------------------------------
@@ -68,7 +68,8 @@ class AsyncJobManager {
   AsyncJobManager& operator=(AsyncJobManager const&) = delete;
 
  public:
-  typedef std::unordered_map<AsyncJobResult::IdType, AsyncJobResult> JobList;
+  typedef std::unordered_map<AsyncJobResult::IdType,
+                             std::pair<std::string, AsyncJobResult>> JobList;
 
  public:
   AsyncJobManager();
@@ -80,10 +81,10 @@ class AsyncJobManager {
   bool deleteJobResult(AsyncJobResult::IdType);
   void deleteJobs();
   void deleteExpiredJobResults(double stamp);
-  
+
   /// @brief cancel and delete a specific job
   Result cancelJob(AsyncJobResult::IdType);
-  
+
   /// @brief cancel and delete all pending / done jobs
   Result clearAllJobs();
 
@@ -91,7 +92,7 @@ class AsyncJobManager {
   std::vector<AsyncJobResult::IdType> done(size_t maxCount);
   std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status,
                                                size_t maxCount);
-  void initAsyncJob(RestHandler*);
+  void initAsyncJob(std::shared_ptr<RestHandler>);
   void finishAsyncJob(RestHandler*);
 
  private:

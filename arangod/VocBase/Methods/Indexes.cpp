@@ -138,7 +138,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
   } else {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(collection->vocbase()),
-      collection,
+      *collection,
       AccessMode::Type::READ
     );
 
@@ -260,7 +260,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   SingleCollectionTransaction trx(
     transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-    collection,
+    *collection,
     create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -271,6 +271,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
+
   if (create) {
     try {
       idx = collection->createIndex(&trx, definition, created);
@@ -285,7 +286,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
       return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
-    
+
   TRI_ASSERT(idx != nullptr);
 
   VPackBuilder tmp;
@@ -327,7 +328,7 @@ Result Indexes::ensureIndexCoordinator(
 }
 
 Result Indexes::ensureIndex(LogicalCollection* collection,
-                            VPackSlice const& definition, bool create,
+                            VPackSlice const& input, bool create,
                             VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const* exec = ExecContext::CURRENT;
@@ -345,10 +346,10 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
     }
   }
 
-  VPackBuilder defBuilder;
+  VPackBuilder normalized;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = engine->indexFactory().enhanceIndexDefinition(
-    definition, defBuilder, create, ServerState::instance()->isCoordinator()
+    input, normalized, create, ServerState::instance()->isCoordinator()
   ).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -358,7 +359,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   TRI_ASSERT(collection);
   auto& dbname = collection->vocbase().name();
   std::string const collname(collection->name());
-  VPackSlice indexDef = defBuilder.slice();
+  VPackSlice indexDef = normalized.slice();
 
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
@@ -592,7 +593,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
     SingleCollectionTransaction trx(
       transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-      collection,
+      *collection,
       AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();

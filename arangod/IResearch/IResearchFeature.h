@@ -49,15 +49,13 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @brief execute an asynchronous task
   /// @note each task will be invoked by its first of timeout or 'asyncNotify()'
   /// @param mutex a mutex to check/prevent resource deallocation (nullptr == not required)
-  /// @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until notification)
   /// @param fn the function to execute
-  ///           @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until previously set timeout)
+  ///           @param timeoutMsec how log to sleep in msec before the next iteration (0 == sleep until previously set timeout or until notification if first run)
   ///           @param timeout the timeout has been reached (false == triggered by notification)
   ///           @return continue/reschedule
   //////////////////////////////////////////////////////////////////////////////
   void async(
     std::shared_ptr<ResourceMutex> const& mutex,
-    size_t timeoutMsec,
     std::function<bool(size_t& timeoutMsec, bool timeout)> &&fn
   );
 

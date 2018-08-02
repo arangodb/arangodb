@@ -22,6 +22,7 @@
 
 #include "CheckVersionFeature.h"
 
+#include "Basics/FileUtils.h"
 #include "Basics/exitcodes.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -29,6 +30,7 @@
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
@@ -45,7 +47,10 @@ CheckVersionFeature::CheckVersionFeature(
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
+  startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("ServerId");
 }
@@ -66,6 +71,10 @@ void CheckVersionFeature::validateOptions(
   if (!_checkVersion) {
     return;
   }
+
+  // hard-code our role to a single server instance, because
+  // noone else will set our role
+  ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
@@ -89,6 +98,7 @@ void CheckVersionFeature::start() {
 
   // check the version
   if (DatabaseFeature::DATABASE->isInitiallyEmpty()) {
+    LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "skipping version check because database directory was initially empty";
     *_result = EXIT_SUCCESS;
   } else {
     checkVersion();
@@ -97,7 +107,7 @@ void CheckVersionFeature::start() {
   // and force shutdown
   server()->beginShutdown();
 
-  std::this_thread::sleep_for(std::chrono::microseconds(1 * 1000 * 1000));
+  std::this_thread::sleep_for(std::chrono::seconds(1));
   TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
 }
 
@@ -105,7 +115,14 @@ void CheckVersionFeature::checkVersion() {
   *_result = 1;
 
   // run version check
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting version check";
+  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "starting version check";
+  
+  DatabasePathFeature* databasePathFeature =
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+          "DatabasePath");
+
+  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "database path is: '" << databasePathFeature->directory() << "'";
+
   // can do this without a lock as this is the startup
   DatabaseFeature* databaseFeature =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
@@ -145,7 +162,7 @@ void CheckVersionFeature::checkVersion() {
     if (res.status < 0) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
-          << "'. Please inspect the logs for any errors";
+          << "'. Please inspect the logs for any errors. If there are no obvious issues in the logs, please retry with option `--log.level startup=trace`";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
     } else if (res.status == methods::VersionResult::DOWNGRADE_NEEDED) {
       // this is safe to do even if further databases will be checked
@@ -153,7 +170,7 @@ void CheckVersionFeature::checkVersion() {
       *_result = 3;
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
-          << "': upgrade needed";
+          << "': downgrade needed";
     } else if (res.status == methods::VersionResult::UPGRADE_NEEDED &&
                *_result == 1) {
       // this is safe to do even if further databases will be checked
@@ -161,7 +178,7 @@ void CheckVersionFeature::checkVersion() {
       *_result = 2;
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
-          << "': downgrade needed";
+          << "': upgrade needed";
     }
   }
 
@@ -171,12 +188,12 @@ void CheckVersionFeature::checkVersion() {
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
   } else if (*_result > 1) {
-    if (*_result == 2) {
+    if (*_result == 3) {
       // downgrade needed
       LOG_TOPIC(FATAL, Logger::FIXME)
           << "Database version check failed: downgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_DOWNGRADE_REQUIRED);
-    } else if (*_result == 3) {
+    } else if (*_result == 2) {
       LOG_TOPIC(FATAL, Logger::FIXME)
           << "Database version check failed: upgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_UPGRADE_REQUIRED);

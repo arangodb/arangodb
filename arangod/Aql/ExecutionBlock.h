@@ -98,6 +98,7 @@ class ExecutionBlock {
     RETURN,
     SHORTEST_PATH,
     SINGLETON,
+    SINGLEOPERATION,
     SORT,
     SORTED_COLLECT,
     SORTING_GATHER,
@@ -111,9 +112,11 @@ class ExecutionBlock {
     UPSERT,
     SCATTER,
     DISTRIBUTE,
+#ifdef USE_IRESEARCH
     IRESEARCH_VIEW,
     IRESEARCH_VIEW_ORDERED,
     IRESEARCH_VIEW_UNORDERED,
+#endif
   };
   // omitted in this list are (because):
   // WaitingExecutionBlockMock (mock)

@@ -1,7 +1,10 @@
 Session Transports
 ==================
 
-Session transports are used by the sessions middleware to store and retrieve session identifiers in requests and responses. Session transports must implement the `get` and/or `set` methods and can optionally implement the `clear` method.
+Session transports are used by the sessions middleware to store and retrieve
+session identifiers in requests and responses. Session transports must
+implement the `get` and/or `set` methods and can optionally implement the
+`clear` method.
 
 get
 ---
@@ -10,7 +13,8 @@ get
 
 Retrieves a session identifier from a request object.
 
-If present this method will automatically be invoked for each transport until a transport returns a session identifier.
+If present this method will automatically be invoked for each transport until
+a transport returns a session identifier.
 
 **Arguments**
 
@@ -18,7 +22,8 @@ If present this method will automatically be invoked for each transport until a 
 
   [Request object](../../Routers/Request.md) to extract a session identifier from.
 
-Returns the session identifier or `null` if the transport can not find a session identifier in the request.
+Returns the session identifier or `null` if the transport can not find a
+session identifier in the request.
 
 **Examples**
 
@@ -35,7 +40,8 @@ set
 
 Attaches a session identifier to a response object.
 
-If present this method will automatically be invoked at the end of a request regardless of whether the session was modified or not.
+If present this method will automatically be invoked at the end of a request
+regardless of whether the session was modified or not.
 
 **Arguments**
 
@@ -62,10 +68,12 @@ clear
 
 `transport.clear(response): void`
 
-Attaches a payload indicating that the session has been cleared to the response object.
-This can be used to clear a session cookie when the session has been destroyed (e.g. during logout).
+Attaches a payload indicating that the session has been cleared to the
+response object. This can be used to clear a session cookie when the session
+has been destroyed (e.g. during logout).
 
-If present this method will automatically be invoked instead of `set` when the `req.session` attribute was removed by the route handler.
+If present this method will automatically be invoked instead of `set` when the
+`req.session` attribute was removed by the route handler.
 
 **Arguments**
 

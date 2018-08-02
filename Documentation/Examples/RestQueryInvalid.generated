@@ -1,5 +1,5 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query &amp;lt;&amp;lt;EOF
-{ <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n"</span> }
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query &lt;&lt;EOF
+{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request

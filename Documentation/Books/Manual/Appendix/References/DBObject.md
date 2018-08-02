@@ -18,7 +18,7 @@ The following methods exists on the *_db* object:
 *Indexes*
 
 * [db._index(index)](../../Indexing/WorkingWithIndexes.md#fetching-an-index-by-handle)
-* [db._dropIndex(index)](../../Indexing/WorkingWithIndexes.md#dropping-an-index)
+* [db._dropIndex(index)](../../Indexing/WorkingWithIndexes.md#dropping-an-index-via-a-database-handle)
 
 *Properties*
 

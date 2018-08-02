@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com//arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 Securing Starter Deployments
 ============================
 
@@ -20,8 +20,8 @@ _--javascript.execute-string_ option of the _arangosh_ binary, e.g.:
 
 ```bash
 arangosh --server.endpoint your-server-endpoint \
-    --server.password ""
-    --javascript.execute-string 'require("org/arangodb/users").update("root", "mypwd");
+    --server.password "" \
+    --javascript.execute-string 'require("org/arangodb/users").update("root", "mypwd");'
 ```
 
 where "mypwd" is the new password you want to set.

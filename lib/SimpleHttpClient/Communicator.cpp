@@ -141,8 +141,6 @@ Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, "unable to initialize curl");
   }
   
-  curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, 20);
-  
 #ifdef _WIN32
   int err = dumb_socketpair(_socks, 0);
   if (err != 0) {

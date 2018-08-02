@@ -30,12 +30,22 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/locale_utils.hpp"
 
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
 #include "Aql/AqlFunctionFeature.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -85,7 +95,8 @@ struct IResearchLinkMetaSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
 
   IResearchLinkMetaSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -95,31 +106,49 @@ struct IResearchLinkMetaSetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
+    auto buildFeatureEntry = [&] (arangodb::application_features::ApplicationFeature* ftr, bool start) -> void {
+      std::string name = ftr->name();
+      features.emplace(name, std::make_pair(ftr, start));
+    };
+
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
+
+
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), true);
+    buildFeatureEntry(new arangodb::DatabaseFeature(&server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
+
+    // We need this feature to be added now in order to create the system database
+    arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
+
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+      arangodb::application_features::ApplicationServer::server->addFeature(f.second.first);
+    }
+    arangodb::application_features::ApplicationServer::server->setupDependencies(false);
+    orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
+
+    for (auto& f : orderedFeatures) {
+      f->prepare();
     }
 
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
+    for (auto& f : orderedFeatures) {
+      if (features.at(f->name()).second) {
+        f->start();
       }
     }
 
@@ -141,14 +170,14 @@ struct IResearchLinkMetaSetup {
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      if (features.at((*f)->name()).second) {
+        (*f)->stop();
       }
     }
 
-    for (auto& f : features) {
-      f.first->unprepare();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      (*f)->unprepare();
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
@@ -173,6 +202,7 @@ SECTION("test_defaults") {
   CHECK(true == meta._fields.empty());
   CHECK(false == meta._includeAllFields);
   CHECK(false == meta._trackListPositions);
+  CHECK((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
   CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
@@ -193,6 +223,7 @@ SECTION("test_inheritDefaults") {
   defaults._fields["abc"] = arangodb::iresearch::IResearchLinkMeta();
   defaults._includeAllFields = true;
   defaults._trackListPositions = true;
+  defaults._storeValues = arangodb::iresearch::ValueStorage::FULL;
   defaults._analyzers.clear();
   defaults._analyzers.emplace_back(analyzers.ensure("empty"));
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
@@ -213,6 +244,7 @@ SECTION("test_inheritDefaults") {
         CHECK(true == actual._fields.empty());
         CHECK(false == actual._includeAllFields);
         CHECK(false == actual._trackListPositions);
+        CHECK((arangodb::iresearch::ValueStorage::NONE == actual._storeValues));
         CHECK(1U == actual._analyzers.size());
         CHECK((*(actual._analyzers.begin())));
         CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
@@ -226,6 +258,7 @@ SECTION("test_inheritDefaults") {
   CHECK(true == expectedFields.empty());
   CHECK(true == meta._includeAllFields);
   CHECK(true == meta._trackListPositions);
+  CHECK((arangodb::iresearch::ValueStorage::FULL == meta._storeValues));
 
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
@@ -243,6 +276,7 @@ SECTION("test_readDefaults") {
   CHECK(true == meta._fields.empty());
   CHECK(false == meta._includeAllFields);
   CHECK(false == meta._trackListPositions);
+  CHECK((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
   CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
@@ -265,15 +299,16 @@ SECTION("test_readCustomizedValues") {
         \"b\": {}, \
         \"c\": { \
           \"fields\": { \
-            \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"analyzers\": [ \"identity\" ] }, \
-            \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"analyzers\": [ \"empty\" ] }, \
-            \"some\": { \"trackListPositions\": true }, \
+            \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"storeValues\": \"none\", \"analyzers\": [ \"identity\" ] }, \
+            \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"full\", \"analyzers\": [ \"empty\" ] }, \
+            \"some\": { \"trackListPositions\": true, \"storeValues\": \"id\" }, \
             \"none\": {} \
           } \
         } \
       }, \
       \"includeAllFields\": true, \
       \"trackListPositions\": true, \
+      \"storeValues\": \"full\", \
       \"analyzers\": [ \"empty\", \"identity\" ] \
     }");
     CHECK(true == meta.init(json->slice(), tmpString));
@@ -291,6 +326,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._fields.empty());
           CHECK(false == actual._includeAllFields);
           CHECK(false == actual._trackListPositions);
+          CHECK((arangodb::iresearch::ValueStorage::NONE == actual._storeValues));
           CHECK(1U == actual._analyzers.size());
           CHECK((*(actual._analyzers.begin())));
           CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
@@ -302,6 +338,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == (actual._fields.find("e") != actual._fields.end()));
           CHECK(true == actual._includeAllFields);
           CHECK(true == actual._trackListPositions);
+          CHECK((arangodb::iresearch::ValueStorage::FULL == actual._storeValues));
           CHECK(1U == actual._analyzers.size());
           CHECK((*(actual._analyzers.begin())));
           CHECK(("empty" == (*(actual._analyzers.begin()))->name()));
@@ -311,6 +348,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._fields.empty()); // not inherited
           CHECK(true == actual._includeAllFields); // inherited
           CHECK(true == actual._trackListPositions);
+          CHECK((arangodb::iresearch::ValueStorage::ID == actual._storeValues));
           CHECK(2U == actual._analyzers.size());
           auto itr = actual._analyzers.begin();
           CHECK((*itr));
@@ -326,6 +364,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._fields.empty()); // not inherited
           CHECK(true == actual._includeAllFields); // inherited
           CHECK(true == actual._trackListPositions); // inherited
+          CHECK((arangodb::iresearch::ValueStorage::FULL == actual._storeValues));
           auto itr = actual._analyzers.begin();
           CHECK((*itr));
           CHECK(("empty" == (*itr)->name()));
@@ -344,6 +383,7 @@ SECTION("test_readCustomizedValues") {
     CHECK(true == expectedFields.empty());
     CHECK(true == meta._includeAllFields);
     CHECK(true == meta._trackListPositions);
+    CHECK((arangodb::iresearch::ValueStorage::FULL == meta._storeValues));
     auto itr = meta._analyzers.begin();
     CHECK((*itr));
     CHECK(("empty" == (*itr)->name()));
@@ -366,13 +406,15 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((5U == slice.length()));
   tmpSlice = slice.get("fields");
   CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("includeAllFields");
   CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
   tmpSlice = slice.get("trackListPositions");
   CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+  tmpSlice = slice.get("storeValues");
+  CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
   tmpSlice = slice.get("analyzers");
   CHECK((
     true ==
@@ -392,6 +434,7 @@ SECTION("test_writeCustomizedValues") {
 
   meta._includeAllFields = true;
   meta._trackListPositions = true;
+  meta._storeValues = arangodb::iresearch::ValueStorage::FULL;
   meta._analyzers.clear();
   meta._analyzers.emplace_back(analyzers.ensure("identity"));
   meta._analyzers.emplace_back(analyzers.ensure("empty"));
@@ -415,10 +458,12 @@ SECTION("test_writeCustomizedValues") {
   overrideAll._fields["y"] = arangodb::iresearch::IResearchLinkMeta();
   overrideAll._includeAllFields = false;
   overrideAll._trackListPositions = false;
+  overrideAll._storeValues = arangodb::iresearch::ValueStorage::NONE;
   overrideAll._analyzers.clear();
   overrideAll._analyzers.emplace_back(analyzers.ensure("empty"));
   overrideSome._fields.clear(); // do not inherit fields to match jSon inheritance
   overrideSome._trackListPositions = false;
+  overrideSome._storeValues = arangodb::iresearch::ValueStorage::ID;
   overrideNone._fields.clear(); // do not inherit fields to match jSon inheritance
 
   std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
@@ -431,7 +476,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((5U == slice.length()));
   tmpSlice = slice.get("fields");
   CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
 
@@ -454,11 +499,13 @@ SECTION("test_writeCustomizedValues") {
       CHECK(1U == expectedOverrides.erase(fieldOverride.copyString()));
 
       if ("default" == fieldOverride.copyString()) {
-        CHECK((3U == sliceOverride.length()));
+        CHECK((4U == sliceOverride.length()));
         tmpSlice = sliceOverride.get("includeAllFields");
         CHECK(true == (false == tmpSlice.getBool()));
         tmpSlice = sliceOverride.get("trackListPositions");
         CHECK(true == (false == tmpSlice.getBool()));
+        tmpSlice = sliceOverride.get("storeValues");
+        CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
         tmpSlice = sliceOverride.get("analyzers");
         CHECK((
           true ==
@@ -469,7 +516,7 @@ SECTION("test_writeCustomizedValues") {
         ));
       } else if ("all" == fieldOverride.copyString()) {
         std::unordered_set<std::string> expectedFields = { "x", "y" };
-        CHECK((4U == sliceOverride.length()));
+        CHECK((5U == sliceOverride.length()));
         tmpSlice = sliceOverride.get("fields");
         CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
         for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice); overrideFieldItr.valid(); ++overrideFieldItr) {
@@ -480,6 +527,8 @@ SECTION("test_writeCustomizedValues") {
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
         tmpSlice = sliceOverride.get("trackListPositions");
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+        tmpSlice = sliceOverride.get("storeValues");
+        CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
         tmpSlice = sliceOverride.get("analyzers");
         CHECK((
           true ==
@@ -489,9 +538,11 @@ SECTION("test_writeCustomizedValues") {
           std::string("empty") == tmpSlice.at(0).copyString()
         ));
       } else if ("some" == fieldOverride.copyString()) {
-        CHECK(1U == sliceOverride.length());
+        CHECK(2U == sliceOverride.length());
         tmpSlice = sliceOverride.get("trackListPositions");
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+        tmpSlice = sliceOverride.get("storeValues");
+        CHECK((true == tmpSlice.isString() && std::string("id") == tmpSlice.copyString()));
       } else if ("none" == fieldOverride.copyString()) {
         CHECK(0U == sliceOverride.length());
       }
@@ -504,6 +555,8 @@ SECTION("test_writeCustomizedValues") {
   CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
   tmpSlice = slice.get("trackListPositions");
   CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
+  tmpSlice = slice.get("storeValues");
+  CHECK((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
   tmpSlice = slice.get("analyzers");
   CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
@@ -524,12 +577,14 @@ SECTION("test_readMaskAll") {
     \"fields\": { \"a\": {} }, \
     \"includeAllFields\": true, \
     \"trackListPositions\": true, \
+    \"storeValues\": \"full\", \
     \"analyzers\": [] \
   }");
   CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
   CHECK(true == mask._fields);
   CHECK(true == mask._includeAllFields);
   CHECK(true == mask._trackListPositions);
+  CHECK((true == mask._storeValues));
   CHECK(true == mask._analyzers);
 }
 
@@ -543,6 +598,7 @@ SECTION("test_readMaskNone") {
   CHECK(false == mask._fields);
   CHECK(false == mask._includeAllFields);
   CHECK(false == mask._trackListPositions);
+  CHECK((false == mask._storeValues));
   CHECK(false == mask._analyzers);
 }
 
@@ -555,10 +611,11 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK((4U == slice.length()));
+  CHECK((5U == slice.length()));
   CHECK(true == slice.hasKey("fields"));
   CHECK(true == slice.hasKey("includeAllFields"));
   CHECK(true == slice.hasKey("trackListPositions"));
+  CHECK(true == slice.hasKey("storeValues"));
   CHECK(true == slice.hasKey("analyzers"));
 }
 

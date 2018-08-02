@@ -45,6 +45,22 @@ exports.Examples = {
       examples.dropGraph("mps_graph");
     }   
   }, 
+  'knows_graph': {
+    createDS: function() {
+      examples.loadGraph("knows_graph");
+    },  
+    removeDS: function() {
+      examples.dropGraph("knows_graph");
+    }   
+  },
+  'routeplanner': {
+    createDS: function() {
+      examples.loadGraph("routeplanner");
+    },  
+    removeDS: function() {
+      examples.dropGraph("routeplanner");
+    }   
+  },
   'joinSampleDataset': {
     createDS: function() {
       db._create("users");

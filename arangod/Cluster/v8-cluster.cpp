@@ -30,8 +30,8 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ShardDistributionReporter.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Sharding/ShardDistributionReporter.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -843,9 +843,7 @@ static void JS_GetResponsibleShardClusterInfo(
   auto collInfo = ci->getCollection(vocbase.name(), collectionId);
   bool usesDefaultShardingAttributes;
 
-  res = ClusterInfo::instance()->getResponsibleShard(
-      collInfo.get(), builder.slice(), documentIsComplete, shardId,
-      usesDefaultShardingAttributes);
+  res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete, shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -930,10 +928,10 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
     if (itr != serverAliases.end()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "serverName"),
-		  TRI_V8_STD_STRING(isolate, itr->second));
+                  TRI_V8_STD_STRING(isolate, itr->second));
     } else {
       result->Set(TRI_V8_ASCII_STRING(isolate, "serverName"),
-		  TRI_V8_STD_STRING(isolate, id));
+                  TRI_V8_STD_STRING(isolate, id));
     }
       
     l->Set((uint32_t)i, result);
@@ -1112,6 +1110,10 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
+    if (!result.successful()) {
+      THROW_AGENCY_EXCEPTION(result);
+    }
+    result = comm.increment("Current/Version");
     if (!result.successful()) {
       THROW_AGENCY_EXCEPTION(result);
     }

@@ -45,6 +45,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -118,18 +119,9 @@ void TailingSyncer::setProgress(std::string const& msg) {
 }
 
 /// @brief abort all ongoing transactions
-void TailingSyncer::abortOngoingTransactions() {
+void TailingSyncer::abortOngoingTransactions() noexcept {
   try {
     // abort all running transactions
-    for (auto& it : _ongoingTransactions) {
-      auto trx = it.second;
-
-      if (trx != nullptr) {
-        trx->abort();
-        delete trx;
-      }
-    }
-
     _ongoingTransactions.clear();
   } catch (...) {
     // ignore errors here
@@ -363,7 +355,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
           std::string("unexpected transaction ") + StringUtils::itoa(tid));
     }
 
-    auto trx = (*it).second;
+    std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
 
     if (trx == nullptr) {
       return Result(
@@ -391,7 +383,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // update the apply tick for all standalone operations
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(*vocbase),
-    coll,
+    *coll,
     AccessMode::Type::EXCLUSIVE
   );
 
@@ -454,14 +446,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   if (it != _ongoingTransactions.end()) {
     // found a previous version of the same transaction - should not happen...
-    auto trx = (*it).second;
-
-    _ongoingTransactions.erase(tid);
-
-    if (trx != nullptr) {
-      // abort ongoing trx
-      delete trx;
-    }
+    _ongoingTransactions.erase(it);
   }
 
   TRI_ASSERT(tid > 0);
@@ -473,8 +458,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   Result res = trx->begin();
 
   if (res.ok()) {
-    _ongoingTransactions[tid] = trx.get();
-    trx.release();
+    _ongoingTransactions[tid] = std::move(trx);
   }
 
   return res;
@@ -497,7 +481,7 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   auto it = _ongoingTransactions.find(tid);
 
-  if (it == _ongoingTransactions.end()) {
+  if (it == _ongoingTransactions.end() || (*it).second == nullptr) {
     // invalid state, no transaction was started.
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
@@ -507,17 +491,8 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "aborting replication transaction " << tid;
 
-  auto trx = (*it).second;
-  _ongoingTransactions.erase(tid);
-
-  if (trx != nullptr) {
-    Result res = trx->abort();
-    delete trx;
-
-    return res;
-  }
-
-  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
+  _ongoingTransactions.erase(it);
+  return Result();
 }
 
 /// @brief commits a transaction, based on the VelocyPack provided
@@ -537,7 +512,7 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   auto it = _ongoingTransactions.find(tid);
 
-  if (it == _ongoingTransactions.end()) {
+  if (it == _ongoingTransactions.end() || (*it).second == nullptr) {
     // invalid state, no transaction was started.
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
@@ -547,17 +522,11 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "committing replication transaction " << tid;
 
-  auto trx = (*it).second;
-  _ongoingTransactions.erase(tid);
-
-  if (trx != nullptr) {
-    Result res = trx->commit();
-    delete trx;
-
-    return res;
-  }
-
-  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
+  std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
+  Result res = trx->commit();
+  
+  _ongoingTransactions.erase(it);
+  return res;
 }
 
 /// @brief renames a collection, based on the VelocyPack provided
@@ -621,8 +590,8 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
   return Result(vocbase->renameCollection(col, name, true));
 }
 
-/// @brief changes the properties of a collection, based on the VelocyPack
-/// provided
+/// @brief changes the properties of a collection,
+/// based on the VelocyPack provided
 Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -670,6 +639,66 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
 
   return guard.collection()->updateProperties(data, doSync);
+}
+
+
+/// @brief changes the properties of a view,
+/// based on the VelocyPack provided
+Result TailingSyncer::changeView(VPackSlice const& slice) {
+  if (!slice.isObject()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "view marker slice is no object");
+  }
+  
+  VPackSlice data = slice.get("data");
+  if (!data.isObject()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "data slice is no object in view change marker");
+  }
+  
+  VPackSlice d = data.get("deleted");
+  bool const isDeleted = (d.isBool() && d.getBool());
+  
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    if (isDeleted) {
+      // not a problem if a view that is going to be deleted anyway
+      // does not exist on slave
+      return Result();
+    }
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  VPackSlice guidSlice = data.get(StaticStrings::DataSourceGuid);
+  if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "no guid specified for view");
+  }
+  auto view = vocbase->lookupView(guidSlice.copyString());
+  if (view == nullptr) {
+    if (isDeleted) {
+      // not a problem if a collection that is going to be deleted anyway
+      // does not exist on slave
+      return Result();
+    }
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+  
+  
+  VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
+  if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+    int res = vocbase->renameView(view, nameSlice.copyString());
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+  
+  VPackSlice properties = data.get("properties");
+  if (properties.isObject()) {
+    bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
+    return view->updateProperties(properties, false, doSync);
+  }
+  return {};
 }
 
 /// @brief apply a single marker from the continuous log
@@ -764,16 +793,35 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     return createIndex(slice);
   } else if (type == REPLICATION_INDEX_DROP) {
     return dropIndex(slice);
-  } else if (type == REPLICATION_VIEW_CREATE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view create not yet implemented");
+  }
+  
+  else if (type == REPLICATION_VIEW_CREATE) {
+    if (_ignoreRenameCreateDrop) {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring view create marker";
+      return TRI_ERROR_NO_ERROR;
+    }
+    
+    TRI_vocbase_t* vocbase = resolveVocbase(slice);
+    
+    if (vocbase == nullptr) {
+      LOG_TOPIC(WARN, Logger::REPLICATION)
+      << "Did not find database for " << slice.toJson();
+      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+    
+    return createView(*vocbase, slice.get("data"));
   } else if (type == REPLICATION_VIEW_DROP) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view drop not yet implemented");
+    if (_ignoreRenameCreateDrop) {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring view drop marker";
+      return TRI_ERROR_NO_ERROR;
+    }
+    
+    return dropView(slice, false);
   } else if (type == REPLICATION_VIEW_CHANGE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "view change not yet implemented");
-  } else if (type == REPLICATION_DATABASE_CREATE ||
+    return changeView(slice);
+  }
+  
+  else if (type == REPLICATION_DATABASE_CREATE ||
              type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring database marker";
@@ -1111,7 +1159,7 @@ retry:
 
       // start initial synchronization
       try {
-        std::unique_ptr<InitialSyncer> syncer = _applier->buildInitialSyncer();
+        std::shared_ptr<InitialSyncer> syncer = _applier->buildInitialSyncer();
         Result r = syncer->run(_state.applier._incremental);
         if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
@@ -1495,28 +1543,15 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
 
   setProgress(progress);
 
-  std::string body;
-
-  if (!_ongoingTransactions.empty()) {
-    // stringify list of open transactions
-    body.append("[\"");
-
-    bool first = true;
-
-    for (auto& it : _ongoingTransactions) {
-      if (first) {
-        first = false;
-      } else {
-        body.append("\",\"");
-      }
-
-      body.append(StringUtils::itoa(it.first));
-    }
-
-    body.append("\"]");
-  } else {
-    body.append("[]");
+  // stringify list of open transactions
+  VPackBuilder builder;
+  builder.openArray();
+  for (auto& it : _ongoingTransactions) {
+    builder.add(VPackValue(StringUtils::itoa(it.first)));
   }
+  builder.close();
+  
+  std::string body = builder.slice().toJson();
 
   std::unique_ptr<SimpleHttpResult> response(_state.connection.client->request(
       rest::RequestType::PUT, url, body.c_str(), body.size()));

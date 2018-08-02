@@ -44,17 +44,17 @@ bool equalConsolidationPolicies(
 
   typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
   struct PtrEquals {
-    bool operator()(ConsolidationPolicy const * const& lhs, ConsolidationPolicy const * const& rhs) const {
+    bool operator()(ConsolidationPolicy const* lhs, ConsolidationPolicy const* rhs) const noexcept {
       return *lhs == *rhs;
     }
   };
   struct PtrHash {
-    size_t operator()(ConsolidationPolicy const * const& value) const {
+    size_t operator()(ConsolidationPolicy const* value) const noexcept {
       return ConsolidationPolicy::Hash()(*value);
     }
   };
 
-  std::unordered_multiset<ConsolidationPolicy const *, PtrHash, PtrEquals> expected;
+  std::unordered_multiset<ConsolidationPolicy const*, PtrHash, PtrEquals> expected;
 
   for (auto& entry: lhs) {
     expected.emplace(&entry);
@@ -98,18 +98,6 @@ bool initCommitMeta(
     bool tmpBool;
 
     if (!arangodb::iresearch::getNumber(meta._commitIntervalMsec, slice, fieldName, tmpBool, defaults._commitIntervalMsec)) {
-      errorField = fieldName;
-
-      return false;
-    }
-  }
-
-  {
-    // optional size_t
-    static const std::string fieldName("commitTimeoutMsec");
-    bool tmpBool;
-
-    if (!arangodb::iresearch::getNumber(meta._commitTimeoutMsec, slice, fieldName, tmpBool, defaults._commitTimeoutMsec)) {
       errorField = fieldName;
 
       return false;
@@ -209,7 +197,6 @@ bool jsonCommitMeta(
 
   builder.add("cleanupIntervalStep", arangodb::velocypack::Value(meta._cleanupIntervalStep));
   builder.add("commitIntervalMsec", arangodb::velocypack::Value(meta._commitIntervalMsec));
-  builder.add("commitTimeoutMsec", arangodb::velocypack::Value(meta._commitTimeoutMsec));
 
   typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
   struct ConsolidationPolicyHash { size_t operator()(ConsolidationPolicy::Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
@@ -259,7 +246,7 @@ NS_BEGIN(iresearch)
 
 size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
     IResearchViewMeta::CommitMeta::ConsolidationPolicy const& value
-) const {
+) const noexcept {
   auto segmentThreshold = value.segmentThreshold();
   auto threshold = value.threshold();
   auto type = value.type();
@@ -391,16 +378,15 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type IResearchViewMeta::Comm
 
 bool IResearchViewMeta::CommitMeta::operator==(
   CommitMeta const& other
-) const noexcept {
+) const {
   return _cleanupIntervalStep == other._cleanupIntervalStep
       && _commitIntervalMsec == other._commitIntervalMsec
-      && _commitTimeoutMsec == other._commitTimeoutMsec
       && equalConsolidationPolicies(_consolidationPolicies, other._consolidationPolicies);
 }
 
 bool IResearchViewMeta::CommitMeta::operator!=(
   CommitMeta const& other
-  ) const noexcept {
+  ) const {
   return !(*this == other);
 }
 
@@ -413,7 +399,6 @@ IResearchViewMeta::IResearchViewMeta()
   : _locale(std::locale::classic()) {
   _commit._cleanupIntervalStep = 10;
   _commit._commitIntervalMsec = 60 * 1000;
-  _commit._commitTimeoutMsec = 5 * 1000;
   _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::BYTES));
   _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::BYTES_ACCUM));
   _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::COUNT));
@@ -538,8 +523,7 @@ bool IResearchViewMeta::init(
       try {
         // use UTF-8 encoding since that is what JSON objects use
         _locale = std::locale::classic().name() == locale
-          ? std::locale::classic()
-          : irs::locale_utils::locale(locale, true);
+          ? std::locale::classic() : irs::locale_utils::locale(locale);
       } catch(...) {
         errorField = fieldName;
 
@@ -661,7 +645,7 @@ bool IResearchViewMetaState::init(
   std::string& errorField,
   IResearchViewMetaState const& defaults /*= DEFAULT()*/,
   Mask* mask /*= nullptr*/
-) noexcept {
+) {
   if (!slice.isObject()) {
     errorField = "not an object";
     return false;

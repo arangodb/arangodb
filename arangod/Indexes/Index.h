@@ -66,11 +66,19 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t, LogicalCollection*,
-        std::vector<std::vector<arangodb::basics::AttributeName>> const&,
-        bool unique, bool sparse);
+  Index(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
+    bool unique,
+    bool sparse
+  );
 
-  Index(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
+  Index(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& slice
+  );
 
   virtual ~Index();
 
@@ -161,7 +169,7 @@ class Index {
   }
 
   /// @brief return the underlying collection
-  inline LogicalCollection* collection() const { return _collection; }
+  inline LogicalCollection* collection() const { return &_collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
@@ -330,7 +338,7 @@ class Index {
 
  protected:
   TRI_idx_iid_t const _iid;
-  LogicalCollection* _collection;
+  LogicalCollection& _collection;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
   bool const _useExpansion;
 

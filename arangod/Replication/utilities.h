@@ -161,7 +161,7 @@ struct MasterInfo {
 #endif
 };
 
-/// @brief generates basic source headers for cluster comm requests
+/// @brief generates basic source headers for ClusterComm requests
 std::unordered_map<std::string, std::string> createHeaders();
 
 /// @brief whether or not the HTTP result is valid or not

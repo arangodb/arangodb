@@ -24,6 +24,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/ExecutionBlock.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
@@ -40,12 +41,10 @@ AqlFeature::AqlFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
   setOptional(false);
-  startsAfter("CacheManager");
-  startsAfter("Cluster");
-  startsAfter("Database");
+  startsAfter("V8Phase");
+
   startsAfter("QueryRegistry");
-  startsAfter("Scheduler");
-  startsAfter("V8Platform");
+  startsAfter("TraverserEngineRegistry");
 }
 
 AqlFeature* AqlFeature::lease() {
@@ -61,7 +60,7 @@ AqlFeature* AqlFeature::lease() {
   return aql;
 }
 
-void AqlFeature::unlease() {
+void AqlFeature::unlease() noexcept {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   AqlFeature* aql = AqlFeature::_AQL;
   TRI_ASSERT(aql != nullptr);

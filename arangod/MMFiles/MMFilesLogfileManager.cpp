@@ -121,16 +121,11 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
-  startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("MMFilesEngine");
-
-  startsBefore("Aql");
-  startsBefore("Bootstrap");
-  startsBefore("GeneralServer");
-  startsBefore("QueryRegistry");
-  startsBefore("TraverserEngineRegistry");
 
   onlyEnabledWith("MMFilesEngine");
 }
@@ -1310,8 +1305,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType i
 
 // get a logfile for writing. this may return nullptr
 int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
-                                        MMFilesWalLogfile::StatusType& status,
-                                        MMFilesWalLogfile*& result) {
+                                               MMFilesWalLogfile::StatusType& status,
+                                               MMFilesWalLogfile*& result) {
   // always initialize the result
   result = nullptr;
 

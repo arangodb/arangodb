@@ -19,10 +19,10 @@ An array of additional vertex collections.
 
 @RESTBODYPARAM{isSmart,boolean,optional,boolean}
 Define if the created graph should be smart.
-This only has effect in Enterprise version.
+This only has effect in Enterprise Edition.
 
 @RESTBODYPARAM{options,object,optional,post_api_gharial_create_opts}
-a JSON object which is only useful in Enterprise version and with isSmart set to true.
+a JSON object which is only useful in Enterprise Edition and with isSmart set to true.
 It can contain the following attributes:
 
 @RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,required,}
