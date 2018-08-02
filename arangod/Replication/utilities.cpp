@@ -290,8 +290,14 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
   }
 
   std::string const url = ReplicationUrl + "/barrier/" + itoa(id);
-  std::string const body =
-      "{\"ttl\":" + itoa(ttl) + ",\"tick\"" + itoa(tick) + "\"}";
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("ttl", VPackValue(ttl));
+  builder.add("tick", VPackValue(itoa(tick)));
+  builder.close();
+
+  std::string const body = builder.slice().toJson();
 
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response(
