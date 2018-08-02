@@ -537,6 +537,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
   std::string const& serverId, VPackBuilder& report) {
   arangodb::Result result;
 
+
   for (auto const& database : VPackObjectIterator(local)) {
     auto const dbName = database.key.copyString();
 
@@ -552,7 +553,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
     }
     
+  
     for (auto const& shard : VPackObjectIterator(database.value)) {
+
       auto const shName = shard.key.copyString();
       if (shName.at(0) == '_') { // local system collection
         continue;
@@ -562,7 +565,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       auto const colName = shSlice.get(PLAN_ID).copyString();
       VPackBuilder error;
 
+  
       if (shSlice.get(LEADER).copyString().empty()) { // Leader
+
         auto const localCollectionInfo =
           assembleLocalCollectioInfo(shSlice, dbName, shName, serverId);
 
@@ -573,11 +578,13 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         
         auto cp = std::vector<std::string> {COLLECTIONS, dbName, colName, shName};
         
+  
         auto inCurrent = cur.hasKey(cp);
         if (!inCurrent ||
             (inCurrent &&
              !equivalent(localCollectionInfo.slice(), cur.get(cp)))) {
 
+  
         report.add(
           VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName));
           { VPackObjectBuilder o(&report); 
@@ -585,11 +592,12 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             report.add("payload", localCollectionInfo.slice()); }
         }
       } else {
+  
         auto servers = std::vector<std::string>
           {COLLECTIONS, dbName, colName, shName, SERVERS};
         if (cur.hasKey(servers)) {
           auto s = cur.get(servers);
-          if (cur.get(servers)[0].copyString() == serverId) {
+          if (s.isArray() && cur.get(servers)[0].copyString() == serverId) {
             // we were previously leader and we are done resigning.
             // update current and let supervision handle the rest
             VPackBuilder ns;
@@ -597,21 +605,23 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               bool front = true;
               if (s.isArray()) {
                 for (auto const& i : VPackArrayIterator(s)) {
-                  ns.add(VPackValue((!front) ? i.copyString() : std::string("_") + i.copyString()));
+                  ns.add(VPackValue((!front) ? i.copyString() : UNDERSCORE + i.copyString()));
                   front = false;
-                }}
-              report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName
-                                    + "/" + shName + "/" + SERVERS));
+                }}}
+            report.add(
+              VPackValue(
+                CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName
+                + "/" + SERVERS));
+  
               { VPackObjectBuilder o(&report);
                 report.add(OP, VP_SET);
                 report.add("payload", ns.slice()); }
             }
           }
-        }
       }
     }
   }
-
+  
   auto cdbs = cur.get(COLLECTIONS);
   auto pdbs = plan.get(COLLECTIONS);
   auto shardMap = getShardMap(plan.get(COLLECTIONS));
@@ -663,29 +673,31 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
 template<typename T> int indexOf(VPackSlice const& slice, T const& t) {
   size_t counter = 0;
-  TRI_ASSERT(slice.isArray());
-  for (auto const& entry : VPackArrayIterator(slice)) {
-    if (entry.isNumber()) {
-      if (entry.getNumber<T>() == t) {
-        return counter;
+  if (slice.isArray()) {
+    for (auto const& entry : VPackArrayIterator(slice)) {
+      if (entry.isNumber()) {
+        if (entry.getNumber<T>() == t) {
+          return counter;
+        }
       }
+      counter++;
     }
-    counter++;
+    return -1;
   }
-  return -1;
 }
 
 template<> int indexOf<std::string> (
   VPackSlice const& slice, std::string const& val) {
   size_t counter = 0;
-  TRI_ASSERT(slice.isArray());
-  for (auto const& entry : VPackArrayIterator(slice)) {
-    if (entry.isString()) {
-      if (entry.copyString() == val) {
-        return counter;
+  if (slice.isArray()) {
+    for (auto const& entry : VPackArrayIterator(slice)) {
+      if (entry.isString()) {
+        if (entry.copyString() == val) {
+          return counter;
+        }
       }
+      counter++;
     }
-    counter++;
   }
   return -1;
 }

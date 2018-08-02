@@ -101,16 +101,6 @@ arangodb::Result synchroniseShards (
 
 
 /**
- * @brief         Execute both phases and report
- *
- * @param report  Reference to report
- * @return        Success
- */
-arangodb::Result handleChange(
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report);
-
-/**
  * @brief          Phase one: Execute plan, shard replication startups
  *
  * @param plan     Snapshot of agency's planned state
