@@ -46,6 +46,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/optional.hpp>
 #include <algorithm>
 #include <numeric>
 #include <vector>
@@ -344,7 +345,7 @@ static int distributeBabyOnShards(
     temp.openObject();
     temp.add(StaticStrings::KeyString, value);
     temp.close();
-  
+
     error = ci->getResponsibleShard(collinfo.get(), temp.slice(), false, shardID,
                                     usesDefaultShardingAttributes);
   } else {
@@ -1244,9 +1245,10 @@ Result createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int deleteDocumentOnCoordinator(
-  std::string const &dbname, std::string const &collname, transaction::Methods const &trx, VPackSlice const slice,
-  OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
-  std::unordered_map<int, size_t> &errorCounter, std::shared_ptr<arangodb::velocypack::Builder> &resultBody
+  std::string const &dbname, std::string const &collname, transaction::Methods const &trx,
+  VPackSlice const slice, OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
+  std::unordered_map<int, size_t> &errorCounter, std::shared_ptr<arangodb::velocypack::Builder> &resultBody,
+  VPackSlice const pattern
 ) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1268,14 +1270,6 @@ int deleteDocumentOnCoordinator(
   auto collid = std::to_string(collinfo->id());
   bool useMultiple = slice.isArray();
 
-  std::string const baseUrl =
-      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
-
-  std::string const optsUrlPart =
-      std::string("?waitForSync=") + (options.waitForSync ? "true" : "false") +
-      "&returnOld=" + (options.returnOld ? "true" : "false") + "&ignoreRevs=" +
-      (options.ignoreRevs ? "true" : "false");
-
   VPackBuilder reqBuilder;
 
   if (useDefaultSharding) {
@@ -1285,13 +1279,29 @@ int deleteDocumentOnCoordinator(
     // Send the correct documents to the correct shards
     // Merge the results with static merge helper
 
-    std::unordered_map<ShardID, std::vector<VPackSlice>> shardMap;
+    std::string const baseUrl =
+      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/batch/document/";
+
+    VPackBuilder opts;
+    opts.openObject();
+    if (options.waitForSync) {
+      opts.add("waitForSync", VPackValue(true));
+    }
+    if (options.returnOld) {
+      opts.add("returnOld", VPackValue(true));
+    }
+    if (options.silent) {
+      opts.add("silent", VPackValue(true));
+    }
+    opts.close();
+
+    std::unordered_map<ShardID, std::vector<VPackBuilder>> shardMap;
     std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
     auto workOnOneNode = [&shardMap, &ci, &collid, &collinfo, &reverseMapping](
-        VPackSlice const value) -> int {
+        VPackSlice const slice, VPackSlice const userPattern) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
-      StringRef _key(transaction::helpers::extractKeyPart(value));
+      StringRef _key(transaction::helpers::extractKeyPart(slice));
       ShardID shardID;
       if (_key.empty()) {
         // We have invalid input at this point.
@@ -1313,28 +1323,56 @@ int deleteDocumentOnCoordinator(
         }
       }
 
+      VPackBuilder pattern;
+
+      if (userPattern.isNone()) {
+        // either key string or {_key: ...}
+        TRI_ASSERT(slice.isObject() || slice.isString());
+        if (slice.isObject()) {
+          pattern = VPackBuilder{slice};
+        } else /* if(slice.isString())*/ {
+          pattern.openObject();
+          pattern.add("_key", slice);
+          pattern.close();
+        }
+      } else {
+        pattern = VPackBuilder{userPattern};
+      }
+
       // We found the responsible shard. Add it to the list.
       auto it = shardMap.find(shardID);
       if (it == shardMap.end()) {
-        shardMap.emplace(shardID, std::vector<VPackSlice>{value});
+        shardMap.emplace(shardID, std::vector<VPackBuilder>{pattern});
         reverseMapping.emplace_back(shardID, 0);
       } else {
-        it->second.emplace_back(value);
+        it->second.emplace_back(pattern);
         reverseMapping.emplace_back(shardID, it->second.size() - 1);
       }
       return TRI_ERROR_NO_ERROR;
     };
 
     if (useMultiple) { // slice is array of document values
+      boost::optional<VPackArrayIterator> patternIt = boost::none;
+      if (pattern.isArray()) {
+        TRI_ASSERT(slice.length() == pattern.length());
+        patternIt = VPackArrayIterator(pattern);
+      }
+
       for (VPackSlice value : VPackArrayIterator(slice)) {
-        int res = workOnOneNode(value);
+        VPackSlice patternElt = VPackSlice::noneSlice();
+        if (patternIt && patternIt.get() != patternIt->end()) {
+          patternElt = patternIt->value();
+          patternIt->next();
+        }
+
+        int res = workOnOneNode(value, patternElt);
         if (res != TRI_ERROR_NO_ERROR) {
           // Is early abortion correct?
           return res;
         }
       }
     } else {
-      int res = workOnOneNode(slice);
+      int res = workOnOneNode(slice, pattern);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
@@ -1346,22 +1384,25 @@ int deleteDocumentOnCoordinator(
     std::vector<ClusterCommRequest> requests;
     auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
-      if (!useMultiple) {
-        TRI_ASSERT(it.second.size() == 1);
-        body = std::make_shared<std::string>(slice.toJson());
-      } else {
-        reqBuilder.clear();
-        reqBuilder.openArray();
-        for (auto const& value : it.second) {
-          reqBuilder.add(value);
-        }
+
+      reqBuilder.clear();
+      reqBuilder.openObject();
+      reqBuilder.add("data", VPackValue(VPackValueType::Array));
+      for (auto const& value : it.second) {
+        reqBuilder.openObject();
+        reqBuilder.add("pattern", value.slice());
         reqBuilder.close();
-        body = std::make_shared<std::string>(reqBuilder.slice().toJson());
       }
+      reqBuilder.close();
+      reqBuilder.add("options", opts.slice());
+      reqBuilder.close();
+
+      body = std::make_shared<std::string>(reqBuilder.slice().toJson());
+
       requests.emplace_back(
           "shard:" + it.first,
-          arangodb::rest::RequestType::DELETE_REQ,
-          baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+          arangodb::rest::RequestType::POST,
+          baseUrl + StringUtils::urlEncode(it.first) + "/remove", body,
           ::CreateNoLockHeader(trx, it.first));
     }
 
@@ -1388,7 +1429,7 @@ int deleteDocumentOnCoordinator(
     }
 
     std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
-    collectResultsFromAllShards<VPackSlice>(
+    collectResultsFromAllShards<VPackBuilder>(
         shardMap, requests, errorCounter, resultMap, responseCode);
     mergeResults(reverseMapping, resultMap, resultBody);
     return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
@@ -1404,6 +1445,15 @@ int deleteDocumentOnCoordinator(
   //      if res != NOT_FOUND => insert this result. skip other results
   //    end
   //    if (!skipped) => insert NOT_FOUND
+
+  std::string const baseUrl =
+      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
+
+  std::string const optsUrlPart =
+      std::string("?waitForSync=") + (options.waitForSync ? "true" : "false") +
+      "&returnOld=" + (options.returnOld ? "true" : "false") + "&ignoreRevs=" +
+      (options.ignoreRevs ? "true" : "false");
+
 
   auto body = std::make_shared<std::string>(slice.toJson());
   std::vector<ClusterCommRequest> requests;
@@ -2485,7 +2535,7 @@ int modifyDocumentOnCoordinator(
           "shard:" + shard, reqType,
           baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
           ::CreateNoLockHeader(trx, shard));
-          
+
     }
   }
 

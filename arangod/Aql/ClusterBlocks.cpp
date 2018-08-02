@@ -922,9 +922,9 @@ Result RemoteBlock::sendAsyncRequest(
   if (!_ownName.empty()) {
     headers.emplace("Shard-Id", _ownName);
   }
-    
+
   std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
@@ -1380,7 +1380,7 @@ SortingGatherBlock::SortingGatherBlock(
     _sortRegisters
   );
 }
-  
+
 SortingGatherBlock::~SortingGatherBlock() {
   clearBuffers();
 }
@@ -1504,7 +1504,7 @@ SortingGatherBlock::getSome(size_t atMost) {
   // pull more blocks from dependencies . . .
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
-  
+
   size_t available = 0;
   {
     ExecutionState blockState;
@@ -1725,7 +1725,6 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   auto in = node->_inVariable;
   auto OLD = node->_outVariableOld;
   auto NEW = node->_outVariableNew;
-
 
   RegisterId inRegId  = ExecutionNode::MaxRegisterId;
   RegisterId outRegId = ExecutionNode::MaxRegisterId;

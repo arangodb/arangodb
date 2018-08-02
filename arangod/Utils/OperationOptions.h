@@ -75,7 +75,6 @@ struct OperationOptions {
 
   Index::OperationMode indexOperationMode;
 };
-
 }
 
 #endif

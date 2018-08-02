@@ -89,7 +89,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
                        transaction::Methods const& trx,
                        std::vector<std::pair<std::string, uint64_t>>& result);
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +116,8 @@ Result createDocumentOnCoordinator(
 int deleteDocumentOnCoordinator(
   std::string const &dbname, std::string const &collname, transaction::Methods const &trx, VPackSlice const slice,
   OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
-  std::unordered_map<int, size_t> &errorCounters, std::shared_ptr<arangodb::velocypack::Builder> &resultBody
+  std::unordered_map<int, size_t> &errorCounters, std::shared_ptr<arangodb::velocypack::Builder> &resultBody,
+  VPackSlice const pattern
 );
 
 ////////////////////////////////////////////////////////////////////////////////
