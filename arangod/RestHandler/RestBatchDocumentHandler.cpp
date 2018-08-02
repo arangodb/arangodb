@@ -570,12 +570,7 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
 
   res = trx->finish(result.result);
 
-  if (result.fail()) {
-    generateTransactionError(result);
-    return;
-  }
-
-  if (!res.ok()) {
+  if (result.ok() && !res.ok()) {
     std::string key;
     if (request.size() == 1) {
       key = request.getData().at(0).key;
@@ -586,7 +581,7 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
 
   opResults.push_back(std::move(result));
 
-  generateBatchResponseSuccess(
+  generateBatchResponse(
       opResults,
       nullptr,
       trx->transactionContextPtr()->getVPackOptionsForDump()
@@ -623,23 +618,22 @@ void RestBatchDocumentHandler::generateBatchResponse(
     builder.close();
   }
 
-  LOG_DEVEL << builder.slice().toJson();
+  //LOG_DEVEL << builder.slice().toJson();
   writeResult(builder.slice(), *options);
 }
 
-
-// accepting a single operation result is not feasible because
-// there might be multiple transactions involved
-void RestBatchDocumentHandler::generateBatchResponseSuccess(
+void RestBatchDocumentHandler::generateBatchResponse(
     std::vector<OperationResult> const& opVec,
     std::unique_ptr<VPackBuilder> extra,
     VPackOptions const* vOptions
   ){
+  //LOG_DEVEL << "enter generate batch response";
 
   TRI_ASSERT(opVec.size() > 0); //at least one result
   auto& opOptions = opVec[0]._options;
 
   // set response code - it is assumend that all other options are the same
+
   auto restResponseCode = rest::ResponseCode::ACCEPTED;
   if (opOptions.waitForSync) {
     restResponseCode = rest::ResponseCode::OK;
@@ -651,64 +645,13 @@ void RestBatchDocumentHandler::generateBatchResponseSuccess(
     extra->openObject();
   }
 
-  extra->add(StaticStrings::Error, VPackValue(false));
-  extra->close();
-
-  // flatten result vector
-  auto  result = std::make_unique<VPackBuilder>();
-  result->openArray();
-  for(auto& item : opVec) {
-    auto slice = item.slice();
-    if (slice.isObject()) {
-      if(slice.hasKey(StaticStrings::KeyString)){
-        result->add(slice);
-      } else {
-        generateError(rest::ResponseCode::I_AM_A_TEAPOT, TRI_ERROR_FAILED, "Invalid object in OperationResult");
-      }
-    } else if (slice.isArray()){
-      for (auto r : VPackArrayIterator(slice)){
-        result->add(r);
-      }
-    }
-  }
-  result->close();
-
-  LOG_DEVEL << result->slice().toJson();
-  generateBatchResponse(restResponseCode, std::move(result), std::move(extra), vOptions);
-}
-
-
-void RestBatchDocumentHandler::generateBatchResponseFailed(
-    std::vector<OperationResult> const& opVec,
-    std::unique_ptr<VPackBuilder> extra,
-    VPackOptions const* vOptions
-  ){
-
-  TRI_ASSERT(opVec.size() > 0); //at least one result
-  auto& opOptions = opVec[0]._options;
-
-  // set response code - it is assumend that all other options are the same
-  auto restResponseCode = rest::ResponseCode::ACCEPTED;
-  if (opOptions.waitForSync) {
-    restResponseCode = rest::ResponseCode::OK;
-  }
-
-  // create and open extra if no open object has been passed
-  if (!extra) {
-    extra = std::make_unique<VPackBuilder>();
-    extra->openObject();
-  }
-
-  extra->add(StaticStrings::Error, VPackValue(false));
 
   std::size_t indexOfFailed = 0;
   bool foundFirstFailed = false;
-  // flatten result vector
-  // search for first failed result
   auto result = std::make_unique<VPackBuilder>();
 
-  auto addErrorInfo = [&extra, &indexOfFailed, &foundFirstFailed]
-    (VPackSlice errorSlice, std::string message = "defult error message", int code = TRI_ERROR_FAILED) {
+  auto addErrorInfo = [&extra, &indexOfFailed, &foundFirstFailed, &restResponseCode]
+    (VPackSlice errorSlice, std::string message = "defult error message", int errorNum = TRI_ERROR_FAILED) {
     if(foundFirstFailed) {
       return;
     }
@@ -718,7 +661,7 @@ void RestBatchDocumentHandler::generateBatchResponseFailed(
       extra->add(StaticStrings::ErrorMessage
                 ,VPackValue(message));
       extra->add(StaticStrings::ErrorNum
-                ,VPackValue(code));
+                ,VPackValue(errorNum));
     } else {
       extra->add(StaticStrings::ErrorMessage
                 ,errorSlice.get(StaticStrings::ErrorMessage)); //if silent?
@@ -726,13 +669,19 @@ void RestBatchDocumentHandler::generateBatchResponseFailed(
                 ,errorSlice.get(StaticStrings::ErrorNum));
     }
     extra->add("errorDataIndex", VPackValue(indexOfFailed));
+    restResponseCode = arangodb::GeneralResponse::responseCode(errorNum);
   };
 
+  // add single element to results
   auto addSingle = [&](VPackSlice slice, OperationResult const& item){
     if(slice.hasKey("error")){
       if(slice.get("error").getBool()){
-        result->add(slice.get("errorMessage")); //if silent?
-        result->add(slice.get("errorNum")); //if silent?
+        result->openObject();
+        result->add(StaticStrings::ErrorMessage
+                   ,slice.get(StaticStrings::ErrorMessage));
+        result->add(StaticStrings::ErrorNum
+                   ,slice.get(StaticStrings::ErrorNum));
+        result->close();
         addErrorInfo(slice);
       } else {
         result->add(VPackSlice::emptyObjectSlice()); //if silent?
@@ -746,6 +695,8 @@ void RestBatchDocumentHandler::generateBatchResponseFailed(
     }
   };
 
+  // flatten result vector
+  // search for first failed result
   result->openArray();
   for(auto& item : opVec) {
     if (item.buffer) { //check for vaild buffer
@@ -772,42 +723,32 @@ void RestBatchDocumentHandler::generateBatchResponseFailed(
                   ,item.errorNumber()
                   );
     }// if(item.buffer)
+    if(item.fail() && !foundFirstFailed){
+      addErrorInfo(VPackSlice::nullSlice()
+                  ,item.errorMessage()
+                  ,item.errorNumber()
+                  );
+      result->openObject();
+      result->add(StaticStrings::ErrorMessage
+                 ,VPackValue(item.errorMessage())
+                 );
+      result->add(StaticStrings::ErrorNum
+                 ,VPackValue(item.errorNumber())
+                 );
+      result->close();
+      TRI_ASSERT(result->isOpenArray());
+    }
   } // item : opVec
+
+  extra->add(StaticStrings::Error, VPackValue(foundFirstFailed));
+
+  //LOG_DEVEL << "about to close result and extra";
+  TRI_ASSERT(result->isOpenArray());
   result->close();
+  TRI_ASSERT(extra->isOpenObject());
   extra->close();
 
-  LOG_DEVEL << result->slice().toJson();
-
-  generateBatchResponse(restResponseCode, nullptr, std::move(extra), vOptions);
+  //LOG_DEVEL << "pre exit generate batch response";
+  generateBatchResponse(restResponseCode, std::move(result), std::move(extra), vOptions);
+  //LOG_DEVEL << "exit generate batch response";
 }
-
-
-// void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
-//                                 std::string const& message) {
-//   resetResponse(code);
-//
-//   VPackBuffer<uint8_t> buffer;
-//   VPackBuilder builder(buffer);
-//   try {
-//     builder.add(VPackValue(VPackValueType::Object));
-//     builder.add(StaticStrings::Error, VPackValue(true));
-//     builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-//     builder.add(StaticStrings::Code,
-//                 VPackValue(static_cast<int>(code)));
-//     builder.add(StaticStrings::ErrorNum,
-//                 VPackValue(errorNumber));
-//     builder.close();
-//
-//     VPackOptions options(VPackOptions::Defaults);
-//     options.escapeUnicode = true;
-//
-//     TRI_ASSERT(options.escapeUnicode);
-//     if (_request != nullptr) {
-//       _response->setContentType(_request->contentTypeResponse());
-//     }
-//     _response->setPayload(std::move(buffer), true, options);
-//   } catch (...) {
-//     // exception while generating error
-//   }
-// }
-//
