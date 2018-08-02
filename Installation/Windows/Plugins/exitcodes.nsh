@@ -13,6 +13,7 @@
 !define ARANGO_EXIT_COULD_NOT_BIND_PORT 21
 !define ARANGO_EXIT_COULD_NOT_LOCK 22
 !define ARANGO_EXIT_RECOVERY 23
+!define ARANGO_EXIT_DB_NOT_EMPTY 24
 
 !macro printExitCode exitCode Message DetailMessage
   Push "${exitCode}"
@@ -77,6 +78,10 @@ ${Switch} $1
 
   ${Case} 23 # EXIT_RECOVERY
     MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> recovery failed <<$\r$\n"Will be returned if the automatic database startup recovery fails"$\r$\n$3'
+  ${Break}
+
+  ${Case} 24 # EXIT_DB_NOT_EMPTY
+    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> database not empty <<$\r$\n"Will be returned when commanding to initialize a non empty directory as database"$\r$\n$3'
   ${Break}
 
   ${Default}
