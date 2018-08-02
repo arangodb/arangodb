@@ -534,6 +534,19 @@ static void JS_PropertiesViewVocbase(
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view");
     }
 
+    // check ability to read current properties
+    {
+      arangodb::velocypack::Builder builderCurrent;
+
+      builderCurrent.openObject();
+
+      auto resCurrent = view->toVelocyPack(builderCurrent, true, false);
+
+      if (!resCurrent.ok()) {
+        TRI_V8_THROW_EXCEPTION(resCurrent);
+      }
+    }
+
     auto doSync = arangodb::application_features::ApplicationServer::getFeature<
       DatabaseFeature
     >("Database")->forceSyncProperties();

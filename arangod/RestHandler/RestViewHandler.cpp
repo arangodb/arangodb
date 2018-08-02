@@ -284,6 +284,21 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
 
+    // check ability to read current properties
+    {
+      arangodb::velocypack::Builder builderCurrent;
+
+      builderCurrent.openObject();
+
+      auto resCurrent = view->toVelocyPack(builderCurrent, true, false);
+
+      if (!resCurrent.ok()) {
+        generateError(resCurrent);
+
+        return;
+      }
+    }
+
     auto const result = view->updateProperties(
       body, partialUpdate, true
     );  // TODO: not force sync?

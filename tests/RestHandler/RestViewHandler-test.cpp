@@ -36,6 +36,31 @@
 
 namespace {
 
+struct TestView: public arangodb::LogicalView {
+  arangodb::Result _appendVelocyPackResult;
+  arangodb::velocypack::Builder _properties;
+
+  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
+    : arangodb::LogicalView(vocbase, definition, planVersion) {
+  }
+  virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder, bool /*detailed*/, bool /*forPersistence*/) const { builder.add("properties", _properties.slice()); return _appendVelocyPackResult; }
+  virtual arangodb::Result drop() override { return arangodb::Result(); }
+  static std::shared_ptr<LogicalView> make(
+        TRI_vocbase_t& vocbase,
+        arangodb::velocypack::Slice const& definition,
+        bool isNew,
+        uint64_t planVersion,
+        arangodb::LogicalView::PreCommitCallback const& preCommit
+  ) {
+    auto view = std::make_shared<TestView>(vocbase, definition, planVersion);
+    return preCommit(view) ? view : nullptr;
+  }
+  virtual void open() override {}
+  virtual arangodb::Result rename(std::string&& newName, bool doSync) override { name(std::move(newName)); return arangodb::Result(); }
+  virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
+  virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+};
+
 template <typename T, typename U>
 std::shared_ptr<T> scopedPtr(T*& ptr, U* newValue) {
   auto* location = &ptr;
@@ -81,31 +106,8 @@ struct RestViewHandlerSetup {
       }
     }
 
-    struct TestView: public arangodb::LogicalView {
-      arangodb::velocypack::Builder _properties;
-
-      TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
-        : arangodb::LogicalView(vocbase, definition, planVersion) {
-      }
-      virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder, bool /*detailed*/, bool /*forPersistence*/) const { builder.add("properties", _properties.slice()); return arangodb::Result(); }
-      virtual arangodb::Result drop() override { return arangodb::Result(); }
-      static std::shared_ptr<LogicalView> make(
-            TRI_vocbase_t& vocbase,
-            arangodb::velocypack::Slice const& definition,
-            bool isNew,
-            uint64_t planVersion,
-            arangodb::LogicalView::PreCommitCallback const& preCommit
-      ) {
-        auto view = std::make_shared<TestView>(vocbase, definition, planVersion);
-        return preCommit(view) ? view : nullptr;
-      }
-      virtual void open() override {}
-      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { name(std::move(newName)); return arangodb::Result(); }
-      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
-      virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
-    };
-   auto* viewTypesFeature =
-     arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>();
+    auto* viewTypesFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>();
 
     viewTypesFeature->emplace(
       arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
@@ -520,6 +522,31 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
 
+    // not authorized (RW user view with failing toVelocyPack())
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::RW);
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_INTERNAL);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
+
+      auto status = handler.execute();
+      CHECK((arangodb::RestStatus::DONE == status));
+      CHECK((arangodb::rest::ResponseCode::SERVER_ERROR == responce.responseCode()));
+      auto slice = responce._payload.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::SERVER_ERROR) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_INTERNAL == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+      slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+      CHECK((!slice.isObject()));
+    }
+
     // authorzed (RW user)
     {
       arangodb::auth::UserMap userMap;
@@ -537,6 +564,9 @@ SECTION("test_auth") {
       CHECK((slice.hasKey("properties") && slice.get("properties").isObject() && slice.get("properties").hasKey("key") && slice.get("properties").get("key").isString() && std::string("value") == slice.get("properties").get("key").copyString()));
       auto view = vocbase.lookupView("testView");
       CHECK((false == !view));
+      slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey("key") && slice.get("key").isString() && std::string("value") == slice.get("key").copyString()));
     }
   }
 
