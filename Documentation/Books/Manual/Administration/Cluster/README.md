@@ -18,7 +18,7 @@ Enabling synchronous replication
 --------------------------------
 
 For an introduction about _Synchronous Replication_ in Cluster, please refer
-to the [_Cluster Architecture_](../../Scalability/Cluster/Architecture.md#synchronous-replication) section. 
+to the [_Cluster Architecture_](../../Architecture/DeploymentModes/Cluster/Architecture.md#synchronous-replication) section. 
                                                                
 Synchronous replication can be enabled per _collection_. When creating a
 _collection_ you may specify the number of _replicas_ using the
@@ -64,7 +64,7 @@ Sharding
 --------
 
 For an introduction about _Sharding_ in Cluster, please refer to the
-[_Cluster Architecture_](../../Scalability/Cluster/Architecture.md#sharding) section. 
+[_Cluster Architecture_](../../Architecture/DeploymentModes/Cluster/Architecture.md#sharding) section. 
 
 Number of _shards_ can be configured at _collection_ creation time, e.g. the UI,
 or the _ArangoDB Shell_:
