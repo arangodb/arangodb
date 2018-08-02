@@ -31,7 +31,10 @@
 
 const internal = require('internal'); // OK: reloadAuth
 const ggc = require('@arangodb/general-graph-common');
-const GeneralGraph = internal.ArangoGeneralGraph;
+const GeneralGraph = internal.ArangoGeneralGraphModule;
+
+// This is supposed to be a class
+const ArangoGraph = internal.ArangoGraph;
 //const arangodb = require("@arangodb");
 
 // inherited graph class
@@ -44,45 +47,49 @@ CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
 };
 
 CommonGraph.prototype._deleteEdgeDefinition = function (edgeDefinition, dropCollection = false) {
-  let result = GeneralGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
+  let result = ArangoGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinitions) {
-  let result = GeneralGraph._extendEdgeDefinitions(this.__name, edgeDefinitions);
+  let result = ArangoGraph._extendEdgeDefinitions(this.__name, edgeDefinitions);
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinitions) {
-  let result = GeneralGraph._editEdgeDefinitions(this.__name, edgeDefinitions);
+  let result = ArangoGraph._editEdgeDefinitions(this.__name, edgeDefinitions);
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 CommonGraph.prototype._addVertexCollection = function (vertexName, createCollection = true) {
-  let result = GeneralGraph._addVertexCollection(this.__name, vertexName, createCollection);
+  let result = ArangoGraph._addVertexCollection(this.__name, vertexName, createCollection);
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
 CommonGraph.prototype._removeVertexCollection = function (vertexName, dropCollection = false) {
-  let result = GeneralGraph._removeVertexCollection(this.__name, vertexName, dropCollection);
+  let result = ArangoGraph._removeVertexCollection(this.__name, vertexName, dropCollection);
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
-exports._listObjects = GeneralGraph._listObjects;
-exports._list = GeneralGraph._list;
-exports._exists = GeneralGraph._exists;
 
 exports._create = function (name, edgeDefinition, orphans, options) {
   let g = GeneralGraph._create(name, edgeDefinition, orphans, options);
   return new CommonGraph(g.graph);
 };
 
+exports._drop = GeneralGraph._drop;
+
+exports._exists = GeneralGraph._exists;
+
 exports._graph = function (graphName) {
   let g = GeneralGraph._graph(graphName);
   return new CommonGraph(g);
 };
 
-exports._drop = GeneralGraph._drop;
+exports._list = GeneralGraph._list;
+
+exports._listObjects = GeneralGraph._listObjects;
+
 exports._renameCollection = GeneralGraph._renameCollection;
 
 // js based helper functions

@@ -1559,64 +1559,6 @@ class Graph {
   }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph__deleteEdgeDefinition
-// //////////////////////////////////////////////////////////////////////////////
-
-  _deleteEdgeDefinition (edgeCollection, dropCollection) {
-    // check, if in graphs edge definition
-    if (this.__edgeCollections[edgeCollection] === undefined) {
-      var err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
-      throw err;
-    }
-    if (dropCollection) {
-      checkRWPermission(edgeCollection);
-    }
-
-    let edgeDefinitions = this.__edgeDefinitions;
-    let self = this;
-    let usedVertexCollections = [];
-    let possibleOrphans = [];
-    let index;
-
-    edgeDefinitions.forEach(
-      function (edgeDefinition, idx) {
-        if (edgeDefinition.collection === edgeCollection) {
-          index = idx;
-          possibleOrphans = edgeDefinition.from;
-          possibleOrphans = _.union(possibleOrphans, edgeDefinition.to);
-        } else {
-          usedVertexCollections = _.union(usedVertexCollections, edgeDefinition.from);
-          usedVertexCollections = _.union(usedVertexCollections, edgeDefinition.to);
-        }
-      }
-    );
-    this.__edgeDefinitions.splice(index, 1);
-    possibleOrphans.forEach(
-      function (po) {
-        if (usedVertexCollections.indexOf(po) === -1) {
-          self.__orphanCollections.push(po);
-        }
-      }
-    );
-
-    updateBindCollections(this);
-    let gdb = getGraphCollection();
-    gdb.update(
-      this.__name,
-      {
-        orphanCollections: this.__orphanCollections,
-        edgeDefinitions: this.__edgeDefinitions
-      }
-    );
-
-    if (dropCollection) {
-      db._drop(edgeCollection);
-    }
-  }
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_general_graph__orphanCollections
 // //////////////////////////////////////////////////////////////////////////////
 
