@@ -232,9 +232,6 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
 
   // capture without self, ioContext will not live longer than scheduler
   _ioContext->post([this, callback, isV8, timeout]() {
-    // reduce number of queued now
-    decQueued();
-
     // at the end (either success or exception),
     // reduce number of queued V8
     auto guard = scopeGuard([this, isV8]() {
@@ -242,6 +239,13 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
         --_queuedV8;
       }
     });
+
+    // reduce number of queued now
+    decQueued();
+
+    // start working
+    JobGuard jobGuard(this);
+    jobGuard.work();
 
     if (isV8 && _queuedV8 > _maxQueuedV8 &&
         numWorking(getCounters()) >= static_cast<uint64_t>(_maxQueuedV8)) {
