@@ -166,11 +166,6 @@ struct Functions {
    static AqlValue LevenshteinDistance(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
    // Date
-   static AqlValue DateFromParameters(arangodb::aql::Query* query,
-                                      transaction::Methods* trx,
-                                      VPackFunctionParameters const& parameters,
-                                      char const* AFN,
-                                      bool asTimestamp);
    static AqlValue DateNow(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
    static AqlValue DateIso8601(arangodb::aql::Query*, transaction::Methods*,
@@ -477,6 +472,13 @@ struct Functions {
     /// @brief dummy function that will only throw an error when called
     static AqlValue NotImplemented(arangodb::aql::Query*, transaction::Methods*,
                                    VPackFunctionParameters const&);
+
+   private:
+    static AqlValue DateFromParameters(arangodb::aql::Query* query,
+                                       transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters,
+                                       char const* AFN,
+                                       bool asTimestamp);
 };
 
 }

@@ -150,7 +150,7 @@ class MultiPartitionerTask final : public LocalTask {
   typedef MultiInserterTask<Element, IndexType, useHashCache> Inserter;
   typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
 
-  std::function<uint64_t(void*, Element const&, bool)> _hashElement;
+  std::function<uint64_t(Element const&, bool)> _hashElement;
   std::function<void(void*)> _contextDestroyer;
   std::shared_ptr<std::vector<Element> const> _data;
   std::vector<Element> const* _elements;
@@ -169,7 +169,7 @@ class MultiPartitionerTask final : public LocalTask {
  public:
   MultiPartitionerTask(
       std::shared_ptr<LocalTaskQueue> queue,
-      std::function<uint64_t(void*, Element const&, bool)> hashElement,
+      std::function<uint64_t(Element const&, bool)> hashElement,
       std::function<void(void*)> const& contextDestroyer,
       std::shared_ptr<std::vector<Element> const> data, size_t lower,
       size_t upper, void* userData,
@@ -198,7 +198,7 @@ class MultiPartitionerTask final : public LocalTask {
           _allBuckets->size());  // initialize to number of buckets
 
       for (size_t i = _lower; i < _upper; ++i) {
-        uint64_t hashByKey = _hashElement(_userData, (*_elements)[i], true);
+        uint64_t hashByKey = _hashElement((*_elements)[i], true);
         auto bucketId = hashByKey & _bucketsMask;
 
         partitions[bucketId].emplace_back((*_elements)[i], hashByKey);
