@@ -127,8 +127,8 @@ Starting from version 3.3 encryption of the dump is supported.
 The dump is encrypted using an encryption keyfile, which must contain exactly 32
 bytes of data (required by the AES block cipher).
 
-The keyfile can be created by an external program, or by using a command like the
-following:
+The keyfile can be created by an external program, or, on Linux, by using a command
+like the following:
 
 ```
 dd if=/dev/random bs=1 count=32 of=yourSecretKeyFile
