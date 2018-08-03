@@ -42,27 +42,27 @@ class Result {
 
   Result(int errorNumber, std::string&& errorMessage)
       : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
-  
+
   // copy
-  Result(Result const& other) 
-      : _errorNumber(other._errorNumber), 
+  Result(Result const& other)
+      : _errorNumber(other._errorNumber),
         _errorMessage(other._errorMessage) {}
 
   Result& operator=(Result const& other) {
     _errorNumber = other._errorNumber;
     _errorMessage = other._errorMessage;
-    return *this; 
+    return *this;
   }
- 
-  // move 
-  Result(Result&& other) noexcept 
-      : _errorNumber(other._errorNumber), 
+
+  // move
+  Result(Result&& other) noexcept
+      : _errorNumber(other._errorNumber),
         _errorMessage(std::move(other._errorMessage)) {}
-  
+
   Result& operator=(Result&& other) noexcept {
     _errorNumber = other._errorNumber;
     _errorMessage = std::move(other._errorMessage);
-    return *this; 
+    return *this;
   }
 
   virtual ~Result() {}
@@ -120,6 +120,8 @@ class Result {
   int _errorNumber;
   std::string _errorMessage;
 };
+
+Result prefixResultMessage(Result const& res, std::string const& prefix);
 }
 
 #endif

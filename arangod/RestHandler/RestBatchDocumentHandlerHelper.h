@@ -32,20 +32,9 @@
 
 #include "RestBatchDocumentHandler.h"
 
-#include "Cluster/ResultT.h"
-#include "Transaction/Hints.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Collections.h"
-#include "Basics/StringRef.h"
-#include "Basics/TaggedParameters.h"
-
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <boost/optional.hpp>
 #include <boost/range/join.hpp>
-#include <utility>
 
 
 namespace arangodb {
@@ -146,12 +135,6 @@ static Result unexpectedAttributeError(AttributeSet const& required,
   return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
 }
 
-static Result withMessagePrefix(std::string const& prefix, Result const& res) {
-  std::stringstream err;
-  err << prefix << ": " << res.errorMessage();
-  return Result{res.errorNumber(), err.str()};
-}
-
 static ResultT<AttributeSet> isObjectAndDoesNotHaveExtraAttributes(
     VPackSlice slice,
     AttributeSet const& required,
@@ -225,7 +208,7 @@ ResultT<PatternWithKey> PatternWithKey::fromVelocypack(VPackSlice const slice) {
 
   result = expectedType(VPackValueType::String, key.type());
   if (result.fail()) {
-    return withMessagePrefix("When parsing attribute '_key'", result);
+    return prefixResultMessage(result, "When parsing attribute '_key'");
   }
 
   return ResultT<PatternWithKey>::success(

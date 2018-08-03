@@ -141,6 +141,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/VersionFeature.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
+  Basics/CleanupFunctions.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
   Basics/DataProtector.cpp
@@ -153,6 +154,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Nonce.cpp
   Basics/OpenFilesTracker.cpp
   Basics/ReadWriteLock.cpp
+  Basics/Result.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp
@@ -166,12 +168,12 @@ add_library(${LIB_ARANGO} STATIC
   Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
-  Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
   Basics/error.cpp
+  Basics/exitcodes.cpp
   Basics/fasthash.cpp
   Basics/files.cpp
   Basics/fpconv.cpp
@@ -189,7 +191,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/tri-zip.cpp
   Basics/vector.cpp
   Basics/voc-errors.cpp
-  Basics/exitcodes.cpp
   Basics/voc-mimetypes.cpp
   Basics/xxhash.cpp
   Endpoint/Endpoint.cpp

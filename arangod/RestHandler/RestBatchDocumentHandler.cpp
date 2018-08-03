@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Tobias Gödderz
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBatchDocumentHandler.h"
@@ -28,14 +29,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "Basics/StringRef.h"
-#include "Basics/TaggedParameters.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-#include <boost/optional.hpp>
-#include <boost/range/join.hpp>
-#include <utility>
+//#include "Basics/StringRef.h"
 
 #include "RestBatchDocumentHandlerHelper.h"
 
@@ -79,7 +73,7 @@ dataFromVelocypackArray(VPackSlice const dataSlice
     if (maybePattern.fail()) {
       std::stringstream err;
       err << "In array index " << i;
-      return withMessagePrefix(err.str(), maybePattern);
+      return prefixResultMessage(maybePattern, err.str());
     }
 
     data.emplace_back(maybePattern.get());
@@ -151,7 +145,7 @@ struct BatchRequest {
     VPackSlice const dataSlice = slice.get("data");
     auto maybeData = dataFromVelocypackArray(dataSlice, required, optional, deprecated);
     if (maybeData.fail()) {
-      return withMessagePrefix("When parsing attribute 'data'", maybeData);
+      return prefixResultMessage(maybeData, "When parsing attribute 'data'");
     }
     auto& data = maybeData.get();
 
@@ -174,7 +168,7 @@ struct BatchRequest {
     VPackSlice const optionsSlice = slice.get("options");
     auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
     if (maybeOptions.fail()) {
-      return withMessagePrefix("When parsing attribute 'options'", maybeOptions);
+      return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
     }
     auto const& options = maybeOptions.get();
 
