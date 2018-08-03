@@ -202,7 +202,7 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
   };
 
   var result = {};
-  for (a in attributes) {
+  for (let a in attributes) {
     if (attributes.hasOwnProperty(a) &&
       requestResult.hasOwnProperty(a) &&
       requestResult[a] !== undefined) {
