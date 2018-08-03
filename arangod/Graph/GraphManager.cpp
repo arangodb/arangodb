@@ -488,49 +488,15 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 
 Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) const {
   TRI_ASSERT(graph != nullptr);
-#ifdef USE_ENTERPRISE
-  {
-    Result res = ensureSmartCollectionSharding(graph, waitForSync);
-    if (res.fail()) {
-      return res;
-    }
-  }
-#endif
-  VPackBuilder optionsBuilder;
-  optionsBuilder.openObject();
-  graph->createCollectionOptions(optionsBuilder, waitForSync);
-  optionsBuilder.close();
-  VPackSlice options = optionsBuilder.slice();
+  // Validation Phase collect a list of collections to create
+  std::unordered_set<std::string> documentCollectionsToCreate{};
+  std::unordered_set<std::string> edgeCollectionsToCreate{};
+
   TRI_vocbase_t* vocbase = &(ctx()->vocbase());
   Result innerRes{TRI_ERROR_NO_ERROR};
-  // Create all VertexCollections, or validate that they are there.
-  for (auto const& vertexColl : graph->vertexCollections()) {
-    bool found = false;
-    Result res = methods::Collections::lookup(
-        vocbase, vertexColl,
-        [&found, &innerRes, &graph](LogicalCollection* col) {
-          innerRes = graph->validateCollection(col);
-          found = true;
-        });
-    if (innerRes.fail()) {
-      return innerRes;
-    }
-    // Check if we got an error other then CollectionNotFound
-    if (res.fail() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-    if (!found) {
-      // Create Document Collection
-      res = methods::Collections::create(
-          vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT, options, waitForSync, true,
-          [&](LogicalCollection* coll) {});
-      if (res.fail()) {
-        return res;
-      }
-    }
-  }
 
-  // Create all Edge Collections, or validate that they are there.
+  // Check that all edgeCollections are either to be created
+  // or exist in a valid way.
   for (auto const& edgeColl : graph->edgeCollections()) {
     bool found = false;
     Result res = methods::Collections::lookup(
@@ -552,15 +518,74 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
       return res;
     }
     if (!found) {
-      // Create Edge Collection
-      res = methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
-                                         options, waitForSync, true,
-                                         [&](LogicalCollection* coll) {});
-      if (res.fail()) {
-        return res;
+      edgeCollectionsToCreate.emplace(edgeColl);
+    }
+  }
+
+  // Check that all vertexCollections are either to be created
+  // or exist in a valid way.
+  // If there is an edge collection used as a vertex collection
+  // it will not be created twice
+  for (auto const& vertexColl : graph->vertexCollections()) {
+    bool found = false;
+    Result res = methods::Collections::lookup(
+        vocbase, vertexColl,
+        [&found, &innerRes, &graph](LogicalCollection* col) {
+          innerRes = graph->validateCollection(col);
+          found = true;
+        });
+    if (innerRes.fail()) {
+      return innerRes;
+    }
+    // Check if we got an error other then CollectionNotFound
+    if (res.fail() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+      return res;
+    }
+
+    if (!found) {
+      if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
+        documentCollectionsToCreate.emplace(vertexColl);
       }
     }
   }
+
+
+
+#ifdef USE_ENTERPRISE
+  {
+    Result res = ensureSmartCollectionSharding(graph, waitForSync, documentCollectionsToCreate);
+    if (res.fail()) {
+      return res;
+    }
+  }
+#endif
+
+  VPackBuilder optionsBuilder;
+  optionsBuilder.openObject();
+  graph->createCollectionOptions(optionsBuilder, waitForSync);
+  optionsBuilder.close();
+  VPackSlice options = optionsBuilder.slice();
+
+  // Create Document Collections
+  for (auto const& vertexColl : documentCollectionsToCreate) {
+    Result res = methods::Collections::create(
+        vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT, options, waitForSync, true,
+        [&](LogicalCollection* coll) {});
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  // Create Edge Collections
+  for (auto const& edgeColl : edgeCollectionsToCreate) {
+    Result res = methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
+                                              options, waitForSync, true,
+                                              [&](LogicalCollection* coll) {});
+    if (res.fail()) {
+      return res;
+    }
+  }
+
   return TRI_ERROR_NO_ERROR;
 };
 

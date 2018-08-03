@@ -42,7 +42,7 @@
 #include "Graph/GraphManager.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
+#include "Transaction/SmartContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -59,13 +59,7 @@ using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
 std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
-  /* TODO Is this relevant?
-  if (_isInTransaction) {
-    // we must use v8
-    return transaction::V8Context::Create(_vocbase, true);
-  }
-  */
-  return transaction::StandaloneContext::Create(_vocbase);
+  return transaction::SmartContext::Create(_vocbase);
 };
 
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
@@ -1019,7 +1013,8 @@ OperationResult GraphOperations::removeVertex(
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  UserTransaction trx{ctx(), {}, trxCollections, {}, trxOptions};
+  auto context = ctx();
+  UserTransaction trx{context, {}, trxCollections, {}, trxOptions};
 
   Result res = trx.begin();
 
@@ -1046,8 +1041,9 @@ OperationResult GraphOperations::removeVertex(
       bindVars->add("vertexId", VPackValue(vertexId));
       bindVars->close();
 
-      arangodb::aql::Query query(true, _vocbase, queryString, bindVars,
+      arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
+      query.setTransactionContext(context);
 
       auto queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
 

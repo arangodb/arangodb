@@ -162,7 +162,7 @@ class GraphManager {
   Result ensureCollections(Graph const* graph, bool waitForSync) const;
 
 #ifdef USE_ENTERPRISE
-  Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync) const;
+  Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync, std::unordered_set<std::string>& documentCollections) const;
 #endif
 
   /**
