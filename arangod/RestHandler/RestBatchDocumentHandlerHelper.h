@@ -190,12 +190,6 @@ static Result isObjectAndDoesNotHaveExtraAttributes(
   return {TRI_ERROR_NO_ERROR};
 }
 
-class BatchRequest {
- public:
- protected:
-  BatchRequest() = default;
-};
-
 struct PatternWithKey {
  public:
   static ResultT<PatternWithKey> fromVelocypack(VPackSlice slice);

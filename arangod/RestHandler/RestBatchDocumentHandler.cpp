@@ -49,6 +49,13 @@ namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 
+class BatchRequest {
+ public:
+ protected:
+  BatchRequest() = default;
+};
+
+
 class RemoveRequest : public BatchRequest {
  public:
   static ResultT<RemoveRequest> fromVelocypack(VPackSlice);
@@ -294,10 +301,6 @@ void RestBatchDocumentHandler::updateDocumentsAction(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-// TODO This method should not generate the response but only return some
-// result(s) - the response-handling should be done in removeDocumentsAction()!
-// TODO This is more or less a copy&paste from the RestDocumentHandler.
-// However, our response looks quite different, so this has to be reimplemented.
 void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
     std::string const& collection, const RemoveRequest& request) {
   if (request.empty()) {
