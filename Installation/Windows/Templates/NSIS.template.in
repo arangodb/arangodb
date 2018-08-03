@@ -721,6 +721,8 @@ FunctionEnd
 
 Function UpgradeExisting
   ; Check whether we acutally should upgrade:
+  !insertmacro StripBackslash DATADIR
+  !insertmacro StripSlash DATADIR      
   DetailPrint "Checking whether an existing database needs upgrade: "
   ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
@@ -734,8 +736,6 @@ Function UpgradeExisting
     ${If} $AUTOMATIC_BACKUP == "1"
       ; We should and we should keep a backup:
       StrCpy $BackupPath "$DATADIR"
-      !insertmacro StripBackslash BackupPath
-      !insertmacro StripSlash BackupPath      
       ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
       StrCpy $BackupPath "$BackupPath_$2-$1-$0_$4_$5_$6"
       CreateDirectory "$BackupPath"

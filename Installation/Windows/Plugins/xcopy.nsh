@@ -1,5 +1,3 @@
-
-
 !macro xCopyDir sourceDir DestDir
   push ${sourceDir}
   push ${DestDir}
@@ -15,11 +13,16 @@ Function xCopyDir
       StrCmp $1 "" done
       StrCmp $1 "." skip
       StrCmp $1 ".." skip
-      IfFileExists "$3$1\*.*" IsDir 0
-      ExecWait '$5 /C xcopy /E /C /H /K /O /Y "$3$1" "$4\" '
+
+      IfFileExists "$3\$1\*.*" IsDir 0
+      DetailPrint "File Source: $3\$1"
+      DetailPrint "Dest: $4"
+      ExecWait '$5 /C xcopy /E /C /H /K /O /Y "$3\$1" "$4\" '
       goto skip
   IsDir:
-      ExecWait '$5 /C xcopy /E /C /H /K /O /Y "$3$1" "$4\$1\" '
+      DetailPrint "Dir Source: $3\$1"
+      DetailPrint "Dest: $4"
+      ExecWait '$5 /C xcopy /E /C /H /K /O /Y "$3\$1" "$4\$1\" '
   skip:
     FindNext $0 $1
       Goto loop
