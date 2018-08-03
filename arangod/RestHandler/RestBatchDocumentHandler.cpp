@@ -583,7 +583,6 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
 
   generateBatchResponse(
       opResults,
-      nullptr,
       trx->transactionContextPtr()->getVPackOptionsForDump()
   );
 }
@@ -618,16 +617,26 @@ void RestBatchDocumentHandler::generateBatchResponse(
     builder.close();
   }
 
-  //LOG_DEVEL << builder.slice().toJson();
   writeResult(builder.slice(), *options);
 }
 
 void RestBatchDocumentHandler::generateBatchResponse(
+    rest::ResponseCode restResponseCode,
+    VPackSlice result,
+    VPackOptions const* options
+  ){
+
+  TRI_ASSERT(result.isObject());
+
+  // set code
+  resetResponse(restResponseCode);
+  writeResult(result, *options);
+}
+
+void RestBatchDocumentHandler::generateBatchResponse(
     std::vector<OperationResult> const& opVec,
-    std::unique_ptr<VPackBuilder> extra,
     VPackOptions const* vOptions
   ){
-  //LOG_DEVEL << "enter generate batch response";
 
   TRI_ASSERT(opVec.size() > 0); //at least one result
   auto& opOptions = opVec[0]._options;
@@ -639,11 +648,9 @@ void RestBatchDocumentHandler::generateBatchResponse(
     restResponseCode = rest::ResponseCode::OK;
   }
 
-  // create and open extra if no open object has been passed
-  if (!extra) {
-    extra = std::make_unique<VPackBuilder>();
-    extra->openObject();
-  }
+  // create and open extra
+  auto extra = std::make_unique<VPackBuilder>();
+  extra->openObject();
 
 
   std::size_t indexOfFailed = 0;
@@ -744,13 +751,10 @@ void RestBatchDocumentHandler::generateBatchResponse(
 
   extra->add(StaticStrings::Error, VPackValue(foundFirstFailed));
 
-  //LOG_DEVEL << "about to close result and extra";
   TRI_ASSERT(result->isOpenArray());
   result->close();
   TRI_ASSERT(extra->isOpenObject());
   extra->close();
 
-  //LOG_DEVEL << "pre exit generate batch response";
   generateBatchResponse(restResponseCode, std::move(result), std::move(extra), vOptions);
-  //LOG_DEVEL << "exit generate batch response";
 }
