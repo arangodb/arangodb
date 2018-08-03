@@ -1,6 +1,5 @@
 R"=(
 {
-    "Plan": {
       "Databases": {
         "_system": {
           "id": "1",
@@ -1392,7 +1391,5 @@ R"=(
         "PRMR-2650441a-751c-46ef-b892-220609137ec3": "none",
         "PRMR-297e18fd-15cb-4b29-b5be-8beb06a3bcea": "none"
       }
-    }
-
 }
 )="

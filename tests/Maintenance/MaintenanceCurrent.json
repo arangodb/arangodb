@@ -1,6 +1,5 @@
 R"=(
 {
-    "Current": {
       "Databases": {
         "_system": {
           "PRMR-ab2038f2-b7bd-404b-a565-fce46c2af0fe": {
@@ -1169,6 +1168,5 @@ R"=(
       "NewServers": {},
       "AsyncReplication": {}
     }
-  }
 
 )="

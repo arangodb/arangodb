@@ -205,7 +205,7 @@ void handleLocalShard(
   bool drop = false;
   std::unordered_set<std::string>::const_iterator it;
 
-  std::string plannedLeader ;
+  std::string plannedLeader;
   if (shardMap.hasKey(colname) && shardMap.get(colname).isArray()) {
     plannedLeader = shardMap.get(colname)[0].copyString();
   }
@@ -240,12 +240,14 @@ void handleLocalShard(
             auto const& type = index.get(TYPE).copyString();
             if (type != PRIMARY && type != EDGE) {
               std::string const id = index.get(ID).copyString();
-              if (indis.find(colname + "/" + id) != indis.end()) {
+
+              if (indis.find(colname + "/" + id) != indis.end() ||
+                  indis.find(id)                 != indis.end()) {
                 indis.erase(id);
               } else {
                 actions.push_back(
                   ActionDescription(
-                    {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
+                  {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
               }
             }
           }

@@ -56,7 +56,8 @@ char const* dbs3Str =
 #include "MaintenanceDBServer0003.json"
 ;
 
-std::string PLAN_COL_PATH = "/Plan/Collections/";
+std::string PLAN_COL_PATH = "/Collections/";
+std::string PLAN_DB_PATH = "/Databases/";
 
 Node createNodeFromBuilder(Builder const& builder) {
 
@@ -222,7 +223,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   auto current = createNode(currentStr);
 
   std::vector<std::string> dbsIds;
-  for (auto const& dbs : plan("Plan/DBServers").children()) {
+  for (auto const& dbs : plan("DBServers").children()) {
     dbsIds.push_back(dbs.first);
   }
   
@@ -241,7 +242,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         node.first, actions);
 
       if (actions.size() != 0) {
-        //std::cout << actions << std::endl;
+        std::cout << actions << std::endl;
       }
       REQUIRE(actions.size() == 0);
     }
@@ -259,6 +260,9 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
       localNodes.begin()->first, actions);
 
+    if (actions.size() != 1) {
+      std::cout << actions << std::endl;
+    }
     REQUIRE(actions.size() == 1);
     REQUIRE(actions.front().name() == "DropDatabase");
     REQUIRE(actions.front().get("database") == "db3");
@@ -317,6 +321,17 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       *(plan(PLAN_COL_PATH  + "_system").children().begin()->second);
     plan(PLAN_COL_PATH  + "db3/1016001/shards") = shards.slice();
 
+    std::string dbpath = PLAN_DB_PATH + "db3";
+    Builder builder;
+    { VPackObjectBuilder o(&builder);
+      builder.add("id", VPackValue("2010463"));
+      builder.add(
+        "coordinator", VPackValue("CRDN-6cac2a33-d34b-47e3-8c8b-77705d6a0ca2"));
+      builder.add(VPackValue("options"));
+      { VPackObjectBuilder oo(&builder); }
+      builder.add("name", VPackValue("db3")); }
+    plan(dbpath) = builder.slice();
+
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
 
@@ -326,6 +341,9 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
 
+      if (actions.size() != 1) {
+        std::cout << actions << std::endl;
+      }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
         REQUIRE(action.name() == "CreateCollection");
@@ -349,6 +367,17 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       *(plan(PLAN_COL_PATH + "_system").children().begin()->second);
     plan(PLAN_COL_PATH + "db3/1016001/shards") = shards.slice();
 
+    std::string dbpath = PLAN_DB_PATH + "db3";
+    Builder builder;
+    { VPackObjectBuilder o(&builder);
+      builder.add("id", VPackValue("2010463"));
+      builder.add(
+        "coordinator", VPackValue("CRDN-6cac2a33-d34b-47e3-8c8b-77705d6a0ca2"));
+      builder.add(VPackValue("options"));
+      { VPackObjectBuilder oo(&builder); }
+      builder.add("name", VPackValue("db3")); }
+    plan(dbpath) = builder.slice();
+
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
 
@@ -358,6 +387,9 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
 
+      if (actions.size() != 1) {
+        std::cout << actions << std::endl;
+      }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
         REQUIRE(action.name() == "CreateCollection");
@@ -368,6 +400,17 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
   // Plan also now has db3 =====================================================
   SECTION("Add one collection to local") {
+
+    std::string dbpath = PLAN_DB_PATH + "db3";
+    Builder builder;
+    { VPackObjectBuilder o(&builder);
+      builder.add("id", VPackValue("2010463"));
+      builder.add(
+        "coordinator", VPackValue("CRDN-6cac2a33-d34b-47e3-8c8b-77705d6a0ca2"));
+      builder.add(VPackValue("options"));
+      { VPackObjectBuilder oo(&builder); }
+      builder.add("name", VPackValue("db3")); }
+    plan(dbpath) = builder.slice();
 
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
@@ -380,6 +423,9 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
       
+      if (actions.size() != 1) {
+        std::cout << actions << std::endl;
+      }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
         REQUIRE(action.name() == "DropCollection");
@@ -406,6 +452,9 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
 
+      if (actions.size() != 1) {
+        std::cout << actions << std::endl;
+      }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
         REQUIRE(action.name() == "UpdateCollection");
@@ -446,6 +495,17 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
     plan(PLAN_COL_PATH + "db3") =
       arangodb::velocypack::Slice::emptyObjectSlice();
+
+    std::string dbpath = PLAN_DB_PATH + "db3";
+    Builder builder;
+    { VPackObjectBuilder o(&builder);
+      builder.add("id", VPackValue("2010463"));
+      builder.add(
+        "coordinator", VPackValue("CRDN-6cac2a33-d34b-47e3-8c8b-77705d6a0ca2"));
+      builder.add(VPackValue("options"));
+      { VPackObjectBuilder oo(&builder); }
+      builder.add("name", VPackValue("db3")); }
+    plan(dbpath) = builder.slice();
 
     for (auto& node : localNodes) {
       
