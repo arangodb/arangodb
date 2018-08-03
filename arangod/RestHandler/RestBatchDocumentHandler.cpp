@@ -29,12 +29,15 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "Basics/StringRef.h"
+#include "Basics/TaggedParameters.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <boost/optional.hpp>
 #include <boost/range/join.hpp>
 #include <utility>
+
+#include "RestBatchDocumentHandlerHelper.h"
 
 using namespace arangodb;
 
@@ -45,233 +48,6 @@ using namespace arangodb;
 namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
-
-enum class BatchOperation {
-  READ,
-  INSERT,
-  REMOVE,
-  REPLACE,
-  UPDATE,
-  UPSERT,
-  REPSERT,
-};
-
-struct BatchOperationHash {
-  size_t operator()(BatchOperation value) const noexcept {
-    typedef std::underlying_type<decltype(value)>::type UnderlyingType;
-    return std::hash<UnderlyingType>()(UnderlyingType(value));
-  }
-};
-
-std::unordered_map<BatchOperation, std::string, BatchOperationHash>
-    // NOLINTNEXTLINE(cert-err58-cpp)
-    batchToStringMap{
-        {BatchOperation::READ, "read"},
-        {BatchOperation::INSERT, "insert"},
-        {BatchOperation::REMOVE, "remove"},
-        {BatchOperation::REPLACE, "replace"},
-        {BatchOperation::UPDATE, "update"},
-        {BatchOperation::UPSERT, "upsert"},
-        {BatchOperation::REPSERT, "repsert"},
-    };
-
-std::unordered_map<std::string, BatchOperation> stringToBatchMap;
-
-static std::string batchToString(BatchOperation op) {
-  return batchToStringMap.at(op);
-}
-
-static void ensureStringToBatchMapIsInitialized() {
-  if (!stringToBatchMap.empty()) {
-    return;
-  }
-
-  for (auto const& it : batchToStringMap) {
-    stringToBatchMap.insert({it.second, it.first});
-  }
-}
-
-static boost::optional<BatchOperation> stringToBatch(std::string const& op) {
-  ensureStringToBatchMapIsInitialized();
-
-  auto it = stringToBatchMap.find(op);
-
-  if (it == stringToBatchMap.end()) {
-    return boost::none;
-  }
-
-  return it->second;
-}
-}
-}
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Request structs and parsers
-////////////////////////////////////////////////////////////////////////////////
-
-namespace arangodb {
-namespace rest {
-namespace batch_document_handler {
-
-// The following stuff is for named parameters:
-template <typename Tag, typename Type>
-struct tagged_argument {
-  Type const& value;
-};
-
-template <typename Tag, typename Type>
-struct keyword {
-  // NOLINTNEXTLINE(cppcoreguidelines-c-copy-assignment-signature,misc-unconventional-assign-operator)
-  struct tagged_argument<Tag, Type> const operator=(Type const& arg) const {
-    return tagged_argument<Tag, Type>{arg};
-  }
-
-  static keyword<Tag, Type> const instance;
-};
-
-template <typename Tag, typename Type>
-struct keyword<Tag, Type> const keyword<Tag, Type>::instance = {};
-
-// Parameters
-namespace tag {
-struct required;
-struct optional;
-struct deprecated;
-}
-
-using AttributeSet = std::unordered_set<std::string>;
-
-namespace {
-keyword<tag::required, AttributeSet> _required = decltype(_required)::instance;
-keyword<tag::optional, AttributeSet> _optional = decltype(_optional)::instance;
-keyword<tag::deprecated, AttributeSet> _deprecated =
-    decltype(_deprecated)::instance;
-}
-// Named parameters end here
-
-// Helper functions for parsers:
-
-static Result expectedButGotValidationError(const char* expected,
-                                            const char* got) {
-  std::stringstream err;
-  err << "Expected type " << expected << ", got " << got << " instead.";
-  return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
-}
-
-static Result unexpectedAttributeError(AttributeSet const& required,
-                                       AttributeSet const& optional,
-                                       AttributeSet const& deprecated,
-                                       std::string const& got) {
-  std::stringstream err;
-  err << "Encountered unexpected attribute `" << got
-      << "`, allowed attributes are {";
-
-  auto attributes = boost::join(boost::join(required, optional), deprecated);
-  bool first = true;
-  for (auto const& it : attributes) {
-    if (!first) {
-      err << ", ";
-    }
-    first = false;
-
-    err << it;
-  }
-  err << "}.";
-
-  return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
-}
-
-static Result withMessagePrefix(std::string const& prefix, Result const& res) {
-  std::stringstream err;
-  err << prefix << ": " << res.errorMessage();
-  return Result{res.errorNumber(), err.str()};
-}
-
-static Result isObjectAndDoesNotHaveExtraAttributes(
-    VPackSlice slice, tagged_argument<tag::required, AttributeSet> required_,
-    tagged_argument<tag::optional, AttributeSet> optional_,
-    tagged_argument<tag::deprecated, AttributeSet> deprecated_) {
-  AttributeSet const& required = required_.value;
-  AttributeSet const& optional = optional_.value;
-  AttributeSet const& deprecated = deprecated_.value;
-
-  if (!slice.isObject()) {
-    return {expectedButGotValidationError("object", slice.typeName())};
-  }
-
-  auto contains = [](AttributeSet const& set,
-                     std::string const& needle) -> bool {
-    return set.find(needle) != set.end();
-  };
-
-  for (auto const& it : VPackObjectIterator(slice)) {
-    std::string const key = it.key.copyString();
-
-    if (contains(required, key) || contains(optional, key)) {
-      // ok, continue
-    } else if (contains(deprecated, key)) {
-      // ok but warn
-      // TODO some more context information would be nice, but this would have
-      // have to be passed down somehow.
-      LOG_TOPIC(WARN, Logger::FIXME)
-          << "Deprecated attribute `" << key
-          << "` encountered during request to "
-          << RestVocbaseBaseHandler::BATCH_DOCUMENT_PATH;
-    } else {
-      return unexpectedAttributeError(required, optional, deprecated, key);
-    }
-  }
-
-  return {TRI_ERROR_NO_ERROR};
-}
-
-class BatchRequest {
- public:
- protected:
-  BatchRequest() = default;
-};
-
-struct PatternWithKey {
- public:
-  static ResultT<PatternWithKey> fromVelocypack(VPackSlice slice);
-
- public:
-  std::string const key;
-  VPackSlice const pattern;
-
- protected:
-  // NOLINTNEXTLINE(modernize-pass-by-value)
-  PatternWithKey(std::string const& key_, VPackSlice const pattern_)
-      : key(key_), pattern(pattern_) {}
-
-  PatternWithKey(std::string&& key_, VPackSlice const pattern_)
-      : key(std::move(key_)), pattern(pattern_) {}
-};
-
-ResultT<PatternWithKey> PatternWithKey::fromVelocypack(VPackSlice const slice) {
-  if (!slice.isObject()) {
-    return {expectedButGotValidationError("object", slice.typeName())};
-  }
-
-  VPackSlice key = slice.get("_key");
-
-  if (key.isNone()) {
-    std::stringstream err;
-    err << "Attribute '_key' missing";
-    return ResultT<PatternWithKey>::error(TRI_ERROR_ARANGO_VALIDATION_FAILED,
-                                          err.str());
-  }
-
-  if (!key.isString()) {
-    Result error = expectedButGotValidationError("string", key.typeName());
-
-    return withMessagePrefix("When parsing attribute '_key'", error);
-  }
-
-  return ResultT<PatternWithKey>::success(
-      PatternWithKey(key.copyString(), slice));
-}
 
 class RemoveRequest : public BatchRequest {
  public:
@@ -297,10 +73,8 @@ class RemoveRequest : public BatchRequest {
 };
 
 ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
-  isObjectAndDoesNotHaveExtraAttributes(
-      slice, _required = AttributeSet{"data", "options"},
-      _optional = AttributeSet{}, _deprecated = AttributeSet{});
-
+  isObjectAndDoesNotHaveExtraAttributes(slice,
+      {"data", "options"} /*required*/, {} /*optional*/, {} /*deprecated*/);
   if (!slice.isObject()) {
     return expectedButGotValidationError("object", slice.typeName());
   }
@@ -315,9 +89,8 @@ ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
 
     size_t i = 0;
     for (auto const& dataItemSlice : VPackArrayIterator(dataSlice)) {
-      isObjectAndDoesNotHaveExtraAttributes(
-          dataItemSlice, _required = AttributeSet{"pattern"},
-          _optional = AttributeSet{}, _deprecated = AttributeSet{});
+      isObjectAndDoesNotHaveExtraAttributes( dataItemSlice,
+          {"pattern"} /*required*/, {} /*optional*/, {} /*deprecated*/);
 
       VPackSlice patternSlice = dataItemSlice.get("pattern");
 
@@ -346,9 +119,8 @@ ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
   auto optionsFromVelocypack =
       [](VPackSlice const optionsSlice) -> ResultT<OperationOptions> {
     // TODO add possible options
-    Result res = isObjectAndDoesNotHaveExtraAttributes(
-        optionsSlice, _required = AttributeSet{}, _optional = AttributeSet{},
-        _deprecated = AttributeSet{});
+    Result res = isObjectAndDoesNotHaveExtraAttributes( optionsSlice,
+          {} /*required*/, {} /*optional*/, {} /*deprecated*/);
     if (res.fail()) {
       return {res};
     }
@@ -573,12 +345,7 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
 
   res = trx->finish(result.result);
 
-  if (result.fail()) {
-    generateTransactionError(result);
-    return;
-  }
-
-  if (!res.ok()) {
+  if (result.ok() && !res.ok()) {
     std::string key;
     if (request.size() == 1) {
       key = request.getData().at(0).key;
@@ -589,11 +356,11 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
 
   opResults.push_back(std::move(result));
 
-  generateBatchResponseSuccess(
-      opResults,
-      nullptr,
-      trx->transactionContextPtr()->getVPackOptionsForDump()
-  );
+  // TEST TEST TEST
+  //generateBatchResponse(
+  //    opResults,
+  //    trx->transactionContextPtr()->getVPackOptionsForDump()
+  //);
 }
 
 void RestBatchDocumentHandler::generateBatchResponse(
@@ -605,6 +372,9 @@ void RestBatchDocumentHandler::generateBatchResponse(
 
   TRI_ASSERT(result->slice().isArray());
   TRI_ASSERT(extra->slice().isObject());
+
+  // set code
+  resetResponse(restResponseCode);
 
   VPackBuilder builder;
   {
@@ -622,116 +392,145 @@ void RestBatchDocumentHandler::generateBatchResponse(
     // close response object
     builder.close();
   }
-  resetResponse(restResponseCode);
 
-  LOG_DEVEL << builder.slice().toJson();
   writeResult(builder.slice(), *options);
 }
 
+void RestBatchDocumentHandler::generateBatchResponse(
+    rest::ResponseCode restResponseCode,
+    VPackSlice result,
+    VPackOptions const* options
+  ){
 
-// accepting a single operation result is not feasible because
-// there might be multiple transactions involved
-void RestBatchDocumentHandler::generateBatchResponseSuccess(
+  TRI_ASSERT(result.isObject());
+
+  // set code
+  resetResponse(restResponseCode);
+  writeResult(result, *options);
+}
+
+void RestBatchDocumentHandler::generateBatchResponse(
     std::vector<OperationResult> const& opVec,
-    std::unique_ptr<VPackBuilder> extra,
     VPackOptions const* vOptions
   ){
 
   TRI_ASSERT(opVec.size() > 0); //at least one result
   auto& opOptions = opVec[0]._options;
 
-  // set response code - it is assumend that all other options are the same
+  // set response code
+  // on error the rest code will be updated in the addErrorInfo lambda
   auto restResponseCode = rest::ResponseCode::ACCEPTED;
   if (opOptions.waitForSync) {
     restResponseCode = rest::ResponseCode::OK;
   }
 
-  // create and open extra if no open object has been passed
-  if (!extra) {
-    extra = std::make_unique<VPackBuilder>();
-    extra->openObject();
-  }
+  // create and open extra
+  auto extra = std::make_unique<VPackBuilder>();
+  extra->openObject();
 
-  extra->add(StaticStrings::Error, VPackValue(false));
-  extra->close();
+
+  std::size_t indexOfFailed = 0;
+  bool foundFirstFailed = false;
+  auto result = std::make_unique<VPackBuilder>();
+
+  auto addErrorInfo = [&extra, &indexOfFailed, &foundFirstFailed, &restResponseCode]
+    (VPackSlice errorSlice, std::string message = "defult error message", int errorNum = TRI_ERROR_FAILED) {
+    if(foundFirstFailed) {
+      return;
+    }
+    foundFirstFailed = true;
+
+    if(errorSlice.isNull()){
+      extra->add(StaticStrings::ErrorMessage
+                ,VPackValue(message));
+      extra->add(StaticStrings::ErrorNum
+                ,VPackValue(errorNum));
+    } else {
+      extra->add(StaticStrings::ErrorMessage
+                ,errorSlice.get(StaticStrings::ErrorMessage)); //if silent?
+      extra->add(StaticStrings::ErrorNum
+                ,errorSlice.get(StaticStrings::ErrorNum));
+    }
+    extra->add("errorDataIndex", VPackValue(indexOfFailed));
+    restResponseCode = arangodb::GeneralResponse::responseCode(errorNum);
+  };
+
+  // add single element to results
+  auto addSingle = [&](VPackSlice slice, OperationResult const& item){
+    if(slice.hasKey("error")){
+      if(slice.get("error").getBool()){
+        result->openObject();
+        result->add(StaticStrings::ErrorMessage
+                   ,slice.get(StaticStrings::ErrorMessage));
+        result->add(StaticStrings::ErrorNum
+                   ,slice.get(StaticStrings::ErrorNum));
+        result->close();
+        addErrorInfo(slice);
+      } else {
+        result->add(slice);
+      }
+    } else {
+      result->add(slice);
+    }
+
+    if(!foundFirstFailed) {
+      indexOfFailed++;
+    }
+  };
 
   // flatten result vector
-  auto  result = std::make_unique<VPackBuilder>();
+  // search for first failed result
   result->openArray();
   for(auto& item : opVec) {
-    auto slice = item.slice();
-    if (slice.isObject()) {
-      if(slice.hasKey(StaticStrings::KeyString)){
-        result->add(slice);
+    if (item.buffer) { //check for vaild buffer
+      VPackSlice slice = item.slice();
+      if (slice.isObject()) {
+        if(slice.hasKey(StaticStrings::KeyString)){
+          addSingle(slice, item);
+        } else {
+          generateError(rest::ResponseCode::I_AM_A_TEAPOT
+                       ,TRI_ERROR_FAILED
+                       ,"Invalid object in OperationResult"
+                       );
+        }
+      } else if (slice.isArray()){
+        for (auto r : VPackArrayIterator(slice)){
+          addSingle(r, item);
+        }
       } else {
-        generateError(rest::ResponseCode::I_AM_A_TEAPOT, TRI_ERROR_FAILED, "Invalid object in OperationResult");
+        //error - internal error?!
       }
-    } else if (slice.isArray()){
-      for (auto r : VPackArrayIterator(slice)){
-        result->add(r);
+    } else { // no valid buffer
+      addErrorInfo(VPackSlice::nullSlice()
+                  ,item.errorMessage()
+                  ,item.errorNumber()
+                  );
+    }// if(item.buffer)
+    if(item.fail()){
+      if(!foundFirstFailed) {
+      addErrorInfo(VPackSlice::nullSlice()
+                  ,item.errorMessage()
+                  ,item.errorNumber()
+                  );
       }
+      result->openObject();
+      result->add(StaticStrings::ErrorMessage
+                 ,VPackValue(item.errorMessage())
+                 );
+      result->add(StaticStrings::ErrorNum
+                 ,VPackValue(item.errorNumber())
+                 );
+      result->close();
+      TRI_ASSERT(result->isOpenArray());
     }
-  }
+  } // item : opVec
+
+  extra->add(StaticStrings::Error, VPackValue(foundFirstFailed));
+
+  TRI_ASSERT(result->isOpenArray());
   result->close();
-
-  LOG_DEVEL << result->slice().toJson();
-  generateBatchResponse(restResponseCode, std::move(result), std::move(extra), vOptions);
-}
-
-
-
-
-
-
-
-
-
-void RestBatchDocumentHandler::generateBatchResponseFailed(
-    OperationResult const& result,
-    std::unique_ptr<VPackBuilder> extra,
-    VPackOptions const* options
-  ){
-
-  auto restResponseCode = rest::ResponseCode::NOT_FOUND; //find first error
-
-  if (!extra) {
-    extra = std::make_unique<VPackBuilder>();
-    extra->openObject();
-  }
-
-  extra->add(StaticStrings::Error, VPackValue(false));
+  TRI_ASSERT(extra->isOpenObject());
   extra->close();
 
-  generateBatchResponse(restResponseCode, nullptr, std::move(extra), options);
+  generateBatchResponse(restResponseCode, std::move(result), std::move(extra), vOptions);
 }
-
-
-// void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
-//                                 std::string const& message) {
-//   resetResponse(code);
-//
-//   VPackBuffer<uint8_t> buffer;
-//   VPackBuilder builder(buffer);
-//   try {
-//     builder.add(VPackValue(VPackValueType::Object));
-//     builder.add(StaticStrings::Error, VPackValue(true));
-//     builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-//     builder.add(StaticStrings::Code,
-//                 VPackValue(static_cast<int>(code)));
-//     builder.add(StaticStrings::ErrorNum,
-//                 VPackValue(errorNumber));
-//     builder.close();
-//
-//     VPackOptions options(VPackOptions::Defaults);
-//     options.escapeUnicode = true;
-//
-//     TRI_ASSERT(options.escapeUnicode);
-//     if (_request != nullptr) {
-//       _response->setContentType(_request->contentTypeResponse());
-//     }
-//     _response->setPayload(std::move(buffer), true, options);
-//   } catch (...) {
-//     // exception while generating error
-//   }
-// }
-//

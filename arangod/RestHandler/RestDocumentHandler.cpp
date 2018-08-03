@@ -33,8 +33,10 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
-
 #include "Logger/Logger.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -629,4 +631,165 @@ bool RestDocumentHandler::readManyDocuments() {
 
   generateDocument(result.slice(), true, trx->transactionContextPtr()->getVPackOptionsForDump());
   return true;
+}
+
+//not in use - see header
+void RestDocumentHandler::generateBatchResponse(
+    rest::ResponseCode restResponseCode,
+    std::unique_ptr<VPackBuilder> result,
+    std::unique_ptr<VPackBuilder> extra,
+    VPackOptions const* options
+  ){
+
+  TRI_ASSERT(result->slice().isArray());
+  TRI_ASSERT(extra->slice().isObject());
+
+  // set code
+  resetResponse(restResponseCode);
+
+  VPackBuilder builder;
+  {
+    // open response object
+    builder.openObject();
+    // add result
+    builder.add("result", result->slice());
+    result.release();
+
+    // add other values
+    for(auto item : VPackObjectIterator(extra->slice())){
+      StringRef ref(item.key);
+      builder.add(ref.data(),ref.size(), item.value);
+    }
+    // close response object
+    builder.close();
+  }
+
+  writeResult(builder.slice(), *options);
+}
+
+//not in use - see header
+void RestDocumentHandler::generateBatchResponse(
+    std::vector<OperationResult> const& opVec,
+    VPackOptions const* vOptions
+  ){
+
+  TRI_ASSERT(opVec.size() > 0); //at least one result
+  auto& opOptions = opVec[0]._options;
+
+  // set response code
+  // on error the rest code will be updated in the addErrorInfo lambda
+  auto restResponseCode = rest::ResponseCode::ACCEPTED;
+  if (opOptions.waitForSync) {
+    restResponseCode = rest::ResponseCode::OK;
+  }
+
+  // create and open extra
+  auto extra = std::make_unique<VPackBuilder>();
+  extra->openObject();
+
+
+  std::size_t indexOfFailed = 0;
+  bool foundFirstFailed = false;
+  auto result = std::make_unique<VPackBuilder>();
+
+  auto addErrorInfo = [&extra, &indexOfFailed, &foundFirstFailed, &restResponseCode]
+    (VPackSlice errorSlice, std::string message = "defult error message", int errorNum = TRI_ERROR_FAILED) {
+    if(foundFirstFailed) {
+      return;
+    }
+    foundFirstFailed = true;
+
+    if(errorSlice.isNull()){
+      extra->add(StaticStrings::ErrorMessage
+                ,VPackValue(message));
+      extra->add(StaticStrings::ErrorNum
+                ,VPackValue(errorNum));
+    } else {
+      extra->add(StaticStrings::ErrorMessage
+                ,errorSlice.get(StaticStrings::ErrorMessage)); //if silent?
+      extra->add(StaticStrings::ErrorNum
+                ,errorSlice.get(StaticStrings::ErrorNum));
+    }
+    extra->add("errorDataIndex", VPackValue(indexOfFailed));
+    restResponseCode = arangodb::GeneralResponse::responseCode(errorNum);
+  };
+
+  // add single element to results
+  auto addSingle = [&](VPackSlice slice, OperationResult const& item){
+    if(slice.hasKey("error")){
+      if(slice.get("error").getBool()){
+        result->openObject();
+        result->add(StaticStrings::ErrorMessage
+                   ,slice.get(StaticStrings::ErrorMessage));
+        result->add(StaticStrings::ErrorNum
+                   ,slice.get(StaticStrings::ErrorNum));
+        result->close();
+        addErrorInfo(slice);
+      } else {
+        result->add(slice);
+      }
+    } else {
+      result->add(slice);
+    }
+
+    if(!foundFirstFailed) {
+      indexOfFailed++;
+    }
+  };
+
+  // flatten result vector
+  // search for first failed result
+  result->openArray();
+  for(auto& item : opVec) {
+    if (item.buffer) { //check for vaild buffer
+      VPackSlice slice = item.slice();
+      if (slice.isObject()) {
+        if(slice.hasKey(StaticStrings::KeyString)){
+          addSingle(slice, item);
+        } else {
+          generateError(rest::ResponseCode::I_AM_A_TEAPOT
+                       ,TRI_ERROR_FAILED
+                       ,"Invalid object in OperationResult"
+                       );
+        }
+      } else if (slice.isArray()){
+        for (auto r : VPackArrayIterator(slice)){
+          addSingle(r, item);
+        }
+      } else {
+        //error - internal error?!
+      }
+    } else { // no valid buffer
+      addErrorInfo(VPackSlice::nullSlice()
+                  ,item.errorMessage()
+                  ,item.errorNumber()
+                  );
+    }// if(item.buffer)
+    if(item.fail()){
+      if(!foundFirstFailed) {
+      addErrorInfo(VPackSlice::nullSlice()
+                  ,item.errorMessage()
+                  ,item.errorNumber()
+                  );
+      }
+      result->openObject();
+      result->add(StaticStrings::ErrorMessage
+                 ,VPackValue(item.errorMessage())
+                 );
+      result->add(StaticStrings::ErrorNum
+                 ,VPackValue(item.errorNumber())
+                 );
+      result->close();
+      TRI_ASSERT(result->isOpenArray());
+    }
+  } // item : opVec
+
+  extra->add(StaticStrings::Error, VPackValue(foundFirstFailed));
+
+  TRI_ASSERT(result->isOpenArray());
+  result->close();
+  TRI_ASSERT(extra->isOpenObject());
+  extra->close();
+
+  generateBatchResponse(restResponseCode, std::move(result), std::move(extra), vOptions);
 }

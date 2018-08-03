@@ -72,6 +72,19 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   // deletes a document
   bool deleteDocument();
+
+  // The following 2 functions perpare to move this
+  // handler to the new batch format.
+  // Hackstone wanted the code to be stored here!
+  void generateBatchResponse(
+      std::vector<OperationResult> const&,
+      VPackOptions const* options);
+
+  void generateBatchResponse(
+      rest::ResponseCode restResponseCode,
+      std::unique_ptr<VPackBuilder> result,
+      std::unique_ptr<VPackBuilder>,
+      VPackOptions const* options);
 };
 }
 

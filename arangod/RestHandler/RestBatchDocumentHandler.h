@@ -77,15 +77,15 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
       std::unique_ptr<VPackBuilder> extra,
       VPackOptions const* options);
 
-  void generateBatchResponseFailed(
-      OperationResult const& result,
-      std::unique_ptr<VPackBuilder> extra,
+  void generateBatchResponse(
+      rest::ResponseCode restResponseCode,
+      std::unique_ptr<VPackBuilder> result,
+      std::unique_ptr<VPackBuilder>, //other attributes
       VPackOptions const* options);
 
   void generateBatchResponse(
       rest::ResponseCode restResponseCode,
-      std::unique_ptr<VPackBuilder> result,
-      std::unique_ptr<VPackBuilder> extra,
+      VPackSlice result,
       VPackOptions const* options);
 };
 }
