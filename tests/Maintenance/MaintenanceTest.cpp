@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for ClusterComm
+/// @brief test suite for Cluster maintenance
 ///
 /// @file
 ///
@@ -353,7 +353,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   }
 
   // Plan also now has db3 =====================================================
-  SECTION("Add one more collection to plan") {
+  SECTION("Add one more collection to db3 in plan") {
 
     VPackBuilder shards;
     { VPackObjectBuilder s(&shards);
@@ -426,15 +426,23 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     }*/
   
   // Plan also now has db3 =====================================================
-  SECTION("Add one collection to local") {
+  SECTION("Modify journalSize in plan should update the according collection") {
 
     VPackBuilder v; v.add(VPackValue(0));
 
     for (auto node : localNodes) {
 
       std::vector<ActionDescription> actions;
-      
-      (*node.second("_system").children().begin()->second)("journalSize") =
+      std::string dbname = "_system";
+      std::string prop = "journalSize";
+
+      auto cb = 
+        node.second(dbname).children().begin()->second->toBuilder();
+      auto collection = cb.slice();
+      auto colname = collection.get(NAME).copyString();
+
+      plan(PLAN_COL_PATH + dbname + "/" + colname + "/" + "journalSize");
+      (*node.second(dbname).children().begin()->second)(prop) =
         v.slice();
 
       arangodb::maintenance::diffPlanLocal(
@@ -446,7 +454,12 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
+
         REQUIRE(action.name() == "UpdateCollection");
+        REQUIRE(action.get("collection") == colname);
+        REQUIRE(action.get("database") == dbname);
+        auto const props = action.properties();
+        REQUIRE(props->slice().get(prop).toJson() == v.slice().toJson());
       }
         
     }

@@ -62,6 +62,37 @@ static VPackValue const VP_SET("set");
 static std::string const OP("op");
 static std::string const UNDERSCORE("_");
 
+template<typename T> int indexOf(VPackSlice const& slice, T const& t) {
+  size_t counter = 0;
+  if (slice.isArray()) {
+    for (auto const& entry : VPackArrayIterator(slice)) {
+      if (entry.isNumber()) {
+        if (entry.getNumber<T>() == t) {
+          return counter;
+        }
+      }
+      counter++;
+    }
+    return -1;
+  }
+}
+
+template<> int indexOf<std::string> (
+  VPackSlice const& slice, std::string const& val) {
+  size_t counter = 0;
+  if (slice.isArray()) {
+    for (auto const& entry : VPackArrayIterator(slice)) {
+      if (entry.isString()) {
+        if (entry.copyString() == val) {
+          return counter;
+        }
+      }
+      counter++;
+    }
+  }
+  return -1;
+}
+
 std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
   auto builder = std::make_shared<VPackBuilder>();
   TRI_ASSERT(s.isObject());
@@ -451,8 +482,9 @@ VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
 }
 
 VPackBuilder assembleLocalCollectioInfo(
-  VPackSlice const& info, std::string const& database,
-  std::string const& shard, std::string const& ourselves) {
+  VPackSlice const& info, VPackSlice const& planServers,
+  std::string const& database, std::string const& shard,
+  std::string const& ourselves) {
 
   VPackBuilder ret;
 
@@ -489,9 +521,14 @@ VPackBuilder assembleLocalCollectioInfo(
     ret.add(VPackValue(SERVERS));
     { VPackArrayBuilder a(&ret);
       ret.add(VPackValue(ourselves));
-      for (auto const& server : *(collection->followers()->get())) {
-        ret.add(VPackValue(server));
-      }}}
+      auto current = *(collection->followers()->get());
+      for (auto const& server : VPackArrayIterator(planServers)) {
+        if (std::find(current.begin(), current.end(), server.copyString())
+            != current.end()) {
+          ret.add(server);
+        }
+      }
+    }}
   
   return ret;
   
@@ -539,6 +576,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
   std::string const& serverId, VPackBuilder& report) {
   arangodb::Result result;
 
+  auto shardMap = getShardMap(plan.get(COLLECTIONS));
+  auto pdbs = plan.get(COLLECTIONS);
 
   for (auto const& database : VPackObjectIterator(local)) {
     auto const dbName = database.key.copyString();
@@ -563,16 +602,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         continue;
       }
       auto const shSlice = shard.value;
-
       auto const colName = shSlice.get(PLAN_ID).copyString();
-      VPackBuilder error;
 
-  
+      VPackBuilder error;
       if (shSlice.get(LEADER).copyString().empty()) { // Leader
 
         auto const localCollectionInfo =
-          assembleLocalCollectioInfo(shSlice, dbName, shName, serverId);
-
+          assembleLocalCollectioInfo(
+            shSlice, shardMap.slice().get(shName), dbName, shName, serverId);
         // Collection no longer exists
         if (localCollectionInfo.slice().isEmptyObject()) { 
           continue;
@@ -625,8 +662,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
   }
   
   auto cdbs = cur.get(COLLECTIONS);
-  auto pdbs = plan.get(COLLECTIONS);
-  auto shardMap = getShardMap(plan.get(COLLECTIONS));
 
   // UpdateCurrentForDatabases
   for (auto const& database : VPackObjectIterator(cdbs)) { 
@@ -672,37 +707,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
 }
 
-
-template<typename T> int indexOf(VPackSlice const& slice, T const& t) {
-  size_t counter = 0;
-  if (slice.isArray()) {
-    for (auto const& entry : VPackArrayIterator(slice)) {
-      if (entry.isNumber()) {
-        if (entry.getNumber<T>() == t) {
-          return counter;
-        }
-      }
-      counter++;
-    }
-    return -1;
-  }
-}
-
-template<> int indexOf<std::string> (
-  VPackSlice const& slice, std::string const& val) {
-  size_t counter = 0;
-  if (slice.isArray()) {
-    for (auto const& entry : VPackArrayIterator(slice)) {
-      if (entry.isString()) {
-        if (entry.copyString() == val) {
-          return counter;
-        }
-      }
-      counter++;
-    }
-  }
-  return -1;
-}
 
 arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
