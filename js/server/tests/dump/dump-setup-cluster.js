@@ -219,12 +219,10 @@ function setupSatelliteCollections() {
     c.save({ _key: "text" + i, value: t });
   });
 
-  setupSmartGraph();
-  setupSatelliteCollections();
-
   // setup a view
   try {
-    db._create("UnitTestsDumpViewCollection");
+    var c = db._create("UnitTestsDumpViewCollection");
+
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});
     view.properties({ links: {
       "UnitTestsDumpViewCollection": { 
@@ -234,7 +232,15 @@ function setupSatelliteCollections() {
         }
       }
     } });
+
+    /*for (i = 0; i < 10000; ++i) {
+      c.save({ _key: "test" + i, value: i });
+    }*/
   } catch (err) { }
+
+  setupSmartGraph();
+  setupSatelliteCollections();
+
 })();
 
 return {
