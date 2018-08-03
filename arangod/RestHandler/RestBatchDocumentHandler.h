@@ -39,6 +39,25 @@ enum class BatchOperation;
 }
 }
 
+struct ExtraInformation {
+  std::string errorMessage = "";
+  int errorNumber = TRI_ERROR_NO_ERROR;
+  rest::ResponseCode code = rest::ResponseCode::ACCEPTED ;
+  std::size_t errorDataIndex;
+  bool isATransactionError = false;
+
+  void addToOpenOject(VPackBuilder& builder){
+    builder.add(StaticStrings::Error, VPackValue(errorOccured()));
+    if(errorOccured()) {
+      builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
+      if(!isATransactionError) {
+        builder.add("errorDataIndex", VPackValue(errorDataIndex));
+      }
+    }
+  }
+  bool errorOccured(){ return TRI_ERROR_NO_ERROR != errorNumber; }
+};
+
 class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
  public:
   RestBatchDocumentHandler(GeneralRequest*, GeneralResponse*);
@@ -77,9 +96,8 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
       VPackOptions const* options);
 
   void generateBatchResponse(
-      rest::ResponseCode restResponseCode,
       std::unique_ptr<VPackBuilder> result,
-      std::unique_ptr<VPackBuilder>, //other attributes
+      ExtraInformation&&,
       VPackOptions const* options);
 
   void generateBatchResponse(
