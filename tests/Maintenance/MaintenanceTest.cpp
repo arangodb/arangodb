@@ -399,18 +399,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   }
 
   // Plan also now has db3 =====================================================
-  SECTION("Add one collection to local") {
-
-    std::string dbpath = PLAN_DB_PATH + "db3";
-    Builder builder;
-    { VPackObjectBuilder o(&builder);
-      builder.add("id", VPackValue("2010463"));
-      builder.add(
-        "coordinator", VPackValue("CRDN-6cac2a33-d34b-47e3-8c8b-77705d6a0ca2"));
-      builder.add(VPackValue("options"));
-      { VPackObjectBuilder oo(&builder); }
-      builder.add("name", VPackValue("db3")); }
-    plan(dbpath) = builder.slice();
+/*  SECTION("Add one collection to local") {
 
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
@@ -434,7 +423,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       }
     }
     
-  }
+    }*/
   
   // Plan also now has db3 =====================================================
   SECTION("Add one collection to local") {
