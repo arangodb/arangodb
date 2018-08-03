@@ -160,7 +160,7 @@ function PregelAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertTrue(result.body > 1)
+      assertTrue(result.body > 1);
 
       const taskId = result.body;
       url = `${baseUrl}/${taskId}`;
@@ -194,7 +194,7 @@ function PregelAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertTrue(result.body > 1)
+      assertTrue(result.body > 1);
 
       const taskId = result.body;
       url = `${baseUrl}/${taskId}`;
