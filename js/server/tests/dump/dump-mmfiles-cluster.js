@@ -317,7 +317,7 @@ function dumpTestSuite () {
         assertEqual(t, doc.value);
       });
 
-    }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test view restoring
@@ -339,8 +339,10 @@ function dumpTestSuite () {
       assertEqual(Object.keys(props.links).length, 1);
       assertTrue(props.hasOwnProperty("links"));
       assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
 
-      // TODO: uncomment when view restoring in cluster will work
       /*var res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 0 RETURN doc").toArray();
       assertEqual(10000, res.length);
 
@@ -639,7 +641,7 @@ function dumpTestEnterpriseSuite () {
       assertEqual("9", res[1].value);
       assertEqual("11", res[2].value);
       assertEqual("12", res[3].value);
-    }
+    },
 
   };
 

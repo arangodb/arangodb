@@ -222,11 +222,9 @@
     c.save({ _key: "test" + i, value: i });
   }
 
+  // setup a view
   try {
     c = db._create("UnitTestsDumpViewCollection");
-    for (i = 0; i < 10000; ++i) {
-      c.save({ _key: "test" + i, value: i });
-    }
 
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});
     view.properties({ links: {
@@ -237,6 +235,10 @@
         }
       }
     } });
+
+    for (i = 0; i < 10000; ++i) {
+      c.save({ _key: "test" + i, value: i });
+    }
   } catch (err) { }
 
 })();

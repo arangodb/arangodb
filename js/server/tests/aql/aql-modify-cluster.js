@@ -509,6 +509,9 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertDouble : function () {
+      c1.truncate();
+      c2.truncate();
+
       const query = `LET d1 = {name : 'foo'}
                      LET d2 = {name : 'bar'}
                      INSERT d1 IN @@c1
@@ -526,6 +529,32 @@ function ahuacatlInsertSuite () {
       assertEqual(1, c2.count());
     },
 
+    testInsertTripleWithSub : function () {
+      c1.truncate();
+      c2.truncate();
+
+      c3.drop();
+      c3 = db._createEdgeCollection(cn3);
+
+      const query = `WITH @@usersCollection, @@emailsCollection, @@userToEmailEdges
+                     LET user = FIRST(INSERT @user IN @@usersCollection RETURN NEW) 
+                     INSERT @email IN @@emailsCollection
+                     INSERT @edge IN @@userToEmailEdges
+                     RETURN user`;
+      const bind = { "@usersCollection" : cn1,
+                     "@emailsCollection" : cn2,
+                     "@userToEmailEdges" : cn3,
+                     "user" : { "name" : "ulf" },
+                     "email" : { "addr" : "ulf@ulf.de"},
+                     "edge" : { "_from" : "usersCollection/abc" , "_to" : "emailsCollection/def"}
+                   };
+      const options = {optimizer : { rules : ["+all"] } };
+
+      db._query(query, bind, options);
+      assertEqual(1, c1.count());
+      assertEqual(1, c2.count());
+      assertEqual(1, c3.count());
+    },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////

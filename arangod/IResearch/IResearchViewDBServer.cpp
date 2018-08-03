@@ -710,6 +710,9 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   {
     SCOPED_LOCK(_meta->write());
 
+    // reset non-updatable values to match current meta
+    meta._locale = _meta->_locale;
+
     static_cast<IResearchViewMeta&>(*_meta) = std::move(meta);
   }
 

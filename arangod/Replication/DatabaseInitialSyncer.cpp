@@ -312,9 +312,16 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
 /// @brief send a WAL flush command
 Result DatabaseInitialSyncer::sendFlush() {
   std::string const url = "/_admin/wal/flush";
-  std::string const body =
-      "{\"waitForSync\":true,\"waitForCollector\":true,"
-      "\"waitForCollectorQueue\":true}";
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("waitForSync", VPackValue(true));
+  builder.add("waitForCollector", VPackValue(true));
+  builder.add("waitForCollectorQueue", VPackValue(true));
+  builder.close();
+
+  VPackSlice bodySlice = builder.slice();
+  std::string const body = bodySlice.toJson();
 
   // send request
   _config.progress.set("sending WAL flush command to url " + url);
@@ -467,6 +474,11 @@ void DatabaseInitialSyncer::orderDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
                                            uint64_t chunkSize) {
   
   using ::arangodb::basics::StringUtils::itoa;
+      
+  if (isAborted()) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED), nullptr);
+    return;
+  }
   
   std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
     
@@ -708,7 +720,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       }
     }
     
-    if (checkMore) {
+    if (checkMore && !isAborted()) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
       
@@ -737,16 +749,14 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::EXCLUSIVE
     );
 
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
-    // do not the operations in our own transactions
+    // do not index the operations in our own transaction
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
-    // do not check for conflicts, as we have an exclusive lock
-    trx.addHint(transaction::Hints::Hint::NO_TRACKING);
 
     // smaller batch sizes should work better here
 #if VPACK_DUMP
@@ -800,8 +810,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       return Result();
     }
 
-
     batch++;
+    
+    if (isAborted()) {
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+    }
   }
 
   TRI_ASSERT(false);
@@ -955,7 +968,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();
@@ -1015,7 +1028,7 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 }
 
 /// @brief determine the number of documents in a collection
-int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
+int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(vocbase()),
     col,
@@ -1027,7 +1040,7 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
     return -1;
   }
 
-  OperationResult result = trx.count(col->name(), false);
+  auto result = trx.count(col.name(), false);
 
   if (result.result.fail()) {
     return -1;
@@ -1145,7 +1158,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
             SingleCollectionTransaction trx(
               transaction::StandaloneContext::Create(vocbase()),
-              col,
+              *col,
               AccessMode::Type::EXCLUSIVE
             );
             Result res = trx.begin();
@@ -1245,18 +1258,19 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                         parameters.toJson());
     }
 
-    Result res;
     std::string const& masterColl =
         !masterUuid.empty() ? masterUuid : itoa(masterCid);
-
-    if (incremental && getSize(col) > 0) {
-      res = fetchCollectionSync(col, masterColl, _config.master.lastLogTick);
-    } else {
-      res = fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
-    }
+    auto res = incremental && getSize(*col) > 0
+             ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
+             : fetchCollectionDump(col, masterColl, _config.master.lastLogTick)
+             ;
 
     if (!res.ok()) {
       return res;
+    }
+    
+    if (isAborted()) {
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     if (masterName == TRI_COL_NAME_USERS) {
@@ -1279,7 +1293,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       try {
         SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(vocbase()),
-          col,
+          *col,
           AccessMode::Type::EXCLUSIVE
         );
 

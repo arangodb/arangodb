@@ -119,18 +119,9 @@ void TailingSyncer::setProgress(std::string const& msg) {
 }
 
 /// @brief abort all ongoing transactions
-void TailingSyncer::abortOngoingTransactions() {
+void TailingSyncer::abortOngoingTransactions() noexcept {
   try {
     // abort all running transactions
-    for (auto& it : _ongoingTransactions) {
-      auto trx = it.second;
-
-      if (trx != nullptr) {
-        trx->abort();
-        delete trx;
-      }
-    }
-
     _ongoingTransactions.clear();
   } catch (...) {
     // ignore errors here
@@ -364,7 +355,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
           std::string("unexpected transaction ") + StringUtils::itoa(tid));
     }
 
-    auto trx = (*it).second;
+    std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
 
     if (trx == nullptr) {
       return Result(
@@ -392,7 +383,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // update the apply tick for all standalone operations
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(*vocbase),
-    coll,
+    *coll,
     AccessMode::Type::EXCLUSIVE
   );
 
@@ -455,14 +446,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   if (it != _ongoingTransactions.end()) {
     // found a previous version of the same transaction - should not happen...
-    auto trx = (*it).second;
-
-    _ongoingTransactions.erase(tid);
-
-    if (trx != nullptr) {
-      // abort ongoing trx
-      delete trx;
-    }
+    _ongoingTransactions.erase(it);
   }
 
   TRI_ASSERT(tid > 0);
@@ -474,8 +458,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   Result res = trx->begin();
 
   if (res.ok()) {
-    _ongoingTransactions[tid] = trx.get();
-    trx.release();
+    _ongoingTransactions[tid] = std::move(trx);
   }
 
   return res;
@@ -498,7 +481,7 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   auto it = _ongoingTransactions.find(tid);
 
-  if (it == _ongoingTransactions.end()) {
+  if (it == _ongoingTransactions.end() || (*it).second == nullptr) {
     // invalid state, no transaction was started.
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
@@ -508,17 +491,8 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "aborting replication transaction " << tid;
 
-  auto trx = (*it).second;
-  _ongoingTransactions.erase(tid);
-
-  if (trx != nullptr) {
-    Result res = trx->abort();
-    delete trx;
-
-    return res;
-  }
-
-  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
+  _ongoingTransactions.erase(it);
+  return Result();
 }
 
 /// @brief commits a transaction, based on the VelocyPack provided
@@ -538,7 +512,7 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   auto it = _ongoingTransactions.find(tid);
 
-  if (it == _ongoingTransactions.end()) {
+  if (it == _ongoingTransactions.end() || (*it).second == nullptr) {
     // invalid state, no transaction was started.
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
@@ -548,17 +522,11 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "committing replication transaction " << tid;
 
-  auto trx = (*it).second;
-  _ongoingTransactions.erase(tid);
-
-  if (trx != nullptr) {
-    Result res = trx->commit();
-    delete trx;
-
-    return res;
-  }
-
-  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
+  std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
+  Result res = trx->commit();
+  
+  _ongoingTransactions.erase(it);
+  return res;
 }
 
 /// @brief renames a collection, based on the VelocyPack provided
@@ -1575,28 +1543,15 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
 
   setProgress(progress);
 
-  std::string body;
-
-  if (!_ongoingTransactions.empty()) {
-    // stringify list of open transactions
-    body.append("[\"");
-
-    bool first = true;
-
-    for (auto& it : _ongoingTransactions) {
-      if (first) {
-        first = false;
-      } else {
-        body.append("\",\"");
-      }
-
-      body.append(StringUtils::itoa(it.first));
-    }
-
-    body.append("\"]");
-  } else {
-    body.append("[]");
+  // stringify list of open transactions
+  VPackBuilder builder;
+  builder.openArray();
+  for (auto& it : _ongoingTransactions) {
+    builder.add(VPackValue(StringUtils::itoa(it.first)));
   }
+  builder.close();
+  
+  std::string body = builder.slice().toJson();
 
   std::unique_ptr<SimpleHttpResult> response(_state.connection.client->request(
       rest::RequestType::PUT, url, body.c_str(), body.size()));

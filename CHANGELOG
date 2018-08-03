@@ -1,6 +1,52 @@
 devel
 -----
 
+* Added C++ implementation, load balancer support, and user restriction to Pregel API.
+
+  If an execution is accessed on a different coordinator than where it was
+  created, the request(s) will be forwarded to the correct coordinator. If an
+  execution is accessed by a different user than the one who created it, the
+  request will be denied.
+
+* the AQL editor in the web UI now supports detailed AQL query profiling
+
+* fixed issue #5884: Subquery nodes are no longer created on DBServers
+
+* intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries 
+  (not within a JS transaction), standalone truncate as well as for the "import" API
+
+* the AQL editor in the web UI now supports GeoJSON types and is able to render them.
+
+* fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+
+* PR #5552: add "--latency true" option to arangoimport.  Lists microsecond latency
+
+* added `"pbkdf2"` method to `@arangodb/foxx/auth` module
+
+* the `@arangodb/foxx/auth` module now uses a different method to generate salts,
+  so salts are no longer guaranteed to be alphanumeric
+
+* fixed internal issue #2567: the Web UI was showing the possibility to move a shard
+  from a follower to the current leader
+
+* Renamed RocksDB engine-specific statistics figure `rocksdb.block-cache-used`
+  to `rocksdb.block-cache-usage` in output of `db._engineStats()`
+
+  The new figure name is in line with the statistics that the RocksDB library
+  provides in its new versions.
+
+* Added RocksDB engine-specific statistics figures `rocksdb.block-cache-capacity`,
+  `rocksdb.block-cache-pinned-usage` as well as level-specific figures
+  `rocksdb.num-files-at-level` and `rocksdb.compression-ratio-at-level` in
+  output of `db._engineStats()`
+
+* Added RocksDB-engine configuration option `--rocksdb.block-align-data-blocks`
+
+  If set to true, data blocks are aligned on lesser of page size and block size,
+  which may waste some memory but may reduce the number of cross-page I/Os operations.
+
+* Usage RocksDB format version 3 for new block-based tables
+
 * Bugfix: The AQL syntax variants `UPDATE/REPLACE k WITH d` now correctly take
   _rev from k instead of d (when ignoreRevs is false) and ignore d._rev.
 
@@ -66,6 +112,9 @@ devel
 
   Automatic synchronization is performed by a background thread. The default
   sync interval is 100 milliseconds.
+
+  Note: this option is not supported on Windows platforms. Setting the sync
+  interval to a value greater 0 will produce a startup warning.
 
 * added AQL functions `TO_BASE64`, `TO_HEX`, `ENCODE_URI_COMPONENT` and `SOUNDEX`
 
@@ -180,8 +229,6 @@ devel
 
   This saves copying the document data from the subquery to the outer scope and may
   enable follow-up optimizations.
-
-* fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header

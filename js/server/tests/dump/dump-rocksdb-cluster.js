@@ -299,12 +299,13 @@ function dumpTestSuite () {
         assertEqual(t, doc.value);
       });
 
-    }
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test view restoring
-////////////////////////////////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test view restoring
+    ////////////////////////////////////////////////////////////////////////////////
+    
     testView : function () {
       try {
         db._createView("check", "arangosearch", {});
@@ -321,8 +322,10 @@ function dumpTestSuite () {
       assertEqual(Object.keys(props.links).length, 1);
       assertTrue(props.hasOwnProperty("links"));
       assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
 
-      // TODO: uncomment when view restoring in cluster will work
       /*var res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 0 RETURN doc").toArray();
       assertEqual(10000, res.length);
 

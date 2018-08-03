@@ -81,12 +81,12 @@ uint32_t RestTasksHandler::forwardingTarget() {
       type != rest::RequestType::PUT &&
       type != rest::RequestType::GET &&
       type != rest::RequestType::DELETE_REQ) {
-    return false;
+    return 0;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return false;
+    return 0;
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
