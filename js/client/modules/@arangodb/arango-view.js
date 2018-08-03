@@ -219,8 +219,7 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
   const attributes = {
     'commit': true,
     'links': true,
-    'locale': true,
-    'type': true,
+    'locale': true
   };
 
   var result = {};
