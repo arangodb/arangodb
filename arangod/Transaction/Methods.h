@@ -359,19 +359,19 @@ class Methods {
 OperationResult removeBatch(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions&         options
+  OperationOptions const&   options
 );
 
 OperationResult removeBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,          // the incoming request
-  OperationOptions&         options           // the parsed options part
+  OperationOptions const&   options           // the parsed options part
 );
 
 OperationResult removeBatchCoordinator(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions&         options
+  OperationOptions const&   options
 );
 
   /// @brief fetches all documents in a collection

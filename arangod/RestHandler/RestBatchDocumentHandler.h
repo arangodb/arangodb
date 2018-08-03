@@ -86,8 +86,7 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
   bool modifyDocument(bool);
 
   void doRemoveDocuments(
-   // std::string const &collection, const rest::batch_document_handler::BatchRequest &request
-    std::string const &collection, const rest::batch_document_handler::BatchRequest &request, VPackSlice vpack_request
+    std::string const &collection, const rest::batch_document_handler::BatchRequest &request
   );
 
 

@@ -2269,6 +2269,7 @@ OperationResult transaction::Methods::modifyBatchLocal(
   ///     - if there was an error and its the first, remember the error and its position
   ///
   /// Thus introduce a processBatchLocal which accepts a lambda function
+  return OperationResult{TRI_ERROR_INTERNAL};
 }
 /*
 OperationResult transaction::Methods::processBatchLocal(
@@ -2319,7 +2320,7 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 OperationResult transaction::Methods::removeBatch(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions&         options
+  OperationOptions const&         options
 ) {
 
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
@@ -2366,7 +2367,7 @@ OperationResult transaction::Methods::removeCoordinator(
 OperationResult transaction::Methods::removeBatchCoordinator(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions&         options
+  OperationOptions const&         options
 ) {
 
   rest::ResponseCode responseCode;
@@ -2728,7 +2729,7 @@ OperationResult transaction::Methods::removeLocal(
 OperationResult transaction::Methods::removeBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,          // the incoming request
-  OperationOptions&         options           // the parsed options part
+  OperationOptions const&         options           // the parsed options part
 ) {
   Result result;
 
@@ -2789,7 +2790,8 @@ OperationResult transaction::Methods::removeBatchLocal(
           entryResult.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 
         } else {
-          entryResult = collection->remove(this, key, options, resultMarkerTick,
+          auto optionsCopy = options;
+          entryResult = collection->remove(this, key, optionsCopy, resultMarkerTick,
                                            false, actualRevision, previous);
         }
       }

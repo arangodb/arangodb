@@ -179,7 +179,7 @@ struct BatchRequest {
     }
     auto const& options = maybeOptions.get();
 
-    return BatchRequest(std::move(data), options, batchOp);
+    return BatchRequest(slice, std::move(data), options, batchOp);
   }
 
   // builds an array of "_key"s, or a single string in case data.size() == 1
@@ -217,7 +217,8 @@ struct BatchRequest {
   bool empty() const { return data.empty(); }
   size_t size() const { return data.size(); }
 
-  explicit BatchRequest(std::vector<PatternWithKey>&& data_
+  explicit BatchRequest(VPackSlice slice
+                       ,std::vector<PatternWithKey>&& data_
                        ,OperationOptions options_
                        ,BatchOperation op)
            :data(data_)
@@ -228,10 +229,8 @@ struct BatchRequest {
   std::vector<PatternWithKey> const data;
   OperationOptions const options;
   BatchOperation operation;
+  VPackSlice payload;
 };
-
-
-
 
 }
 }
@@ -305,17 +304,16 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
 
 void RestBatchDocumentHandler::removeDocumentsAction(
     std::string const& collection) {
-  auto parseResult = BatchRequest::fromVelocypack(_request->payload(), BatchOperation::REMOVE);
 
+  //parse and validate result
+  auto parseResult = BatchRequest::fromVelocypack(_request->payload(), BatchOperation::REMOVE);
   if (parseResult.fail()) {
     generateError(parseResult);
     return;
   }
-  BatchRequest const& removeRequest = parseResult.get();
 
-  doRemoveDocuments(collection, removeRequest, _request->payload());
-
-  // TODO take a result from doRemoveDocuments and generate a response with it.
+  BatchRequest const& request = parseResult.get();
+  doRemoveDocuments(collection, request);
 }
 
 void RestBatchDocumentHandler::replaceDocumentsAction(
@@ -331,8 +329,7 @@ void RestBatchDocumentHandler::updateDocumentsAction(
 }
 
 void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
-    std::string const& collection, const BatchRequest& request,
-    VPackSlice vpack_request) {
+    std::string const& collection, const BatchRequest& request) {
   if (request.empty()) {
     // If request.data = [], the operation succeeds unless the collection lookup
     // fails.
@@ -347,12 +344,6 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
     return;
   }
 
-  //VPackBuilder searchBuilder;
-  //VPackBuilder patternBuilder;
-  //request.toSearch(searchBuilder);
-  //request.toPattern(patternBuilder);
-  //VPackSlice const search = searchBuilder.slice();
-  //VPackSlice const pattern = patternBuilder.slice();
   std::vector<OperationResult> opResults; // will hold the result
 
   auto trx = createTransaction(collection, AccessMode::Type::WRITE);
@@ -363,30 +354,26 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
   //   trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   // }
 
-  Result res = trx->begin();
+  Result transactionResult = trx->begin();
 
-  if (!res.ok()) {
-    generateTransactionError(collection, res, "");
+  if (!transactionResult.ok()) {
+    generateTransactionError(collection, transactionResult, "");
     return;
   }
 
-  OperationOptions options = request.options;
-  OperationResult result =
- // trx->remove(collection, search, request.options, pattern);
- trx->removeBatch(collection, vpack_request, options);
+  auto operationResult = trx->removeBatch(collection, request.payload, request.options);
+  transactionResult = trx->finish(operationResult.result);
 
-  res = trx->finish(result.result);
-
-  if (result.ok() && !res.ok()) {
+  if (operationResult.ok() && transactionResult.fail()) {
     std::string key;
     if (request.size() == 1) {
       key = request.data.at(0).key;
     }
-    generateTransactionError(collection, res, key);
+    generateTransactionError(collection, transactionResult, key);
     return;
   }
 
-  opResults.push_back(std::move(result));
+  opResults.push_back(std::move(operationResult));
 
   generateBatchResponse(
       opResults,
