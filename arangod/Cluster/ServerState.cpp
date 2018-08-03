@@ -162,7 +162,10 @@ std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
 ServerState::RoleEnum ServerState::stringToRole(std::string const& value) {
   if (value == "SINGLE") {
     return ROLE_SINGLE;
-  } else if (value == "PRIMARY") {
+  } else if (value == "PRIMARY" || value == "DBSERVER") {
+    // note: DBSERVER is an alias for PRIMARY
+    // internally and in all API values returned we will still use PRIMARY
+    // for compatibility reasons
     return ROLE_PRIMARY;
   } else if (value == "COORDINATOR") {
     return ROLE_COORDINATOR;
