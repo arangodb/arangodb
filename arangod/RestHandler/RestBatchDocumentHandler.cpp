@@ -112,9 +112,8 @@ optionsFromVelocypack(VPackSlice const optionsSlice
 
 
 struct BatchRequest {
-  static ResultT<BatchRequest> fromVelocypack(VPackSlice const payload, BatchOperation batchOp) {
+  static ResultT<BatchRequest> fromVelocypack(VPackSlice const slice, BatchOperation batchOp) {
 
-    auto slice = payload;
     AttributeSet required, optional, deprecated;
 
     switch (batchOp) {
@@ -179,7 +178,7 @@ struct BatchRequest {
     }
     auto const& options = maybeOptions.get();
 
-    return BatchRequest(payload, std::move(data), options, batchOp);
+    return BatchRequest(slice, std::move(data), options, batchOp);
   }
 
   // builds an array of "_key"s, or a single string in case data.size() == 1
@@ -224,6 +223,7 @@ struct BatchRequest {
            :data(data_)
            ,options(std::move(options_))
            ,operation(op)
+           ,payload(slice)
   {};
 
   std::vector<PatternWithKey> const data;
