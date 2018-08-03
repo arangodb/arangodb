@@ -1,6 +1,13 @@
 devel
 -----
 
+* Added C++ implementation, load balancer support, and user restriction to Pregel API.
+
+  If an execution is accessed on a different coordinator than where it was
+  created, the request(s) will be forwarded to the correct coordinator. If an
+  execution is accessed by a different user than the one who created it, the
+  request will be denied.
+
 * the AQL editor in the web UI now supports detailed AQL query profiling
 
 * fixed issue #5884: Subquery nodes are no longer created on DBServers
@@ -20,11 +27,11 @@ devel
   so salts are no longer guaranteed to be alphanumeric
 
 * fixed internal issue #2567: the Web UI was showing the possibility to move a shard
-  from a follower to the current leader 
+  from a follower to the current leader
 
 * Renamed RocksDB engine-specific statistics figure `rocksdb.block-cache-used`
   to `rocksdb.block-cache-usage` in output of `db._engineStats()`
-  
+
   The new figure name is in line with the statistics that the RocksDB library
   provides in its new versions.
 

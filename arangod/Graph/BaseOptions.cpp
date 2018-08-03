@@ -401,7 +401,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
                                          std::vector<LookupInfo>& list) {
   TRI_ASSERT(mmdr != nullptr);
   auto allCursor =
-      std::make_unique<SingleServerEdgeCursor>(mmdr, this, list.size());
+      std::make_unique<SingleServerEdgeCursor>(this, list.size());
   auto& opCursors = allCursor->getCursors();
   for (auto& info : list) {
     auto& node = info.indexCondition;

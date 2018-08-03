@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,29 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_INCREMENTAL_SYNC_H
-#define ARANGOD_ROCKSDB_ROCKSDB_INCREMENTAL_SYNC_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_CONTROL_PREGEL_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_CONTROL_PREGEL_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "Replication/DatabaseInitialSyncer.h"
-#include "VocBase/LogicalCollection.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-class LogicalCollection;
+class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  RestControlPregelHandler(GeneralRequest*, GeneralResponse*);
 
-Result syncChunkRocksDB(
-    DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-    InitialSyncerIncrementalSyncStats& stats,
-    std::string const& keysId, uint64_t chunkId, std::string const& lowString,
-    std::string const& highString,
-    std::vector<std::string> const& markers);
+ public:
+  char const* name() const override final { return "RestControlPregelHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
 
-Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
-                             arangodb::LogicalCollection* col,
-                             std::string const& keysId);
-}
+ protected:
+  virtual uint32_t forwardingTarget() override;
+
+ private:
+  void startExecution();
+  void getExecutionStatus();
+  void cancelExecution();
+};
+}  // namespace arangodb
 
 #endif

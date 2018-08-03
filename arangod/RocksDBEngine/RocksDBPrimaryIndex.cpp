@@ -251,6 +251,40 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   return RocksDBValue::documentId(value);
 }
 
+/// @brief reads a revision id from the primary index 
+/// if the document does not exist, this function will return false
+/// if the document exists, the function will return true
+/// the revision id will only be non-zero if the primary index
+/// value contains the document's revision id. note that this is not
+/// the case for older collections
+/// in this case the caller must fetch the revision id from the actual
+/// document
+bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
+                                         arangodb::StringRef keyRef,
+                                         LocalDocumentId& documentId,
+                                         TRI_voc_rid_t& revisionId) const {
+  documentId.clear();
+  revisionId = 0;
+
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(_objectId, keyRef);
+  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
+
+  // acquire rocksdb transaction
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
+  if (!r.ok()) {
+    return false;
+  }
+  
+  documentId = RocksDBValue::documentId(value);
+
+  // this call will populate revisionId if the revision id value is
+  // stored in the primary index
+  revisionId = RocksDBValue::revisionId(value);
+  return true;
+}
+
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
