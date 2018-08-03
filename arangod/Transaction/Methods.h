@@ -356,6 +356,24 @@ class Methods {
                          OperationOptions const& options,
                          VPackSlice pattern = VPackSlice::noneSlice());
 
+OperationResult removeBatch(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions&         options
+);
+
+OperationResult removeBatchLocal(
+  std::string const&        collectionName,
+  VPackSlice const          request,          // the incoming request
+  OperationOptions&         options           // the parsed options part
+);
+
+OperationResult removeBatchCoordinator(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions&         options
+);
+
   /// @brief fetches all documents in a collection
   ENTERPRISE_VIRT OperationResult all(std::string const& collectionName,
                       uint64_t skip, uint64_t limit,

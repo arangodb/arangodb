@@ -317,7 +317,7 @@ void RestBatchDocumentHandler::removeDocumentsAction(
   }
   BatchRequest const& removeRequest = parseResult.get();
 
-  doRemoveDocuments(collection, removeRequest);
+  doRemoveDocuments(collection, removeRequest, _request->payload());
 
   // TODO take a result from doRemoveDocuments and generate a response with it.
 }
@@ -335,7 +335,8 @@ void RestBatchDocumentHandler::updateDocumentsAction(
 }
 
 void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
-    std::string const& collection, const BatchRequest& request) {
+    std::string const& collection, const BatchRequest& request,
+    VPackSlice vpack_request) {
   if (request.empty()) {
     // If request.data = [], the operation succeeds unless the collection lookup
     // fails.
@@ -373,8 +374,10 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
     return;
   }
 
+  OperationOptions options = request.options;
   OperationResult result =
-      trx->remove(collection, search, request.options, pattern);
+ // trx->remove(collection, search, request.options, pattern);
+ trx->removeBatch(collection, vpack_request, options);
 
   res = trx->finish(result.result);
 

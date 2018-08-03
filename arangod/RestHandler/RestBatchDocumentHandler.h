@@ -67,11 +67,13 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
   bool modifyDocument(bool);
 
   void doRemoveDocuments(
-    std::string const &collection, const rest::batch_document_handler::BatchRequest &request
+   // std::string const &collection, const rest::batch_document_handler::BatchRequest &request
+    std::string const &collection, const rest::batch_document_handler::BatchRequest &request, VPackSlice vpack_request
   );
 
+
   void generateBatchResponse(
-      std::vector<OperationResult> const&,
+      std::vector<OperationResult> const& result,
       VPackOptions const* options);
 
   void generateBatchResponse(

@@ -116,8 +116,13 @@ Result createDocumentOnCoordinator(
 int deleteDocumentOnCoordinator(
   std::string const &dbname, std::string const &collname, transaction::Methods const &trx, VPackSlice const slice,
   OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
-  std::unordered_map<int, size_t> &errorCounters, std::shared_ptr<arangodb::velocypack::Builder> &resultBody,
-  VPackSlice const pattern
+  std::unordered_map<int, size_t> &errorCounter, std::shared_ptr<arangodb::velocypack::Builder> &resultBody
+);
+
+int deleteBatchDocumentOnCoordinator(
+  std::string const &dbname, std::string const &collname, transaction::Methods const &trx,
+  VPackSlice const slice, OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
+  std::shared_ptr<arangodb::velocypack::Builder> &resultBody
 );
 
 ////////////////////////////////////////////////////////////////////////////////

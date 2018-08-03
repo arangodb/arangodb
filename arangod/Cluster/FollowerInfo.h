@@ -93,7 +93,6 @@ class FollowerInfo {
     MUTEX_LOCKER(locker, _mutex);
     return _theLeader;
   }
-
 };
 }  // end namespace arangodb
 
