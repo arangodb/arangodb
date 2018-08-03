@@ -592,7 +592,7 @@ void DumpFeature::validateOptions(
 
 // dump data from server
 Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
-                            std::string& dbName) {
+                            std::string const& dbName) {
   Result result;
   uint64_t batchId;
   std::tie(result, batchId) = ::startBatch(client, "");
@@ -640,47 +640,16 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     views = VPackSlice::emptyArraySlice();
   }
 
-  // read the server's max tick value
-  std::string const tickString =
-      basics::VelocyPackHelper::getStringValue(body, "tick", "");
-  if (tickString == "") {
-    return ::ErrorMalformedJsonResponse;
+  // Step 1. Store view definition files
+  Result res = storeDumpJson(body, dbName);
+  if (res.fail()) {
+    return res;
   }
-  LOG_TOPIC(INFO, Logger::DUMP)
-      << "Last tick provided by server is: " << tickString;
-
-  // set the local max tick value
-  uint64_t maxTick = basics::StringUtils::uint64(tickString);
-  // check if the user specified a max tick value
-  if (_options.tickEnd > 0 && maxTick > _options.tickEnd) {
-    maxTick = _options.tickEnd;
-  }
-
-  // Step 1. write the dump.json file
-  try {
-    VPackBuilder meta;
-    meta.openObject();
-    meta.add("database", VPackValue(dbName));
-    meta.add("lastTickAtDumpStart", VPackValue(tickString));
-    meta.close();
-
-    // save last tick in file
-    auto file = _directory->writableFile("dump.json", true);
-    if (!::fileOk(file.get())) {
-      return ::fileError(file.get(), true);
-    }
-
-    std::string const metaString = meta.slice().toJson();
-    file->write(metaString.c_str(), metaString.size());
-    if (file->status().fail()) {
-      return file->status();
-    }
-  } catch (basics::Exception const& ex) {
-    return {ex.code(), ex.what()};
-  } catch (std::exception const& ex) {
-    return {TRI_ERROR_INTERNAL, ex.what()};
-  } catch (...) {
-    return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
+  
+  // Step 2. Store view definition files
+  res = storeViews(views);
+  if (res.fail()) {
+    return res;
   }
 
   // create a lookup table for collections
@@ -690,7 +659,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         std::pair<std::string, bool>(_options.collections[i], true));
   }
 
-  // Step 2. iterate over collections, queue dump jobs
+  // Step 3. iterate over collections, queue dump jobs
   for (VPackSlice const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
@@ -749,42 +718,13 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       return _workerErrors.front();
     }
   }
-  
-  // Step 3. Store view definition files
-  for (VPackSlice view : VPackArrayIterator(views)) {
-    auto nameSlice = view.get(StaticStrings::DataSourceName);
-    if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
-      continue; // ignore
-    }
-    
-    try {
-      std::string fname = nameSlice.copyString();
-      fname.append(".view.json");
-      // save last tick in file
-      auto file = _directory->writableFile(fname, true);
-      if (!::fileOk(file.get())) {
-        return ::fileError(file.get(), true);
-      }
-      
-      std::string const viewString = view.toJson();
-      file->write(viewString.c_str(), viewString.size());
-      if (file->status().fail()) {
-        return file->status();
-      }
-    } catch (basics::Exception const& ex) {
-      return {ex.code(), ex.what()};
-    } catch (std::exception const& ex) {
-      return {TRI_ERROR_INTERNAL, ex.what()};
-    } catch (...) {
-      return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
-    }
-  }
 
   return {TRI_ERROR_NO_ERROR};
 }
 
 // dump data from cluster via a coordinator
-Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
+Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
+                                   std::string const& dbname) {
   // get the cluster inventory
   std::string const url =
       "/_api/replication/clusterInventory?includeSystem=" +
@@ -813,6 +753,24 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
+  
+  // get the view list
+  VPackSlice views = body.get("views");
+  if (!views.isArray()) {
+    views = VPackSlice::emptyArraySlice();
+  }
+  
+  // Step 1. Store view definition files
+  Result res = storeDumpJson(body, dbname);
+  if (res.fail()) {
+    return res;
+  }
+  
+  // Step 2. Store view definition files
+  res = storeViews(views);
+  if (res.fail()) {
+    return res;
+  }
 
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
@@ -821,7 +779,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
         std::pair<std::string, bool>(_options.collections[i], true));
   }
 
-  // iterate over collections
+  // Step 3. iterate over collections
   for (auto const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
@@ -901,6 +859,85 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
   }
 
   return {TRI_ERROR_NO_ERROR};
+}
+  
+Result DumpFeature::storeDumpJson(VPackSlice const& body,
+                                  std::string const& dbName) const {
+  
+  // read the server's max tick value
+  std::string const tickString =
+  basics::VelocyPackHelper::getStringValue(body, "tick", "");
+  if (tickString == "") {
+    return ::ErrorMalformedJsonResponse;
+  }
+  LOG_TOPIC(INFO, Logger::DUMP)
+  << "Last tick provided by server is: " << tickString;
+  
+  // set the local max tick value
+  uint64_t maxTick = basics::StringUtils::uint64(tickString);
+  // check if the user specified a max tick value
+  if (_options.tickEnd > 0 && maxTick > _options.tickEnd) {
+    maxTick = _options.tickEnd;
+  }
+  
+  try {
+    VPackBuilder meta;
+    meta.openObject();
+    meta.add("database", VPackValue(dbName));
+    meta.add("lastTickAtDumpStart", VPackValue(tickString));
+    meta.close();
+    
+    // save last tick in file
+    auto file = _directory->writableFile("dump.json", true);
+    if (!::fileOk(file.get())) {
+      return ::fileError(file.get(), true);
+    }
+    
+    std::string const metaString = meta.slice().toJson();
+    file->write(metaString.c_str(), metaString.size());
+    if (file->status().fail()) {
+      return file->status();
+    }
+  } catch (basics::Exception const& ex) {
+    return {ex.code(), ex.what()};
+  } catch (std::exception const& ex) {
+    return {TRI_ERROR_INTERNAL, ex.what()};
+  } catch (...) {
+    return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
+  }
+  return {};
+}
+  
+Result DumpFeature::storeViews(VPackSlice const& views) const {
+  for (VPackSlice view : VPackArrayIterator(views)) {
+    auto nameSlice = view.get(StaticStrings::DataSourceName);
+    if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+      continue; // ignore
+    }
+    
+    try {
+      std::string fname = nameSlice.copyString();
+      fname.append(".view.json");
+      // save last tick in file
+      auto file = _directory->writableFile(fname, true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
+      
+      std::string const viewString = view.toJson();
+      file->write(viewString.c_str(), viewString.size());
+      if (file->status().fail()) {
+        return file->status();
+      }
+    } catch (basics::Exception const& ex) {
+      return {ex.code(), ex.what()};
+    } catch (std::exception const& ex) {
+      return {TRI_ERROR_INTERNAL, ex.what()};
+    } catch (...) {
+      return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
+    }
+  }
+  return {};
 }
 
 void DumpFeature::reportError(Result const& error) {
@@ -986,7 +1023,7 @@ void DumpFeature::start() {
     if (!_options.clusterMode) {
       res = runDump(*httpClient, dbName);
     } else {
-      res = runClusterDump(*httpClient);
+      res = runClusterDump(*httpClient, dbName);
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::FIXME) << "caught exception " << ex.what();

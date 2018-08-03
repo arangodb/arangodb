@@ -221,6 +221,20 @@ function setupSatelliteCollections() {
 
   setupSmartGraph();
   setupSatelliteCollections();
+
+  // setup a view
+  try {
+    db._create("UnitTestsDumpViewCollection");
+    let view = db._createView("UnitTestsDumpView", "arangosearch", {});
+    view.properties({ links: {
+      "UnitTestsDumpViewCollection": { 
+        includeAllFields: true,
+        fields: {
+          text: { analyzers: [ "text_en" ] }
+        }
+      }
+    } });
+  } catch (err) { }
 })();
 
 return {
