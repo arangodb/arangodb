@@ -33,11 +33,13 @@ The plan will show you the estimated number of items (results) for each query st
 query stage roughly equates to a line in your original query, which you can see under _Comment_.
 
 
-#### Executing an instrumented query
+### Profiling Queries 
 
 Sometimes when you have a complex query it can become very unclear where time is spend during the execution, 
 even for intermediate ArangoDB users! For this reason we allow you to execute a query with special instrumentation
-code enabled. The resulting query result will contain a copy of the query plan as well as detailed execution statistics.
+code enabled. 
+
+The resulting query result will contain a copy of the query plan as well as __detailed execution statistics__.
 To use this in an interactive fashion on the shell you can use the `_profileQuery` method
 on the `ArangoDatabase` object. This will display all the usual information contained in the explain,
 but additionally you get all the statistics, the query profile and per node stats. 
