@@ -1158,6 +1158,20 @@ void RocksDBCollection::figuresSpecific(
           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
   builder->add("documentsSize", VPackValue(out));
+  bool cacheInUse = useCache();
+  builder->add("cacheInUse", VPackValue(cacheInUse));
+  if (cacheInUse) {
+    builder->add("cacheSize", VPackValue(_cache->size()));
+    auto hitRates = _cache->hitRates();
+    double rate = hitRates.first;
+    rate = std::isnan(rate) ? 0.0 : rate;
+    builder->add("cacheLifeTimeHitRate", VPackValue(rate));
+    rate = hitRates.second;
+    rate = std::isnan(rate) ? 0.0 : rate;
+    builder->add("cacheWindowedHitRate", VPackValue(rate));
+  } else {
+    builder->add("cacheSize", VPackValue(0));
+  }
 }
 
 void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
