@@ -1624,7 +1624,7 @@ function explain(data, options, shouldPrint) {
 
 
 /* the exposed profile query function */
-function profileQuery(data) {
+function profileQuery(data, shouldPrint) {
   'use strict';
   if (!(data instanceof Object) || !data.hasOwnProperty("options")) {
     throw 'ArangoStatement needs initial data';
@@ -1637,7 +1637,12 @@ function profileQuery(data) {
   let cursor = stmt.execute();
   let extra = cursor.getExtra();
   processQuery(data.query, extra);
-  print(stringBuilder.getOutput());
+
+  if (shouldPrint === undefined || shouldPrint) {
+    print(stringBuilder.getOutput());
+  } else {
+    return stringBuilder.getOutput();
+  }
 }
 
 /* the exposed debug function */
