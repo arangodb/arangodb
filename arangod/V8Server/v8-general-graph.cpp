@@ -260,7 +260,6 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << builder.toJson();
   GraphManager gmngr{vocbase};
   OperationResult r = gmngr.createGraph(builder.slice(), false);
 
