@@ -73,21 +73,16 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
   }
 
  private:
-  // replaces a document
-  void replaceDocumentsAction(std::string const& collection);
-
-  // updates a document
-  void updateDocumentsAction(std::string const& collection);
-
-  // deletes a document
-  void removeDocumentsAction(std::string const& collection);
-
   // helper function for replace and update
   bool modifyDocument(bool);
 
-  void doRemoveDocuments(
-    std::string const &collection, const rest::batch_document_handler::BatchRequest &request
-  );
+  // parse and validate input and create an BatchRequest
+  void createBatchRequest(std::string const& collection
+                          ,rest::batch_document_handler::BatchOperation);
+
+  // execute BatchRequest
+  void executeBatchRequest(std::string const &collection
+                          ,const rest::batch_document_handler::BatchRequest &request);
 
 
   void generateBatchResponse(

@@ -2320,13 +2320,12 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 OperationResult transaction::Methods::removeBatch(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions const&         options
+  OperationOptions const&   options
 ) {
 
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   TRI_ASSERT(request.isObject());
-
   TRI_ASSERT(request.hasKey("data"));
   TRI_ASSERT(request.get("data").isArray());
   TRI_ASSERT(request.get("data").length() != 0);  // no empty request

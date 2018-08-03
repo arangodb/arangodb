@@ -152,12 +152,14 @@ static Result withMessagePrefix(std::string const& prefix, Result const& res) {
   return Result{res.errorNumber(), err.str()};
 }
 
-static Result isObjectAndDoesNotHaveExtraAttributes(
+static ResultT<AttributeSet> isObjectAndDoesNotHaveExtraAttributes(
     VPackSlice slice,
     AttributeSet const& required,
     AttributeSet const& optional,
     AttributeSet const& deprecated
     ) {
+
+  AttributeSet rv;
 
   auto result = expectedType(VPackValueType::Object, slice.type());
   if(result.fail()){
@@ -173,6 +175,7 @@ static Result isObjectAndDoesNotHaveExtraAttributes(
     std::string const key = it.key.copyString();
 
     if (contains(required, key) || contains(optional, key)) {
+      rv.insert(key);
       // ok, continue
     } else if (contains(deprecated, key)) {
       // ok but warn
@@ -182,12 +185,13 @@ static Result isObjectAndDoesNotHaveExtraAttributes(
           << "Deprecated attribute `" << key
           << "` encountered during request to "
           << RestVocbaseBaseHandler::BATCH_DOCUMENT_PATH;
+      rv.insert(key);
     } else {
       return unexpectedAttributeError(required, optional, deprecated, key);
     }
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return ResultT<AttributeSet>::success(rv);
 }
 
 struct PatternWithKey {
@@ -210,7 +214,7 @@ ResultT<PatternWithKey> PatternWithKey::fromVelocypack(VPackSlice const slice) {
     return result;
   }
 
-  VPackSlice key = slice.get("_key");
+  VPackSlice key = slice.get(StaticStrings::KeyString);
 
   if (key.isNone()) {
     std::stringstream err;

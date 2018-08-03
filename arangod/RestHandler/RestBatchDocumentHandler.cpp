@@ -97,24 +97,24 @@ optionsFromVelocypack(VPackSlice const optionsSlice
                      ,AttributeSet const& optional
                      ,AttributeSet const& deprecated
                      ){
-  // TODO add possible options
-  Result res = isObjectAndDoesNotHaveExtraAttributes( optionsSlice,
-        {} /*required*/, {} /*optional*/, {} /*deprecated*/);
-  if (res.fail()) {
-    return {res};
-  }
+  // TODO add possible options -- should really return attribute set containing set options
+  ResultT<AttributeSet> res = isObjectAndDoesNotHaveExtraAttributes(
+                                optionsSlice, required, optional, deprecated
+                              );
 
-  OperationOptions options{};
+  if (res.fail()) { return res; }
 
-  // TODO parse and set options
+  OperationOptions options;
+  //TODO implement: OperationOptionsFromSlice(slice)
 
   return ResultT<OperationOptions>::success(options);
 };
 
 
 struct BatchRequest {
-  static ResultT<BatchRequest> fromVelocypack(VPackSlice const slice, BatchOperation batchOp) {
+  static ResultT<BatchRequest> fromVelocypack(VPackSlice const payload, BatchOperation batchOp) {
 
+    auto slice = payload;
     AttributeSet required, optional, deprecated;
 
     switch (batchOp) {
@@ -179,7 +179,7 @@ struct BatchRequest {
     }
     auto const& options = maybeOptions.get();
 
-    return BatchRequest(slice, std::move(data), options, batchOp);
+    return BatchRequest(payload, std::move(data), options, batchOp);
   }
 
   // builds an array of "_key"s, or a single string in case data.size() == 1
@@ -217,7 +217,7 @@ struct BatchRequest {
   bool empty() const { return data.empty(); }
   size_t size() const { return data.size(); }
 
-  explicit BatchRequest(VPackSlice slice
+  explicit BatchRequest(VPackSlice const slice
                        ,std::vector<PatternWithKey>&& data_
                        ,OperationOptions options_
                        ,BatchOperation op)
@@ -229,7 +229,7 @@ struct BatchRequest {
   std::vector<PatternWithKey> const data;
   OperationOptions const options;
   BatchOperation operation;
-  VPackSlice payload;
+  VPackSlice const payload;
 };
 
 }
@@ -283,17 +283,17 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
 
   switch (operation) {
     case BatchOperation::REMOVE:
-      removeDocumentsAction(collection);
+      createBatchRequest(collection, operation);
       break;
-    case BatchOperation::REPLACE:
-      replaceDocumentsAction(collection);
-      break;
-    case BatchOperation::UPDATE:
-      updateDocumentsAction(collection);
-      break;
+    case BatchOperation::REPLACE: // implement first
+    case BatchOperation::UPDATE:  // implement first
+
     case BatchOperation::READ:
     case BatchOperation::INSERT:
     case BatchOperation::UPSERT:
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_NOT_IMPLEMENTED);
+      break;
     case BatchOperation::REPSERT:
       generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                     TRI_ERROR_NOT_IMPLEMENTED);
@@ -302,33 +302,25 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
   return RestStatus::DONE;
 }
 
-void RestBatchDocumentHandler::removeDocumentsAction(
-    std::string const& collection) {
+void RestBatchDocumentHandler::createBatchRequest(
+    std::string const& collection,
+    BatchOperation batchOp
+    ) {
 
   //parse and validate result
-  auto parseResult = BatchRequest::fromVelocypack(_request->payload(), BatchOperation::REMOVE);
+  auto parseResult = BatchRequest::fromVelocypack(_request->payload(), batchOp);
   if (parseResult.fail()) {
     generateError(parseResult);
     return;
   }
 
+  TRI_ASSERT(_request->payload() == parseResult.get().payload);
+
   BatchRequest const& request = parseResult.get();
-  doRemoveDocuments(collection, request);
+  executeBatchRequest(collection, request);
 }
 
-void RestBatchDocumentHandler::replaceDocumentsAction(
-    std::string const& collection) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-void RestBatchDocumentHandler::updateDocumentsAction(
-    std::string const& collection) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
+void arangodb::RestBatchDocumentHandler::executeBatchRequest(
     std::string const& collection, const BatchRequest& request) {
   if (request.empty()) {
     // If request.data = [], the operation succeeds unless the collection lookup
@@ -360,6 +352,9 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
     generateTransactionError(collection, transactionResult, "");
     return;
   }
+
+  TRI_ASSERT(_request->payload().isObject());
+  TRI_ASSERT(request.payload.isObject()); //should be the same as the line above
 
   auto operationResult = trx->removeBatch(collection, request.payload, request.options);
   transactionResult = trx->finish(operationResult.result);
