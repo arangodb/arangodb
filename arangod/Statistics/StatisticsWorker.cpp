@@ -1005,37 +1005,57 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
   }
 
   s.close();
-  methods::Collections::create(
+
+  Result r = methods::Collections::create(
     &_vocbase,
     collection,
     TRI_COL_TYPE_DOCUMENT,
     s.slice(),
     false,
     true,
-    [&](LogicalCollection& coll)->void {
-        VPackBuilder t;
+    [&](LogicalCollection&) {}
+  );
 
-        t.openObject();
-        t.add("collection", VPackValue(collection));
-        t.add("type", VPackValue("skiplist"));
-        t.add("unique", VPackValue(false));
-        t.add("sparse", VPackValue(false));
+  if (r.is(TRI_ERROR_SHUTTING_DOWN)) {
+    // this is somewhat an expected error
+    return;
+  }
+    
+  // check if the collection already existed. this is acceptable too
+  if (r.fail() && !r.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
+    LOG_TOPIC(WARN, Logger::STATISTICS)
+        << "could not create statistics collection '" << collection
+        << "': error: " << r.errorMessage();
+  }
 
-        t.add("fields", VPackValue(VPackValueType::Array));
-        t.add(VPackValue("time"));
-        t.close();
-        t.close();
+  // check if the index on the collection must be created
+  r = methods::Collections::lookup(
+    &_vocbase, 
+    collection, 
+    [&](LogicalCollection& coll) {
+      VPackBuilder t;
 
-        VPackBuilder output;
-        Result idxRes =
-          methods::Indexes::ensureIndex(&coll, t.slice(), true, output);
+      t.openObject();
+      t.add("collection", VPackValue(collection));
+      t.add("type", VPackValue("skiplist"));
+      t.add("unique", VPackValue(false));
+      t.add("sparse", VPackValue(false));
 
-        if (!idxRes.ok()) {
-          LOG_TOPIC(WARN, Logger::STATISTICS)
-              << "Can't create the skiplist index for collection " << collection
-              << " please create it manually; error: "
-              << idxRes.errorMessage();
-        }
+      t.add("fields", VPackValue(VPackValueType::Array));
+      t.add(VPackValue("time"));
+      t.close();
+      t.close();
+
+      VPackBuilder output;
+      Result idxRes =
+        methods::Indexes::ensureIndex(&coll, t.slice(), true, output);
+
+      if (!idxRes.ok()) {
+        LOG_TOPIC(WARN, Logger::STATISTICS)
+            << "could not create the skiplist index for statistics collection '" << collection
+            << "': error: "
+            << idxRes.errorMessage();
+      }
     }
   );
 }

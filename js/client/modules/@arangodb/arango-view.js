@@ -195,7 +195,22 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  const attributes = {
+    'commit': true,
+    'links': true,
+    'locale': true
+  };
+
+  var result = {};
+  for (a in attributes) {
+    if (attributes.hasOwnProperty(a) &&
+      requestResult.hasOwnProperty(a) &&
+      requestResult[a] !== undefined) {
+      result[a] = requestResult[a];
+    }
+  }
+
+  return result;
 };
 
 // //////////////////////////////////////////////////////////////////////////////

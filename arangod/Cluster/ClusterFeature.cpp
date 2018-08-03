@@ -34,10 +34,12 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -418,6 +420,8 @@ void ClusterFeature::start() {
     VPackObjectBuilder b(&builder);
     builder.add("endpoint", VPackValue(_myAddress));
     builder.add("host", VPackValue(ServerState::instance()->getHost()));
+    builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
+    builder.add("storageEngine", VPackValue(EngineSelectorFeature::engineName()));
   } catch (...) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
     FATAL_ERROR_EXIT();
