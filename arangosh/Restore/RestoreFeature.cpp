@@ -197,7 +197,7 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
           << ", but no key information was specified to decrypt the dump";
       LOG_TOPIC(WARN, Logger::RESTORE)
           << "it is recommended to specify either "
-             "`--encryption.key-file` or `--encryption.key-generator` "
+             "`--encryption.keyfile` or `--encryption.key-generator` "
              "when invoking arangorestore with an encrypted dump";
     } else {
       LOG_TOPIC(INFO, Logger::RESTORE)
