@@ -67,12 +67,17 @@ class Scheduler {
     uint64_t _queued;
   };
 
+  // Enqueues a task at highest priority
   virtual void post(std::function<void()> const& callback) = 0;
+  // Enqueues a task at given priority
   virtual bool queue(RequestPriority prio, std::function<void()> const&) = 0;
 
+  // A spinning threads looks at the queues in a cyclic way, i.e.
+  // 0 1 2 0 1 2 0 1 2 0 1 2 ..
 
   typedef std::chrono::steady_clock clock;
 
+private:
   struct DelayedWorkItem {
     std::function<void(bool cancelled)> _handler;
     const clock::time_point _due;
@@ -103,6 +108,7 @@ class Scheduler {
     void detach() { _item.reset(); }
   };
 
+public:
   class WorkHandle {
     std::shared_ptr<WorkGuard> _guard;
   public:
@@ -113,7 +119,13 @@ class Scheduler {
     void detach() { _guard->detach(); }
   };
 
+  // postDelay returns a WorkHandler. You can cancel the job by calling cancel. The job is also
+  // cancelled if all WorkHandles are destructed. To disable this behavior call detach.
   WorkHandle postDelay(clock::duration delay, std::function<void(bool cancelled)> const& callback);
+
+  // TODO: This method is unintuitive to use. If you call it and you are not interested in canceling
+  // you have to call detach(). Otherwise the WorkHandle goes out of scope and the task is canceled
+  // immediately.
 
   virtual void addQueueStatistics(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
@@ -134,6 +146,14 @@ public:
  private:
   friend class SchedulerCronThread;
 
+  // The priority queue is managed by a Cron Thread. It wakes up on a regular basis (10ms currently)
+  // and looks at queue.top(). It the _due time is smaller than now() and the task is not canceled
+  // it is posted on the scheduler. The next sleep time is computed depending on queue top.
+  //
+  // Note that tasks that have a delay of less than 1ms are posted directly.
+  // For tasks above 50ms the Cron Thread is woken up to potentially update its sleep time, which
+  // could now be shorter than before.
+
   std::priority_queue<std::shared_ptr<DelayedWorkItem>,
                       std::vector<std::shared_ptr<DelayedWorkItem>>,
                       std::greater<std::shared_ptr<DelayedWorkItem>>> _priorityQueue;
@@ -141,7 +161,6 @@ public:
   std::condition_variable _conditionCron;
 
   void runCron();
-
 
   std::unique_ptr<SchedulerCronThread> _cronThread;
 };

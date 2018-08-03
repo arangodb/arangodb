@@ -599,7 +599,7 @@ void Worker<V, E, M>::_continueAsync() {
       _workerAggregators->resetValues();
       _startProcessing();
     }
-  });
+  }).detach();
 }
 
 template <typename V, typename E, typename M>

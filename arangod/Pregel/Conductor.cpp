@@ -469,7 +469,7 @@ void Conductor::startRecovery() {
       cancelNoLock();
       LOG_TOPIC(ERR, Logger::PREGEL) << "Compensation failed";
     }
-  });
+  }).detach();
 }
 
 // resolves into an ordered list of shards for each collection on each server

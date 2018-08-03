@@ -80,10 +80,26 @@ public:
 
   std::atomic<uint64_t> _jobsSubmitted, _jobsDone;
 
+  // During a queue operation there a two reasons to manually wake up a worker
+  //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
+  //      is bigger than _wakeupTime_ns.
+  //  2. the last submit time is bigger than _definitiveWakeupTime_ns.
+  //
+  // The last submit time is a thread local variable that stores the time of the last
+  // queue operation.
   std::atomic<uint64_t> _wakeupQueueLength;                        // q1
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
 
+  // each worker thread has a state block which contains configuration values.
+  // _queueRetryCount is the number of spins this particular thread should perform
+  // before going to sleep.
+  // _sleepTimeout_ms is the amount of ms the thread should sleep before waking
+  // up again. Note that each worker wakes up constantly, even if there is no work.
+  //
+  // All those values are maintained by the supervisor thread.
+  // Currently they are set once and for all the same, however a future
+  // implementation my alter those values for each thread individually.
   struct WorkerState {
     uint64_t _queueRetryCount;     // t1
     uint64_t _sleepTimeout_ms;    // t2
@@ -91,7 +107,7 @@ public:
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
     char padding[40];
 
-    // initialise with harmless defaults: spin once, sleep forever
+    // initialize with harmless defaults: spin once, sleep forever
     WorkerState(SupervisedScheduler &scheduler);
     WorkerState(WorkerState &&that);
 

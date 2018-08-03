@@ -101,24 +101,6 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
   _queue[1].reserve(fifo1Size);
   _queue[2].reserve(fifo2Size);
   _workerStates.reserve(maxThreads);
-
-#ifdef _WIN32
-// Windows does not support POSIX signal handling
-#else
-  struct sigaction action;
-  memset(&action, 0, sizeof(action));
-  sigfillset(&action.sa_mask);
-
-  // ignore broken pipes
-  action.sa_handler = SIG_IGN;
-
-  int res = sigaction(SIGPIPE, &action, nullptr);
-
-  if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for pipe";
-  }
-#endif
 }
 
 SupervisedScheduler::~SupervisedScheduler() {}
@@ -170,6 +152,8 @@ bool SupervisedScheduler::queue(RequestPriority prio, std::function<void()> cons
 
 
 std::string  SupervisedScheduler::infoStatus() const {
+  // TODO: compare with old output format
+  // Does some code rely on that string or is it for humans?
   uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
   uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
     - _jobsDone.load(std::memory_order_relaxed);
@@ -193,6 +177,7 @@ void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
   uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed)
     - _jobsDone.load(std::memory_order_relaxed);
 
+  // TODO: previous scheduler filled out a lot more fields, relevant?
   b.add("scheduler-threads",
         VPackValue(static_cast<int32_t>(numWorker)));
   b.add("queued", VPackValue(static_cast<int32_t>(queueLength)));
@@ -280,12 +265,20 @@ void SupervisedScheduler::runSupervisor()
 
     if (jobsDone == lastJobsDone && (jobsDone < jobsSubmitted)) {
       jobsStallingTick++;
-    } else {
-      jobsStallingTick = jobsStallingTick == 0 ? 0 : jobsStallingTick - 1;
+    } else if(jobsStallingTick != 0) {
+      jobsStallingTick--;
     }
 
     queueLength = jobsSubmitted - jobsDone;
 
+    // TODO: Currently the conditions to spawn a new thread are not very sophisticated.
+    // A thread is stoped when the queue is empty. In real life this should rarely happen
+    // thus a thread that was started once, never terminates.
+    // A new thread is started when:
+    //  1. jobsStallingTick > 5, which means that 5 times in a row, the supervisor observed that no
+    //      job finished.
+    //  2. The queue length is bigger than 50 and 1.5 times of what it was last time.
+    //      (this is a spike detector)
     bool doStartOneThread =
       (jobsStallingTick > 5) || ((queueLength >= 50) && (1.5 * lastQueueLength < queueLength));
 
