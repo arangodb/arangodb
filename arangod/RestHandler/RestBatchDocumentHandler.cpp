@@ -362,7 +362,7 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
   //    trx->transactionContextPtr()->getVPackOptionsForDump()
   //);
 }
-
+/*
 void RestBatchDocumentHandler::generateBatchResponse(
     rest::ResponseCode restResponseCode,
     std::unique_ptr<VPackBuilder> result,
@@ -534,3 +534,4 @@ void RestBatchDocumentHandler::generateBatchResponse(
 
   generateBatchResponse(restResponseCode, std::move(result), std::move(extra), vOptions);
 }
+*/
