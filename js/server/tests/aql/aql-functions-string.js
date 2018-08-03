@@ -588,7 +588,45 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
       });
     },
+    
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test RegexSplit
+// //////////////////////////////////////////////////////////////////////////////
+    testToRegexSplitValues: function () {
+      [ 
+        [ "hypertext language, programming", "[\s, ]+", true, 1, ["hypertext"] ],
+        [ "hypertext language, programming", "[\s, ]+", true, 2, ["hypertext", "language"] ],
+        [ "hypertext language, programming", "[\s, ]+", true, 3, ["hypertext", "language", "programming"] ],
+        [ "this|is|a|text", "[|]", true, 1, ["this"] ],
+        [ "this|is|a|text", "[|]", true, 2, ["this", "is"] ],
+        [ "this|is|a|text", "[|]", true, 3, ["this", "is", "a"] ],
+        [ "this|is|a|text", "[|]", true, 4, ["this", "is", "a", "text"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 1, ["c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 2, ["c", "c,"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 3, ["c", "c,", "c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 4, ["c", "c,", "c", "c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 5, ["c", "c,", "c", "c", "c"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 1, ["This is a line"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 2, ["This is a line", "\n"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 3, ["This is a line", "\n", " This is yet another lin"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 4, ["This is a line", "\n", " This is yet another lin", "\r"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 5, ["This is a line", "\n", " This is yet another lin", "\r", ""] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 6, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 7, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 8, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 9, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r", " Mac line "] ],
+      ].forEach(function(test) {
+        assertEqual([ test[4] ], getQueryResults('RETURN REGEX_SPLIT(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ', ' + JSON.stringify(test[3]) + ')'), test);
+      });
+    },
 
+    testRegexSplitInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT("test", "meow", "foo", "bar", "git")');
+    },
+
+    
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test like function, invalid arguments
 // //////////////////////////////////////////////////////////////////////////////

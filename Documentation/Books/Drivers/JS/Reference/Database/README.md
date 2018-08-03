@@ -19,6 +19,11 @@ If _config_ is a string, it will be interpreted as _config.url_.
 
     Base URL of the ArangoDB server or list of server URLs.
 
+    When working with a cluster or a single server with leader/follower failover,
+    [the method `db.acquireHostList`](DatabaseManipulation.md#databaseacquirehostlist)
+    can be used to automatically pick up additional coordinators/followers at
+    any point.
+
     **Note**: As of arangojs 6.0.0 it is no longer possible to pass
     the username or password from the URL.
 
@@ -104,6 +109,30 @@ If _config_ is a string, it will be interpreted as _config.url_.
       behaves like `NONE`.
 
     - `ROUND_ROBIN`: Every sequential request uses the next URL in the list.
+
+  - **maxRetries**: `number` or `false` (Default: `0`)
+
+    Determines the behavior when a request fails because the underlying
+    connection to the server could not be opened
+    (i.e. [`ECONNREFUSED` in Node.js](https://nodejs.org/api/errors.html#errors_common_system_errors)):
+
+    - `false`: the request fails immediately.
+
+    - `0`: the request is retried until a server can be reached but only a
+      total number of times matching the number of known servers (including
+      the initial failed request).
+
+    - any other number: the request is retried until a server can be reached
+      the request has been retried a total of `maxRetries` number of times
+      (not including the initial failed request).
+
+    When working with a single server without leader/follower failover, the
+    retries (if any) will be made to the same server.
+
+    This setting currently has no effect when using arangojs in a browser.
+
+    **Note**: Requests bound to a specific server (e.g. fetching query results)
+    will never be retried automatically and ignore this setting.
 
 ## database.close
 
