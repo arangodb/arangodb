@@ -394,43 +394,40 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   collectionsOptions.openObject();
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
   collectionsOptions.close();
-  if (result.fail()) {
-    return result;
-  }
-  def = GraphManager::getCollectionByName(_vocbase, collectionName);
-  if (def == nullptr && createCollection) {
-    result = gmngr.createVertexCollection(collectionName, waitForSync,
-                                          collectionsOptions.slice());
-    if (result.fail()) {
-      return result;
-    }
-  } else if (def == nullptr && !createCollection) {
-    return OperationResult(
-            Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
-                   collectionName + " " +
-                   std::string{TRI_errno_string(
-                           TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
-  } else {
-    if (def->type() != 2) {
-      return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
-    }
-  }
 
-  for (auto const& orphanCollection : _graph.orphanCollections()) {
-    if (collectionName == orphanCollection) {
+  if (_graph.hasVertexCollection(collectionName)) {
+    if (_graph.hasOrphanCollection(collectionName)) {
       return OperationResult(TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS);
     }
+    return OperationResult(
+        Result(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,
+               collectionName + " " +
+                   std::string{TRI_errno_string(
+                       TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF)}));
   }
-  for (auto const& vertexCollection : _graph.vertexCollections()) {
-    if (std::find(_graph.orphanCollections().begin(), _graph.orphanCollections().end(),
-                  vertexCollection) == _graph.orphanCollections().end()) {
-      if (collectionName == vertexCollection) {
-        return OperationResult(
-            Result(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,
-                   collectionName + " " +
-                       std::string{TRI_errno_string(
-                           TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF)}));
+
+  def = GraphManager::getCollectionByName(_vocbase, collectionName);
+  if (def == nullptr) {
+    if (createCollection) {
+      result = gmngr.createVertexCollection(collectionName, waitForSync,
+                                            collectionsOptions.slice());
+      if (result.fail()) {
+        return result;
       }
+    } else {
+      return OperationResult(
+              Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+                     collectionName + " " +
+                     std::string{TRI_errno_string(
+                             TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
+    }
+  } else {
+    if (def->type() != TRI_COL_TYPE_DOCUMENT) {
+      return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
+    }
+    auto res = _graph.validateCollection(def.get());
+    if (res.fail()) {
+      return OperationResult{res};
     }
   }
 
