@@ -2250,6 +2250,45 @@ OperationResult transaction::Methods::modifyLocal(
   return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, errorCounter);
 }
 
+OperationResult transaction::Methods::modifyBatchLocal(
+  std::string const&        collectionName,
+  VPackSlice const          request,          // the incoming request
+  OperationOptions&         options           // the parsed options part
+) {
+  //////////////////////////////////////////////////////////////////////////
+  // THIS CODE PERFORMS NO REPLICATION
+  //////////////////////////////////////////////////////////////////////////
+
+  //// IDEA
+  /// Use the same code as removeBatchLocal except the small part where
+  /// the actual deletion Work is performed. Every thing else is totally
+  /// generic to all *batchLocal operations.
+  ///   - iterate over all data members
+  ///   - execute the specific code with the current item
+  ///   - store the result at the current position
+  ///     - if there was an error and its the first, remember the error and its position
+  ///
+  /// Thus introduce a processBatchLocal which accepts a lambda function
+}
+/*
+OperationResult transaction::Methods::processBatchLocal(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions&         options
+  std::function<Result (            // Result object is automatically converted to an error
+    LogicalCollection *collection,  //    in the result object
+    VPackBuilder &reponseObject,    // Builder with open object for response.
+                                    //    only write non generic data to this object and don't close it
+    VPackSlice const key,           // extracted key from entry.pattern
+    VPackSlice const entry,         // the entry itself, i.e. { pattern: {...}, ...}
+    OperationOptions &options       // options
+  )> lambda
+) {
+
+
+
+}*/
+
 /// @brief remove one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -2771,6 +2810,10 @@ OperationResult transaction::Methods::removeBatchLocal(
         firstErrorIndex = count;
       }
     } else {
+      ///////////////////////////////////////////////////////////////////
+      ////// TODO: If returnOld is not set, we should at least return meta information
+      //////        Unless silent is true
+      ///////////////////////////////////////////////////////////////////
       if (!options.silent && options.returnOld) {
         response.add(VPackValue("old"));
         previous.addToBuilder(response, true);
