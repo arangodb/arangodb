@@ -52,7 +52,6 @@ namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 
-
 // Operations /////////////////////////////////////////////////////////////////
 enum class BatchOperation {
   READ,

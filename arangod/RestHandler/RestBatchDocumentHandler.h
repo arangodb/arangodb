@@ -34,7 +34,7 @@
 namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
-class RemoveRequest;
+struct BatchRequest;
 enum class BatchOperation;
 }
 }
@@ -67,7 +67,7 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
   bool modifyDocument(bool);
 
   void doRemoveDocuments(
-    std::string const &collection, const rest::batch_document_handler::RemoveRequest &request
+    std::string const &collection, const rest::batch_document_handler::BatchRequest &request
   );
 
   void generateBatchResponse(

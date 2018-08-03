@@ -49,160 +49,193 @@ namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 
-class BatchRequest {
- public:
- protected:
-  BatchRequest() = default;
+ResultT<std::vector<PatternWithKey>>
+dataFromVelocypackArray(VPackSlice const dataSlice
+                       ,AttributeSet const& required
+                       ,AttributeSet const& optional
+                       ,AttributeSet const& deprecated
+                       ){
+  if (!dataSlice.isArray()) {
+    return expectedButGotValidationError("array", dataSlice.typeName());
+  }
+
+  std::vector<PatternWithKey> data;
+  data.reserve(dataSlice.length());
+
+  size_t i = 0;
+  for (auto const& dataItemSlice : VPackArrayIterator(dataSlice)) {
+    isObjectAndDoesNotHaveExtraAttributes(dataItemSlice, required, optional, deprecated);
+
+    VPackSlice patternSlice = dataItemSlice.get("pattern");
+    if (patternSlice.isNone()) {
+      std::stringstream err;
+      err << "Attribute 'pattern' missing";
+      return ResultT<PatternWithKey>::error(
+          TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str());
+    }
+
+    auto maybePattern = PatternWithKey::fromVelocypack(patternSlice);
+    if (maybePattern.fail()) {
+      std::stringstream err;
+      err << "In array index " << i;
+      return withMessagePrefix(err.str(), maybePattern);
+    }
+
+    data.emplace_back(maybePattern.get());
+
+    ++i;
+  }
+
+  return {std::move(data)};
 };
 
 
-class RemoveRequest : public BatchRequest {
- public:
-  static ResultT<RemoveRequest> fromVelocypack(VPackSlice);
+ResultT<OperationOptions>
+optionsFromVelocypack(VPackSlice const optionsSlice
+                     ,AttributeSet const& required
+                     ,AttributeSet const& optional
+                     ,AttributeSet const& deprecated
+                     ){
+  // TODO add possible options
+  Result res = isObjectAndDoesNotHaveExtraAttributes( optionsSlice,
+        {} /*required*/, {} /*optional*/, {} /*deprecated*/);
+  if (res.fail()) {
+    return {res};
+  }
 
-  void toSearch(VPackBuilder& builder) const;
-  void toPattern(VPackBuilder& builder) const;
+  OperationOptions options{};
 
-  bool empty() const;
-  size_t size() const;
+  // TODO parse and set options
 
-  OperationOptions const& getOptions() const;
+  return ResultT<OperationOptions>::success(options);
+};
 
-  std::vector<PatternWithKey> const& getData() const;
 
- protected:
-  explicit RemoveRequest(std::vector<PatternWithKey>&& data_,
-                         OperationOptions options_)
-      : data(data_), options(std::move(options_)){};
+struct BatchRequest {
+  static ResultT<BatchRequest> fromVelocypack(VPackSlice const slice, BatchOperation batchOp) {
+
+    AttributeSet required, optional, deprecated;
+
+    switch (batchOp) {
+      case BatchOperation::REMOVE:
+        required = {"data", "options"};
+        break;
+      case BatchOperation::REPLACE:
+      case BatchOperation::UPDATE:
+      case BatchOperation::READ:
+      case BatchOperation::INSERT:
+      case BatchOperation::UPSERT:
+      case BatchOperation::REPSERT:
+        break;
+    }
+
+    isObjectAndDoesNotHaveExtraAttributes(slice, required, optional, deprecated);
+    if (!slice.isObject()) {
+      return expectedButGotValidationError("object", slice.typeName());
+    }
+
+
+
+    // get data
+    required = {};
+    optional = {};
+    deprecated = {};
+    switch (batchOp) {
+      case BatchOperation::REMOVE:
+        required = {"pattern"};
+        break;
+      case BatchOperation::REPLACE:
+      case BatchOperation::UPDATE:
+      case BatchOperation::READ:
+      case BatchOperation::INSERT:
+      case BatchOperation::UPSERT:
+      case BatchOperation::REPSERT:
+        break;
+    }
+
+    VPackSlice const dataSlice = slice.get("data");
+    auto maybeData = dataFromVelocypackArray(dataSlice, required, optional, deprecated);
+    if (maybeData.fail()) {
+      return withMessagePrefix("When parsing attribute 'data'", maybeData);
+    }
+    auto& data = maybeData.get();
+
+    // get options
+    required = {};
+    optional = {};
+    deprecated = {};
+    switch (batchOp) {
+      case BatchOperation::REMOVE:
+        break;
+      case BatchOperation::REPLACE:
+      case BatchOperation::UPDATE:
+      case BatchOperation::READ:
+      case BatchOperation::INSERT:
+      case BatchOperation::UPSERT:
+      case BatchOperation::REPSERT:
+        break;
+    }
+
+    VPackSlice const optionsSlice = slice.get("options");
+    auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
+    if (maybeOptions.fail()) {
+      return withMessagePrefix("When parsing attribute 'options'", maybeOptions);
+    }
+    auto const& options = maybeOptions.get();
+
+    return BatchRequest(std::move(data), options, batchOp);
+  }
+
+  // builds an array of "_key"s, or a single string in case data.size() == 1
+  void toSearch(VPackBuilder &builder) const {
+    // TODO I'm in favour of removing the special case for 1, but the existing
+    // methods currently somewhat rely on an array containing at least 2 elements.
+    if (size() == 1) {
+      builder.add(VPackValue(data.at(0).key));
+      return;
+    }
+
+    builder.openArray();
+    for (auto const& it : data) {
+      builder.add(VPackValue(it.key));
+    }
+    builder.close();
+  }
+
+  // builds an array of patterns as externals, or a single pattern in case data.size() == 1
+  void toPattern(VPackBuilder &builder) const {
+    // TODO I'm in favour of removing the special case for 1, but the existing
+    // methods currently somewhat rely on an array containing at least 2 elements.
+    if (size() == 1) {
+      builder.addExternal(data.at(0).pattern.start());
+      return;
+    }
+
+    builder.openArray();
+    for (auto const& it : data) {
+      builder.addExternal(it.pattern.start());
+    }
+    builder.close();
+  }
+
+  bool empty() const { return data.empty(); }
+  size_t size() const { return data.size(); }
+
+  explicit BatchRequest(std::vector<PatternWithKey>&& data_
+                       ,OperationOptions options_
+                       ,BatchOperation op)
+           :data(data_)
+           ,options(std::move(options_))
+           ,operation(op)
+  {};
 
   std::vector<PatternWithKey> const data;
   OperationOptions const options;
+  BatchOperation operation;
 };
 
-ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
-  isObjectAndDoesNotHaveExtraAttributes(slice,
-      {"data", "options"} /*required*/, {} /*optional*/, {} /*deprecated*/);
-  if (!slice.isObject()) {
-    return expectedButGotValidationError("object", slice.typeName());
-  }
-  auto dataFromVelocypack =
-      [](VPackSlice const dataSlice) -> ResultT<std::vector<PatternWithKey>> {
-    if (!dataSlice.isArray()) {
-      return expectedButGotValidationError("array", dataSlice.typeName());
-    }
 
-    std::vector<PatternWithKey> data;
-    data.reserve(dataSlice.length());
 
-    size_t i = 0;
-    for (auto const& dataItemSlice : VPackArrayIterator(dataSlice)) {
-      isObjectAndDoesNotHaveExtraAttributes( dataItemSlice,
-          {"pattern"} /*required*/, {} /*optional*/, {} /*deprecated*/);
-
-      VPackSlice patternSlice = dataItemSlice.get("pattern");
-
-      if (patternSlice.isNone()) {
-        std::stringstream err;
-        err << "Attribute 'pattern' missing";
-        return ResultT<PatternWithKey>::error(
-            TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str());
-      }
-
-      auto maybePattern = PatternWithKey::fromVelocypack(patternSlice);
-      if (maybePattern.fail()) {
-        std::stringstream err;
-        err << "In array index " << i;
-        return withMessagePrefix(err.str(), maybePattern);
-      }
-
-      data.emplace_back(maybePattern.get());
-
-      ++i;
-    }
-
-    return {std::move(data)};
-  };
-
-  auto optionsFromVelocypack =
-      [](VPackSlice const optionsSlice) -> ResultT<OperationOptions> {
-    // TODO add possible options
-    Result res = isObjectAndDoesNotHaveExtraAttributes( optionsSlice,
-          {} /*required*/, {} /*optional*/, {} /*deprecated*/);
-    if (res.fail()) {
-      return {res};
-    }
-
-    OperationOptions options{};
-
-    // TODO parse and set options
-
-    return ResultT<OperationOptions>::success(options);
-  };
-
-  VPackSlice const dataSlice = slice.get("data");
-  auto maybeData = dataFromVelocypack(dataSlice);
-  if (maybeData.fail()) {
-    return withMessagePrefix("When parsing attribute 'data'", maybeData);
-  }
-  auto& data = maybeData.get();
-
-  VPackSlice const optionsSlice = slice.get("options");
-  auto const maybeOptions = optionsFromVelocypack(optionsSlice);
-  if (maybeOptions.fail()) {
-    return withMessagePrefix("When parsing attribute 'options'", maybeOptions);
-  }
-  auto const& options = maybeOptions.get();
-
-  return RemoveRequest(std::move(data), options);
-}
-
-OperationOptions const& RemoveRequest::getOptions() const {
-  return options;
-}
-
-// builds an array of "_key"s, or a single string in case data.size() == 1
-void RemoveRequest::toSearch(VPackBuilder &builder) const {
-  // TODO I'm in favour of removing the special case for 1, but the existing
-  // methods currently somewhat rely on an array containing at least 2 elements.
-  if (size() == 1) {
-    builder.add(VPackValue(data.at(0).key));
-    return;
-  }
-
-  builder.openArray();
-  for (auto const& it : data) {
-    builder.add(VPackValue(it.key));
-  }
-  builder.close();
-}
-
-// builds an array of patterns as externals, or a single pattern in case data.size() == 1
-void RemoveRequest::toPattern(VPackBuilder &builder) const {
-  // TODO I'm in favour of removing the special case for 1, but the existing
-  // methods currently somewhat rely on an array containing at least 2 elements.
-  if (size() == 1) {
-    builder.addExternal(data.at(0).pattern.start());
-    return;
-  }
-
-  builder.openArray();
-  for (auto const& it : data) {
-    builder.addExternal(it.pattern.start());
-  }
-  builder.close();
-}
-
-bool RemoveRequest::empty() const {
-  return data.empty();
-}
-
-size_t RemoveRequest::size() const {
-  return data.size();
-}
-
-std::vector<PatternWithKey> const &RemoveRequest::getData() const {
-  return data;
-}
 
 }
 }
@@ -276,13 +309,13 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
 
 void RestBatchDocumentHandler::removeDocumentsAction(
     std::string const& collection) {
-  auto parseResult = RemoveRequest::fromVelocypack(_request->payload());
+  auto parseResult = BatchRequest::fromVelocypack(_request->payload(), BatchOperation::REMOVE);
 
   if (parseResult.fail()) {
     generateError(parseResult);
     return;
   }
-  RemoveRequest const& removeRequest = parseResult.get();
+  BatchRequest const& removeRequest = parseResult.get();
 
   doRemoveDocuments(collection, removeRequest);
 
@@ -302,7 +335,7 @@ void RestBatchDocumentHandler::updateDocumentsAction(
 }
 
 void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
-    std::string const& collection, const RemoveRequest& request) {
+    std::string const& collection, const BatchRequest& request) {
   if (request.empty()) {
     // If request.data = [], the operation succeeds unless the collection lookup
     // fails.
@@ -341,14 +374,14 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
   }
 
   OperationResult result =
-      trx->remove(collection, search, request.getOptions(), pattern);
+      trx->remove(collection, search, request.options, pattern);
 
   res = trx->finish(result.result);
 
   if (result.ok() && !res.ok()) {
     std::string key;
     if (request.size() == 1) {
-      key = request.getData().at(0).key;
+      key = request.data.at(0).key;
     }
     generateTransactionError(collection, res, key);
     return;
