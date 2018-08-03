@@ -982,7 +982,6 @@ Result GraphManager::checkDropGraphPermissions(
 }
 
 ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string const& graphName, VPackSlice input) const {
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Creating graph with: " << input.toJson();
   try {
     TRI_ASSERT(input.isObject());
     return Graph::fromUserInput(graphName, input, input.get(StaticStrings::GraphOptions));
