@@ -172,7 +172,7 @@ exports._create = function (name, edgeDefinitions, orphans, options) {
     data.edgeDefinitions = edgeDefinitions;
   }
   if (orphans) {
-    data.orphans = orphans;
+    data.orphanCollections = orphans;
   }
   if (options) {
     data.options = options;
