@@ -505,7 +505,7 @@ void RestBatchDocumentHandler::removeDocumentsAction(
   }
   RemoveRequest const& removeRequest = parseResult.get();
 
-  doRemoveDocuments(collection, removeRequest);
+  doRemoveDocuments(collection, removeRequest, _request->payload());
 
   // TODO take a result from doRemoveDocuments and generate a response with it.
 }
@@ -527,7 +527,8 @@ void RestBatchDocumentHandler::updateDocumentsAction(
 // TODO This is more or less a copy&paste from the RestDocumentHandler.
 // However, our response looks quite different, so this has to be reimplemented.
 void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
-    std::string const& collection, const RemoveRequest& request) {
+    std::string const& collection, const RemoveRequest& request,
+    VPackSlice vpack_request) {
   if (request.empty()) {
     // If request.data = [], the operation succeeds unless the collection lookup
     // fails.
@@ -565,8 +566,10 @@ void arangodb::RestBatchDocumentHandler::doRemoveDocuments(
     return;
   }
 
+  OperationOptions options = request.getOptions();
   OperationResult result =
-      trx->remove(collection, search, request.getOptions(), pattern);
+      //trx->remove(collection, search, request.getOptions(), pattern);
+    trx->removeBatch(collection, vpack_request, options);
 
   res = trx->finish(result.result);
 

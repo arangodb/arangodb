@@ -2276,6 +2276,28 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   return removeLocal(collectionName, value, optionsCopy, pattern);
 }
 
+/// @brief remove for the batch api. Expects a full request as parameter.
+OperationResult transaction::Methods::removeBatch(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions&         options
+) {
+
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  TRI_ASSERT(request.isObject());
+
+  TRI_ASSERT(request.hasKey("data"));
+  TRI_ASSERT(request.get("data").isArray());
+  TRI_ASSERT(request.get("data").length() != 0);  // no empty request
+
+  if (_state->isCoordinator()) {
+    return removeBatchCoordinator(collectionName, request, options);
+  }
+
+  return removeBatchLocal(collectionName, request, options);
+}
+
 /// @brief remove one or multiple documents in a collection, coordinator
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -2290,9 +2312,10 @@ OperationResult transaction::Methods::removeCoordinator(
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::deleteDocumentOnCoordinator(
       vocbase().name(), collectionName, *this, value, options, responseCode,
-      errorCounter, resultBody, pattern);
+      errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
+    std::unordered_map<int, size_t> errorCounter; // not yet implemented
     return clusterResultRemove(responseCode, resultBody, errorCounter);
   }
 
@@ -2300,12 +2323,41 @@ OperationResult transaction::Methods::removeCoordinator(
 }
 #endif
 
+/// @brief see removeBatch
+OperationResult transaction::Methods::removeBatchCoordinator(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions&         options
+) {
+
+  rest::ResponseCode responseCode;
+  auto resultBody = std::make_shared<VPackBuilder>();
+
+  int res = arangodb::deleteBatchDocumentOnCoordinator(
+    vocbase().name(),   // dbname
+    collectionName,
+    *this,              // transaction
+    request,
+    options,
+    responseCode,
+    resultBody
+  );
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    std::unordered_map<int, size_t> errorCounter; // not yet implemented
+    return clusterResultRemove(responseCode, resultBody, errorCounter);
+  }
+
+  return OperationResult(res);
+}
+
 /// @brief remove one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 OperationResult transaction::Methods::removeLocal(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options, VPackSlice const patternArg) {
+
   VPackSlice const pattern = patternArg.resolveExternals();
   TRI_ASSERT(pattern.isNone() || pattern.isObject() || pattern.isArray());
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
@@ -2584,6 +2636,170 @@ OperationResult transaction::Methods::removeLocal(
 
   return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
+
+/// @brief Check which replication type is required and if it is allowed to do
+/// so. Returns in `replicationType` or error in result. Furthermore if there are
+/// follower `followerList` contains a list of them.
+///
+/// Note: it does not set `options.silent` to `false` if replication is required.
+/*Result transaction::Methods::replicationSanityCheck(
+  LogicalCollection *collection,
+  OperationOptions const& options,
+  ReplicationType &replicationType,
+  std::shared_ptr<std::vector<ServerID> const> followerList
+) {
+  replicationType = ReplicationType::NONE;
+
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    auto const& followerInfo = collection->followers();
+
+    std::string const& leader = followerInfo.getLeader(),
+
+    if (leader.empty()) {
+
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        // the leader does not replicate from others
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+
+      // fetch followers
+      followerList = followerInfo->get();
+      if (followers->size() > 0) {
+        replicationType = ReplicationType::LEADER;
+      }
+    } else {
+      // we are a follower following the leader
+      replicationType = ReplicationType::FOLLOWER;
+
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
+
+      if (options.isSynchronousReplicationFrom != leader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
+  return Result();
+}*/
+
+
+OperationResult transaction::Methods::removeBatchLocal(
+  std::string const&        collectionName,
+  VPackSlice const          request,          // the incoming request
+  OperationOptions&         options           // the parsed options part
+) {
+  Result result;
+
+  //////////////////////////////////////////////////////////////////////////
+  // THIS CODE PERFORMS NO REPLICATION
+  //////////////////////////////////////////////////////////////////////////
+  VPackBuilder response;
+  Result firstError;
+  uint64_t firstErrorIndex, count = 0;
+  response.openObject();
+
+  TRI_voc_tick_t maxTick = 0;
+  VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
+
+  // This throws an exception if there is no collection
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  if (options.returnOld) {
+    pinData(cid);  // will throw when it fails
+  }
+
+  TRI_ASSERT(request.isObject());
+  TRI_ASSERT(request.hasKey("data"));
+  TRI_ASSERT(request.get("data").isArray());
+
+  VPackSlice data = request.get("data");
+
+  response.add("result", VPackValue(VPackValueType::Array));
+
+  for (auto const& entry : VPackArrayIterator(data)) {
+
+    TRI_ASSERT(entry.isObject());
+    TRI_ASSERT(entry.hasKey("pattern"));
+    TRI_ASSERT(entry.get("pattern").isObject());
+
+    VPackSlice pattern = entry.get("pattern");
+
+    TRI_ASSERT(pattern.isObject());
+    TRI_ASSERT(pattern.hasKey("_key"));
+    TRI_ASSERT(pattern.get("_key").isString());
+
+    VPackSlice key = pattern.get("_key");
+
+    // execute the read and then a delete
+    TRI_voc_tick_t resultMarkerTick = 0;
+    bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
+    TRI_voc_rid_t actualRevision = 0;
+    ManagedDocumentResult previous;
+    Result entryResult;
+
+    {
+      CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(), lock);
+      entryResult = collection->read(this, key, previous, false);
+
+      if (entryResult.ok()) {
+        if(!aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
+          entryResult.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+
+        } else {
+          entryResult = collection->remove(this, key, options, resultMarkerTick,
+                                           false, actualRevision, previous);
+        }
+      }
+    } // the conditional write locker is destroyed here
+
+    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
+      maxTick = resultMarkerTick;
+    }
+
+    // Build the result object for this entry
+    response.openObject();
+    if (!entryResult.ok()) {
+      response.add(StaticStrings::ErrorNum, VPackValue(entryResult.errorNumber()));
+      response.add(StaticStrings::ErrorMessage, VPackValue(entryResult.errorMessage()));
+      // check here if this is the first error
+      if (firstError.ok()) {
+        firstError = entryResult;
+        firstErrorIndex = count;
+      }
+    } else {
+      if (!options.silent && options.returnOld) {
+        response.add(VPackValue("old"));
+        previous.addToBuilder(response, true);
+      }
+    }
+
+    response.close();
+    count++;
+  }
+
+  response.close();
+
+  // encode error here
+  if (!firstError.ok()) {
+    response.add(StaticStrings::Error, VPackValue(true));
+    response.add(StaticStrings::ErrorNum, VPackValue(firstError.errorNumber()));
+    response.add(StaticStrings::ErrorMessage, VPackValue(firstError.errorMessage()));
+    response.add("errorDataIndex", VPackValue(firstErrorIndex));
+  }
+
+  response.close();
+
+  LOG_TOPIC(INFO, Logger::FIXME) << "reponse: " << response.toJson();
+
+  std::unordered_map<int, size_t> countErrorCodes;  // not yet implemented
+  return OperationResult(std::move(result), response.steal(), nullptr, options, countErrorCodes);
+}
+
+
 
 /// @brief fetches all documents in a collection
 OperationResult transaction::Methods::all(std::string const& collectionName,

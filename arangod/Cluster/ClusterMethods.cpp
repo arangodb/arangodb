@@ -248,6 +248,7 @@ static void mergeResults____2(
 
   bool hasError = false, hasResult = false;
   int errNum;
+  uint64_t errDataIndex;
   std::string errMsg;
 
   resultBody->clear();
@@ -278,22 +279,39 @@ static void mergeResults____2(
         }
       }
 
-      resultBody->add(arr.at(pair.second));
+      resultBody->add(response);
       hasResult = true;
+
+      // maybe check here if error in response
+      // and repair a broken response
+      if (!hasError && arangodb::basics::VelocyPackHelper::readBooleanValue
+        (response, StaticStrings::Error, false)) {
+
+          // found first error
+          hasError = true;
+          errNum = response.get(StaticStrings::ErrorNum).getNumericValue<int>();
+          errMsg = arangodb::basics::VelocyPackHelper::getStringValue(
+                      response, StaticStrings::ErrorMessage, TRI_errno_string(errNum));
+          errDataIndex = resultCount;
+      }
+
+
     } else {
       // check if the result attribute is opened
-      if (!hasResult) {
-        resultCount++;
-      } else {
+      if (hasResult) {
         // more empty objects
         resultBody->add(VPackSlice::emptyObjectSlice());
       }
     }
 
+    resultCount++;
+
     // we should rely on the peer to indicate an error in its result
     // at the top level.
-    if (obj.hasKey(StaticStrings::Error) &&
-        obj.get(StaticStrings::Error).isBoolean() && obj.get(StaticStrings::Error).getBoolean()) {
+    // Since we have to find errorDataIndex, one has to check each result
+    // item to find the error. Thus we can just ignore the top level error.
+    /*if (arangodb::basics::VelocyPackHelper::readBooleanValue
+      (obj, StaticStrings::Error, false)) {
 
       if (!hasError) {
         // found first error
@@ -302,7 +320,7 @@ static void mergeResults____2(
         errMsg = arangodb::basics::VelocyPackHelper::getStringValue(
                     obj, StaticStrings::ErrorMessage, TRI_errno_string(errNum));
       }
-    }
+    }*/
   }
 
   if (hasResult) {
@@ -314,6 +332,7 @@ static void mergeResults____2(
     resultBody->add(StaticStrings::Error, VPackValue(true));
     resultBody->add(StaticStrings::ErrorNum, VPackValue(errNum));
     resultBody->add(StaticStrings::ErrorMessage, VPackValue(errMsg));
+    resultBody->add("errorDataIndex", VPackValue(errDataIndex));
   }
 
   resultBody->close();
@@ -1325,10 +1344,9 @@ Result createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int deleteDocumentOnCoordinator(
-  std::string const &dbname, std::string const &collname, transaction::Methods const &trx,
-  VPackSlice const slice, OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
-  std::unordered_map<int, size_t> &errorCounter, std::shared_ptr<arangodb::velocypack::Builder> &resultBody,
-  VPackSlice const pattern
+  std::string const &dbname, std::string const &collname, transaction::Methods const &trx, VPackSlice const slice,
+  OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
+  std::unordered_map<int, size_t> &errorCounter, std::shared_ptr<arangodb::velocypack::Builder> &resultBody
 ) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1338,8 +1356,243 @@ int deleteDocumentOnCoordinator(
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+  TRI_ASSERT(collinfo != nullptr);
+  bool useDefaultSharding = collinfo->usesDefaultShardKeys();
+  auto collid = std::to_string(collinfo->id());
+  bool useMultiple = slice.isArray();
+
+  std::string const baseUrl =
+      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
+
+  std::string const optsUrlPart =
+      std::string("?waitForSync=") + (options.waitForSync ? "true" : "false") +
+      "&returnOld=" + (options.returnOld ? "true" : "false") + "&ignoreRevs=" +
+      (options.ignoreRevs ? "true" : "false");
+
+  VPackBuilder reqBuilder;
+
+  if (useDefaultSharding) {
+    // fastpath we know which server is responsible.
+
+    // decompose the input into correct shards.
+    // Send the correct documents to the correct shards
+    // Merge the results with static merge helper
+
+    std::unordered_map<ShardID, std::vector<VPackSlice>> shardMap;
+    std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
+    auto workOnOneNode = [&shardMap, &ci, &collid, &collinfo, &reverseMapping](
+        VPackSlice const value) -> int {
+      // Sort out the _key attribute and identify the shard responsible for it.
+
+      StringRef _key(transaction::helpers::extractKeyPart(value));
+      ShardID shardID;
+      if (_key.empty()) {
+        // We have invalid input at this point.
+        // However we can work with the other babies.
+        // This is for compatibility with single server
+        // We just assign it to any shard and pretend the user has given a key
+        std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(collid);
+        shardID = shards->at(0);
+      } else {
+        // Now find the responsible shard:
+        bool usesDefaultShardingAttributes;
+        int error = ci->getResponsibleShard(
+            collinfo.get(),
+            arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
+            shardID, usesDefaultShardingAttributes, _key.toString());
+
+        if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+          return TRI_ERROR_CLUSTER_SHARD_GONE;
+        }
+      }
+
+      // We found the responsible shard. Add it to the list.
+      auto it = shardMap.find(shardID);
+      if (it == shardMap.end()) {
+        shardMap.emplace(shardID, std::vector<VPackSlice>{value});
+        reverseMapping.emplace_back(shardID, 0);
+      } else {
+        it->second.emplace_back(value);
+        reverseMapping.emplace_back(shardID, it->second.size() - 1);
+      }
+      return TRI_ERROR_NO_ERROR;
+    };
+
+    if (useMultiple) { // slice is array of document values
+      for (VPackSlice value : VPackArrayIterator(slice)) {
+        int res = workOnOneNode(value);
+        if (res != TRI_ERROR_NO_ERROR) {
+          // Is early abortion correct?
+          return res;
+        }
+      }
+    } else {
+      int res = workOnOneNode(slice);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+
+    // We sorted the shards correctly.
+
+    // Now prepare the requests:
+    std::vector<ClusterCommRequest> requests;
+    auto body = std::make_shared<std::string>();
+    for (auto const& it : shardMap) {
+      if (!useMultiple) {
+        TRI_ASSERT(it.second.size() == 1);
+        body = std::make_shared<std::string>(slice.toJson());
+      } else {
+        reqBuilder.clear();
+        reqBuilder.openArray();
+        for (auto const& value : it.second) {
+          reqBuilder.add(value);
+        }
+        reqBuilder.close();
+        body = std::make_shared<std::string>(reqBuilder.slice().toJson());
+      }
+      requests.emplace_back(
+          "shard:" + it.first,
+          arangodb::rest::RequestType::DELETE_REQ,
+          baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+          ::CreateNoLockHeader(trx, it.first));
+    }
+
+    // Perform the requests
+    size_t nrDone = 0;
+    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+
+    // Now listen to the results:
+    if (!useMultiple) {
+      TRI_ASSERT(requests.size() == 1);
+      auto const& req = requests[0];
+      auto& res = req.result;
+
+      int commError = handleGeneralCommErrors(&res);
+      if (commError != TRI_ERROR_NO_ERROR) {
+        return commError;
+      }
+
+      responseCode = res.answer_code;
+      TRI_ASSERT(res.answer != nullptr);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
+      resultBody.swap(parsedResult);
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
+    collectResultsFromAllShards<VPackSlice>(
+        shardMap, requests, errorCounter, resultMap, responseCode);
+    mergeResults(reverseMapping, resultMap, resultBody);
+    return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
+                                // the DBserver could have reported an error.
+  }
+
+  // slowpath we do not know which server is responsible ask all of them.
+
+  // We simply send the body to all shards and await their results.
+  // As soon as we have the results we merge them in the following way:
+  // For 1 .. slice.length()
+  //    for res : allResults
+  //      if res != NOT_FOUND => insert this result. skip other results
+  //    end
+  //    if (!skipped) => insert NOT_FOUND
+
+  auto body = std::make_shared<std::string>(slice.toJson());
+  std::vector<ClusterCommRequest> requests;
+  auto shardList = ci->getShardList(collid);
+  for (auto const& shard : *shardList) {
+    requests.emplace_back(
+        "shard:" + shard, arangodb::rest::RequestType::DELETE_REQ,
+        baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
+        ::CreateNoLockHeader(trx, shard));
+  }
+
+  // Perform the requests
+  size_t nrDone = 0;
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
+
+  // Now listen to the results:
+  if (!useMultiple) {
+    // Only one can answer, we react a bit differently
+    size_t count;
+    int nrok = 0;
+    for (count = requests.size(); count > 0; count--) {
+      auto const& req = requests[count - 1];
+      auto res = req.result;
+      if (res.status == CL_COMM_RECEIVED) {
+        if (res.answer_code !=
+                arangodb::rest::ResponseCode::NOT_FOUND ||
+            (nrok == 0 && count == 1)) {
+          nrok++;
+
+          responseCode = res.answer_code;
+          TRI_ASSERT(res.answer != nullptr);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
+          resultBody.swap(parsedResult);
+        }
+      }
+    }
+
+    // Note that nrok is always at least 1!
+    if (nrok > 1) {
+      return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
+    }
+    return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
+                                // the DBserver could have reported an error.
+  }
+
+  // We select all results from all shards an merge them back again.
+  std::vector<std::shared_ptr<VPackBuilder>> allResults;
+  allResults.reserve(shardList->size());
+  // If no server responds we return 500
+  responseCode = rest::ResponseCode::SERVER_ERROR;
+  for (auto const& req : requests) {
+    auto res = req.result;
+    int error = handleGeneralCommErrors(&res);
+    if (error != TRI_ERROR_NO_ERROR) {
+      // Local data structures are automatically freed
+      return error;
+    }
+    if (res.answer_code == rest::ResponseCode::OK ||
+        res.answer_code == rest::ResponseCode::ACCEPTED) {
+      responseCode = res.answer_code;
+    }
+    TRI_ASSERT(res.answer != nullptr);
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtrNoUniquenessChecks());
+    extractErrorCodes(res, errorCounter, false);
+  }
+  // If we get here we get exactly one result for every shard.
+  TRI_ASSERT(allResults.size() == shardList->size());
+  mergeResultsAllShards(allResults, resultBody, errorCounter,
+                        static_cast<size_t>(slice.length()));
+  return TRI_ERROR_NO_ERROR;
+}
+
+int deleteBatchDocumentOnCoordinator(
+  std::string const &dbname, std::string const &collname, transaction::Methods const &trx,
+  VPackSlice const slice, OperationOptions const &options, arangodb::rest::ResponseCode &responseCode,
+  std::shared_ptr<arangodb::velocypack::Builder> &resultBody
+) {
+  /*
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+  std::string out;
+  TRI_GetBacktrace(out);
   LOG_TOPIC(INFO, Logger::FIXME) << "slice: " << slice.toJson()
-    << "pattern: " << pattern.toJson();
+    << "pattern: " << pattern.toJson() << out;
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -1355,32 +1608,49 @@ int deleteDocumentOnCoordinator(
 
   VPackBuilder reqBuilder;
 
+  std::string const baseUrl =
+    "/_db/" + StringUtils::urlEncode(dbname) + "/_api/batch/document/";
+
+  VPackBuilder opts;
+  opts.openObject();
+  if (options.waitForSync) {
+    opts.add("waitForSync", VPackValue(true));
+  }
+  if (options.returnOld) {
+    opts.add("returnOld", VPackValue(true));
+  }
+  if (options.silent) {
+    opts.add("silent", VPackValue(true));
+  }
+  opts.close();
+
   if (useDefaultSharding) {
     // fastpath we know which server is responsible.
 
     // decompose the input into correct shards.
     // Send the correct documents to the correct shards
     // Merge the results with static merge helper
+    auto encodeOnNode = [](VPackBuilder &builder,
+      VPackSlice const slice, VPackSlice const userPattern) {
 
-    std::string const baseUrl =
-      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/batch/document/";
-
-    VPackBuilder opts;
-    opts.openObject();
-    if (options.waitForSync) {
-      opts.add("waitForSync", VPackValue(true));
-    }
-    if (options.returnOld) {
-      opts.add("returnOld", VPackValue(true));
-    }
-    if (options.silent) {
-      opts.add("silent", VPackValue(true));
-    }
-    opts.close();
+      if (userPattern.isNone()) {
+        // either key string or {_key: ...}
+        TRI_ASSERT(slice.isObject() || slice.isString());
+        if (slice.isObject()) {
+          builder = VPackBuilder{slice};
+        } else{
+          builder.openObject();
+          builder.add("_key", slice);
+          builder.close();
+        }
+      } else {
+        builder = VPackBuilder{userPattern};
+      }
+    };
 
     std::unordered_map<ShardID, std::vector<VPackBuilder>> shardMap;
     std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
-    auto workOnOneNode = [&shardMap, &ci, &collid, &collinfo, &reverseMapping](
+    auto workOnOneNode = [&shardMap, &ci, &collid, &collinfo, &reverseMapping, &encodeOnNode](
         VPackSlice const slice, VPackSlice const userPattern) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
@@ -1407,20 +1677,7 @@ int deleteDocumentOnCoordinator(
       }
 
       VPackBuilder pattern;
-
-      if (userPattern.isNone()) {
-        // either key string or {_key: ...}
-        TRI_ASSERT(slice.isObject() || slice.isString());
-        if (slice.isObject()) {
-          pattern = VPackBuilder{slice};
-        } else /* if(slice.isString())*/ {
-          pattern.openObject();
-          pattern.add("_key", slice);
-          pattern.close();
-        }
-      } else {
-        pattern = VPackBuilder{userPattern};
-      }
+      encodeOnNode(pattern);
 
       // We found the responsible shard. Add it to the list.
       auto it = shardMap.find(shardID);
@@ -1511,6 +1768,9 @@ int deleteDocumentOnCoordinator(
       auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
 
       resultBody.swap(parsedResult);
+
+      LOG_TOPIC(INFO, Logger::FIXME) << "delete result: " << resultBody->toJson()
+        << " reponseCode: " << (int) responseCode;
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1519,7 +1779,8 @@ int deleteDocumentOnCoordinator(
         shardMap, requests, errorCounter, resultMap, responseCode);
 
     mergeResults____2(reverseMapping, resultMap, resultBody);
-    //LOG_TOPIC(INFO, Logger::FIXME) << "Got delete result: " << resultBody->toJson();
+    LOG_TOPIC(INFO, Logger::FIXME) << "delete result: " << resultBody->toJson()
+        << " reponseCode: " << (int) responseCode;
     return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
                                 // the DBserver could have reported an error.
   }
@@ -1534,16 +1795,40 @@ int deleteDocumentOnCoordinator(
   //    end
   //    if (!skipped) => insert NOT_FOUND
 
-  std::string const baseUrl =
-      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
-
-  std::string const optsUrlPart =
-      std::string("?waitForSync=") + (options.waitForSync ? "true" : "false") +
-      "&returnOld=" + (options.returnOld ? "true" : "false") + "&ignoreRevs=" +
-      (options.ignoreRevs ? "true" : "false");
 
 
-  auto body = std::make_shared<std::string>(slice.toJson());
+  reqBuilder.openObject();
+  reqBuilder.add("options", opts.slice());
+  reqBuilder.add("data", VPackValue(VPackValueType::Array));
+
+  if (useMultiple) { // slice is array of document values
+    boost::optional<VPackArrayIterator> patternIt = boost::none;
+    if (pattern.isArray()) {
+      TRI_ASSERT(slice.length() == pattern.length());
+      patternIt = VPackArrayIterator(pattern);
+    }
+
+    for (VPackSlice value : VPackArrayIterator(slice)) {
+      VPackSlice patternElt = VPackSlice::noneSlice();
+      if (patternIt && patternIt.get() != patternIt->end()) {
+        patternElt = patternIt->value();
+        patternIt->next();
+      }
+
+      VPackBuilder node;
+      encodeOnNode(node, value, patternElt);
+      reqBuilder.add(node);
+    }
+  } else {
+    VPackBuilder node;
+    encodeOnNode(node, slice, pattern);
+    reqBuilder.add(node);
+  }
+
+  reqBuilder.close();
+  reqBuilder.close();
+
+  auto body = std::make_shared<std::string>(reqBuilder.toJson());
   std::vector<ClusterCommRequest> requests;
   auto shardList = ci->getShardList(collid);
   for (auto const& shard : *shardList) {
@@ -1610,7 +1895,7 @@ int deleteDocumentOnCoordinator(
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter,
-                        static_cast<size_t>(slice.length()));
+                        static_cast<size_t>(slice.length()));*/
   return TRI_ERROR_NO_ERROR;
 }
 
