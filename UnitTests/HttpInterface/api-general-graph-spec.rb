@@ -281,7 +281,7 @@ describe ArangoDB do
             second_def = { "collection" => bought_collection, "from" => [user_collection], "to" => [product_collection] }
             doc = additional_edge_definition(sync, graph_name, second_def )
             edge_definition.push(second_def)
-            edge_definition.sort_by { |d| [ -d["collection"] ] }
+            edge_definition = edge_definition.sort_by { |d| [ -d["collection"] ] }
 
             doc.code.should eq(202)
             doc.parsed_response['error'].should eq(false)
