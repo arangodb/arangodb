@@ -467,8 +467,8 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   auto self = shared_from_this();
 
   if (jobId != nullptr) {
-    *jobId = handler->handlerId();
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
+    *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->queue(

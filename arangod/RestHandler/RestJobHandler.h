@@ -83,6 +83,9 @@ class RestJobHandler : public RestBaseHandler {
 
   void deleteJob();
 
+ protected:
+  virtual uint32_t forwardingTarget() override;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief async job manager

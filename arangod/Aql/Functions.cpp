@@ -2100,7 +2100,7 @@ AqlValue Functions::Lower(arangodb::aql::Query*,
 
   UnicodeString unicodeStr(buffer->c_str(),
                            static_cast<int32_t>(buffer->length()));
-  unicodeStr.toLower(NULL);
+  unicodeStr.toLower(nullptr);
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
@@ -2123,7 +2123,7 @@ AqlValue Functions::Upper(arangodb::aql::Query*,
 
   UnicodeString unicodeStr(buffer->c_str(),
                            static_cast<int32_t>(buffer->length()));
-  unicodeStr.toUpper(NULL);
+  unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);

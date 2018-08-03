@@ -64,10 +64,8 @@ function loadBalancingClient (options) {
 
   print(CYAN + 'Load Balancing tests...' + RESET);
   const excludeAuth = (fn) => { return (fn.indexOf('-auth') === -1); };
-  const excludeAsync = (fn) => { return (fn.indexOf('-async') === -1); };
   let testCases = tu.scanTestPaths(testPaths.load_balancing)
-                    .filter(excludeAuth)
-                    .filter(excludeAsync);
+                    .filter(excludeAuth);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
@@ -95,10 +93,8 @@ function loadBalancingAuthClient (options) {
 
   print(CYAN + 'Load Balancing with Authentication tests...' + RESET);
   const excludeNoAuth = (fn) => { return (fn.indexOf('-noauth') === -1); };
-  const excludeAsync = (fn) => { return (fn.indexOf('-async') === -1); };
   let testCases = tu.scanTestPaths(testPaths.load_balancing)
-                    .filter(excludeNoAuth)
-                    .filter(excludeAsync);
+                    .filter(excludeNoAuth);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;

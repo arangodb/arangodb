@@ -131,6 +131,7 @@ const generateDumpData = (options) => {
     log('Dump successful');
   } finally {
     log('Shutting down dump server');
+
     if (isAlive(instanceInfo, options)) {
       pu.shutdownInstance(instanceInfo, options);
     }
@@ -157,6 +158,8 @@ const setServerOptions = (options, serverOptions, customInstanceInfos, startStop
   if (startStopHandlers.useAuth) {
     serverOptions['server.authentication'] = 'true';
     serverOptions['server.jwt-secret'] = 'haxxmann';
+    options['server.authentication'] = 'true';
+    options['server.jwt-secret'] = 'haxxmann';
   } else {
     serverOptions['server.authentication'] = 'false';
   }

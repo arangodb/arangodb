@@ -68,7 +68,8 @@ class AsyncJobManager {
   AsyncJobManager& operator=(AsyncJobManager const&) = delete;
 
  public:
-  typedef std::unordered_map<AsyncJobResult::IdType, AsyncJobResult> JobList;
+  typedef std::unordered_map<AsyncJobResult::IdType,
+                             std::pair<std::string, AsyncJobResult>> JobList;
 
  public:
   AsyncJobManager();
@@ -80,10 +81,10 @@ class AsyncJobManager {
   bool deleteJobResult(AsyncJobResult::IdType);
   void deleteJobs();
   void deleteExpiredJobResults(double stamp);
-  
+
   /// @brief cancel and delete a specific job
   Result cancelJob(AsyncJobResult::IdType);
-  
+
   /// @brief cancel and delete all pending / done jobs
   Result clearAllJobs();
 
