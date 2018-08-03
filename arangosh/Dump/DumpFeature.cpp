@@ -1026,10 +1026,10 @@ void DumpFeature::start() {
       res = runClusterDump(*httpClient, dbName);
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
     res = {TRI_ERROR_INTERNAL};
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Error: caught unknown exception";
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception";
     res = {TRI_ERROR_INTERNAL};
   }
 

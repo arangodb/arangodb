@@ -421,7 +421,7 @@ void ClusterFeature::start() {
     builder.add("endpoint", VPackValue(_myAddress));
     builder.add("host", VPackValue(ServerState::instance()->getHost()));
     builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
-    builder.add("storageEngine", VPackValue(EngineSelectorFeature::engineName()));
+    builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
   } catch (...) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
     FATAL_ERROR_EXIT();

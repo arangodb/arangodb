@@ -470,6 +470,7 @@ The following AQL functions have been added in ArangoDB 3.4:
 * `SORTED_UNIQUE`: same as `SORTED`, but additionally removes duplicates
 * `COUNT_DISTINCT`: counts the number of distinct / unique items in an array
 * `LEVENSHTEIN_DISTANCE`: calculates the Levenshtein distance between two string values
+* `REGEX_SPLIT`: splits a string using a regular expression
  
 The following AQL functions have been added to make working with geographical 
 data easier:

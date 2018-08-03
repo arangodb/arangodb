@@ -542,11 +542,10 @@ void ImportFeature::start() {
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Caught exception " << ex.what()
-                                            << " during import";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Got an unknown exception during import";
+        << "caught unknown exception";
   }
 
   *_result = ret;

@@ -46,11 +46,11 @@ class Methods;
 }
 
 struct MMFilesPrimaryIndexHelper {
-  static inline uint64_t HashKey(void*, uint8_t const* key) {
+  static inline uint64_t HashKey(uint8_t const* key) {
     return MMFilesSimpleIndexElement::hash(VPackSlice(key));
   }
 
-  static inline uint64_t HashElement(void*, MMFilesSimpleIndexElement const& element, bool) {
+  static inline uint64_t HashElement(MMFilesSimpleIndexElement const& element, bool) {
     return element.hash();
   }
 
@@ -70,7 +70,7 @@ struct MMFilesPrimaryIndexHelper {
   }
 
   /// @brief determines if two elements are equal
-  inline bool IsEqualElementElement(void* userData,
+  inline bool IsEqualElementElement(void*,
                                     MMFilesSimpleIndexElement const& left,
                                     MMFilesSimpleIndexElement const& right) const {
     return (left.localDocumentId() == right.localDocumentId());

@@ -1,1 +1,1 @@
-../3rdParty/rocksdb/v5.14.X/cmake/RocksDBConfig.cmake.in
+../3rdParty/rocksdb/RocksDBConfig.cmake.in
