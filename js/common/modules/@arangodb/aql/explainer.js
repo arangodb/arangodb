@@ -242,7 +242,7 @@ function printStats (stats) {
   var maxSILen = String('Scan Index').length;
   var maxFLen = String('Filtered').length;
   var maxETen = String('Exec Time [s]').length;
-  stats.executionTime = stats.executionTime.toFixed(5) + 's';
+  stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
                            header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
                          
@@ -263,14 +263,18 @@ function printProfile (profile) {
 
   stringBuilder.appendLine(section('Query Profile:'));
   let maxHeadLen = 0;
+  let maxDurLen = 'Duration [s]'.length;
   Object.keys(profile).forEach(key => {
     if (key.length > maxHeadLen) {
       maxHeadLen = key.length;
     }
+    if (profile[key].toFixed(5).length > maxDurLen) {
+      maxDurLen = profile[key].toFixed(5).length;
+    }
   });
-  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + header('Duration [s]'));
+  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + pad(1 + maxDurLen - 'Duration [s]'.length) + header('Duration [s]'));
   Object.keys(profile).forEach(key => {
-    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + profile[key].toFixed(5));
+    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + pad(1 + maxDurLen - profile[key].toFixed(5).length) + value(profile[key].toFixed(5)));
   });
   stringBuilder.appendLine();
 }
@@ -726,12 +730,6 @@ function processQuery (query, explain) {
     return variable(node.name);
   };
 
-  var addHint = function () {};
-  // uncomment this to show "style" hints
-  // var addHint = function (dst, currentNode, msg) {
-  //   dst.push({ code: "Hint", message: "Node #" + currentNode + ": " + msg })
-  // }
-
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
       var lhs = buildExpression(node.subNodes[0]);
@@ -747,18 +745,6 @@ function processQuery (query, explain) {
     };
 
     isConst = isConst && ([ 'value', 'object', 'object element', 'array' ].indexOf(node.type) !== -1);
-
-    if (node.type !== 'attribute access' &&
-      node.hasOwnProperty('subNodes')) {
-      for (var i = 0; i < node.subNodes.length; ++i) {
-        if (node.subNodes[i].type === 'reference' &&
-          collectionVariables.hasOwnProperty(node.subNodes[i].id)) {
-          addHint(explain.warnings, currentNode, "reference to collection document variable '" +
-            node.subNodes[i].name + "' used in potentially non-working way");
-          break;
-        }
-      }
-    }
 
     switch (node.type) {
       case 'reference':
@@ -783,7 +769,6 @@ function processQuery (query, explain) {
         }
         return variableName(node);
       case 'collection':
-        addHint(explain.warnings, currentNode, "using all documents from collection '" + node.name + "' in expression");
         return collection(node.name) + '   ' + annotation('/* all collection documents */');
       case 'value':
         return value(JSON.stringify(node.value));
@@ -818,21 +803,6 @@ function processQuery (query, explain) {
       case 'array limit':
         return buildExpression(node.subNodes[0]) + ', ' + buildExpression(node.subNodes[1]);
       case 'attribute access':
-        if (node.subNodes[0].type === 'reference' &&
-          collectionVariables.hasOwnProperty(node.subNodes[0].id)) {
-          // top-level attribute access
-          var collectionName = collectionVariables[node.subNodes[0].id],
-            collectionObject = db._collection(collectionName);
-          if (collectionObject !== null) {
-            var isEdgeCollection = (collectionObject.type() === 3),
-              isSystem = (node.name[0] === '_');
-
-            if ((isSystem && [ '_key', '_id', '_rev'].concat(isEdgeCollection ? [ '_from', '_to' ] : []).indexOf(node.name) === -1) ||
-              (!isSystem && isEdgeCollection && [ 'from', 'to' ].indexOf(node.name) !== -1)) {
-              addHint(explain.warnings, currentNode, "reference to potentially non-existing attribute '" + node.name + "'");
-            }
-          }
-        }
         return buildExpression(node.subNodes[0]) + '.' + attribute(node.name);
       case 'indexed access':
         return buildExpression(node.subNodes[0]) + '[' + buildExpression(node.subNodes[1]) + ']';
@@ -1528,7 +1498,7 @@ function processQuery (query, explain) {
     if (profileMode) {
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
               pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-              pad(1 + maxRuntimeLen - String(node.runtime.toFixed(4)).length) + value(node.runtime.toFixed(4)) + '   ' +
+              pad(1 + maxRuntimeLen - String(node.runtime.toFixed(5)).length) + value(node.runtime.toFixed(5)) + '   ' +
               indent(level, node.type === 'SingletonNode') + label(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
