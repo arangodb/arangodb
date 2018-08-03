@@ -220,19 +220,28 @@ arangodb::Result addShardFollower (
     std::unordered_map<std::string, std::string>(), timeout);  
   
   auto result = comres->result;
-  if (result->getHttpReturnCode() != 200) {
-    std::string errorMessage (
-      "addShardFollower: could not add us to the leader's follower list. ");
+  std::string errorMessage (
+    "addShardFollower: could not add us to the leader's follower list. ");
+  if (result != nullptr) {
+    if (result->getHttpReturnCode() != 200) {
+      if (lockJobId != 0) {
+        errorMessage += comres->stringifyErrorMessage();
+        LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+      } else {
+        errorMessage += "with shortcut.";
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
+      }
+      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+    }
+  } else {
     if (lockJobId != 0) {
-      errorMessage += comres->stringifyErrorMessage();
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
-    } else {
       errorMessage += "with shortcut.";
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
+    } else {
+      errorMessage += " null result.";
+      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
-    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
   }
-  
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
   return arangodb::Result();
   
