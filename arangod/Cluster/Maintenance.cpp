@@ -527,8 +527,7 @@ VPackBuilder assembleLocalCollectioInfo(
             != current.end()) {
           ret.add(server);
         }
-      }
-    }}
+      }}}
   
   return ret;
   

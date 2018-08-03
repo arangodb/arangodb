@@ -391,7 +391,6 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
   std::shared_ptr<Action> ret_ptr;
 
   while(!_isShuttingDown && !ret_ptr) {
-    CONDITION_LOCKER(cLock, _actionRegistryCond);
 
     // scan for ready action (and purge any that are done waiting)
     {
@@ -412,6 +411,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
 
     // no pointer ... wait 1 second
     if (!_isShuttingDown && !ret_ptr) {
+    CONDITION_LOCKER(cLock, _actionRegistryCond);
       _actionRegistryCond.wait(100000);
     } // if
 
