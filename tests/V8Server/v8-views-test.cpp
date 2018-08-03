@@ -29,6 +29,9 @@
 #include "../IResearch/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -138,6 +141,10 @@ struct V8ViewsSetup {
     features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t
     features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for LogicalView::create(...)
+
+#if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+#endif
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
