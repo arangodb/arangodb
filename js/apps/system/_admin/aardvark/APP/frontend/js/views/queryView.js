@@ -2122,7 +2122,7 @@
         }
 
         if (data.msg) {
-          if (profile) {
+          if (data.extra.profile) {
             $('#outputEditorWrapper' + counter + ' .toolbarType').html('Profile');
           } else {
             $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');

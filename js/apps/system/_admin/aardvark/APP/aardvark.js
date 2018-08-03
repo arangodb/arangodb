@@ -145,24 +145,14 @@ authRouter.post('/query/profile', function (req, res) {
   let msg = null;
 
   try {
-    if (bindVars) {
-      msg = explainer.profileQuery({
-        query: query,
-        bindVars: bindVars,
-        options: {
-          colors: false,
-          profile: 2
-        }
-      }, false);
-    } else {
-      msg = explainer.profileQuery({
-        query: query,
-        options: {
-          colors: false,
-          profile: 2
-        }
-      }, false);
-    }
+    msg = explainer.profileQuery({
+      query, 
+      bindVars: bindVars || {},
+      options: {
+        colors: false,
+        profile: 2
+      }
+    }, false);
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
   }
