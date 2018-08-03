@@ -544,6 +544,11 @@ OperationResult removeBatchCoordinator(
                               TRI_voc_document_operation_e operation,
                               VPackSlice const pattern);
 
+  OperationResult modifyBatchLocal(std::string const& collectionName,
+                                   VPackSlice const request,   // the incoming request
+                                   OperationOptions& options   // the parsed options part
+                                  );
+
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const value,
                                     OperationOptions& options,

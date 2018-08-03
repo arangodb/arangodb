@@ -116,10 +116,10 @@ static boost::optional<BatchOperation> stringToBatch(std::string const& op) {
 
 using AttributeSet = std::unordered_set<std::string>;
 
-static Result expectedButGotValidationError(const char* expected,
-                                            const char* got) {
+static Result expectedType(VPackValueType expected, VPackValueType got){
+  if(expected == got) { return {}; };
   std::stringstream err;
-  err << "Expected type " << expected << ", got " << got << " instead.";
+  err << "Expected type " << valueTypeName(expected) << ", got " << valueTypeName(got) << " instead.";
   return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
 }
 
@@ -159,8 +159,9 @@ static Result isObjectAndDoesNotHaveExtraAttributes(
     AttributeSet const& deprecated
     ) {
 
-  if (!slice.isObject()) {
-    return {expectedButGotValidationError("object", slice.typeName())};
+  auto result = expectedType(VPackValueType::Object, slice.type());
+  if(result.fail()){
+    return result;
   }
 
   auto contains = [](AttributeSet const& set,
@@ -190,12 +191,9 @@ static Result isObjectAndDoesNotHaveExtraAttributes(
 }
 
 struct PatternWithKey {
- public:
-  static ResultT<PatternWithKey> fromVelocypack(VPackSlice slice);
-
- public:
   std::string const key;
   VPackSlice const pattern;
+  static ResultT<PatternWithKey> fromVelocypack(VPackSlice slice);
 
  protected:
   // NOLINTNEXTLINE(modernize-pass-by-value)
@@ -207,8 +205,9 @@ struct PatternWithKey {
 };
 
 ResultT<PatternWithKey> PatternWithKey::fromVelocypack(VPackSlice const slice) {
-  if (!slice.isObject()) {
-    return {expectedButGotValidationError("object", slice.typeName())};
+  auto result = expectedType(VPackValueType::Object, slice.type());
+  if(result.fail()){
+    return result;
   }
 
   VPackSlice key = slice.get("_key");
@@ -220,10 +219,9 @@ ResultT<PatternWithKey> PatternWithKey::fromVelocypack(VPackSlice const slice) {
                                           err.str());
   }
 
-  if (!key.isString()) {
-    Result error = expectedButGotValidationError("string", key.typeName());
-
-    return withMessagePrefix("When parsing attribute '_key'", error);
+  result = expectedType(VPackValueType::String, key.type());
+  if (result.fail()) {
+    return withMessagePrefix("When parsing attribute '_key'", result);
   }
 
   return ResultT<PatternWithKey>::success(

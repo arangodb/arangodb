@@ -55,8 +55,9 @@ dataFromVelocypackArray(VPackSlice const dataSlice
                        ,AttributeSet const& optional
                        ,AttributeSet const& deprecated
                        ){
-  if (!dataSlice.isArray()) {
-    return expectedButGotValidationError("array", dataSlice.typeName());
+  Result result = expectedType(VPackValueType::Array, dataSlice.type());
+  if(result.fail()){
+    return result;
   }
 
   std::vector<PatternWithKey> data;
@@ -130,11 +131,6 @@ struct BatchRequest {
     }
 
     isObjectAndDoesNotHaveExtraAttributes(slice, required, optional, deprecated);
-    if (!slice.isObject()) {
-      return expectedButGotValidationError("object", slice.typeName());
-    }
-
-
 
     // get data
     required = {};

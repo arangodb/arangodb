@@ -2016,11 +2016,11 @@ OperationResult transaction::Methods::modifyLocal(
 
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
-  VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
+  //VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions(); // TODO - use or delete
 
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
-                             &resultBuilder, &cid, &vPackOptions](
+                             &resultBuilder, &cid /*, &vPackOptions unused use or delte TODO*/](
       VPackSlice const newVal, VPackSlice const patternArg,
       bool isBabies) -> Result {
     VPackSlice const pattern = patternArg.resolveExternals();

@@ -190,7 +190,7 @@ describe('_api/batch/document', () => {
         });
 
         print("############################################");
-        print('remove one document at a time');
+        print('remove one document at a time - this shoudls show ' + n + ' times ');
         print(response.json);
         print("############################################");
 
@@ -214,7 +214,8 @@ describe('_api/batch/document', () => {
         });
 
         print("############################################");
-        print('remove one document at a time - fail');
+        print('remove one document at a time - this shoudls show ' + n + ' times - fail');
+        print('failed documents could contain the key? how hard is it to add?');
         print(response.json);
         print("############################################");
 
@@ -237,7 +238,8 @@ describe('_api/batch/document', () => {
       });
 
       print("############################################");
-      print('remove all document at a batch');
+      print('remove all documents in a batch');
+      print('on default meta should be visible');
       print(response.json);
       print("############################################");
 
@@ -257,7 +259,8 @@ describe('_api/batch/document', () => {
       });
 
       print("############################################");
-      print('remove all document at a batch - fail');
+      print('remove all documents in a batch - fail');
+      print('on default meta should be visible');
       print(response.json);
       print("############################################");
 
