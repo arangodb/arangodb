@@ -13,4 +13,5 @@ _Arangodump_ can be used for all ArangoDB deployments modes (Single Instance,
 Master/Slave, Active Failover, Cluster and DC2DC) and it can backup selected collections
 or all collections of a database, optionally including _system_ collections. One
 can backup the structure, i.e. the collections with their configuration without
-any data, only the data stored in them, or both. Dumps can optionally be encrypted.
+any data, only the data stored in them, or both. If you are using the Enterprise
+Edition, dumps can optionally be encrypted.

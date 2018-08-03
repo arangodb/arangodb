@@ -122,12 +122,12 @@ This feature is only available in the
 [**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
 {% endhint %}
 
-Starting form version 3.3 encryption of the dump is supported.
+Starting from version 3.3 encryption of the dump is supported.
 
 The dump is encrypted using an encryption keyfile, which must contain exactly 32
-bytes of random data (required by the AES block cipher).
+bytes of data (required by the AES block cipher).
 
-The kyfile can be created by an external program, or by using a command like the
+The keyfile can be created by an external program, or by using a command like the
 following:
 
 ```
