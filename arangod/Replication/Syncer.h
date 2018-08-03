@@ -58,21 +58,29 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   /// @brief a helper object used for synchronization between the
   /// dump apply thread and some helper job posted into the scheduler
   /// for async fetching of the next dump results
-  class JobSynchronizer {
+  class JobSynchronizer : public std::enable_shared_from_this<JobSynchronizer> {
    public:
     JobSynchronizer(JobSynchronizer const&) = delete;
     JobSynchronizer& operator=(JobSynchronizer const&) = delete;
 
     explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer); 
-    ~JobSynchronizer() = default;
+    ~JobSynchronizer();
 
     /// @brief will be called whenever a response for the job comes in
-    void gotResponse(arangodb::Result const& res, 
-                     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response);
+    void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept;
+    
+    /// @brief will be called whenever an error occurred
+    /// expects "res" to be an error!
+    void gotResponse(arangodb::Result&& res) noexcept; 
     
     /// @brief the calling Syncer will call and block inside this function until
     /// there is a response or the syncer/server is shut down
     arangodb::Result waitForResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response);
+
+    /// @brief post an async request to the scheduler
+    /// this will increase the number of inflight jobs, and count it down
+    /// when the posted request has finished
+    void request(std::function<void()> const& cb);
 
     /// @brief notifies that a job was posted
     void jobPosted();
@@ -81,7 +89,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     void jobDone();
 
     /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
-    bool hasJobInFlight() const;
+    bool hasJobInFlight() const noexcept;
 
    private:
     /// @brief the shared syncer we use to check if sychronization was
