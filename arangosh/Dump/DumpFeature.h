@@ -115,8 +115,11 @@ class DumpFeature : public application_features::ApplicationFeature {
   std::queue<Result> _workerErrors;
 
  private:
-  Result runDump(httpclient::SimpleHttpClient& client, std::string& dbName);
-  Result runClusterDump(httpclient::SimpleHttpClient& client);
+  Result runDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
+  Result runClusterDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
+  
+  Result storeDumpJson(VPackSlice const& body, std::string const& dbName) const;
+  Result storeViews(velocypack::Slice const&) const;
 };
 }  // namespace arangodb
 
