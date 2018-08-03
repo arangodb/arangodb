@@ -52,7 +52,6 @@ namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 
-
 // Operations /////////////////////////////////////////////////////////////////
 enum class BatchOperation {
   READ,
@@ -189,12 +188,6 @@ static Result isObjectAndDoesNotHaveExtraAttributes(
 
   return {TRI_ERROR_NO_ERROR};
 }
-
-class BatchRequest {
- public:
- protected:
-  BatchRequest() = default;
-};
 
 struct PatternWithKey {
  public:
