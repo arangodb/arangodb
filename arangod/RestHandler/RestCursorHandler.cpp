@@ -64,14 +64,14 @@ RestCursorHandler::~RestCursorHandler() {
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
-  
+
   if (type == rest::RequestType::POST) {
     return createQueryCursor();
   } else if (type == rest::RequestType::PUT) {
     return modifyQueryCursor();
   } else if (type == rest::RequestType::DELETE_REQ) {
     return deleteQueryCursor();
-  } 
+  }
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
@@ -319,12 +319,12 @@ RestStatus RestCursorHandler::handleQueryResult() {
 uint32_t RestCursorHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
-    return false;
+    return 0;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return false;
+    return 0;
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
