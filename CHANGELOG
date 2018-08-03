@@ -1,14 +1,18 @@
 devel
 -----
 
-* Intermediate commits in the rocksdb engine are now only enabled in standalone AQL queries 
+* the AQL editor in the web UI now supports detailed AQL query profiling
+
+* fixed issue #5884: Subquery nodes are no longer created on DBServers
+
+* intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries 
   (not within a JS transaction), standalone truncate as well as for the "import" API
 
-* The AQL Editor in the Web UI now supports GeoJSON types and is able to render them.
+* the AQL editor in the web UI now supports GeoJSON types and is able to render them.
 
-* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+* fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
-* PR 5552: add "--latency true" option to arangoimport.  Lists microsecond latency
+* PR #5552: add "--latency true" option to arangoimport.  Lists microsecond latency
 
 * added `"pbkdf2"` method to `@arangodb/foxx/auth` module
 

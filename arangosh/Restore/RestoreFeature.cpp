@@ -514,7 +514,6 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string url = "/_api/replication/restore-view?overwrite=" +
     std::string(options.overwrite ? "true" : "false") +
     "&force=" + std::string(options.force ? "true" : "false");
-  
 
   std::string const body = viewDefinition.toJson();
   std::unique_ptr<SimpleHttpResult> response(httpClient.request(arangodb::rest::RequestType::PUT,
@@ -642,8 +641,10 @@ arangodb::Result processInputDirectory(
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
     
+    LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
     // Step 2: recreate all views
     for (VPackBuilder viewDefinition : views) {
+      LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
       Result res = ::restoreView(httpClient, options, viewDefinition.slice());
       if (res.fail()) {
         return res;
