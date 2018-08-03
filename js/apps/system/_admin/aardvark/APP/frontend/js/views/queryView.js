@@ -73,6 +73,7 @@
     events: {
       'click #executeQuery': 'executeQuery',
       'click #explainQuery': 'explainQuery',
+      'click #profileQuery': 'profileQuery',
       'click #debugQuery': 'debugDownloadDialog',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
@@ -296,7 +297,7 @@
         'aqlEditor', 'queryTable', 'previewWrapper', 'querySpotlight',
         'bindParamEditor', 'toggleQueries1', 'toggleQueries2', 'createNewQuery',
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
-        'explainQuery', 'importQuery', 'exportQuery'
+        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
@@ -505,16 +506,31 @@
       }
     },
 
-    explainQuery: function () {
+    profileQuery: function () {
+      this.explainQuery(true);
+    },
+
+    explainQuery: function (profile) {
+      if (profile !== true) {
+        profile = false;
+      } else {
+        profile = true;
+      }
+
       if (this.verifyQueryAndParams()) {
         return;
       }
 
       this.lastSentQueryString = this.aqlEditor.getValue();
 
+      var type = 'Explain';
+      if (profile) {
+        type = 'Profile';
+      }
+
       this.$(this.outputDiv).prepend(this.outputTemplate.render({
         counter: this.outputCounter,
-        type: 'Explain'
+        type: type
       }));
 
       var counter = this.outputCounter;
@@ -532,7 +548,7 @@
         bindParam: this.bindParamTableObj
       };
 
-      this.fillExplain(outputEditor, counter);
+      this.fillExplain(outputEditor, counter, profile);
       this.outputCounter++;
     },
 
@@ -592,9 +608,15 @@
       }
     },
 
-    fillExplain: function (outputEditor, counter) {
+    fillExplain: function (outputEditor, counter, profile) {
       var self = this;
-      var queryData = this.readQueryData();
+      var queryData;
+
+      if (profile) {
+        queryData = this.readQueryData(null, null, true);
+      } else {
+        queryData = this.readQueryData();
+      }
 
       if (queryData === 'false') {
         return;
@@ -611,16 +633,27 @@
           $('#outputEditorWrapper' + counter + ' .switchAce').show();
         };
 
+        var url;
+        if (profile) {
+          url = arangoHelper.databaseUrl('/_admin/aardvark/query/profile');
+        } else {
+          url = arangoHelper.databaseUrl('/_admin/aardvark/query/explain');
+        }
+
         $.ajax({
           type: 'POST',
-          url: arangoHelper.databaseUrl('/_admin/aardvark/query/explain/'),
+          url: url,
           data: queryData,
           contentType: 'application/json',
           processData: false,
           success: function (data) {
             if (data.msg && data.msg.errorMessage) {
               self.removeOutputEditor(counter);
-              arangoHelper.arangoError('Explain', data.msg);
+              if (profile) {
+                arangoHelper.arangoError('Profile', data.msg);
+              } else {
+                arangoHelper.arangoError('Explain', data.msg);
+              }
             } else {
               // cache explain results
               self.cachedQueries[counter] = data;
@@ -639,9 +672,17 @@
           error: function (data) {
             try {
               var temp = JSON.parse(data.responseText);
-              arangoHelper.arangoError('Explain', temp.errorMessage);
+              if (profile) {
+                arangoHelper.arangoError('Profile', temp.errorMessage);
+              } else {
+                arangoHelper.arangoError('Explain', temp.errorMessage);
+              }
             } catch (e) {
-              arangoHelper.arangoError('Explain', 'ERROR');
+              if (profile) {
+                arangoHelper.arangoError('Profile', 'ERROR');
+              } else {
+                arangoHelper.arangoError('Explain', 'ERROR');
+              }
             }
             self.handleResult(counter);
             self.removeOutputEditor(counter);
@@ -1692,11 +1733,13 @@
       }
     },
 
-    readQueryData: function (selected, forExecute) {
+    readQueryData: function (selected, forExecute, forProfile) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
-      var data = {
-        id: 'currentFrontendQuery'
-      };
+      var data = {};
+
+      if (!forProfile) {
+        data.id = 'currentFrontendQuery';
+      }
 
       if (selected) {
         data.query = this.aqlEditor.getSelectedText();
@@ -2079,7 +2122,11 @@
         }
 
         if (data.msg) {
-          $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
+          if (data.extra.profile) {
+            $('#outputEditorWrapper' + counter + ' .toolbarType').html('Profile');
+          } else {
+            $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
+          }
           outputEditor.setValue(data.msg, 1);
         }
 

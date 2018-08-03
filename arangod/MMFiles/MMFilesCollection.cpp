@@ -2114,7 +2114,9 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   idx = engine->indexFactory().prepareIndexFromSlice(
     info, true, _logicalCollection, false
   );
-  TRI_ASSERT(idx != nullptr);
+  if (!idx) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  }
 
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
