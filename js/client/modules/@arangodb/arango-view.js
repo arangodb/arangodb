@@ -179,6 +179,13 @@ ArangoView.prototype.type = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype.properties = function (properties, partialUpdate) {
+  var attributes = {
+    'locale': true,
+    'links': true,
+    'commit': true,
+  };
+  var a;
+
   var requestResult;
 
   if (properties === undefined) {
@@ -195,7 +202,16 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  var result = { };
+  for (a in attributes) {
+    if (attributes.hasOwnProperty(a) &&
+      requestResult.hasOwnProperty(a) &&
+      requestResult[a] !== undefined) {
+      result[a] = requestResult[a];
+    }
+  }
+
+  return result;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
