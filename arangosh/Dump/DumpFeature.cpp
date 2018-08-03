@@ -832,7 +832,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
           return {
               TRI_ERROR_INTERNAL,
               std::string("Collection ") + name +
-                  "'s shard distribution is based on a that of collection " +
+                  "'s shard distribution is based on that of collection " +
                   prototypeCollection +
                   ", which is not dumped along. You may dump the collection "
                   "regardless of the missing prototype collection by using "
