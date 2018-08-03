@@ -73,10 +73,8 @@ class RemoveRequest : public BatchRequest {
 };
 
 ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
-  isObjectAndDoesNotHaveExtraAttributes(
-      slice, _required = AttributeSet{"data", "options"},
-      _optional = AttributeSet{}, _deprecated = AttributeSet{});
-
+  isObjectAndDoesNotHaveExtraAttributes(slice,
+      {"data", "options"} /*required*/, {} /*optional*/, {} /*deprecated*/);
   if (!slice.isObject()) {
     return expectedButGotValidationError("object", slice.typeName());
   }
@@ -91,9 +89,8 @@ ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
 
     size_t i = 0;
     for (auto const& dataItemSlice : VPackArrayIterator(dataSlice)) {
-      isObjectAndDoesNotHaveExtraAttributes(
-          dataItemSlice, _required = AttributeSet{"pattern"},
-          _optional = AttributeSet{}, _deprecated = AttributeSet{});
+      isObjectAndDoesNotHaveExtraAttributes( dataItemSlice,
+          {"pattern"} /*required*/, {} /*optional*/, {} /*deprecated*/);
 
       VPackSlice patternSlice = dataItemSlice.get("pattern");
 
@@ -122,9 +119,8 @@ ResultT<RemoveRequest> RemoveRequest::fromVelocypack(VPackSlice const slice) {
   auto optionsFromVelocypack =
       [](VPackSlice const optionsSlice) -> ResultT<OperationOptions> {
     // TODO add possible options
-    Result res = isObjectAndDoesNotHaveExtraAttributes(
-        optionsSlice, _required = AttributeSet{}, _optional = AttributeSet{},
-        _deprecated = AttributeSet{});
+    Result res = isObjectAndDoesNotHaveExtraAttributes( optionsSlice,
+          {} /*required*/, {} /*optional*/, {} /*deprecated*/);
     if (res.fail()) {
       return {res};
     }

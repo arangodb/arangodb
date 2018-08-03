@@ -21,8 +21,9 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-// contains free standing functions that are mean for use ins
-// RestBatchDocumentHander.cpp only.
+// Contains free standing functions that are mean for use in
+// RestBatchDocumentHander.cpp only. You MUST NOT include
+// this file in other places.
 
 #ifndef ARANGOD_REST_HANDLER_REST_BATCH_DOCUMENT_HANDLER_HELPER_H
 #define ARANGOD_REST_HANDLER_REST_BATCH_DOCUMENT_HANDLER_HELPER_H 1
@@ -109,38 +110,12 @@ static boost::optional<BatchOperation> stringToBatch(std::string const& op) {
 
   return it->second;
 }
-}
-}
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Request structs and parsers
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace arangodb {
-namespace rest {
-namespace batch_document_handler {
-
-
 using AttributeSet = std::unordered_set<std::string>;
-// Tags
-namespace tag {
-struct required;
-struct optional;
-struct deprecated;
-}
-
-AR_DEFINE_TAGGED_TYPE(RequiredAttributeType,   tag::required,   AttributeSet);
-AR_DEFINE_TAGGED_TYPE(RequiredOptionalType,   tag::optional,   AttributeSet);
-AR_DEFINE_TAGGED_TYPE(DeprecatedOptionalType, tag::deprecated, AttributeSet);
-
-namespace {
-AR_DEFINE_KEYWORD(_required,   tag::required,   AttributeSet);
-AR_DEFINE_KEYWORD(_optional,   tag::optional,   AttributeSet);
-AR_DEFINE_KEYWORD(_deprecated, tag::deprecated, AttributeSet);
-}
-
-// Helper functions for parsers:
 
 static Result expectedButGotValidationError(const char* expected,
                                             const char* got) {
@@ -180,13 +155,10 @@ static Result withMessagePrefix(std::string const& prefix, Result const& res) {
 
 static Result isObjectAndDoesNotHaveExtraAttributes(
     VPackSlice slice,
-    RequiredAttributeType required_,
-    RequiredOptionalType optional_,
-    DeprecatedOptionalType deprecated_) {
-
-  AttributeSet const& required = required_.value;
-  AttributeSet const& optional = optional_.value;
-  AttributeSet const& deprecated = deprecated_.value;
+    AttributeSet const& required,
+    AttributeSet const& optional,
+    AttributeSet const& deprecated
+    ) {
 
   if (!slice.isObject()) {
     return {expectedButGotValidationError("object", slice.typeName())};
