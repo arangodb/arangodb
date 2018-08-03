@@ -72,10 +72,11 @@ arangod --server.endpoint tcp://0.0.0.0:5003 \
 
 These two roles share a common set of relevant options. First you should specify
 the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server)
-or `COORDINATOR`. Furthermore provide the external endpoint (IP and port) of the
+or `COORDINATOR`. Note that `DBSERVER` is allowed as an alias for `PRIMARY` as well.
+Furthermore please provide the external endpoint (IP and port) of the
 process via `--cluster.my-address`.
 
-The following is a full-example of what it might look like.
+The following is a full example of what it might look like.
 
 **DBServers:**
 
@@ -83,7 +84,7 @@ The following is a full-example of what it might look like.
 arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:6001 \
 	--cluster.my-address tcp://127.0.0.1:6001 \
-	--cluster.my-role PRIMARY \
+	--cluster.my-role DBSERVER \
 	--cluster.agency-endpoint tcp://127.0.0.1:5001 \
 	--cluster.agency-endpoint tcp://127.0.0.1:5002 \
 	--cluster.agency-endpoint tcp://127.0.0.1:5003 \
@@ -92,7 +93,7 @@ arangod --server.authentication=false \
 arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:6002 \
 	--cluster.my-address tcp://127.0.0.1:6002 \
-	--cluster.my-role PRIMARY \
+	--cluster.my-role DBSERVER \
 	--cluster.agency-endpoint tcp://127.0.0.1:5001 \
 	--cluster.agency-endpoint tcp://127.0.0.1:5002 \
 	--cluster.agency-endpoint tcp://127.0.0.1:5003 \
@@ -214,7 +215,7 @@ On 192.168.1.1:
 arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:8530 \
 	--cluster.my-address tcp://192.168.1.1:8530 \
-	--cluster.my-role PRIMARY \
+	--cluster.my-role DBSERVER \
 	--cluster.agency-endpoint tcp://192.168.1.1:8531 \
 	--cluster.agency-endpoint tcp://192.168.1.2:8531 \
 	--cluster.agency-endpoint tcp://192.168.1.3:8531 \
@@ -227,7 +228,7 @@ On 192.168.1.2:
 arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:8530 \
 	--cluster.my-address tcp://192.168.1.2:8530 \
-	--cluster.my-role PRIMARY \
+	--cluster.my-role DBSERVER \
 	--cluster.agency-endpoint tcp://192.168.1.1:8531 \
 	--cluster.agency-endpoint tcp://192.168.1.2:8531 \
 	--cluster.agency-endpoint tcp://192.168.1.3:8531 \
@@ -240,7 +241,7 @@ On 192.168.1.3:
 sudo arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:8530 \
 	--cluster.my-address tcp://192.168.1.3:8530 \
-	--cluster.my-role PRIMARY \
+	--cluster.my-role DBSERVER \
 	--cluster.agency-endpoint tcp://192.168.1.1:8531 \
 	--cluster.agency-endpoint tcp://192.168.1.2:8531 \
 	--cluster.agency-endpoint tcp://192.168.1.3:8531 \
@@ -301,7 +302,7 @@ On 192.168.1.4:
 arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:8530 \
 	--cluster.my-address tcp://192.168.4.1:8530 \
-	--cluster.my-role PRIMARY \
+	--cluster.my-role DBSERVER \
 	--cluster.agency-endpoint tcp://192.168.1.1:8531 \
 	--cluster.agency-endpoint tcp://192.168.1.2:8531 \
 	--cluster.agency-endpoint tcp://192.168.1.3:8531 \
@@ -341,7 +342,7 @@ An example configuration might look like this:
 docker run -e ARANGO_NO_AUTH=1 -p 192.168.1.1:10000:8530 arangodb/arangodb arangod \
 	--server.endpoint tcp://0.0.0.0:8530 \
 	--cluster.my-address tcp://192.168.1.1:10000 \
-	--cluster.my-role PRIMARY \
+	--cluster.my-role DBSERVER \
 	--cluster.agency-endpoint tcp://192.168.1.1:9001 \
 	--cluster.agency-endpoint tcp://192.168.1.2:9001 \
 	--cluster.agency-endpoint tcp://192.168.1.3:9001 
