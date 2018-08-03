@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,34 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_CONTROL_PREGEL_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_CONTROL_PREGEL_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "RestHandler/RestCursorHandler.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-namespace aql {
-class QueryRegistry;
-}
-
-class RestSimpleQueryHandler : public RestCursorHandler {
+class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestSimpleQueryHandler(GeneralRequest*, GeneralResponse*,
-                         arangodb::aql::QueryRegistry*);
+  RestControlPregelHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  RestStatus execute() override final;
-  char const* name() const override final { return "RestSimpleQueryHandler"; }
+  char const* name() const override final { return "RestControlPregelHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
+
+ protected:
+  virtual uint32_t forwardingTarget() override;
 
  private:
-  RestStatus allDocuments();
-  RestStatus allDocumentKeys();
-  RestStatus byExample();
+  void startExecution();
+  void getExecutionStatus();
+  void cancelExecution();
 };
-}
+}  // namespace arangodb
 
 #endif

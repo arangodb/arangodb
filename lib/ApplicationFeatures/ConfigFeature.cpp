@@ -133,8 +133,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   //
   // check the following location in this order:
   //
-  //   <PRGNAME>.conf
   //   ./etc/relative/<PRGNAME>.conf
+  //   <PRGNAME>.conf
   //   ${HOME}/.arangodb/<PRGNAME>.conf
   //   /etc/arangodb/<PRGNAME>.conf
   //
@@ -150,8 +150,13 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   std::vector<std::string> locations;
 
+  std::string current = FileUtils::currentDirectory().result();
+  // ./etc/relative/ is always first choice, if it exists
+  locations.emplace_back(FileUtils::buildFilename(current, "etc", "relative"));
+
   if (context != nullptr) {
     auto root = context->runRoot();
+    // will resolve to ./build/etc/arangodb3/ in maintainer builds
     auto location = FileUtils::buildFilename(root, _SYSCONFDIR_);
 
     LOG_TOPIC(TRACE, Logger::CONFIG) << "checking root location '" << root
@@ -160,9 +165,10 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     locations.emplace_back(location);
   }
 
-  std::string current = FileUtils::currentDirectory().result();
+  // ./
   locations.emplace_back(current);
-  locations.emplace_back(FileUtils::buildFilename(current, "etc", "relative"));
+
+  // ~/.arangodb/
   locations.emplace_back(
       FileUtils::buildFilename(FileUtils::homeDirectory(), ".arangodb"));
   locations.emplace_back(FileUtils::configDirectory(binaryPath));

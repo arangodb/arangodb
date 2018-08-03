@@ -373,13 +373,13 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
        allowed:
 
        shardKeys     indexKeys
-       a             a        ok
-       a             b    not ok
-       a           a b        ok
-       a b             a    not ok
-       a b             b    not ok
-       a b           a b        ok
-       a b         a b c        ok
+       a             a            ok
+       a             b        not ok
+       a             a b          ok
+       a b             a      not ok
+       a b             b      not ok
+       a b           a b          ok
+       a b           a b c        ok
        a b c           a b    not ok
        a b c         a b c        ok
        */

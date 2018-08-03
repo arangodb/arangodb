@@ -179,13 +179,6 @@ ArangoView.prototype.type = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype.properties = function (properties, partialUpdate) {
-  var attributes = {
-    'locale': true,
-    'links': true,
-    'commit': true,
-  };
-  var a;
-
   var requestResult;
 
   if (properties === undefined) {
@@ -202,7 +195,13 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 
   arangosh.checkRequestResult(requestResult);
 
-  var result = { };
+  const attributes = {
+    'commit': true,
+    'links': true,
+    'locale': true
+  };
+
+  var result = {};
   for (a in attributes) {
     if (attributes.hasOwnProperty(a) &&
       requestResult.hasOwnProperty(a) &&
