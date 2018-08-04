@@ -477,7 +477,9 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
       _receiveBuffer.consume(parsedBytes);
       
       // thread-safe access on IO-Thread
-      _inFlight->_response->setPayload(std::move(_inFlight->_responseBuffer), 0);
+      if (!_inFlight->_responseBuffer.empty()) {
+        _inFlight->_response->setPayload(std::move(_inFlight->_responseBuffer), 0);
+      }
       _inFlight->_callback(0, std::move(_inFlight->_request),
                            std::move(_inFlight->_response));
       if (!_inFlight->should_keep_alive) {
