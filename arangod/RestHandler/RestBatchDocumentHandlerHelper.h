@@ -60,43 +60,41 @@ struct BatchOperationHash {
   }
 };
 
-std::unordered_map<BatchOperation, std::string, BatchOperationHash>
-    // NOLINTNEXTLINE(cert-err58-cpp)
-    batchToStringMap{
-        {BatchOperation::READ, "read"},
-        {BatchOperation::INSERT, "insert"},
-        {BatchOperation::REMOVE, "remove"},
-        {BatchOperation::REPLACE, "replace"},
-        {BatchOperation::UPDATE, "update"},
-        {BatchOperation::UPSERT, "upsert"},
-        {BatchOperation::REPSERT, "repsert"},
-    };
+inline std::unordered_map<BatchOperation, std::string, BatchOperationHash> const&
+getBatchToStingMap(){
+  static const std::unordered_map<BatchOperation, std::string, BatchOperationHash>
+  // NOLINTNEXTLINE(cert-err58-cpp)
+  batchToStringMap{
+      {BatchOperation::READ, "read"},
+      {BatchOperation::INSERT, "insert"},
+      {BatchOperation::REMOVE, "remove"},
+      {BatchOperation::REPLACE, "replace"},
+      {BatchOperation::UPDATE, "update"},
+      {BatchOperation::UPSERT, "upsert"},
+      {BatchOperation::REPSERT, "repsert"},
+  };
+  return batchToStringMap;
+};
 
-std::unordered_map<std::string, BatchOperation> stringToBatchMap;
-
-static std::string batchToString(BatchOperation op) {
-  return batchToStringMap.at(op);
+inline std::string batchToString(BatchOperation op) {
+  auto const& map = getBatchToStingMap();
+  return map.at(op);
 }
 
-static void ensureStringToBatchMapIsInitialized() {
-  if (!stringToBatchMap.empty()) {
-    return;
-  }
-
-  for (auto const& it : batchToStringMap) {
+inline std::unordered_map<std::string, BatchOperation> ensureStringToBatchMapIsInitialized() {
+ std::unordered_map<std::string, BatchOperation> stringToBatchMap;
+  for (auto const& it : getBatchToStingMap()) {
     stringToBatchMap.insert({it.second, it.first});
   }
+  return stringToBatchMap;
 }
 
-static boost::optional<BatchOperation> stringToBatch(std::string const& op) {
-  ensureStringToBatchMapIsInitialized();
-
+inline boost::optional<BatchOperation> stringToBatch(std::string const& op) {
+  static const auto stringToBatchMap= ensureStringToBatchMapIsInitialized();
   auto it = stringToBatchMap.find(op);
-
   if (it == stringToBatchMap.end()) {
     return boost::none;
   }
-
   return it->second;
 }
 
@@ -106,7 +104,7 @@ static boost::optional<BatchOperation> stringToBatch(std::string const& op) {
 
 using AttributeSet = std::set<std::string>;
 
-static Result expectedType(VPackValueType expected, VPackValueType got){
+inline Result expectedType(VPackValueType expected, VPackValueType got){
   if(expected == got) { return {}; };
   std::stringstream err;
   err << "Expected type " << valueTypeName(expected) << ", got " << valueTypeName(got) << " instead.";
@@ -114,7 +112,7 @@ static Result expectedType(VPackValueType expected, VPackValueType got){
 }
 
 // should be an official velocypack helper when finished
-static ResultT<AttributeSet> expectedAttributes(
+inline ResultT<AttributeSet> expectedAttributes(
     VPackSlice slice,
     AttributeSet const& required,
     AttributeSet const& optional,
@@ -183,8 +181,6 @@ static ResultT<AttributeSet> expectedAttributes(
 struct PatternWithKey {
   std::string const key;
   VPackSlice const pattern;
-  static ResultT<PatternWithKey> fromVelocypack(VPackSlice slice);
-
  protected:
   // NOLINTNEXTLINE(modernize-pass-by-value)
   PatternWithKey(std::string const& key_, VPackSlice const pattern_)
@@ -192,31 +188,34 @@ struct PatternWithKey {
 
   PatternWithKey(std::string&& key_, VPackSlice const pattern_)
       : key(std::move(key_)), pattern(pattern_) {}
+
+ public:
+  static ResultT<PatternWithKey> fromVelocypack(VPackSlice slice) {
+    auto result = expectedType(VPackValueType::Object, slice.type());
+    if(result.fail()){
+      return result;
+    }
+
+    VPackSlice key = slice.get(StaticStrings::KeyString);
+
+    if (key.isNone()) {
+      std::stringstream err;
+      err << "Attribute '_key' missing";
+      return ResultT<PatternWithKey>::error(TRI_ERROR_ARANGO_VALIDATION_FAILED,
+                                            err.str());
+    }
+
+    result = expectedType(VPackValueType::String, key.type());
+    if (result.fail()) {
+      return prefixResultMessage(result, "When parsing attribute '_key'");
+    }
+
+    return ResultT<PatternWithKey>::success(
+        PatternWithKey(key.copyString(), slice));
+  }
+
 };
 
-ResultT<PatternWithKey> PatternWithKey::fromVelocypack(VPackSlice const slice) {
-  auto result = expectedType(VPackValueType::Object, slice.type());
-  if(result.fail()){
-    return result;
-  }
-
-  VPackSlice key = slice.get(StaticStrings::KeyString);
-
-  if (key.isNone()) {
-    std::stringstream err;
-    err << "Attribute '_key' missing";
-    return ResultT<PatternWithKey>::error(TRI_ERROR_ARANGO_VALIDATION_FAILED,
-                                          err.str());
-  }
-
-  result = expectedType(VPackValueType::String, key.type());
-  if (result.fail()) {
-    return prefixResultMessage(result, "When parsing attribute '_key'");
-  }
-
-  return ResultT<PatternWithKey>::success(
-      PatternWithKey(key.copyString(), slice));
-}
 
 }
 }
