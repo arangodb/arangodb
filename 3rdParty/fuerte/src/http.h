@@ -37,7 +37,7 @@ struct RequestItem {
   /// Reference to the request we're processing
   std::unique_ptr<arangodb::fuerte::v1::Request> _request;
   /// Callback for when request is done (in error or succeeded)
-  impl::CallOnceRequestCallback _callback;
+  RequestCallback _callback;
   /// response data, may be null before response header is received
   std::unique_ptr<arangodb::fuerte::v1::Response> _response;
   /// ID of this message
@@ -57,7 +57,7 @@ struct RequestItem {
 
   inline MessageID messageID() { return _messageID; }
   inline void invokeOnError(Error e) {
-    _callback.invoke(e, std::move(_request), nullptr);
+    _callback(e, std::move(_request), nullptr);
   }
 };
 

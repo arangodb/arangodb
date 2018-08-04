@@ -202,7 +202,7 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   RequestItem* item = nullptr;
   while (_queue.pop(item)) {
     std::unique_ptr<RequestItem> guard(item);
-    _numQueued.fetch_sub(1, std::memory_order_release);
+    _numQueued.fetch_sub(1, std::memory_order_relaxed);
     guard->invokeOnError(errorToInt(ec));
   }
   
@@ -339,7 +339,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     _active.store(true, std::memory_order_release);
   }
   std::shared_ptr<http::RequestItem> item(ptr);
-  _numQueued.fetch_sub(1, std::memory_order_release);
+  _numQueued.fetch_sub(1, std::memory_order_relaxed);
   
   // we stop the write-loop if we stopped it ourselves.
   auto self = shared_from_this();
@@ -370,9 +370,10 @@ void HttpConnection<ST>::asyncWriteCallback(
     // Send failed
     FUERTE_LOG_CALLBACKS << "asyncWriteCallback (http): error "
                          << ec.message() << "\n";
+    assert(item->_callback);
     // let user know that this request caused the error
-    item->_callback.invoke(errorToInt(ErrorCondition::WriteError),
-                           std::move(item->_request), nullptr);
+    item->_callback(errorToInt(ErrorCondition::WriteError),
+                    std::move(item->_request), nullptr);
     // Stop current connection and try to restart a new one.
     restartConnection(ec == asio_ns::error::misc_errors::eof ?
                       ErrorCondition::WriteError : ErrorCondition::ConnectionClosed);
@@ -477,8 +478,8 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
       
       // thread-safe access on IO-Thread
       _inFlight->_response->setPayload(std::move(_inFlight->_responseBuffer), 0);
-      _inFlight->_callback.invoke(0, std::move(_inFlight->_request),
-                                  std::move(_inFlight->_response));
+      _inFlight->_callback(0, std::move(_inFlight->_request),
+                           std::move(_inFlight->_response));
       if (!_inFlight->should_keep_alive) {
         shutdownConnection(ErrorCondition::CloseRequested);
         return;
