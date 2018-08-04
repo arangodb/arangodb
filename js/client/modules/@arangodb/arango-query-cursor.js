@@ -256,7 +256,7 @@ ArangoQueryCursor.prototype.dispose = function () {
     return;
   }
 
-  var requestResult = this._database._connection.DELETE(this._baseurl(), '');
+  var requestResult = this._database._connection.DELETE(this._baseurl());
 
   arangosh.checkRequestResult(requestResult);
 

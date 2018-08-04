@@ -177,7 +177,7 @@ let appendHeaders = function(appender, headers) {
       } else if (method === 'GET') {
         response = exports.arango.GET_RAW(url, headers);
       } else if (method === 'DELETE') {
-        response = exports.arango.DELETE_RAW(url, headers);
+        response = exports.arango.DELETE_RAW(url, body, headers);
         curl += '-X ' + method + ' ';
       } else if (method === 'PATCH') {
         response = exports.arango.PATCH_RAW(url, body, headers);

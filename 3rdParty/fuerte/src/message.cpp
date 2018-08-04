@@ -224,7 +224,7 @@ void Request::addVPack(VPackBuffer<uint8_t>&& buffer) {
   // std::endl;
   vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
 #endif
-  if (_sealed || !_isVpack) {
+  if (_sealed || (_isVpack && !_isVpack.get())) {
     throw std::logic_error("Message is sealed or of wrong type (vst/binary)");
   };
   header.contentType(ContentType::VPack);

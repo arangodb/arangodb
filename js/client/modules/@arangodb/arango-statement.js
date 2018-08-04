@@ -86,8 +86,7 @@ ArangoStatement.prototype.parse = function () {
   };
 
   var requestResult = this._database._connection.POST(
-    '/_api/query',
-    JSON.stringify(body));
+    '/_api/query', body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -119,8 +118,7 @@ ArangoStatement.prototype.explain = function (options) {
   };
 
   let requestResult = this._database._connection.POST(
-    '/_api/explain',
-    JSON.stringify(body));
+    '/_api/explain', body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -168,8 +166,7 @@ ArangoStatement.prototype.execute = function () {
   }
 
   var requestResult = this._database._connection.POST(
-    '/_api/cursor',
-    JSON.stringify(body));
+    '/_api/cursor', body);
 
   arangosh.checkRequestResult(requestResult);
 

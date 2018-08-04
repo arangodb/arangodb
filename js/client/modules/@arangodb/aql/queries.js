@@ -80,8 +80,7 @@ exports.properties = function (config) {
   if (config === undefined) {
     requestResult = db._connection.GET('/_api/query/properties');
   } else {
-    requestResult = db._connection.PUT('/_api/query/properties',
-      JSON.stringify(config));
+    requestResult = db._connection.PUT('/_api/query/properties', config);
   }
 
   arangosh.checkRequestResult(requestResult);

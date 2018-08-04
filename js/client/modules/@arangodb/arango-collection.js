@@ -222,7 +222,7 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
   var url = '/_api/edges/' + encodeURIComponent(this.name())
   + (direction ? '?direction=' + direction : '');
 
-  var requestResult = this._database._connection.POST(this._prefixurl(url), JSON.stringify(vertex));
+  var requestResult = this._database._connection.POST(this._prefixurl(url), vertex);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -376,8 +376,7 @@ ArangoCollection.prototype.properties = function (properties) {
       }
     }
 
-    requestResult = this._database._connection.PUT(this._baseurl('properties'),
-      JSON.stringify(body));
+    requestResult = this._database._connection.PUT(this._baseurl('properties'), body);
 
     arangosh.checkRequestResult(requestResult);
   }
@@ -544,7 +543,7 @@ ArangoCollection.prototype.load = function (count) {
     data.count = count;
   }
 
-  var requestResult = this._database._connection.PUT(this._baseurl('load'), JSON.stringify(data));
+  var requestResult = this._database._connection.PUT(this._baseurl('load'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -569,7 +568,7 @@ ArangoCollection.prototype.unload = function () {
 
 ArangoCollection.prototype.rename = function (name) {
   var body = { name: name };
-  var requestResult = this._database._connection.PUT(this._baseurl('rename'), JSON.stringify(body));
+  var requestResult = this._database._connection.PUT(this._baseurl('rename'), body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -656,7 +655,7 @@ ArangoCollection.prototype.ensureIndex = function (data) {
     throw 'usage: ensureIndex(<description>)';
   }
 
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(data));
+  var requestResult = this._database._connection.POST(this._indexurl(), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -696,8 +695,7 @@ ArangoCollection.prototype.document = function (id) {
 
   if (Array.isArray(id)) {
     var url = this._documentcollectionurl() + '?onlyget=true&ignoreRevs=false';
-    var body = JSON.stringify(id);
-    requestResult = this._database._connection.PUT(url, body);
+    requestResult = this._database._connection.PUT(url, id);
   } else {
     if (typeof id === 'object') {
       if (id.hasOwnProperty('_rev')) {
@@ -783,7 +781,7 @@ ArangoCollection.prototype.exists = function (id) {
 ArangoCollection.prototype.any = function () {
   var requestResult = this._database._connection.PUT(
     this._prefixurl('/_api/simple/any'),
-    JSON.stringify({ collection: this._name }));
+    { collection: this._name });
 
   arangosh.checkRequestResult(requestResult);
 
@@ -819,7 +817,7 @@ ArangoCollection.prototype.firstExample = function (example) {
 
   var requestResult = this._database._connection.PUT(
     this._prefixurl('/_api/simple/first-example'),
-    JSON.stringify(data)
+    data
   );
 
   if (requestResult !== null
@@ -913,7 +911,7 @@ ArangoCollection.prototype.save =
     }
 
     var requestResult = this._database._connection.POST(
-      url, JSON.stringify(data)
+      url, data
     );
 
     arangosh.checkRequestResult(requestResult);
@@ -973,7 +971,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 
   if (Array.isArray(id)) {
     url = this._documentcollectionurl();
-    body = JSON.stringify(id);
+    body = id;
   } else {
     if (typeof id === 'object') {
       if (id.hasOwnProperty('_rev')) {
@@ -998,10 +996,10 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.DELETE(url, {}, body);
+    requestResult = this._database._connection.DELETE(url, body);
   }else {
-    requestResult = this._database._connection.DELETE(url,
-      {'if-match': JSON.stringify(rev)}, body);
+    requestResult = this._database._connection.DELETE(url, body,
+      {'if-match': JSON.stringify(rev)});
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -1145,10 +1143,9 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   }
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.PUT(url, JSON.stringify(data));
+    requestResult = this._database._connection.PUT(url, data);
   }else {
-    requestResult = this._database._connection.PUT(url, JSON.stringify(data),
-      {'if-match': JSON.stringify(rev) });
+    requestResult = this._database._connection.PUT(url, data, {'if-match': JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -1262,9 +1259,9 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   }
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.PATCH(url, JSON.stringify(data));
+    requestResult = this._database._connection.PATCH(url, data);
   }else {
-    requestResult = this._database._connection.PATCH(url, JSON.stringify(data),
+    requestResult = this._database._connection.PATCH(url, data,
       {'if-match': JSON.stringify(rev) });
   }
 
@@ -1329,8 +1326,7 @@ ArangoCollection.prototype.removeByExample = function (example,
   }
 
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/remove-by-example'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/remove-by-example'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1365,8 +1361,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     };
   }
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/replace-by-example'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/replace-by-example'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1403,8 +1398,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     };
   }
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/update-by-example'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/update-by-example'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1422,8 +1416,7 @@ ArangoCollection.prototype.documents = function (keys) {
   };
 
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/lookup-by-keys'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/lookup-by-keys'), data);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1446,8 +1439,7 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
   };
 
   var requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/remove-by-keys'),
-    JSON.stringify(data));
+    this._prefixurl('/_api/simple/remove-by-keys'), data);
 
   arangosh.checkRequestResult(requestResult);
 

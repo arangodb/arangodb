@@ -396,8 +396,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     body.type = type;
   }
 
-  var requestResult = this._connection.POST(this._collectionurl() + urlAddon,
-    JSON.stringify(body));
+  var requestResult = this._connection.POST(this._collectionurl() + urlAddon, body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -828,9 +827,9 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._connection.PUT(url, JSON.stringify(data));
+    requestResult = this._connection.PUT(url, data);
   } else {
-    requestResult = this._connection.PUT(url, JSON.stringify(data),
+    requestResult = this._connection.PUT(url, data,
       {'if-match': JSON.stringify(rev) });
   }
 
@@ -908,9 +907,9 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._connection.PATCH(url, JSON.stringify(data));
+    requestResult = this._connection.PATCH(url, data);
   } else {
-    requestResult = this._connection.PATCH(url, JSON.stringify(data),
+    requestResult = this._connection.PATCH(url, data,
       {'if-match': JSON.stringify(rev) });
   }
 
@@ -995,7 +994,7 @@ ArangoDatabase.prototype._parse = function (query) {
     query = { query: query };
   }
 
-  const requestResult = this._connection.POST('/_api/query', JSON.stringify(query));
+  const requestResult = this._connection.POST('/_api/query', query);
 
   if (requestResult && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1017,7 +1016,7 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
     users: users || []
   };
 
-  var requestResult = this._connection.POST('/_api/database', JSON.stringify(data));
+  var requestResult = this._connection.POST('/_api/database', data);
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1169,7 +1168,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     data.action = String(data.action);
   }
 
-  var requestResult = this._connection.POST('/_api/transaction', JSON.stringify(data));
+  var requestResult = this._connection.POST('/_api/transaction', data);
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1199,8 +1198,7 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
     body['type'] = type;
   }
 
-  var requestResult = this._connection.POST(this._viewurl(),
-    JSON.stringify(body));
+  var requestResult = this._connection.POST(this._viewurl(), body);
 
   arangosh.checkRequestResult(requestResult);
 

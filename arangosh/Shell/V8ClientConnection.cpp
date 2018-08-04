@@ -222,7 +222,7 @@ static v8::Persistent<v8::ObjectTemplate> ConnectionTempl;
 
 static void ObjectToMap(v8::Isolate* isolate,
                         std::unordered_map<std::string, std::string>& myMap,
-                        v8::Handle<v8::Value> val) {
+                        v8::Local<v8::Value> val) {
   v8::Local<v8::Object> v8Headers = val.As<v8::Object>();
 
   if (v8Headers->IsObject()) {
@@ -271,7 +271,7 @@ static void ClientConnection_DestructorCallback(
 /// @brief wrap V8ClientConnection in a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> WrapV8ClientConnection(
+static v8::Local<v8::Value> WrapV8ClientConnection(
     v8::Isolate* isolate, V8ClientConnection* v8connection) {
   v8::EscapableHandleScope scope(isolate);
   auto localConnectionTempl =
@@ -553,24 +553,23 @@ static void ClientConnection_httpDeleteAny(
 
   // check params
   if (args.Length() < 1 || args.Length() > 3 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("delete(<url>[, <headers>[, <body>]])");
+    TRI_V8_THROW_EXCEPTION_USAGE("delete(<url>[, <body>[, <headers>]])");
   }
 
   TRI_Utf8ValueNFC url(args[0]);
+  
+  std::unordered_map<std::string, std::string> headerFields;
+  if (args.Length() == 1) { // no body provided
+    TRI_V8_RETURN(v8connection->deleteData(isolate, StringRef(*url, url.length()),
+                                           v8::Undefined(isolate), headerFields, raw));
+  }
 
   // check header fields
-  std::unordered_map<std::string, std::string> headerFields;
-
-  if (args.Length() > 1) {
-    ObjectToMap(isolate, headerFields, args[1]);
-  }
-
   if (args.Length() > 2) {
-    TRI_Utf8ValueNFC body(args[2]);
-    TRI_V8_RETURN(v8connection->deleteData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
+    ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->deleteData(isolate, StringRef(*url, url.length()), StringRef(), headerFields, raw));
+  TRI_V8_RETURN(v8connection->deleteData(isolate, StringRef(*url, url.length()), args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -611,22 +610,20 @@ static void ClientConnection_httpOptionsAny(
 
   // check params
   if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
-      !args[1]->IsString()) {
+      args[1]->IsNullOrUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("options(<url>, <body>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(args[0]);
-  v8::String::Utf8Value body(args[1]);
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
-
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
   TRI_V8_RETURN(
-      v8connection->optionsData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
+      v8connection->optionsData(isolate, StringRef(*url, url.length()), args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -667,22 +664,19 @@ static void ClientConnection_httpPostAny(
 
   // check params
   if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
-      !args[1]->IsString()) {
+      args[1]->IsNullOrUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("post(<url>, <body>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(args[0]);
-  v8::String::Utf8Value body(args[1]);
-
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
-
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
   TRI_V8_RETURN(
-      v8connection->postData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
+      v8connection->postData(isolate, StringRef(*url, url.length()), args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -723,21 +717,19 @@ static void ClientConnection_httpPutAny(
 
   // check params
   if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
-      !args[1]->IsString()) {
+      args[1]->IsNullOrUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("put(<url>, <body>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(args[0]);
-  v8::String::Utf8Value body(args[1]);
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
-
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->putData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
+  TRI_V8_RETURN(v8connection->putData(isolate, StringRef(*url, url.length()), args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -778,22 +770,19 @@ static void ClientConnection_httpPatchAny(
 
   // check params
   if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
-      !args[1]->IsString()) {
+      args[1]->IsNullOrUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("patch(<url>, <body>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(args[0]);
-  v8::String::Utf8Value body(args[1]);
-
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
-
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
   TRI_V8_RETURN(
-      v8connection->patchData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
+      v8connection->patchData(isolate, StringRef(*url, url.length()), args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -833,33 +822,25 @@ static void ClientConnection_httpSendFile(
   }
 
   // check params
-  if (args.Length() != 2 || !args[0]->IsString() || !args[1]->IsString()) {
+  if (args.Length() != 2 || !args[0]->IsString() || args[1]->IsNullOrUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>)");
   }
 
   TRI_Utf8ValueNFC url(args[0]);
-
+  
   std::string const infile = TRI_ObjectToString(isolate, args[1]);
-
+  
   if (!FileUtils::exists(infile)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FILE_NOT_FOUND);
-  }
-
-  std::string body;
-
-  try {
-    body = FileUtils::slurp(infile);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "could not read file");
   }
 
   v8::TryCatch tryCatch;
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
-
   v8::Local<v8::Value> result =
-      v8connection->postData(isolate, StringRef(*url, url.length()), StringRef(body), headerFields);
+      v8connection->postData(isolate, StringRef(*url, url.length()), args[1], headerFields,
+                             false, /*isFile*/ true);
 
   if (tryCatch.HasCaught()) {
     isolate->ThrowException(tryCatch.Exception());
@@ -929,15 +910,15 @@ static void ClientConnection_importCsv(
   }
 
   // extract the options
-  v8::Handle<v8::String> separatorKey =
+  v8::Local<v8::String> separatorKey =
       TRI_V8_ASCII_STRING(isolate, "separator");
-  v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING(isolate, "quote");
+  v8::Local<v8::String> quoteKey = TRI_V8_ASCII_STRING(isolate, "quote");
 
   std::string separator = ",";
   std::string quote = "\"";
 
   if (3 <= args.Length()) {
-    v8::Handle<v8::Object> options = args[2]->ToObject();
+    v8::Local<v8::Object> options = args[2]->ToObject();
     // separator
     if (options->Has(separatorKey)) {
       separator = TRI_ObjectToString(isolate, options->Get(separatorKey));
@@ -975,7 +956,7 @@ static void ClientConnection_importCsv(
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
 
   if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+    v8::Local<v8::Object> result = v8::Object::New(isolate);
 
     result->Set(TRI_V8_ASCII_STRING(isolate, "lines"),
                 v8::Integer::New(isolate, (int32_t)ih.getReadLines()));
@@ -1044,7 +1025,7 @@ static void ClientConnection_importJson(
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
 
   if (ih.importJson(collectionName, fileName, false)) {
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+    v8::Local<v8::Object> result = v8::Object::New(isolate);
 
     result->Set(TRI_V8_ASCII_STRING(isolate, "lines"),
                 v8::Integer::New(isolate, (int32_t)ih.getReadLines()));
@@ -1294,26 +1275,26 @@ static void ClientConnection_setDatabaseName(
   TRI_V8_TRY_CATCH_END
 }
 
-v8::Handle<v8::Value> V8ClientConnection::getData(
+v8::Local<v8::Value> V8ClientConnection::getData(
     v8::Isolate* isolate, StringRef const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, fuerte::RestVerb::Get, location, StringRef(), headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Get, location, v8::Undefined(isolate), headerFields);
   }
-  return requestData(isolate, fuerte::RestVerb::Get, location, StringRef(), headerFields);
+  return requestData(isolate, fuerte::RestVerb::Get, location, v8::Undefined(isolate), headerFields);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::headData(
+v8::Local<v8::Value> V8ClientConnection::headData(
     v8::Isolate* isolate, StringRef const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, fuerte::RestVerb::Head, location, StringRef(), headerFields);
+    return requestDataRaw(isolate, fuerte::RestVerb::Head, location, v8::Undefined(isolate), headerFields);
   }
-  return requestData(isolate, fuerte::RestVerb::Head, location, StringRef(), headerFields);
+  return requestData(isolate, fuerte::RestVerb::Head, location, v8::Undefined(isolate), headerFields);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::deleteData(
-    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+v8::Local<v8::Value> V8ClientConnection::deleteData(
+    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Delete, location, body, headerFields);
@@ -1321,8 +1302,8 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData(
   return requestData(isolate, fuerte::RestVerb::Delete, location, body, headerFields);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::optionsData(
-    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+v8::Local<v8::Value> V8ClientConnection::optionsData(
+    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Options, location, body, headerFields);
@@ -1330,17 +1311,17 @@ v8::Handle<v8::Value> V8ClientConnection::optionsData(
   return requestData(isolate, fuerte::RestVerb::Options, location, body, headerFields);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::postData(
-    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
+v8::Local<v8::Value> V8ClientConnection::postData(
+    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw, bool isFile) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Post, location, body, headerFields);
   }
-  return requestData(isolate, fuerte::RestVerb::Post, location, body, headerFields);
+  return requestData(isolate, fuerte::RestVerb::Post, location, body, headerFields, isFile);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::putData(
-    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+v8::Local<v8::Value> V8ClientConnection::putData(
+    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Put, location, body, headerFields);
@@ -1348,8 +1329,8 @@ v8::Handle<v8::Value> V8ClientConnection::putData(
   return requestData(isolate, fuerte::RestVerb::Put, location, body, headerFields);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::patchData(
-    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+v8::Local<v8::Value> V8ClientConnection::patchData(
+    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Patch, location, body, headerFields);
@@ -1357,10 +1338,11 @@ v8::Handle<v8::Value> V8ClientConnection::patchData(
   return requestData(isolate, fuerte::RestVerb::Patch, location, body, headerFields);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::requestData(
+v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Isolate* isolate, fuerte::RestVerb method,
-    StringRef const& location, StringRef const& body,
-    std::unordered_map<std::string, std::string> const& headerFields) {
+    StringRef const& location, v8::Local<v8::Value> const& body,
+    std::unordered_map<std::string, std::string> const& headerFields,
+    bool isFile) {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
   if (!_connection) {
@@ -1376,10 +1358,33 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
   for (auto& pair : headerFields) {
     req->header.meta.emplace(std::move(pair));
   }
-  if (!body.empty()) {
-    req->addBinary(reinterpret_cast<uint8_t const*>(body.data()), body.length());
+  if (isFile) {
+    std::string const infile = TRI_ObjectToString(isolate, body);
+    TRI_ASSERT(FileUtils::exists(infile));
+    std::string contents;
+    try {
+      contents = FileUtils::slurp(infile);
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "could not read file");
+    }
+    req->addBinary(reinterpret_cast<uint8_t const*>(contents.data()), contents.length());
+  } else if (body->IsString()) { // assume JSON
+    LOG_DEVEL << "Sending JSON";
+    TRI_Utf8ValueNFC bodyString(body);
+    req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     req->header.contentType(fuerte::ContentType::Json);
+  } else if (!body->IsUndefined() && !body->IsNull()) {
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    int res = TRI_V8ToVPack(isolate, builder, body, false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, Logger::V8) << "error converting request body " << TRI_errno_string(res);
+      return v8::Null(isolate);
+    }
+    req->addVPack(std::move(buffer));
+    req->header.contentType(fuerte::ContentType::VPack);
   }
+  req->header.acceptType(fuerte::ContentType::VPack);
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
   std::unique_ptr<fuerte::Response> response;
@@ -1392,9 +1397,9 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
   return handleResult(isolate, std::move(response), fuerte::ErrorCondition::NoError);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
+v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fuerte::RestVerb method,
-    StringRef const& location, StringRef const& body,
+    StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
 
   _lastErrorMessage = "";
@@ -1407,10 +1412,23 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   for (auto& pair : headerFields) {
     req->header.meta.emplace(std::move(pair));
   }
-  if (!body.empty()) {
-    req->addBinary(reinterpret_cast<uint8_t const*>(body.data()), body.length());
+  if (body->IsString()) { // assume JSON
+    LOG_DEVEL << "Sending JSON";
+    TRI_Utf8ValueNFC bodyString(body);
+    req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     req->header.contentType(fuerte::ContentType::Json);
+  } else if (!body->IsUndefined() && !body->IsNull()) {
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    int res = TRI_V8ToVPack(isolate, builder, body, false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, Logger::V8) << "error converting request body " << TRI_errno_string(res);
+      return v8::Null(isolate);
+    }
+    req->addVPack(std::move(buffer));
+    req->header.contentType(fuerte::ContentType::VPack);
   }
+  req->header.acceptType(fuerte::ContentType::VPack);
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
   std::unique_ptr<fuerte::Response> response;
@@ -1421,7 +1439,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     _lastHttpReturnCode = 505;
   }
   
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  v8::Local<v8::Object> result = v8::Object::New(isolate);
   if (!response) {
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, true));
@@ -1459,15 +1477,15 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   auto sb = response->payload();
   if (sb.size() > 0) {
     const char* str = reinterpret_cast<const char*>(sb.data());
-    v8::Handle<v8::String> b = TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
+    v8::Local<v8::String> b = TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
     result->ForceSet(TRI_V8_ASCII_STRING(isolate, "body"), b);
   }
 
   // copy all headers
-  v8::Handle<v8::Object> headers = v8::Object::New(isolate);
+  v8::Local<v8::Object> headers = v8::Object::New(isolate);
   for (auto const& it : response->header.meta) {
-    v8::Handle<v8::String> key = TRI_V8_STD_STRING(isolate, it.first);
-    v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, it.second);
+    v8::Local<v8::String> key = TRI_V8_STD_STRING(isolate, it.first);
+    v8::Local<v8::String> val = TRI_V8_STD_STRING(isolate, it.second);
 
     headers->ForceSet(key, val);
   }
@@ -1478,7 +1496,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   return result;
 }
 
-v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
+v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
                                                        std::unique_ptr<fuerte::Response> res,
                                                        fuerte::ErrorCondition ec) {
   // not complete
@@ -1568,7 +1586,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 }
 
 void V8ClientConnection::initServer(v8::Isolate* isolate,
-                                    v8::Handle<v8::Context> context,
+                                    v8::Local<v8::Context> context,
                                     ClientFeature* client) {
   v8::Local<v8::Value> v8client = v8::External::New(isolate, client);
 

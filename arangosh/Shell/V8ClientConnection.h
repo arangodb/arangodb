@@ -83,23 +83,24 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> deleteData(
-      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> optionsData(
-      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> postData(
-      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
-      std::unordered_map<std::string, std::string> const& headerFields, bool raw = false);
+      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields, bool raw = false,
+      bool isFile = false);
 
   v8::Handle<v8::Value> putData(
-      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   v8::Handle<v8::Value> patchData(
-      v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+      v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
       std::unordered_map<std::string, std::string> const& headerFields, bool raw);
 
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context,
@@ -108,17 +109,18 @@ class V8ClientConnection {
  private:
   void init(ClientFeature*);
 
-  v8::Handle<v8::Value> requestData(
+  v8::Local<v8::Value> requestData(
       v8::Isolate* isolate, fuerte::RestVerb verb,
-      StringRef const& location, StringRef const& body,
+      StringRef const& location, v8::Local<v8::Value> const& body,
+      std::unordered_map<std::string, std::string> const& headerFields,
+      bool isFile = false);
+
+  v8::Local<v8::Value> requestDataRaw(
+      v8::Isolate* isolate, fuerte::RestVerb verb,
+      StringRef const& location, v8::Local<v8::Value> const& body,
       std::unordered_map<std::string, std::string> const& headerFields);
 
-  v8::Handle<v8::Value> requestDataRaw(
-      v8::Isolate* isolate, fuerte::RestVerb verb,
-      StringRef const& location, StringRef const& body,
-      std::unordered_map<std::string, std::string> const& headerFields);
-
-  v8::Handle<v8::Value> handleResult(v8::Isolate* isolate,
+  v8::Local<v8::Value> handleResult(v8::Isolate* isolate,
                                      std::unique_ptr<fuerte::Response> response,
                                      fuerte::ErrorCondition ec);
 

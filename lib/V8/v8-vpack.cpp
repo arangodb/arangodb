@@ -478,7 +478,7 @@ static int V8ToVPack(BuilderContext& context,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
-                  v8::Handle<v8::Value> const value, bool keepTopLevelOpen,
+                  v8::Local<v8::Value> const value, bool keepTopLevelOpen,
                   bool convertFunctionsToNull) {
   v8::HandleScope scope(isolate);
   BuilderContext context(isolate, builder, keepTopLevelOpen);
