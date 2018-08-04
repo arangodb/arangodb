@@ -758,7 +758,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.DELETE(url);
   } else {
-    requestResult = this._connection.DELETE(url,
+    requestResult = this._connection.DELETE(url, null,
       {'if-match': JSON.stringify(rev) });
   }
 

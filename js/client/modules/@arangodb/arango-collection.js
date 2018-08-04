@@ -230,7 +230,7 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
 };
 
 ArangoCollection.prototype.shards = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('shards'), '');
+  var requestResult = this._database._connection.GET(this._baseurl('shards'));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -997,7 +997,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.DELETE(url, body);
-  }else {
+  } else {
     requestResult = this._database._connection.DELETE(url, body,
       {'if-match': JSON.stringify(rev)});
   }
@@ -1455,7 +1455,7 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
 
 ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   this._status = null;
-  var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), '');
+  var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), null);
   this._status = null;
 
   arangosh.checkRequestResult(requestResult);
