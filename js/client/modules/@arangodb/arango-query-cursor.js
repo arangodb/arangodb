@@ -216,7 +216,7 @@ ArangoQueryCursor.prototype.next = function () {
       this._hasMore = false;
 
       // load more results
-      var requestResult = this._database._connection.PUT(this._baseurl(), '');
+      var requestResult = this._database._connection.PUT(this._baseurl(), null);
 
       arangosh.checkRequestResult(requestResult);
 

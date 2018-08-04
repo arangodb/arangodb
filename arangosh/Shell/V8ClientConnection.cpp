@@ -610,7 +610,7 @@ static void ClientConnection_httpOptionsAny(
 
   // check params
   if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
-      args[1]->IsNullOrUndefined()) {
+      args[1]->IsUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("options(<url>, <body>[, <headers>])");
   }
 
@@ -664,7 +664,7 @@ static void ClientConnection_httpPostAny(
 
   // check params
   if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
-      args[1]->IsNullOrUndefined()) {
+      args[1]->IsUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("post(<url>, <body>[, <headers>])");
   }
 
@@ -717,7 +717,7 @@ static void ClientConnection_httpPutAny(
 
   // check params
   if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
-      args[1]->IsNullOrUndefined()) {
+      args[1]->IsUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("put(<url>, <body>[, <headers>])");
   }
 
@@ -770,7 +770,7 @@ static void ClientConnection_httpPatchAny(
 
   // check params
   if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
-      args[1]->IsNullOrUndefined()) {
+      args[1]->IsUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("patch(<url>, <body>[, <headers>])");
   }
 
@@ -822,7 +822,7 @@ static void ClientConnection_httpSendFile(
   }
 
   // check params
-  if (args.Length() != 2 || !args[0]->IsString() || args[1]->IsNullOrUndefined()) {
+  if (args.Length() != 2 || !args[0]->IsString() || args[1]->IsUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>)");
   }
 
@@ -1369,7 +1369,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     }
     req->addBinary(reinterpret_cast<uint8_t const*>(contents.data()), contents.length());
   } else if (body->IsString()) { // assume JSON
-    LOG_DEVEL << "Sending JSON";
+    LOG_DEVEL << "Sending JSON " << location;
     TRI_Utf8ValueNFC bodyString(body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     req->header.contentType(fuerte::ContentType::Json);
@@ -1413,7 +1413,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     req->header.meta.emplace(std::move(pair));
   }
   if (body->IsString()) { // assume JSON
-    LOG_DEVEL << "Sending JSON";
+    LOG_DEVEL << "Sending JSON " << location;
     TRI_Utf8ValueNFC bodyString(body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     req->header.contentType(fuerte::ContentType::Json);

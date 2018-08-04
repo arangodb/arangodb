@@ -71,7 +71,7 @@ let appendHeaders = function(appender, headers) {
       if (exports.arango) {
         var wfs = waitForSync ? 'true' : 'false';
         var wfc = waitForCollector ? 'true' : 'false';
-        exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, '');
+        exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
         return;
       }
 
@@ -81,7 +81,7 @@ let appendHeaders = function(appender, headers) {
     properties: function (value) {
       if (exports.arango) {
         if (value !== undefined) {
-          return exports.arango.PUT('/_admin/wal/properties', JSON.stringify(value));
+          return exports.arango.PUT('/_admin/wal/properties', value);
         }
 
         return exports.arango.GET('/_admin/wal/properties', '');
@@ -92,7 +92,7 @@ let appendHeaders = function(appender, headers) {
 
     transactions: function () {
       if (exports.arango) {
-        return exports.arango.GET('/_admin/wal/transactions', '');
+        return exports.arango.GET('/_admin/wal/transactions', null);
       }
 
       throw 'not connected';
@@ -105,7 +105,7 @@ let appendHeaders = function(appender, headers) {
 
   exports.reloadAqlFunctions = function () {
     if (exports.arango) {
-      exports.arango.POST('/_admin/aql/reload', '');
+      exports.arango.POST('/_admin/aql/reload', null);
       return;
     }
 
@@ -118,7 +118,7 @@ let appendHeaders = function(appender, headers) {
 
   exports.reloadRouting = function () {
     if (exports.arango) {
-      exports.arango.POST('/_admin/routing/reload', '');
+      exports.arango.POST('/_admin/routing/reload', null);
       return;
     }
 
@@ -131,7 +131,7 @@ let appendHeaders = function(appender, headers) {
 
   exports.routingCache = function () {
     if (exports.arango) {
-      return exports.arango.GET('/_admin/routing/routes', '');
+      return exports.arango.GET('/_admin/routing/routes', null);
     }
 
     throw 'not connected';
@@ -143,7 +143,7 @@ let appendHeaders = function(appender, headers) {
 
   exports.reloadAuth = function () {
     if (exports.arango) {
-      exports.arango.POST('/_admin/auth/reload', '');
+      exports.arango.POST('/_admin/auth/reload', null);
       return;
     }
 

@@ -398,7 +398,7 @@ ArangoCollection.prototype.properties = function (properties) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.rotate = function () {
-  var requestResult = this._database._connection.PUT(this._baseurl('rotate'), '');
+  var requestResult = this._database._connection.PUT(this._baseurl('rotate'), null);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -501,7 +501,7 @@ ArangoCollection.prototype.truncate = function (options) {
   }
 
   var append = (options.waitForSync ? '&waitForSync=true' : '');
-  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, '');
+  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null);
 
   arangosh.checkRequestResult(requestResult);
   this._status = null;
@@ -517,11 +517,11 @@ ArangoCollection.prototype.truncate = function (options) {
     try {  
       // after we are done with the truncation, we flush the WAL to move out all
       // remove operations
-      this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), '');
+      this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), null);
       try {
         // after the WAL flush, we rotate the collection's active journals, so they can be
         // compacted
-        this._database._connection.PUT(this._baseurl('rotate'), '');
+        this._database._connection.PUT(this._baseurl('rotate'), null);
       } catch (err) {
         // this operation is invisible to the user, so we will intentionally ignore all errors here
       }
@@ -556,7 +556,7 @@ ArangoCollection.prototype.load = function (count) {
 
 ArangoCollection.prototype.unload = function () {
   this._status = null;
-  var requestResult = this._database._connection.PUT(this._baseurl('unload'), '');
+  var requestResult = this._database._connection.PUT(this._baseurl('unload'), null);
   this._status = null;
 
   arangosh.checkRequestResult(requestResult);
@@ -967,7 +967,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   var url;
-  var body = '';
+  var body = null;
 
   if (Array.isArray(id)) {
     url = this._documentcollectionurl();
