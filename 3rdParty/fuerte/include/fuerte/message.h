@@ -57,11 +57,17 @@ public:
   // Header metadata helpers
   void addMeta(std::string const& key, std::string const& value);
   // Get value for header metadata key, returns empty string if not found.
-  std::string metaByKey(std::string const& key) const;
+  std::string const& metaByKey(std::string const& key) const;
   
   // content type accessors
-  std::string contentTypeString() const;
-  ContentType contentType() const;
+  inline std::string const& contentTypeString() const {
+    return metaByKey(fu_content_type_key);
+  }
+  
+  inline ContentType contentType() const {
+    return to_ContentType(contentTypeString());
+  }
+  
   void contentType(std::string const& type);
   void contentType(ContentType type);
   

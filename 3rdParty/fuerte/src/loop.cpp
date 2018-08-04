@@ -33,7 +33,8 @@ EventLoopService::EventLoopService(unsigned int threadCount)
   for (unsigned i = 0; i < threadCount; i++) {
     _ioContexts.emplace_back(new asio_ns::io_context(1));
     _guards.emplace_back(asio_ns::make_work_guard(*_ioContexts.back()));
-    _threads.emplace_back([this, i]() { _ioContexts[i]->run(); });
+    asio_ns::io_context* ctx = _ioContexts.back().get();
+    _threads.emplace_back([ctx]() { ctx->run(); });
   }
 }
 

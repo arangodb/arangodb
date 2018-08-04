@@ -38,22 +38,19 @@ void MessageHeader::addMeta(std::string const& key, std::string const& value) {
 }
 
 // Get value for header metadata key, returns empty string if not found.
-std::string MessageHeader::metaByKey(std::string const& key) const {
+std::string const& MessageHeader::metaByKey(std::string const& key) const {
+  static std::string emptyString("");
   if (meta.empty()) {
-    return "";
+    return emptyString;
   }
-  auto found = meta.find(key);
-  return (found == meta.end()) ? "" : found->second;
+  auto const& found = meta.find(key);
+  if (found == meta.end()) {
+    return emptyString;
+  } else {
+    return found->second;
+  }
 }
   
-// content type accessors
-std::string MessageHeader::contentTypeString() const {
-  return metaByKey(fu_content_type_key);
-}
-
-ContentType MessageHeader::contentType() const {
-  return to_ContentType(contentTypeString());
-}
 
 void MessageHeader::contentType(std::string const& type) {
   addMeta(fu_content_type_key, type);
