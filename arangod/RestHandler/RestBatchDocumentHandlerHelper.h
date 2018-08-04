@@ -35,6 +35,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <boost/range/join.hpp>
+#include <boost/range/algorithm/set_algorithm.hpp>
 
 
 namespace arangodb {
@@ -103,7 +104,7 @@ static boost::optional<BatchOperation> stringToBatch(std::string const& op) {
 // Request structs and parsers
 ////////////////////////////////////////////////////////////////////////////////
 
-using AttributeSet = std::unordered_set<std::string>;
+using AttributeSet = std::set<std::string>;
 
 static Result expectedType(VPackValueType expected, VPackValueType got){
   if(expected == got) { return {}; };
@@ -112,30 +113,8 @@ static Result expectedType(VPackValueType expected, VPackValueType got){
   return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
 }
 
-static Result unexpectedAttributeError(AttributeSet const& required,
-                                       AttributeSet const& optional,
-                                       AttributeSet const& deprecated,
-                                       std::string const& got) {
-  std::stringstream err;
-  err << "Encountered unexpected attribute `" << got
-      << "`, allowed attributes are {";
-
-  auto attributes = boost::join(boost::join(required, optional), deprecated);
-  bool first = true;
-  for (auto const& it : attributes) {
-    if (!first) {
-      err << ", ";
-    }
-    first = false;
-
-    err << it;
-  }
-  err << "}.";
-
-  return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
-}
-
-static ResultT<AttributeSet> isObjectAndDoesNotHaveExtraAttributes(
+// should be an official velocypack helper when finished
+static ResultT<AttributeSet> expectedAttributes(
     VPackSlice slice,
     AttributeSet const& required,
     AttributeSet const& optional,
@@ -170,10 +149,34 @@ static ResultT<AttributeSet> isObjectAndDoesNotHaveExtraAttributes(
           << RestVocbaseBaseHandler::BATCH_DOCUMENT_PATH;
       rv.insert(key);
     } else {
-      return unexpectedAttributeError(required, optional, deprecated, key);
+      // will only be used here
+      std::stringstream err;
+      err << "Encountered unexpected attribute `" << key
+          << "`, allowed attributes are {";
+
+      auto attributes = boost::join(boost::join(required, optional), deprecated);
+      bool first = true;
+      for (auto const& it : attributes) {
+        if (!first) {
+          err << ", ";
+        }
+        first = false;
+
+        err << it;
+      }
+      err << "}.";
+
+      return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
     }
   }
 
+  // check if each required item is in the result set
+  if(! boost::range::includes(boost::make_iterator_range(rv.begin(), rv.end())
+                             ,boost::make_iterator_range(required.begin(), required.end())
+                             )
+  ){
+    return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, "Not all required arguments are present" };
+  }
   return ResultT<AttributeSet>::success(rv);
 }
 

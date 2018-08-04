@@ -59,16 +59,13 @@ dataFromVelocypackArray(VPackSlice const dataSlice
 
   size_t i = 0;
   for (auto const& dataItemSlice : VPackArrayIterator(dataSlice)) {
-    isObjectAndDoesNotHaveExtraAttributes(dataItemSlice, required, optional, deprecated);
+    auto maybeAttributes = expectedAttributes(dataItemSlice, required, optional, deprecated);
 
-    VPackSlice patternSlice = dataItemSlice.get("pattern");
-    if (patternSlice.isNone()) {
-      std::stringstream err;
-      err << "Attribute 'pattern' missing";
-      return ResultT<PatternWithKey>::error(
-          TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str());
+    if (maybeAttributes.fail()){
+      return {maybeAttributes};
     }
 
+    VPackSlice patternSlice = dataItemSlice.get("pattern");
     auto maybePattern = PatternWithKey::fromVelocypack(patternSlice);
     if (maybePattern.fail()) {
       std::stringstream err;
@@ -91,11 +88,7 @@ optionsFromVelocypack(VPackSlice const optionsSlice
                      ,AttributeSet const& optional
                      ,AttributeSet const& deprecated
                      ){
-  // TODO add possible options -- should really return attribute set containing set options
-  ResultT<AttributeSet> res = isObjectAndDoesNotHaveExtraAttributes(
-                                optionsSlice, required, optional, deprecated
-                              );
-
+  Result res = expectedAttributes(optionsSlice, required, optional, deprecated);
   if (res.fail()) { return res; }
 
   OperationOptions options;
@@ -123,9 +116,13 @@ struct BatchRequest {
         break;
     }
 
-    isObjectAndDoesNotHaveExtraAttributes(slice, required, optional, deprecated);
+    auto const maybeAttributes = expectedAttributes(slice, required, optional, deprecated);
+    if(maybeAttributes.fail()){ return {maybeAttributes}; }
 
-    // get data
+    ////////////////////////////////////////////////////////////////////////////////////////
+    // data
+    VPackSlice const dataSlice = slice.get("data"); // data is requuired
+
     required = {};
     optional = {};
     deprecated = {};
@@ -142,37 +139,26 @@ struct BatchRequest {
         break;
     }
 
-    VPackSlice const dataSlice = slice.get("data");
     auto maybeData = dataFromVelocypackArray(dataSlice, required, optional, deprecated);
     if (maybeData.fail()) {
       return prefixResultMessage(maybeData, "When parsing attribute 'data'");
     }
-    auto& data = maybeData.get();
 
-    // get options
-    required = {};
-    optional = {};
-    deprecated = {};
-    switch (batchOp) {
-      case BatchOperation::REMOVE:
-        break;
-      case BatchOperation::REPLACE:
-      case BatchOperation::UPDATE:
-      case BatchOperation::READ:
-      case BatchOperation::INSERT:
-      case BatchOperation::UPSERT:
-      case BatchOperation::REPSERT:
-        break;
+    ////////////////////////////////////////////////////////////////////////////////////////
+    // options -- different default options?!
+    OperationOptions options;
+
+    if(maybeAttributes.get().find("options") == maybeAttributes.get().end()) {
+      VPackSlice const optionsSlice = slice.get("options");
+      auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
+      if (maybeOptions.fail()) {
+        return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
+      }
+      options = maybeOptions.get();
     }
 
-    VPackSlice const optionsSlice = slice.get("options");
-    auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
-    if (maybeOptions.fail()) {
-      return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
-    }
-    auto const& options = maybeOptions.get();
-
-    return BatchRequest(slice, std::move(data), options, batchOp);
+    // create
+    return BatchRequest(slice, std::move(maybeData.get()), std::move(options), batchOp);
   }
 
   // builds an array of "_key"s, or a single string in case data.size() == 1
