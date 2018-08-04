@@ -138,6 +138,7 @@ class V8ClientConnection {
   
   fuerte::EventLoopService _loop;
   std::shared_ptr<fuerte::Connection> _connection;
+  velocypack::Options _vpackOptions;
 };
 }  // namespace arangodb
 

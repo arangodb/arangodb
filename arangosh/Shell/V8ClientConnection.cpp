@@ -59,7 +59,11 @@ V8ClientConnection::V8ClientConnection()
       _version("arango"),
       _mode("unknown mode"),
       _loop(1),
-      _connection(nullptr) {}
+      _connection(nullptr),
+      _vpackOptions(VPackOptions::Defaults) {
+  _vpackOptions.buildUnindexedObjects = true;
+  _vpackOptions.buildUnindexedArrays = true;
+}
 
 V8ClientConnection::~V8ClientConnection() {}
 
@@ -1375,7 +1379,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     req->header.contentType(fuerte::ContentType::Json);
   } else if (!body->IsUndefined() && !body->IsNull()) {
     VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
+    VPackBuilder builder(buffer, &_vpackOptions);
     int res = TRI_V8ToVPack(isolate, builder, body, false);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::V8) << "error converting request body " << TRI_errno_string(res);
