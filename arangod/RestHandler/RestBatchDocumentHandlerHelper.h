@@ -169,10 +169,7 @@ inline ResultT<AttributeSet> expectedAttributes(
   }
 
   // check if each required item is in the result set
-  if(! boost::range::includes(boost::make_iterator_range(rv.begin(), rv.end())
-                             ,boost::make_iterator_range(required.begin(), required.end())
-                             )
-  ){
+  if(! boost::range::includes(rv,required)) {
     return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, "Not all required arguments are present" };
   }
   return ResultT<AttributeSet>::success(rv);
