@@ -374,6 +374,8 @@ OperationResult removeBatchCoordinator(
   OperationOptions const&   options
 );
 
+
+
   /// @brief fetches all documents in a collection
   ENTERPRISE_VIRT OperationResult all(std::string const& collectionName,
                       uint64_t skip, uint64_t limit,
@@ -590,6 +592,23 @@ OperationResult removeBatchCoordinator(
   OperationResult rotateActiveJournalLocal(std::string const& collectionName,
                                            OperationOptions const& options);
 
+OperationResult processBatchLocal(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions const&   options,
+  std::function<Result (            // Result object is automatically converted to an error
+    LogicalCollection *collection,  //    in the result object
+    VPackBuilder &reponseObject,    // Builder with open object for response.
+                                    //    only write non generic data to this object and don't close it
+    VPackSlice const key,           // extracted key from entry.pattern
+    VPackSlice const entry,         // the entry itself, i.e. { pattern: {...}, ...}
+    VPackSlice const pattern,
+    OperationOptions const &options,      // options
+    TRI_voc_tick_t &resultMarkerTick,
+    TRI_voc_rid_t &actualRevision,
+    ManagedDocumentResult &previous
+  )> lambda
+);
 
  protected:
 

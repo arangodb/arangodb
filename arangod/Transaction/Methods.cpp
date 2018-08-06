@@ -2279,24 +2279,200 @@ OperationResult transaction::Methods::modifyBatchLocal(
   /// Thus introduce a processBatchLocal which accepts a lambda function
   return OperationResult{TRI_ERROR_INTERNAL};
 }
-/*
+
 OperationResult transaction::Methods::processBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions&         options
+  OperationOptions const&   options,
   std::function<Result (            // Result object is automatically converted to an error
     LogicalCollection *collection,  //    in the result object
     VPackBuilder &reponseObject,    // Builder with open object for response.
                                     //    only write non generic data to this object and don't close it
     VPackSlice const key,           // extracted key from entry.pattern
     VPackSlice const entry,         // the entry itself, i.e. { pattern: {...}, ...}
-    OperationOptions &options       // options
+    VPackSlice const pattern,
+    OperationOptions const &options,      // options
+    TRI_voc_tick_t &resultMarkerTick,
+    TRI_voc_rid_t &actualRevision,
+    ManagedDocumentResult &previous
   )> lambda
 ) {
+  Result result;
+
+  //////////////////////////////////////////////////////////////////////////
+  // THIS CODE PERFORMS NO REPLICATION
+  //////////////////////////////////////////////////////////////////////////
+  VPackBuilder response;
+  Result firstError;
+  uint64_t firstErrorIndex, count = 0;
+  response.openObject();
+
+  TRI_voc_tick_t maxTick = 0;
+
+  // This throws an exception if there is no collection
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  if (options.returnOld || options.returnNew) {
+    pinData(cid);  // will throw when it fails
+  }
+
+  // Remove/update/replace are a read and a write, let's get the write lock already
+  // for the read operation:
+  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
+
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
+  }
+
+  TRI_ASSERT(request.isObject());
+  TRI_ASSERT(request.hasKey("data"));
+  TRI_ASSERT(request.get("data").isArray());
+
+  VPackSlice data = request.get("data");
+
+  response.add("result", VPackValue(VPackValueType::Array));
+
+  for (auto const& entry : VPackArrayIterator(data)) {
+
+    TRI_ASSERT(entry.isObject());
+    TRI_ASSERT(entry.hasKey("pattern"));
+    TRI_ASSERT(entry.get("pattern").isObject());
+
+    VPackSlice pattern = entry.get("pattern");
+
+    TRI_ASSERT(pattern.isObject());
+    TRI_ASSERT(pattern.hasKey("_key"));
+    TRI_ASSERT(pattern.get("_key").isString());
+
+    VPackSlice key = pattern.get("_key");
+
+    // execute the read and then a delete
+    TRI_voc_tick_t resultMarkerTick = 0;
+    TRI_voc_rid_t actualRevision = 0;
+    ManagedDocumentResult previous;
 
 
+    Result entryResult = lambda(
+      collection,
+      response,
+      key,
+      entry,
+      pattern,
+      options,
+      resultMarkerTick,
+      actualRevision,
+      previous
+    );
 
-}*/
+    /*{
+      //////////////////////////////////////////////////////////////////////////
+      //// TODO: IS THIS LOCK REQUIRED? ALREADY LOCKED ABOVE
+      //////////////////////////////////////////////////////////////////////////
+      CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(), lock);
+      entryResult = collection->read(this, key, previous, false);
+
+      if (entryResult.ok()) {
+        if(!aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
+          entryResult.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+
+        } else {
+          auto optionsCopy = options;
+          entryResult = collection->remove(this, key, optionsCopy, resultMarkerTick,
+                                           false, actualRevision, previous);
+        }
+      }
+    } // the conditional write locker is destroyed here*/
+
+    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
+      maxTick = resultMarkerTick;
+    }
+
+    // Build the result object for this entry
+    response.openObject();
+    if (!entryResult.ok()) {
+      response.add(StaticStrings::ErrorNum, VPackValue(entryResult.errorNumber()));
+      response.add(StaticStrings::ErrorMessage, VPackValue(entryResult.errorMessage()));
+      // check here if this is the first error
+      if (firstError.ok()) {
+        firstError = entryResult;
+        firstErrorIndex = count;
+      }
+    } else {
+      if (!options.silent) {
+        response.add(VPackValue("old"));
+        if (options.returnOld) {
+          previous.addToBuilder(response, true);
+        } else {
+          buildDocumentIdentity(
+            collection, response, cid,
+            transaction::helpers::extractKeyPart(key),  // get a StringRef
+            actualRevision, 0, nullptr, nullptr
+          );
+        }
+      }
+    }
+
+    response.close();
+    count++;
+  }
+
+  // close result array
+  response.close();
+
+  // encode error here
+  if (!firstError.ok()) {
+    response.add(StaticStrings::Error, VPackValue(true));
+    //response.add(StaticStrings::ErrorNum, VPackValue(firstError.errorNumber()));
+    //response.add(StaticStrings::ErrorMessage, VPackValue(firstError.errorMessage()));
+    response.add("errorDataIndex", VPackValue(firstErrorIndex));
+  } else {
+    response.add(StaticStrings::Error, VPackValue(false));
+  }
+
+  response.close();
+
+  LOG_TOPIC(INFO, Logger::FIXME) << "reponse: " << response.toJson();
+
+  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
+  if (options.waitForSync && maxTick > 0 &&
+      isSingleOperationTransaction()) {
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
+  }
+
+  std::unordered_map<int, size_t> countErrorCodes;  // not yet implemented
+  return OperationResult(std::move(result), response.steal(), nullptr, options, countErrorCodes);
+}
+
+OperationResult transaction::Methods::removeBatchLocal(
+  std::string const&        collectionName,
+  VPackSlice const          request,          // the incoming request
+  OperationOptions const&         options           // the parsed options part
+) {
+  return processBatchLocal(collectionName, request, options, [this](
+    LogicalCollection *collection, VPackBuilder &reponseObject,
+    VPackSlice const key, VPackSlice const entry, VPackSlice const pattern,
+    OperationOptions const &options, TRI_voc_tick_t &resultMarkerTick,
+    TRI_voc_rid_t &actualRevision, ManagedDocumentResult &previous) -> Result {
+
+    Result result = collection->read(this, key, previous, false);
+    VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
+
+    if (result.ok()) {
+      if(!aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
+        result.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+
+      } else {
+        auto optionsCopy = options;
+        result = collection->remove(this, key, optionsCopy, resultMarkerTick,
+                                         false, actualRevision, previous);
+      }
+    }
+
+    return result;
+  });
+}
+
 
 /// @brief remove one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
@@ -2731,139 +2907,6 @@ OperationResult transaction::Methods::removeLocal(
 
   return Result();
 }*/
-
-
-OperationResult transaction::Methods::removeBatchLocal(
-  std::string const&        collectionName,
-  VPackSlice const          request,          // the incoming request
-  OperationOptions const&         options           // the parsed options part
-) {
-  Result result;
-
-  //////////////////////////////////////////////////////////////////////////
-  // THIS CODE PERFORMS NO REPLICATION
-  //////////////////////////////////////////////////////////////////////////
-  VPackBuilder response;
-  Result firstError;
-  uint64_t firstErrorIndex, count = 0;
-  response.openObject();
-
-  TRI_voc_tick_t maxTick = 0;
-  VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
-
-  // This throws an exception if there is no collection
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  LogicalCollection* collection = documentCollection(trxCollection(cid));
-
-  if (options.returnOld) {
-    pinData(cid);  // will throw when it fails
-  }
-
-  TRI_ASSERT(request.isObject());
-  TRI_ASSERT(request.hasKey("data"));
-  TRI_ASSERT(request.get("data").isArray());
-
-  VPackSlice data = request.get("data");
-
-  response.add("result", VPackValue(VPackValueType::Array));
-
-  for (auto const& entry : VPackArrayIterator(data)) {
-
-    TRI_ASSERT(entry.isObject());
-    TRI_ASSERT(entry.hasKey("pattern"));
-    TRI_ASSERT(entry.get("pattern").isObject());
-
-    VPackSlice pattern = entry.get("pattern");
-
-    TRI_ASSERT(pattern.isObject());
-    TRI_ASSERT(pattern.hasKey("_key"));
-    TRI_ASSERT(pattern.get("_key").isString());
-
-    VPackSlice key = pattern.get("_key");
-
-    // execute the read and then a delete
-    TRI_voc_tick_t resultMarkerTick = 0;
-    bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
-    TRI_voc_rid_t actualRevision = 0;
-    ManagedDocumentResult previous;
-    Result entryResult;
-
-    {
-      CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(), lock);
-      entryResult = collection->read(this, key, previous, false);
-
-      if (entryResult.ok()) {
-        if(!aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
-          entryResult.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-
-        } else {
-          auto optionsCopy = options;
-          entryResult = collection->remove(this, key, optionsCopy, resultMarkerTick,
-                                           false, actualRevision, previous);
-        }
-      }
-    } // the conditional write locker is destroyed here
-
-    if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
-      maxTick = resultMarkerTick;
-    }
-
-    // Build the result object for this entry
-    response.openObject();
-    if (!entryResult.ok()) {
-      response.add(StaticStrings::ErrorNum, VPackValue(entryResult.errorNumber()));
-      response.add(StaticStrings::ErrorMessage, VPackValue(entryResult.errorMessage()));
-      // check here if this is the first error
-      if (firstError.ok()) {
-        firstError = entryResult;
-        firstErrorIndex = count;
-      }
-    } else {
-      if (!options.silent) {
-        response.add(VPackValue("old"));
-        if (options.returnOld) {
-          previous.addToBuilder(response, true);
-        } else {
-          buildDocumentIdentity(
-            collection, response, cid,
-            transaction::helpers::extractKeyPart(key),  // get a StringRef
-            actualRevision, 0, nullptr, nullptr
-          );
-        }
-      }
-    }
-
-    response.close();
-    count++;
-  }
-
-  // close result array
-  response.close();
-
-  // encode error here
-  if (!firstError.ok()) {
-    response.add(StaticStrings::Error, VPackValue(true));
-    //response.add(StaticStrings::ErrorNum, VPackValue(firstError.errorNumber()));
-    //response.add(StaticStrings::ErrorMessage, VPackValue(firstError.errorMessage()));
-    response.add("errorDataIndex", VPackValue(firstErrorIndex));
-  } else {
-    response.add(StaticStrings::Error, VPackValue(false));
-  }
-
-  response.close();
-
-  LOG_TOPIC(INFO, Logger::FIXME) << "reponse: " << response.toJson();
-
-  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (options.waitForSync && maxTick > 0 &&
-      isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
-  }
-
-  std::unordered_map<int, size_t> countErrorCodes;  // not yet implemented
-  return OperationResult(std::move(result), response.steal(), nullptr, options, countErrorCodes);
-}
-
 
 
 /// @brief fetches all documents in a collection
