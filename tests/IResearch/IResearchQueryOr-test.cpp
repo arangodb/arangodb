@@ -134,8 +134,18 @@ struct IResearchQueryOrSetup {
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
 
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    analyzers->emplace(
+      "test_analyzer",
+      "TestAnalyzer",
+      "abc",
+      irs::flags{ irs::frequency::type(), irs::position::type() } // required for PHRASE
+    ); // cache analyzer
+
+    analyzers->emplace(
+      "test_csv_analyzer",
+      "TestDelimAnalyzer",
+      ","
+    ); // cache analyzer
   }
 
   ~IResearchQueryOrSetup() {

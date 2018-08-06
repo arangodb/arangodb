@@ -87,9 +87,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
 
   TestAnalyzer(irs::string_ref const& value)
     : irs::analysis::analyzer(TestAnalyzer::type()) {
-    _attrs.emplace(_freq); // required by postings_writer::end_term(...)
     _attrs.emplace(_inc); // required by field_data::invert(...)
-    _attrs.emplace(_pos); // required to match with PHRASE(...)
     _attrs.emplace(_term);
 
     if (value == "X") {
@@ -118,9 +116,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
  private:
   irs::attribute_view _attrs;
   irs::bytes_ref _data;
-  irs::frequency _freq;
   irs::increment _inc;
-  irs::position _pos;
   TestTermAttribute _term;
   TestAttributeX _x;
   TestAttributeY _y;
