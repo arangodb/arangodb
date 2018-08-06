@@ -2854,6 +2854,12 @@ OperationResult transaction::Methods::removeBatchLocal(
 
   LOG_TOPIC(INFO, Logger::FIXME) << "reponse: " << response.toJson();
 
+  // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
+  if (options.waitForSync && maxTick > 0 &&
+      isSingleOperationTransaction()) {
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
+  }
+
   std::unordered_map<int, size_t> countErrorCodes;  // not yet implemented
   return OperationResult(std::move(result), response.steal(), nullptr, options, countErrorCodes);
 }

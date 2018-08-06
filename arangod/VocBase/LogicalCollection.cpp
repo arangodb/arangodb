@@ -1135,6 +1135,10 @@ Result LogicalCollection::update(transaction::Methods* trx,
 
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// TODO:
+  ///   This lock is not clear if the function exits early
+  //////////////////////////////////////////////////////////////////////////////
   if (lock) {
     getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
   }
