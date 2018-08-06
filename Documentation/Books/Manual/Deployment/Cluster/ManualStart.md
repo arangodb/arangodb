@@ -209,6 +209,10 @@ arangod --server.endpoint tcp://0.0.0.0:8531 \
 
 ### DBServers
 
+In the commands below, note that `DBSERVER`, as value of the option
+`--cluster.my-role`, is allowed only from version 3.4; for previous
+versions, to start a _DBServer_, please use `PRIMARY` as role.
+
 On 192.168.1.1:
 
 ```
