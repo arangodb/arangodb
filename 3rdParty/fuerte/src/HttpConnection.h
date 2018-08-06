@@ -51,11 +51,15 @@ class HttpConnection final : public fuerte::Connection {
   ~HttpConnection();
 
  public:
-  // Start an asynchronous request.
+  
+  /// Start an asynchronous request.
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
   
+  /// @brief sed request synchronously, only save to use if the
+  std::unique_ptr<Response> sendRequestSync(std::unique_ptr<Request> r) override;
+  
   // Return the number of unfinished requests.
-  virtual size_t requestsLeft() const override {
+  size_t requestsLeft() const override {
     return _numQueued.load(std::memory_order_acquire);
   }
   
@@ -74,9 +78,8 @@ private:
   // restart connection
   void restartConnection(const ErrorCondition);
   
-  // createRequestItem prepares a RequestItem for the given parameters.
-  std::unique_ptr<RequestItem> createRequestItem(std::unique_ptr<Request> request,
-                                                 RequestCallback cb);
+  // build request body for given request
+  std::string buildRequestBody(Request const& req);
   
   /// set the timer accordingly
   void setTimeout(std::chrono::milliseconds);

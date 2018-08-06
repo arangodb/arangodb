@@ -34,14 +34,14 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // in-flight request data
 struct RequestItem {
-  /// Reference to the request we're processing
-  std::unique_ptr<arangodb::fuerte::v1::Request> _request;
-  /// Callback for when request is done (in error or succeeded)
-  RequestCallback _callback;
-  /// response data, may be null before response header is received
-  std::unique_ptr<arangodb::fuerte::v1::Response> _response;
   /// ID of this message
   MessageID _messageID;
+  /// Reference to the request we're processing
+  std::unique_ptr<arangodb::fuerte::v1::Request> _request;
+  /// response data, may be null before response header is received
+  std::unique_ptr<arangodb::fuerte::v1::Response> _response;
+  /// Callback for when request is done (in error or succeeded)
+  RequestCallback _callback;
 
   // buffer for the request header, reset after request was send
   std::string _requestHeader;

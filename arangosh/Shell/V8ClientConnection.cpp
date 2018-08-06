@@ -58,14 +58,17 @@ V8ClientConnection::V8ClientConnection()
       _lastErrorMessage(""),
       _version("arango"),
       _mode("unknown mode"),
-      _loop(1),
       _connection(nullptr),
+      _loop(1),
       _vpackOptions(VPackOptions::Defaults) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
 }
 
-V8ClientConnection::~V8ClientConnection() {}
+V8ClientConnection::~V8ClientConnection() {
+  _connection.reset();
+  _loop.forceStop();
+}
 
 void V8ClientConnection::init(ClientFeature* client) {
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
@@ -94,7 +97,7 @@ void V8ClientConnection::init(ClientFeature* client) {
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
   req->header.database = _databaseName;
   try {
-    auto res = _connection->sendRequest(std::move(req));
+    auto res = _connection->sendRequestSync(std::move(req));
     _lastHttpReturnCode = res->statusCode();
     
     if (_lastHttpReturnCode == 200) {
@@ -1393,7 +1396,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   
   std::unique_ptr<fuerte::Response> response;
   try {
-    response = _connection->sendRequest(std::move(req));
+    response = _connection->sendRequestSync(std::move(req));
   } catch (fuerte::ErrorCondition ec) {
     return handleResult(isolate, nullptr, ec);
   }
@@ -1437,7 +1440,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   
   std::unique_ptr<fuerte::Response> response;
   try {
-    response = _connection->sendRequest(std::move(req));
+    response = _connection->sendRequestSync(std::move(req));
   } catch (fuerte::ErrorCondition e) {
     _lastErrorMessage.assign(fuerte::to_string(e));
     _lastHttpReturnCode = 505;

@@ -62,9 +62,9 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   // Create RequestItem from parameters
   std::unique_ptr<RequestItem> item(new RequestItem());
   item->_messageID = mid;
-  item->_expires = std::chrono::steady_clock::time_point::max();
-  item->_callback = cb;
   item->_request = std::move(req);
+  item->_callback = cb;
+  item->_expires = std::chrono::steady_clock::time_point::max();
   item->prepareForNetwork(_vstVersion);
   
   // Add item to send queue
@@ -218,9 +218,9 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   
   // Part 1: Build ArangoDB VST auth message (1000)
   auto item = std::make_shared<RequestItem>();
-  item->_request = nullptr; // should not break anything
   item->_messageID = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   item->_expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
+  item->_request = nullptr; // should not break anything
   
   if (_config._authenticationType == AuthenticationType::Basic) {
     item->_requestMetadata = vst::message::authBasic(_config._user, _config._password);
@@ -342,13 +342,11 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     // Item has failed, remove from message store
     _messageStore.removeByID(item->_messageID);
 
+    auto err = checkEOFError(ec, ErrorCondition::WriteError);
     // let user know that this request caused the error
-    item->_callback.invoke(errorToInt(ErrorCondition::WriteError),
-                           std::move(item->_request), nullptr);
-
+    item->_callback.invoke(errorToInt(err), std::move(item->_request), nullptr);
     // Stop current connection and try to restart a new one.
-    restartConnection(ec == asio_ns::error::misc_errors::eof ?
-                      ErrorCondition::WriteError : ErrorCondition::ConnectionClosed);
+    restartConnection(err);
     return;
   }
   // Send succeeded
@@ -460,8 +458,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
   if (ec) {
     FUERTE_LOG_CALLBACKS
     << "asyncReadCallback: Error while reading form socket: " << ec.message();
-    restartConnection(ec == asio_ns::error::misc_errors::eof ?
-                      ErrorCondition::ReadError : ErrorCondition::ConnectionClosed);
+    restartConnection(checkEOFError(ec, ErrorCondition::ReadError));
     return;
   }
   

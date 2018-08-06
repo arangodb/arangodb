@@ -113,12 +113,13 @@ isSingle) {
 
 // Item that represents a Request in flight
 struct RequestItem {
+  /// ID of this message
+  MessageID _messageID;
   /// Reference to the request we're processing
   std::unique_ptr<Request> _request;
   /// Callback for when request is done (in error or succeeded)
   impl::CallOnceRequestCallback _callback;
-  /// ID of this message
-  MessageID _messageID;
+  /// point in time when the message expires
   std::chrono::steady_clock::time_point _expires;
   
   // ======= Request variables =======
