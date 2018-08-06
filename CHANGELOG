@@ -9,6 +9,10 @@ v3.3.14 (XXXX-XX-XX)
 
 * fixed internal issue #2812: Cluster fails to create many indexes in parallel
 
+* Intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries 
+  (not within a JS transaction), standalone truncate as well as for the "import" API
+
+
 v3.3.13 (2018-07-26)
 --------------------
 

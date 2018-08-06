@@ -503,9 +503,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
 
-    trx.addHint(
-        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
-    trx.addHint(transaction::Hints::Hint::UNTRACKED);
+    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
