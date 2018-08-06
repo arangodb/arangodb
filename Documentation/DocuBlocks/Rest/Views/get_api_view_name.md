@@ -23,7 +23,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 Using an identifier:
 
-@EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewIdentifier}
+@EXAMPLE_ARANGOSH_RUN{RestViewGetViewIdentifier}
     var viewName = "testView";
     var viewType = "arangosearch";
 
@@ -40,7 +40,7 @@ Using an identifier:
 
 Using a name:
 
-@EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewName}
+@EXAMPLE_ARANGOSH_RUN{RestViewGetViewName}
     var viewName = "testView";
     var viewType = "arangosearch";
 
