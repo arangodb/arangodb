@@ -136,7 +136,7 @@ struct BatchRequest {
     // options
     OperationOptions options;
 
-    if(maybeAttributes.get().find("options") == maybeAttributes.get().end()) {
+    if(maybeAttributes.get().find("options") != maybeAttributes.get().end()) {
       required = {};
       optional = {"oneTransactionPerDOcument", "checkGraphs", "graphName"};
       // mergeObjects "ignoreRevs"  "isRestore" keepNull?!
@@ -158,12 +158,17 @@ struct BatchRequest {
           break;
       }
       VPackSlice const optionsSlice = slice.get("options");
+
+      LOG_DEVEL << optionsSlice.toJson();
+
       auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
       if (maybeOptions.fail()) {
         return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
       }
       options = maybeOptions.get();
     }
+
+    LOG_DEVEL << "options.silent: " << std::boolalpha << options.silent;
 
     // create
     return BatchRequest(slice, /*std::move(maybeData.get()),*/ std::move(options), batchOp);
