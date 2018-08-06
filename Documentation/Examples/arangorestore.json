@@ -85,6 +85,20 @@
     "section" : "",
     "type" : "boolean"
   },
+  "encryption.key-generator" : {
+    "default" : "",
+    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
+    "hidden" : false,
+    "section" : "encryption",
+    "type" : "string"
+  },
+  "encryption.keyfile" : {
+    "default" : "",
+    "description" : "file containing the encryption key. If set, encryption will be enabled.",
+    "hidden" : false,
+    "section" : "encryption",
+    "type" : "string"
+  },
   "force" : {
     "default" : false,
     "description" : "continue restore even in the face of some server-side errors",
@@ -121,7 +135,7 @@
     "type" : "boolean"
   },
   "input-directory" : {
-    "default" : "/home/willi/src/devel3/dump",
+    "default" : "/Users/simon/Desktop/arangodb_devel/dump",
     "description" : "input directory",
     "hidden" : false,
     "section" : "",
@@ -281,7 +295,7 @@
     "values" : "Possible values: 1, 2, 3, 4"
   },
   "server.authentication" : {
-    "default" : true,
+    "default" : false,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
     "hidden" : false,
     "section" : "server",
@@ -302,7 +316,7 @@
     "type" : "string"
   },
   "server.endpoint" : {
-    "default" : "tcp://127.0.0.1:8529",
+    "default" : "http+tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
     "hidden" : false,
     "section" : "server",
@@ -338,7 +352,7 @@
   },
   "ssl.protocol" : {
     "default" : 5,
-    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2)",
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
     "hidden" : false,
     "section" : "ssl",
     "type" : "uint64",

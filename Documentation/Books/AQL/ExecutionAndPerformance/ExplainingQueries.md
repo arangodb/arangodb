@@ -47,7 +47,7 @@ but additionally you get all the statistics, the query profile and per node stat
 The execution plan contains three additional columns `Calls` (number of times this query stage was executed), 
 `Items` (number of temporary results at this stage) and `Runtime` (the total time spend in this stage). Below the 
 execution plan there are additional sections for the overall [runtime statistics](QueryStatistics.md) and the query
-profile.
+profile. For more info you can also look into [Profiling Queries](QueryProfiler.md)
 
 
     @startDocuBlockInline 01_workWithAQL_databaseProfileQuery

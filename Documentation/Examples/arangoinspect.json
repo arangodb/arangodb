@@ -158,6 +158,13 @@
     "section" : "javascript",
     "type" : "string"
   },
+  "javascript.unit-test-filter" : {
+    "default" : "",
+    "description" : "filter testcases in suite",
+    "hidden" : false,
+    "section" : "javascript",
+    "type" : "string"
+  },
   "javascript.unit-tests" : {
     "default" : [
     ],
@@ -400,7 +407,7 @@
   },
   "ssl.protocol" : {
     "default" : 5,
-    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2)",
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
     "hidden" : false,
     "section" : "ssl",
     "type" : "uint64",
