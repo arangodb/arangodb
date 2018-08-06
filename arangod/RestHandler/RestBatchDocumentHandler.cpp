@@ -150,7 +150,7 @@ struct BatchRequest {
         case BatchOperation::UPDATE:
         case BatchOperation::REPSERT:
         case BatchOperation::REPLACE:
-          optional.insert("returnNew");
+          optional.insert("returnNew"); //please fall through
         case BatchOperation::REMOVE:
           optional.insert("waitForSync");
           optional.insert("returnOld");
@@ -248,29 +248,22 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
 void arangodb::RestBatchDocumentHandler::executeBatchRequest(
     std::string const& collection, const BatchRequest& request) {
 
-  //if (request.empty()) {
-  //  // If request.data = [], the operation succeeds unless the collection lookup
-  //  // fails.
-  //  TRI_col_type_e colType;
-  //  Result res = arangodb::methods::Collections::lookup(
-  //      &_vocbase, collection,
-  //      [&colType](LogicalCollection const& coll) { colType = coll.type(); });
-
-  //  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  //  generateDeleted(OperationResult{res}, collection, colType,
-  //                  ctx->getVPackOptionsForDump());
-  //  return;
-  //}a
-
   TRI_ASSERT(request.payload.isObject()); //should be the same as the line above
 
   std::vector<OperationResult> opResults; // will hold the result
 
-
   velocypack::Options vOptions;
   bool vOptionsSet = false;
   VPackBuilder builder;
-  for(auto slice : VPackArrayIterator(request.payload.get("data"))){
+
+  VPackSlice data = request.payload.get("data");
+  TRI_ASSERT(data.isArray());
+
+  if(data.isEmptyArray()){
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_VALIDATION_FAILED, "you did not provide any data for the restBatchHandeler");
+  }
+
+  for(auto slice : VPackArrayIterator(data)){
     bool doBreak = false;
     VPackSlice payload;
 
@@ -336,13 +329,7 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
     transactionResult = trx->finish(operationResult.result);
 
     if (operationResult.ok() && transactionResult.fail()) {
-      std::string key;
-      //
-      //if (request.size() == 1) {
-      //  key = request.data.at(0).key;
-      //}
       opResults.push_back(OperationResult(transactionResult));
-      generateTransactionError(collection, transactionResult, key);
       if(doBreak) { break; };
       continue;
     }
