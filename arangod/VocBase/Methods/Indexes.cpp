@@ -164,8 +164,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     trx.finish(res);
   }
 
-  double selectivity = 0, memory = 0, cacheSize = 0, cacheLifeTimeHitRate = 0,
-         cacheWindowedHitRate = 0;
+  double selectivity = 0, memory = 0, cacheSize = 0, cacheUsage = 0,
+         cacheLifeTimeHitRate = 0, cacheWindowedHitRate = 0;
 
   VPackArrayBuilder a(&result);
   for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
@@ -207,6 +207,10 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
           if ((val = figures.get("cacheSize")).isNumber()) {
             cacheSize += val.getNumber<double>();
           }
+          
+          if ((val = figures.get("cacheUsage")).isNumber()) {
+            cacheUsage += val.getNumber<double>();
+          }
 
           if ((val = figures.get("cacheLifeTimeHitRate")).isNumber()) {
             cacheLifeTimeHitRate += val.getNumber<double>();
@@ -231,6 +235,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
             merge.add("memory", VPackValue(memory));
             if (useCache) {
               merge.add("cacheSize", VPackValue(cacheSize));
+              merge.add("cacheUsage", VPackValue(cacheUsage));
               merge.add("cacheLifeTimeHitRate",
                         VPackValue(cacheLifeTimeHitRate / 2));
               merge.add("cacheWindowedHitRate",
