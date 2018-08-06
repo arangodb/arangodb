@@ -90,7 +90,7 @@ inline std::unordered_map<std::string, BatchOperation> ensureStringToBatchMapIsI
 }
 
 inline boost::optional<BatchOperation> stringToBatch(std::string const& op) {
-  static const auto stringToBatchMap= ensureStringToBatchMapIsInitialized();
+  static const auto stringToBatchMap = ensureStringToBatchMapIsInitialized();
   auto it = stringToBatchMap.find(op);
   if (it == stringToBatchMap.end()) {
     return boost::none;
@@ -117,7 +117,7 @@ inline ResultT<AttributeSet> expectedAttributes(
     AttributeSet const& required,
     AttributeSet const& optional,
     AttributeSet const& deprecated
-    ) {
+){
 
   AttributeSet rv;
 
@@ -151,15 +151,11 @@ inline ResultT<AttributeSet> expectedAttributes(
       std::stringstream err;
       err << "Encountered unexpected attribute `" << key
           << "`, allowed attributes are {";
-
       auto attributes = boost::join(boost::join(required, optional), deprecated);
       bool first = true;
       for (auto const& it : attributes) {
-        if (!first) {
-          err << ", ";
-        }
+        if (!first) { err << ", "; }
         first = false;
-
         err << it;
       }
       err << "}.";

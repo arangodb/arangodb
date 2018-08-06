@@ -25,6 +25,7 @@
 #define ARANGOD_UTILS_OPERATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 
 namespace arangodb {
@@ -75,6 +76,48 @@ struct OperationOptions {
 
   Index::OperationMode indexOperationMode;
 };
+
+inline std::unique_ptr<VPackBuilder> toVelocyPack(std::unique_ptr<VPackBuilder> builder ,OperationOptions const& options){
+  //builder->add("recoveryData" ,VPackValue("how long might the data be?"));
+  builder->add("waitForSync" , VPackValue(options.waitForSync));
+  builder->add("keepNull"    , VPackValue(options.keepNull));
+  builder->add("mergeObjects", VPackValue(options.mergeObjects));
+  builder->add("silent"      , VPackValue(options.silent));
+  builder->add("ignoreRevs"  , VPackValue(options.ignoreRevs));
+  builder->add("returnOld"   , VPackValue(options.returnOld));
+  builder->add("returnNew"   , VPackValue(options.returnNew));
+  builder->add("isRestore"   , VPackValue(options.isRestore));
+  builder->add("overwrite"   , VPackValue(options.overwrite));
+
+  return builder;
+};
+
+inline std::unique_ptr<VPackBuilder> toVelocyPack(OperationOptions const& options){
+  auto builder = std::make_unique<VPackBuilder>();
+  builder->openObject();
+  builder = toVelocyPack(std::move(builder), options);
+  builder->close();
+  return builder;
+};
+
+inline OperationOptions createOperationOptions(VPackSlice const& slice, void* data = nullptr){
+  TRI_ASSERT(slice.isObject());
+  OperationOptions options;
+
+  options.recoveryData = data;
+  options.waitForSync  = basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", options.waitForSync);
+  options.keepNull     = basics::VelocyPackHelper::getBooleanValue(slice, "keepNull", options.keepNull);
+  options.mergeObjects = basics::VelocyPackHelper::getBooleanValue(slice, "mergeObjects", options.mergeObjects);
+  options.silent       = basics::VelocyPackHelper::getBooleanValue(slice, "silent", options.silent);
+  options.ignoreRevs   = basics::VelocyPackHelper::getBooleanValue(slice, "ignoreRevs", options.ignoreRevs);
+  options.returnOld    = basics::VelocyPackHelper::getBooleanValue(slice, "returnOld", options.returnOld);
+  options.returnNew    = basics::VelocyPackHelper::getBooleanValue(slice, "returnNew", options.returnNew);
+  options.isRestore    = basics::VelocyPackHelper::getBooleanValue(slice, "isRestore", options.isRestore);
+  options.overwrite    = basics::VelocyPackHelper::getBooleanValue(slice, "overwrite", options.overwrite);
+
+  return options;
+}
+
 }
 
 #endif

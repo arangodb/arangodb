@@ -43,42 +43,29 @@ namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 
-ResultT<std::vector<PatternWithKey>>
-dataFromVelocypackArray(VPackSlice const dataSlice
+Result
+CheckAttributesInVelocypackArray(VPackSlice const dataSlice
                        ,AttributeSet const& required
                        ,AttributeSet const& optional
                        ,AttributeSet const& deprecated
                        ){
+
   Result result = expectedType(VPackValueType::Array, dataSlice.type());
   if(result.fail()){
     return result;
   }
 
   std::vector<PatternWithKey> data;
-  data.reserve(dataSlice.length());
 
-  size_t i = 0;
   for (auto const& dataItemSlice : VPackArrayIterator(dataSlice)) {
     auto maybeAttributes = expectedAttributes(dataItemSlice, required, optional, deprecated);
 
     if (maybeAttributes.fail()){
       return {maybeAttributes};
     }
-
-    VPackSlice patternSlice = dataItemSlice.get("pattern");
-    auto maybePattern = PatternWithKey::fromVelocypack(patternSlice);
-    if (maybePattern.fail()) {
-      std::stringstream err;
-      err << "In array index " << i;
-      return prefixResultMessage(maybePattern, err.str());
-    }
-
-    data.emplace_back(maybePattern.get());
-
-    ++i;
   }
 
-  return {std::move(data)};
+  return {};
 };
 
 
@@ -89,32 +76,18 @@ optionsFromVelocypack(VPackSlice const optionsSlice
                      ,AttributeSet const& deprecated
                      ){
   Result res = expectedAttributes(optionsSlice, required, optional, deprecated);
-  if (res.fail()) { return res; }
-
-  OperationOptions options;
-  //TODO implement: OperationOptionsFromSlice(slice)
-
-  return ResultT<OperationOptions>::success(options);
+  if (res.fail()) { return prefixResultMessage(res, "Error occured while pasing options for batchDocumentOperation: "); }
+  OperationOptions options = createOperationOptions(optionsSlice);
+  return ResultT<OperationOptions>::success(std::move(options));
 };
 
 
 struct BatchRequest {
   static ResultT<BatchRequest> fromVelocypack(VPackSlice const slice, BatchOperation batchOp) {
 
-    AttributeSet required, optional, deprecated;
-
-    switch (batchOp) {
-      case BatchOperation::REMOVE:
-        required = {"data", "options"};
-        break;
-      case BatchOperation::REPLACE:
-      case BatchOperation::UPDATE:
-      case BatchOperation::READ:
-      case BatchOperation::INSERT:
-      case BatchOperation::UPSERT:
-      case BatchOperation::REPSERT:
-        break;
-    }
+    AttributeSet required = {"data"};
+    AttributeSet optional = {"options"};
+    AttributeSet deprecated;
 
     auto const maybeAttributes = expectedAttributes(slice, required, optional, deprecated);
     if(maybeAttributes.fail()){ return {maybeAttributes}; }
@@ -123,32 +96,74 @@ struct BatchRequest {
     // data
     VPackSlice const dataSlice = slice.get("data"); // data is requuired
 
-    required = {};
-    optional = {};
-    deprecated = {};
+    required.clear();
+    optional.clear();
+    deprecated.clear();
+
+
     switch (batchOp) {
+      case BatchOperation::READ:
       case BatchOperation::REMOVE:
-        required = {"pattern"};
+        required.insert("pattern");
+        break;
+      case BatchOperation::INSERT:
+        required.insert("insertDocument");
         break;
       case BatchOperation::REPLACE:
+        required.insert("replaceDocument");
+        break;
       case BatchOperation::UPDATE:
-      case BatchOperation::READ:
-      case BatchOperation::INSERT:
+        required.insert("updateDocument");
+        break;
       case BatchOperation::UPSERT:
+        required.insert("pattern");
+        required.insert("insertDocument");
+        required.insert("updateDocument");
+        break;
       case BatchOperation::REPSERT:
+        required.insert("pattern");
+        required.insert("replaceDocument");
+        required.insert("updateDocument");
         break;
     }
 
-    auto maybeData = dataFromVelocypackArray(dataSlice, required, optional, deprecated);
+    auto maybeData = CheckAttributesInVelocypackArray(dataSlice, required, optional, deprecated);
     if (maybeData.fail()) {
       return prefixResultMessage(maybeData, "When parsing attribute 'data'");
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
-    // options -- different default options?!
+    // options
     OperationOptions options;
 
+
     if(maybeAttributes.get().find("options") == maybeAttributes.get().end()) {
+      required = {};
+      optional = {"waitForSync", "mergeObjects", "silent", "ignoreRevs", "isRestore" };
+      deprecated = {};
+       //"returnOld", "returnNew",
+      switch (batchOp) {
+        case BatchOperation::REMOVE:
+          optional.insert("returnOld");
+          break;
+        case BatchOperation::UPDATE:
+          optional.insert("keepNull");
+          optional.insert("returnOld");
+          optional.insert("returnNew");
+          break;
+        case BatchOperation::REPLACE:
+        case BatchOperation::READ:
+        case BatchOperation::UPSERT:
+        case BatchOperation::REPSERT:
+          optional.insert("returnOld");
+          optional.insert("returnNew");
+          break;
+        case BatchOperation::INSERT:
+          optional.insert("returnOld");
+          optional.insert("returnNew");
+          optional.insert("overwrite");
+          break;
+      }
       VPackSlice const optionsSlice = slice.get("options");
       auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
       if (maybeOptions.fail()) {
@@ -158,55 +173,17 @@ struct BatchRequest {
     }
 
     // create
-    return BatchRequest(slice, std::move(maybeData.get()), std::move(options), batchOp);
+    return BatchRequest(slice, /*std::move(maybeData.get()),*/ std::move(options), batchOp);
   }
-
-  // builds an array of "_key"s, or a single string in case data.size() == 1
-  void toSearch(VPackBuilder &builder) const {
-    // TODO I'm in favour of removing the special case for 1, but the existing
-    // methods currently somewhat rely on an array containing at least 2 elements.
-    if (size() == 1) {
-      builder.add(VPackValue(data.at(0).key));
-      return;
-    }
-
-    builder.openArray();
-    for (auto const& it : data) {
-      builder.add(VPackValue(it.key));
-    }
-    builder.close();
-  }
-
-  // builds an array of patterns as externals, or a single pattern in case data.size() == 1
-  void toPattern(VPackBuilder &builder) const {
-    // TODO I'm in favour of removing the special case for 1, but the existing
-    // methods currently somewhat rely on an array containing at least 2 elements.
-    if (size() == 1) {
-      builder.addExternal(data.at(0).pattern.start());
-      return;
-    }
-
-    builder.openArray();
-    for (auto const& it : data) {
-      builder.addExternal(it.pattern.start());
-    }
-    builder.close();
-  }
-
-  bool empty() const { return data.empty(); }
-  size_t size() const { return data.size(); }
 
   explicit BatchRequest(VPackSlice const slice
-                       ,std::vector<PatternWithKey>&& data_
                        ,OperationOptions options_
                        ,BatchOperation op)
-           :data(data_)
-           ,options(std::move(options_))
+           :options(std::move(options_))
            ,operation(op)
            ,payload(slice)
   {};
 
-  std::vector<PatternWithKey> const data;
   OperationOptions const options;
   BatchOperation operation;
   VPackSlice const payload;
@@ -302,19 +279,20 @@ void RestBatchDocumentHandler::createBatchRequest(
 
 void arangodb::RestBatchDocumentHandler::executeBatchRequest(
     std::string const& collection, const BatchRequest& request) {
-  if (request.empty()) {
-    // If request.data = [], the operation succeeds unless the collection lookup
-    // fails.
-    TRI_col_type_e colType;
-    Result res = arangodb::methods::Collections::lookup(
-        &_vocbase, collection,
-        [&colType](LogicalCollection const& coll) { colType = coll.type(); });
 
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    generateDeleted(OperationResult{res}, collection, colType,
-                    ctx->getVPackOptionsForDump());
-    return;
-  }
+  //if (request.empty()) {
+  //  // If request.data = [], the operation succeeds unless the collection lookup
+  //  // fails.
+  //  TRI_col_type_e colType;
+  //  Result res = arangodb::methods::Collections::lookup(
+  //      &_vocbase, collection,
+  //      [&colType](LogicalCollection const& coll) { colType = coll.type(); });
+
+  //  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  //  generateDeleted(OperationResult{res}, collection, colType,
+  //                  ctx->getVPackOptionsForDump());
+  //  return;
+  //}
 
   std::vector<OperationResult> opResults; // will hold the result
 
@@ -336,14 +314,33 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
   TRI_ASSERT(_request->payload().isObject());
   TRI_ASSERT(request.payload.isObject()); //should be the same as the line above
 
-  auto operationResult = trx->removeBatch(collection, request.payload, request.options);
+  OperationResult operationResult;
+  switch (request.operation) {
+    case BatchOperation::READ:
+      break;
+    case BatchOperation::INSERT:
+      break;
+    case BatchOperation::REMOVE:
+      operationResult = trx->removeBatch(collection, request.payload, request.options);
+      break;
+    case BatchOperation::REPLACE: // implement first
+      //operationResult = trx->replaceBatch(collection, request.payload, request.options);
+      break;
+    case BatchOperation::UPDATE:  // implement first
+      //operationResult = trx->updateBatch(collection, request.payload, request.options);
+      break;
+    case BatchOperation::UPSERT:
+      break;
+    case BatchOperation::REPSERT:
+      break;
+  }
   transactionResult = trx->finish(operationResult.result);
 
   if (operationResult.ok() && transactionResult.fail()) {
     std::string key;
-    if (request.size() == 1) {
-      key = request.data.at(0).key;
-    }
+    //if (request.size() == 1) {
+    //  key = request.data.at(0).key;
+    //}
     generateTransactionError(collection, transactionResult, key);
     return;
   }
