@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require*/
+/* global describe, before, beforeEach, after, afterEach, it, require*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -144,7 +144,7 @@ function hasIResearch (db) {
                 db._collection(colName).truncate({ compact: false });
                 for(var i = 0; i < numDocs; ++i)
                 {
-                  var doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i}
+                  var doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i};
                   if (!defKey) {
                     doc._key = colName + i;
                   }
@@ -363,5 +363,5 @@ function hasIResearch (db) {
         });
       });
     }
-  })
+  });
 });

@@ -386,7 +386,7 @@ function hasIResearch (db) {
                   {
                     tasks.register(task);
                     wait(keySpaceId, name);
-                    expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards')
+                    expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
                   } else {
                     rootGrantCollection(testCol2Name, name, 'rw');
                     tasks.register(task);
@@ -407,5 +407,5 @@ function hasIResearch (db) {
         });
       }
     }
-  })
+  });
 });

@@ -221,7 +221,7 @@ function setupSatelliteCollections() {
 
   // setup a view
   try {
-    var c = db._create("UnitTestsDumpViewCollection");
+    c = db._create("UnitTestsDumpViewCollection");
 
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});
     view.properties({ links: {
