@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #5648: fixed error message when saving unsopported document
+  types.
+
 * Added C++ implementation, load balancer support, and user restriction to Pregel API.
 
   If an execution is accessed on a different coordinator than where it was
