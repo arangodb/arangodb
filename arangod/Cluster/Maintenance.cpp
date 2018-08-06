@@ -351,10 +351,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
           }
         }
       }
-    } else { // Create new database
-      actions.push_back(
-        ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
-    }
+    }  
   }
   
   // Compare local to plan -----------------------------------------------------

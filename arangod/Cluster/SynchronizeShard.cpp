@@ -872,7 +872,6 @@ arangodb::Result SynchronizeShard::synchronise() {
             result = addShardFollower(ep, database, shard, lockJobId, clientId, 60.0);
 
             if (!result.ok()) {
-              //db._drop(shard, {isSystem: true });
               LOG_TOPIC(ERR, Logger::MAINTENANCE)
                 << "synchronizeOneShard: failed to add follower"
                 << result.errorMessage();
