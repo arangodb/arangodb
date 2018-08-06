@@ -123,7 +123,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--ssl.protocol",
                      "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 "
                      "(negotiated), 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSV1.2)",
+                     "TLSv1, 5 = TLSv1.2)",
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 }
