@@ -7,7 +7,7 @@ v3.3.14 (XXXX-XX-XX)
 
 * fixed issue #6031: Broken LIMIT in nested list iterations 
 
-* fixed internal issue #2812: Cluster failes to create many indexes in parallel
+* fixed internal issue #2812: Cluster fails to create many indexes in parallel
 
 v3.3.13 (2018-07-26)
 --------------------

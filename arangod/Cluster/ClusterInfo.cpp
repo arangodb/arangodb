@@ -1717,7 +1717,8 @@ int ClusterInfo::ensureIndexCoordinator(
   int errorCode;
   try {
     auto start = std::chrono::steady_clock::now();
-    while (true) { // Keep trying for 2 minutes, if it's preconditions, which are
+    // Keep trying for 2 minutes, if it's preconditions, which are stopping us
+    while (true) { 
       resultBuilder.clear();
       errorCode = ensureIndexCoordinatorWithoutRollback(
         databaseName, collectionID, idString, slice, create, compare,
