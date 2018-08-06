@@ -290,17 +290,12 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
       vOptions = *(trx->transactionContextPtr()->getVPackOptionsForDump());
     }
 
-    // TODO I don't know why yet, but this causes a deadlock currently.
-    // It may be a bug introduced in Methods.cpp
-    // if (request.size() == 1) {
-    //   trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-    // }
-
     Result transactionResult = trx->begin();
 
-    if (!transactionResult.ok()) {
-      generateTransactionError(collection, transactionResult, "");
-      return;
+    if (transactionResult.fail()) {
+      opResults.push_back(OperationResult(transactionResult));
+      if(doBreak) { break; };
+      continue;
     }
 
 
@@ -342,11 +337,14 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
 
     if (operationResult.ok() && transactionResult.fail()) {
       std::string key;
+      //
       //if (request.size() == 1) {
       //  key = request.data.at(0).key;
       //}
+      opResults.push_back(OperationResult(transactionResult));
       generateTransactionError(collection, transactionResult, key);
-      return;
+      if(doBreak) { break; };
+      continue;
     }
     opResults.push_back(std::move(operationResult));
 
@@ -366,20 +364,28 @@ void RestBatchDocumentHandler::generateBatchResponse(
     VPackOptions const* options
   ){
 
-  // expects object that is open
-  // and has an open array results
-  //
-  // {
-  //   result: [ <item>...
-  //
-  //
+  if(result){
+    // expects object that is open
+    // and has an open array results
+    //
+    // {
+    //   result: [ <item>...
+    //
+    //
 
-  TRI_ASSERT(result->isOpenArray());
-  result->close();
-  TRI_ASSERT(result->isOpenObject());
-  extra.addToOpenOject(*result);
-  result->close();
-  TRI_ASSERT(result->isClosed());
+    TRI_ASSERT(result->isOpenArray());
+    result->close();
+    TRI_ASSERT(result->isOpenObject());
+     extra.addToOpenOject(*result);
+    result->close();
+    TRI_ASSERT(result->isClosed());
+  } else {
+    result = std::make_unique<VPackBuilder>();
+    result->openObject();
+    extra.addToOpenOject(*result);
+    result->close();
+  }
+
 
   resetResponse(extra.code);
 
@@ -421,7 +427,14 @@ void RestBatchDocumentHandler::generateBatchResponse(
     if(opRes.fail()) {
       extraInfo.code = arangodb::GeneralResponse::responseCode(opRes.errorNumber());
     }
-    generateBatchResponse(extraInfo.code, opRes.slice(),vOptions);
+
+    if(opRes.buffer){
+      generateBatchResponse(extraInfo.code, opRes.slice(),vOptions);
+    } else {
+      extraInfo.errorMessage = opRes.errorMessage();
+      extraInfo.errorMessage = opRes.errorNumber();
+      generateBatchResponse(nullptr, std::move(extraInfo),vOptions);
+    }
     return;
   }
 
@@ -435,7 +448,6 @@ void RestBatchDocumentHandler::generateBatchResponse(
   // flatten result vector
   // search for first failed result
   for(auto& item : opVec) {
-    LOG_DEVEL << item.slice().toJson();
     if (item.buffer) { //check for vaild buffer
       VPackSlice slice = item.slice();
       TRI_ASSERT(slice.isObject());
