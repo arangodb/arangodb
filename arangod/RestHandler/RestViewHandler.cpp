@@ -31,6 +31,28 @@
 
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return the specified object is granted 'level' access
+////////////////////////////////////////////////////////////////////////////////
+bool canUse(
+    arangodb::auth::Level level,
+    TRI_vocbase_t const& vocbase,
+    std::string const* dataSource = nullptr // nullptr == validate only vocbase
+) {
+  auto* execCtx = arangodb::ExecContext::CURRENT;
+
+  return !execCtx
+         || (execCtx->canUseDatabase(vocbase.name(), level)
+             && (!dataSource
+                 || execCtx->canUseCollection(vocbase.name(), *dataSource, level)
+                )
+            );
+}
+
+}
+
 using namespace arangodb::basics;
 
 namespace arangodb {
@@ -50,6 +72,16 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
     return;
   }
 
+  // ...........................................................................
+  // end of parameter parsing
+  // ...........................................................................
+
+  if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+    generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
+
+    return;
+  }
+
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
@@ -60,6 +92,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   if (!res.ok()) {
     generateError(res);
+
+    return;
   }
 
   generateOk(rest::ResponseCode::OK, builder);
@@ -94,6 +128,7 @@ RestStatus RestViewHandler::execute() {
 void RestViewHandler::createView() {
   if (_request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+
     return;
   }
 
@@ -102,6 +137,7 @@ void RestViewHandler::createView() {
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting POST /_api/view");
+
     return;
   }
 
@@ -133,6 +169,16 @@ void RestViewHandler::createView() {
     return;
   }
 
+  // ...........................................................................
+  // end of parameter parsing
+  // ...........................................................................
+
+  if (!canUse(auth::Level::RW, _vocbase)) {
+    generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to create view"));
+
+    return;
+  }
+
   try {
     auto view = _vocbase.createView(body);
 
@@ -140,7 +186,15 @@ void RestViewHandler::createView() {
       VPackBuilder props;
 
       props.openObject();
-      view->toVelocyPack(props, true, false);
+
+      auto res = view->toVelocyPack(props, true, false);
+
+      if (!res.ok()) {
+        generateError(res);
+
+        return;
+      }
+
       props.close();
       generateResult(rest::ResponseCode::CREATED, props.slice());
     } else {
@@ -165,6 +219,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   if ((suffixes.size() != 2) || (suffixes[1] != "properties" && suffixes[1] != "rename")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting [PUT, PATCH] /_api/view/<view-name>/properties or PUT /_api/view/<view-name>/rename");
+
     return;
   }
 
@@ -174,6 +229,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+
     return;
   }
 
@@ -188,9 +244,21 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     // handle rename functionality
     if (suffixes[1] == "rename") {
       VPackSlice newName = body.get("name");
+
       if (!newName.isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "expecting \"name\" parameter to be a string");
+
+        return;
+      }
+
+      // .......................................................................
+      // end of parameter parsing
+      // .......................................................................
+
+      if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+        generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view"));
+
         return;
       }
 
@@ -206,6 +274,31 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
 
+    // .........................................................................
+    // end of parameter parsing
+    // .........................................................................
+
+    if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+      generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view"));
+
+      return;
+    }
+
+    // check ability to read current properties
+    {
+      arangodb::velocypack::Builder builderCurrent;
+
+      builderCurrent.openObject();
+
+      auto resCurrent = view->toVelocyPack(builderCurrent, true, false);
+
+      if (!resCurrent.ok()) {
+        generateError(resCurrent);
+
+        return;
+      }
+    }
+
     auto const result = view->updateProperties(
       body, partialUpdate, true
     );  // TODO: not force sync?
@@ -214,8 +307,17 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       VPackBuilder updated;
 
       updated.openObject();
-      view->toVelocyPack(updated, true, false);
+
+      auto res = view->toVelocyPack(updated, true, false);
+
       updated.close();
+
+      if (!res.ok()) {
+        generateError(res);
+
+        return;
+      }
+
       generateResult(rest::ResponseCode::OK, updated.slice());
 
       return;
@@ -257,6 +359,16 @@ void RestViewHandler::deleteView() {
     return;
   }
 
+  // ...........................................................................
+  // end of parameter parsing
+  // ...........................................................................
+
+  if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+    generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
+
+    return;
+  }
+
   auto res = _vocbase.dropView(view->id(), allowDropSystem).errorNumber();
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -281,6 +393,7 @@ void RestViewHandler::getViews() {
       ((suffixes.size() == 2) && (suffixes[1] != "properties"))) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting GET /_api/view[/<view-name>[/properties]]");
+
     return;
   }
 
@@ -294,6 +407,17 @@ void RestViewHandler::getViews() {
   // /_api/view
   arangodb::velocypack::Builder builder;
   bool excludeSystem = _request->parsedValue("excludeSystem", false);
+
+  // ...........................................................................
+  // end of parameter parsing
+  // ...........................................................................
+
+  if (!canUse(auth::Level::RO, _vocbase)) {
+    generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get views"));
+
+    return;
+  }
+
   auto views = _vocbase.views();
 
   std::sort(
@@ -307,15 +431,30 @@ void RestViewHandler::getViews() {
 
   for (auto view: views) {
     if (view && (!excludeSystem || !view->system())) {
-      builder.openObject();
-
-      auto res = view->toVelocyPack(builder, false, false);
-
-      builder.close();
-
-      if (!res.ok()) {
-        generateError(res);
+      if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
+        continue; // skip views that are not authorised to be read
       }
+
+      arangodb::velocypack::Builder viewBuilder;
+
+      viewBuilder.openObject();
+
+      try {
+        auto res = view->toVelocyPack(viewBuilder, false, false);
+
+        if (!res.ok()) {
+          generateError(res);
+
+          return;
+        }
+      } catch (arangodb::basics::Exception& e) {
+        if (TRI_ERROR_FORBIDDEN != e.code()) {
+          throw; // skip views that are not authorised to be read
+        }
+      }
+
+      viewBuilder.close();
+      builder.add(viewBuilder.slice());
     }
   }
 

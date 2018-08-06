@@ -57,6 +57,7 @@ ServerState::ServerState()
     : _role(RoleEnum::ROLE_UNDEFINED),
       _lock(),
       _id(),
+      _shortId(0),
       _javaScriptStartupPath(),
       _address(),
       _host(),
