@@ -647,7 +647,8 @@ function CollectionCacheSuite () {
       let f2 = c.figures();
       assertTrue(f2.cacheInUse);
       assertEqual(f.cacheSize, f2.cacheSize);
-      assertTrue(Math.abs(f.cacheUsage - f2.cacheUsage) < 512);
+      assertTrue(Math.abs(f.cacheUsage - f2.cacheUsage) < 2048, 
+                 Math.abs(f.cacheUsage - f2.cacheUsage));
       // first no hits, second time all hits ~= 50% hit-rate
       assertTrue(Math.abs(f2.cacheLifeTimeHitRate - 50) < 5, f2.cacheLifeTimeHitRate);
 
@@ -655,7 +656,8 @@ function CollectionCacheSuite () {
       idxs2.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
           assertEqual(idx.figures.cacheSize, idxs[i].figures.cacheSize);
-          assertTrue(Math.abs(idx.figures.cacheUsage - idxs[i].figures.cacheUsage) < 512);
+          assertTrue(Math.abs(idx.figures.cacheUsage - idxs[i].figures.cacheUsage) < 2048, 
+                     Math.abs(idx.figures.cacheUsage - idxs[i].figures.cacheUsage));
           assertTrue(Math.abs(idx.figures.cacheLifeTimeHitRate - 50) < 5);
         }
       });
