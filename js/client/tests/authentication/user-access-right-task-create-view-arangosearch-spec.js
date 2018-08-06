@@ -317,5 +317,5 @@ function hasIResearch (db) {
         });
       }
     }
-  })
+  });
 });
