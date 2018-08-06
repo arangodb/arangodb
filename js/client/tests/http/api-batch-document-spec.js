@@ -197,14 +197,14 @@ describe('_api/batch/document', () => {
         expect(response.statusCode).to.equal(202);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
         expect(response.json.error).to.equal(false);
-        expect(response.json.result).to.deep.equal([ metaOfDoc(doc)]);
-        //expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
+        //expect(response.json.result).to.deep.equal([ metaOfDoc(doc)]);
+        expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
         --docsLeft;
         expect(db[colName].count()).to.equal(docsLeft);
       });
       expect(db[colName].count()).to.equal(0);
     });
-    
+
     it('remove one document at a time - fail', () => {
       let docsLeft = n;
       docsByVal.forEach(doc => {
@@ -220,14 +220,13 @@ describe('_api/batch/document', () => {
         print("############################################");
 
         expect(response.statusCode).to.equal(202);
-        expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
-        expect(response.json.error).to.equal(false);
-        expect(response.json.result).to.deep.equal([ metaOfDoc(doc)]);
+        expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
+        expect(response.json.error).to.equal(true);
+        //expect(response.json.result).to.deep.equal([{ "errorNum" : 1202, "errorMessage" : "document not found" }]);
         //expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
-        --docsLeft;
         expect(db[colName].count()).to.equal(docsLeft);
       });
-      expect(db[colName].count()).to.equal(0);
+      expect(db[colName].count()).to.equal(3);
     });
 
     it('remove all documents in a batch', () => {
@@ -246,7 +245,7 @@ describe('_api/batch/document', () => {
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
       expect(response.json.error).to.equal(false);
-      expect(response.json.result).to.deep.equal(docsByVal.map(metaOfDoc));
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({old: metaOfDoc(doc)})));
       expect(db[colName].count()).to.equal(0);
     });
 
@@ -265,10 +264,10 @@ describe('_api/batch/document', () => {
       print("############################################");
 
       expect(response.statusCode).to.equal(202);
-      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
-      expect(response.json.error).to.equal(false);
-      expect(response.json.result).to.deep.equal(docsByVal.map(metaOfDoc));
-      expect(db[colName].count()).to.equal(0);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
+      expect(response.json.error).to.equal(true);
+      //expect(response.json.result).to.deep.equal(docsByVal.map(metaOfDoc));
+      expect(db[colName].count()).to.equal(2);
     });
 
   }); // remove document - end
