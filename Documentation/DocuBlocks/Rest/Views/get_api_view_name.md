@@ -36,6 +36,8 @@ Using an identifier:
     assert(response.code === 200);
 
     logJsonResponse(response);
+    
+    db._dropView("testView");
 @END_EXAMPLE_ARANGOSH_RUN
 
 Using a name:
@@ -53,5 +55,7 @@ Using a name:
     assert(response.code === 200);
 
     logJsonResponse(response);
+
+    db._dropView("testView");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

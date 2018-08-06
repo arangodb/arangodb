@@ -13,21 +13,20 @@ Below the execution plan there are additional sections for the overall runtime s
 
 ## Example: Simple AQL query
 
-Assuming we got a collection named `mycollection` and insert 10000 documents
-via `for (let i=0; i < 10000;i++) db.collection.insert({value:i})`. Then a simple
+Assuming we got a collection named `acollection` and insert 10000 documents
+via `for (let i=0; i < 10000;i++) db.acollection.insert({value:i})`. Then a simple
 query filtering for `value < 10` will return 10 results:
 
 @startDocuBlockInline 01_workWithAQL_profileQuerySimple
 @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_profileQuerySimple}
-~db._create('mycollection');
-~for (let i=0; i < 10000;i++) db.mycollection.insert({value:i})
-|let query = `
-|FOR doc IN mycollection
+~db._drop("acollection");
+~db._create('acollection');
+~for (let i=0; i < 10000;i++) { db.acollection.insert({value:i}); }
+|db._profileQuery(`
+|FOR doc IN acollection
 |  FILTER doc.value < 10
-|  RETURN doc
-|`;
-db._profileQuery(query, {}, {colors: false});
-~db._drop("mycollection")
+|  RETURN doc`, {}, {colors: false});
+~db._drop("acollection");
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock 01_workWithAQL_profileQuerySimple
 
@@ -53,21 +52,19 @@ the result size fit within a single batch.
 
 Now lets add a skiplist index on `value` to speedup the query.
 ```JavaScript
-db.mycollection.ensureIndex({type:"skiplist", fields:["value"]})
+db.acollection.ensureIndex({type:"skiplist", fields:["value"]});
 ```
 
 @startDocuBlockInline 02_workWithAQL_profileQuerySimpleIndex
 @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_profileQuerySimpleIndex}
-~db._create('mycollection');
-~db.mycollection.ensureIndex({type:"skiplist", fields:["value"]})
-~for (let i=0; i < 10000;i++) db.mycollection.insert({value:i})
-|let query = `
-|FOR doc IN mycollection
+~db._create('acollection');
+~db.acollection.ensureIndex({type:"skiplist", fields:["value"]});
+~for (let i=0; i < 10000;i++) { db.acollection.insert({value:i}); }
+|db._profileQuery(`
+|FOR doc IN acollection
 |  FILTER doc.value < 10
-|  RETURN doc
-|`;
-db._profileQuery(query, {}, {colors: false});
-~db._drop("mycollection")
+|  RETURN doc`, {}, {colors: false});
+~db._drop("acollection");
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock 02_workWithAQL_profileQuerySimpleIndex
 
@@ -81,17 +78,15 @@ Lets consider a query containing a SubQuery
 
 @startDocuBlockInline 03_workWithAQL_profileQuerySubquery
 @EXAMPLE_ARANGOSH_OUTPUT{03_workWithAQL_profileQuerySubquery}
-~db._create('mycollection');
-~db.mycollection.ensureIndex({type:"skiplist", fields:["value"]})
-~for (let i=0; i < 10000;i++) db.mycollection.insert({value:i})
-|let query = `
-|LET list = (FOR doc in mycollection FILTER doc.value > 90 RETURN doc)
+~db._create('acollection');
+~db.acollection.ensureIndex({type:"skiplist", fields:["value"]});
+~for (let i=0; i < 10000;i++) { db.acollection.insert({value:i}); }
+|db._profileQuery(`
+|LET list = (FOR doc in acollection FILTER doc.value > 90 RETURN doc)
 |FOR a IN list 
 |   FILTER a.value < 91 
-|   RETURN a
-|`;
-db._profileQuery(query, {}, {colors: false, optimizer:{rules:["-all"]}});
-~db._drop("mycollection")
+|   RETURN a`, {}, {colors: false, optimizer:{rules:["-all"]}});;
+~db._drop("acollection");
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock 03_workWithAQL_profileQuerySubquery
 
@@ -102,37 +97,19 @@ The optimimized version would take longer in the "optimizing plan" stage, but sh
 ## Example: AQL with Aggregation
 
 Lets try a more advanced example, using a [COLLECT](https://docs.arangodb.com/devel/AQL/Operations/Collect.html) statement.
-Assuming we have a user collection with a city, username and an age value:
+Assuming we have a user collection with a city, username and an age value.
+Now lets try a query which gets us all age groups in buckets (0-9, 10-19, 20-29, ...):
 
-```JavaScript
-db._create("users");
-["berlin", "paris", "cologne", "munich", "london"].forEach((c) => {
-  ["peter", "david", "simon", "lars"].forEach( 
-    n => db.users.insert({ city : c, name : n, age: Math.floor(Math.random() * 75) })
-  )
-});
-```
-
-Now lets try a query which gets us all age groups in buckets (0-9, 10-19, 20-29, ...)
-
-```
-FOR u IN users
-  COLLECT ageGroup = FLOOR(u.age / 10) * 10
-  AGGREGATE minAge = MIN(u.age), maxAge = MAX(u.age), len = LENGTH(u)
-  RETURN {
-    ageGroup, 
-    minAge, 
-    maxAge,
-    len
-  }
-```
 @startDocuBlockInline 04_workWithAQL_profileQueryAggregation
 @EXAMPLE_ARANGOSH_OUTPUT{04_workWithAQL_profileQueryAggregation}
-~db._create('mycollection');
-~db.mycollection.ensureIndex({type:"skiplist", fields:["value"]})
-~for (let i=0; i < 10000;i++) db.mycollection.insert({value:i})
-|let query = `
-|FOR u IN users
+~db._create('myusers');
+|["berlin", "paris", "cologne", "munich", "london"].forEach((c) => {
+|  ["peter", "david", "simon", "lars"].forEach( 
+|    n => db.myusers.insert({ city : c, name : n, age: Math.floor(Math.random() * 75) })
+|  )
+|});
+|db._profileQuery(`
+|FOR u IN myusers
 |  COLLECT ageGroup = FLOOR(u.age / 10) * 10
 |  AGGREGATE minAge = MIN(u.age), maxAge = MAX(u.age), len = LENGTH(u)
 |  RETURN {
@@ -140,10 +117,8 @@ FOR u IN users
 |    minAge, 
 |    maxAge,
 |    len
-|  }
-|`;
-db._profileQuery(query, {}, {colors: false, optimizer:{rules:["-all"]}});
-~db._drop("mycollection")
+|  }`, {}, {colors: false});
+~db._drop("myusers")
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock 04_workWithAQL_profileQueryAggregation
 
