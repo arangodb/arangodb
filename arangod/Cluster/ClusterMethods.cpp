@@ -344,7 +344,7 @@ static int distributeBabyOnShards(
     temp.openObject();
     temp.add(StaticStrings::KeyString, value);
     temp.close();
-  
+
     error = collinfo->getResponsibleShard(temp.slice(), false, shardID, usesDefaultShardingAttributes);
   } else {
     error = collinfo->getResponsibleShard(value, false, shardID, usesDefaultShardingAttributes);
@@ -428,6 +428,7 @@ static int distributeBabyOnShards(
     if (userSpecifiedKey &&
         (!usesDefaultShardingAttributes || !collinfo->allowUserKeys()) &&
         !isRestore) {
+      LOG_TOPIC(ERR, Logger::FIXME) << value.toJson();
       return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
     }
   }
@@ -586,7 +587,7 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
 
   // We need to replace the distribute with the cid.
   col->distributeShardsLike(cidString, other->shardingInfo());
-  
+
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
   }
@@ -2463,7 +2464,7 @@ int modifyDocumentOnCoordinator(
           "shard:" + shard, reqType,
           baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
           ::CreateNoLockHeader(trx, shard));
-          
+
     }
   }
 

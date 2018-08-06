@@ -44,18 +44,24 @@ ShardingFeature::ShardingFeature(application_features::ApplicationServer* server
 }
 
 void ShardingFeature::prepare() {
-  registerFactory(ShardingStrategyNone::NAME, [](ShardingInfo*) { 
+  registerFactory(ShardingStrategyNone::NAME, [](ShardingInfo*) {
     return std::make_unique<ShardingStrategyNone>();
   });
-  registerFactory(ShardingStrategyCommunityCompat::NAME, [](ShardingInfo* sharding) { 
+  registerFactory(ShardingStrategyCommunityCompat::NAME, [](ShardingInfo* sharding) {
     return std::make_unique<ShardingStrategyCommunityCompat>(sharding);
   });
+  registerFactory(ShardingStrategyHash::NAME, [](ShardingInfo* sharding) {
+    return std::make_unique<ShardingStrategyHash>(sharding);
+  });
 #ifdef USE_ENTERPRISE
-  registerFactory(ShardingStrategyEnterpriseCompat::NAME, [](ShardingInfo* sharding) { 
+  registerFactory(ShardingStrategyEnterpriseCompat::NAME, [](ShardingInfo* sharding) {
     return std::make_unique<ShardingStrategyEnterpriseCompat>(sharding);
   });
   registerFactory(ShardingStrategyEnterpriseSmartEdgeCompat::NAME, [](ShardingInfo* sharding) {
     return std::make_unique<ShardingStrategyEnterpriseSmartEdgeCompat>(sharding);
+  });
+  registerFactory(ShardingStrategyEnterpriseHashSmartEdge::NAME, [](ShardingInfo* sharding) {
+    return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(sharding);
   });
 #endif
 }
@@ -67,8 +73,8 @@ void ShardingFeature::start() {
   }
   LOG_TOPIC(TRACE, Logger::CLUSTER) << "supported sharding strategies: " << strategies;
 }
-  
-void ShardingFeature::registerFactory(std::string const& name, 
+
+void ShardingFeature::registerFactory(std::string const& name,
                                       ShardingStrategy::FactoryFunction const& creator) {
   LOG_TOPIC(TRACE, Logger::CLUSTER) << "registering sharding strategy '" << name << "'";
 
@@ -77,7 +83,7 @@ void ShardingFeature::registerFactory(std::string const& name,
   }
 }
 
-std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice slice, 
+std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice slice,
                                                                   ShardingInfo* sharding) {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid collection meta data");
@@ -103,7 +109,7 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice sli
 
 std::unique_ptr<ShardingStrategy> ShardingFeature::create(std::string const& name, ShardingInfo* sharding) {
   auto it = _factories.find(name);
-  
+
   if (it == _factories.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("unknown sharding type '") + name + "'");
   }
@@ -114,7 +120,7 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::create(std::string const& nam
 
 std::string ShardingFeature::getDefaultShardingStrategy(ShardingInfo const* sharding) const {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
-  
+
   if (ServerState::instance()->isDBServer()) {
     // on a DB server, we will not use sharding
     return ShardingStrategyNone::NAME;
@@ -122,14 +128,11 @@ std::string ShardingFeature::getDefaultShardingStrategy(ShardingInfo const* shar
 
   // no sharding strategy found in collection meta data
 #ifdef USE_ENTERPRISE
-  if (sharding->collection()->isSmart() && 
+  if (sharding->collection()->isSmart() &&
       sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
-    return ShardingStrategyEnterpriseSmartEdgeCompat::NAME;
+    return ShardingStrategyEnterpriseHashSmartEdge::NAME;
   }
-   
-  return ShardingStrategyEnterpriseCompat::NAME;
-#else
-  return ShardingStrategyCommunityCompat::NAME;
-#endif 
+#endif
+return ShardingStrategyHash::NAME;
 }
