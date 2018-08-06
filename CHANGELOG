@@ -1,5 +1,9 @@
 v3.3.14 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #5648: fixed error message when saving unsopported document
+  types.
+
 * fixed issue #5884: Subquery nodes are no longer created on DBServers
 
 * fixed issue #6031: Broken LIMIT in nested list iterations 
