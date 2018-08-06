@@ -236,45 +236,15 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
     return RestStatus::DONE;
   }
 
-  BatchOperation const operation = maybeOp.get();
-
-  switch (operation) {
-    case BatchOperation::REMOVE:
-      createBatchRequest(collection, operation);
-      break;
-    case BatchOperation::REPLACE: // implement first
-    case BatchOperation::UPDATE:  // implement first
-
-    case BatchOperation::READ:
-    case BatchOperation::INSERT:
-    case BatchOperation::UPSERT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::REPSERT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
+  auto maybeRequest = BatchRequest::fromVelocypack(_request->payload(), maybeOp.get());
+  if (maybeRequest.fail()) {
+    generateError(maybeRequest);
+    return RestStatus::FAIL;
   }
+
+  executeBatchRequest(collection, maybeRequest.get());
 
   return RestStatus::DONE;
-}
-
-void RestBatchDocumentHandler::createBatchRequest(
-    std::string const& collection,
-    BatchOperation batchOp
-    ) {
-
-  //parse and validate result
-  auto parseResult = BatchRequest::fromVelocypack(_request->payload(), batchOp);
-  if (parseResult.fail()) {
-    generateError(parseResult);
-    return;
-  }
-
-  TRI_ASSERT(_request->payload() == parseResult.get().payload);
-
-  BatchRequest const& request = parseResult.get();
-  executeBatchRequest(collection, request);
 }
 
 void arangodb::RestBatchDocumentHandler::executeBatchRequest(
@@ -317,21 +287,35 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
   OperationResult operationResult;
   switch (request.operation) {
     case BatchOperation::READ:
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_NOT_IMPLEMENTED);
       break;
     case BatchOperation::INSERT:
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_NOT_IMPLEMENTED);
       break;
     case BatchOperation::REMOVE:
       operationResult = trx->removeBatch(collection, request.payload, request.options);
       break;
     case BatchOperation::REPLACE: // implement first
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_NOT_IMPLEMENTED);
       //operationResult = trx->replaceBatch(collection, request.payload, request.options);
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_NOT_IMPLEMENTED);
       break;
     case BatchOperation::UPDATE:  // implement first
       //operationResult = trx->updateBatch(collection, request.payload, request.options);
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_NOT_IMPLEMENTED);
       break;
     case BatchOperation::UPSERT:
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_NOT_IMPLEMENTED);
       break;
     case BatchOperation::REPSERT:
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_NOT_IMPLEMENTED);
       break;
   }
   transactionResult = trx->finish(operationResult.result);

@@ -76,10 +76,6 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
   // helper function for replace and update
   bool modifyDocument(bool);
 
-  // parse and validate input and create an BatchRequest
-  void createBatchRequest(std::string const& collection
-                          ,rest::batch_document_handler::BatchOperation);
-
   // execute BatchRequest
   void executeBatchRequest(std::string const &collection
                           ,const rest::batch_document_handler::BatchRequest &request);

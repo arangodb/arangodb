@@ -21,10 +21,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-// Contains free standing functions that are mean for use in
-// RestBatchDocumentHander.cpp only. You MUST NOT include
-// this file in other places.
-
 #ifndef ARANGOD_REST_HANDLER_REST_BATCH_DOCUMENT_HANDLER_HELPER_H
 #define ARANGOD_REST_HANDLER_REST_BATCH_DOCUMENT_HANDLER_HELPER_H 1
 
