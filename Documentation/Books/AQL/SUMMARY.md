@@ -72,6 +72,7 @@
   * [Query statistics](ExecutionAndPerformance/QueryStatistics.md)
   * [Parsing queries](ExecutionAndPerformance/ParsingQueries.md)
   * [Explaining queries](ExecutionAndPerformance/ExplainingQueries.md)
+  * [Parsing queries](ExecutionAndPerformance/QueryProfiler.md)
   * [Query Optimization](ExecutionAndPerformance/Optimizer.md)
   * [Caching query results](ExecutionAndPerformance/QueryCache.md)
 * [Common Errors](CommonErrors.md)
