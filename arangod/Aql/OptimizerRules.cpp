@@ -3985,7 +3985,8 @@ void arangodb::aql::restrictToSingleShardRule(
                 break;
               }
 
-              if (c->getType() == EN::REMOTE) {
+              if (c->getType() == EN::REMOTE ||
+                  c->getType() == EN::SUBQUERY) {
                 toRemove.clear();
                 break;
               }

@@ -1,8 +1,13 @@
-v3.3.14
--------------------
+v3.3.14 (XXXX-XX-XX)
+--------------------
 
-* Intermediate commits in the rocksdb engine are now only enabled in standalone AQL queries 
+* fixed issue #5884: Subquery nodes are no longer created on DBServers
+
+* fixed issue #6031: Broken LIMIT in nested list iterations 
+
+* Intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries 
   (not within a JS transaction), standalone truncate as well as for the "import" API
+
 
 v3.3.13 (2018-07-26)
 --------------------
