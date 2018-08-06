@@ -43,10 +43,6 @@ public:
   virtual ~DropDatabase();
 
   virtual bool first() override final;
-  
-  virtual arangodb::Result kill(Signal const& signal) override final;
-  
-  virtual arangodb::Result progress(double& progress) override final;
 
 };
 

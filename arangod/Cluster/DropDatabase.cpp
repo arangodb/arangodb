@@ -35,7 +35,15 @@ using namespace arangodb::maintenance;
 
 DropDatabase::DropDatabase(
   MaintenanceFeature& feature, ActionDescription const& desc)
-  : ActionBase(feature, desc) {}
+  : ActionBase(feature, desc) {
+
+  if (!desc.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "DropDatabase: database must be specified";
+    setState(FAILED);
+  }
+
+}
 
 DropDatabase::~DropDatabase() {};
 
@@ -51,17 +59,5 @@ bool DropDatabase::first() {
 
   _result = Databases::drop(systemVocbase, database);
   return false;
-    
+
 }
-
-arangodb::Result DropDatabase::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill DropDatabase action");
-}
-
-arangodb::Result DropDatabase::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
-}
-
-

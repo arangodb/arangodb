@@ -52,15 +52,15 @@ ResignShardLeadership::ResignShardLeadership(
   if (!desc.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "ResignShardLeadership: database must be specified";
-    _state = FAILED;
+    setState(FAILED);
   }
-  
+
   if (!desc.has(SHARD)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "ResignShardLeadership: shard must be specified";
-    _state = FAILED;
+    setState(FAILED);
   }
-  
+
 }
 
 ResignShardLeadership::~ResignShardLeadership() {};
@@ -74,7 +74,7 @@ bool ResignShardLeadership::first() {
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "trying to withdraw as leader of shard '" << database << "/" << collection;
-  
+
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
     std::string errorMsg("ResignShardLeadership: Failed to lookup database ");
@@ -115,9 +115,9 @@ bool ResignShardLeadership::first() {
     // Get write transaction on collection
     auto ctx = std::make_shared<transaction::StandaloneContext>(*vocbase);
     transaction::Methods trx(ctx, {}, {collection}, {}, transaction::Options());
-    
+
     Result res = trx.begin();
-    
+
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
      }
@@ -130,17 +130,5 @@ bool ResignShardLeadership::first() {
 
   setState(COMPLETE);
   return false;
-  
+
 }
-
-arangodb::Result ResignShardLeadership::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill ResignShardLeadership action");
-}
-
-arangodb::Result ResignShardLeadership::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
-}
-
-

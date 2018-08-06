@@ -44,7 +44,7 @@ public:
 
   /// @brief construct with description
   Action(MaintenanceFeature&, ActionDescription const&);
-  
+
   /// @brief construct with description
   Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const);
 
@@ -54,10 +54,10 @@ public:
    * @param action   Concrete action
    */
   Action(std::unique_ptr<ActionBase> action);
-  
+
   /// @brief clean up
   virtual ~Action();
-  
+
   /// @brief run for some time and tell, if need more time or done
   bool next();
 
@@ -70,12 +70,15 @@ public:
   /// @brief run for some time and tell, if need more time or done
   ActionState state() const;
 
+  /// @brief is object in a usable condition
+  bool ok() const { return (nullptr != _action.get() && _action->ok()); };
+
   arangodb::Result run(
     std::chrono::duration<double> const& duration, bool& finished);
-  
+
   /// @brief kill action with signal
   arangodb::Result kill(Signal const& signal);
-  
+
   /// @brief check progress
   arangodb::Result progress(double& progress);
 
@@ -93,7 +96,7 @@ public:
   void setState(ActionState state) {
     _action->setState(state);
   }
-  
+
   /// @brief update incremental statistics
   void startStats();
 
@@ -159,7 +162,7 @@ private:
   void create(MaintenanceFeature&, ActionDescription const&);
 
   /// @brief concrete action
-  std::unique_ptr<ActionBase> _action; 
+  std::unique_ptr<ActionBase> _action;
 
 };
 
@@ -170,4 +173,3 @@ ostream& operator<< (
   ostream& o, arangodb::maintenance::Action const& d);
 }
 #endif
-

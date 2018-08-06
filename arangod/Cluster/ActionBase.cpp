@@ -58,14 +58,14 @@ ActionBase::~ActionBase() {}
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
   bool ret_flag;
-  
+
   ret_flag = COMPLETE==_state || FAILED==_state;
-  
+
   // test clock ... avoid race of same task happening again too quickly
   if (ret_flag) {
     std::chrono::seconds secs(_feature.getSecondsActionsBlock());
     std::chrono::system_clock::time_point raceOver = _actionDone + secs;
-    
+
     ret_flag = (raceOver <= std::chrono::system_clock::now());
   } // if
 
@@ -123,7 +123,7 @@ void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& desc
   // preAction() sets up what we need
   _postAction = description;
   _feature.postAction(description);
-  
+
   // shift from EXECUTING to WAITINGPOST ... EXECUTING is set to block other
   //  workers from picking it up
   if (_postAction) {
@@ -165,12 +165,12 @@ void ActionBase::endStats() {
 } // ActionBase::endStats
 
 
-Result arangodb::actionError(int errorCode, std::string const& errorMessage) {	
-  LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;	
-  return Result(errorCode, errorMessage);	
-}	
- 	 
-Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) { 
+Result arangodb::actionError(int errorCode, std::string const& errorMessage) {
+  LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+  return Result(errorCode, errorMessage);
+}
+
+Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
   LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
@@ -188,13 +188,13 @@ void ActionBase::toVelocyPack(VPackBuilder & builder) const {
   builder.add("done", VPackValue(_actionDone.count()));
 #endif
   builder.add("result", VPackValue(_result.errorNumber()));
-  
+
   builder.add(VPackValue("description"));
   { VPackObjectBuilder desc(&builder);
     _description.toVelocyPack(builder); }
-  
+
 } // MaintanceAction::toVelocityPack
- 
+
 VPackBuilder ActionBase::toVelocyPack() const {
   VPackBuilder builder;
   toVelocyPack(builder);
@@ -208,11 +208,20 @@ arangodb::Result ActionBase::run(
 }
 
 
+/**
+ * kill() operation is an expected future feature.  Not supported in the
+ *  original ActionBase derivatives
+ */
 arangodb::Result ActionBase::kill(Signal const& signal) {
   return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill some random action");
+    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Kill operation not supported on this action.");
 }
 
+
+/**
+ * progress() operation is an expected future feature.  Not supported in the
+ *  original ActionBase derivatives
+ */
 arangodb::Result ActionBase::progress(double& progress) {
   progress = 0.5;
   return arangodb::Result(TRI_ERROR_NO_ERROR);

@@ -42,28 +42,26 @@ DropIndex::DropIndex(
   if (!d.has(COLLECTION)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropIndex: collection must be specified";
-    _state = FAILED;
+    setState(FAILED);
   }
 
   if (!d.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropIndex: database must be specified";
-    _state = FAILED;
+    setState(FAILED);
   }
-  
+
   if (!d.has(INDEX)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropIndex: index id must be stecified";
-    _state = FAILED;
+    setState(FAILED);
   }
-  
-  TRI_ASSERT(d.has(INDEX));
 }
 
 DropIndex::~DropIndex() {};
 
 bool DropIndex::first() {
-  
+
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& id = _description.get(INDEX);
@@ -100,17 +98,7 @@ bool DropIndex::first() {
     errorMsg += collection + "in database " + database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
-  
+
   return false;
-  
-}
 
-arangodb::Result DropIndex::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill DropIndex action");
-}
-
-arangodb::Result DropIndex::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
 }

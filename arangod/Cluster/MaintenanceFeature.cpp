@@ -81,12 +81,12 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
     "--server.maintenance-threads",
     "maximum number of threads available for maintenance actions",
     new Int32Parameter(&_maintenanceThreadsMax));
-  
+
   options->addHiddenOption(
     "--server.maintenance-actions-block",
     "minimum number of seconds finished Actions block duplicates",
     new Int32Parameter(&_secondsActionsBlock));
-  
+
   options->addHiddenOption(
     "--server.maintenance-actions-linger",
     "minimum number of seconds finished Actions remain in deque",
@@ -111,7 +111,7 @@ void MaintenanceFeature::start() {
     flag = newWorker->start(&_workerCompletion);
 
     if (!flag) {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
+      LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "MaintenanceFeature::start:  newWorker start failed";
     } // if
   } // for
@@ -179,7 +179,7 @@ Result MaintenanceFeature::addAction(
   // the underlying routines are believed to be safe and throw free,
   //  but just in case
   try {
-    
+
     size_t action_hash = newAction->hash();
     WRITE_LOCKER(wLock, _actionRegistryLock);
 
@@ -190,7 +190,7 @@ Result MaintenanceFeature::addAction(
 
       createAction(newAction, executeNow);
 
-      if (!newAction) {
+      if (!newAction || !newAction->ok()) {
         /// something failed in action creation ... go check logs
         result.reset(TRI_ERROR_BAD_PARAMETER, "createAction rejected parameters.");
       } // if
@@ -198,7 +198,7 @@ Result MaintenanceFeature::addAction(
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER, "addAction called while similar action already processing.");
     } //else
-    
+
     // executeNow process on this thread, right now!
     if (result.ok() && executeNow) {
       maintenance::MaintenanceWorker worker(*this, newAction);
@@ -241,7 +241,7 @@ Result MaintenanceFeature::addAction(
     if (!curAction || curAction->done()) {
       newAction = createAction(description, executeNow);
 
-      if (!newAction) {
+      if (!newAction || !newAction->ok()) {
         /// something failed in action creation ... go check logs
         result.reset(TRI_ERROR_BAD_PARAMETER, "createAction rejected parameters.");
       } // if
@@ -288,46 +288,46 @@ void MaintenanceFeature::createAction(
   if (executeNow) {
     action->setState(maintenance::EXECUTING);
   } // if
-  
+
   // WARNING: holding write lock to _actionRegistry and about to
   //   lock condition variable
   {
-    CONDITION_LOCKER(cLock, _actionRegistryCond);
     _actionRegistry.push_back(action);
-    
+
     if (!executeNow) {
+      CONDITION_LOCKER(cLock, _actionRegistryCond);
       _actionRegistryCond.signal();
     } // if
   } // lock
-  
+
 }
 
 
 std::shared_ptr<Action> MaintenanceFeature::createAction(
   std::shared_ptr<ActionDescription> const & description,
   bool executeNow) {
-  
+
   // write lock via _actionRegistryLock is assumed held
   std::shared_ptr<Action> newAction;
 
   // name should already be verified as existing ... but trust no one
   std::string name = description->get(NAME);
-      
+
   // call factory
   newAction = std::make_shared<Action>(*this, *description);
 
-  // if a new action created
-  if (newAction) {
-    
+  // if a new action constructed successfully
+  if (newAction->ok()) {
+
     createAction(newAction, executeNow);
-    
+
   } else {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
-      << "createAction:  unknown action name given, \"" << name.c_str() << "\".";
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "createAction:  unknown action name given, \"" << name.c_str() << "\", or other construction failure.";
   } // else
 
   return newAction;
-  
+
 } // if
 
 
@@ -439,4 +439,3 @@ VPackBuilder  MaintenanceFeature::toVelocyPack() const {
 std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
 } // MaintenanceFeature::toJson
 #endif
-

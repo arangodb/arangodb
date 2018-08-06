@@ -40,9 +40,25 @@ using namespace arangodb::methods;
 EnsureIndex::EnsureIndex(
   MaintenanceFeature& feature, ActionDescription const& desc) :
   ActionBase(feature, desc) {
-  TRI_ASSERT(properties().hasKey(ID));
-  TRI_ASSERT(desc.has(COLLECTION));
-  TRI_ASSERT(desc.has(DATABASE));
+
+  if (!desc.has(COLLECTION)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "EnsureIndex: collection must be specified";
+    setState(FAILED);
+  }
+
+  if (!desc.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "EnsureIndex: database must be specified";
+    setState(FAILED);
+  }
+
+  if (!properties().hasKey(ID)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "EnsureIndex: id must be specified";
+    setState(FAILED);
+  }
+
 }
 
 EnsureIndex::~EnsureIndex() {};
@@ -82,7 +98,7 @@ bool EnsureIndex::first() {
 
   VPackBuilder index;
   _result = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
-  
+
   if (_result.ok()) {
     VPackSlice created = index.slice().get("isNewlyCreated");
     std::string log =  std::string("Index ") + id;
@@ -98,17 +114,5 @@ bool EnsureIndex::first() {
 
   setState(COMPLETE);
   return false;
-  
+
 }
-
-arangodb::Result EnsureIndex::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill EnsureIndex action");
-}
-
-arangodb::Result EnsureIndex::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
-}
-
-

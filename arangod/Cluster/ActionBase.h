@@ -54,7 +54,7 @@ class ActionBase {
   // MaintenanceWork entry points
   //
 
- 
+
   /// @brief initial call to object to perform a unit of work.
   ///   really short tasks could do all work here and return false
   /// @return true to continue processing, false done (result() set)
@@ -90,6 +90,9 @@ class ActionBase {
   /// @brief waiting for a worker to grab it and go!
   bool runable() const {return READY==_state;}
 
+  /// @brief did initialization have issues?
+  bool ok() const {return FAILED!=_state;}
+
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
   ActionState state() const {
     return _state;
@@ -97,9 +100,9 @@ class ActionBase {
 
   virtual arangodb::Result run(
     std::chrono::duration<double> const&, bool& finished);
-  
+
   virtual arangodb::Result kill(Signal const& signal);
-  
+
   virtual arangodb::Result progress(double& progress);
 
   ActionDescription const& describe() const;
@@ -117,6 +120,11 @@ class ActionBase {
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
   void setState(ActionState state) {
+    if ((FAILED == state || COMPLETE == state)
+        && std::chrono::system_clock::time_point() == _actionDone) {
+      _actionDone = std::chrono::system_clock::now();
+    } // if
+
     _state = state;
   }
 
@@ -173,12 +181,12 @@ class ActionBase {
   /// @brief Returns json array of object contents for status reports
   ///  Thread safety of this function is questionable for some member objects
   //  virtual Result toJson(/* builder */) {return Result;}
-  
+
   /// @brief Return Result object contain action specific status
   Result result() const {return _result;}
 
 protected:
-  
+
   arangodb::MaintenanceFeature& _feature;
 
   ActionDescription _description;
@@ -213,7 +221,7 @@ protected:
 
 } // namespace maintenance
 
-Result actionError(int errorCode, std::string const& errorMessage);	
+Result actionError(int errorCode, std::string const& errorMessage);
 Result actionWarn(int errorCode, std::string const& errorMessage);
 
 } // namespace arangodb
@@ -224,4 +232,3 @@ ostream& operator<< (
   ostream& o, arangodb::maintenance::ActionBase const& d);
 }
 #endif
-
