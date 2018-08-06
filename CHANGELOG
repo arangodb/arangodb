@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #5354: updated the ui json editor, improvead usability
+
 * Added C++ implementation, load balancer support, and user restriction to Pregel API.
 
   If an execution is accessed on a different coordinator than where it was
