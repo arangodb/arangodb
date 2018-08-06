@@ -74,7 +74,6 @@ dataFromVelocypackArray(VPackSlice const dataSlice
     }
 
     data.emplace_back(maybePattern.get());
-
     ++i;
   }
 
@@ -89,12 +88,9 @@ optionsFromVelocypack(VPackSlice const optionsSlice
                      ,AttributeSet const& deprecated
                      ){
   Result res = expectedAttributes(optionsSlice, required, optional, deprecated);
-  if (res.fail()) { return res; }
-
-  OperationOptions options;
-  //TODO implement: OperationOptionsFromSlice(slice)
-
-  return ResultT<OperationOptions>::success(options);
+  if (res.fail()) { return prefixResultMessage(res, "Error occured while pasing options for batchDocumentOperation: "); }
+  OperationOptions options = createOperationOptions(optionsSlice);
+  return ResultT<OperationOptions>::success(std::move(options));
 };
 
 
@@ -145,10 +141,37 @@ struct BatchRequest {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
-    // options -- different default options?!
+    // options
     OperationOptions options;
 
+
     if(maybeAttributes.get().find("options") == maybeAttributes.get().end()) {
+      required = {};
+      optional = {"waitForSync", "mergeObjects", "silent", "ignoreRevs", "isRestore" };
+      deprecated = {};
+       //"returnOld", "returnNew",
+      switch (batchOp) {
+        case BatchOperation::REMOVE:
+          optional.insert("returnOld");
+          break;
+        case BatchOperation::UPDATE:
+          optional.insert("keepNull");
+          optional.insert("returnOld");
+          optional.insert("returnNew");
+          break;
+        case BatchOperation::REPLACE:
+        case BatchOperation::READ:
+        case BatchOperation::UPSERT:
+        case BatchOperation::REPSERT:
+          optional.insert("returnOld");
+          optional.insert("returnNew");
+          break;
+        case BatchOperation::INSERT:
+          optional.insert("returnOld");
+          optional.insert("returnNew");
+          optional.insert("overwrite");
+          break;
+      }
       VPackSlice const optionsSlice = slice.get("options");
       auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
       if (maybeOptions.fail()) {
