@@ -514,6 +514,13 @@ OperationResult removeBatchCoordinator(
                              ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 
+  void buildDocumentIdentityInObject(arangodb::LogicalCollection* collection,
+                             VPackBuilder& builder, TRI_voc_cid_t cid,
+                             StringRef const& key, TRI_voc_rid_t rid,
+                             TRI_voc_rid_t oldRid,
+                             ManagedDocumentResult const* oldDoc,
+                             ManagedDocumentResult const* newDoc);
+
   OperationResult documentCoordinator(std::string const& collectionName,
                                       VPackSlice const value,
                                       OperationOptions& options);

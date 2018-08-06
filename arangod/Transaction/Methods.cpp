@@ -845,6 +845,16 @@ void transaction::Methods::buildDocumentIdentity(
     StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
 
+  builder.openObject();
+  buildDocumentIdentityInObject(collection, builder, cid, key, rid, oldRid, oldDoc, newDoc);
+  builder.close();
+}
+
+void transaction::Methods::buildDocumentIdentityInObject(
+    LogicalCollection* collection, VPackBuilder& builder, TRI_voc_cid_t cid,
+    StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
+    ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
+
   std::string temp; // TODO: pass a string into this function
   temp.reserve(64);
 
@@ -870,7 +880,6 @@ void transaction::Methods::buildDocumentIdentity(
   temp.push_back('/');
   temp.append(key.begin(), key.size());
 
-  builder.openObject();
   builder.add(StaticStrings::IdString, VPackValue(temp));
 
   builder.add(StaticStrings::KeyString,
@@ -890,7 +899,6 @@ void transaction::Methods::buildDocumentIdentity(
     builder.add(VPackValue("new"));
     newDoc->addToBuilder(builder, true);
   }
-  builder.close();
 }
 
 /// @brief begin the transaction
@@ -2811,13 +2819,17 @@ OperationResult transaction::Methods::removeBatchLocal(
         firstErrorIndex = count;
       }
     } else {
-      ///////////////////////////////////////////////////////////////////
-      ////// TODO: If returnOld is not set, we should at least return meta information
-      //////        Unless silent is true
-      ///////////////////////////////////////////////////////////////////
-      if (!options.silent && options.returnOld) {
+      if (!options.silent) {
         response.add(VPackValue("old"));
-        previous.addToBuilder(response, true);
+        if (options.returnOld) {
+          previous.addToBuilder(response, true);
+        } else {
+          buildDocumentIdentity(
+            collection, response, cid,
+            transaction::helpers::extractKeyPart(key),  // get a StringRef
+            actualRevision, 0, nullptr, nullptr
+          );
+        }
       }
     }
 
@@ -2825,14 +2837,17 @@ OperationResult transaction::Methods::removeBatchLocal(
     count++;
   }
 
+  // close result array
   response.close();
 
   // encode error here
   if (!firstError.ok()) {
     response.add(StaticStrings::Error, VPackValue(true));
-    response.add(StaticStrings::ErrorNum, VPackValue(firstError.errorNumber()));
-    response.add(StaticStrings::ErrorMessage, VPackValue(firstError.errorMessage()));
+    //response.add(StaticStrings::ErrorNum, VPackValue(firstError.errorNumber()));
+    //response.add(StaticStrings::ErrorMessage, VPackValue(firstError.errorMessage()));
     response.add("errorDataIndex", VPackValue(firstErrorIndex));
+  } else {
+    response.add(StaticStrings::Error, VPackValue(false));
   }
 
   response.close();
