@@ -95,7 +95,7 @@ LogicalView::LogicalView(
     PreCommitCallback const& preCommit /*= PreCommitCallback()*/
 ) {
   auto const* viewTypes =
-    application_features::ApplicationServer::getFeature<ViewTypesFeature>("ViewTypes");
+    application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
 
   if (!viewTypes) {
     LOG_TOPIC(ERR, Logger::VIEWS)
