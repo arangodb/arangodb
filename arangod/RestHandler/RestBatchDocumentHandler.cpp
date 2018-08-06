@@ -136,41 +136,39 @@ struct BatchRequest {
     // options
     OperationOptions options;
 
-
-    if(maybeAttributes.get().find("options") == maybeAttributes.get().end()) {
+    if(maybeAttributes.get().find("options") != maybeAttributes.get().end()) {
       required = {};
-      optional = {"waitForSync", "mergeObjects", "silent", "ignoreRevs", "isRestore" };
+      optional = {"oneTransactionPerDOcument", "checkGraphs", "graphName"};
+      // mergeObjects "ignoreRevs"  "isRestore" keepNull?!
       deprecated = {};
-       //"returnOld", "returnNew",
       switch (batchOp) {
-        case BatchOperation::REMOVE:
-          optional.insert("returnOld");
-          break;
-        case BatchOperation::UPDATE:
-          optional.insert("keepNull");
-          optional.insert("returnOld");
-          optional.insert("returnNew");
-          break;
-        case BatchOperation::REPLACE:
         case BatchOperation::READ:
-        case BatchOperation::UPSERT:
-        case BatchOperation::REPSERT:
-          optional.insert("returnOld");
-          optional.insert("returnNew");
+          optional.insert("graphName");
           break;
         case BatchOperation::INSERT:
+        case BatchOperation::UPSERT:
+        case BatchOperation::UPDATE:
+        case BatchOperation::REPSERT:
+        case BatchOperation::REPLACE:
+          optional.insert("returnNew"); //please fall through
+        case BatchOperation::REMOVE:
+          optional.insert("waitForSync");
           optional.insert("returnOld");
-          optional.insert("returnNew");
-          optional.insert("overwrite");
+          optional.insert("silent");
           break;
       }
       VPackSlice const optionsSlice = slice.get("options");
+
+      //LOG_DEVEL << optionsSlice.toJson();
+
       auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
       if (maybeOptions.fail()) {
         return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
       }
       options = maybeOptions.get();
     }
+
+    // LOG_DEVEL << "options.silent: " << std::boolalpha << options.silent;
 
     // create
     return BatchRequest(slice, /*std::move(maybeData.get()),*/ std::move(options), batchOp);
@@ -250,90 +248,100 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
 void arangodb::RestBatchDocumentHandler::executeBatchRequest(
     std::string const& collection, const BatchRequest& request) {
 
-  //if (request.empty()) {
-  //  // If request.data = [], the operation succeeds unless the collection lookup
-  //  // fails.
-  //  TRI_col_type_e colType;
-  //  Result res = arangodb::methods::Collections::lookup(
-  //      &_vocbase, collection,
-  //      [&colType](LogicalCollection const& coll) { colType = coll.type(); });
-
-  //  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  //  generateDeleted(OperationResult{res}, collection, colType,
-  //                  ctx->getVPackOptionsForDump());
-  //  return;
-  //}
+  TRI_ASSERT(request.payload.isObject()); //should be the same as the line above
 
   std::vector<OperationResult> opResults; // will hold the result
 
-  auto trx = createTransaction(collection, AccessMode::Type::WRITE);
+  velocypack::Options vOptions;
+  bool vOptionsSet = false;
+  VPackBuilder builder;
 
-  // TODO I don't know why yet, but this causes a deadlock currently.
-  // It may be a bug introduced in Methods.cpp
-  // if (request.size() == 1) {
-  //   trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  // }
+  VPackSlice data = request.payload.get("data");
+  TRI_ASSERT(data.isArray());
 
-  Result transactionResult = trx->begin();
-
-  if (!transactionResult.ok()) {
-    generateTransactionError(collection, transactionResult, "");
-    return;
+  if(data.isEmptyArray()){
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_VALIDATION_FAILED, "you did not provide any data for the restBatchHandeler");
   }
 
-  TRI_ASSERT(_request->payload().isObject());
-  TRI_ASSERT(request.payload.isObject()); //should be the same as the line above
+  for(auto slice : VPackArrayIterator(data)){
+    bool doBreak = false;
+    VPackSlice payload;
 
-  OperationResult operationResult;
-  switch (request.operation) {
-    case BatchOperation::READ:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::INSERT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::REMOVE:
-      operationResult = trx->removeBatch(collection, request.payload, request.options);
-      break;
-    case BatchOperation::REPLACE: // implement first
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      //operationResult = trx->replaceBatch(collection, request.payload, request.options);
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::UPDATE:  // implement first
-      //operationResult = trx->updateBatch(collection, request.payload, request.options);
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::UPSERT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::REPSERT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-  }
-  transactionResult = trx->finish(operationResult.result);
+    if(!request.options.oneTransactionPerDocument){
+      payload = request.payload;
+      doBreak = true;
+    } else {
+      builder.clear();
+      builder.openObject();
+      builder.add("data", slice);
+      builder.close();
+      payload = builder.slice();
+    }
 
-  if (operationResult.ok() && transactionResult.fail()) {
-    std::string key;
-    //if (request.size() == 1) {
-    //  key = request.data.at(0).key;
-    //}
-    generateTransactionError(collection, transactionResult, key);
-    return;
-  }
+    auto trx = createTransaction(collection, AccessMode::Type::WRITE);
+    if(!vOptionsSet){
+      vOptions = *(trx->transactionContextPtr()->getVPackOptionsForDump());
+    }
 
-  opResults.push_back(std::move(operationResult));
+    Result transactionResult = trx->begin();
+
+    if (transactionResult.fail()) {
+      opResults.push_back(OperationResult(transactionResult));
+      if(doBreak) { break; };
+      continue;
+    }
+
+
+    OperationResult operationResult;
+    switch (request.operation) {
+      case BatchOperation::READ:
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::INSERT:
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::REMOVE:
+        operationResult = trx->removeBatch(collection, payload, request.options);
+        break;
+      case BatchOperation::REPLACE: // implement first
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        //operationResult = trx->replaceBatch(collection, payload, request.options);
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::UPDATE:  // implement first
+        //operationResult = trx->updateBatch(collection, payload, request.options);
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::UPSERT:
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::REPSERT:
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+    }
+    transactionResult = trx->finish(operationResult.result);
+
+    if (operationResult.ok() && transactionResult.fail()) {
+      opResults.push_back(OperationResult(transactionResult));
+      if(doBreak) { break; };
+      continue;
+    }
+    opResults.push_back(std::move(operationResult));
+
+    if(doBreak) { break; };
+
+  } // for item in "data"
 
   generateBatchResponse(
       opResults,
-      trx->transactionContextPtr()->getVPackOptionsForDump()
+      &vOptions
   );
 }
 
@@ -343,20 +351,28 @@ void RestBatchDocumentHandler::generateBatchResponse(
     VPackOptions const* options
   ){
 
-  // expects object that is open
-  // and has an open array results
-  //
-  // {
-  //   result: [ <item>...
-  //
-  //
+  if(result){
+    // expects object that is open
+    // and has an open array results
+    //
+    // {
+    //   result: [ <item>...
+    //
+    //
 
-  TRI_ASSERT(result->isOpenArray());
-  result->close();
-  TRI_ASSERT(result->isOpenObject());
-  extra.addToOpenOject(*result);
-  result->close();
-  TRI_ASSERT(result->isClosed());
+    TRI_ASSERT(result->isOpenArray());
+    result->close();
+    TRI_ASSERT(result->isOpenObject());
+     extra.addToOpenOject(*result);
+    result->close();
+    TRI_ASSERT(result->isClosed());
+  } else {
+    result = std::make_unique<VPackBuilder>();
+    result->openObject();
+    extra.addToOpenOject(*result);
+    result->close();
+  }
+
 
   resetResponse(extra.code);
 
@@ -398,7 +414,14 @@ void RestBatchDocumentHandler::generateBatchResponse(
     if(opRes.fail()) {
       extraInfo.code = arangodb::GeneralResponse::responseCode(opRes.errorNumber());
     }
-    generateBatchResponse(extraInfo.code, opRes.slice(),vOptions);
+
+    if(opRes.buffer){
+      generateBatchResponse(extraInfo.code, opRes.slice(),vOptions);
+    } else {
+      extraInfo.errorMessage = opRes.errorMessage();
+      extraInfo.errorMessage = opRes.errorNumber();
+      generateBatchResponse(nullptr, std::move(extraInfo),vOptions);
+    }
     return;
   }
 
@@ -412,7 +435,6 @@ void RestBatchDocumentHandler::generateBatchResponse(
   // flatten result vector
   // search for first failed result
   for(auto& item : opVec) {
-    LOG_DEVEL << item.slice().toJson();
     if (item.buffer) { //check for vaild buffer
       VPackSlice slice = item.slice();
       TRI_ASSERT(slice.isObject());

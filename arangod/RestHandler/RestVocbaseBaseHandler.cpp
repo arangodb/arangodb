@@ -560,7 +560,7 @@ void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 void RestVocbaseBaseHandler::pickupNoLockHeaders() {
   if (ServerState::instance()->isDBServer()) {
     // Only DBServer needs to react to them!

@@ -249,6 +249,26 @@ describe('_api/batch/document', () => {
       expect(db[colName].count()).to.equal(0);
     });
 
+    it('remove all documents in a batch - silent', () => {
+      let body;
+      const response = removeDocs(body = {
+        data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
+        options: { silent: true},
+      });
+
+      print("############################################");
+      print('remove all documents in a batch - silent ');
+      print(response.json);
+      print("############################################");
+
+      expect(response.statusCode).to.equal(202);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+      expect(response.json.error).to.equal(false);
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({})));
+      //expect(response.json.result).to.deep.equal([]); //empty ?!
+      expect(db[colName].count()).to.equal(0);
+    });
+
     it('remove all documents in a batch - fail', () => {
       let body;
       const response = removeDocs(body = {
