@@ -77,7 +77,10 @@ std::string const COLLECTIONS("collections");
 std::string const LAST_LOG_TICK("lastLogTick");
 std::string const BARRIER_ID("barrierId");
 std::string const FOLLOWER_ID("followerId");
-
+std::string const RESTRICT_TYPE("restrictType");
+std::string const RESTRICT_COLLECTIONS("restrictCollections");
+std::string const INCLUDE("include");
+std::string const INCLUDE_SYSTEM("includeSystem");
 using namespace std::chrono;
 
 SynchronizeShard::SynchronizeShard(
@@ -418,11 +421,11 @@ arangodb::Result SynchronizeShard::getReadLock(
           slice.get("lockHeld").getBool()) {
         return arangodb::Result();
       }
-      LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Lock not yet acquired...";
     } else {
       
-      LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Do not see read lock yet:"
         << putres->stringifyErrorMessage();
     }
@@ -567,27 +570,6 @@ arangodb::Result replicationSynchronize(
   }
  
   return arangodb::Result();
-}
-
-arangodb::Result syncCollection(
-  std::shared_ptr<arangodb::LogicalCollection> const col, 
-  VPackSlice const& config, std::shared_ptr<VPackBuilder> sy) {
-
-  VPackBuilder builder;
-  { VPackObjectBuilder o(&builder);
-    for (auto const& i : VPackObjectIterator(config)) {
-      builder.add(i.key.copyString(), i.value);
-    }
-    builder.add("restrictType", VPackValue("include"));
-    builder.add(VPackValue("restrictCollections"));
-    { VPackArrayBuilder a(&builder);
-      builder.add(VPackValue(col->name())); }
-    builder.add("includeSystem", VPackValue(true));
-    if (!config.hasKey("verbose")) {
-      builder.add("verbose", VPackValue(false));
-    }}
-  return replicationSynchronize(col, builder.slice(), APPLIER_DATABASE, sy);
-
 }
 
 
@@ -788,16 +770,24 @@ arangodb::Result SynchronizeShard::synchronise() {
     startTime = system_clock::now();
 
     VPackBuilder config;
-    { VPackObjectBuilder c(&config);
+    { VPackObjectBuilder o(&config);
       config.add(ENDPOINT, VPackValue(ep));
       config.add(INCREMENTAL, VPackValue(true));
       config.add(KEEP_BARRIER, VPackValue(true));
       config.add(LEADER_ID, VPackValue(leader));
       config.add(SKIP_CREATE_DROP, VPackValue(true));
-    }
+      config.add(RESTRICT_TYPE, VPackValue(INCLUDE));
+      config.add(VPackValue(RESTRICT_COLLECTIONS));
+      { VPackArrayBuilder a(&config);
+        config.add(VPackValue(shard)); }
+      config.add(INCLUDE_SYSTEM, VPackValue(true));
+      config.add("verbose", VPackValue(false)); }
 
     auto details = std::make_shared<VPackBuilder>();
-    Result syncRes = syncCollection(collection, config.slice(), details);
+
+    Result syncRes = replicationSynchronize(
+      collection, config.slice(), APPLIER_DATABASE, details);
+    
     auto sy = details->slice();
     auto const endTime = system_clock::now();
     bool longSync = false;
