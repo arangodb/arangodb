@@ -2501,7 +2501,7 @@ static void JS_TruncateVocbaseCol(
   
   auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection->cid(), AccessMode::Type::EXCLUSIVE);
-
+  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   Result res = trx.begin();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
