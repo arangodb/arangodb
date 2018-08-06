@@ -35,6 +35,7 @@ struct OperationOptions {
       : recoveryData(nullptr), waitForSync(false), keepNull(true),
         mergeObjects(true), silent(false), ignoreRevs(true),
         returnOld(false), returnNew(false), isRestore(false), overwrite(false),
+        oneTransactionPerDocument(false),checkGraphs(false),
         indexOperationMode(Index::OperationMode::normal) {}
 
   // original marker, set by an engine's recovery procedure only!
@@ -68,13 +69,17 @@ struct OperationOptions {
   // for insert operations: do not fail if _key exists but replace the document
   bool overwrite;
 
+  bool oneTransactionPerDocument; // for batch operations
+  bool checkGraphs; // for batch operations
+
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
   // operation if we are merely a follower. Finally, we must deny replications
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
-
+  std::string graphName; // for batch operations
   Index::OperationMode indexOperationMode;
+
 };
 
 inline std::unique_ptr<VPackBuilder> toVelocyPack(std::unique_ptr<VPackBuilder> builder ,OperationOptions const& options){
@@ -88,6 +93,13 @@ inline std::unique_ptr<VPackBuilder> toVelocyPack(std::unique_ptr<VPackBuilder> 
   builder->add("returnNew"   , VPackValue(options.returnNew));
   builder->add("isRestore"   , VPackValue(options.isRestore));
   builder->add("overwrite"   , VPackValue(options.overwrite));
+
+  builder->add("indexOperationMode" , VPackValue(options.indexOperationMode));
+  builder->add("isSynchronousReplicationFrom" , VPackValue(options.isSynchronousReplicationFrom));
+
+  builder->add("oneTransactionPerDocument" , VPackValue(options.oneTransactionPerDocument));
+  builder->add("checkGraphs" , VPackValue(options.checkGraphs));
+  builder->add("graphName" , VPackValue(options.graphName));
 
   return builder;
 };
@@ -114,7 +126,14 @@ inline OperationOptions createOperationOptions(VPackSlice const& slice, void* da
   options.returnNew    = basics::VelocyPackHelper::getBooleanValue(slice, "returnNew", options.returnNew);
   options.isRestore    = basics::VelocyPackHelper::getBooleanValue(slice, "isRestore", options.isRestore);
   options.overwrite    = basics::VelocyPackHelper::getBooleanValue(slice, "overwrite", options.overwrite);
+  options.overwrite    = basics::VelocyPackHelper::getBooleanValue(slice, "overwrite", options.overwrite);
 
+  options.indexOperationMode = basics::VelocyPackHelper::getNumericValue(slice, "indexOperationMode", options.indexOperationMode);
+  options.isSynchronousReplicationFrom = basics::VelocyPackHelper::getStringValue(slice, "isSynchronousReplicationFrom", options.isSynchronousReplicationFrom);
+
+  options.oneTransactionPerDocument = basics::VelocyPackHelper::getBooleanValue(slice, "oneTransactionPerDocument", options.oneTransactionPerDocument); ;
+  options.checkGraphs = basics::VelocyPackHelper::getBooleanValue(slice, "checkGraphs", options.checkGraphs);
+  options.graphName = basics::VelocyPackHelper::getStringValue(slice, "graphName", options.graphName);
   return options;
 }
 

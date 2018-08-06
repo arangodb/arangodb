@@ -136,32 +136,25 @@ struct BatchRequest {
     // options
     OperationOptions options;
 
-
     if(maybeAttributes.get().find("options") == maybeAttributes.get().end()) {
       required = {};
-      optional = {"waitForSync", "mergeObjects", "silent", "ignoreRevs", "isRestore" };
+      optional = {"oneTransactionPerDOcument", "checkGraphs", "graphName"};
+      // mergeObjects "ignoreRevs"  "isRestore" keepNull?!
       deprecated = {};
-       //"returnOld", "returnNew",
       switch (batchOp) {
-        case BatchOperation::REMOVE:
-          optional.insert("returnOld");
-          break;
-        case BatchOperation::UPDATE:
-          optional.insert("keepNull");
-          optional.insert("returnOld");
-          optional.insert("returnNew");
-          break;
-        case BatchOperation::REPLACE:
         case BatchOperation::READ:
-        case BatchOperation::UPSERT:
-        case BatchOperation::REPSERT:
-          optional.insert("returnOld");
-          optional.insert("returnNew");
+          optional.insert("graphName");
           break;
         case BatchOperation::INSERT:
-          optional.insert("returnOld");
+        case BatchOperation::UPSERT:
+        case BatchOperation::UPDATE:
+        case BatchOperation::REPSERT:
+        case BatchOperation::REPLACE:
           optional.insert("returnNew");
-          optional.insert("overwrite");
+        case BatchOperation::REMOVE:
+          optional.insert("waitForSync");
+          optional.insert("returnOld");
+          optional.insert("silent");
           break;
       }
       VPackSlice const optionsSlice = slice.get("options");
