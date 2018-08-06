@@ -51,6 +51,7 @@
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCollectionHandler.h"
+#include "RestHandler/RestControlPregelHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -309,10 +310,13 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
 
-
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
       RestHandlerCreator<RestCollectionHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
+      RestHandlerCreator<RestControlPregelHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,

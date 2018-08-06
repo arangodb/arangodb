@@ -21,19 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "bitvector.hpp"
 #include "formats/format_utils.hpp"
 #include "index_utils.hpp"
-
-namespace {
-}
 
 NS_ROOT
 NS_BEGIN(index_utils)
 
 index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 0*/) {
   return [byte_threshold](
-    const directory& dir, const index_meta& meta
-  )->index_writer::consolidation_acceptor_t {
+    bitvector& candidates, const directory& dir, const index_meta& meta
+  )->void {
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
     uint64_t length;
@@ -48,27 +46,32 @@ index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 
 
     auto threshold = std::max<float>(0, std::min<float>(1, byte_threshold));
     auto threshold_bytes_avg = (all_segment_bytes_size / (float)segment_count) * threshold;
+    size_t i = 0;
 
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
-    return [&dir, threshold_bytes_avg](const segment_meta& meta)->bool {
+    for (auto& segment: meta) {
       size_t segment_bytes_size = 0;
       uint64_t length;
 
-      for (auto& file: meta.files) {
+      for (auto& file: segment.meta.files) {
         if (dir.length(length, file)) {
           segment_bytes_size += length;
         }
       }
 
-      return threshold_bytes_avg > segment_bytes_size;
-    };
+      if (threshold_bytes_avg > segment_bytes_size) {
+        candidates.set(i);
+      }
+
+      ++i;
+    }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshold /*= 0*/) {
   return [byte_threshold](
-    const directory& dir, const index_meta& meta
-  )->index_writer::consolidation_acceptor_t {
+    bitvector& candidates, const directory& dir, const index_meta& meta
+  )->void {
     size_t all_segment_bytes_size = 0;
     uint64_t length;
 
@@ -82,37 +85,33 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
 
     size_t cumulative_size = 0;
     auto threshold_size = all_segment_bytes_size * std::max<float>(0, std::min<float>(1, byte_threshold));
+    size_t i = 0;
 
     // merge segment if: {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-    return std::bind(
-      [&dir, threshold_size](const segment_meta& meta, size_t& cumulative_size)->bool {
-        size_t segment_bytes_size = 0;
-        uint64_t length;
+    for (auto& segment: meta) {
+      size_t segment_bytes_size = 0;
+      uint64_t length;
 
-        for (auto& file: meta.files) {
-          if (dir.length(length, file)) {
-            segment_bytes_size += length;
-          }
+      for (auto& file: segment.meta.files) {
+        if (dir.length(length, file)) {
+          segment_bytes_size += length;
         }
+      }
 
-        if (cumulative_size + segment_bytes_size >= threshold_size) {
-          return false;
-        }
-
+      if (cumulative_size + segment_bytes_size < threshold_size) {
         cumulative_size += segment_bytes_size;
+        candidates.set(i);
+      }
 
-        return true;
-      },
-      std::placeholders::_1,
-      cumulative_size
-    );
+      ++i;
+    }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 0*/) {
   return [docs_threshold](
-    const directory& dir, const index_meta& meta
-  )->index_writer::consolidation_acceptor_t {
+    bitvector& candidates, const directory& dir, const index_meta& meta
+  )->void {
     size_t all_segment_docs_count = 0;
     size_t segment_count = meta.size();
 
@@ -127,34 +126,44 @@ index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 
 
     auto threshold = std::max<float>(0, std::min<float>(1, docs_threshold));
     auto threshold_docs_avg = (all_segment_docs_count / (float)segment_count) * threshold;
+    size_t i = 0;
 
     // merge segment if: {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
-    return [&dir, threshold_docs_avg](const segment_meta& meta)->bool {
+    for (auto& segment: meta) {
       document_mask docs_mask;
 
-      read_document_mask(docs_mask, dir, meta);
+      read_document_mask(docs_mask, dir, segment.meta);
 
-      return meta.docs_count <= docs_mask.size() // if no valid doc_ids left in segment
-          || threshold_docs_avg > (meta.docs_count - docs_mask.size());
-    };
+      if (segment.meta.docs_count <= docs_mask.size() // if no valid doc_ids left in segment
+          || threshold_docs_avg > (segment.meta.docs_count - docs_mask.size())) {
+        candidates.set(i);
+      }
+
+      ++i;
+    }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_fill(float fill_threshold /*= 0*/) {
   return [fill_threshold](
-    const directory& dir, const index_meta& /*meta*/
-  )->index_writer::consolidation_acceptor_t {
+    bitvector& candidates, const directory& dir, const index_meta& meta
+  )->void {
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
+    size_t i = 0;
 
     // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
-    return [&dir, threshold](const segment_meta& meta)->bool {
+    for (auto& segment: meta) {
       document_mask docs_mask;
 
-      read_document_mask(docs_mask, dir, meta);
+      read_document_mask(docs_mask, dir, segment.meta);
 
-      return meta.docs_count <= docs_mask.size() // if no valid doc_ids left in segment
-          || meta.docs_count * threshold > (meta.docs_count - docs_mask.size());
-    };
+      if (segment.meta.docs_count <= docs_mask.size() // if no valid doc_ids left in segment
+          || segment.meta.docs_count * threshold > (segment.meta.docs_count - docs_mask.size())) {
+        candidates.set(i);
+      }
+
+      ++i;
+    }
   };
 }
 

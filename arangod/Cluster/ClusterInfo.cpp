@@ -1221,14 +1221,12 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(
 
   // iterate over all collections
   DatabaseViews::const_iterator it2 = (*it).second.begin();
-  while (it2 != (*it).second.end()) {
-    char c = (*it2).first[0];
-
-    if (c < '0' || c > '9') {
-      // skip collections indexed by id
-      result.push_back((*it2).second);
+  while (it2 != it->second.end()) {
+    char c = it2->first[0];
+    if (c >= '0' && c <= '9') {
+      // skip views indexed by name
+      result.emplace_back(it2->second);
     }
-
     ++it2;
   }
 

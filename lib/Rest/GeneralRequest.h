@@ -149,7 +149,6 @@ class GeneralRequest {
   // with all the remaining arguments.
   std::string prefix() const { return _prefix; }
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
-  void setPrefix(std::string&& prefix) { _prefix = std::move(prefix); }
 
   // Returns the request path suffixes in non-URL-decoded form
   TEST_VIRTUAL std::vector<std::string> const& suffixes() const { return _suffixes; }

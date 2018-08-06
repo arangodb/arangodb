@@ -72,9 +72,7 @@ public:
   TestAnalyzer(): irs::analysis::analyzer(TestAnalyzer::type()) {
     _attrs.emplace(_term);
     _attrs.emplace(_attr);
-    _attrs.emplace(_frequency); // required for by_phrase tests
     _attrs.emplace(_increment); // required by field_data::invert(...)
-    _attrs.emplace(_position); // required for by_phrase tests
   }
 
   virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
@@ -102,9 +100,7 @@ public:
 private:
   irs::attribute_view _attrs;
   irs::bytes_ref _data;
-  irs::frequency _frequency;
   irs::increment _increment;
-  irs::position _position;
   TestTermAttribute _term;
   TestAttribute _attr;
 };
@@ -123,7 +119,7 @@ struct Analyzer {
 
 std::map<irs::string_ref, Analyzer>const& staticAnalyzers() {
   static const std::map<irs::string_ref, Analyzer> analyzers = {
-    { "identity", { "identity", irs::string_ref::NIL, irs::flags::empty_instance() } },
+    { "identity", { "identity", irs::string_ref::NIL, { irs::frequency::type(), irs::norm::type() } } },
     {"text_de", { "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
     {"text_en", { "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
     {"text_es", { "text", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
@@ -264,17 +260,17 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer0", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer0");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags() == pool->features()));
   }
 
   // add duplicate valid (same name+type+properties)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
-    CHECK((false == !feature.emplace("test_analyzer1", "TestAnalyzer", "abc").first));
+    CHECK((false == !feature.emplace("test_analyzer1", "TestAnalyzer", "abc", irs::flags{ TestAttribute::type() }).first));
     auto pool = feature.get("test_analyzer1");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({ TestAttribute::type() }) == pool->features()));
     CHECK((false == !feature.emplace("test_analyzer1", "TestAnalyzer", "abc").first));
     CHECK((false == !feature.get("test_analyzer1")));
   }
@@ -286,7 +282,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer2", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer2");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags() == pool->features()));
     CHECK((true == !feature.emplace("test_analyzer2", "TestAnalyzer", "abcd").first));
     CHECK((false == !feature.get("test_analyzer2")));
   }
@@ -298,7 +294,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer3", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer3");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags() == pool->features()));
     CHECK((true == !feature.emplace("test_analyzer3", "invalid", "abc").first));
     CHECK((false == !feature.get("test_analyzer3")));
   }
@@ -346,7 +342,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::NIL).first));
     auto pool = feature.get("identity");
     CHECK((false == !pool));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == pool->features()));
     auto analyzer = pool->get();
     CHECK((false == !analyzer));
   }
@@ -357,7 +353,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::NIL).first));
     auto pool = feature.get("identity");
     CHECK((false == !pool));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == pool->features()));
     auto analyzer = pool->get();
     CHECK((false == !analyzer));
   }
@@ -380,7 +376,7 @@ SECTION("test_ensure") {
     {
       auto pool = feature.ensure("identity");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
       auto analyzer = pool->get();
       CHECK((false == !analyzer));
     }
@@ -396,7 +392,7 @@ SECTION("test_ensure") {
     {
       auto pool = feature.get("test_analyzer");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
+      CHECK((irs::flags() == pool->features()));
       auto analyzer = pool.get();
       CHECK((false == !analyzer));
     }
@@ -410,7 +406,7 @@ SECTION("test_ensure") {
     {
       auto pool = feature.ensure("identity");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == pool->features()));
       auto analyzer = pool->get();
       CHECK((false == !analyzer));
     }
@@ -441,7 +437,7 @@ SECTION("test_get") {
     {
       auto pool = feature.get("identity");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
       auto analyzer = pool->get();
       CHECK((false == !analyzer));
     }
@@ -457,7 +453,7 @@ SECTION("test_get") {
     {
       auto pool = feature.get("test_analyzer");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
+      CHECK((irs::flags() == pool->features()));
       auto analyzer = pool.get();
       CHECK((false == !analyzer));
     }
@@ -471,7 +467,7 @@ SECTION("test_get") {
     {
       auto pool = feature.get("identity");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
       auto analyzer = pool->get();
       CHECK((false == !analyzer));
     }
@@ -483,7 +479,7 @@ SECTION("test_identity") {
   {
     auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
     CHECK((false == !pool));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
     CHECK(("identity" == pool->name()));
     auto analyzer = pool->get();
     CHECK((false == !analyzer));
@@ -509,7 +505,7 @@ SECTION("test_identity") {
     feature.start();
     pool = feature.get("identity");
     REQUIRE((false == !pool));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
     CHECK(("identity" == pool->name()));
     auto analyzer = pool->get();
     CHECK((false == !analyzer));
@@ -524,6 +520,27 @@ SECTION("test_identity") {
     CHECK((analyzer->next()));
     CHECK((irs::ref_cast<irs::byte_type>(irs::string_ref("123 456")) == term->value()));
     CHECK((!analyzer->next()));
+  }
+}
+
+SECTION("test_text_features") {
+  // test registered 'identity'
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    for (auto& analyzerEntry : staticAnalyzers()) {
+      CHECK((false == !feature.get(analyzerEntry.first)));
+      auto pool = feature.ensure(analyzerEntry.first);
+      CHECK((false == !pool));
+      feature.start();
+      pool = feature.get(analyzerEntry.first);
+      REQUIRE((false == !pool));
+      CHECK(analyzerEntry.second.features == pool->features());
+      CHECK(analyzerEntry.first == pool->name());
+      auto analyzer = pool->get();
+      CHECK((false == !analyzer));
+      auto& term = analyzer->attributes().get<irs::term_attribute>();
+      CHECK((false == !term));
+    }
   }
 }
 
