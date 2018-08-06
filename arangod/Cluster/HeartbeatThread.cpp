@@ -1239,6 +1239,8 @@ void HeartbeatThread::recordThreadDeath(const std::string & threadName) {
 void HeartbeatThread::logThreadDeaths(bool force) {
 
   bool doLogging(force);
+    
+  MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
 
   if (std::chrono::hours(1) < (std::chrono::system_clock::now() - deadThreadsPosted)) {
     doLogging = true;
@@ -1247,9 +1249,10 @@ void HeartbeatThread::logThreadDeaths(bool force) {
   if (doLogging) {
     deadThreadsPosted = std::chrono::system_clock::now();
 
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "HeartbeatThread ok.";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
+  
     for (auto const& it : deadThreads) {
       std::ostringstream oss;
       auto tm = *std::gmtime(&it.first);
