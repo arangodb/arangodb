@@ -159,7 +159,7 @@ struct BatchRequest {
       }
       VPackSlice const optionsSlice = slice.get("options");
 
-      LOG_DEVEL << optionsSlice.toJson();
+      //LOG_DEVEL << optionsSlice.toJson();
 
       auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
       if (maybeOptions.fail()) {
@@ -168,7 +168,7 @@ struct BatchRequest {
       options = maybeOptions.get();
     }
 
-    LOG_DEVEL << "options.silent: " << std::boolalpha << options.silent;
+    // LOG_DEVEL << "options.silent: " << std::boolalpha << options.silent;
 
     // create
     return BatchRequest(slice, /*std::move(maybeData.get()),*/ std::move(options), batchOp);
@@ -260,78 +260,103 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
   //  generateDeleted(OperationResult{res}, collection, colType,
   //                  ctx->getVPackOptionsForDump());
   //  return;
-  //}
+  //}a
+
+  TRI_ASSERT(request.payload.isObject()); //should be the same as the line above
 
   std::vector<OperationResult> opResults; // will hold the result
 
-  auto trx = createTransaction(collection, AccessMode::Type::WRITE);
 
-  // TODO I don't know why yet, but this causes a deadlock currently.
-  // It may be a bug introduced in Methods.cpp
-  // if (request.size() == 1) {
-  //   trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  // }
+  velocypack::Options vOptions;
+  bool vOptionsSet = false;
+  VPackBuilder builder;
+  for(auto slice : VPackArrayIterator(request.payload.get("data"))){
+    bool doBreak = false;
+    VPackSlice payload;
 
-  Result transactionResult = trx->begin();
+    if(!request.options.oneTransactionPerDocument){
+      payload = request.payload;
+      doBreak = true;
+    } else {
+      builder.clear();
+      builder.openObject();
+      builder.add("data", slice);
+      builder.close();
+      payload = builder.slice();
+    }
 
-  if (!transactionResult.ok()) {
-    generateTransactionError(collection, transactionResult, "");
-    return;
-  }
+    auto trx = createTransaction(collection, AccessMode::Type::WRITE);
+    if(!vOptionsSet){
+      vOptions = *(trx->transactionContextPtr()->getVPackOptionsForDump());
+    }
 
-  TRI_ASSERT(_request->payload().isObject());
-  TRI_ASSERT(request.payload.isObject()); //should be the same as the line above
+    // TODO I don't know why yet, but this causes a deadlock currently.
+    // It may be a bug introduced in Methods.cpp
+    // if (request.size() == 1) {
+    //   trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    // }
 
-  OperationResult operationResult;
-  switch (request.operation) {
-    case BatchOperation::READ:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::INSERT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::REMOVE:
-      operationResult = trx->removeBatch(collection, request.payload, request.options);
-      break;
-    case BatchOperation::REPLACE: // implement first
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      //operationResult = trx->replaceBatch(collection, request.payload, request.options);
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::UPDATE:  // implement first
-      //operationResult = trx->updateBatch(collection, request.payload, request.options);
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::UPSERT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-    case BatchOperation::REPSERT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-  }
-  transactionResult = trx->finish(operationResult.result);
+    Result transactionResult = trx->begin();
 
-  if (operationResult.ok() && transactionResult.fail()) {
-    std::string key;
-    //if (request.size() == 1) {
-    //  key = request.data.at(0).key;
-    //}
-    generateTransactionError(collection, transactionResult, key);
-    return;
-  }
+    if (!transactionResult.ok()) {
+      generateTransactionError(collection, transactionResult, "");
+      return;
+    }
 
-  opResults.push_back(std::move(operationResult));
+
+    OperationResult operationResult;
+    switch (request.operation) {
+      case BatchOperation::READ:
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::INSERT:
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::REMOVE:
+        operationResult = trx->removeBatch(collection, payload, request.options);
+        break;
+      case BatchOperation::REPLACE: // implement first
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        //operationResult = trx->replaceBatch(collection, payload, request.options);
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::UPDATE:  // implement first
+        //operationResult = trx->updateBatch(collection, payload, request.options);
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::UPSERT:
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      case BatchOperation::REPSERT:
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+    }
+    transactionResult = trx->finish(operationResult.result);
+
+    if (operationResult.ok() && transactionResult.fail()) {
+      std::string key;
+      //if (request.size() == 1) {
+      //  key = request.data.at(0).key;
+      //}
+      generateTransactionError(collection, transactionResult, key);
+      return;
+    }
+    opResults.push_back(std::move(operationResult));
+
+    if(doBreak) { break; };
+
+  } // for item in "data"
 
   generateBatchResponse(
       opResults,
-      trx->transactionContextPtr()->getVPackOptionsForDump()
+      &vOptions
   );
 }
 

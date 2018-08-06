@@ -82,7 +82,8 @@ struct OperationOptions {
 
 };
 
-inline std::unique_ptr<VPackBuilder> toVelocyPack(std::unique_ptr<VPackBuilder> builder ,OperationOptions const& options){
+inline void toVelocyPack(VPackBuilder* builder ,OperationOptions const& options){
+  TRI_ASSERT(builder->isOpenObject());
   //builder->add("recoveryData" ,VPackValue("how long might the data be?"));
   builder->add("waitForSync" , VPackValue(options.waitForSync));
   builder->add("keepNull"    , VPackValue(options.keepNull));
@@ -100,14 +101,12 @@ inline std::unique_ptr<VPackBuilder> toVelocyPack(std::unique_ptr<VPackBuilder> 
   builder->add("oneTransactionPerDocument" , VPackValue(options.oneTransactionPerDocument));
   builder->add("checkGraphs" , VPackValue(options.checkGraphs));
   builder->add("graphName" , VPackValue(options.graphName));
-
-  return builder;
 };
 
 inline std::unique_ptr<VPackBuilder> toVelocyPack(OperationOptions const& options){
   auto builder = std::make_unique<VPackBuilder>();
   builder->openObject();
-  builder = toVelocyPack(std::move(builder), options);
+  toVelocyPack(builder.get(), options);
   builder->close();
   return builder;
 };
