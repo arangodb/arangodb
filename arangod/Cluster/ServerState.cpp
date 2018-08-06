@@ -55,8 +55,10 @@ static ServerState Instance;
 
 ServerState::ServerState()
     : _role(RoleEnum::ROLE_UNDEFINED),
+      _address(),
       _lock(),
       _id(),
+      _shortId(0),
       _javaScriptStartupPath(),
       _address(),
       _host(),
