@@ -35,6 +35,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -1712,10 +1713,34 @@ int ClusterInfo::ensureIndexCoordinator(
   }
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
+  AgencyComm ac;
   int errorCode;
   try {
-    errorCode = ensureIndexCoordinatorWithoutRollback(
-      databaseName, collectionID, idString, slice, create, compare, resultBuilder, errorMsg, timeout);
+    auto start = std::chrono::steady_clock::now();
+    while (true) { // Keep trying for 2 minutes, if it's preconditions, which are
+      resultBuilder.clear();
+      errorCode = ensureIndexCoordinatorWithoutRollback(
+        databaseName, collectionID, idString, slice, create, compare,
+        resultBuilder, errorMsg, timeout);
+
+      if (errorCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) { 
+        if (std::chrono::duration_cast<std::chrono::seconds>(
+              std::chrono::steady_clock::now()-start).count() < 120) {
+          std::chrono::duration<size_t, std::milli>
+            waitTime(RandomGenerator::interval(0, 1000));
+          std::this_thread::sleep_for(waitTime);
+          continue;
+        } else {
+          AgencyCommResult ag = ac.getValues("/");
+          if (ag.successful()) {
+            LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n" << ag.slice().toJson();
+          } else {
+            LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+          }
+        }
+      }
+      break;
+    }
   } catch (basics::Exception const& ex) {
     errorCode = ex.code();
   } catch (...) {
@@ -2030,13 +2055,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   if (!result.successful()) {
     if (result.httpCode() ==
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      AgencyCommResult ag = ac.getValues("/");
-      if (ag.successful()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                        << ag.slice().toJson();
-      } else {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-      }
+      return (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED;
     } else {
       errorMsg += " Failed to execute ";
       errorMsg += trx.toJson();
