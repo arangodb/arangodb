@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed internal issue #2812: Cluster fails to create many indexes in parallel
+
 * Added C++ implementation, load balancer support, and user restriction to Pregel API.
 
   If an execution is accessed on a different coordinator than where it was
