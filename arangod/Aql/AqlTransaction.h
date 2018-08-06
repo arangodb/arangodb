@@ -91,7 +91,9 @@ class AqlTransaction : public transaction::Methods {
   AqlTransaction(
       std::shared_ptr<transaction::Context> const& transactionContext,
       transaction::Options const& options)
-      : transaction::Methods(transactionContext, options) {}
+      : transaction::Methods(transactionContext, options) {
+        addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      }
 
   /// protected so we can create different subclasses
   AqlTransaction(
@@ -105,6 +107,7 @@ class AqlTransaction : public transaction::Methods {
     } else {
       addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
     }
+    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
     for (auto it : *collections) {
       if (!processCollection(it.second).ok()) {
