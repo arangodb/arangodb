@@ -18,7 +18,7 @@ Local Tests
 -----------
 
 In this paragraph we will include commands to manually start a Cluster with 3 _Agents_,
-2 _DBservers_ and 2 _Coordinators_
+2 _DBservers_ and 2 _Coordinators_.
 
 We will assume that all processes runs on the same machine (127.0.0.1). Such scenario
 should be used for testing only.
@@ -72,9 +72,9 @@ arangod --server.endpoint tcp://0.0.0.0:5003 \
 
 These two roles share a common set of relevant options. First you should specify
 the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server)
-or `COORDINATOR`. Note that `DBSERVER` is allowed as an alias for `PRIMARY` as well.
-Furthermore please provide the external endpoint (IP and port) of the
-process via `--cluster.my-address`.
+or `COORDINATOR`. Note that starting from v.3.4 `DBSERVER` is allowed as an alias
+for `PRIMARY` as well. Furthermore please provide the external endpoint (IP and port)
+of the process via `--cluster.my-address`.
 
 The following is a full example of what it might look like.
 
