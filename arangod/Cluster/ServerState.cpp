@@ -55,6 +55,7 @@ static ServerState Instance;
 
 ServerState::ServerState()
     : _id(),
+      _shortId(0),
       _address(),
       _lock(),
       _role(RoleEnum::ROLE_UNDEFINED),

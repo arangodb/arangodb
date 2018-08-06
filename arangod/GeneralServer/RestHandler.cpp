@@ -29,6 +29,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
@@ -105,6 +106,10 @@ void RestHandler::setStatistics(RequestStatistics* stat) {
 }
 
 bool RestHandler::forwardRequest() {
+  if (!ServerState::instance()->isCoordinator()) {
+    return false;
+  }
+
   // TODO refactor into a more general/customizable method
   //
   // The below is mostly copied and only lightly modified from
