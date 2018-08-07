@@ -428,7 +428,6 @@ static int distributeBabyOnShards(
     if (userSpecifiedKey &&
         (!usesDefaultShardingAttributes || !collinfo->allowUserKeys()) &&
         !isRestore) {
-      LOG_TOPIC(ERR, Logger::FIXME) << value.toJson();
       return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
     }
   }
