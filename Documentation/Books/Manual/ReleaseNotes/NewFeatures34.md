@@ -428,6 +428,9 @@ functions:
   of the query, and finally show the query's execution plan with actual runtime information.
   This is very useful for debugging AQL query performance and optimizing queries.
 
+For more information please refer to the [Query Profiling](../../AQL/ExecutionAndPerformance/QueryProfiler.html)
+page.
+
 ### Revised cluster-internal AQL protocol
 
 When running an AQL query in a cluster, the coordinator has to distribute the
