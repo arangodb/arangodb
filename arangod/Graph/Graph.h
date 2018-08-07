@@ -194,7 +194,7 @@ class Graph {
    *
    * @return TRUE if we are safe to use it.
    */
-  virtual Result validateCollection(LogicalCollection* col) const;
+  virtual Result validateCollection(LogicalCollection& col) const;
 
   void edgesToVpack(VPackBuilder& builder) const;
   void verticesToVpack(VPackBuilder& builder) const;

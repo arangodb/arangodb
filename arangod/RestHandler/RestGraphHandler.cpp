@@ -335,7 +335,7 @@ void RestGraphHandler::generateRemoved(bool removed, bool wasSynchronous,
   resetResponse(code);
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));
-  obj.add("removed", VelocyPackHelper::BooleanValue(removed));
+  obj.add("removed", VPackValue(removed));
   if (!old.isNone()) {
     obj.add("old", old);
   }
@@ -357,7 +357,7 @@ void RestGraphHandler::generateGraphRemoved(bool removed, bool wasSynchronous,
   resetResponse(code);
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));
-  obj.add("removed", VelocyPackHelper::BooleanValue(removed));
+  obj.add("removed", VPackValue(removed));
   obj.close();
   generateResultMergedWithObject(obj.slice(), options);
 }

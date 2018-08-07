@@ -104,7 +104,7 @@ OperationResult GraphManager::createCollection(std::string const& name,
 
   Result res = methods::Collections::create(&ctx()->vocbase(), name, colType,
                                             options, waitForSync, true,
-                                            [&](LogicalCollection* coll) {});
+                                            [&](LogicalCollection& coll) {});
 
   return OperationResult(res);
 }
@@ -512,11 +512,11 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& edgeColl : graph->edgeCollections()) {
     bool found = false;
     Result res = methods::Collections::lookup(
-        vocbase, edgeColl, [&found, &innerRes, &graph](LogicalCollection* col) {
-          if (col->type() != TRI_COL_TYPE_EDGE) {
+        vocbase, edgeColl, [&found, &innerRes, &graph](LogicalCollection& col) {
+          if (col.type() != TRI_COL_TYPE_EDGE) {
             innerRes.reset(
                 TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-                "Collection: '" + col->name() + "' is not an EdgeCollection");
+                "Collection: '" + col.name() + "' is not an EdgeCollection");
           } else {
             innerRes = graph->validateCollection(col);
             found = true;
@@ -542,7 +542,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
     bool found = false;
     Result res = methods::Collections::lookup(
         vocbase, vertexColl,
-        [&found, &innerRes, &graph](LogicalCollection* col) {
+        [&found, &innerRes, &graph](LogicalCollection& col) {
           innerRes = graph->validateCollection(col);
           found = true;
         });
@@ -582,7 +582,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& vertexColl : documentCollectionsToCreate) {
     Result res = methods::Collections::create(
         vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT, options, waitForSync, true,
-        [&](LogicalCollection* coll) {});
+        [&](LogicalCollection& coll) {});
     if (res.fail()) {
       return res;
     }
@@ -592,7 +592,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& edgeColl : edgeCollectionsToCreate) {
     Result res = methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
                                               options, waitForSync, true,
-                                              [&](LogicalCollection* coll) {});
+                                              [&](LogicalCollection& coll) {});
     if (res.fail()) {
       return res;
     }
@@ -836,8 +836,8 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
          boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
       Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
-            dropResult = methods::Collections::drop(&ctx()->vocbase(), coll,
+          &ctx()->vocbase(), collection, [&](LogicalCollection& coll) {
+            dropResult = methods::Collections::drop(&ctx()->vocbase(), &coll,
                                                     false, -1.0);
           });
       if (dropResult.fail()) {

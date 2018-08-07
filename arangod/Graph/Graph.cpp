@@ -481,7 +481,7 @@ void Graph::graphForClient(VPackBuilder& builder) const {
   builder.close();  // graph object
 }
 
-Result Graph::validateCollection(LogicalCollection* col) const {
+Result Graph::validateCollection(LogicalCollection& col) const {
   return {TRI_ERROR_NO_ERROR};
 }
 

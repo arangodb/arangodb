@@ -84,7 +84,7 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));
-  obj.add("removed", VelocyPackHelper::BooleanValue(result.ok()));
+  obj.add("removed", VPackValue(result.ok()));
   obj.close();
   TRI_V8_RETURN(TRI_VPackToV8(isolate, obj.slice()));
   TRI_V8_TRY_CATCH_END

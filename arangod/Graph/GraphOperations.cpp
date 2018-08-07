@@ -262,8 +262,8 @@ OperationResult GraphOperations::eraseEdgeDefinition(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](LogicalCollection* coll) {
-            resIn = methods::Collections::drop(&_vocbase, coll, false,
+          &_vocbase, collection, [&](LogicalCollection& coll) {
+            resIn = methods::Collections::drop(&_vocbase, &coll, false,
                                                -1.0);
           });
 
@@ -425,9 +425,9 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
     if (def->type() != TRI_COL_TYPE_DOCUMENT) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
     }
-    auto res = _graph.validateCollection(def.get());
+    auto res = _graph.validateCollection(*(def.get()));
     if (res.fail()) {
-      return OperationResult{res};
+      return OperationResult{std::move(res)};
     }
   }
 
@@ -526,8 +526,8 @@ OperationResult GraphOperations::eraseOrphanCollection(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](LogicalCollection* coll) {
-            resIn = methods::Collections::drop(&_vocbase, coll, false,
+          &_vocbase, collection, [&](LogicalCollection& coll) {
+            resIn = methods::Collections::drop(&_vocbase, &coll, false,
                                                -1.0);
           });
 
