@@ -102,59 +102,59 @@ describe('_api/batch/document', () => {
     db._drop(edgeColName);
   });
 
-  // READ IS NOT YET IMPLEMENTED! Replace the xit() calls by it() when it's done.
-  describe('read document suite', () => {
-    const n = 4;
-    let docsByKey;
-    let docsByVal;
+  // // READ IS NOT YET IMPLEMENTED! Replace the xit() calls by it() when it's done.
+  // describe('read document suite', () => {
+  //   const n = 4;
+  //   let docsByKey;
+  //   let docsByVal;
 
-    const readDocs = batchRequest('read')(colName);
+  //   const readDocs = batchRequest('read')(colName);
 
-    beforeEach(() => {
-      docsByKey = {};
-      docsByVal = [];
-      const docs = db._query(
-        'FOR i IN 0..@n INSERT {val: i} IN @@col RETURN NEW',
-        {n: n-1, '@col': colName}
-      ).toArray();
-      expect(docs).to.be.an('array').and.to.have.lengthOf(n);
-      docs.forEach((doc, i) => {
-        docsByVal[i] = doc;
-        docsByKey[doc._key] = doc;
-      });
-    });
+  //   beforeEach(() => {
+  //     docsByKey = {};
+  //     docsByVal = [];
+  //     const docs = db._query(
+  //       'FOR i IN 0..@n INSERT {val: i} IN @@col RETURN NEW',
+  //       {n: n-1, '@col': colName}
+  //     ).toArray();
+  //     expect(docs).to.be.an('array').and.to.have.lengthOf(n);
+  //     docs.forEach((doc, i) => {
+  //       docsByVal[i] = doc;
+  //       docsByKey[doc._key] = doc;
+  //     });
+  //   });
 
-    afterEach(() => {
-      db[colName].truncate();
-    });
+  //   afterEach(() => {
+  //     db[colName].truncate();
+  //   });
 
-    xit('read one document at a time', () => {
-      docsByVal.forEach(doc => {
-        const response = readDocs({
-          data: [{pattern: {_key: doc._key}}],
-          options: {},
-        });
-        expect(response.statusCode).to.equal(200);
-        expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
-        expect(response.json.error).to.equal(false);
-        expect(response.json.result).to.deep.equal([{doc}]);
-      });
-    });
+  //   xit('read one document at a time', () => {
+  //     docsByVal.forEach(doc => {
+  //       const response = readDocs({
+  //         data: [{pattern: {_key: doc._key}}],
+  //         options: {},
+  //       });
+  //       expect(response.statusCode).to.equal(200);
+  //       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+  //       expect(response.json.error).to.equal(false);
+  //       expect(response.json.result).to.deep.equal([{doc}]);
+  //     });
+  //   });
 
-    xit('read all documents in a batch', () => {
-      let body;
-      const response = readDocs(body = {
-        data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
-        options: {},
-      });
+  //   xit('read all documents in a batch', () => {
+  //     let body;
+  //     const response = readDocs(body = {
+  //       data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
+  //       options: {},
+  //     });
 
-      expect(response.statusCode).to.equal(200);
-      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
-      expect(response.json.error).to.equal(false);
-      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({doc})));
+  //     expect(response.statusCode).to.equal(200);
+  //     expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+  //     expect(response.json.error).to.equal(false);
+  //     expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({doc})));
 
-    });
-  });
+  //   });
+  // });
 
   describe('remove document suite', () => {
     const n = 3;
@@ -188,13 +188,13 @@ describe('_api/batch/document', () => {
       docsByVal.forEach(doc => {
         const response = removeDocs({
           data: [{pattern: {_key: doc._key}}],
-          options: {},
+          options: { waitForSync : true },
         });
 
         print("############################################");
         print(response.json);
 
-        expect(response.statusCode).to.equal(202);
+        expect(response.statusCode).to.equal(200);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
         expect(response.json.error).to.equal(false);
         expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
@@ -330,13 +330,13 @@ describe('_api/batch/document', () => {
                   updateDocument: { x : 42 }
                  }
                 ],
-          options: {},
+          options: { waitForSync : true },
         });
 
         print("############################################");
         print(response.json);
 
-        expect(response.statusCode).to.equal(202);
+        expect(response.statusCode).to.equal(200);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
         expect(response.json.error).to.equal(false);
         expect(response.json.result).to.deep.equal([{new: metaOfDoc(doc)}]); // test return old
@@ -480,13 +480,13 @@ describe('_api/batch/document', () => {
                   replaceDocument: { x : 42 }
                  }
                 ],
-          options: {},
+          options: { waitForSync : true },
         });
 
         print("############################################");
         print(response.json);
 
-        expect(response.statusCode).to.equal(202);
+        expect(response.statusCode).to.equal(200);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
         expect(response.json.error).to.equal(false);
         expect(response.json.result).to.deep.equal([{new: metaOfDoc(doc)}]); // test return old
@@ -532,7 +532,9 @@ describe('_api/batch/document', () => {
           pattern: {_key: doc._key},
           replaceDocument: { x : 42 }
         })),
-        options: {}
+          options: { returnOld : true,
+                     returnNew : true
+                   }
       });
 
       print("############################################");
