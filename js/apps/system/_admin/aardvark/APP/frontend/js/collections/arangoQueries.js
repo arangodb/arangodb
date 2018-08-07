@@ -20,10 +20,39 @@
     },
 
     fetch: function (options) {
-      if (window.App.currentUser && window.App.currentDB.get('name') !== '_system') {
-        this.url = frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser);
+      options = _.extend({parse: true}, options);
+      var model = this;
+      var success = options.success;
+
+      if (frontendConfig.ldapEnabled) {
+        this.fetchLocalQueries();
+        options.success = (function (resp) {
+          // if success function available, call it
+          if (success) {
+            success.call(options.context, model, resp, options);
+          }
+        })();
+      } else {
+        if (window.App.currentUser && window.App.currentDB.get('name') !== '_system') {
+          this.url = frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser);
+        }
+        return Backbone.Collection.prototype.fetch.call(this, options);
       }
-      return Backbone.Collection.prototype.fetch.call(this, options);
+    },
+
+    fetchLocalQueries: function () {
+      // remove local available queries
+      this.reset();
+      var self = this;
+      // fetch and add queries
+      var item = sessionStorage.getItem(this.getQueryPath());
+      try {
+        item = JSON.parse(item);
+        _.each(item, function (val, key) {
+          self.add(val);
+        });
+      } catch (ignore) {
+      }
     },
 
     url: arangoHelper.databaseUrl('/_api/user/'),
