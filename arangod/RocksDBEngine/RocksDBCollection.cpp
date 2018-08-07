@@ -926,49 +926,18 @@ Result RocksDBCollection::replace(
 }
 
 Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const slice,
-                                 arangodb::ManagedDocumentResult& previous,
+                                 VPackSlice const slice,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                 TRI_voc_rid_t& revisionId) {
+                                 TRI_voc_rid_t& revisionId,
+                                 TRI_voc_rid_t& oldRevisionId,
+                                 LocalDocumentId const oldDocumentId,
+                                 VPackSlice const oldDoc) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
+  Result res;
   resultMarkerTick = 0;
-  prevRev = 0;
   revisionId = newRevisionId();
-
-  VPackSlice key;
-  if (slice.isString()) {
-    key = slice;
-  } else {
-    key = slice.get(StaticStrings::KeyString);
-  }
-  TRI_ASSERT(!key.isNone());
-
-  // get the previous revision
-  Result res = this->read(trx, key, previous, /*lock*/false);
-  if (res.fail()) {
-    return res;
-  }
-
-  TRI_ASSERT(!previous.empty());
-  LocalDocumentId const oldDocumentId = previous.localDocumentId();
-
-  VPackSlice oldDoc(previous.vpack());
-  TRI_voc_rid_t oldRevisionId =
-      arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
-  prevRev = oldRevisionId;
-
-  // Check old revision:
-  if (!options.ignoreRevs && slice.isObject()) {
-    TRI_voc_rid_t expectedRevisionId = TRI_ExtractRevisionId(slice);
-    int res = checkRevision(trx, expectedRevisionId, oldRevisionId);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
-    }
-  }
 
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),

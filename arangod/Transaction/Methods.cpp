@@ -2491,23 +2491,13 @@ OperationResult transaction::Methods::removeBatchLocal(
     OperationOptions const &options, TRI_voc_tick_t &resultMarkerTick,
     TRI_voc_cid_t cid) -> Result {
 
+    Result result;
     ManagedDocumentResult previous;
     TRI_voc_rid_t actualRevision;
 
-    Result result = collection->read(this, key, previous, false);
-    VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
-
-
-    if (result.ok()) {
-      if(!aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
-        result.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-
-      } else {
-        auto optionsCopy = options;
-        result = collection->remove(this, key, optionsCopy, resultMarkerTick,
-                                         false, actualRevision, previous);
-      }
-    }
+    auto optionsCopy = options;
+    result = collection->remove(this, key, optionsCopy, resultMarkerTick,
+                                     false, actualRevision, previous, pattern);
 
     if (result.ok() && !options.silent) {
       response.add(VPackValue("old"));
@@ -2674,7 +2664,6 @@ OperationResult transaction::Methods::removeLocal(
 
   VPackBuilder resultBuilder;
   TRI_voc_tick_t maxTick = 0;
-  VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
 
   auto workForOneDocument = [&](VPackSlice value, VPackSlice const patternArg,
                                 bool isBabies) -> Result {
@@ -2708,19 +2697,6 @@ OperationResult transaction::Methods::removeLocal(
     bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
 
     {
-      //CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
-      //                         lock);
-
-      /*if (pattern.isObject()) {
-        res = collection->read(this, key, previous, false);
-
-        if (res.ok() &&
-            !aql::matches(VPackSlice(previous.vpack()), vPackOptions,
-                          pattern)) {
-          res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        }
-      }*/
-
       // If we tried to lookup the document for pattern matching, and
       // either the lookup or the pattern match failed, we don't remove because
       // either
@@ -2729,9 +2705,9 @@ OperationResult transaction::Methods::removeLocal(
       //  - the pattern doesn't match and we mustn't remove it
       if (res.ok()) {
         res = collection->remove(this, value, options, resultMarkerTick, lock,
-                                 actualRevision, previous);
+                                 actualRevision, previous, pattern);
       }
-    } // the conditional write locker is destroyed here
+    }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;

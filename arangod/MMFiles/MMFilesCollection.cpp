@@ -3357,13 +3357,14 @@ Result MMFilesCollection::replace(
 
 Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
                                  VPackSlice const slice,
-                                 ManagedDocumentResult& previous,
                                  OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev,
-                                 TRI_voc_rid_t& revisionId) {
-  prevRev = 0;
+                                 TRI_voc_tick_t& resultMarkerTick,
+                                 TRI_voc_rid_t& revisionId,
+                                 TRI_voc_rid_t& oldRevisionId,
+                                 LocalDocumentId const oldDocumentId,
+                                 VPackSlice const oldDoc)  {
   LocalDocumentId const documentId = LocalDocumentId::create();
+  Result res;
 
   transaction::BuilderLeaser builder(trx);
   newObjectForRemove(trx, slice, *builder.get(), options.isRestore, revisionId);
@@ -3392,50 +3393,9 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
     marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
   }
 
-  TRI_IF_FAILURE("RemoveDocumentNoLock") {
-    // test what happens if no lock can be acquired
-    return Result(TRI_ERROR_DEBUG);
-  }
-
-  VPackSlice key;
-
-  if (slice.isString()) {
-    key = slice;
-  } else {
-    key = slice.get(StaticStrings::KeyString);
-  }
-
-  TRI_ASSERT(!key.isNone());
-
   MMFilesDocumentOperation operation(
     &_logicalCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE
   );
-  bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
-  arangodb::MMFilesCollectionWriteLocker collectionLocker(
-      this, useDeadlockDetector, trx->state(), lock);
-
-  // get the previous revision
-  Result res = lookupDocument(trx, key, previous);
-
-  if (res.fail()) {
-    return res;
-  }
-
-  VPackSlice const oldDoc(previous.vpack());
-  LocalDocumentId const oldDocumentId = previous.localDocumentId();
-  TRI_voc_rid_t oldRevisionId = arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
-  prevRev = oldRevisionId;
-
-  // Check old revision:
-  if (!options.ignoreRevs && slice.isObject()) {
-    TRI_voc_rid_t expectedRevisionId = TRI_ExtractRevisionId(slice);
-    res = checkRevision(trx, expectedRevisionId, oldRevisionId);
-
-    if (res.fail()) {
-      return res;
-    }
-  }
 
   // we found a document to remove
   try {

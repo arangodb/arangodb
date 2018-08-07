@@ -311,7 +311,8 @@ class LogicalCollection: public LogicalDataSource {
 
   Result remove(transaction::Methods*, velocypack::Slice const,
                 OperationOptions&, TRI_voc_tick_t&, bool,     //options should be const
-                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                velocypack::Slice const pattern);
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
