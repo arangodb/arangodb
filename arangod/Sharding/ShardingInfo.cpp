@@ -61,12 +61,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid number of shards");
     }
-
-    VPackSlice keyGenSlice = info.get("keyOptions");
-    if (!KeyGenerator::canUseType(keyGenSlice)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                     "the specified key generator is not supported for sharded collections");
-    }
   }
 
   if (info.hasKey("avoidServers")) {
