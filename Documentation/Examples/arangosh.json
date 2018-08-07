@@ -145,7 +145,6 @@
   },
   "javascript.module-directory" : {
     "default" : [
-      "./enterprise/js"
     ],
     "description" : "additional paths containing JavaScript modules",
     "hidden" : true,
@@ -153,16 +152,9 @@
     "type" : "string..."
   },
   "javascript.startup-directory" : {
-    "default" : "./js",
+    "default" : "/usr/share/arangodb3/js",
     "description" : "startup paths containing the Javascript files",
     "hidden" : true,
-    "section" : "javascript",
-    "type" : "string"
-  },
-  "javascript.unit-test-filter" : {
-    "default" : "",
-    "description" : "filter testcases in suite",
-    "hidden" : false,
     "section" : "javascript",
     "type" : "string"
   },
@@ -351,7 +343,7 @@
     "type" : "boolean"
   },
   "server.authentication" : {
-    "default" : false,
+    "default" : true,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
     "hidden" : false,
     "section" : "server",
@@ -372,7 +364,7 @@
     "type" : "string"
   },
   "server.endpoint" : {
-    "default" : "http+tcp://127.0.0.1:8529",
+    "default" : "tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
     "hidden" : false,
     "section" : "server",
@@ -408,7 +400,7 @@
   },
   "ssl.protocol" : {
     "default" : 5,
-    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2)",
     "hidden" : false,
     "section" : "ssl",
     "type" : "uint64",

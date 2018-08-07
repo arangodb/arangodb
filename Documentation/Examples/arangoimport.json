@@ -253,7 +253,7 @@
   },
   "on-duplicate" : {
     "default" : "error",
-    "description" : "action to perform when a unique key constraint violation occurs. Possible values: update, ignore, replace, error",
+    "description" : "action to perform when a unique key constraint violation occurs. Possible values: ignore, replace, update, error",
     "hidden" : false,
     "section" : "",
     "type" : "string",
@@ -304,7 +304,7 @@
     "type" : "string"
   },
   "server.authentication" : {
-    "default" : false,
+    "default" : true,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
     "hidden" : false,
     "section" : "server",
@@ -325,7 +325,7 @@
     "type" : "string"
   },
   "server.endpoint" : {
-    "default" : "http+tcp://127.0.0.1:8529",
+    "default" : "tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
     "hidden" : false,
     "section" : "server",
@@ -368,7 +368,7 @@
   },
   "ssl.protocol" : {
     "default" : 5,
-    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2)",
     "hidden" : false,
     "section" : "ssl",
     "type" : "uint64",
