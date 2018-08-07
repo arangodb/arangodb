@@ -37,7 +37,8 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
-ShardingFeature::ShardingFeature(application_features::ApplicationServer* server)
+ShardingFeature::ShardingFeature(
+    application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Sharding") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -47,22 +48,30 @@ void ShardingFeature::prepare() {
   registerFactory(ShardingStrategyNone::NAME, [](ShardingInfo*) {
     return std::make_unique<ShardingStrategyNone>();
   });
-  registerFactory(ShardingStrategyCommunityCompat::NAME, [](ShardingInfo* sharding) {
-    return std::make_unique<ShardingStrategyCommunityCompat>(sharding);
-  });
+  registerFactory(
+      ShardingStrategyCommunityCompat::NAME, [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyCommunityCompat>(sharding);
+      });
   registerFactory(ShardingStrategyHash::NAME, [](ShardingInfo* sharding) {
     return std::make_unique<ShardingStrategyHash>(sharding);
   });
 #ifdef USE_ENTERPRISE
-  registerFactory(ShardingStrategyEnterpriseCompat::NAME, [](ShardingInfo* sharding) {
-    return std::make_unique<ShardingStrategyEnterpriseCompat>(sharding);
-  });
-  registerFactory(ShardingStrategyEnterpriseSmartEdgeCompat::NAME, [](ShardingInfo* sharding) {
-    return std::make_unique<ShardingStrategyEnterpriseSmartEdgeCompat>(sharding);
-  });
-  registerFactory(ShardingStrategyEnterpriseHashSmartEdge::NAME, [](ShardingInfo* sharding) {
-    return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(sharding);
-  });
+  registerFactory(
+      ShardingStrategyEnterpriseCompat::NAME, [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyEnterpriseCompat>(sharding);
+      });
+  registerFactory(
+      ShardingStrategyEnterpriseSmartEdgeCompat::NAME,
+      [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyEnterpriseSmartEdgeCompat>(
+            sharding);
+      });
+  registerFactory(
+      ShardingStrategyEnterpriseHashSmartEdge::NAME,
+      [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(
+            sharding);
+      });
 #endif
 }
 
@@ -71,22 +80,27 @@ void ShardingFeature::start() {
   for (auto const& it : _factories) {
     strategies.emplace_back(it.first);
   }
-  LOG_TOPIC(TRACE, Logger::CLUSTER) << "supported sharding strategies: " << strategies;
+  LOG_TOPIC(TRACE, Logger::CLUSTER)
+      << "supported sharding strategies: " << strategies;
 }
 
-void ShardingFeature::registerFactory(std::string const& name,
-                                      ShardingStrategy::FactoryFunction const& creator) {
-  LOG_TOPIC(TRACE, Logger::CLUSTER) << "registering sharding strategy '" << name << "'";
+void ShardingFeature::registerFactory(
+    std::string const& name, ShardingStrategy::FactoryFunction const& creator) {
+  LOG_TOPIC(TRACE, Logger::CLUSTER)
+      << "registering sharding strategy '" << name << "'";
 
   if (!_factories.emplace(name, creator).second) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("sharding factory function '") + name + "' already registered");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, std::string("sharding factory function '") + name +
+                                "' already registered");
   }
 }
 
-std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice slice,
-                                                                  ShardingInfo* sharding) {
+std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
+    VPackSlice slice, ShardingInfo* sharding) {
   if (!slice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid collection meta data");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid collection meta data");
   }
 
   std::string name;
@@ -107,19 +121,25 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice sli
   return create(name, sharding);
 }
 
-std::unique_ptr<ShardingStrategy> ShardingFeature::create(std::string const& name, ShardingInfo* sharding) {
+std::unique_ptr<ShardingStrategy> ShardingFeature::create(
+    std::string const& name, ShardingInfo* sharding) {
   auto it = _factories.find(name);
 
   if (it == _factories.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("unknown sharding type '") + name + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("unknown sharding type '") + name + "'");
   }
 
   // now create a sharding strategy instance
   return (*it).second(sharding);
 }
 
-std::string ShardingFeature::getDefaultShardingStrategy(ShardingInfo const* sharding) const {
+std::string ShardingFeature::getDefaultShardingStrategy(
+    ShardingInfo const* sharding) const {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+  // TODO change these to use better algorithms when we no longer
+  //      need to support collections created before 3.4
 
   if (ServerState::instance()->isDBServer()) {
     // on a DB server, we will not use sharding
@@ -131,8 +151,30 @@ std::string ShardingFeature::getDefaultShardingStrategy(ShardingInfo const* shar
   if (sharding->collection()->isSmart() &&
       sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
+    return ShardingStrategyEnterpriseSmartEdgeCompat::NAME;
+  }
+
+  return ShardingStrategyEnterpriseCompat::NAME;
+#else
+  return ShardingStrategyCommunityCompat::NAME;
+#endif
+}
+
+std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
+    VPackSlice const& properties) const {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+
+#ifdef USE_ENTERPRISE
+  bool isSmart =
+      VelocyPackHelper::getBooleanValue(properties, "isSmart", false);
+  bool isEdge =
+      TRI_COL_TYPE_EDGE == VelocyPackHelper::getNumericValue<uint32_t>(
+                               properties, "type", TRI_COL_TYPE_UNKNOWN);
+  if (isSmart && isEdge) {
+    // smart edge collection
     return ShardingStrategyEnterpriseHashSmartEdge::NAME;
   }
 #endif
-return ShardingStrategyHash::NAME;
+
+  return ShardingStrategyHash::NAME;
 }
