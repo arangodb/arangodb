@@ -188,8 +188,7 @@ void Graph::addVertexCollection(std::string const& name) {
 
 Result Graph::addOrphanCollection(std::string&& name) {
   if (_vertexColls.find(name) != _vertexColls.end()) {
-    // TODO FIXME!
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF;
   }
   TRI_ASSERT(_orphanColls.find(name) == _orphanColls.end());
   _vertexColls.emplace(name);
