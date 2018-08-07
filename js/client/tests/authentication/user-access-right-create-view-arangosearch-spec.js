@@ -205,14 +205,15 @@ function hasIResearch (db) {
               rootCreateCollection(testColName);
               expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
               expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
+              let view;
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
-                var view = db._createView(testViewName, testViewType, {});
+                view = db._createView(testViewName, testViewType, {});
                 view.properties({ links: { [testColName]: { includeAllFields: true } } }, true);
                 expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
                 expect(rootTestViewHasLinks(testViewName, [`${testColName}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
               } else {
                 try {
-                  var view = db._createView(testViewName, testViewType, {});
+                  view = db._createView(testViewName, testViewType, {});
                   view.properties({ links: { [testColName]: { includeAllFields: true } } }, true);
                 } catch (e) {
                   checkRESTCodeOnly(e);
@@ -226,5 +227,5 @@ function hasIResearch (db) {
         });
       });
     }
-  })
+  });
 });
