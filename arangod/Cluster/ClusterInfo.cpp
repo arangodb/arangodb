@@ -2955,6 +2955,7 @@ void ClusterInfo::loadServers() {
     if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
+      decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
@@ -2963,6 +2964,9 @@ void ClusterInfo::loadServers() {
           std::string server =
             arangodb::basics::VelocyPackHelper::getStringValue(
               slice, "endpoint", "");
+          std::string advertised =
+            arangodb::basics::VelocyPackHelper::getStringValue(
+              slice, "advertisedEndpoints", "");
 
           std::string serverId = res.key.copyString();
           try {
@@ -2976,6 +2980,7 @@ void ClusterInfo::loadServers() {
             }
           } catch (...) {}
           newServers.emplace(std::make_pair(serverId, server));
+          newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
         }
       }
 
@@ -3039,7 +3044,56 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
       }
     }
 
+    if (++tries >= 2) {
+      break;
+    }
 
+    // must call loadServers outside the lock
+    loadServers();
+  }
+
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the advertised endpoint of a server from its ID.
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
+#ifdef DEBUG_SYNC_REPLICATION
+  if (serverID == "debug-follower") {
+    return "tcp://127.0.0.1:3000";
+  }
+#endif
+  int tries = 0;
+
+  if (!_serversProt.isValid) {
+    loadServers();
+    tries++;
+  }
+
+  std::string serverID_ = serverID;
+
+  while (true) {
+    {
+      READ_LOCKER(readLocker, _serversProt.lock);
+
+      // _serversAliases is a map-type <Alias, ServerID>
+      auto ita = _serverAdvertisedEndpoints.find(serverID_);
+
+      if (ita != _serverAdvertisedEndpoints.end()) {
+        serverID_ = (*ita).second;
+      }
+
+      // _servers is a map-type <ServerId, std::string>
+      auto it = _servers.find(serverID_);
+
+      if (it != _servers.end()) {
+        return (*it).second;
+      }
+    }
 
     if (++tries >= 2) {
       break;
@@ -3590,7 +3644,16 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   READ_LOCKER(readLocker, _serversProt.lock);
   std::unordered_map<std::string,std::string> ret;
   for (const auto& i : _serverAliases) {
-    ret.emplace(i.second,i.first);
+    ret.emplace(i.second, i.first);
+  }
+  return ret;
+}
+
+std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  std::unordered_map<std::string,std::string> ret;
+  for (const auto& i : _serverAdvertisedEndpoints) {
+    ret.emplace(i.second, i.first);
   }
   return ret;
 }

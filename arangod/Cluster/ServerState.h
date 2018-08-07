@@ -190,7 +190,8 @@ class ServerState {
   inline RoleEnum getRole() const { return loadRole(); }
 
   /// @brief register with agency, create / load server ID
-  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr);
+  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
+                            std::string const& myAdvEndpoint);
 
   /// @brief unregister this server with the agency
   bool unregister();
@@ -215,6 +216,12 @@ class ServerState {
 
   /// @brief set the server address
   void setAddress(std::string const&);
+
+  /// @brief get the server advertised endpoint
+  std::string getAdvertisedEndpoint();
+
+  /// @brief set the server advertised endpoint
+  void setAdvertisedEndpoint(std::string const&);
 
   /// @brief find a host identification string
   void findHost(std::string const& fallback);
@@ -293,6 +300,10 @@ private:
 
   /// @brief the server's own address, can be set just once
   std::string _address;
+
+  /// @brief the server's own advertised endpoint, can be set just once,
+  /// if empty, we advertise _address
+  std::string _advertisedEndpoint;
 
   /// @brief an identification string for the host a server is running on
   std::string _host;

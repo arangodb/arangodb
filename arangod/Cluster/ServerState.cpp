@@ -319,7 +319,8 @@ bool ServerState::unregister() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
-                                       std::string const& myAddress) {
+                                       std::string const& myAddress,
+                                       std::string const& myAdvertisedEndpoint) {
   WRITE_LOCKER(writeLocker, _lock);
 
   AgencyComm comm;

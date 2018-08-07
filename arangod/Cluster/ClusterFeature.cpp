@@ -120,6 +120,11 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.my-address", "this server's endpoint",
                      new StringParameter(&_myAddress));
 
+  options->addOption("--cluster.my-advertised-endpoint",
+                     "this server's advertised endpoint (e.g. external IP "
+                     "address or load balancer)",
+                     new StringParameter(&_myAdvertisedEndpoint));
+
   options->addOption("--cluster.system-replication-factor",
                      "replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor));
@@ -286,6 +291,9 @@ void ClusterFeature::prepare() {
   if (!_myAddress.empty()) {
     ServerState::instance()->setAddress(_myAddress);
   }
+  if (!_myAdvertisedEndpoint.empty()) {
+    ServerState::instance()->setAdvertisedEndpoint(_myAdvertisedEndpoint);
+  }
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);
@@ -296,7 +304,8 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress)) {
+  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress,
+                                                     _myAdvertisedEndpoint)) {
     LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't integrate into cluster.";
     FATAL_ERROR_EXIT();
   }
@@ -317,6 +326,11 @@ void ClusterFeature::prepare() {
   if (_myAddress.empty()) {
     // no address given, now ask the agency for our address
     _myAddress = ServerState::instance()->getAddress();
+  }
+  // check if my-advertised-endpoint is set
+  if (_myAdvertisedEndpoint.empty()) {
+    // no advertised endpoint given, now ask the agency for our address
+    _myAdvertisedEndpoint = ServerState::instance()->getAdvertisedEndpoint();
   }
 
   // if nonempty, it has already been set above
@@ -357,6 +371,12 @@ void ClusterFeature::prepare() {
                << "' specified for --cluster.my-address";
     FATAL_ERROR_EXIT();
   }
+  if (!_myAdvertisedEndpoint.empty() &&
+      Endpoint::unifiedForm(_myAdvertisedEndpoint).empty()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "invalid endpoint '" << _myAdvertisedEndpoint
+               << "' specified for --cluster.my-advertised-endpoint";
+    FATAL_ERROR_EXIT();
+  }
 
 }
 
@@ -385,6 +405,7 @@ void ClusterFeature::start() {
   LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "Cluster feature is turned on. Agency version: " << version
             << ", Agency endpoints: " << endpoints << ", server id: '" << myId
             << "', internal address: " << _myAddress
+            << "', advertised endpoint: " << _myAdvertisedEndpoint
             << ", role: " << role;
 
   AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
@@ -418,6 +439,7 @@ void ClusterFeature::start() {
   try {
     VPackObjectBuilder b(&builder);
     builder.add("endpoint", VPackValue(_myAddress));
+    builder.add("advertisedEndpoint", VPackValue(_myAdvertisedEndpoint));
     builder.add("host", VPackValue(ServerState::instance()->getHost()));
     builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
     builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
