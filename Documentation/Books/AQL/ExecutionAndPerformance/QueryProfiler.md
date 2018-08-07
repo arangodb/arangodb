@@ -1,6 +1,6 @@
 # Profiling and Hand-Optimizing AQL queries
 
-To give you more insight into your query we now allow you to execute your query with special instrumentation code enabled.
+To give you more insight into your query ArangoDB now allows you to execute your query with special instrumentation code enabled.
 This will then print a query plan with detailed execution statistics. To use this in an interactive fashion on the shell you can use the `db._profileQuery(..)` in the arangosh. Alternatively there is a new button _Profile_ in Query tab of the WebUI.
 
 The printed execution plan then contains three additional columns:
@@ -40,7 +40,7 @@ the _Profile_ button in the WebUI) you can now tell exactly how much work each s
 
 Without any indexes this query should have to perform the following operations:
 
-1. Perfom a full collection scan via a _EnumerateCollectionNode_ and outputing a row containg the document in `doc`.
+1. Perfom a full collection scan via a _EnumerateCollectionNode_ and outputing a row containing the document in `doc`.
 2. Calculate the boolean expression `LET #1 = doc.value < 10 `from all inputs via a _CalculationNode_ 
 3. Filter out all input rows where `#1` is false via the _FilterNode_
 4. Put the `doc` variable of the remaining rows into the result set via the _ResultNode_
@@ -48,7 +48,7 @@ Without any indexes this query should have to perform the following operations:
 The _EnumerateCollectionNode_ processed and returned all 10k rows (documents), as did the _CalculationNode_.
 Because the AQL execution engine also uses an internal batch size of 1000 these blocks were also called 100 times each.
 The _FilterNode_ as well as the _ReturnNode_ however only ever returned 10 rows and only had to be called once, because
-the result size fit within a single batch.
+the result size fits within a single batch.
 
 Now lets add a skiplist index on `value` to speedup the query.
 ```JavaScript
@@ -91,12 +91,12 @@ Lets consider a query containing a SubQuery
 @endDocuBlock 03_workWithAQL_profileQuerySubquery
 
 The resulting query profile contains a _SubqueryNode_ which has the runtime of all its children combined.
-Actually I cheated a little, the optimizer would have completely removed the subquery, if I had not deactivated it.
+Actually, we cheated a little. The optimizer would have completely removed the subquery, if I had not deactivated it.
 The optimimized version would take longer in the "optimizing plan" stage, but should perform better with a lot of results.
 
 ## Example: AQL with Aggregation
 
-Lets try a more advanced example, using a [COLLECT](https://docs.arangodb.com/devel/AQL/Operations/Collect.html) statement.
+Let's try a more advanced example, using a [COLLECT](https://docs.arangodb.com/devel/AQL/Operations/Collect.html) statement.
 Assuming we have a user collection with a city, username and an age value.
 Now lets try a query which gets us all age groups in buckets (0-9, 10-19, 20-29, ...):
 
@@ -131,13 +131,13 @@ Without any indexes this query should have to perform the following operations:
 5. Build a result value  via another _CalculationNode_
 6. Put the result variable into the result set via the _ResultNode_
 
-Similary to above you can see that after the _CalculationNode_ stage, from the original 20 rows only
+Like within the example above, you can see that after the _CalculationNode_ stage, from the originally 20 rows only
 a handful remained.
 
 ## Typical AQL Performance Mistakes
 
 With the new query profilier you should be able to spot typical performance mistakes
-that we see often with our customers:
+that we see quite often:
 
 - Not employing indexes to speed up queries with common filter expressions
 - Not using shard keys in filter statements, when it is known (Only a cluster problem)
