@@ -87,7 +87,7 @@ version of the ArangoDB server it connects to.
 ### Advanced Cluster Options
 
 Starting with version 3.1.17, collections may be [created with shard
-distribution](../../DataModeling/Collections/DatabaseMethods.html#create)
+distribution](../../DataModeling/Collections/DatabaseMethods.md#create)
 identical to an existing prototypical collection; i.e. shards are distributed in
 the very same pattern as in the prototype collection. Such collections cannot be
 dumped without the referenced collection or arangodump yields an error.
