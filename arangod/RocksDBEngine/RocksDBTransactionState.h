@@ -116,11 +116,11 @@ class RocksDBTransactionState final : public TransactionState {
   void donateSnapshot(rocksdb::Snapshot const* snap);
   /// @brief steal snapshot of this transaction.
   /// Does not work on a single operation
-  rocksdb::Snapshot const* stealSnapshot();
+  rocksdb::Snapshot const* stealReadSnapshot();
   
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
-  uint64_t sequenceNumber() const;
+  rocksdb::SequenceNumber sequenceNumber() const;
 
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
@@ -172,11 +172,13 @@ class RocksDBTransactionState final : public TransactionState {
  private:
   /// @brief rocksdb transaction may be null for read only transactions
   rocksdb::Transaction* _rocksTransaction;
-  /// @brief rocksdb snapshot, is null if _rocksTransaction is set
-  rocksdb::Snapshot const* _snapshot;
-  /// @brief write options used
+  /// @brief used for read-only trx and intermediate commits
+  /// For intermediate commits this MUST ONLY be used for iterators
+  rocksdb::Snapshot const* _readSnapshot;
+  /// @brief shared write options used
   rocksdb::WriteOptions _rocksWriteOptions;
-  ///@brief read options which must be used to guarantee isolation
+  /// @brief shared read options which can be used by operations
+  /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;
   /// @brief cache transaction to unblock blacklisted keys
   cache::Transaction* _cacheTx;
