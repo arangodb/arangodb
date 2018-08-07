@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #5831: custom queries in the ui could not be loaded if the user
+  only has read access to the _system database.
+
 * fixed internal issue #2812: Cluster fails to create many indexes in parallel
 
 * Added C++ implementation, load balancer support, and user restriction to Pregel API.
