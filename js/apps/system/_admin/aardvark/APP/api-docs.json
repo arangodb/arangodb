@@ -4142,7 +4142,7 @@
         }, 
         "/_admin/server/role": {
             "get": {
-                "description": "\n\nReturns the role of a server in a cluster.\nThe role is returned in the *role* attribute of the result.\nPossible return values for *role* are:\n- *SINGLE*: the server is a standalone server without clustering\n- *COORDINATOR*: the server is a coordinator in a cluster\n- *PRIMARY*: the server is a primary database server in a cluster\n- *SECONDARY*: the server is a secondary database server in a cluster\n- *AGENT*: the server is an agency node in a cluster\n- *UNDEFINED*: in a cluster, *UNDEFINED* is returned if the server role cannot be\n   determined.\n\n\n**HTTP 200**\n*A json document with these Properties is returned:*\n\nIs returned in all cases.\n\n- **errorNum**: the server error number\n- **code**: the HTTP status code, always 200\n- **role**: one of [ *SINGLE*, *COORDINATOR*, *PRIMARY*, *SECONDARY*, *AGENT*, *UNDEFINED*]\n- **error**: always *false*\n\n", 
+                "description": "\n\nReturns the role of a server in a cluster.\nThe role is returned in the *role* attribute of the result.\nPossible return values for *role* are:\n- *SINGLE*: the server is a standalone server without clustering\n- *COORDINATOR*: the server is a Coordinator in a cluster\n- *PRIMARY*: the server is a DBServer in a cluster\n- *SECONDARY*: this role is not used anymore\n- *AGENT*: the server is an Agency node in a cluster\n- *UNDEFINED*: in a cluster, *UNDEFINED* is returned if the server role cannot be\n   determined.\n\n\n**HTTP 200**\n*A json document with these Properties is returned:*\n\nIs returned in all cases.\n\n- **errorNum**: the server error number\n- **code**: the HTTP status code, always 200\n- **role**: one of [ *SINGLE*, *COORDINATOR*, *PRIMARY*, *SECONDARY*, *AGENT*, *UNDEFINED*]\n- **error**: always *false*\n\n", 
                 "parameters": [], 
                 "produces": [
                     "application/json"
@@ -4153,10 +4153,10 @@
                         "schema": {
                             "$ref": "#/definitions/get_admin_server_role_rc_200"
                         }, 
-                        "x-description-offset": 621
+                        "x-description-offset": 581
                     }
                 }, 
-                "summary": "Return role of a server in a cluster", 
+                "summary": "Return the role of a server in a cluster", 
                 "tags": [
                     "Administration"
                 ], 
@@ -4231,7 +4231,7 @@
         }, 
         "/_admin/status": {
             "get": {
-                "description": "\n\nReturns status information about the server.\n\nThis is intended for manual use by the support and should\nnever be used for monitoring or automatic tests. The results\nare subject to change without notice.\n\nThe call returns an object with the following attributes:\n\n- *server*: always *arango*.\n\n- *license*: either *community* or *enterprise*.\n\n- *version*: the server version as string.\n\n- *mode* : either *server* or *console*.\n\n- *host*: the hostname, see *ServerState*.\n\n- *serverInfo.role*: either *SINGLE*, *COORDINATOR*, *PRIMARY*, *AGENT*.\n\n- *serverInfo.writeOpsEnabled*: boolean, true if writes are enabled.\n\n- *serverInfo.maintenance*: boolean, true if maintenace mode is enabled.\n\n- *agency.endpoints*: a list of possible agency endpoints.\n\nAn agent, coordinator or primary will also have\n\n- *serverInfo.persistedId*: the persisted ide, e. g. *\"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a\"*.\n\nA coordinator or primary will also have\n\n- *serverInfo.state*: *SERVING*\n\n- *serverInfo.address*: the address of the server, e. g. *tcp://[::1]:8530*.\n\n- *serverInfo.serverId*: the server ide, e. g. *\"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a\"*.\n\nA coordintor will also have\n\n- *coordinator.foxxmaster*: the server id of the foxx master.\n\n- *coordinator.isFoxxmaster*: boolean, true if the server is the foxx master.\n\nAn agent will also have\n\n- *agent.id*: server id of this agent.\n\n- *agent.leaderId*: server id of the leader.\n\n- *agent.leading*: boolean, true if leading.\n\n- *agent.endpoint*: the endpoint of this agent.\n\n- *agent.term*: current term number.\n\n", 
+                "description": "\n\nReturns status information about the server.\n\nThis is intended for manual use by the support and should\nnever be used for monitoring or automatic tests. The results\nare subject to change without notice.\n\nThe call returns an object with the following attributes:\n\n- *server*: always *arango*.\n\n- *license*: either *community* or *enterprise*.\n\n- *version*: the server version as string.\n\n- *mode* : either *server* or *console*.\n\n- *host*: the hostname, see *ServerState*.\n\n- *serverInfo.role*: either *SINGLE*, *COORDINATOR*, *PRIMARY*, *AGENT*.\n\n- *serverInfo.writeOpsEnabled*: boolean, true if writes are enabled.\n\n- *serverInfo.maintenance*: boolean, true if maintenace mode is enabled.\n\n- *agency.endpoints*: a list of possible agency endpoints.\n\nAn agent, coordinator or primary will also have\n\n- *serverInfo.persistedId*: the persisted ide, e. g. *\"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a\"*.\n\nA coordinator or primary will also have\n\n- *serverInfo.state*: *SERVING*\n\n- *serverInfo.address*: the address of the server, e. g. *tcp://[::1]:8530*.\n\n- *serverInfo.serverId*: the server ide, e. g. *\"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a\"*.\n\nA coordinator will also have\n\n- *coordinator.foxxmaster*: the server id of the foxx master.\n\n- *coordinator.isFoxxmaster*: boolean, true if the server is the foxx master.\n\nAn agent will also have\n\n- *agent.id*: server id of this agent.\n\n- *agent.leaderId*: server id of the leader.\n\n- *agent.leading*: boolean, true if leading.\n\n- *agent.endpoint*: the endpoint of this agent.\n\n- *agent.term*: current term number.\n\n", 
                 "parameters": [], 
                 "responses": {
                     "200": {

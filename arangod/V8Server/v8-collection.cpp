@@ -2657,6 +2657,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_profileQuery()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_query()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_remove()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_replace()"));

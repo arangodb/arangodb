@@ -46,7 +46,10 @@ struct TestView: public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
     : arangodb::LogicalView(vocbase, definition, planVersion) {
   }
-  virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder, bool /*detailed*/, bool /*forPersistence*/) const { builder.add("properties", _properties.slice()); return _appendVelocyPackResult; }
+  virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder, bool /*detailed*/, bool /*forPersistence*/) const override { 
+    builder.add("properties", _properties.slice()); 
+    return _appendVelocyPackResult;
+  }
   virtual arangodb::Result drop() override { return arangodb::Result(); }
   static std::shared_ptr<LogicalView> make(
         TRI_vocbase_t& vocbase,

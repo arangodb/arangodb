@@ -57,7 +57,7 @@ timeout /T 10 /NOBREAK
 
 :: DB servers
 SET BASE=8628
-SET ROLE=PRIMARY
+SET ROLE=DBSERVER
 CALL ECHO Starting %NRDBSERVERS% db servers
 for /l %%I in (1, 1, %NRDBSERVERS%) do (
   SET /a PORT=%%I+%BASE%

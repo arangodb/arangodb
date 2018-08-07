@@ -284,5 +284,5 @@ function hasIResearch (db) {
         });
       });
     }
-  })
+  });
 });
