@@ -334,7 +334,7 @@ void RestCollectionHandler::handleCommandPut() {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(ctx, coll->cid(),
                                           AccessMode::Type::EXCLUSIVE);
-
+          trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
           res = trx.begin();
           if (res.ok()) {
             OperationResult result = trx.truncate(coll->name(), opts);
