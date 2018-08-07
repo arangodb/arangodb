@@ -265,7 +265,7 @@ arangodb::Result LogicalViewStorageEngine::appendVelocyPack(
       if (!engine->inRecovery()) {
         arangodb::velocypack::Builder builder;
         auto res = engine->getViews(view.vocbase(), builder);
-        if (!res.ok()) LOG_TOPIC(ERR, Logger::VIEWS) << "error getView(): " << res.errorNumber() << " " << res.errorMessage();
+        if (TRI_ERROR_NO_ERROR != res) LOG_TOPIC(ERR, Logger::VIEWS) << "error getView(): " << res;
         TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
         auto slice  = builder.slice();
         TRI_ASSERT(slice.isArray());
