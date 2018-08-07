@@ -877,8 +877,6 @@ void LogicalCollection::persistPhysicalCollection() {
   // Coordinators are not allowed to have local collections!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  // We have not yet persisted this collection!
-  TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   auto path = engine->createCollection(vocbase(), id(), *this);
 
