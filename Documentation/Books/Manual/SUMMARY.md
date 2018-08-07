@@ -47,6 +47,7 @@
   * [Arangodump](Programs/Arangodump/README.md)
     * [Examples](Programs/Arangodump/Examples.md)
     * [Options](Programs/Arangodump/Options.md)
+    * [Limitations](Programs/Arangodump/Limitations.md)
   * [Arangorestore](Programs/Arangorestore/README.md)
     * [Examples](Programs/Arangorestore/Examples.md)
     * [Options](Programs/Arangorestore/Options.md)
