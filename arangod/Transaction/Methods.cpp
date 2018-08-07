@@ -2044,10 +2044,7 @@ OperationResult transaction::Methods::modifyLocal(
     ManagedDocumentResult previous;
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    //bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
     {
-      //CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
-      //                         lock);
 
       if (res.ok()) {
         if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
@@ -2261,8 +2258,8 @@ OperationResult transaction::Methods::modifyLocal(
 OperationResult transaction::Methods::modifyBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,          // the incoming request
-  OperationOptions&         options//,          // the parsed options part
-  //TRI_voc_document_operation_e operation
+  OperationOptions&         options,          // the parsed options part
+  TRI_voc_document_operation_e operation
 ) {
   //////////////////////////////////////////////////////////////////////////
   // THIS CODE PERFORMS NO REPLICATION
@@ -2278,14 +2275,16 @@ OperationResult transaction::Methods::modifyBatchLocal(
   ///     - if there was an error and its the first, remember the error and its position
   ///
   /// Thus introduce a processBatchLocal which accepts a lambda function
-  /*return processBatchLocal(collectionName, request, options, [this, operation](
-    LogicalCollection *collection, VPackBuilder &reponseObject,
+  return processBatchLocal(collectionName, request, options, [this, operation](
+    LogicalCollection *collection, VPackBuilder &response,
     VPackSlice const key, VPackSlice const entry, VPackSlice const pattern,
-    OperationOptions const &options, TRI_voc_tick_t &resultMarkerTick,
-    TRI_voc_rid_t &actualRevision, ManagedDocumentResult &previous) -> Result {
+    OperationOptions &options, TRI_voc_tick_t &resultMarkerTick,
+    TRI_voc_cid_t cid) -> Result {
 
     VPackSlice newVal;
     Result result;
+    ManagedDocumentResult previous;
+    TRI_voc_rid_t actualRevision;
     ManagedDocumentResult newDocument;
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
@@ -2298,8 +2297,6 @@ OperationResult transaction::Methods::modifyBatchLocal(
           collection->replace(this, newVal, newDocument, options, resultMarkerTick,
                               !isLocked(collection, AccessMode::Type::WRITE),
                               actualRevision, previous, pattern);
-
-
 
     } else {
       TRI_ASSERT(entry.hasKey("replaceDocument"));
@@ -2315,7 +2312,16 @@ OperationResult transaction::Methods::modifyBatchLocal(
 
     if (result.ok() && !options.silent) {
 
-      if (options.returnNew) {
+      buildDocumentIdentityInObject (
+          collection, response, cid,
+          transaction::helpers::extractKeyPart(key),  // get a StringRef
+          TRI_ExtractRevisionId(VPackSlice(newDocument.vpack())),
+          actualRevision,
+          options.returnOld ? &previous : nullptr,
+          options.returnNew ? &newDocument : nullptr
+      );
+
+      /*if (options.returnNew) {
         response.add(VPackValue("new"));
         previous.addToBuilder(newDocument, true);
       } else {
@@ -2326,17 +2332,17 @@ OperationResult transaction::Methods::modifyBatchLocal(
       if (options.returnOld) {
         response.add(VPackValue("old"));
         previous.addToBuilder(response, true);
-      }
+      }*/
     }
 
     return result;
-  });*/
+  });
 }
 
 OperationResult transaction::Methods::processBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions const&   options,
+  OperationOptions&   options,
   std::function<Result (            // Result object is automatically converted to an error
     LogicalCollection *collection,  //    in the result object
     VPackBuilder &reponseObject,    // Builder with open object for response.
@@ -2344,7 +2350,7 @@ OperationResult transaction::Methods::processBatchLocal(
     VPackSlice const key,           // extracted key from entry.pattern
     VPackSlice const entry,         // the entry itself, i.e. { pattern: {...}, ...}
     VPackSlice const pattern,
-    OperationOptions const &options,      // options
+    OperationOptions &options,      // options
     TRI_voc_tick_t &resultMarkerTick,
     TRI_voc_cid_t cid
   )> lambda
@@ -2414,25 +2420,6 @@ OperationResult transaction::Methods::processBatchLocal(
       cid
     );
 
-    /*{
-      //////////////////////////////////////////////////////////////////////////
-      //// TODO: IS THIS LOCK REQUIRED? ALREADY LOCKED ABOVE
-      //////////////////////////////////////////////////////////////////////////
-      CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(), lock);
-      entryResult = collection->read(this, key, previous, false);
-
-      if (entryResult.ok()) {
-        if(!aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
-          entryResult.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-
-        } else {
-          auto optionsCopy = options;
-          entryResult = collection->remove(this, key, optionsCopy, resultMarkerTick,
-                                           false, actualRevision, previous);
-        }
-      }
-    } // the conditional write locker is destroyed here*/
-
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
     }
@@ -2483,7 +2470,7 @@ OperationResult transaction::Methods::processBatchLocal(
 OperationResult transaction::Methods::removeBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,          // the incoming request
-  OperationOptions const&         options           // the parsed options part
+  OperationOptions&         options           // the parsed options part
 ) {
   return processBatchLocal(collectionName, request, options, [this](
     LogicalCollection *collection, VPackBuilder &response,
@@ -2550,6 +2537,8 @@ OperationResult transaction::Methods::removeBatch(
   OperationOptions const&   options
 ) {
 
+  OperationOptions optionsCopy = options;
+
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   TRI_ASSERT(request.isObject());
@@ -2558,10 +2547,56 @@ OperationResult transaction::Methods::removeBatch(
   TRI_ASSERT(request.get("data").length() != 0);  // no empty request
 
   if (_state->isCoordinator()) {
-    return removeBatchCoordinator(collectionName, request, options);
+    return removeBatchCoordinator(collectionName, request, optionsCopy);
   }
 
-  return removeBatchLocal(collectionName, request, options);
+  return removeBatchLocal(collectionName, request, optionsCopy);
+}
+
+OperationResult transaction::Methods::replaceBatch(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions const&   options
+) {
+
+  OperationOptions optionsCopy = options;
+
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  TRI_ASSERT(request.isObject());
+  TRI_ASSERT(request.hasKey("data"));
+  TRI_ASSERT(request.get("data").isArray());
+  TRI_ASSERT(request.get("data").length() != 0);  // no empty request
+
+  /*if (_state->isCoordinator()) {
+    return removeBatchCoordinator(collectionName, request, optionsCopy);
+  }*/
+
+  return modifyBatchLocal(collectionName, request, optionsCopy,
+    TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+}
+
+OperationResult transaction::Methods::updateBatch(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions const&   options
+) {
+
+  OperationOptions optionsCopy = options;
+
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  TRI_ASSERT(request.isObject());
+  TRI_ASSERT(request.hasKey("data"));
+  TRI_ASSERT(request.get("data").isArray());
+  TRI_ASSERT(request.get("data").length() != 0);  // no empty request
+
+  /*if (_state->isCoordinator()) {
+    return removeBatchCoordinator(collectionName, request, optionsCopy);
+  }*/
+
+  return modifyBatchLocal(collectionName, request, optionsCopy,
+    TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 }
 
 /// @brief remove one or multiple documents in a collection, coordinator
@@ -2593,7 +2628,7 @@ OperationResult transaction::Methods::removeCoordinator(
 OperationResult transaction::Methods::removeBatchCoordinator(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions const&         options
+  OperationOptions&         options
 ) {
 
   rest::ResponseCode responseCode;

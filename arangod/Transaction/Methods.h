@@ -356,6 +356,18 @@ class Methods {
                          OperationOptions const& options,
                          VPackSlice pattern = VPackSlice::noneSlice());
 
+OperationResult updateBatch(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions const&   options
+);
+
+OperationResult replaceBatch(
+  std::string const&        collectionName,
+  VPackSlice const          request,
+  OperationOptions const&   options
+);
+
 OperationResult removeBatch(
   std::string const&        collectionName,
   VPackSlice const          request,
@@ -365,13 +377,13 @@ OperationResult removeBatch(
 OperationResult removeBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,          // the incoming request
-  OperationOptions const&   options           // the parsed options part
+  OperationOptions &   options           // the parsed options part
 );
 
 OperationResult removeBatchCoordinator(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions const&   options
+  OperationOptions&   options
 );
 
 
@@ -555,7 +567,8 @@ OperationResult removeBatchCoordinator(
 
   OperationResult modifyBatchLocal(std::string const& collectionName,
                                    VPackSlice const request,   // the incoming request
-                                   OperationOptions& options   // the parsed options part
+                                   OperationOptions& options,   // the parsed options part
+                                   TRI_voc_document_operation_e operation
                                   );
 
   OperationResult removeCoordinator(std::string const& collectionName,
@@ -595,7 +608,7 @@ OperationResult removeBatchCoordinator(
 OperationResult processBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,
-  OperationOptions const&   options,
+  OperationOptions&   options,
   std::function<Result (            // Result object is automatically converted to an error
     LogicalCollection *collection,  //    in the result object
     VPackBuilder &reponseObject,    // Builder with open object for response.
@@ -603,7 +616,7 @@ OperationResult processBatchLocal(
     VPackSlice const key,           // extracted key from entry.pattern
     VPackSlice const entry,         // the entry itself, i.e. { pattern: {...}, ...}
     VPackSlice const pattern,
-    OperationOptions const &options,      // options
+    OperationOptions &options,      // options
     TRI_voc_tick_t &resultMarkerTick,
     TRI_voc_cid_t cid
   )> lambda

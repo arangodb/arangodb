@@ -1139,10 +1139,8 @@ Result LogicalCollection::update(transaction::Methods* trx,
     getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
   }
 
-  arangodb::scopeGuard([this, lock, trx]() {
-    if (lock) {
-      getPhysical()->unlockWrite(false, trx->state());
-    }
+  TRI_DEFER(if (lock) {
+    getPhysical()->unlockWrite(false, trx->state());
   });
 
 
@@ -1264,10 +1262,8 @@ Result LogicalCollection::replace(transaction::Methods* trx,
     getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
   }
 
-  arangodb::scopeGuard([this, lock, trx]() {
-    if (lock) {
-      getPhysical()->unlockWrite(false, trx->state());
-    }
+  TRI_DEFER(if (lock) {
+    getPhysical()->unlockWrite(false, trx->state());
   });
 
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _type);
@@ -1375,10 +1371,8 @@ Result LogicalCollection::remove(transaction::Methods* trx,
     getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
   }
 
-  arangodb::scopeGuard([this, lock, trx]() {
-    if (lock) {
-      getPhysical()->unlockWrite(false, trx->state());
-    }
+  TRI_DEFER(if (lock) {
+    getPhysical()->unlockWrite(false, trx->state());
   });
 
   // get the previous revision
