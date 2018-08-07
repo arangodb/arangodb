@@ -2044,10 +2044,10 @@ OperationResult transaction::Methods::modifyLocal(
     ManagedDocumentResult previous;
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
+    //bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
     {
-      CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
-                               lock);
+      //CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
+      //                         lock);
 
       if (res.ok()) {
         if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
@@ -2261,7 +2261,8 @@ OperationResult transaction::Methods::modifyLocal(
 OperationResult transaction::Methods::modifyBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,          // the incoming request
-  OperationOptions&         options           // the parsed options part
+  OperationOptions&         options//,          // the parsed options part
+  //TRI_voc_document_operation_e operation
 ) {
   //////////////////////////////////////////////////////////////////////////
   // THIS CODE PERFORMS NO REPLICATION
@@ -2277,7 +2278,59 @@ OperationResult transaction::Methods::modifyBatchLocal(
   ///     - if there was an error and its the first, remember the error and its position
   ///
   /// Thus introduce a processBatchLocal which accepts a lambda function
-  return OperationResult{TRI_ERROR_INTERNAL};
+  /*return processBatchLocal(collectionName, request, options, [this, operation](
+    LogicalCollection *collection, VPackBuilder &reponseObject,
+    VPackSlice const key, VPackSlice const entry, VPackSlice const pattern,
+    OperationOptions const &options, TRI_voc_tick_t &resultMarkerTick,
+    TRI_voc_rid_t &actualRevision, ManagedDocumentResult &previous) -> Result {
+
+    VPackSlice newVal;
+    Result result;
+    ManagedDocumentResult newDocument;
+
+    if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+      TRI_ASSERT(entry.hasKey("updateDocument"));
+      TRI_ASSERT(entry.get("updateDocument").isObject());
+
+      VPackSlice newVal = entry.get("updateDocument");
+
+      result =
+          collection->replace(this, newVal, newDocument, options, resultMarkerTick,
+                              !isLocked(collection, AccessMode::Type::WRITE),
+                              actualRevision, previous, pattern);
+
+
+
+    } else {
+      TRI_ASSERT(entry.hasKey("replaceDocument"));
+      TRI_ASSERT(entry.get("replaceDocument").isObject());
+
+      VPackSlice newVal = entry.get("replaceDocument");
+
+      result =
+          collection->update(this, newVal, newDocument, options, resultMarkerTick,
+                             !isLocked(collection, AccessMode::Type::WRITE),
+                             actualRevision, previous, pattern);
+    }
+
+    if (result.ok() && !options.silent) {
+
+      if (options.returnNew) {
+        response.add(VPackValue("new"));
+        previous.addToBuilder(newDocument, true);
+      } else {
+        // meta data only
+
+      }
+
+      if (options.returnOld) {
+        response.add(VPackValue("old"));
+        previous.addToBuilder(response, true);
+      }
+    }
+
+    return result;
+  });*/
 }
 
 OperationResult transaction::Methods::processBatchLocal(
@@ -2293,8 +2346,7 @@ OperationResult transaction::Methods::processBatchLocal(
     VPackSlice const pattern,
     OperationOptions const &options,      // options
     TRI_voc_tick_t &resultMarkerTick,
-    TRI_voc_rid_t &actualRevision,
-    ManagedDocumentResult &previous
+    TRI_voc_cid_t cid
   )> lambda
 ) {
   Result result;
@@ -2349,9 +2401,7 @@ OperationResult transaction::Methods::processBatchLocal(
 
     // execute the read and then a delete
     TRI_voc_tick_t resultMarkerTick = 0;
-    TRI_voc_rid_t actualRevision = 0;
-    ManagedDocumentResult previous;
-
+    response.openObject();
 
     Result entryResult = lambda(
       collection,
@@ -2361,8 +2411,7 @@ OperationResult transaction::Methods::processBatchLocal(
       pattern,
       options,
       resultMarkerTick,
-      actualRevision,
-      previous
+      cid
     );
 
     /*{
@@ -2389,7 +2438,7 @@ OperationResult transaction::Methods::processBatchLocal(
     }
 
     // Build the result object for this entry
-    response.openObject();
+
     if (!entryResult.ok()) {
       response.add(StaticStrings::ErrorNum, VPackValue(entryResult.errorNumber()));
       response.add(StaticStrings::ErrorMessage, VPackValue(entryResult.errorMessage()));
@@ -2397,19 +2446,6 @@ OperationResult transaction::Methods::processBatchLocal(
       if (firstError.ok()) {
         firstError = entryResult;
         firstErrorIndex = count;
-      }
-    } else {
-      if (!options.silent) {
-        response.add(VPackValue("old"));
-        if (options.returnOld) {
-          previous.addToBuilder(response, true);
-        } else {
-          buildDocumentIdentity(
-            collection, response, cid,
-            transaction::helpers::extractKeyPart(key),  // get a StringRef
-            actualRevision, 0, nullptr, nullptr
-          );
-        }
       }
     }
 
@@ -2450,13 +2486,17 @@ OperationResult transaction::Methods::removeBatchLocal(
   OperationOptions const&         options           // the parsed options part
 ) {
   return processBatchLocal(collectionName, request, options, [this](
-    LogicalCollection *collection, VPackBuilder &reponseObject,
+    LogicalCollection *collection, VPackBuilder &response,
     VPackSlice const key, VPackSlice const entry, VPackSlice const pattern,
     OperationOptions const &options, TRI_voc_tick_t &resultMarkerTick,
-    TRI_voc_rid_t &actualRevision, ManagedDocumentResult &previous) -> Result {
+    TRI_voc_cid_t cid) -> Result {
+
+    ManagedDocumentResult previous;
+    TRI_voc_rid_t actualRevision;
 
     Result result = collection->read(this, key, previous, false);
     VPackOptions const* vPackOptions = transactionContextPtr()->getVPackOptions();
+
 
     if (result.ok()) {
       if(!aql::matches(VPackSlice(previous.vpack()), vPackOptions, pattern)) {
@@ -2466,6 +2506,19 @@ OperationResult transaction::Methods::removeBatchLocal(
         auto optionsCopy = options;
         result = collection->remove(this, key, optionsCopy, resultMarkerTick,
                                          false, actualRevision, previous);
+      }
+    }
+
+    if (result.ok() && !options.silent) {
+      response.add(VPackValue("old"));
+      if (options.returnOld) {
+        previous.addToBuilder(response, true);
+      } else {
+        buildDocumentIdentity(
+          collection, response, cid,
+          transaction::helpers::extractKeyPart(key),  // get a StringRef
+          actualRevision, 0, nullptr, nullptr
+        );
       }
     }
 
@@ -2655,10 +2708,10 @@ OperationResult transaction::Methods::removeLocal(
     bool const lock = !isLocked(collection, AccessMode::Type::WRITE);
 
     {
-      CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
-                               lock);
+      //CONDITIONAL_WRITE_LOCKER(conditionalWriteLocker, collection->lock(),
+      //                         lock);
 
-      if (pattern.isObject()) {
+      /*if (pattern.isObject()) {
         res = collection->read(this, key, previous, false);
 
         if (res.ok() &&
@@ -2666,7 +2719,7 @@ OperationResult transaction::Methods::removeLocal(
                           pattern)) {
           res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
         }
-      }
+      }*/
 
       // If we tried to lookup the document for pattern matching, and
       // either the lookup or the pattern match failed, we don't remove because
@@ -2675,7 +2728,7 @@ OperationResult transaction::Methods::removeLocal(
       //  - the document doesn't exist so we can't remove it anyway
       //  - the pattern doesn't match and we mustn't remove it
       if (res.ok()) {
-        res = collection->remove(this, value, options, resultMarkerTick, false,
+        res = collection->remove(this, value, options, resultMarkerTick, lock,
                                  actualRevision, previous);
       }
     } // the conditional write locker is destroyed here
