@@ -2281,58 +2281,61 @@ OperationResult transaction::Methods::modifyBatchLocal(
     OperationOptions &options, TRI_voc_tick_t &resultMarkerTick,
     TRI_voc_cid_t cid) -> Result {
 
-    VPackSlice newVal;
     Result result;
     ManagedDocumentResult previous;
     TRI_voc_rid_t actualRevision;
     ManagedDocumentResult newDocument;
 
-    if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      TRI_ASSERT(entry.hasKey("updateDocument"));
-      TRI_ASSERT(entry.get("updateDocument").isObject());
+    const char *label = operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE ?
+      "updateDocument" : "replaceDocument";
 
-      VPackSlice newVal = entry.get("updateDocument");
+    TRI_ASSERT(entry.hasKey(label));
+    TRI_ASSERT(entry.get(label).isObject());
+
+    VPackSlice newVal = entry.get(label);
+
+    VPackBuilder newSlice;
+    newSlice.openObject();
+    newSlice.add("_key", key);
+    newSlice.add(VPackObjectIterator(newVal));
+    newSlice.close();
+
+    if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
 
       result =
-          collection->replace(this, newVal, newDocument, options, resultMarkerTick,
+          collection->update(this, newSlice.slice(), newDocument, options, resultMarkerTick,
                               !isLocked(collection, AccessMode::Type::WRITE),
                               actualRevision, previous, pattern);
 
     } else {
-      TRI_ASSERT(entry.hasKey("replaceDocument"));
-      TRI_ASSERT(entry.get("replaceDocument").isObject());
-
-      VPackSlice newVal = entry.get("replaceDocument");
 
       result =
-          collection->update(this, newVal, newDocument, options, resultMarkerTick,
+          collection->replace(this, newSlice.slice(), newDocument, options, resultMarkerTick,
                              !isLocked(collection, AccessMode::Type::WRITE),
                              actualRevision, previous, pattern);
     }
 
     if (result.ok() && !options.silent) {
 
-      buildDocumentIdentityInObject (
-          collection, response, cid,
-          transaction::helpers::extractKeyPart(key),  // get a StringRef
-          TRI_ExtractRevisionId(VPackSlice(newDocument.vpack())),
-          actualRevision,
-          options.returnOld ? &previous : nullptr,
-          options.returnNew ? &newDocument : nullptr
-      );
 
-      /*if (options.returnNew) {
-        response.add(VPackValue("new"));
-        previous.addToBuilder(newDocument, true);
+
+      response.add(VPackValue("new"));
+      if (options.returnNew) {
+
+        newDocument.addToBuilder(response, true);
       } else {
         // meta data only
-
+        buildDocumentIdentity (
+            collection, response, cid,
+            transaction::helpers::extractKeyPart(key),  // get a StringRef
+            actualRevision, 0, nullptr, nullptr
+        );
       }
 
       if (options.returnOld) {
         response.add(VPackValue("old"));
         previous.addToBuilder(response, true);
-      }*/
+      }
     }
 
     return result;
@@ -2356,6 +2359,8 @@ OperationResult transaction::Methods::processBatchLocal(
   )> lambda
 ) {
   Result result;
+
+  LOG_TOPIC(INFO, Logger::FIXME) << "Request: " << request.toJson();
 
   //////////////////////////////////////////////////////////////////////////
   // THIS CODE PERFORMS NO REPLICATION

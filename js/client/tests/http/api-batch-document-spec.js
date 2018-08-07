@@ -339,11 +339,10 @@ describe('_api/batch/document', () => {
         expect(response.statusCode).to.equal(202);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
         expect(response.json.error).to.equal(false);
-        expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
-        --docsLeft;
+        expect(response.json.result).to.deep.equal([{new: metaOfDoc(doc)}]); // test return old
         expect(db[colName].count()).to.equal(docsLeft);
       });
-      expect(db[colName].count()).to.equal(0);
+      expect(db[colName].count()).to.equal(3);
       print("############################################");
     });
 
@@ -392,8 +391,8 @@ describe('_api/batch/document', () => {
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
       expect(response.json.error).to.equal(false);
-      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({old: metaOfDoc(doc)})));
-      expect(db[colName].count()).to.equal(0);
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({new: metaOfDoc(doc)})));
+      expect(db[colName].count()).to.equal(3);
       print("############################################");
     });
 
@@ -417,7 +416,7 @@ describe('_api/batch/document', () => {
       expect(response.json.error).to.equal(false);
       expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({})));
       //expect(response.json.result).to.deep.equal([]); //empty ?!
-      expect(db[colName].count()).to.equal(0);
+      expect(db[colName].count()).to.equal(3);
       print("############################################");
     });
 
@@ -427,7 +426,7 @@ describe('_api/batch/document', () => {
       let body;
       const response = updateDocs(body = {
         data: docsByVal.map(doc => ({
-          pattern: {_key: docsByVal[0]._key},
+          pattern: {_key: "DuGondelUlf"},
           updateDocument: { x : 42 }
         })),
         options: {},
@@ -439,7 +438,7 @@ describe('_api/batch/document', () => {
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
       expect(response.json.error).to.equal(true);
-      expect(db[colName].count()).to.equal(2);
+      expect(db[colName].count()).to.equal(3);
       print("############################################");
     });
   }); // update document - end
@@ -469,6 +468,32 @@ describe('_api/batch/document', () => {
 
     afterEach(() => {
       db[colName].truncate();
+    });
+
+    it('replace one document at a time', () => {
+      print("############################################");
+      print('replace one document at a time - this shoulds show ' + n + ' times ');
+      let docsLeft = n;
+      docsByVal.forEach(doc => {
+        const response = replaceDocs({
+          data: [{pattern: {_key: doc._key},
+                  replaceDocument: { x : 42 }
+                 }
+                ],
+          options: {},
+        });
+
+        print("############################################");
+        print(response.json);
+
+        expect(response.statusCode).to.equal(202);
+        expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+        expect(response.json.error).to.equal(false);
+        expect(response.json.result).to.deep.equal([{new: metaOfDoc(doc)}]); // test return old
+        expect(db[colName].count()).to.equal(docsLeft);
+      });
+      expect(db[colName].count()).to.equal(3);
+      print("############################################");
     });
 
     it('replace one document at a time - fail', () => {
@@ -516,8 +541,8 @@ describe('_api/batch/document', () => {
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
       expect(response.json.error).to.equal(false);
-      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({old: metaOfDoc(doc)})));
-      expect(db[colName].count()).to.equal(0);
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({new: metaOfDoc(doc)})));
+      expect(db[colName].count()).to.equal(3);
       print("############################################");
     });
 
@@ -541,7 +566,7 @@ describe('_api/batch/document', () => {
       expect(response.json.error).to.equal(false);
       expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({})));
       //expect(response.json.result).to.deep.equal([]); //empty ?!
-      expect(db[colName].count()).to.equal(0);
+      expect(db[colName].count()).to.equal(3);
       print("############################################");
     });
 
@@ -551,7 +576,7 @@ describe('_api/batch/document', () => {
       let body;
       const response = replaceDocs(body = {
         data: docsByVal.map(doc => ({
-          pattern: {_key: docsByVal[0]._key},
+          pattern: {_key: "DuGondelUlf"},
           replaceDocument: { x : 42 }
         })),
         options: {},
@@ -563,7 +588,7 @@ describe('_api/batch/document', () => {
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
       expect(response.json.error).to.equal(true);
-      expect(db[colName].count()).to.equal(2);
+      expect(db[colName].count()).to.equal(3);
       print("############################################");
     });
   }); // replace document - end
