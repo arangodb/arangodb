@@ -1,6 +1,8 @@
 v3.3.14 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5943: misplaced database ui icon and wrong cursor type were used
+
 * fixed issue #6076: Segmentation fault after AQL query
 
 * fixed issue #5884: Subquery nodes are no longer created on DBServers
