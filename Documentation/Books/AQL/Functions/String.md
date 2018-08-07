@@ -741,6 +741,19 @@ Return a substring of *value*.
   substring from *offset* to the end of the string
 - returns **substring** (string): a substring of *value*
 
+TOKENS()
+--------
+
+`TOKENS(input, analyzer) → array`
+
+Split the **input** string with the help of the specified **analyzer** into an array.
+The resulting array can i.e. be used in subsequent `FILTER` statements with the **IN** operator.
+This can be used to better understand how the specific analyzer is going to behave.
+
+- *input* string to tokenize
+- *analyzer* one of the [available string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
+
+
 TO_BASE64()
 -----------
 
