@@ -547,119 +547,30 @@ OperationResult GraphOperations::eraseOrphanCollection(
 
 OperationResult GraphOperations::addEdgeDefinition(
     VPackSlice edgeDefinitionSlice, bool waitForSync) {
-  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
-      EdgeDefinition::sortEdgeDefinition(edgeDefinitionSlice);
-  edgeDefinitionSlice = velocypack::Slice(buffer->data());
-
-  auto edgeDefOrError = ResultT<EdgeDefinition>{
-      EdgeDefinition::createFromVelocypack(edgeDefinitionSlice)};
-
-  if (edgeDefOrError.fail()) {
-    return OperationResult{edgeDefOrError.copy_result()};
+  ResultT<EdgeDefinition const*> defRes = _graph.addEdgeDefinition(edgeDefinitionSlice);
+  if (defRes.fail()) {
+    return OperationResult{std::move(defRes.copy_result())};
   }
-
-  EdgeDefinition& edgeDefinition = edgeDefOrError.get();
-
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-
-  std::string const& edgeCollection = edgeDefinition.getName();
-  if (_graph.hasEdgeCollection(edgeCollection)) {
-    return OperationResult(Result(
-        TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
-        edgeCollection + " " + std::string{TRI_errno_string(
-                                   TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)}));
-  }
+  // Guaranteed to be non nullptr
+  TRI_ASSERT(defRes.get() != nullptr);
 
   // ... in different graph
   GraphManager gmngr{_vocbase};
 
-  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(edgeDefinition)};
+  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()))};
   if (result.fail()) {
+    // If this fails we will not persists.
     return result;
   }
 
-  Result permRes = checkEdgeDefinitionPermissions(edgeDefinition);
-  if (permRes.fail()) {
-    return OperationResult{permRes};
+  Result res = gmngr.ensureCollections(&_graph, waitForSync);
+
+  if (res.fail()) {
+    return OperationResult{std::move(res)};
   }
 
-  VPackBuilder collectionsOptions;
-  collectionsOptions.openObject();
-  _graph.createCollectionOptions(collectionsOptions, waitForSync);
-  collectionsOptions.close();
-
-  result = gmngr.findOrCreateCollectionsByEdgeDefinition(
-      edgeDefinition, waitForSync, collectionsOptions.slice());
-  if (result.fail()) {
-    return result;
-  }
-  std::unordered_set<std::string> usedVertexCollections;
-
-  std::map<std::string, EdgeDefinition> edgeDefs = _graph.edgeDefinitions();
-  // build the updated document, reuse the builder
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(StaticStrings::GraphEdgeDefinitions,
-              VPackValue(VPackValueType::Array));
-  for (auto const& it : edgeDefs) {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add("collection", VPackValue(it.second.getName()));
-    // from
-    builder.add("from", VPackValue(VPackValueType::Array));
-    for (auto const& from : it.second.getFrom()) {
-      usedVertexCollections.emplace(from);
-      builder.add(VPackValue(from));
-    }
-    builder.close();  // from
-    // to
-    builder.add("to", VPackValue(VPackValueType::Array));
-    for (auto const& to : it.second.getTo()) {
-      usedVertexCollections.emplace(to);
-      builder.add(VPackValue(to));
-    }
-    builder.close();  // to
-    builder.close();  // obj
-  }
-  edgeDefinition.addToBuilder(builder);
-  builder.close();  // array
-
-  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-  for (auto const& orphan : _graph.orphanCollections()) {
-    auto it = usedVertexCollections.find(orphan);
-    if (it != usedVertexCollections.end()) {
-      // not found, so use in orphans
-      builder.add(VPackValue(orphan));
-    }
-  }
-  builder.close();  // array
-
-  builder.close();  // object
-
-  Result res;
-  {
-    SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                    AccessMode::Type::WRITE);
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-
-    res = trx.begin();
-
-    if (!res.ok()) {
-      return OperationResult(res);
-    }
-
-    result =
-        trx.update(StaticStrings::GraphCollection, builder.slice(), options);
-
-    res = trx.finish(result.result);
-  }
-
-  if (result.ok() && res.fail()) {
-    return OperationResult(res);
-  }
-
-  return result;
+  // finally save the graph
+  return gmngr.storeGraph(_graph, waitForSync, true);
 };
 
 // vertices

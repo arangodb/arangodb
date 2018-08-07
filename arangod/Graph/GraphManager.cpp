@@ -434,7 +434,9 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   if (graphRes.fail()) {
     return OperationResult{graphRes.copy_result()};
   }
+  // Guaranteed to not be nullptr
   std::unique_ptr<Graph> graph = std::move(graphRes.get());
+  TRI_ASSERT(graph != nullptr);
 
   // check permissions
   Result res = checkCreateGraphPermissions(graph.get());
@@ -455,9 +457,14 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   }
 
   // finally save the graph
+  return storeGraph(*(graph.get()), waitForSync, false);
+}
+
+OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
+                                          bool isUpdate) const {
   VPackBuilder builder;
   builder.openObject();
-  graph->toPersistence(builder);
+  graph.toPersistence(builder);
   builder.close();
 
   // Here we need a second transaction.
@@ -469,25 +476,30 @@ OperationResult GraphManager::createGraph(VPackSlice document,
 
   OperationOptions options;
   options.waitForSync = waitForSync;
-  res = trx.begin();
+  Result res = trx.begin();
   if (res.fail()) {
-    return OperationResult{res};
+    return OperationResult{std::move(res)};
   }
-
-  OperationResult result = trx.insert(StaticStrings::GraphCollection, builder.slice(), options);
+  OperationResult result;
+  if (isUpdate) {
+    result =
+        trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+  } else {
+    result =
+        trx.insert(StaticStrings::GraphCollection, builder.slice(), options);
+  }
   if (!result.ok()) {
     trx.finish(result.result);
     return result;
   }
   res = trx.finish(result.result);
   if (res.fail()) {
-    return OperationResult{res};
+    return OperationResult{std::move(res)};
   }
   return result;
 }
 
 Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) const {
-  TRI_ASSERT(graph != nullptr);
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};

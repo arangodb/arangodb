@@ -46,7 +46,7 @@ namespace graph {
 
 class GraphOperations {
  private:
-  Graph const& _graph;
+  Graph& _graph;
   TRI_vocbase_t& _vocbase;
 
   Graph const& graph() const { return _graph; };
@@ -54,7 +54,7 @@ class GraphOperations {
 
  public:
   GraphOperations() = delete;
-  GraphOperations(Graph const& graph_,
+  GraphOperations(Graph& graph_,
                   TRI_vocbase_t& vocbase)
       : _graph(graph_), _vocbase(vocbase) {}
 

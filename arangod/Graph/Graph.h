@@ -151,9 +151,6 @@ class Graph {
   /// @brief get the cids of all edgeCollections
   std::map<std::string, EdgeDefinition> const& edgeDefinitions() const;
 
-  /// @brief get the cids of all edgeCollections
-  std::vector<std::string> const& edgeDefinitionNames() const;
-
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
@@ -189,7 +186,6 @@ class Graph {
    */
   void graphForClient(VPackBuilder& builder) const;
 
-
   /**
    * @brief Check if the collection is allowed to be used
    * within this graph
@@ -205,27 +201,21 @@ class Graph {
 
   virtual void enhanceEngineInfo(velocypack::Builder&) const;
 
-  std::ostream& operator<<(std::ostream& ostream);
+  /// @brief adds one edge definition. Returns an error if the edgeDefinition
+  ///        is already added to this graph.
+  ResultT<EdgeDefinition const*> addEdgeDefinition(velocypack::Slice const& edgeDefinitionSlice);
+
+  /// @brief Add an orphan vertex collection to this graphs definition
+  Result addOrphanCollection(std::string&&);
+
+ std::ostream& operator<<(std::ostream& ostream);
 
  private:
   /// @brief Parse the edgeDefinition slice and inject it into this graph
   void parseEdgeDefinitions(velocypack::Slice  edgeDefs);
 
-  /// @brief adds one edge definition. the edge definition must not have been
-  /// added before.
-  Result addEdgeDefinition(velocypack::Slice const& edgeDefinitionSlice);
-
-  /// @brief Add an edge collection to this graphs definition
-  void addEdgeCollection(std::string&&);
-
   /// @brief Add a vertex collection to this graphs definition
-  void addVertexCollection(std::string&&);
-
-  /// @brief Add an oprha nvertex collection to this graphs definition
-  void addOrphanCollection(std::string&&);
-
-  /// @brief Add Collections to the object
-  void insertVertexCollections(velocypack::Slice arr);
+  void addVertexCollection(std::string const&);
 
   /// @brief Add orphanCollections to the object
   void insertOrphanCollections(velocypack::Slice arr);
@@ -252,6 +242,7 @@ class Graph {
   std::string const _graphName;
 
   /// @brief the names of all vertexCollections
+  ///        This includes orphans.
   std::unordered_set<std::string> _vertexColls;
 
   /// @brief the names of all orphanCollections
@@ -259,9 +250,6 @@ class Graph {
 
   /// @brief the names of all edgeCollections
   std::set<std::string> _edgeColls;
-
-  /// @brief edge definition names of this graph, ordered as in the database
-  std::vector<std::string> _edgeDefsNames;
 
   /// @brief edge definitions of this graph
   std::map<std::string, EdgeDefinition> _edgeDefs;

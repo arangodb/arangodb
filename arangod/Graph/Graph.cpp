@@ -96,9 +96,7 @@ Graph::Graph(velocypack::Slice const& slice)
     parseEdgeDefinitions(slice.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (slice.hasKey(StaticStrings::GraphOrphans)) {
-    auto orphans = slice.get(StaticStrings::GraphOrphans);
-    insertVertexCollections(orphans);
-    insertOrphanCollections(orphans);
+    insertOrphanCollections(slice.get(StaticStrings::GraphOrphans));
   }
 }
 
@@ -119,9 +117,7 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
     parseEdgeDefinitions(info.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (info.hasKey(StaticStrings::GraphOrphans)) {
-    auto orphans = info.get(StaticStrings::GraphOrphans);
-    insertVertexCollections(orphans);
-    insertOrphanCollections(orphans);
+    insertOrphanCollections(info.get(StaticStrings::GraphOrphans));
   }
   if (options.isObject()) {
     _numberOfShards = VelocyPackHelper::readNumericValue<uint64_t>(
@@ -140,49 +136,10 @@ void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
   }
 
   for (auto const& def : VPackArrayIterator(edgeDefs)) {
-    Result res = addEdgeDefinition(def);
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
+    auto edgeDefRes = addEdgeDefinition(def);
+    if (edgeDefRes.fail()) {
+      THROW_ARANGO_EXCEPTION(edgeDefRes.copy_result());
     }
-    // TODO maybe the following code can be simplified using _edgeDefs
-    // and/or after def is already validated.
-    // Or, this can be done during addEdgeDefinition as well.
-    TRI_ASSERT(def.isObject());
-    try {
-      std::string eCol =
-          basics::VelocyPackHelper::getStringValue(def, "collection", "");
-      addEdgeCollection(std::move(eCol));
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_GRAPH_INVALID_GRAPH,
-          "didn't find 'collection' in the graph definition");
-    }
-    // TODO what if graph is not in a valid format any more
-    try {
-      VPackSlice tmp = def.get(StaticStrings::GraphFrom);
-      insertVertexCollections(tmp);
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_GRAPH_INVALID_GRAPH,
-          "didn't find from-collection in the graph definition");
-    }
-    try {
-      VPackSlice tmp = def.get(StaticStrings::GraphTo);
-      insertVertexCollections(tmp);
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_GRAPH_INVALID_GRAPH,
-          "didn't find to-collection in the graph definition");
-    }
-  }
-
-}
-
-void Graph::insertVertexCollections(VPackSlice const arr) {
-  TRI_ASSERT(arr.isArray());
-  for (auto const& c : VPackArrayIterator(arr)) {
-    TRI_ASSERT(c.isString());
-    addVertexCollection(c.copyString());
   }
 }
 
@@ -198,16 +155,12 @@ std::unordered_set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;
 }
 
-const std::set<std::string> & Graph::orphanCollections() const {
+std::set<std::string> const& Graph::orphanCollections() const {
   return _orphanColls;
 }
 
 std::set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
-}
-
-std::vector<std::string> const& Graph::edgeDefinitionNames() const {
-  return _edgeDefsNames;
 }
 
 std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions()
@@ -225,16 +178,23 @@ std::string const Graph::id() const {
 
 std::string const& Graph::rev() const { return _rev; }
 
-void Graph::addEdgeCollection(std::string&& name) {
-  _edgeColls.emplace(std::move(name));
+void Graph::addVertexCollection(std::string const& name) {
+  if (_orphanColls.find(name) != _orphanColls.end()) {
+    // Promote Orphans to vertices
+    _orphanColls.erase(name);
+  }
+  _vertexColls.emplace(name);
 }
 
-void Graph::addVertexCollection(std::string&& name) {
-  _vertexColls.emplace(std::move(name));
-}
-
-void Graph::addOrphanCollection(std::string&& name) {
+Result Graph::addOrphanCollection(std::string&& name) {
+  if (_vertexColls.find(name) != _vertexColls.end()) {
+    // TODO FIXME!
+    return TRI_ERROR_INTERNAL;
+  }
+  TRI_ASSERT(_orphanColls.find(name) == _orphanColls.end());
+  _vertexColls.emplace(name);
   _orphanColls.emplace(std::move(name));
+  return TRI_ERROR_NO_ERROR;
 }
 
 void Graph::setSmartState(bool state) { _isSmart = state; }
@@ -433,7 +393,7 @@ Result Graph::validateOrphanCollection(VPackSlice const& orphanCollection) {
   return Result();
 }
 
-Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
+ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
   auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
 
   if (res.fail()) {
@@ -444,22 +404,24 @@ Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
   EdgeDefinition const& edgeDefinition = res.get();
 
   std::string const& collection = edgeDefinition.getName();
-
-  _edgeDefsNames.emplace_back(collection);
-
-  bool inserted;
-  std::tie(std::ignore, inserted) =
-      _edgeDefs.emplace(collection, edgeDefinition);
-
-  // This can only happen if addEdgeDefinition is called without clearing
-  // _edgeDefs first (which would be a logical error), or if the same collection
-  // is defined multiple times (which the user should not be allowed to do).
-  if (!inserted) {
-    return Result(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
-                  "Relation '" + collection + "' defined twice in same graph!");
+  if (hasEdgeCollection(collection)) {
+    return {Result(
+        TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
+        collection + " " + std::string{TRI_errno_string(
+                                   TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)})};
   }
 
-  return Result();
+  _edgeColls.emplace(collection);
+  _edgeDefs.emplace(collection, edgeDefinition);
+  TRI_ASSERT(hasEdgeCollection(collection));
+  for (auto const& it : edgeDefinition.getFrom()) {
+    addVertexCollection(it);
+  }
+  for (auto const& it : edgeDefinition.getTo()) {
+    addVertexCollection(it);
+  }
+
+  return &_edgeDefs.find(collection)->second;
 }
 
 std::ostream& Graph::operator<<(std::ostream& ostream) {

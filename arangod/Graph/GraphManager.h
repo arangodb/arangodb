@@ -147,7 +147,6 @@ class GraphManager {
 
   bool collectionExists(std::string const& collection) const;
 
- private:
 
   /**
    * @brief Helper function to make sure all collections required
@@ -160,6 +159,20 @@ class GraphManager {
    * @return Either OK or an error.
    */
   Result ensureCollections(Graph const* graph, bool waitForSync) const;
+
+
+  /**
+   * @brief Store the given graph
+   *
+   * @param graph The graph to store
+   * @param waitForSync Wait for Collection to sync
+   * @param isUpdate If it is an update on existing graph or a new one.
+   *
+   * @return The result of the insrt transaction or Error.
+   */
+  OperationResult storeGraph(Graph const& graph, bool waitForSync, bool isUpdate) const;
+
+ private:
 
 #ifdef USE_ENTERPRISE
   Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync, std::unordered_set<std::string>& documentCollections) const;
