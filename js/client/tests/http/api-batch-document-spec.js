@@ -182,6 +182,8 @@ describe('_api/batch/document', () => {
     });
 
     it('remove one document at a time', () => {
+      print("############################################");
+      print('remove one document at a time - this shoulds show ' + n + ' times ');
       let docsLeft = n;
       docsByVal.forEach(doc => {
         const response = removeDocs({
@@ -190,22 +192,23 @@ describe('_api/batch/document', () => {
         });
 
         print("############################################");
-        print('remove one document at a time - this shoudls show ' + n + ' times ');
         print(response.json);
-        print("############################################");
 
         expect(response.statusCode).to.equal(202);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
         expect(response.json.error).to.equal(false);
-        //expect(response.json.result).to.deep.equal([ metaOfDoc(doc)]);
         expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
         --docsLeft;
         expect(db[colName].count()).to.equal(docsLeft);
       });
       expect(db[colName].count()).to.equal(0);
+      print("############################################");
     });
 
     it('remove one document at a time - fail', () => {
+      print("############################################");
+      print('remove one document at a time - this should show ' + n + ' times - fail');
+      print('Could failed documents contain the key? This would allow better error messages');
       let docsLeft = n;
       docsByVal.forEach(doc => {
         const response = removeDocs({
@@ -214,22 +217,21 @@ describe('_api/batch/document', () => {
         });
 
         print("############################################");
-        print('remove one document at a time - this shoudls show ' + n + ' times - fail');
-        print('failed documents could contain the key? how hard is it to add?');
         print(response.json);
-        print("############################################");
 
         expect(response.statusCode).to.equal(202);
         expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
         expect(response.json.error).to.equal(true);
-        //expect(response.json.result).to.deep.equal([{ "errorNum" : 1202, "errorMessage" : "document not found" }]);
-        //expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
+        expect(response.json.result).to.deep.equal([{ "errorNum" : 1202, "errorMessage" : "document not found" }]);
         expect(db[colName].count()).to.equal(docsLeft);
       });
       expect(db[colName].count()).to.equal(3);
+      print("############################################");
     });
 
     it('remove all documents in a batch', () => {
+      print("############################################");
+      print('remove all documents in a batch');
       let body;
       const response = removeDocs(body = {
         data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
@@ -237,27 +239,25 @@ describe('_api/batch/document', () => {
       });
 
       print("############################################");
-      print('remove all documents in a batch');
-      print('on default meta should be visible');
       print(response.json);
-      print("############################################");
 
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
       expect(response.json.error).to.equal(false);
       expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({old: metaOfDoc(doc)})));
       expect(db[colName].count()).to.equal(0);
+      print("############################################");
     });
 
     it('remove all documents in a batch - silent', () => {
+      print("############################################");
+      print('remove all documents in a batch - silent ');
       let body;
       const response = removeDocs(body = {
         data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
         options: { silent: true},
       });
 
-      print("############################################");
-      print('remove all documents in a batch - silent ');
       print(response.json);
       print("############################################");
 
@@ -267,9 +267,12 @@ describe('_api/batch/document', () => {
       expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({})));
       //expect(response.json.result).to.deep.equal([]); //empty ?!
       expect(db[colName].count()).to.equal(0);
+      print("############################################");
     });
 
     it('remove all documents in a batch - fail', () => {
+      print("############################################");
+      print('remove all documents in a batch - fail');
       let body;
       const response = removeDocs(body = {
         //data: docsByVal.map(doc => ({pattern: {_key: doc._key}})),
@@ -277,9 +280,6 @@ describe('_api/batch/document', () => {
         options: {},
       });
 
-      print("############################################");
-      print('remove all documents in a batch - fail');
-      print('on default meta should be visible');
       print(response.json);
       print("############################################");
 
@@ -288,7 +288,286 @@ describe('_api/batch/document', () => {
       expect(response.json.error).to.equal(true);
       //expect(response.json.result).to.deep.equal(docsByVal.map(metaOfDoc));
       expect(db[colName].count()).to.equal(2);
+      print("############################################");
     });
 
   }); // remove document - end
+
+
+
+  describe('update document suite', () => {
+    const n = 3;
+    let docsByKey;
+    let docsByVal;
+
+    const updateDocs = batchRequest('update')(colName);
+
+    beforeEach(() => {
+      docsByKey = {};
+      docsByVal = [];
+      const docs = db._query(
+        'FOR i IN 0..@n INSERT {val: i} IN @@col RETURN NEW',
+        {n: n-1, '@col': colName}
+      ).toArray();
+      expect(docs).to.be.an('array').and.to.have.lengthOf(n);
+      docs.forEach((doc, i) => {
+        docsByVal[i] = doc;
+        docsByKey[doc._key] = doc;
+      });
+    });
+
+    afterEach(() => {
+      db[colName].truncate();
+    });
+
+    it('update one document at a time', () => {
+      print("############################################");
+      print('update one document at a time - this shoulds show ' + n + ' times ');
+      let docsLeft = n;
+      docsByVal.forEach(doc => {
+        const response = updateDocs({
+          data: [{pattern: {_key: doc._key},
+                  updateDocument: { x : 42 }
+                 }
+                ],
+          options: {},
+        });
+
+        print("############################################");
+        print(response.json);
+
+        expect(response.statusCode).to.equal(202);
+        expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+        expect(response.json.error).to.equal(false);
+        expect(response.json.result).to.deep.equal([{old: metaOfDoc(doc)}]); // test return old
+        --docsLeft;
+        expect(db[colName].count()).to.equal(docsLeft);
+      });
+      expect(db[colName].count()).to.equal(0);
+      print("############################################");
+    });
+
+    it('update one document at a time - fail', () => {
+      print("############################################");
+      print('update one document at a time - this should show ' + n + ' times - fail');
+      print('Could failed documents contain the key? This would allow better error messages');
+      let docsLeft = n;
+      docsByVal.forEach(doc => {
+        const response = updateDocs({
+          data: [{pattern: {_key: "DerGondelUlf"},
+                  updateDocument: { x : 42 }
+                 }
+                ],
+          options: {}
+        });
+
+        print("############################################");
+        print(response.json);
+
+        expect(response.statusCode).to.equal(202);
+        expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
+        expect(response.json.error).to.equal(true);
+        expect(response.json.result).to.deep.equal([{ "errorNum" : 1202, "errorMessage" : "document not found" }]);
+        expect(db[colName].count()).to.equal(docsLeft);
+      });
+      expect(db[colName].count()).to.equal(3);
+      print("############################################");
+    });
+
+    it('update all documents in a batch', () => {
+      print("############################################");
+      print('update all documents in a batch');
+      let body;
+      const response = updateDocs(body = {
+        data: docsByVal.map(doc => ({
+          pattern: {_key: doc._key},
+          updateDocument: { x : 42 }
+        })),
+        options: {}
+      });
+
+      print("############################################");
+      print(response.json);
+
+      expect(response.statusCode).to.equal(202);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+      expect(response.json.error).to.equal(false);
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({old: metaOfDoc(doc)})));
+      expect(db[colName].count()).to.equal(0);
+      print("############################################");
+    });
+
+    it('update all documents in a batch - silent', () => {
+      print("############################################");
+      print('update all documents in a batch - silent ');
+      let body;
+      const response = updateDocs(body = {
+        data: docsByVal.map(doc => ({
+          pattern: {_key: doc._key},
+          updateDocument: { x : 42 }
+        })),
+        options: { silent: true},
+      });
+
+      print(response.json);
+      print("############################################");
+
+      expect(response.statusCode).to.equal(202);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+      expect(response.json.error).to.equal(false);
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({})));
+      //expect(response.json.result).to.deep.equal([]); //empty ?!
+      expect(db[colName].count()).to.equal(0);
+      print("############################################");
+    });
+
+    it('update all documents in a batch - fail', () => {
+      print("############################################");
+      print('update all documents in a batch - fail');
+      let body;
+      const response = updateDocs(body = {
+        data: docsByVal.map(doc => ({
+          pattern: {_key: docsByVal[0]._key},
+          updateDocument: { x : 42 }
+        })),
+        options: {},
+      });
+
+      print(response.json);
+      print("############################################");
+
+      expect(response.statusCode).to.equal(202);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
+      expect(response.json.error).to.equal(true);
+      expect(db[colName].count()).to.equal(2);
+      print("############################################");
+    });
+  }); // update document - end
+
+
+
+  describe('replace document suite', () => {
+    const n = 3;
+    let docsByKey;
+    let docsByVal;
+
+    const replaceDocs = batchRequest('replace')(colName);
+
+    beforeEach(() => {
+      docsByKey = {};
+      docsByVal = [];
+      const docs = db._query(
+        'FOR i IN 0..@n INSERT {val: i} IN @@col RETURN NEW',
+        {n: n-1, '@col': colName}
+      ).toArray();
+      expect(docs).to.be.an('array').and.to.have.lengthOf(n);
+      docs.forEach((doc, i) => {
+        docsByVal[i] = doc;
+        docsByKey[doc._key] = doc;
+      });
+    });
+
+    afterEach(() => {
+      db[colName].truncate();
+    });
+
+    it('replace one document at a time - fail', () => {
+      print("############################################");
+      print('replace one document at a time - this should show ' + n + ' times - fail');
+      print('Could failed documents contain the key? This would allow better error messages');
+      let docsLeft = n;
+      docsByVal.forEach(doc => {
+        const response = replaceDocs({
+          data: [{pattern: {_key: "DerGondelUlf"},
+                  replaceDocument: { x : 42 }
+                 }
+                ],
+          options: {}
+        });
+
+        print("############################################");
+        print(response.json);
+
+        expect(response.statusCode).to.equal(202);
+        expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
+        expect(response.json.error).to.equal(true);
+        expect(response.json.result).to.deep.equal([{ "errorNum" : 1202, "errorMessage" : "document not found" }]);
+        expect(db[colName].count()).to.equal(docsLeft);
+      });
+      expect(db[colName].count()).to.equal(3);
+      print("############################################");
+    });
+
+    it('replace all documents in a batch', () => {
+      print("############################################");
+      print('replace all documents in a batch');
+      let body;
+      const response = replaceDocs(body = {
+        data: docsByVal.map(doc => ({
+          pattern: {_key: doc._key},
+          replaceDocument: { x : 42 }
+        })),
+        options: {}
+      });
+
+      print("############################################");
+      print(response.json);
+
+      expect(response.statusCode).to.equal(202);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+      expect(response.json.error).to.equal(false);
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({old: metaOfDoc(doc)})));
+      expect(db[colName].count()).to.equal(0);
+      print("############################################");
+    });
+
+    it('replace all documents in a batch - silent', () => {
+      print("############################################");
+      print('replace all documents in a batch - silent ');
+      let body;
+      const response = replaceDocs(body = {
+        data: docsByVal.map(doc => ({
+          pattern: {_key: doc._key},
+          replaceDocument: { x : 42 }
+        })),
+        options: { silent: true},
+      });
+
+      print(response.json);
+      print("############################################");
+
+      expect(response.statusCode).to.equal(202);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+      expect(response.json.error).to.equal(false);
+      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({})));
+      //expect(response.json.result).to.deep.equal([]); //empty ?!
+      expect(db[colName].count()).to.equal(0);
+      print("############################################");
+    });
+
+    it('replace all documents in a batch - fail', () => {
+      print("############################################");
+      print('replace all documents in a batch - fail');
+      let body;
+      const response = replaceDocs(body = {
+        data: docsByVal.map(doc => ({
+          pattern: {_key: docsByVal[0]._key},
+          replaceDocument: { x : 42 }
+        })),
+        options: {},
+      });
+
+      print(response.json);
+      print("############################################");
+
+      expect(response.statusCode).to.equal(202);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result', 'errorDataIndex']);
+      expect(response.json.error).to.equal(true);
+      expect(db[colName].count()).to.equal(2);
+      print("############################################");
+    });
+  }); // replace document - end
+
+
+
 }); // _api/batch/document - end

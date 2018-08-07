@@ -100,13 +100,14 @@ struct BatchRequest {
     optional.clear();
     deprecated.clear();
 
+    required.insert("pattern");
 
     switch (batchOp) {
       case BatchOperation::READ:
       case BatchOperation::REMOVE:
-        required.insert("pattern");
         break;
       case BatchOperation::INSERT:
+        required.clear();
         required.insert("insertDocument");
         break;
       case BatchOperation::REPLACE:
@@ -116,12 +117,10 @@ struct BatchRequest {
         required.insert("updateDocument");
         break;
       case BatchOperation::UPSERT:
-        required.insert("pattern");
         required.insert("insertDocument");
         required.insert("updateDocument");
         break;
       case BatchOperation::REPSERT:
-        required.insert("pattern");
         required.insert("replaceDocument");
         required.insert("updateDocument");
         break;
@@ -308,14 +307,10 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
       case BatchOperation::REPLACE: // implement first
         generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                       TRI_ERROR_NOT_IMPLEMENTED);
-        //operationResult = trx->replaceBatch(collection, payload, request.options);
-        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                      TRI_ERROR_NOT_IMPLEMENTED);
+        operationResult = trx->removeBatch(collection, payload, request.options);
         break;
       case BatchOperation::UPDATE:  // implement first
-        //operationResult = trx->updateBatch(collection, payload, request.options);
-        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                      TRI_ERROR_NOT_IMPLEMENTED);
+        operationResult = trx->removeBatch(collection, payload, request.options);
         break;
       case BatchOperation::UPSERT:
         generateError(rest::ResponseCode::NOT_IMPLEMENTED,
