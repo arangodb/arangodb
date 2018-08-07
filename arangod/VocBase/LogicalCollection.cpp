@@ -1135,19 +1135,22 @@ Result LogicalCollection::update(transaction::Methods* trx,
 
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// TODO:
-  ///   This lock is not clear if the function exits early
-  //////////////////////////////////////////////////////////////////////////////
   if (lock) {
     getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
   }
+
+  arangodb::scopeGuard([this, lock, trx]() {
+    if (lock) {
+      getPhysical()->unlockWrite(false, trx->state());
+    }
+  });
+
 
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _type);
   LocalDocumentId const documentId = LocalDocumentId::create();
 
   // execute a read to check pattern and merge objects
-  Result res = getPhysical()->read(trx, key, previous, lock);
+  Result res = getPhysical()->read(trx, key, previous, false);
   if (res.fail()) {
     return res;
   }
@@ -1230,10 +1233,6 @@ Result LogicalCollection::update(transaction::Methods* trx,
     trx, mdr, revisionId, newDoc, documentId, oldDoc, oldDocumentId, resultMarkerTick, options
   );
 
-  if (lock) {
-    getPhysical()->unlockWrite(false, trx->state());
-  }
-
   return res;
 }
 
@@ -1251,8 +1250,6 @@ Result LogicalCollection::replace(transaction::Methods* trx,
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-
-
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1261,22 +1258,28 @@ Result LogicalCollection::replace(transaction::Methods* trx,
   prevRev = 0;
   resultMarkerTick = 0;
 
-  /////////////////////////////////////////////////////////////////////////////
-  //      WRITE LOCK MISSING HERE FOR MMFILES!!!!!!!!
-  /////////////////////////////////////////////////////////////////////////////
+  TRI_IF_FAILURE("ReplaceDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
+
+  if (lock) {
+    getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
+  }
+
+  arangodb::scopeGuard([this, lock, trx]() {
+    if (lock) {
+      getPhysical()->unlockWrite(false, trx->state());
+    }
+  });
 
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _type);
   LocalDocumentId const documentId = LocalDocumentId::create();
 
   // execute a read to check pattern and merge objects
-  // TODO: WHAT ABOUT THE LOCK PARAMETER?
-  Result res = getPhysical()->read(trx, key, previous, lock);
+  Result res = getPhysical()->read(trx, key, previous, false);
   if (res.fail()) {
     return res;
   }
 
   TRI_ASSERT(!previous.empty());
-
 
   LocalDocumentId const oldDocumentId = previous.localDocumentId();
   VPackSlice const oldDoc(previous.vpack());
@@ -1348,10 +1351,67 @@ Result LogicalCollection::remove(transaction::Methods* trx,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_rid_t& prevRev,
-                                 ManagedDocumentResult& previous) {
+                                 ManagedDocumentResult& previous,
+                                 VPackSlice const pattern) {
   resultMarkerTick = 0;
   TRI_voc_rid_t revisionId = 0;
-  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick, lock, prevRev, revisionId);
+
+  VPackSlice key;
+
+  if (slice.isString()) {
+    key = slice;
+  } else {
+    key = slice.get(StaticStrings::KeyString);
+  }
+
+  TRI_ASSERT(!key.isNone());
+
+  TRI_IF_FAILURE("RemoveDocumentNoLock") {
+    // test what happens if no lock can be acquired
+    return Result(TRI_ERROR_DEBUG);
+  }
+
+  if (lock) {
+    getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
+  }
+
+  arangodb::scopeGuard([this, lock, trx]() {
+    if (lock) {
+      getPhysical()->unlockWrite(false, trx->state());
+    }
+  });
+
+  // get the previous revision
+  Result res = this->read(trx, key, previous, /*lock*/false);
+  if (res.fail()) {
+    return res;
+  }
+
+  VPackSlice const oldDoc(previous.vpack());
+  LocalDocumentId const oldDocumentId = previous.localDocumentId();
+  TRI_voc_rid_t oldRevisionId = arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
+  prevRev = oldRevisionId;
+
+  // Check old revision:
+  if (!options.ignoreRevs && slice.isObject()) {
+    TRI_voc_rid_t expectedRevisionId = TRI_ExtractRevisionId(slice);
+    res = checkRevision(trx, expectedRevisionId, oldRevisionId);
+
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  if (pattern.isObject()) {
+    if (!aql::matches(VPackSlice(previous.vpack()),
+          trx->transactionContextPtr()->getVPackOptions(),
+                      pattern)) {
+      res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    return res;
+    }
+  }
+
+  return getPhysical()->remove(trx, slice, options, resultMarkerTick, revisionId, oldRevisionId, oldDocumentId, oldDoc);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx,

@@ -605,8 +605,7 @@ OperationResult processBatchLocal(
     VPackSlice const pattern,
     OperationOptions const &options,      // options
     TRI_voc_tick_t &resultMarkerTick,
-    TRI_voc_rid_t &actualRevision,
-    ManagedDocumentResult &previous
+    TRI_voc_cid_t cid
   )> lambda
 );
 

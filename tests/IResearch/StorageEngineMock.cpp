@@ -828,7 +828,16 @@ bool PhysicalCollectionMock::readDocumentWithCallback(arangodb::transaction::Met
   return true;
 }
 
-arangodb::Result PhysicalCollectionMock::remove(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const slice, arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) {
+arangodb::Result PhysicalCollectionMock::remove(
+  arangodb::transaction::Methods* trx,
+  arangodb::velocypack::Slice const slice,
+  arangodb::OperationOptions& options,
+  TRI_voc_tick_t& resultMarkerTick,
+  TRI_voc_rid_t& revisionId,
+  TRI_voc_rid_t& oldRevisionId,
+  arangodb::LocalDocumentId const oldDocumentId,
+  arangodb::velocypack::Slice const oldDoc
+) {
   before();
 
   auto key = slice.get(arangodb::StaticStrings::KeyString);
@@ -843,11 +852,11 @@ arangodb::Result PhysicalCollectionMock::remove(arangodb::transaction::Methods* 
     auto& doc = entry.first;
 
     if (key == doc.slice().get(arangodb::StaticStrings::KeyString)) {
-      TRI_voc_rid_t revId = i; // always > 0
+      //TRI_voc_rid_t revId = i; // always > 0
 
       entry.second = false;
-      previous.setUnmanaged(doc.data(), arangodb::LocalDocumentId(revId));
-      prevRev = revId;
+      //previous.setUnmanaged(doc.data(), arangodb::LocalDocumentId(revId));
+      //prevRev = revId;
 
       return arangodb::Result(TRI_ERROR_NO_ERROR); // assume document was removed
     }

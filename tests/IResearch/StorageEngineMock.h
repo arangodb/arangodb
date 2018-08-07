@@ -83,11 +83,13 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual bool readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const override;
   virtual bool readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) const override;
   virtual arangodb::Result remove(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice const slice,
-                        arangodb::ManagedDocumentResult& previous,
-                        arangodb::OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
+                arangodb::velocypack::Slice const slice,
+                arangodb::OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick,
+                TRI_voc_rid_t& revisionId,
+                TRI_voc_rid_t& oldRevisionId,
+                arangodb::LocalDocumentId const oldDocumentId,
+                arangodb::velocypack::Slice const oldDoc) override;
   virtual arangodb::Result replace(
   arangodb::transaction::Methods* trx,
   arangodb::ManagedDocumentResult& mdr,
