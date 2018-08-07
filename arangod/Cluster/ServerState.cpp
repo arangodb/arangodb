@@ -666,7 +666,7 @@ std::string ServerState::getAdvertisedEndpoint() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setAdvertisedEndpoint(std::string const& endpoint) {
-  if (advertisedEndpoint.empty()) {
+  if (_advertisedEndpoint.empty()) {
     return;
   }
 
