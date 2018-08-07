@@ -1135,19 +1135,22 @@ Result LogicalCollection::update(transaction::Methods* trx,
 
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// TODO:
-  ///   This lock is not clear if the function exits early
-  //////////////////////////////////////////////////////////////////////////////
   if (lock) {
     getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
   }
+
+  arangodb::scopeGuard([this, lock, trx]() {
+    if (lock) {
+      getPhysical()->unlockWrite(false, trx->state());
+    }
+  });
+
 
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _type);
   LocalDocumentId const documentId = LocalDocumentId::create();
 
   // execute a read to check pattern and merge objects
-  Result res = getPhysical()->read(trx, key, previous, lock);
+  Result res = getPhysical()->read(trx, key, previous, false);
   if (res.fail()) {
     return res;
   }
@@ -1230,10 +1233,6 @@ Result LogicalCollection::update(transaction::Methods* trx,
     trx, mdr, revisionId, newDoc, documentId, oldDoc, oldDocumentId, resultMarkerTick, options
   );
 
-  if (lock) {
-    getPhysical()->unlockWrite(false, trx->state());
-  }
-
   return res;
 }
 
@@ -1261,22 +1260,26 @@ Result LogicalCollection::replace(transaction::Methods* trx,
   prevRev = 0;
   resultMarkerTick = 0;
 
-  /////////////////////////////////////////////////////////////////////////////
-  //      WRITE LOCK MISSING HERE FOR MMFILES!!!!!!!!
-  /////////////////////////////////////////////////////////////////////////////
+  if (lock) {
+    getPhysical()->lockWrite(false, trx->state(), trx->state()->timeout());
+  }
+
+  arangodb::scopeGuard([this, lock, trx]() {
+    if (lock) {
+      getPhysical()->unlockWrite(false, trx->state());
+    }
+  });
 
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _type);
   LocalDocumentId const documentId = LocalDocumentId::create();
 
   // execute a read to check pattern and merge objects
-  // TODO: WHAT ABOUT THE LOCK PARAMETER?
-  Result res = getPhysical()->read(trx, key, previous, lock);
+  Result res = getPhysical()->read(trx, key, previous, false);
   if (res.fail()) {
     return res;
   }
 
   TRI_ASSERT(!previous.empty());
-
 
   LocalDocumentId const oldDocumentId = previous.localDocumentId();
   VPackSlice const oldDoc(previous.vpack());
