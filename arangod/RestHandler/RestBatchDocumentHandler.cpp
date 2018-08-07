@@ -307,10 +307,10 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
       case BatchOperation::REPLACE: // implement first
         generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                       TRI_ERROR_NOT_IMPLEMENTED);
-        operationResult = trx->removeBatch(collection, payload, request.options);
+        operationResult = trx->replaceBatch(collection, payload, request.options);
         break;
       case BatchOperation::UPDATE:  // implement first
-        operationResult = trx->removeBatch(collection, payload, request.options);
+        operationResult = trx->updateBatch(collection, payload, request.options);
         break;
       case BatchOperation::UPSERT:
         generateError(rest::ResponseCode::NOT_IMPLEMENTED,
