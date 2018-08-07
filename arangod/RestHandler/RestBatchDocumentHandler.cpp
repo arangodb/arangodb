@@ -158,8 +158,6 @@ struct BatchRequest {
       }
       VPackSlice const optionsSlice = slice.get("options");
 
-      //LOG_DEVEL << optionsSlice.toJson();
-
       auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
       if (maybeOptions.fail()) {
         return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
@@ -167,10 +165,8 @@ struct BatchRequest {
       options = maybeOptions.get();
     }
 
-    // LOG_DEVEL << "options.silent: " << std::boolalpha << options.silent;
-
     // create
-    return BatchRequest(slice, /*std::move(maybeData.get()),*/ std::move(options), batchOp);
+    return BatchRequest(slice, std::move(options), batchOp);
   }
 
   explicit BatchRequest(VPackSlice const slice
@@ -247,11 +243,12 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
 void arangodb::RestBatchDocumentHandler::executeBatchRequest(
     std::string const& collection, const BatchRequest& request) {
 
-  TRI_ASSERT(request.payload.isObject()); //should be the same as the line above
-
+  TRI_ASSERT(request.payload.isObject());
   std::vector<OperationResult> opResults; // will hold the result
 
   velocypack::Options vOptions;
+  std::shared_ptr<velocypack::CustomTypeHandler> vCustomHandler; // we need to store the shared pointer to the CustomTypeHandler
+                                                                 // otherwise the options copy will become invalid
   bool vOptionsSet = false;
   VPackBuilder builder;
 
@@ -280,6 +277,7 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
     auto trx = createTransaction(collection, AccessMode::Type::WRITE);
     if(!vOptionsSet){
       vOptions = *(trx->transactionContextPtr()->getVPackOptionsForDump());
+      vCustomHandler= trx->transactionContextPtr()->orderCustomTypeHandler();
     }
 
     Result transactionResult = trx->begin();

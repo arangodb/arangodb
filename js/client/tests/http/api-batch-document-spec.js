@@ -543,8 +543,16 @@ describe('_api/batch/document', () => {
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
       expect(response.json.error).to.equal(false);
-      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({new: metaOfDoc(doc)})));
-      expect(db[colName].count()).to.equal(3);
+      expect(response.json.result).to.deep.equal(docsByVal.map((doc, idx) =>
+        ({ old: doc,
+           new: ( (x,y) => { x['x'] = 42;
+                             x['_rev']=response.json.result[y]['new']['_rev'];
+                             return x;
+                           }
+                )(metaOfDoc(doc), idx)
+        })
+      ));
+      expect(db[colName].count()).to.equal(n);
       print("############################################");
     });
 
