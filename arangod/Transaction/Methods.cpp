@@ -2577,6 +2577,9 @@ OperationResult transaction::Methods::replaceBatch(
     return removeBatchCoordinator(collectionName, request, optionsCopy);
   }*/
 
+  // Not yet implemented
+  TRI_ASSERT(!_state->isCoordinator());
+
   return modifyBatchLocal(collectionName, request, optionsCopy,
     TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 }
@@ -2599,6 +2602,9 @@ OperationResult transaction::Methods::updateBatch(
   /*if (_state->isCoordinator()) {
     return removeBatchCoordinator(collectionName, request, optionsCopy);
   }*/
+
+  // Not yet implemented
+  TRI_ASSERT(!_state->isCoordinator());
 
   return modifyBatchLocal(collectionName, request, optionsCopy,
     TRI_VOC_DOCUMENT_OPERATION_UPDATE);
