@@ -1,6 +1,9 @@
 v3.3.14 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5831: custom queries in the ui could not be loaded if the user
+  only has read access to the _system database.
+
 * fixed issue #6076: Segmentation fault after AQL query
 
 * fixed issue #5884: Subquery nodes are no longer created on DBServers
