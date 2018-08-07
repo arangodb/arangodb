@@ -2856,12 +2856,90 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
   return AqlValue(result);
 }
 
+/// @brief function REGEX_MATCHES
+AqlValue Functions::RegexMatches(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+    static char const* AFN = "REGEX_MATCHES";
+    ValidateParameters(parameters, AFN, 2, 3);
+    
+    AqlValueMaterializer materializer(trx);
+    AqlValue aqlValueToMatch = ExtractFunctionParameterValue(parameters, 0);
+    
+    if (parameters.size() == 1) {
+        VPackBuilder result;
+        result.openArray();
+        result.add(aqlValueToMatch.slice());
+        result.close();
+        return AqlValue(result);
+    }
+    
+    bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
+    
+    // build pattern from parameter #1
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    
+    AqlValue regex = ExtractFunctionParameterValue(parameters, 1);
+    ::appendAsString(trx, adapter, regex);
+    bool isEmptyExpression = (buffer->length() == 0);
+    
+    
+    // the matcher is owned by the query!
+    ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
+    
+    if (matcher == nullptr) {
+        ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+        return AqlValue(AqlValueHintNull());
+    }
+    
+    buffer->clear();
+    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+    ::appendAsString(trx, adapter, value);
+    UnicodeString valueToMatch(buffer->c_str(), static_cast<uint32_t>(buffer->length()));
+    
+    VPackBuilder result;
+    result.openArray();
+    
+    if (!isEmptyExpression && (buffer->length() == 0)) {
+        // Edge case: splitting an empty string by non-empty expression produces an empty string again.
+        result.add(VPackValue(""));
+        result.close();
+        return AqlValue(result);
+    }
+    
+    UErrorCode status = U_ZERO_ERROR;
+    
+    bool find = matcher->find();
+    if (find) {
+        for (int i = 0; i < matcher->groupCount(); i++) {
+            UnicodeString match = matcher->group(status);
+            if (U_FAILURE(status)) {
+                ::registerICUWarning(query, AFN, status);
+                return AqlValue(AqlValueHintNull());
+            }
+            else{
+                std::string s;
+                match.toUTF8String(s);
+                result.add(VPackValue(s));
+            }
+        }
+    }else{
+        return AqlValue(AqlValueHintNull());
+    }
+    
+    result.close();
+    return AqlValue(result);
+}
+
+
 /// @brief function REGEX_SPLIT
 AqlValue Functions::RegexSplit(arangodb::aql::Query* query,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& parameters) {
     static char const* AFN = "REGEX_SPLIT";
     ValidateParameters(parameters, AFN, 2, 4);
+    
     
     int64_t limitNumber = -1;
     if (parameters.size() == 4) {
