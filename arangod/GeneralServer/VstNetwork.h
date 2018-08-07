@@ -47,7 +47,7 @@ void appendLittleEndian(basics::StringBuffer* buffer, T v) {
 }
 
 inline constexpr std::size_t chunkHeaderLength(bool sendTotalLen) {
-  // chunkLength uint32 , chunkX uint32 , id uint64 , messageLength unit64
+  // chunkLength uint32 , chunkX uint32 , id uint64 , messageLength uint64
   return sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint64_t) +
          (sendTotalLen ? sizeof(uint64_t) : 0);
 }
