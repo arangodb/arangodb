@@ -215,11 +215,9 @@ function hasIResearch (db) {
               helper.switchUser(name, dbName);
             };
 
-            // FIXME: temporary OFF exact codes validation while expecting "Forbidden" everywhere
             const checkRESTCodeOnly = (e) => {
               expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-              // FIXME: uncomment to see unexpected codes
-              // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+              expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
             };
 
             describe('create a', () => {

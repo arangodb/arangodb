@@ -26,10 +26,10 @@
 #include "VocBase/vocbase.h"
 
 GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase) {
-  _authenticated = false;
-  _isRequestContextOwner = false;
+  _authenticated = false; // must be set before VocbaseContext::create(...)
+  _isRequestContextOwner = false; // must be set before VocbaseContext::create(...)
   _context.reset(arangodb::VocbaseContext::create(*this, vocbase));
-  _context->vocbase().forceUse(); // must be called or ~VocbaseContext() will fail at '_vocbase.release()'  
+  _context->vocbase().forceUse(); // must be called or ~VocbaseContext() will fail at '_vocbase.release()'
   _requestContext = _context.get(); // do not use setRequestContext(...) since '_requestContext' has not been initialized and contains garbage
 }
 
