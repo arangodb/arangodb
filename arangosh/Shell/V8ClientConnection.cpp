@@ -1484,7 +1484,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   auto sb = response->payload();
   if (sb.size() > 0) {
     const char* str = reinterpret_cast<const char*>(sb.data());
-    v8::Local<v8::String> b = TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
+    v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, str, sb.size());
     result->ForceSet(TRI_V8_ASCII_STRING(isolate, "body"), b);
   }
 
@@ -1558,14 +1558,15 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
       if (!slices.empty()) {
         return TRI_VPackToV8(isolate, slices[0]);
       } // no body
-    } else if (res->isContentTypeJSON()) {
-      const char* str = reinterpret_cast<const char*>(sb.data());
+    } 
+      
+    char const* str = reinterpret_cast<char const*>(sb.data());
+    
+    if (res->isContentTypeJSON()) {
       return TRI_FromJsonString(isolate, str, sb.size(), nullptr);
-    } else {
-      const char* str = reinterpret_cast<const char*>(sb.data());
-      // return body as string
-      return TRI_V8_ASCII_PAIR_STRING(isolate, str, sb.size());
-    }
+    } 
+    // return body as string
+    return TRI_V8_PAIR_STRING(isolate, str, sb.size());
   }
 
   // no body

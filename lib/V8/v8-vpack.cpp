@@ -285,8 +285,7 @@ static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
                      arangodb::StringRef const& attributeName,
                      bool convertFunctionsToNull) {
-  if (parameter->IsNull() || 
-      parameter->IsUndefined() || 
+  if (parameter->IsNullOrUndefined() || 
       (convertFunctionsToNull && parameter->IsFunction())) {
     AddValue<VPackValue, inObject>(context, attributeName,
                                    VPackValue(VPackValueType::Null));
