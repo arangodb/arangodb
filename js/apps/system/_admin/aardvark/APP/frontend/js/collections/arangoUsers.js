@@ -21,7 +21,10 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   fetch: function (options) {
-    if (frontendConfig.authenticationEnabled && window.App.currentUser) {
+    if (options.fetchAllUsers) {
+      // flag to load all user profiles, this only works within _system database and needs at least read access
+      this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/');
+    } else if (frontendConfig.authenticationEnabled && window.App.currentUser) {
       this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser));
     } else {
       this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/');
