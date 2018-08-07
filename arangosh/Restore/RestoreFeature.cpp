@@ -52,16 +52,31 @@ constexpr auto FeatureName = "Restore";
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(
     arangodb::httpclient::SimpleHttpClient& client,
-    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response,
+    char const* requestAction,
+    std::string const& originalRequest) {
   using arangodb::basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
-            "got invalid response from server: " + client.getErrorMessage()};
+        "got invalid response from server: '" +
+        client.getErrorMessage() + 
+        "' while executing '" +
+        requestAction +
+        "' with this payload: '" +
+        originalRequest +
+        "'"
+        };
   }
   if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: HTTP " +
-                                    itoa(response->getHttpReturnCode()) + ": " +
-                                    response->getHttpReturnMessage()};
+    return {TRI_ERROR_INTERNAL,
+        "got invalid response from server: HTTP " +
+        itoa(response->getHttpReturnCode()) + ": '" +
+        response->getHttpReturnMessage() + 
+        "' while executing '" +
+        requestAction +
+        "' with this payload: '" +
+        originalRequest +
+        "'"};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -161,12 +176,12 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
   if (returnCode == static_cast<int>(ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    auto res = ::checkHttpResponse(*httpClient, response);
+    auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
     return {TRI_ERROR_FORBIDDEN, res.errorMessage()};
   }
 
   // any other error
-  auto res = ::checkHttpResponse(*httpClient, response);
+  auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
   return {TRI_ERROR_INTERNAL, res.errorMessage()};
 }
 
@@ -276,7 +291,7 @@ arangodb::Result sendRestoreCollection(
                                     httpClient.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response);
+    return ::checkHttpResponse(httpClient, response, "restoring collection", body);
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -299,7 +314,7 @@ arangodb::Result sendRestoreIndexes(
                                     httpClient.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response);
+    return ::checkHttpResponse(httpClient, response, "restoring indices", body);
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -324,7 +339,7 @@ arangodb::Result sendRestoreData(
                                     httpClient.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response);
+    return ::checkHttpResponse(httpClient, response, "restoring payload", "");
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -499,17 +514,17 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string url = "/_api/replication/restore-view?overwrite=" +
     std::string(options.overwrite ? "true" : "false") +
     "&force=" + std::string(options.force ? "true" : "false");
-  
 
   std::string const body = viewDefinition.toJson();
   std::unique_ptr<SimpleHttpResult> response(httpClient.request(arangodb::rest::RequestType::PUT,
                                                                 url, body.c_str(), body.size()));
   if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: " +
-      httpClient.getErrorMessage()};
+    return {TRI_ERROR_INTERNAL, "got invalid response from server: '" +
+        httpClient.getErrorMessage() + "' while trying to restore view: '" +
+        body.c_str() + "'"};
   }
   if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response);
+    return ::checkHttpResponse(httpClient, response, "restoring view", body);
   }
   
   return {TRI_ERROR_NO_ERROR};
@@ -626,8 +641,10 @@ arangodb::Result processInputDirectory(
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
     
+    LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
     // Step 2: recreate all views
     for (VPackBuilder viewDefinition : views) {
+      LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
       Result res = ::restoreView(httpClient, options, viewDefinition.slice());
       if (res.fail()) {
         return res;
@@ -951,11 +968,11 @@ void RestoreFeature::start() {
     result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
                                      _options, *_directory, _stats);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
     result = {TRI_ERROR_INTERNAL};
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::RESTORE)
-        << "Error: caught unknown exception";
+        << "caught unknown exception";
     result = {TRI_ERROR_INTERNAL};
   }
 

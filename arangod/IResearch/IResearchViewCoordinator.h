@@ -38,7 +38,7 @@ namespace iresearch {
 /// @brief an abstraction over the distributed IResearch index implementing the
 ///        LogicalView interface
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewCoordinator final : public arangodb::LogicalView {
+class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief acquire locks on the specified 'cid' during read-transactions
@@ -91,11 +91,10 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   ) override;
 
  protected:
-  virtual Result appendVelocyPack(
+  virtual Result appendVelocyPackDetailed(
       arangodb::velocypack::Builder& builder,
-      bool detailed,
       bool forPersistence
-  ) const override ;
+  ) const override;
 
  private:
   IResearchViewCoordinator(

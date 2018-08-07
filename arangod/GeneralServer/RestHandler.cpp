@@ -29,21 +29,18 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-std::atomic_uint_fast64_t NEXT_HANDLER_ID(
-    static_cast<uint64_t>(TRI_microtime() * 100000.0));
-}
 
 thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 
@@ -52,11 +49,11 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 // -----------------------------------------------------------------------------
 
 RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
-    : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
-      _canceled(false),
+    : _canceled(false),
       _request(request),
       _response(response),
       _statistics(nullptr),
+      _handlerId(0),
       _state(HandlerState::PREPARE) {}
 
 RestHandler::~RestHandler() {
@@ -70,6 +67,10 @@ RestHandler::~RestHandler() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+void RestHandler::assignHandlerId() {
+  _handlerId = TRI_NewServerSpecificTick();
+}
 
 uint64_t RestHandler::messageId() const {
   uint64_t messageId = 0UL;
@@ -95,6 +96,10 @@ void RestHandler::setStatistics(RequestStatistics* stat) {
 }
 
 bool RestHandler::forwardRequest() {
+  if (!ServerState::instance()->isCoordinator()) {
+    return false;
+  }
+
   // TODO refactor into a more general/customizable method
   //
   // The below is mostly copied and only lightly modified from
@@ -104,8 +109,6 @@ bool RestHandler::forwardRequest() {
   // virtual methods to handle param/header filtering?
 
   // TODO verify that vst -> http -> vst conversion works correctly
-
-  // TODO verify that async requests work correctly
 
   uint32_t shortId = forwardingTarget();
   if (shortId == 0) {
@@ -246,7 +249,7 @@ bool RestHandler::forwardRequest() {
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
-  _response->setHeader(StaticStrings::RequestServedBy, serverId);
+  _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
   return true;
 }
 
@@ -348,10 +351,12 @@ void RestHandler::prepareEngine() {
 
 /// Execute the rest handler state machine
 void RestHandler::continueHandlerExecution() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
     MUTEX_LOCKER(locker, _executionMutex);
     TRI_ASSERT(_state == HandlerState::PAUSED);
   }
+#endif
   runHandlerStateMachine();
 }
 
@@ -360,46 +365,10 @@ void RestHandler::shutdownEngine() {
 
   // shutdownExecute is noexcept
   shutdownExecute(true);
-  
+
   RestHandler::CURRENT_HANDLER = nullptr;
   _state = HandlerState::DONE;
 }
-  /* TODO REMOVE ME!
-  int res = TRI_ERROR_NO_ERROR;
-
-  try {
-    shutdownExecute(true);
-  } catch (Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": "
-        << DIAGNOSTIC_INFORMATION(ex);
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    handleError(ex);
-    res = ex.code();
-  } catch (std::bad_alloc const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "caught memory exception in " << name() << ": " << ex.what();
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
-    handleError(err);
-    res = TRI_ERROR_OUT_OF_MEMORY;
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << ex.what();
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
-    handleError(err);
-    res = TRI_ERROR_INTERNAL;
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "caught unknown exception in " << name();
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
-    res = TRI_ERROR_INTERNAL;
-  }
-  return res;
-  */
 
 void RestHandler::executeEngine(bool isContinue) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
@@ -418,7 +387,7 @@ void RestHandler::executeEngine(bool isContinue) {
     } else {
       result = execute();
     }
-  
+
     RestHandler::CURRENT_HANDLER = nullptr;
 
     if (result == RestStatus::WAITING) {

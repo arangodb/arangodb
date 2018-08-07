@@ -46,11 +46,13 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterComm.h"
+#include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Sharding/ShardingFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -160,6 +162,7 @@ struct IResearchLinkCoordinatorSetup {
     buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
     buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
     #if USE_ENTERPRISE
@@ -295,7 +298,7 @@ SECTION("test_create_drop") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      logicalCollection.get(), json->slice(), 1, true
+      *logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
   }
@@ -304,7 +307,7 @@ SECTION("test_create_drop") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
     auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      logicalCollection.get(), json->slice(), 1, true
+      *logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
   }
@@ -367,8 +370,9 @@ SECTION("test_create_drop") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(logicalView->id() == 42);
+    CHECK(logicalView->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -405,8 +409,9 @@ SECTION("test_create_drop") {
       CHECK(error.empty());
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -473,8 +478,9 @@ SECTION("test_create_drop") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -490,8 +496,9 @@ SECTION("test_create_drop") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")

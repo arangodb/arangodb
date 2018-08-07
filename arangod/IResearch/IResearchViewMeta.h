@@ -55,7 +55,7 @@ struct IResearchViewMeta {
     class ConsolidationPolicy {
      public:
       struct Hash {
-        size_t operator()(ConsolidationPolicy const& value) const;
+        size_t operator()(ConsolidationPolicy const& value) const noexcept;
       };
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -93,8 +93,8 @@ struct IResearchViewMeta {
     size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
     ConsolidationPolicies _consolidationPolicies;
 
-    bool operator==(CommitMeta const& other) const noexcept;
-    bool operator!=(CommitMeta const& other) const noexcept;
+    bool operator==(CommitMeta const& other) const;
+    bool operator!=(CommitMeta const& other) const;
   };
 
   struct Mask {

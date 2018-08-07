@@ -52,8 +52,13 @@ if [ "$POOLSZ" == "" ] ; then
 fi
 
 if [ -z "$USE_ROCKSDB" ] ; then
-  STORAGE_ENGINE=""
-else
+  #default engine is RocksDB
+  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+elif [ "$USE_ROCKSDB" == "0" ]; then 
+  #explicitly disable RocksDB engine, so use MMFiles
+  STORAGE_ENGINE="--server.storage-engine=mmfiles"
+else 
+  #any value other than "0" means RocksDB engine
   STORAGE_ENGINE="--server.storage-engine=rocksdb"
 fi
 DEFAULT_REPLICATION=""
@@ -157,7 +162,7 @@ done
 start() {
 
     if [ "$1" == "dbserver" ]; then
-        ROLE="PRIMARY"
+        ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
         ROLE="COORDINATOR"
     fi

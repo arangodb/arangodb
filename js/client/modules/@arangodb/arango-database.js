@@ -356,8 +356,8 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
       'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'smartGraphAttribute', 'avoidServers',
-      'cacheEnabled'].forEach(function (p) {
+      'replicationFactor', 'shardingStrategy', 'smartGraphAttribute', 
+      'avoidServers', 'cacheEnabled'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -1185,14 +1185,18 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._createView = function (name, type, properties) {
-  var body = {
-    'name': name,
-    'type': type,
-    'properties': properties
-  };
+  var body = properties === undefined ? {} : properties;
 
-  if (properties === undefined) {
-    body['properties'] = {};
+  if (name === undefined) {
+    delete body['name'];
+  } else {
+    body['name'] = name;
+  }
+
+  if (type === undefined) {
+    delete body['type'];
+  } else {
+    body['type'] = type;
   }
 
   var requestResult = this._connection.POST(this._viewurl(),
@@ -1248,7 +1252,7 @@ ArangoDatabase.prototype._views = function () {
 
   var result = [];
   if (requestResult !== undefined) {
-    var views = requestResult;
+    var views = requestResult.result;
     var i;
 
     // add all views to object

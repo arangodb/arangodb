@@ -150,17 +150,21 @@ During view creation the following directives apply:
 * id: (optional) the desired view identifier
 * name: (required) the view name
 * type: \<required\> the value "arangosearch"
-  any of the directives from the section [View properties](#view-properties-modifiable)
+  any of the directives from the section [View properties](#view-properties-updatable)
 
 During view modification the following directives apply:
 * links: (optional)
   a mapping of collection-name/collection-identifier to one of:
   * link creation - link definition as per the section [Link properties](#link-properties)
   * link removal - JSON keyword *null* (i.e. nullify a link if present)
-    any of the directives from the section [modifiable view properties ](#view-properties-modifiable)
+    any of the directives from the section [modifiable view properties](#view-properties-updatable)
 
+### View properties (non-updatable)
 
-### View properties (modifiable)
+* locale: (optional; default: `C`)
+  the default locale used for ordering processed attribute names
+
+### View properties (updatable)
 
 * commit: (optional; default: use defaults for all values)
   configure ArangoSearch View commit policy for single-item inserts/removals,
@@ -185,14 +189,6 @@ During view modification the following directives apply:
     for the case where there are a few inserts/updates, a higher value will
     impact performance and waste disk space for each commit call without any
     added benefits
-
-  * commitTimeoutMsec: (optional; default: `5000`; to disable use: `0`)
-    try to commit as much as possible before *count* milliseconds
-    for the case where there are a lot of inserts/updates, a lower value will
-    cause a delay in the view accounting for them, due skipping of some commits
-    for the case where there are a lot of inserts/updates, a higher value will
-    cause higher memory consumption between commits due to accumulation of
-    document modifications while a commit is in progress
 
   * consolidate: (optional; default: `none`)
     a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
@@ -232,21 +228,6 @@ During view modification the following directives apply:
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
-* locale: (optional; default: `C`)
-  the default locale used for ordering processed attribute names
-
-### View properties (unmodifiable)
-
-* collections:
-  an internally tracked list of collection identifiers which were explicitly
-  added to the current view by the user via view 'link' property modification
-  the list may have no-longer valid identifiers if the user did not explicitly
-  drop the link for the said collection identifier from the current view
-  invalid collection identifiers are removed during view property modification
-  among other things used for acquiring collection locks in transactions (i.e.
-  during a view query no documents will be returned for collections not in this
-  list) and generating view properties 'links' list
-
 ### Link properties
 
 * analyzers: (optional; default: `[ 'identity' ]`)
@@ -274,3 +255,9 @@ During view modification the following directives apply:
   otherwise all values in an array are treated as equal alternatives, e.g. when
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr == 'valueY'`
+
+* storeValues: (optional; default: "none")
+  how should the view track the attribute values, this setting allows for
+  additional value retrieval optimizations, one of:
+  * none: Do not store values by the view
+  * id: Store only information about value presence, to allow use of the EXISTS() function

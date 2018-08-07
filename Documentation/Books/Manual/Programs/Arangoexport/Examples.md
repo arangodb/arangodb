@@ -74,7 +74,9 @@ attribute value type, and a *value* attribute containing the attribute's value.
 Export XGMML
 ------------
 
-[XGMML](https://en.wikipedia.org/wiki/XGMML) is an XML application based on [GML](https://en.wikipedia.org/wiki/Graph_Modelling_Language). To view the XGMML file you can use for example [Cytoscape](http://cytoscape.org).
+[XGMML](https://en.wikipedia.org/wiki/XGMML) is an XML application
+based on [GML](https://en.wikipedia.org/wiki/Graph_Modelling_Language).
+To view the XGMML file you can use for example [Cytoscape](http://cytoscape.org).
 
 
 {% hint 'warning' %}

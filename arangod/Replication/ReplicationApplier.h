@@ -153,9 +153,10 @@ class ReplicationApplier {
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);
 
-  virtual std::unique_ptr<InitialSyncer> buildInitialSyncer() const = 0;
-  virtual std::unique_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
-                                                      bool useTick, TRI_voc_tick_t barrierId) const = 0;
+  virtual std::shared_ptr<InitialSyncer> buildInitialSyncer() const = 0;
+  virtual std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
+                                                            bool useTick, 
+                                                            TRI_voc_tick_t barrierId) const = 0;
   
 protected:
 

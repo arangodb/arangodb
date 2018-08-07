@@ -1769,7 +1769,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(vocbase),
-    &_logicalCollection,
+    _logicalCollection,
     AccessMode::Type::READ
   );
 
@@ -2013,11 +2013,11 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   if (!foundPrimary ||
       (!foundEdge && TRI_COL_TYPE_EDGE == _logicalCollection.type())) {
     // we still do not have any of the default indexes, so create them now
-    engine->indexFactory().fillSystemIndexes(&_logicalCollection, indexes);
+    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
   }
 
   engine->indexFactory().prepareIndexes(
-    &_logicalCollection, indexesSlice, indexes
+    _logicalCollection, indexesSlice, indexes
   );
 
   for (std::shared_ptr<Index>& idx : indexes) {
@@ -2112,9 +2112,11 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   // Create it
 
   idx = engine->indexFactory().prepareIndexFromSlice(
-    info, true, &_logicalCollection, false
+    info, true, _logicalCollection, false
   );
-  TRI_ASSERT(idx != nullptr);
+  if (!idx) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  }
 
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
@@ -2272,7 +2274,7 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
     newIdx = engine->indexFactory().prepareIndexFromSlice(
-      info, false, &_logicalCollection, false
+      info, false, _logicalCollection, false
     );
   } catch (arangodb::basics::Exception const& e) {
     // Something with index creation went wrong.
@@ -3281,10 +3283,7 @@ Result MMFilesCollection::update(
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(
-            _logicalCollection.vocbase().name(),
-            trx->resolver()->getCollectionNameCluster(
-              _logicalCollection.planId()
-            ),
+            _logicalCollection,
             oldDoc,
             builder->slice(),
             false
@@ -3416,18 +3415,17 @@ Result MMFilesCollection::replace(
     return res;
   }
 
-  if (_isDBServer) {
-    // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(
-          _logicalCollection.vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            _logicalCollection.planId()
-          ),
-          oldDoc,
-          builder->slice(),
-          false
-       )) {
-      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+  if (options.recoveryData == nullptr) {
+    if (_isDBServer) {
+      // Need to check that no sharding keys have changed:
+      if (arangodb::shardKeysChanged(
+            _logicalCollection,
+            oldDoc,
+            builder->slice(),
+            false
+        )) {
+        return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+      }
     }
   }
 

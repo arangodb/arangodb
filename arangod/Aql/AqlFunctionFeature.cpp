@@ -181,6 +181,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SUBSTRING", ".,.|.", true, false, true, &Functions::Substring});
   add({"CONTAINS", ".,.|.", true, false, true, &Functions::Contains});
   add({"LIKE", ".,.|.", true, false, true, &Functions::Like});
+  add({"REGEX_SPLIT", ".,.|.,.", true, false, true, &Functions::RegexSplit});
   add({"REGEX_TEST", ".,.|.", true, false, true, &Functions::RegexTest});
   add({"REGEX_REPLACE", ".,.,.|.", true, false, true, &Functions::RegexReplace});
   add({"LEFT", ".,.", true, false, true, &Functions::Left});
@@ -202,6 +203,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", true, false, true, &Functions::EncodeURIComponent});
   add({"UUID", "", true, false, true, &Functions::UUID});
   add({"SOUNDEX", ".", true, false, true, &Functions::Soundex});
+  add({"LEVENSHTEIN_DISTANCE", ".,.", true, false, true, &Functions::LevenshteinDistance});
   // FULLTEXT is replaced by the AQL optimizer with an index lookup
   add({"FULLTEXT", ".h,.,.|." , false, true, false, &Functions::NotImplemented});
 }

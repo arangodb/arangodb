@@ -149,7 +149,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 
   if (_closedSend.load(std::memory_order_acquire) ||
       _abandoned.load(std::memory_order_acquire)) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) << "Connection abandoned or closed";
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Connection abandoned or closed";
     buffer.release();
     return;
   }

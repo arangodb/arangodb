@@ -73,6 +73,12 @@ std::string const RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 std::string const RestVocbaseBaseHandler::COLLECTION_PATH = "/_api/collection";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief control pregel path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::CONTROL_PREGEL_PATH = "/_api/control_pregel";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -192,6 +198,12 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
     "/_api/simple/remove-by-keys";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tasks path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::TASKS_PATH = "/_api/tasks";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -291,7 +303,7 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   if (slice.isNone()) {
     // will happen if silent == true
-    slice = VelocyPackHelper::EmptyObjectValue();
+    slice = arangodb::velocypack::Slice::emptyObjectSlice();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
@@ -565,7 +577,7 @@ void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 void RestVocbaseBaseHandler::pickupNoLockHeaders() {
   if (ServerState::instance()->isDBServer()) {
     // Only DBServer needs to react to them!

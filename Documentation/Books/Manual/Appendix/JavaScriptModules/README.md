@@ -20,13 +20,15 @@ ArangoDB supports a number of modules for compatibility with Node.js, including:
 
 * [events](http://nodejs.org/api/events.html) implements an event emitter.
 
-* [fs](FileSystem.md) provides a file system API for the manipulation of paths, directories, files, links, and the construction of file streams. ArangoDB implements most [Filesystem/A](http://wiki.commonjs.org/wiki/Filesystem/A) functions.
+* [fs](FileSystem.md) provides a file system API for the manipulation of paths, directories, files, links, and the construction of file streams.
+  ArangoDB implements most [Filesystem/A](http://wiki.commonjs.org/wiki/Filesystem/A) functions.
 
 * [module](http://nodejs.org/api/modules.html) provides direct access to the module system.
 
 * [path](http://nodejs.org/api/path.html) implements functions dealing with filenames and paths.
 
-* [punycode](http://nodejs.org/api/punycode.html) implements conversion functions for [punycode](http://en.wikipedia.org/wiki/Punycode) encoding.
+* [punycode](http://nodejs.org/api/punycode.html) implements
+  conversion functions for [punycode](http://en.wikipedia.org/wiki/Punycode) encoding.
 
 * [querystring](http://nodejs.org/api/querystring.html) provides utilities for dealing with query strings.
 

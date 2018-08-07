@@ -142,8 +142,11 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   RocksDBVPackIndex() = delete;
 
-  RocksDBVPackIndex(TRI_idx_iid_t, LogicalCollection*,
-                    arangodb::velocypack::Slice const&);
+  RocksDBVPackIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~RocksDBVPackIndex();
 
