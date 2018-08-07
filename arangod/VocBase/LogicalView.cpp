@@ -265,12 +265,14 @@ arangodb::Result LogicalViewStorageEngine::appendVelocyPack(
       if (!engine->inRecovery()) {
         arangodb::velocypack::Builder builder;
         auto res = engine->getViews(view.vocbase(), builder);
+        if (!res.ok()) LOG_TOPIC(ERR, Logger::VIEWS) << "error getView(): " << res.errorNumber() << " " << res.errorMessage();
         TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
         auto slice  = builder.slice();
         TRI_ASSERT(slice.isArray());
         auto viewId = std::to_string(view.id());
 
         // We have not yet persisted this view
+        // similar check to LogicalCollection::persistPhysicalCollection() TRI_ASSERT(getPhysical()->path().empty());
         for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
           auto id = arangodb::basics::VelocyPackHelper::getStringRef(
             entry,
