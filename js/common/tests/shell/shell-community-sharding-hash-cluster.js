@@ -29,7 +29,8 @@ let arangodb = require("@arangodb");
 let db = arangodb.db;
 let ERRORS = arangodb.errors;
 const isEnterprise = require("internal").isEnterprise();
-const defaultSharding = "hash";//isEnterprise ? "enterprise-compat" : "community-compat";
+const hash = "hash";
+const defaultSharding = hash;
 
 function DocumentShardingSuite() {
   let name1 = "UnitTestsCollection1";
@@ -82,7 +83,7 @@ function DocumentShardingSuite() {
       }
     },
 
-    testCreateWithEnterpriseCompatSharding : function () {
+    testCreateWithEnterpriseSharding : function () {
       if (!isEnterprise) {
         try {
           db._create(name1, { shardingStrategy: "enterprise-compat", numberOfShards: 5 });
@@ -93,25 +94,8 @@ function DocumentShardingSuite() {
     },
 
     testCreateWithCommunitySharding : function () {
-      let c = db._create(name1, { shardingStrategy: "community-compat", numberOfShards: 5 });
-      assertEqual("community-compat", c.properties()["shardingStrategy"]);
-      assertEqual(5, c.properties()["numberOfShards"]);
-      assertEqual(["_key"], c.properties()["shardKeys"]);
-
-      for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i, value: i });
-      }
-
-      assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
-
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, c.document("test" + i).value);
-      }
-    },
-
-    testCreateWithHashSharding : function () {
-      let c = db._create(name1, { shardingStrategy: "hash", numberOfShards: 5 });
-      assertEqual("hash", c.properties()["shardingStrategy"]);
+      let c = db._create(name1, { shardingStrategy: hash, numberOfShards: 5 });
+      assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
@@ -148,31 +132,10 @@ function DocumentShardingSuite() {
     },
 
     testDistributeShardsLikeWithCommunitySharding : function () {
-      let c1 = db._create(name1, { shardingStrategy: "community-compat", numberOfShards: 5 });
+      let c1 = db._create(name1, { shardingStrategy: hash, numberOfShards: 5 });
       let c2 = db._create(name2, { distributeShardsLike: name1 });
-      assertEqual("community-compat", c1.properties()["shardingStrategy"]);
-      assertEqual("community-compat", c2.properties()["shardingStrategy"]);
-      assertEqual(5, c1.properties()["numberOfShards"]);
-      assertEqual(5, c2.properties()["numberOfShards"]);
-      assertEqual(["_key"], c1.properties()["shardKeys"]);
-      assertEqual(["_key"], c2.properties()["shardKeys"]);
-
-      for (let i = 0; i < 1000; ++i) {
-        c2.insert({ _key: "test" + i, value: i });
-      }
-
-      assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c2.count(true)).sort());
-
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, c2.document("test" + i).value);
-      }
-    },
-
-    testDistributeShardsLikeWithHashSharding : function () {
-      let c1 = db._create(name1, { shardingStrategy: "hash", numberOfShards: 5 });
-      let c2 = db._create(name2, { distributeShardsLike: name1 });
-      assertEqual("hash", c1.properties()["shardingStrategy"]);
-      assertEqual("hash", c2.properties()["shardingStrategy"]);
+      assertEqual(hash, c1.properties()["shardingStrategy"]);
+      assertEqual(hash, c2.properties()["shardingStrategy"]);
       assertEqual(5, c1.properties()["numberOfShards"]);
       assertEqual(5, c2.properties()["numberOfShards"]);
       assertEqual(["_key"], c1.properties()["shardKeys"]);
@@ -190,10 +153,10 @@ function DocumentShardingSuite() {
     },
 
     testDistributeShardsLikeWithDiffentKeyAttribute : function () {
-      let c1 = db._create(name1, { shardingStrategy: "hash", numberOfShards: 5, shardKeys: ["one"] });
+      let c1 = db._create(name1, { shardingStrategy: hash, numberOfShards: 5, shardKeys: ["one"] });
       let c2 = db._create(name2, { distributeShardsLike: name1, shardKeys: ["two"] });
-      assertEqual("hash", c1.properties()["shardingStrategy"]);
-      assertEqual("hash", c2.properties()["shardingStrategy"]);
+      assertEqual(hash, c1.properties()["shardingStrategy"]);
+      assertEqual(hash, c2.properties()["shardingStrategy"]);
       assertEqual(5, c1.properties()["numberOfShards"]);
       assertEqual(5, c2.properties()["numberOfShards"]);
       assertEqual(["one"], c1.properties()["shardKeys"]);
@@ -212,10 +175,10 @@ function DocumentShardingSuite() {
     },
 
     testDistributeShardsLikeWithDiffentKeyAttributes : function () {
-      let c1 = db._create(name1, { shardingStrategy: "hash", numberOfShards: 5, shardKeys: ["one", "two"] });
+      let c1 = db._create(name1, { shardingStrategy: hash, numberOfShards: 5, shardKeys: ["one", "two"] });
       let c2 = db._create(name2, { distributeShardsLike: name1, shardKeys: ["three", "four"] });
-      assertEqual("hash", c1.properties()["shardingStrategy"]);
-      assertEqual("hash", c2.properties()["shardingStrategy"]);
+      assertEqual(hash, c1.properties()["shardingStrategy"]);
+      assertEqual(hash, c2.properties()["shardingStrategy"]);
       assertEqual(5, c1.properties()["numberOfShards"]);
       assertEqual(5, c2.properties()["numberOfShards"]);
       assertEqual(["one", "two"], c1.properties()["shardKeys"]);
@@ -234,7 +197,7 @@ function DocumentShardingSuite() {
     },
 
     testDistributeShardsLikeWithDiffentNumberOfKeyAttributes : function () {
-      let c1 = db._create(name1, { shardingStrategy: "hash", numberOfShards: 5, shardKeys: ["one", "two"] });
+      let c1 = db._create(name1, { shardingStrategy: hash, numberOfShards: 5, shardKeys: ["one", "two"] });
       try {
         db._create(name2, { distributeShardsLike: name1, shardKeys: ["three"] });
         fail();
@@ -244,8 +207,8 @@ function DocumentShardingSuite() {
     },
 
     testCreateWithNonDefaultKeysMissingValues : function () {
-      let c = db._create(name1, { shardingStrategy: "hash", shardKeys: ["value"], numberOfShards: 5 });
-      assertEqual("hash", c.properties()["shardingStrategy"]);
+      let c = db._create(name1, { shardingStrategy: hash, shardKeys: ["value"], numberOfShards: 5 });
+      assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
@@ -262,8 +225,8 @@ function DocumentShardingSuite() {
     },
 
     testCreateWithNonDefaultKeysNumericValues : function () {
-      let c = db._create(name1, { shardingStrategy: "hash", shardKeys: ["value"], numberOfShards: 5 });
-      assertEqual("hash", c.properties()["shardingStrategy"]);
+      let c = db._create(name1, { shardingStrategy: hash, shardKeys: ["value"], numberOfShards: 5 });
+      assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
@@ -280,8 +243,8 @@ function DocumentShardingSuite() {
     },
 
     testCreateWithNonDefaultKeysNullValues : function () {
-      let c = db._create(name1, { shardingStrategy: "hash", shardKeys: ["value"], numberOfShards: 5 });
-      assertEqual("hash", c.properties()["shardingStrategy"]);
+      let c = db._create(name1, { shardingStrategy: hash, shardKeys: ["value"], numberOfShards: 5 });
+      assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
@@ -340,10 +303,10 @@ function DocumentShardingSuite() {
     },
 
     testDistributeShardsLikeWithNonDefaultKeys : function () {
-      let c1 = db._create(name1, { shardingStrategy: "hash", shardKeys: ["value"], numberOfShards: 5 });
+      let c1 = db._create(name1, { shardingStrategy: hash, shardKeys: ["value"], numberOfShards: 5 });
       let c2 = db._create(name2, { distributeShardsLike: name1, shardKeys: ["value"] });
-      assertEqual("hash", c1.properties()["shardingStrategy"]);
-      assertEqual("hash", c2.properties()["shardingStrategy"]);
+      assertEqual(hash, c1.properties()["shardingStrategy"]);
+      assertEqual(hash, c2.properties()["shardingStrategy"]);
       assertEqual(5, c1.properties()["numberOfShards"]);
       assertEqual(5, c2.properties()["numberOfShards"]);
       assertEqual(["value"], c1.properties()["shardKeys"]);
@@ -416,8 +379,8 @@ function EdgeShardingSuite() {
     },
 
     testCreateWithCommunitySharding : function () {
-      let c = db._createEdgeCollection(name1, { shardingStrategy: "hash", numberOfShards: 5 });
-      assertEqual("hash", c.properties()["shardingStrategy"]);
+      let c = db._createEdgeCollection(name1, { shardingStrategy: hash, numberOfShards: 5 });
+      assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
@@ -432,7 +395,7 @@ function EdgeShardingSuite() {
       }
     },
 
-    testCreateWithEnterpriseCompatSharding : function () {
+    testCreateWithEnterpriseSharding : function () {
       if (!isEnterprise) {
         try {
           db._createEdgeCollection(name1, { shardingStrategy: "enterprise-compat", numberOfShards: 5 });
@@ -464,8 +427,8 @@ function EdgeShardingSuite() {
     },
 
     testCreateWithNonDefaultKeysMissingValues : function () {
-      let c = db._createEdgeCollection(name1, { shardingStrategy: "hash", shardKeys: ["value"], numberOfShards: 5 });
-      assertEqual("hash", c.properties()["shardingStrategy"]);
+      let c = db._createEdgeCollection(name1, { shardingStrategy: hash, shardKeys: ["value"], numberOfShards: 5 });
+      assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
@@ -482,8 +445,8 @@ function EdgeShardingSuite() {
     },
 
     testCreateWithNonDefaultKeysNumericValues : function () {
-      let c = db._createEdgeCollection(name1, { shardingStrategy: "hash", shardKeys: ["value"], numberOfShards: 5 });
-      assertEqual("hash", c.properties()["shardingStrategy"]);
+      let c = db._createEdgeCollection(name1, { shardingStrategy: hash, shardKeys: ["value"], numberOfShards: 5 });
+      assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
@@ -500,8 +463,8 @@ function EdgeShardingSuite() {
     },
 
     testCreateWithNonDefaultKeysNullValues : function () {
-      let c = db._createEdgeCollection(name1, { shardingStrategy: "hash", shardKeys: ["value"], numberOfShards: 5 });
-      assertEqual("hash", c.properties()["shardingStrategy"]);
+      let c = db._createEdgeCollection(name1, { shardingStrategy: hash, shardKeys: ["value"], numberOfShards: 5 });
+      assertEqual(hash, c.properties()["shardingStrategy"]);
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
@@ -560,10 +523,10 @@ function EdgeShardingSuite() {
     },
 
     testDistributeShardsLikeWithNonDefaultKeys : function () {
-      let c1 = db._createEdgeCollection(name1, { shardingStrategy: "hash", shardKeys: ["value"], numberOfShards: 5 });
+      let c1 = db._createEdgeCollection(name1, { shardingStrategy: hash, shardKeys: ["value"], numberOfShards: 5 });
       let c2 = db._createEdgeCollection(name2, { distributeShardsLike: name1, shardKeys: ["value"] });
-      assertEqual("hash", c1.properties()["shardingStrategy"]);
-      assertEqual("hash", c2.properties()["shardingStrategy"]);
+      assertEqual(hash, c1.properties()["shardingStrategy"]);
+      assertEqual(hash, c2.properties()["shardingStrategy"]);
       assertEqual(5, c1.properties()["numberOfShards"]);
       assertEqual(5, c2.properties()["numberOfShards"]);
       assertEqual(["value"], c1.properties()["shardKeys"]);
