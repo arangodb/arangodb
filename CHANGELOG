@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #5943: misplaced database ui icon and wrong cursor type were used
+
 * fixed internal issue #2812: Cluster fails to create many indexes in parallel
 
 * Added C++ implementation, load balancer support, and user restriction to Pregel API.
