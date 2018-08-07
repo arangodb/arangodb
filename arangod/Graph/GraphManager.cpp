@@ -150,7 +150,7 @@ bool GraphManager::renameGraphCollection(std::string oldName, std::string newNam
     }
     std::unique_ptr<Graph> graph;
     try {
-      graph = Graph::fromPersistence(graphSlice);
+      graph = Graph::fromPersistence(graphSlice, _vocbase);
     } catch (basics::Exception& e) {
       // return {e.message(), e.code()};
       return false;
@@ -242,7 +242,7 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
     }
     std::unique_ptr<Graph> graph;
     try {
-      graph = Graph::fromPersistence(graphSlice);
+      graph = Graph::fromPersistence(graphSlice, _vocbase);
     } catch (basics::Exception& e) {
       return {e.code(), e.message()};
     }
@@ -415,7 +415,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
     res.reset(res.errorNumber(), ss.str());
     return {res};
   }
-  return {Graph::fromPersistence(result.slice())};
+  return {Graph::fromPersistence(result.slice(), _vocbase)};
 }
 
 OperationResult GraphManager::createGraph(VPackSlice document,

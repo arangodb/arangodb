@@ -367,7 +367,7 @@ OperationResult GraphOperations::editEdgeDefinition(
   }
 
   for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-    std::unique_ptr<Graph> graph = Graph::fromPersistence(singleGraph.resolveExternals());
+    std::unique_ptr<Graph> graph = Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
     result =
         changeEdgeDefinitionForGraph(*(graph.get()), edgeDefinition, waitForSync, trx);
   }

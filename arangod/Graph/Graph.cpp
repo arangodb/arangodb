@@ -53,7 +53,7 @@ using VelocyPackHelper = basics::VelocyPackHelper;
 
 #ifndef USE_ENTERPRISE
 // Factory methods
-std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document) {
+std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t& vocbase) {
   std::unique_ptr<Graph> result{new Graph{document}};
   return result;
 }
