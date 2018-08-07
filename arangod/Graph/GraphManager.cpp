@@ -52,10 +52,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Aql/SmartGraph.h"
-#endif
-
 using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;

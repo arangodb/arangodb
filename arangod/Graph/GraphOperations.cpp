@@ -31,13 +31,9 @@
 #include <boost/variant.hpp>
 #include <utility>
 
-#include "Aql/AstNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/Query.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -48,11 +44,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Aql/SmartGraph.h"
-
-#endif
 
 using namespace arangodb;
 using namespace arangodb::graph;
