@@ -1169,7 +1169,7 @@ function parallelIndexSuite() {
           // wait for 3 minutes maximum
           fail();
         }
-        require("internal").wait(0.5, true);
+        require("internal").wait(0.5, false);
       }
         
       let indexes = require("internal").db._collection(cn).getIndexes();
@@ -1177,9 +1177,9 @@ function parallelIndexSuite() {
     },
 
     testCreateInParallelDuplicate: function () {
-      let n = 80;
+      let n = 100;
       for (let i = 0; i < n; ++i) {
-        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + (i % 2) + '"] });';
+        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + (i % 4) + '"] });';
         tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
       }
 
@@ -1187,7 +1187,7 @@ function parallelIndexSuite() {
       let start = time();
       while (true) {
         let indexes = require("internal").db._collection(cn).getIndexes();
-        if (indexes.length === 2 + 1) {
+        if (indexes.length === 4 + 1) {
           // primary index + user-defined indexes
           break;
         }
@@ -1195,11 +1195,17 @@ function parallelIndexSuite() {
           // wait for 3 minutes maximum
           fail();
         }
-        require("internal").wait(0.5, true);
+        require("internal").wait(0.5, false);
       }
+      
+      // wait some extra time because we just have 4 distinct indexes
+      // these will be created relatively quickly. by waiting here a bit
+      // we give the other pending tasks a chance to execute too (but they
+      // will not do anything because the target indexes already exist)
+      require("internal").wait(5, false);
         
       let indexes = require("internal").db._collection(cn).getIndexes();
-      assertEqual(2 + 1, indexes.length);
+      assertEqual(4 + 1, indexes.length);
     }
 
   };
