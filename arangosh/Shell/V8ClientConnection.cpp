@@ -1376,7 +1376,6 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     }
     req->addBinary(reinterpret_cast<uint8_t const*>(contents.data()), contents.length());
   } else if (body->IsString()) { // assume JSON
-    LOG_DEVEL << "Sending JSON " << location;
     TRI_Utf8ValueNFC bodyString(body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     req->header.contentType(fuerte::ContentType::Json);
@@ -1420,7 +1419,6 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     req->header.meta.emplace(std::move(pair));
   }
   if (body->IsString()) { // assume JSON
-    LOG_DEVEL << "Sending JSON " << location;
     TRI_Utf8ValueNFC bodyString(body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     req->header.contentType(fuerte::ContentType::Json);
