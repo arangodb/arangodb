@@ -852,7 +852,6 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice const& upper) {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto rocksColl = toRocksDBCollection(&_collection);
-  ManagedDocumentResult mmdr;
   bool needsInsert = false;
   std::string previous = "";
   VPackBuilder builder;
@@ -944,17 +943,15 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
     }
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
-      if (rocksColl->readDocument(trx, docId, mmdr)) {
+      if (!rocksColl->readDocumentWithCallback(trx, docId, [&](LocalDocumentId const&, VPackSlice doc) {
         builder.add(VPackValue(docId.id()));
-
-        VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =
             _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
                          : transaction::helpers::extractFromFromDocument(doc);
         TRI_ASSERT(toFrom.isString());
         builder.add(toFrom);
+      })) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      } else {
         // Data Inconsistency.
         // We have a revision id without a document...
         TRI_ASSERT(false);

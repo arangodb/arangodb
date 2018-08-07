@@ -725,6 +725,30 @@ LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
   return primaryIndex()->lookupKey(trx, StringRef(key));
 }
 
+bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
+                                       VPackSlice const& key,
+                                       TRI_voc_rid_t& revisionId) const {
+  TRI_ASSERT(key.isString());
+  LocalDocumentId documentId;
+  revisionId = 0;
+  // lookup the revision id in the primary index
+  if (!primaryIndex()->lookupRevision(trx, StringRef(key), documentId, revisionId)) {
+    // document not found
+    TRI_ASSERT(revisionId == 0);
+    return false;
+  }
+
+  // document found, but revisionId may not have been present in the primary index
+  // this can happen for "older" collections
+  TRI_ASSERT(documentId.isSet());
+
+  // now look up the revision id in the actual document data
+        
+  return readDocumentWithCallback(trx, documentId, [&revisionId](LocalDocumentId const&, VPackSlice doc) {
+    revisionId = transaction::helpers::extractRevFromDocument(doc);
+  });
+}
+
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
@@ -1134,6 +1158,22 @@ void RocksDBCollection::figuresSpecific(
           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
   builder->add("documentsSize", VPackValue(out));
+  bool cacheInUse = useCache();
+  builder->add("cacheInUse", VPackValue(cacheInUse));
+  if (cacheInUse) {
+    builder->add("cacheSize", VPackValue(_cache->size()));
+    builder->add("cacheUsage", VPackValue(_cache->usage()));
+    auto hitRates = _cache->hitRates();
+    double rate = hitRates.first;
+    rate = std::isnan(rate) ? 0.0 : rate;
+    builder->add("cacheLifeTimeHitRate", VPackValue(rate));
+    rate = hitRates.second;
+    rate = std::isnan(rate) ? 0.0 : rate;
+    builder->add("cacheWindowedHitRate", VPackValue(rate));
+  } else {
+    builder->add("cacheSize", VPackValue(0));
+    builder->add("cacheUsage", VPackValue(0));
+  }
 }
 
 void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
@@ -1234,24 +1274,21 @@ arangodb::Result RocksDBCollection::fillIndexes(
   }
 
   // we will need to remove index elements created before an error
-  // occured, this needs to happen since we are non transactional
+  // occurred, this needs to happen since we are non transactional
   if (!res.ok()) {
     it->reset();
     batch.Clear();
 
-    ManagedDocumentResult mmdr;
-
     arangodb::Result res2;  // do not overwrite original error
     auto removeCb = [&](LocalDocumentId token) {
-      if (res2.ok() && numDocsWritten > 0 &&
-          this->readDocument(trx, token, mmdr)) {
-        // we need to remove already inserted documents up to numDocsWritten
-        res2 = ridx->removeInternal(trx, &batched, mmdr.localDocumentId(),
-                                    VPackSlice(mmdr.vpack()),
-                                    Index::OperationMode::rollback);
-        if (res2.ok()) {
-          numDocsWritten--;
-        }
+      if (res2.ok() && numDocsWritten > 0) {
+        readDocumentWithCallback(trx, token, [&](LocalDocumentId const& documentId, VPackSlice doc) {
+          // we need to remove already inserted documents up to numDocsWritten
+          res2 = ridx->removeInternal(trx, &batched, documentId, doc, Index::OperationMode::rollback);
+          if (res2.ok()) {
+            numDocsWritten--;
+          }
+        });
       }
     };
 

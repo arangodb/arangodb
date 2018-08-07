@@ -78,7 +78,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// this method is also used by derived classes
   //////////////////////////////////////////////////////////////////////////////
 
-  bool registerQueryOrCursor(arangodb::velocypack::Slice const& body);
+  RestStatus registerQueryOrCursor(arangodb::velocypack::Slice const& body);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Process the query registered in _query.
@@ -88,6 +88,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   RestStatus processQuery();
 
+  /// @brief returns the short id of the server which should handle this request
   virtual uint32_t forwardingTarget() override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -100,7 +101,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief handle the result returned by the query. This function is guaranteed
   ///        to not be interrupted and is guaranteed to get a complete queryResult.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void handleQueryResult();
+  virtual RestStatus handleQueryResult();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query was canceled
@@ -134,7 +135,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// registry if required
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
+  RestStatus generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results
@@ -174,6 +175,11 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::aql::QueryRegistry* _queryRegistry;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief leased query cursor, may be set by query continuation
+  //////////////////////////////////////////////////////////////////////////////
+  Cursor* _leasedCursor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for currently running query
@@ -208,6 +214,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 
+  
 };
 }
 

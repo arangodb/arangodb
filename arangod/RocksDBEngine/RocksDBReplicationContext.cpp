@@ -412,12 +412,12 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
     if (!RocksDBValue::revisionId(rocksValue, docRev)) {
       // for collections that do not have the revisionId in the value
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
-      if (_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
+      if (false == _collection->logical.readDocumentWithCallback(_trx.get(), documentId, [&docRev](LocalDocumentId const&, VPackSlice doc) {
+        docRev = TRI_ExtractRevisionId(doc);
+      })) {
         TRI_ASSERT(false);
         return true;
       }
-      VPackSlice doc(_collection->mdr.vpack());
-      docRev = TRI_ExtractRevisionId(doc);
     }
 
     // set type
@@ -533,12 +533,12 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     if (!RocksDBValue::revisionId(rocksValue, docRev)) {
       // for collections that do not have the revisionId in the value
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
-      if (_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
+      if (false == _collection->logical.readDocumentWithCallback(_trx.get(), documentId, [&docRev](LocalDocumentId const&, VPackSlice doc) {
+        docRev = TRI_ExtractRevisionId(doc);
+      })) {
         TRI_ASSERT(false);
         return true;
       }
-      VPackSlice doc(_collection->mdr.vpack());
-      docRev = TRI_ExtractRevisionId(doc);
     }
 
     StringRef docKey(RocksDBKey::primaryKey(rocksKey));
@@ -621,14 +621,14 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
 
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     auto documentId = RocksDBValue::documentId(rocksValue);
-    bool ok = _collection->logical.readDocument(_trx.get(), documentId, _collection->mdr);
+    bool ok = _collection->logical.readDocumentWithCallback(_trx.get(), documentId, [&b](LocalDocumentId const&, VPackSlice doc) {
+      TRI_ASSERT(doc.isObject());
+      b.add(doc);
+    });
     if (!ok) {
       // TODO: do something here?
       return true;
     }
-    VPackSlice current(_collection->mdr.vpack());
-    TRI_ASSERT(current.isObject());
-    b.add(current);
     return true;
   };
 

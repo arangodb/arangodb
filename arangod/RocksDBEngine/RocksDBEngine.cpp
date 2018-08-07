@@ -2026,8 +2026,6 @@ Result RocksDBEngine::handleSyncKeys(
 
 Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
                                         VPackBuilder& builder) {
-  flushWal(false, false, false);
-
   builder.openObject();  // Base
   rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();
 
@@ -2045,6 +2043,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   builder.add("server", VPackValue(VPackValueType::Object));  // open
   builder.add("version", VPackValue(ARANGODB_VERSION));
   builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.add("engine", VPackValue(EngineName)); // "rocksdb"
   builder.close();
 
   // "clients" part

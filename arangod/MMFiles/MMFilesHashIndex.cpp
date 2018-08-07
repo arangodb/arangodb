@@ -613,12 +613,11 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
       IndexResult error(res, this);
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         LocalDocumentId rev(_uniqueArray->_hashArray->find(&context, hashElement)->localDocumentId());
-        ManagedDocumentResult mmdr;
+        std::string existingId;
 
-        _collection.getPhysical()->readDocument(trx, rev, mmdr);
-
-        std::string existingId(
-          VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
+        _collection.getPhysical()->readDocumentWithCallback(trx, rev, [&existingId](LocalDocumentId const&, VPackSlice doc) {
+          existingId = doc.get(StaticStrings::KeyString).copyString();
+        });
 
         if (mode == OperationMode::internal) {
           error = IndexResult(res, std::move(existingId));
