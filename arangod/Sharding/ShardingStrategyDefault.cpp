@@ -218,32 +218,28 @@ uint64_t ShardingStrategyHashBase::hashByAttributes(
         if (realAttr == StaticStrings::KeyString && !key.empty()) {
           temporaryBuilder.add(VPackValue(key));
           sub = temporaryBuilder.slice();
-          hash = sub.normalizedHash(hash);
-          continue;
+        } else {
+          if (!docComplete) {
+            error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+          }
+          // Null is equal to None/not present
+          sub = VPackSlice::nullSlice();
         }
-
-        if (!docComplete) {
-          error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-        }
-        // Null is equal to None/not present
-        sub = VPackSlice::nullSlice();
       }
       sub = ::buildTemporarySlice(sub, part, temporaryBuilder, false);
       hash = sub.normalizedHash(hash);
     }
-  } else if (slice.isString() && attributes.size() == 1 &&
-             attributes[0] == StaticStrings::KeyString) {
-    arangodb::StringRef subKey(slice);
-    size_t pos = subKey.find('/');
-    if (pos != std::string::npos) {
-      // We have an _id. Split it.
-      subKey = subKey.substr(pos + 1);
-      VPackBuilder tempBuilder;
-      tempBuilder.add(VPackValuePair(subKey.data(), subKey.length(), VPackValueType::String));
-      VPackSlice tmp = tempBuilder.slice();
-      hash = tmp.normalizedHash(hash);
-    } else {
-      hash = slice.normalizedHash(hash);
+  } else if (slice.isString() && attributes.size() == 1) {
+    std::string realAttr;
+    ::Part part;
+    ::parseAttributeAndPart(attributes[0], realAttr, part);
+    if (realAttr == StaticStrings::KeyString && key.empty()) {
+      // We always need the _key part. Everything else should be ignored
+      // beforehand.
+      VPackBuilder temporaryBuilder;
+      VPackSlice sub =
+          ::buildTemporarySlice(slice, part, temporaryBuilder, true);
+      hash = sub.normalizedHash(hash);
     }
   }
 
