@@ -627,6 +627,13 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 
     return rocksdb::Status();
   }
+  
+  rocksdb::Status DeleteRangeCF(uint32_t /*column_family_id*/,
+                               const rocksdb::Slice& /*begin_key*/,
+                               const rocksdb::Slice& /*end_key*/) override {
+    // drop and truncate may use this, but we do not look at these
+    return rocksdb::Status(); // make WAL iterator happy
+  }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     // starting new write batch
