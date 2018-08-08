@@ -816,7 +816,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase()), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
-
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -981,7 +981,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             SingleCollectionTransaction trx(
                 transaction::StandaloneContext::Create(vocbase()), col->cid(),
                 AccessMode::Type::EXCLUSIVE);
-
+            trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             Result res = trx.begin();
 
             if (!res.ok()) {

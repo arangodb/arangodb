@@ -466,8 +466,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   // We also hold the lock.
   // Create it
 
-  idx =
-      idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
   TRI_ASSERT(idx != nullptr);
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
@@ -546,12 +545,12 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-  TRI_ASSERT(newIdx != nullptr);
+  if (newIdx == nullptr) {
+    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+  }
 
   auto const id = newIdx->id();
-
   TRI_UpdateTickServer(id);
-
   for (auto& it : _indexes) {
     if (it->id() == id) {
       // index already exists
