@@ -146,14 +146,16 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, path.c_str());
     return true; // locked
   }
 
   // check pid
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, path.c_str());
     return true; // locked
   }
 
@@ -339,7 +341,7 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, file);
     return true; // locked
   }
 
@@ -351,7 +353,7 @@ bool verify_lock_file(const file_path_t file) {
   // check pid
   const char* pid = buf+len+1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, file);
     return true; // locked
   }
 
