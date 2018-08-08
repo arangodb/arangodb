@@ -50,14 +50,49 @@ CreateCollection::CreateCollection(
   MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc) {
 
-  //Todo: runtime behaviour
-  
-  TRI_ASSERT(desc.has(SHARD));
-  TRI_ASSERT(desc.has(COLLECTION));
+  if (!desc.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateCollection: database must be specified";
+    setState(FAILED);
+  }
   TRI_ASSERT(desc.has(DATABASE));
+  
+  if (!desc.has(COLLECTION)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateCollection: cluster-wide collection must be specified";
+    setState(FAILED);
+  }
+  TRI_ASSERT(desc.has(COLLECTION));
+  
+  if (!desc.has(SHARD)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateCollection: shard must be specified";
+    setState(FAILED);
+  }
+  TRI_ASSERT(desc.has(SHARD));
+  
+  if (!desc.has(LEADER)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateCollection: shard leader must be specified";
+    setState(FAILED);
+  }
   TRI_ASSERT(desc.has(LEADER));
-  TRI_ASSERT(properties().hasKey(TYPE));
-  TRI_ASSERT(properties().get(TYPE).isInteger());  
+
+  if (!properties().hasKey(TYPE) || !properties().get(TYPE).isNumber()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateCollection: properties slice must specify collection type";
+    setState(FAILED);
+  }
+  TRI_ASSERT(properties().hasKey(TYPE) && properties().get(TYPE).isNumber());
+
+  uint32_t const type = properties().get(TYPE).getNumber<uint32_t>();
+  if (type != TRI_COL_TYPE_DOCUMENT && type != TRI_COL_TYPE_EDGE) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateCollection: invalid collection type number " << type;
+    setState(FAILED);    
+  }
+  TRI_ASSERT(type == TRI_COL_TYPE_DOCUMENT || type == TRI_COL_TYPE_EDGE);
+  
 }
 
 CreateCollection::~CreateCollection() {};
@@ -121,13 +156,13 @@ bool CreateCollection::first() {
     vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
     [=](LogicalCollection& col) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
-        << "/" << shard << " successfully created";
+      << "/" << shard << " successfully created";
       col.followers()->setTheLeader(leader);
       if (leader.empty()) {
         col.followers()->clear();
       }
     });
-
+  
   if (_result.fail()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "creating local shard '" << database << "/" << shard

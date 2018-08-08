@@ -37,7 +37,14 @@ using namespace arangodb::methods;
 CreateDatabase::CreateDatabase(
   MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc) {
+
+  if (!desc.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateDatabase: database must be specified";
+    setState(FAILED);
+  }
   TRI_ASSERT(desc.has(DATABASE));
+
 }
 
 CreateDatabase::~CreateDatabase() {};
@@ -47,13 +54,15 @@ bool CreateDatabase::first() {
   VPackSlice users;
   auto database = _description.get(DATABASE);
 
-  LOG_TOPIC(INFO, Logger::MAINTENANCE) << "creating database " << database;
+  LOG_TOPIC(INFO, Logger::MAINTENANCE)
+    << "CreateDatabase: creating database " << database;
   
   auto* systemVocbase =
     ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
 
   if (systemVocbase == nullptr) {
-    LOG_TOPIC(FATAL, Logger::MAINTENANCE) << "could not determine _system database";
+    LOG_TOPIC(FATAL, Logger::MAINTENANCE)
+      << "CreateDatabase: could not determine _system database";
     FATAL_ERROR_EXIT();
   }
   
@@ -61,10 +70,12 @@ bool CreateDatabase::first() {
   _result = Databases::create(_description.get(DATABASE), users, properties());
   if (!_result.ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "failed to create database " << database << ": " << _result;
+      << "CreateDatabase: failed to create database " << database << ": " << _result;
   }
 
-  LOG_TOPIC(INFO, Logger::MAINTENANCE) << "database  " << database << " created";
+  setState(COMPLETE);
+  LOG_TOPIC(INFO, Logger::MAINTENANCE)
+    << "CreateDatabase: database  " << database << " created";
   return false;
 
 }

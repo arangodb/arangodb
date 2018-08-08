@@ -37,8 +37,21 @@ using namespace arangodb::methods;
 DropCollection::DropCollection(
   MaintenanceFeature& feature, ActionDescription const& d) :
   ActionBase(feature, d) {
+
+  if (!d.has(COLLECTION)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "DropCollection: collection must be specified";
+    setState(FAILED);
+  }
   TRI_ASSERT(d.has(COLLECTION));
+
+  if (!d.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "DropCollection: database must be specified";
+    setState(FAILED);
+  }
   TRI_ASSERT(d.has(DATABASE));
+  
 }
 
 DropCollection::~DropCollection() {};
@@ -50,9 +63,13 @@ bool DropCollection::first() {
 
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
-    std::string errorMsg("DropCollection: Failed to lookup database ");
+    std::string errorMsg("failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "DropCollection: failed to drop local collection " << database
+      << "/" << collection << ": " << errorMsg;
+    setState(FAILED);
     return false;
   }
 
@@ -64,11 +81,15 @@ bool DropCollection::first() {
     });
 
   if (found.fail()) {
-    std::string errorMsg("DropCollection: Failed to lookup local collection ");
-    errorMsg += collection + "in database " + database;
+    std::string errorMsg("DropCollection: failed to lookup local collection ");
+    errorMsg += database + "/" + collection;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    setState(FAILED);
+    return false;
   }
-  
+
+  setState(COMPLETE);
   return false;
   
 }

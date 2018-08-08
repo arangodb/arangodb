@@ -40,9 +40,42 @@ using namespace arangodb::methods;
 EnsureIndex::EnsureIndex(
   MaintenanceFeature& feature, ActionDescription const& desc) :
   ActionBase(feature, desc) {
-  TRI_ASSERT(properties().hasKey(ID));
-  TRI_ASSERT(desc.has(COLLECTION));
+
+  if (!desc.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateCollection: database must be specified";
+    setState(FAILED);
+  }
   TRI_ASSERT(desc.has(DATABASE));
+  
+  if (!desc.has(COLLECTION)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "CreateCollection: cluster-wide collection must be specified";
+    setState(FAILED);
+  }
+  TRI_ASSERT(desc.has(COLLECTION));
+  
+  if (!properties().hasKey(ID)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "EnsureIndex: index properties must include id";
+    setState(FAILED);
+  }
+  TRI_ASSERT(properties().hasKey(ID));
+
+  if (!desc.has(TYPE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "EnsureIndex: index type must be specified - discriminatory";
+    setState(FAILED);
+  }
+  TRI_ASSERT(desc.has(TYPE));
+
+  if (!desc.has(FIELDS)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "EnsureIndex: index fields must be specified - discriminatory";
+    setState(FAILED);
+  }
+  TRI_ASSERT(desc.has(FIELDS));
+
 }
 
 EnsureIndex::~EnsureIndex() {};

@@ -52,13 +52,13 @@ ResignShardLeadership::ResignShardLeadership(
   if (!desc.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "ResignShardLeadership: database must be specified";
-    _state = FAILED;
+    setState(FAILED);
   }
   
   if (!desc.has(SHARD)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "ResignShardLeadership: shard must be specified";
-    _state = FAILED;
+    setState(FAILED);
   }
   
 }
@@ -122,8 +122,10 @@ bool ResignShardLeadership::first() {
       THROW_ARANGO_EXCEPTION(res);
      }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "exception thrown when resigning:" << e.what();
+    std::string errorMsg( "ResignLeadership: exception thrown when resigning:");
+    errorMsg += e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    _result = Result(TRI_ERROR_INTERNAL, errorMsg);
     setState(FAILED);
     return false;
   }
