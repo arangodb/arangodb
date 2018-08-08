@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"attribute"</span> : <span class="hljs-string">"text"</span>, 
@@ -13,15 +13,15 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13613"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13613"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XGh_FX6--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103680"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103680"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9zD---_"</span>, 
       <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text contains word"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13617"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13617"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XGh_FX6--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103684"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103684"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9zD---B"</span>, 
       <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text also has a word"</span> 
     } 
   ], 
