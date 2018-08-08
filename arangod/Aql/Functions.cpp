@@ -2911,8 +2911,8 @@ AqlValue Functions::RegexMatches(arangodb::aql::Query* query,
     matcher->reset(valueToMatch); 
     bool find = matcher->find();
     if (find) {
-        for (int i = 0; i < matcher->groupCount(); i++) {
-            UnicodeString match = matcher->group(status);
+        for (int i = 0; i <= matcher->groupCount(); i++) {
+            UnicodeString match = matcher->group(i, status);
             if (U_FAILURE(status)) {
                 ::registerICUWarning(query, AFN, status);
                 return AqlValue(AqlValueHintNull());
