@@ -63,6 +63,22 @@ ActionBase::~ActionBase() {
   }
 }
 
+
+bool ActionBase::first() {
+  _actionStarted = std::chrono::system_clock::now();
+  return false;
+}
+
+void ActionBase::complete() {
+  _actionDone = std::chrono::system_clock::now();
+  setState(COMPLETE);
+}
+
+void ActionBase::fail() {
+  _actionDone = std::chrono::system_clock::now();
+  setState(FAILED);
+}
+
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
   bool ret_flag;

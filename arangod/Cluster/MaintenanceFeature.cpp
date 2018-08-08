@@ -410,7 +410,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
       } // for
     } // WRITE
 
-    // no pointer ... wait 1 second
+    // no pointer ... wait 5 second
     if (!_isShuttingDown && !ret_ptr) {
     CONDITION_LOCKER(cLock, _actionRegistryCond);
       _actionRegistryCond.wait(100000);

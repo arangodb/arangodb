@@ -58,7 +58,7 @@ class ActionBase {
   /// @brief initial call to object to perform a unit of work.
   ///   really short tasks could do all work here and return false
   /// @return true to continue processing, false done (result() set)
-  virtual bool first() = 0 ;
+  virtual bool first();
 
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
@@ -97,6 +97,9 @@ class ActionBase {
   ActionState state() const {
     return _state;
   }
+
+  void complete();
+  void fail();
 
   virtual arangodb::Result run(
     std::chrono::duration<double> const&, bool& finished);

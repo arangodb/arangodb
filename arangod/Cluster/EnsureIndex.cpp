@@ -44,35 +44,35 @@ EnsureIndex::EnsureIndex(
   if (!desc.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "CreateCollection: database must be specified";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(desc.has(DATABASE));
   
   if (!desc.has(COLLECTION)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "CreateCollection: cluster-wide collection must be specified";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(desc.has(COLLECTION));
   
   if (!properties().hasKey(ID)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "EnsureIndex: index properties must include id";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(properties().hasKey(ID));
 
   if (!desc.has(TYPE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "EnsureIndex: index type must be specified - discriminatory";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(desc.has(TYPE));
 
   if (!desc.has(FIELDS)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "EnsureIndex: index fields must be specified - discriminatory";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(desc.has(FIELDS));
 
@@ -81,6 +81,9 @@ EnsureIndex::EnsureIndex(
 EnsureIndex::~EnsureIndex() {};
 
 bool EnsureIndex::first() {
+
+  ActionBase::first();
+  
   arangodb::Result res;
 
   auto const& database = _description.get(DATABASE);
@@ -92,7 +95,7 @@ bool EnsureIndex::first() {
     std::string errorMsg("EnsureIndex: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    setState(FAILED);
+    fail();
     return false;
   }
 
@@ -101,7 +104,7 @@ bool EnsureIndex::first() {
     std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
     errorMsg += collection + " in database " + database;
     _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-    setState(FAILED);
+    fail();
     return false;
   }
 
@@ -125,11 +128,11 @@ bool EnsureIndex::first() {
   } else {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "Failed to ensure index " << body.slice().toJson();
-    setState(FAILED);
+    fail();
     return false;
   }
 
-  setState(COMPLETE);
+  complete();
   return false;
 
 }

@@ -89,26 +89,27 @@ SynchronizeShard::SynchronizeShard(
   if (!desc.has(COLLECTION)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "SynchronizeShard: collection must be specified";
-    setState(FAILED);
+    fail();
   }
 
   if (!desc.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "SynchronizeShard: database must be specified";
-    setState(FAILED);
+    fail();
   }
 
   if (!desc.has(SHARD)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "SynchronizeShard: SHARD must be stecified";
-    setState(FAILED);
+    fail();
   }
 
   if (!desc.has(LEADER)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "SynchronizeShard: leader must be stecified";
-    setState(FAILED);
+    fail();
   }
+
 }
 
 class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
@@ -139,7 +140,7 @@ arangodb::Result getReadLockId (
 
   auto result = comres->result;
 
-  if (result->getHttpReturnCode() == 200) {
+  if (result != nullptr && result->getHttpReturnCode() == 200) {
     auto const idv = comres->result->getBodyVelocyPack();
     auto const& idSlice = idv->slice();
     TRI_ASSERT(idSlice.isObject());
@@ -244,26 +245,17 @@ arangodb::Result addShardFollower (
   auto result = comres->result;
   std::string errorMessage (
     "addShardFollower: could not add us to the leader's follower list. ");
-  if (result != nullptr) {
-    if (result->getHttpReturnCode() != 200) {
-      if (lockJobId != 0) {
-        errorMessage += comres->stringifyErrorMessage();
-        LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
-      } else {
-        errorMessage += "with shortcut.";
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
-      }
-      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
-    }
-  } else {
+  if (result == nullptr || result->getHttpReturnCode() != 200) {
     if (lockJobId != 0) {
+      errorMessage += comres->stringifyErrorMessage();
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+    } else {
       errorMessage += "with shortcut.";
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
-    } else {
-      errorMessage += " null result.";
-      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
+    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
   }
+
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
   return arangodb::Result();
 
@@ -273,6 +265,7 @@ arangodb::Result addShardFollower (
 arangodb::Result removeShardFollower (
   std::string const& endpoint, std::string const& database,
   std::string const& shard, std::string const& clientId, double timeout = 120.0) {
+
 
   LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
     "removeShardFollower: tell the leader to take us off the follower list...";
@@ -298,7 +291,7 @@ arangodb::Result removeShardFollower (
     std::unordered_map<std::string, std::string>(), timeout);
 
   auto result = comres->result;
-  if (result->getHttpReturnCode() != 200) {
+  if (result == nullptr || result->getHttpReturnCode() != 200) {
     std::string errorMessage(
       "removeShardFollower: could not remove us from the leader's follower list: ");
     errorMessage += result->getHttpReturnCode();
@@ -315,7 +308,7 @@ arangodb::Result removeShardFollower (
 arangodb::Result cancelReadLockOnLeader (
   std::string const& endpoint, std::string const& database,
   uint64_t lockJobId, std::string const& clientId,
-  double timeout = 120.0) {
+  double timeout = 10.0) {
 
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
@@ -336,7 +329,8 @@ arangodb::Result cancelReadLockOnLeader (
     std::unordered_map<std::string, std::string>(), timeout);
 
   auto result = comres->result;
-  if (result->getHttpReturnCode() != 200) {
+  
+  if (result == nullptr || result->getHttpReturnCode() != 200) {
     auto errorMessage = comres->stringifyErrorMessage();
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "cancelReadLockOnLeader: exception caught for " << body.toJson()
@@ -369,10 +363,10 @@ arangodb::Result cancelBarrier(
     clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
     DB + database + REPL_BARRIER_API + std::to_string(barrierId), std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
-
+  
   if (comres->status == CL_COMM_SENT) {
     auto result = comres->result;
-    if (result->getHttpReturnCode() != 200 &&
+    if (result != nullptr && result->getHttpReturnCode() != 200 &&
         result->getHttpReturnCode() != 204) {
       auto errorMessage = comres->stringifyErrorMessage();
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
@@ -432,7 +426,7 @@ arangodb::Result SynchronizeShard::getReadLock(
       std::unordered_map<std::string, std::string>(), timeout);
 
     auto result = putres->result;
-    if (result->getHttpReturnCode() == 200) {
+    if (result != nullptr && result->getHttpReturnCode() == 200) {
       auto const vp = putres->result->getBodyVelocyPack();
       auto const& slice = vp->slice();
       TRI_ASSERT(slice.isObject());
@@ -443,7 +437,6 @@ arangodb::Result SynchronizeShard::getReadLock(
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Lock not yet acquired...";
     } else {
-
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Do not see read lock yet:"
         << putres->stringifyErrorMessage();
@@ -464,7 +457,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     auto r = cc->syncRequest(
       clientId, 1, endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
-    if (r->result->getHttpReturnCode() != 200) {
+    if (r->result == nullptr && r->result->getHttpReturnCode() != 200) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "startReadLockOnLeader: cancelation error for shard - " << collection
         << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
@@ -650,7 +643,7 @@ arangodb::Result SynchronizeShard::synchronise() {
   while(true) {
 
     if (isStopping()) {
-      _state = FAILED;
+      
       return Result(TRI_ERROR_INTERNAL, "shutting down");
     }
 
@@ -666,7 +659,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         << "synchronizeOneShard: cancelled, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
         << startTimeStr << ", ended " << timepointToString(endTime);
-      _state = FAILED;
+      fail();
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
@@ -693,7 +686,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         << "synchronizeOneShard: already done, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
         << startTimeStr << ", ended " << timepointToString(endTime);
-      _state = FAILED;
+      fail();
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
@@ -712,7 +705,7 @@ arangodb::Result SynchronizeShard::synchronise() {
       "SynchronizeShard::SynchronizeOneShard: Failed to lookup database ");
     errorMsg += database;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    _state = FAILED;
+    fail();
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
 
@@ -722,7 +715,7 @@ arangodb::Result SynchronizeShard::synchronise() {
       "SynchronizeShard::synchronizeOneShard: Failed to lookup local shard ");
     errorMsg += shard;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    _state=FAILED;
+    fail();
     return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
   }
 
@@ -733,7 +726,7 @@ arangodb::Result SynchronizeShard::synchronise() {
       "SynchronizeShard::synchronizeOneShard: Failed to get a count on leader ");
     errorMsg += shard;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    _state=FAILED;
+    fail();
     return arangodb::Result(TRI_ERROR_INTERNAL, errorMsg);
   }
 
@@ -755,7 +748,7 @@ arangodb::Result SynchronizeShard::synchronise() {
           shard << ", " << database << "/" << planId <<", started: " << startTimeStr
           << " ended: " << timepointToString(endTime);
         collection->followers()->setTheLeader(leader);
-        _state=COMPLETE;
+        complete();
         return Result();
       }
     } catch (...) {}
@@ -769,7 +762,7 @@ arangodb::Result SynchronizeShard::synchronise() {
     // First once without a read transaction:
 
     if (isStopping()) {
-      _state=FAILED;
+      fail();
       return Result(TRI_ERROR_INTERNAL, "server is shutting down");
     }
 
@@ -826,7 +819,7 @@ arangodb::Result SynchronizeShard::synchronise() {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "synchronizeOneShard: could not initially synchronize shard " << shard
         << syncRes.errorMessage();
-      _state=FAILED;
+      fail();
       return syncRes;
 
     } else {
@@ -850,7 +843,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         std::string errorMessage("synchronizeOneShard: Shard ");
         errorMessage += shard + " seems to be gone from leader!";
         LOG_TOPIC(ERR,  Logger::MAINTENANCE) << errorMessage;
-        _state=FAILED;
+        fail();
         return Result(TRI_ERROR_INTERNAL, errorMessage);
 
       } else {
@@ -927,7 +920,7 @@ arangodb::Result SynchronizeShard::synchronise() {
       << "synchronization of local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << planId << "' failed: "
       << e.what() << timepointToString(endTime);
-    _state=FAILED;
+    fail();
     return Result (TRI_ERROR_INTERNAL, e.what());
   }
 
@@ -938,6 +931,7 @@ arangodb::Result SynchronizeShard::synchronise() {
     << database << "/" << planId << ", started: "
     << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
 
+  complete();
   return Result();
 
 }
@@ -945,8 +939,8 @@ arangodb::Result SynchronizeShard::synchronise() {
 SynchronizeShard::~SynchronizeShard() {};
 
 bool SynchronizeShard::first() {
+  ActionBase::first();
   arangodb::Result res = synchronise();
-  _state=COMPLETE;
   return false;
 }
 

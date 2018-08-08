@@ -42,21 +42,21 @@ DropIndex::DropIndex(
   if (!d.has(COLLECTION)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropIndex: collection must be specified";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(d.has(COLLECTION));
 
   if (!d.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropIndex: database must be specified";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(d.has(DATABASE));
 
   if (!d.has(INDEX)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropIndex: index id must be stecified";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(d.has(INDEX));
 
@@ -65,6 +65,8 @@ DropIndex::DropIndex(
 DropIndex::~DropIndex() {};
 
 bool DropIndex::first() {
+
+  ActionBase::first();
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
@@ -79,7 +81,7 @@ bool DropIndex::first() {
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    setState(FAILED);
+    fail();
     return false;
   }
 
@@ -89,7 +91,7 @@ bool DropIndex::first() {
     errorMsg += collection + " in database " + database;
     _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    setState(FAILED);
+    fail();
     return false;
   }
 
@@ -105,10 +107,10 @@ bool DropIndex::first() {
     errorMsg += collection + "in database " + database;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    setState(FAILED);
+    fail();
     return false;
   }
 
-  setState(COMPLETE);
+  complete();
   return false;
 }

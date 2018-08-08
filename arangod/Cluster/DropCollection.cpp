@@ -41,14 +41,14 @@ DropCollection::DropCollection(
   if (!d.has(COLLECTION)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropCollection: collection must be specified";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(d.has(COLLECTION));
 
   if (!d.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropCollection: database must be specified";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(d.has(DATABASE));
   
@@ -57,6 +57,8 @@ DropCollection::DropCollection(
 DropCollection::~DropCollection() {};
 
 bool DropCollection::first() {
+
+  ActionBase::first();
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
@@ -69,7 +71,7 @@ bool DropCollection::first() {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropCollection: failed to drop local collection " << database
       << "/" << collection << ": " << errorMsg;
-    setState(FAILED);
+    fail();
     return false;
   }
 
@@ -85,11 +87,11 @@ bool DropCollection::first() {
     errorMsg += database + "/" + collection;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    setState(FAILED);
+    fail();
     return false;
   }
 
-  setState(COMPLETE);
+  complete();
   return false;
   
 }

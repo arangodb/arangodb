@@ -40,7 +40,7 @@ DropDatabase::DropDatabase(
   if (!desc.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropDatabase: database must be specified";
-    setState(FAILED);
+    fail();
   }
   TRI_ASSERT(desc.has(DATABASE));
 
@@ -49,6 +49,8 @@ DropDatabase::DropDatabase(
 DropDatabase::~DropDatabase() {};
 
 bool DropDatabase::first() {
+
+  ActionBase::first();
 
   auto const& database = _description.get(DATABASE);
   auto* systemVocbase =
@@ -64,11 +66,11 @@ bool DropDatabase::first() {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "DropDatabase: dropping database " << database << " failed: "
       << result.errorMessage();
-    setState(FAILED);
+    fail();
     return false;
   }
   
-  setState(COMPLETE);
+  complete();
   return false;
 
 }
