@@ -67,8 +67,8 @@ void MaintenanceFeature::init() {
 
   // these parameters might be updated by config and/or command line options
   _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors() +1);
-  _secondsActionsBlock = 30;
-  _secondsActionsLinger = 300;
+  _secondsActionsBlock = 2;
+  _secondsActionsLinger = 3600;
 
   return;
 
