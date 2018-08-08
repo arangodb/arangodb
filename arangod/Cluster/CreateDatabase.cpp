@@ -56,7 +56,7 @@ bool CreateDatabase::first() {
 
   LOG_TOPIC(INFO, Logger::MAINTENANCE)
     << "CreateDatabase: creating database " << database;
-  
+
   auto* systemVocbase =
     ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
 
@@ -65,7 +65,7 @@ bool CreateDatabase::first() {
       << "CreateDatabase: could not determine _system database";
     FATAL_ERROR_EXIT();
   }
-  
+
   // Assertion in constructor makes sure that we have DATABASE.
   _result = Databases::create(_description.get(DATABASE), users, properties());
   if (!_result.ok()) {
@@ -79,14 +79,3 @@ bool CreateDatabase::first() {
   return false;
 
 }
-
-arangodb::Result CreateDatabase::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill CreateDatabase action");
-}
-
-arangodb::Result CreateDatabase::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
-}
-

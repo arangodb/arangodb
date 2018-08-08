@@ -43,7 +43,7 @@ DropDatabase::DropDatabase(
     setState(FAILED);
   }
   TRI_ASSERT(desc.has(DATABASE));
-  
+
 }
 
 DropDatabase::~DropDatabase() {};
@@ -70,17 +70,5 @@ bool DropDatabase::first() {
   
   setState(COMPLETE);
   return false;
-    
+
 }
-
-arangodb::Result DropDatabase::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill DropDatabase action");
-}
-
-arangodb::Result DropDatabase::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
-}
-
-

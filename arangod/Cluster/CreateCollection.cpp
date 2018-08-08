@@ -110,7 +110,7 @@ bool CreateCollection::first() {
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "creating local shard '" << database << "/" << shard
     << "' for central '" << database << "/" << collection << "'";
-  
+
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
@@ -122,20 +122,20 @@ bool CreateCollection::first() {
 
   auto cluster =
     ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  
+
   bool waitForRepl =
     (props.hasKey(WAIT_FOR_SYNC_REPL) &&
      props.get(WAIT_FOR_SYNC_REPL).isBool()) ?
     props.get(WAIT_FOR_SYNC_REPL).getBool() :
     cluster->createWaitsForSyncReplication();
-  
-  bool enforceReplFact = 
+
+  bool enforceReplFact =
     (props.hasKey(ENF_REPL_FACT) &&
      props.get(ENF_REPL_FACT).isBool()) ?
     props.get(ENF_REPL_FACT).getBool() : true;
 
   TRI_col_type_e type(props.get(TYPE).getNumber<TRI_col_type_e>());
-  
+
   VPackBuilder docket;
   { VPackObjectBuilder d(&docket);
     for (auto const& i : VPackObjectIterator(props)) {
@@ -174,17 +174,5 @@ bool CreateCollection::first() {
 
   setState(COMPLETE);
   return false;
-  
+
 }
-
-arangodb::Result CreateCollection::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill CreateCollection action");
-}
-
-arangodb::Result CreateCollection::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
-}
-
-

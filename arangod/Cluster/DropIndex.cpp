@@ -52,7 +52,7 @@ DropIndex::DropIndex(
     setState(FAILED);
   }
   TRI_ASSERT(d.has(DATABASE));
-  
+
   if (!d.has(INDEX)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropIndex: index id must be stecified";
@@ -65,7 +65,7 @@ DropIndex::DropIndex(
 DropIndex::~DropIndex() {};
 
 bool DropIndex::first() {
-  
+
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& id = _description.get(INDEX);
@@ -108,18 +108,15 @@ bool DropIndex::first() {
     setState(FAILED);
     return false;
   }
+<<<<<<< HEAD
 
   setState(COMPLETE);
   return false;
   
 }
+=======
+>>>>>>> 5914ff9492a16f3af8b1655752bf6a58ffa72b81
 
-arangodb::Result DropIndex::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill DropIndex action");
-}
+  return false;
 
-arangodb::Result DropIndex::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
 }

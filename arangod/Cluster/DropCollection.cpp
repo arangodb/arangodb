@@ -38,6 +38,7 @@ DropCollection::DropCollection(
   MaintenanceFeature& feature, ActionDescription const& d) :
   ActionBase(feature, d) {
 
+<<<<<<< HEAD
   if (!d.has(COLLECTION)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropCollection: collection must be specified";
@@ -52,12 +53,26 @@ DropCollection::DropCollection(
   }
   TRI_ASSERT(d.has(DATABASE));
   
+=======
+  if (!d.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "DropCollection: database must be specified";
+    setState(FAILED);
+  }
+
+  if (!d.has(COLLECTION)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "DropCollection: collection must be specified";
+    setState(FAILED);
+  }
+
+>>>>>>> 5914ff9492a16f3af8b1655752bf6a58ffa72b81
 }
 
 DropCollection::~DropCollection() {};
 
 bool DropCollection::first() {
-  
+
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
 
@@ -92,14 +107,4 @@ bool DropCollection::first() {
   setState(COMPLETE);
   return false;
   
-}
-
-arangodb::Result DropCollection::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill DropCollection action");
-}
-
-arangodb::Result DropCollection::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
 }

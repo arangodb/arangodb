@@ -57,6 +57,7 @@ Action::Action(std::unique_ptr<ActionBase> action)
   : _action(std::move(action)) {}
 
 Action::~Action() {}
+
 void Action::create(
   MaintenanceFeature& feature, ActionDescription const& description) {
   std::string name = description.name();

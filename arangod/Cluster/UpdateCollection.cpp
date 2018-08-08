@@ -41,18 +41,38 @@ using namespace arangodb::methods;
 UpdateCollection::UpdateCollection(
   MaintenanceFeature& feature, ActionDescription const& desc) :
   ActionBase(feature, desc) {
-  TRI_ASSERT(desc.has(COLLECTION));
-  TRI_ASSERT(desc.has(DATABASE));
-  TRI_ASSERT(desc.has(LEADER));
-  TRI_ASSERT(desc.has(LOCAL_LEADER));
+
+  if (!desc.has(COLLECTION)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "UpdateCollection: collection must be specified";
+    setState(FAILED);
+  }
+
+  if (!desc.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "UpdateCollection: database must be specified";
+    setState(FAILED);
+  }
+
+  if (!desc.has(LEADER)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "UpdateCollection: leader must be stecified";
+    setState(FAILED);
+  }
+
+  if (!desc.has(LOCAL_LEADER)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "UpdateCollection: local leader must be stecified";
+    setState(FAILED);
+  }
 }
 
 void handleLeadership(
   LogicalCollection& collection, std::string const& localLeader,
   std::string const& plannedLeader) {
-  
+
   auto& followers = collection.followers();
-      
+
   if (plannedLeader.empty()) { // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
       followers->setTheLeader(std::string());
@@ -63,13 +83,13 @@ void handleLeadership(
       // will not notice until it fails to replicate an operation
       // to the old follower. This here is to drop such a follower
       // from the local list of followers. Will be reported
-      // to Current in due course. This is not needed for 
+      // to Current in due course. This is not needed for
       // correctness but is a performance optimization.
-    }  
+    }
   } else { // Planned to follow
     if (localLeader.empty()) {
       // Note that the following does not delete the follower list
-      // and that this is crucial, because in the planned leader 
+      // and that this is crucial, because in the planned leader
       // resign case, updateCurrentForCollections will report the
       // resignation together with the old in-sync list to the
       // agency. If this list would be empty, then the supervision
@@ -83,7 +103,7 @@ void handleLeadership(
     // synchronized with the new leader and negotiated
     // a leader/follower relationship!
   }
-  
+
 }
 
 
@@ -114,11 +134,11 @@ bool UpdateCollection::first() {
       // We adjust local leadership, note that the planned
       // resignation case is not handled here, since then
       // ourselves does not appear in shards[shard] but only
-      // "_" + ourselves. 
+      // "_" + ourselves.
       handleLeadership(coll, localLeader, plannedLeader);
       _result = Collections::updateProperties(&coll, props);
     });
-  
+
   if (found.fail()) {
     std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
     errorMsg += collection + "in database " + database;
@@ -131,15 +151,3 @@ bool UpdateCollection::first() {
   return false;
 
 }
-
-arangodb::Result UpdateCollection::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill UpdateCollection action");
-}
-
-arangodb::Result UpdateCollection::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
-}
-
-

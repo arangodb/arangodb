@@ -86,10 +86,29 @@ using namespace std::chrono;
 SynchronizeShard::SynchronizeShard(
   MaintenanceFeature& feature, ActionDescription const& desc) :
   ActionBase(feature, desc) {
-  TRI_ASSERT(desc.has(COLLECTION));
-  TRI_ASSERT(desc.has(DATABASE));
-  TRI_ASSERT(desc.has(COLLECTION));
-  TRI_ASSERT(desc.has(LEADER));
+  if (!desc.has(COLLECTION)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "SynchronizeShard: collection must be specified";
+    setState(FAILED);
+  }
+
+  if (!desc.has(DATABASE)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "SynchronizeShard: database must be specified";
+    setState(FAILED);
+  }
+
+  if (!desc.has(SHARD)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "SynchronizeShard: SHARD must be stecified";
+    setState(FAILED);
+  }
+
+  if (!desc.has(LEADER)) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "SynchronizeShard: leader must be stecified";
+    setState(FAILED);
+  }
 }
 
 class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
@@ -106,18 +125,18 @@ arangodb::Result getReadLockId (
   std::string const& clientId, double timeout, uint64_t& id) {
 
   std::string error("startReadLockOnLeader: Failed to get read lock - ");
-  
+
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
     return arangodb::Result(
       TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
   }
-  
+
   auto comres = cc->syncRequest(
     clientId, 1, endpoint, rest::RequestType::GET,
     DB + database + REPL_HOLD_READ_LOCK, std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
-  
+
   auto result = comres->result;
 
   if (result->getHttpReturnCode() == 200) {
@@ -136,15 +155,15 @@ arangodb::Result getReadLockId (
     error += result->getHttpReturnMessage();
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
-  
+
   return arangodb::Result();
-  
+
 }
 
 
 arangodb::Result count(
   std::shared_ptr<arangodb::LogicalCollection> const col, uint64_t& c) {
-  
+
   std::string collectionName(col->name());
   auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
   SingleCollectionTransaction trx(
@@ -157,7 +176,7 @@ arangodb::Result count(
     return res;
   }
 
-  OperationResult opResult = trx.count(collectionName, false); 
+  OperationResult opResult = trx.count(collectionName, false);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
@@ -171,7 +190,7 @@ arangodb::Result count(
   c = s.getNumber<uint64_t>();
 
   return opResult.result;
-  
+
 }
 
 arangodb::Result addShardFollower (
@@ -181,7 +200,7 @@ arangodb::Result addShardFollower (
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "addShardFollower: tell the leader to put us into the follower list...";
-  
+
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
     return arangodb::Result(
@@ -203,7 +222,7 @@ arangodb::Result addShardFollower (
       "SynchronizeShard::addShardFollower: Failed to lookup collection ");
     errorMsg += shard;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
+    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
   }
 
   size_t c;
@@ -216,12 +235,12 @@ arangodb::Result addShardFollower (
     if (lockJobId != 0) {
       body.add("readLockId", VPackValue(lockJobId));
     }}
-  
+
   auto comres = cc->syncRequest(
     clientId, 1, endpoint, rest::RequestType::PUT,
     DB + database + REPL_ADD_FOLLOWER, body.toJson(),
-    std::unordered_map<std::string, std::string>(), timeout);  
-  
+    std::unordered_map<std::string, std::string>(), timeout);
+
   auto result = comres->result;
   std::string errorMessage (
     "addShardFollower: could not add us to the leader's follower list. ");
@@ -247,7 +266,7 @@ arangodb::Result addShardFollower (
   }
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
   return arangodb::Result();
-  
+
 }
 
 
@@ -257,7 +276,7 @@ arangodb::Result removeShardFollower (
 
   LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
     "removeShardFollower: tell the leader to take us off the follower list...";
-  
+
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
     return arangodb::Result(
@@ -277,7 +296,7 @@ arangodb::Result removeShardFollower (
     clientId, 1, endpoint, rest::RequestType::PUT,
     DB + database + REPL_REM_FOLLOWER, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
-  
+
   auto result = comres->result;
   if (result->getHttpReturnCode() != 200) {
     std::string errorMessage(
@@ -324,10 +343,10 @@ arangodb::Result cancelReadLockOnLeader (
       << ": " << errorMessage;
     return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
   }
-  
+
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
   return arangodb::Result();
-  
+
 }
 
 
@@ -335,7 +354,7 @@ arangodb::Result cancelBarrier(
   std::string const& endpoint, std::string const& database,
   int64_t barrierId, std::string const& clientId,
   double timeout = 120.0) {
-  
+
   if (barrierId <= 0) {
     return Result();;
   }
@@ -351,7 +370,7 @@ arangodb::Result cancelBarrier(
     DB + database + REPL_BARRIER_API + std::to_string(barrierId), std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
 
-  if (comres->status == CL_COMM_SENT) { 
+  if (comres->status == CL_COMM_SENT) {
     auto result = comres->result;
     if (result->getHttpReturnCode() != 200 &&
         result->getHttpReturnCode() != 204) {
@@ -362,14 +381,14 @@ arangodb::Result cancelBarrier(
     }
   } else {
     std::string error ("CancelBarrier: failed to send message to leader : status ");
-    error += comres->status; 
+    error += comres->status;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << error;
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
-  
+
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
   return arangodb::Result();
-  
+
 }
 
 
@@ -399,11 +418,11 @@ arangodb::Result SynchronizeShard::getReadLock(
     std::make_shared<std::string>(body.toJson()),
     std::unordered_map<std::string, std::string>(),
     std::make_shared<SynchronizeShardCallback>(this), timeout, true, timeout);
-  
+
   // Intentionally do not look at the outcome, even in case of an error
   // we must make sure that the read lock on the leader is not active!
   // This is done automatically below.
-  
+
   size_t count = 0;
   while (++count < 20) { // wait for some time until read lock established:
 
@@ -411,8 +430,8 @@ arangodb::Result SynchronizeShard::getReadLock(
     auto putres = cc->syncRequest(
       clientId, 1, endpoint, rest::RequestType::PUT, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
-    
-    auto result = putres->result; 
+
+    auto result = putres->result;
     if (result->getHttpReturnCode() == 200) {
       auto const vp = putres->result->getBodyVelocyPack();
       auto const& slice = vp->slice();
@@ -424,7 +443,7 @@ arangodb::Result SynchronizeShard::getReadLock(
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Lock not yet acquired...";
     } else {
-      
+
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "startReadLockOnLeader: Do not see read lock yet:"
         << putres->stringifyErrorMessage();
@@ -437,7 +456,7 @@ arangodb::Result SynchronizeShard::getReadLock(
         steady_clock::now() - start).count() > timeout) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
     return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
-  }  
+  }
 
   LOG_TOPIC(ERR, Logger::MAINTENANCE) << "startReadLockOnLeader: giving up";
 
@@ -454,9 +473,9 @@ arangodb::Result SynchronizeShard::getReadLock(
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "startReadLockOnLeader: expection in cancel: " << e.what();
   }
-  
+
   return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
-  
+
 }
 
 bool isStopping() {
@@ -480,9 +499,9 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   }
 
   result = getReadLock(endpoint, database, collection, clientId, rlid, timeout);
-  
+
   return result;
-  
+
 }
 
 enum ApplierType {
@@ -511,10 +530,10 @@ arangodb::Result replicationSynchronize(
   configuration.validate();
 
   std::shared_ptr<InitialSyncer> syncer;
- 
+
   config.toJson();
 
-  if (applierType == APPLIER_DATABASE) { 
+  if (applierType == APPLIER_DATABASE) {
     // database-specific synchronization
     syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
 
@@ -530,7 +549,7 @@ arangodb::Result replicationSynchronize(
 
   try {
     Result r = syncer->run(configuration._incremental);
-    
+
     if (r.fail()) {
       LOG_TOPIC(ERR, Logger::REPLICATION)
         << "initial sync failed for database '" << database << "': "
@@ -540,7 +559,7 @@ arangodb::Result replicationSynchronize(
         r.errorMessage() + ". last progress message was '" + syncer->progress()
         + "'");
     }
-    
+
     { VPackObjectBuilder o(sy.get());
       if (keepBarrier) {
         sy->add(BARRIER_ID, VPackValue(syncer->stealBarrier()));
@@ -553,7 +572,7 @@ arangodb::Result replicationSynchronize(
           sy->add(ID, VPackValue(i.first));
           sy->add(NAME, VPackValue(i.second));
         }}}
-    
+
   } catch (arangodb::basics::Exception const& ex) {
     std::string s("cannot sync from remote endpoint: ");
     s += ex.what() + std::string(". last progress message was '") + syncer->progress() + "'";
@@ -568,7 +587,7 @@ arangodb::Result replicationSynchronize(
       s+= syncer->progress() + "'";
     return Result(TRI_ERROR_INTERNAL);
   }
- 
+
   return arangodb::Result();
 }
 
@@ -579,12 +598,12 @@ arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
   auto const collection = conf.get(COLLECTION).copyString();
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
-  
+
   ReplicationApplierConfiguration configuration =
     ReplicationApplierConfiguration::fromVelocyPack(conf, database);
   // will throw if invalid
   configuration.validate();
-  
+
   DatabaseGuard guard(database);
   DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
 
@@ -618,13 +637,13 @@ arangodb::Result SynchronizeShard::synchronise() {
   std::string planId = _description.get(COLLECTION);
   std::string shard = _description.get(SHARD);
   std::string leader = _description.get(LEADER);
-  
+
   auto* clusterInfo = ClusterInfo::instance();
   auto const ourselves = arangodb::ServerState::instance()->getId();
   auto startTime = system_clock::now();
   auto const startTimeStr = timepointToString(startTime);
   auto const clientId(database + planId + shard + leader);
-  
+
   // First wait until the leader has created the shard (visible in
   // Current in the Agency) or we or the shard have vanished from
   // the plan:
@@ -637,7 +656,7 @@ arangodb::Result SynchronizeShard::synchronise() {
 
     std::vector<std::string> planned;
     auto result = clusterInfo->getShardServers(shard, planned);
-    
+
     if (!result.ok() ||
         std::find(planned.begin(), planned.end(), ourselves) == planned.end() ||
         planned.front() != leader) {
@@ -681,11 +700,11 @@ arangodb::Result SynchronizeShard::synchronise() {
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "synchronizeOneShard: waiting for leader, " << database
       << "/" << shard << ", " << database << "/" << planId;
-    
+
     std::this_thread::sleep_for(duration<double>(0.2));
-    
+
   }
-  
+
   // Once we get here, we know that the leader is ready for sync, so we give it a try:
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
@@ -696,7 +715,7 @@ arangodb::Result SynchronizeShard::synchronise() {
     _state = FAILED;
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
-  
+
   auto collection = vocbase->lookupCollection(shard);
   if (collection == nullptr) {
     std::string errorMsg(
@@ -704,9 +723,9 @@ arangodb::Result SynchronizeShard::synchronise() {
     errorMsg += shard;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     _state=FAILED;
-    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
+    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
   }
-  
+
   auto ep = clusterInfo->getServerEndpoint(leader);
   size_t c;
   if (!count(collection, c).ok()) {
@@ -715,9 +734,9 @@ arangodb::Result SynchronizeShard::synchronise() {
     errorMsg += shard;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     _state=FAILED;
-    return arangodb::Result(TRI_ERROR_INTERNAL, errorMsg);    
+    return arangodb::Result(TRI_ERROR_INTERNAL, errorMsg);
   }
-  
+
   if (c == 0) {
     // We have a short cut:
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
@@ -748,7 +767,7 @@ arangodb::Result SynchronizeShard::synchronise() {
 
   try {
     // First once without a read transaction:
-    
+
     if (isStopping()) {
       _state=FAILED;
       return Result(TRI_ERROR_INTERNAL, "server is shutting down");
@@ -787,7 +806,7 @@ arangodb::Result SynchronizeShard::synchronise() {
 
     Result syncRes = replicationSynchronize(
       collection, config.slice(), APPLIER_DATABASE, details);
-    
+
     auto sy = details->slice();
     auto const endTime = system_clock::now();
     bool longSync = false;
@@ -797,35 +816,35 @@ arangodb::Result SynchronizeShard::synchronise() {
       LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
         "synchronizeOneShard: long call to syncCollection for shard"
           << shard << " " << syncRes.errorMessage() <<  " start time: "
-          << timepointToString(startTime) <<  "end time: " 
+          << timepointToString(startTime) <<  "end time: "
           << timepointToString(system_clock::now());
       longSync = true;
     }
-    
-    // 
+
+    //
     if (!syncRes.ok()) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "synchronizeOneShard: could not initially synchronize shard " << shard
         << syncRes.errorMessage();
       _state=FAILED;
       return syncRes;
-      
+
     } else {
 
       VPackSlice collections = sy.get(COLLECTIONS);
-      
+
       if (collections.length() == 0 ||
           collections[0].get("name").copyString() != shard) {
 
         if (longSync) {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
-            << "synchronizeOneShard: long sync, before cancelBarrier" 
+            << "synchronizeOneShard: long sync, before cancelBarrier"
             << timepointToString(system_clock::now());
         }
         cancelBarrier(ep, database, sy.get(BARRIER_ID).getNumber<int64_t>(), clientId);
         if (longSync) {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
-            << "synchronizeOneShard: long sync, after cancelBarrier" 
+            << "synchronizeOneShard: long sync, after cancelBarrier"
             << timepointToString(system_clock::now());
         }
         std::string errorMessage("synchronizeOneShard: Shard ");
@@ -851,7 +870,7 @@ arangodb::Result SynchronizeShard::synchronise() {
             << result.errorMessage();
         }
 
-        cancelBarrier(ep, database, sy.get("barrierId").getNumber<int64_t>(), clientId); 
+        cancelBarrier(ep, database, sy.get("barrierId").getNumber<int64_t>(), clientId);
 
         if (lockJobId != 0) {
 
@@ -892,9 +911,9 @@ arangodb::Result SynchronizeShard::synchronise() {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
             << "synchronizeOneShard: lockJobId was false for shard" << shard;
         }
-          
+
         if (result.ok()) {
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE) 
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
             << "synchronizeOneShard: synchronization worked for shard " << shard;
         } else {
           LOG_TOPIC(ERR, Logger::MAINTENANCE)
@@ -911,16 +930,16 @@ arangodb::Result SynchronizeShard::synchronise() {
     _state=FAILED;
     return Result (TRI_ERROR_INTERNAL, e.what());
   }
-  
+
   // Tell others that we are done:
   auto const endTime = system_clock::now();
   LOG_TOPIC(INFO, Logger::MAINTENANCE)
     << "synchronizeOneShard: done, " << database << "/" << shard << ", "
     << database << "/" << planId << ", started: "
     << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
-  
+
   return Result();
-  
+
 }
 
 SynchronizeShard::~SynchronizeShard() {};
@@ -936,15 +955,3 @@ arangodb::Result SynchronizeShard::run(
   arangodb::Result res;
   return res;
 }
-
-arangodb::Result SynchronizeShard::kill(Signal const& signal) {
-  return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill SynchronizeShard action");
-}
-
-arangodb::Result SynchronizeShard::progress(double& progress) {
-  progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
-}
-
-

@@ -45,13 +45,9 @@ public:
   virtual ~SynchronizeShard();
 
   virtual bool first() override final;
-  
+
   virtual arangodb::Result run(
     std::chrono::duration<double> const&, bool& finished) override final;
-  
-  virtual arangodb::Result kill(Signal const& signal) override final;
-  
-  virtual arangodb::Result progress(double& progress) override final;
 
 private:
   arangodb::Result getReadLock(
@@ -66,7 +62,7 @@ private:
 
   arangodb::Result synchronise();
 
-  
+
 };
 
 }}
