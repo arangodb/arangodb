@@ -61,6 +61,12 @@ RocksDBLogValue RocksDBLogValue::CollectionChange(TRI_voc_tick_t dbid,
   return RocksDBLogValue(RocksDBLogType::CollectionChange, dbid, cid);
 }
 
+RocksDBLogValue RocksDBLogValue::CollectionTruncate(TRI_voc_tick_t dbid,
+                                                    TRI_voc_cid_t cid,
+                                                    uint64_t objectId) {
+  return RocksDBLogValue(RocksDBLogType::CollectionTruncate, dbid, cid, objectId);
+}
+
 RocksDBLogValue RocksDBLogValue::IndexCreate(TRI_voc_tick_t dbid,
                                              TRI_voc_cid_t cid,
                                              VPackSlice const& indexInfo) {
@@ -171,6 +177,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
                                  uint64_t cid, uint64_t third)
     : _buffer() {
   switch (type) {
+    case RocksDBLogType::CollectionTruncate:
     case RocksDBLogType::IndexDrop:
     case RocksDBLogType::SingleRemoveV2: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 3);
@@ -318,6 +325,15 @@ TRI_idx_iid_t RocksDBLogValue::indexId(rocksdb::Slice const& slice) {
                               (2 * sizeof(uint64_t)));
 }
 
+/// CollectionTruncate contains an object id
+uint64_t RocksDBLogValue::objectId(rocksdb::Slice const& slice) {
+  TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (sizeof(uint64_t)) * 3);
+  RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
+  TRI_ASSERT(type == RocksDBLogType::CollectionTruncate);
+  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                              3 * sizeof(uint64_t));
+}
+
 /// For DocumentRemoveV2 and SingleRemoveV2
 TRI_voc_rid_t RocksDBLogValue::revisionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (sizeof(uint64_t)));
@@ -390,6 +406,7 @@ bool RocksDBLogValue::containsDatabaseId(RocksDBLogType type) {
   type == RocksDBLogType::CollectionDrop ||
   type == RocksDBLogType::CollectionRename ||
   type == RocksDBLogType::CollectionChange ||
+  type == RocksDBLogType::CollectionTruncate ||
   type == RocksDBLogType::ViewCreate ||
   type == RocksDBLogType::ViewDrop ||
   type == RocksDBLogType::ViewChange ||
@@ -409,6 +426,7 @@ bool RocksDBLogValue::containsCollectionId(RocksDBLogType type) {
   type == RocksDBLogType::CollectionDrop ||
   type == RocksDBLogType::CollectionRename ||
   type == RocksDBLogType::CollectionChange ||
+  type == RocksDBLogType::CollectionTruncate ||
   #ifdef USE_IRESEARCH
     type == RocksDBLogType::IResearchLinkDrop ||
   #endif

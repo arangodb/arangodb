@@ -349,11 +349,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (it != deltas.end()) {
           it->second._sequenceNum = currentSeqNum;
           it->second._removed++;
-          it->second._revisionId = _lastRemovedDocRid;
+          if (_lastRemovedDocRid != 0) {
+            it->second._revisionId = _lastRemovedDocRid;
+          }
         }
       }
       _lastRemovedDocRid = 0; // reset in any case
-      
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hash = 0;
@@ -397,11 +398,21 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     // a delete log message appears directly before a Delete
     RocksDBLogType type = RocksDBLogValue::type(blob);
     switch(type) {
+      case RocksDBLogType::CollectionTruncate: {
+        uint64_t objectId = RocksDBLogValue::objectId(blob);
+        auto const& it = deltas.find(objectId);
+        if (it != deltas.end()) {
+          it->second._removed = 0;
+          it->second._added = 0;
+        }
+        _lastRemovedDocRid = 0; // reset in any other case
+        break;
+      }
       case RocksDBLogType::DocumentRemoveV2: // remove within a trx
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;
-      case RocksDBLogType::SingleRemoveV2:
+      case RocksDBLogType::SingleRemoveV2: // single remove
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;

@@ -28,6 +28,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -220,11 +221,14 @@ void RocksDBIndex::recalculateEstimates() {
 }
 
 int RocksDBIndex::drop() {
+  auto* coll = toRocksDBCollection(_collection);
   // edge index needs to be dropped with prefix_same_as_start = false
   // otherwise full index scan will not work
   bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  arangodb::Result r = rocksutils::removeLargeRange(
-    rocksutils::globalRocksDB(), this->getBounds(), prefix_same_as_start);
+  const bool rangeDelete = coll->numberDocuments() >= 16384;
+
+  arangodb::Result r = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),
+                                                    prefix_same_as_start, rangeDelete);
 
   // Try to drop the cache as well.
   if (_cachePresent) {

@@ -630,13 +630,60 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(trx);
-  RocksDBMethods* mthd = state->rocksdbMethods();
+  RocksDBMethods* mthds = state->rocksdbMethods();
+  
+  if (trx->isSingleOperationTransaction() &&
+      trx->isLocked(&_logicalCollection, AccessMode::Type::EXCLUSIVE) &&
+      _numberDocuments >= 16384) {
+    // non-transactional truncate optimization. We perform a bunch of
+    // range deletes and circumwent the normal rocksdb::Transaction.
+    // no savepoint needed here
+    
+    rocksdb::WriteBatch batch;
+    auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
+                                                   _logicalCollection.id(), _objectId);
+    rocksdb::Status s = batch.PutLogData(log.slice());
+    if (!s.ok()) {
+      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+    }
+    
+    // delete documents
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+    s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+    if (!s.ok()) {
+      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+    }
+    
+    // delete indexes
+    {
+      READ_LOCKER(guard, _indexesLock);
+      for (std::shared_ptr<Index> const& idx : _indexes) {
+        RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+        bounds = ridx->getBounds();
+        s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+        if (!s.ok()) {
+          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+        }
+        idx->afterTruncate();
+      }
+    }
+    
+    rocksdb::WriteOptions wo;
+    s = rocksutils::globalRocksDB()->Write(wo, &batch);
+    if (!s.ok()) {
+      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+    }
+    _numberDocuments = 0; // protected by collection lock
+    return; // done
+  }
+  
+  
   // delete documents
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
   rocksdb::Comparator const* cmp =
       RocksDBColumnFamily::documents()->GetComparator();
-  rocksdb::ReadOptions ro = mthd->iteratorReadOptions();
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
 
@@ -645,11 +692,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
 
   std::unique_ptr<rocksdb::Iterator> iter =
-      mthd->NewIterator(ro, documentBounds.columnFamily());
+      mthds->NewIterator(ro, documentBounds.columnFamily());
   iter->Seek(documentBounds.start());
 
   uint64_t found = 0;
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
     VPackSlice doc = VPackSlice(iter->value().data());
@@ -661,6 +709,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     transaction::helpers::extractKeyAndRevFromDocument(doc, key, rid);
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid != 0);
+    
+    RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
 
     state->prepareOperation(
       _logicalCollection.id(),
@@ -687,6 +737,9 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     }
 
     trackWaitForSync(trx, options);
+    
+    guard.commit();
+    
     iter->Next();
   }
 
@@ -696,7 +749,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (state->numCommits() == 0) {
     // check if documents have been deleted
-    if (mthd->countInBounds(documentBounds, true)) {
+    if (mthds->countInBounds(documentBounds, true)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "deletion check in collection truncate "
                                      "failed - not all documents have been "
@@ -813,9 +866,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   state->prepareOperation(
     _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT
   );
-
-  // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   res = insertDocument(trx, documentId, newSlice, options);
 
@@ -1315,10 +1365,13 @@ Result RocksDBCollection::insertDocument(
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  Result res = mthd->Put(RocksDBColumnFamily::documents(), key.ref(),
-                         rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
-                                        static_cast<size_t>(doc.byteSize())));
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  // disable indexing in this transaction if we are allowed to
+  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
+  
+  Result res = mthds->Put(RocksDBColumnFamily::documents(), key.ref(),
+                          rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
+                                         static_cast<size_t>(doc.byteSize())));
   if (!res.ok()) {
     return res;
   }
@@ -1326,7 +1379,7 @@ Result RocksDBCollection::insertDocument(
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->insertInternal(trx, mthd, documentId, doc,
+    Result tmpres = rIdx->insertInternal(trx, mthds, documentId, doc,
                                          options.indexOperationMode);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
@@ -1392,7 +1445,6 @@ Result RocksDBCollection::updateDocument(
     transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
     VPackSlice const& oldDoc, LocalDocumentId const& newDocumentId,
     VPackSlice const& newDoc, OperationOptions& options) const {
-  // keysize in return value is set by insertDocument
 
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1408,13 +1460,13 @@ Result RocksDBCollection::updateDocument(
   // we really need to blacklist the new key?
   blackListKey(newKey->string().data(),
                static_cast<uint32_t>(newKey->string().size()));
-  rocksdb::Slice docSlice(reinterpret_cast<char const*>(newDoc.begin()),
-                          static_cast<size_t>(newDoc.byteSize()));
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
-  Result res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(), docSlice);
+  Result res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
+                         rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
+                                        static_cast<size_t>(newDoc.byteSize())));
   if (!res.ok()) {
     return res;
   }

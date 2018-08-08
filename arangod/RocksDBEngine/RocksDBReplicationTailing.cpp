@@ -67,6 +67,8 @@ TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
       return REPLICATION_COLLECTION_RENAME;
     case RocksDBLogType::CollectionChange:
       return REPLICATION_COLLECTION_CHANGE;
+    case RocksDBLogType::CollectionTruncate:
+      return REPLICATION_COLLECTION_TRUNCATE;
     case RocksDBLogType::IndexCreate:
       return REPLICATION_INDEX_CREATE;
     case RocksDBLogType::IndexDrop:
@@ -168,7 +170,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
             uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(tick)));
-            marker->add("type", VPackValue(REPLICATION_COLLECTION_DROP));
+            marker->add("typess", VPackValue(REPLICATION_COLLECTION_DROP));
             marker->add("database", VPackValue(std::to_string(dbid)));
             if (!uuid.empty()) {
               marker->add("cuid", VPackValuePair(uuid.data(), uuid.size(),
@@ -178,6 +180,27 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
             VPackObjectBuilder data(&_builder, "data", true);
             data->add("id", VPackValue(std::to_string(cid)));
             data->add("name", VPackValue(""));  // not used at all
+          }
+          updateLastEmittedTick(_currentSequence);
+        }
+        break;
+      }
+      case RocksDBLogType::CollectionTruncate: {
+        resetTransientState(); // finish ongoing trx
+        TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
+        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        if (shouldHandleCollection(dbid, cid)) {
+          TRI_ASSERT(_vocbase->id() == dbid);
+          LogicalCollection* coll = loadCollection(cid);
+          TRI_ASSERT(coll != nullptr);
+          {
+            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+            VPackObjectBuilder marker(&_builder, true);
+            marker->add("tick", VPackValue(std::to_string(tick)));
+            marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
+            marker->add("database", VPackValue(std::to_string(dbid)));
+            marker->add("cuid", VPackValue(coll->guid()));
+            marker->add("cid", VPackValue(std::to_string(cid)));
           }
           updateLastEmittedTick(_currentSequence);
         }

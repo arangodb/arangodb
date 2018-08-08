@@ -180,14 +180,35 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         }
         break;
       }
+      case RocksDBLogType::CollectionTruncate: {
+        resetTransientState(); // finish ongoing trx
+        TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
+        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        if (shouldHandleCollection(dbid, cid)) { // will check vocbase
+          TRI_vocbase_t* vocbase = loadVocbase(dbid);
+          LogicalCollection* coll = loadCollection(dbid, cid);
+          TRI_ASSERT(vocbase != nullptr && coll != nullptr);
+          {
+            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+            VPackObjectBuilder marker(&_builder, true);
+            marker->add("tick", VPackValue(std::to_string(tick)));
+            marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
+            marker->add("db", VPackValue(std::to_string(dbid)));
+            marker->add("cuid", VPackValue(coll->guid()));
+          }
+          _callback(vocbase, _builder.slice());
+          _responseSize += _builder.size();
+          _builder.clear();
+        }
+        break;
+      }
       case RocksDBLogType::IndexCreate: {
         resetTransientState(); // finish ongoing trx
 
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
-
         // only print markers from this collection if it is set
-        if (shouldHandleCollection(dbid, cid)) {
+        if (shouldHandleCollection(dbid, cid)) { // will check vocbase
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           LogicalCollection* coll = loadCollection(dbid, cid);
           TRI_ASSERT(vocbase != nullptr && coll != nullptr);
