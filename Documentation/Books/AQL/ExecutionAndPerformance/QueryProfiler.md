@@ -29,11 +29,12 @@ Then a simple query filtering for `value < 10` will return 10 results:
 @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_profileQuerySimple}
 ~db._drop("acollection");
 ~db._create('acollection');
-~for (let i=0; i < 10000;i++) { db.acollection.insert({value:i}); }
+~for (let i=0; i < 10000; i++) { db.acollection.insert({value:i}); }
 |db._profileQuery(`
 |FOR doc IN acollection
 |  FILTER doc.value < 10
-|  RETURN doc`, {}, {colors: false});
+|  RETURN doc`, {}, {colors: false}
+);
 ~db._drop("acollection");
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock 01_workWithAQL_profileQuerySimple
@@ -74,11 +75,12 @@ db.acollection.ensureIndex({type:"skiplist", fields:["value"]});
 @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_profileQuerySimpleIndex}
 ~db._create('acollection');
 ~db.acollection.ensureIndex({type:"skiplist", fields:["value"]});
-~for (let i=0; i < 10000;i++) { db.acollection.insert({value:i}); }
+~for (let i=0; i < 10000; i++) { db.acollection.insert({value:i}); }
 |db._profileQuery(`
 |FOR doc IN acollection
 |  FILTER doc.value < 10
-|  RETURN doc`, {}, {colors: false});
+|  RETURN doc`, {}, {colors: false}
+);
 ~db._drop("acollection");
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock 02_workWithAQL_profileQuerySimpleIndex
@@ -101,8 +103,9 @@ Let us consider a query containing a subquery:
 |db._profileQuery(`
 |LET list = (FOR doc in acollection FILTER doc.value > 90 RETURN doc)
 |FOR a IN list 
-|   FILTER a.value < 91 
-|   RETURN a`, {}, {colors: false, optimizer:{rules:["-all"]}});;
+|  FILTER a.value < 91 
+|  RETURN a`, {}, {colors: false, optimizer:{rules:["-all"]}}
+);
 ~db._drop("acollection");
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock 03_workWithAQL_profileQuerySubquery
@@ -127,11 +130,7 @@ The following query gets us all age groups in buckets (0-9, 10-19, 20-29, ...):
 @startDocuBlockInline 04_workWithAQL_profileQueryAggregation
 @EXAMPLE_ARANGOSH_OUTPUT{04_workWithAQL_profileQueryAggregation}
 ~db._create('myusers');
-|["berlin", "paris", "cologne", "munich", "london"].forEach((c) => {
-|  ["peter", "david", "simon", "lars"].forEach( 
-|    n => db.myusers.insert({ city : c, name : n, age: Math.floor(Math.random() * 75) })
-|  )
-|});
+~["berlin", "paris", "cologne", "munich", "london"].forEach((c) => { ["peter", "david", "simon", "lars"].forEach( n => db.myusers.insert({ city : c, name : n, age: Math.floor(Math.random() * 75) }) ) });
 |db._profileQuery(`
 |FOR u IN myusers
 |  COLLECT ageGroup = FLOOR(u.age / 10) * 10
@@ -141,7 +140,8 @@ The following query gets us all age groups in buckets (0-9, 10-19, 20-29, ...):
 |    minAge, 
 |    maxAge,
 |    len
-|  }`, {}, {colors: false});
+|  }`, {}, {colors: false}
+);
 ~db._drop("myusers")
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock 04_workWithAQL_profileQueryAggregation

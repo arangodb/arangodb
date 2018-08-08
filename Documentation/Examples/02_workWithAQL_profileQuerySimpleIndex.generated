@@ -1,3 +1,8 @@
+arangosh&gt; db._profileQuery(<span class="hljs-string">`
+........&gt; FOR doc IN acollection
+........&gt;  FILTER doc.value &lt; 10
+........&gt;  RETURN doc`</span>, {}, {<span class="hljs-attr">colors</span>: <span class="hljs-literal">false</span>}
+........&gt; );
 Query <span class="hljs-built_in">String</span>:
  FOR doc IN acollection
   FILTER doc.value &lt; <span class="hljs-number">10</span>
