@@ -79,7 +79,7 @@ function CollectionDocumentKeysSuite () {
         var doc = { _key: key, value: "test" };
 
         // create document
-        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), JSON.stringify(doc));
+        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), doc);
         assertEqual(202, result.code);
 
         // read document back
@@ -99,7 +99,7 @@ function CollectionDocumentKeysSuite () {
         var doc = { _key: key, value: "test" };
 
         // create document
-        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), JSON.stringify(doc));
+        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), doc);
         assertEqual(202, result.code);
 
         // read document back
@@ -119,14 +119,14 @@ function CollectionDocumentKeysSuite () {
         var doc = { _key: key, value: "test" };
 
         // create document
-        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), JSON.stringify(doc));
+        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), doc);
         assertEqual(202, result.code);
 
         // update document
         doc.test = "testmann";
         doc.value = 12345;
 
-        result = arango.PATCH_RAW("/_api/document/" + encodeURIComponent(cn) + "/" + encodeURIComponent(key), JSON.stringify(doc));
+        result = arango.PATCH_RAW("/_api/document/" + encodeURIComponent(cn) + "/" + encodeURIComponent(key), doc);
         assertEqual(202, result.code);
         
         assertEqual(index + 1, collection.count());
@@ -142,14 +142,14 @@ function CollectionDocumentKeysSuite () {
         var doc = { _key: key, value: "test" };
 
         // create document
-        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), JSON.stringify(doc));
+        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), doc);
         assertEqual(202, result.code);
 
         // update document
         doc.test = "testmann";
         doc.value = 12345;
 
-        result = arango.PUT_RAW("/_api/document/" + encodeURIComponent(cn) + "/" + encodeURIComponent(key), JSON.stringify(doc));
+        result = arango.PUT_RAW("/_api/document/" + encodeURIComponent(cn) + "/" + encodeURIComponent(key), doc);
         assertEqual(202, result.code);
         
         assertEqual(index + 1, collection.count());
@@ -165,7 +165,7 @@ function CollectionDocumentKeysSuite () {
         var doc = { _key: key, value: "test" };
 
         // create document
-        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), JSON.stringify(doc));
+        var result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), doc);
         assertEqual(202, result.code);
 
         // remove document
