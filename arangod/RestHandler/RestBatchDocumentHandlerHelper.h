@@ -38,62 +38,6 @@ namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 
-// Operations /////////////////////////////////////////////////////////////////
-enum class BatchOperation {
-  READ,
-  INSERT,
-  REMOVE,
-  REPLACE,
-  UPDATE,
-  UPSERT,
-  REPSERT,
-};
-
-struct BatchOperationHash {
-  size_t operator()(BatchOperation value) const noexcept {
-    typedef std::underlying_type<decltype(value)>::type UnderlyingType;
-    return std::hash<UnderlyingType>()(UnderlyingType(value));
-  }
-};
-
-inline std::unordered_map<BatchOperation, std::string, BatchOperationHash> const&
-getBatchToStingMap(){
-  static const std::unordered_map<BatchOperation, std::string, BatchOperationHash>
-  // NOLINTNEXTLINE(cert-err58-cpp)
-  batchToStringMap{
-      {BatchOperation::READ, "read"},
-      {BatchOperation::INSERT, "insert"},
-      {BatchOperation::REMOVE, "remove"},
-      {BatchOperation::REPLACE, "replace"},
-      {BatchOperation::UPDATE, "update"},
-      {BatchOperation::UPSERT, "upsert"},
-      {BatchOperation::REPSERT, "repsert"},
-  };
-  return batchToStringMap;
-};
-
-inline std::string batchToString(BatchOperation op) {
-  auto const& map = getBatchToStingMap();
-  return map.at(op);
-}
-
-inline std::unordered_map<std::string, BatchOperation> ensureStringToBatchMapIsInitialized() {
- std::unordered_map<std::string, BatchOperation> stringToBatchMap;
-  for (auto const& it : getBatchToStingMap()) {
-    stringToBatchMap.insert({it.second, it.first});
-  }
-  return stringToBatchMap;
-}
-
-inline boost::optional<BatchOperation> stringToBatch(std::string const& op) {
-  static const auto stringToBatchMap = ensureStringToBatchMapIsInitialized();
-  auto it = stringToBatchMap.find(op);
-  if (it == stringToBatchMap.end()) {
-    return boost::none;
-  }
-  return it->second;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Request structs and parsers
 ////////////////////////////////////////////////////////////////////////////////

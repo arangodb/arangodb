@@ -30,12 +30,12 @@
 #include "Basics/Common.h"
 #include "Cluster/ResultT.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Transaction/BatchRequests.h"
 
 namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 struct BatchRequest;
-enum class BatchOperation;
 }
 }
 

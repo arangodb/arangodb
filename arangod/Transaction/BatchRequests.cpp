@@ -61,18 +61,20 @@ boost::optional<Operation> stringToBatch(std::string const& op) {
 
 
 // request parsing and verification
-
-static std::pair<OperationOptions,std::vector<RemoveDoc>> batchSlice<RemoveDoc>::fromVPack(VPackSlice slice){
-  return {};
-}
-
-static std::pair<OperationOptions,std::vector<UpdateDoc>> batchSlice<RemoveDoc>::fromVPack(VPackSlice slice){
-  return {};
-}
-
-static std::pair<OperationOptions,std::vector<ReplaceDoc>> batchSlice<RemoveDoc>::fromVPack(VPackSlice slice){
-  return {};
-}
+//template <>
+//std::pair<OperationOptions,std::vector<RemoveDoc>> batchSlice<RemoveDoc>::fromVPack(VPackSlice slice){
+//  return {};
+//}
+//
+//template <>
+//std::pair<OperationOptions,std::vector<UpdateDoc>> batchSlice<UpdateDoc>::fromVPack(VPackSlice slice){
+//  return {};
+//}
+//
+//template <>
+//std::pair<OperationOptions,std::vector<ReplaceDoc>> batchSlice<ReplaceDoc>::fromVPack(VPackSlice slice){
+//  return {};
+//}
 
 
 }}
