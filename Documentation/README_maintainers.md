@@ -27,7 +27,11 @@
 
 # Using Docker container
 
-We provide the docker container `arangodb/documentation-builder` which brings all neccessary dependencies to build the documentation.
+We provide the docker container `arangodb/documentation-builder` which brings
+all neccessary dependencies to build the documentation.
+
+The files and a description how to (re-)generate the Docker image are here:<br/>
+https://github.com/arangodb-helper/build-docker-containers/tree/master/distros/debian/jessie.docu
 
 You can automagically build it using
 
