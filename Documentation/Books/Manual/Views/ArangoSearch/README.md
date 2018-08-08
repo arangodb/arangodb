@@ -35,4 +35,7 @@ stages) and scorers (used during the sorting stage) allowing full control over
 the behavior of the engine.
 
 ### Using ArangoSearch views
-To get more familiar with ArangoSearch usage, you may start with [Getting Started](GettingStarted.md) simple guide and then explore details of ArangoSearch in [Detailed Overview](DetailedOverview.md), [Analyzers](Analyzers.md) and [Scorers](Scorers.md) topics.
+* To get more familiar with ArangoSearch usage, you may start with [Getting Started](GettingStarted.md) simple guide.
+* Details of ArangoSearch elements are described in [Detailed Overview](DetailedOverview.md).
+* ArangoSearch Analyzers feature is described in [Analyzers](Analyzers.md) topic.
+* ArangoSearch Scorers feature is described in [Scorers](Scorers.md) topic.
