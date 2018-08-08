@@ -122,6 +122,9 @@ enum class GeneratorType : int {
   PADDED = 4
 };
 
+/// @brief for older compilers
+typedef std::underlying_type<GeneratorType>::type GeneratorMapType;
+
 /// Actual key generators following...
 
 /// @brief base class for traditional key generators
@@ -548,68 +551,83 @@ GeneratorType generatorType(VPackSlice const& parameters) {
   return GeneratorType::UNKNOWN;
 }
 
-std::unordered_map<GeneratorType, std::function<KeyGenerator*(bool, VPackSlice)>> const factories = {
-  { GeneratorType::UNKNOWN, [](bool, VPackSlice) -> KeyGenerator* {
-    // unknown key generator type
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator type");
-  } },
-  { GeneratorType::TRADITIONAL, [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
-    if (ServerState::instance()->isCoordinator()) {
-      return new TraditionalKeyGeneratorCluster(allowUserKeys);
-    }
-    return new TraditionalKeyGeneratorSingle(allowUserKeys);
-  } },
-  { GeneratorType::AUTOINCREMENT, [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
-    if (ServerState::instance()->isCoordinator()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                     "the specified key generator is not supported for sharded collections");
-    }
-    uint64_t offset = 0;
-    uint64_t increment = 1;
+std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlice)>> const factories = {
+  { 
+    static_cast<GeneratorMapType>(GeneratorType::UNKNOWN), 
+    [](bool, VPackSlice) -> KeyGenerator* {
+      // unknown key generator type
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator type");
+    } 
+  },
+  { 
+    static_cast<GeneratorMapType>(GeneratorType::TRADITIONAL), 
+    [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+      if (ServerState::instance()->isCoordinator()) {
+        return new TraditionalKeyGeneratorCluster(allowUserKeys);
+      }
+      return new TraditionalKeyGeneratorSingle(allowUserKeys);
+    } 
+  },
+  { 
+    static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT), 
+    [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+      if (ServerState::instance()->isCoordinator()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
+                                      "the specified key generator is not supported for sharded collections");
+      }
+      uint64_t offset = 0;
+      uint64_t increment = 1;
 
-    VPackSlice const incrementSlice = options.get("increment");
+      VPackSlice const incrementSlice = options.get("increment");
 
-    if (incrementSlice.isNumber()) {
-      double v = incrementSlice.getNumericValue<double>();
-      if (v <= 0.0) {
-        // negative or 0 increment is not allowed
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "increment value must be greater than zero");
+      if (incrementSlice.isNumber()) {
+        double v = incrementSlice.getNumericValue<double>();
+        if (v <= 0.0) {
+          // negative or 0 increment is not allowed
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "increment value must be greater than zero");
+        }
+
+        increment = incrementSlice.getNumericValue<uint64_t>();
+
+        if (increment == 0 || increment >= (1ULL << 16)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "increment value must be greater than zero and smaller than 65536");
+        }
       }
 
-      increment = incrementSlice.getNumericValue<uint64_t>();
+      VPackSlice const offsetSlice = options.get("offset");
 
-      if (increment == 0 || increment >= (1ULL << 16)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "increment value must be greater than zero and smaller than 65536");
+      if (offsetSlice.isNumber()) {
+        double v = offsetSlice.getNumericValue<double>();
+        if (v < 0.0) {
+          // negative or 0 offset is not allowed
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "offset value must be zero or greater");
+        }
+
+        offset = offsetSlice.getNumericValue<uint64_t>();
+
+        if (offset >= UINT64_MAX) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "offset value is too high");
+        }
       }
+
+      return new AutoIncrementKeyGenerator(allowUserKeys, offset, increment);
     }
-
-    VPackSlice const offsetSlice = options.get("offset");
-
-    if (offsetSlice.isNumber()) {
-      double v = offsetSlice.getNumericValue<double>();
-      if (v < 0.0) {
-        // negative or 0 offset is not allowed
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "offset value must be zero or greater");
+  },
+  { 
+    static_cast<GeneratorMapType>(GeneratorType::UUID), 
+    [](bool allowUserKeys, VPackSlice) -> KeyGenerator* {
+      return new UuidKeyGenerator(allowUserKeys);
+    } 
+  },
+  { 
+    static_cast<GeneratorMapType>(GeneratorType::PADDED), 
+    [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+      if (ServerState::instance()->isCoordinator()) {
+        return new PaddedKeyGeneratorCluster(allowUserKeys);
       }
-
-      offset = offsetSlice.getNumericValue<uint64_t>();
-
-      if (offset >= UINT64_MAX) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "offset value is too high");
-      }
-    }
-
-    return new AutoIncrementKeyGenerator(allowUserKeys, offset, increment);
-  } },
-  { GeneratorType::UUID, [](bool allowUserKeys, VPackSlice) -> KeyGenerator* {
-    return new UuidKeyGenerator(allowUserKeys);
-  } },
-  { GeneratorType::PADDED, [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
-    if (ServerState::instance()->isCoordinator()) {
-      return new PaddedKeyGeneratorCluster(allowUserKeys);
-    }
-    return new PaddedKeyGeneratorSingle(allowUserKeys);
-  } }
+      return new PaddedKeyGeneratorSingle(allowUserKeys);
+    } 
+  }
 };
 
 } // namespace
@@ -636,10 +654,10 @@ KeyGenerator* KeyGenerator::factory(VPackSlice options) {
   bool allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "allowUserKeys", true);
 
-  auto it = ::factories.find(type);
+  auto it = ::factories.find(static_cast<::GeneratorMapType>(type));
   
   if (it == ::factories.end()) {
-    it = ::factories.find(::GeneratorType::UNKNOWN);
+    it = ::factories.find(static_cast<::GeneratorMapType>(::GeneratorType::UNKNOWN));
   }
 
   TRI_ASSERT(it != ::factories.end());
