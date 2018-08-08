@@ -193,7 +193,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(tick)));
             marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
-            marker->add("db", VPackValue(std::to_string(dbid)));
+            marker->add("db", VPackValue(vocbase->name()));
             marker->add("cuid", VPackValue(coll->guid()));
           }
           _callback(vocbase, _builder.slice());
