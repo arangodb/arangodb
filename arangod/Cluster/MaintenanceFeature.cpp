@@ -402,7 +402,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
         if (state == maintenance::READY) {
           ret_ptr=*loop;
           ret_ptr->setState(maintenance::EXECUTING);
-        } else if (state == maintenance::COMPLETE || state == maintenance::FAILED ) {
+        } else if ((*loop)->done()) {
           loop = _actionRegistry.erase(loop);
         } else {
           ++loop;

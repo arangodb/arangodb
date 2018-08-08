@@ -93,17 +93,9 @@ void ActionBase::fail() {
 
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
-  bool ret_flag;
 
-  ret_flag = COMPLETE==_state || FAILED==_state;
-
-  // test clock ... avoid race of same task happening again too quickly
-  if (ret_flag) {
-    uint64_t raceOver = _actionDone + _feature.getSecondsActionsBlock();
-    ret_flag = (raceOver <= secs_since_epoch());
-  } // if
-
-  return (ret_flag);
+  return (COMPLETE==_state || FAILED==_state) &&
+    _actionDone + _feature.getSecondsActionsBlock() <= secs_since_epoch();
 
 } // ActionBase::done
 
