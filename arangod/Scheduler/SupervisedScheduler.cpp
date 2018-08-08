@@ -280,7 +280,8 @@ void SupervisedScheduler::runSupervisor()
     //  2. The queue length is bigger than 50 and 1.5 times of what it was last time.
     //      (this is a spike detector)
     bool doStartOneThread =
-      /*(jobsStallingTick > 5) ||*/ ((lastQueueLength >= 50) && (lastQueueLength < queueLength))
+      /*(jobsStallingTick > 5) ||*/
+      ((lastQueueLength >= 3 * _numWorker) && ((lastQueueLength + _numWorker) < queueLength))
       || (lastJobsSubmitted > jobsDone);
 
 
@@ -302,7 +303,7 @@ void SupervisedScheduler::runSupervisor()
         )
       )
       &&
-      ((rand() & 15) == 0);
+      ((rand() & 0x0F) == 0);
 
 
 
@@ -324,7 +325,9 @@ void SupervisedScheduler::runSupervisor()
       break ;
     }
 
-    auto status = _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(10));
+
+    // TODO: CHECK HERE IF A spuriously wake up could shutdown the supervisor
+    auto status = _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
     if (status != std::cv_status::timeout) {
       break ;
     }
