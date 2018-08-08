@@ -13,14 +13,14 @@ Query String:
 Execution plan:
  Id   NodeType                  Calls   Items   Runtime [s]   Comment
   1   SingletonNode                 1       1        0.0000   * ROOT
-  7   SubqueryNode                  1       1        0.0040     - LET list = ...   /* const subquery */
+  7   SubqueryNode                  1       1        0.0039     - LET list = ...   /* const subquery */
   2   SingletonNode                 1       1        0.0000       * ROOT
-  3   EnumerateCollectionNode      11   10000        0.0007         - FOR doc IN acollection   /* full collection scan */
+  3   EnumerateCollectionNode      11   10000        0.0006         - FOR doc IN acollection   /* full collection scan */
   4   CalculationNode              11   10000        0.0028           - LET #5 = (doc.`value` &gt; 90)   /* simple expression */   /* collections used: doc : acollection */
   5   FilterNode                   10    9909        0.0004           - FILTER #5
   6   ReturnNode                   10    9909        0.0001           - RETURN doc
   8   EnumerateListNode            10    9909        0.0005     - FOR a IN list   /* list iteration */
-  9   CalculationNode              10    9909        0.0025       - LET #7 = (a.`value` &lt; 91)   /* simple expression */
+  9   CalculationNode              10    9909        0.0027       - LET #7 = (a.`value` &lt; 91)   /* simple expression */
  10   FilterNode                    1       0        0.0001       - FILTER #7
  11   ReturnNode                    1       0        0.0000       - RETURN a
 
@@ -32,7 +32,7 @@ Optimization rules applied:
 
 Query Statistics:
  Writes Exec   Writes Ign   Scan Full   Scan Index   Filtered   Exec Time [s]
-           0            0       10000            0      10000        0.00731s
+           0            0       10000            0      10000        0.00730s
 
 Query Profile:
  Query Stage           Duration [s]
@@ -40,9 +40,9 @@ Query Profile:
  parsing               0.00003
  optimizing ast        0.00000
  loading collections   0.00000
- instantiating plan    0.00003
- optimizing plan       0.00008
- executing             0.00709
+ instantiating plan    0.00002
+ optimizing plan       0.00002
+ executing             0.00714
  finalizing            0.00007
 
 
