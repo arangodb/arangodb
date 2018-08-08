@@ -69,6 +69,16 @@ struct batchSlice<RemoveDoc> {
   static std::pair<OperationOptions,std::vector<RemoveDoc>> fromVPack(VPackSlice slice);
 };
 
+template<>
+struct batchSlice<UpdateDoc> {
+  static std::pair<OperationOptions,std::vector<UpdateDoc>> fromVPack(VPackSlice slice);
+};
+
+template<>
+struct batchSlice<ReplaceDoc> {
+  static std::pair<OperationOptions,std::vector<ReplaceDoc>> fromVPack(VPackSlice slice);
+};
+
 template <typename DocType>
 class Request {
   Request(VPackSlice slice) : _data() {
