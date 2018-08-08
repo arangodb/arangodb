@@ -1162,6 +1162,7 @@ void RocksDBCollection::figuresSpecific(
   builder->add("cacheInUse", VPackValue(cacheInUse));
   if (cacheInUse) {
     builder->add("cacheSize", VPackValue(_cache->size()));
+    builder->add("cacheUsage", VPackValue(_cache->usage()));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;
@@ -1171,6 +1172,7 @@ void RocksDBCollection::figuresSpecific(
     builder->add("cacheWindowedHitRate", VPackValue(rate));
   } else {
     builder->add("cacheSize", VPackValue(0));
+    builder->add("cacheUsage", VPackValue(0));
   }
 }
 

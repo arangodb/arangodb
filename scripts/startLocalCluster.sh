@@ -162,7 +162,7 @@ done
 start() {
 
     if [ "$1" == "dbserver" ]; then
-        ROLE="PRIMARY"
+        ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
         ROLE="COORDINATOR"
     fi

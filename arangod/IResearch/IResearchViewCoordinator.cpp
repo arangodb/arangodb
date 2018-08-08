@@ -573,7 +573,10 @@ Result IResearchViewCoordinator::drop() {
     );
 
     if (!res.ok()) {
-      return res;
+      return arangodb::Result(
+        res.errorNumber(),
+        std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
+      );
     }
   }
 
