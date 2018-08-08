@@ -1433,7 +1433,9 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     req->addVPack(std::move(buffer));
     req->header.contentType(fuerte::ContentType::VPack);
   }
-  req->header.acceptType(fuerte::ContentType::VPack);
+  if (req->header.acceptType() == fuerte::ContentType::Unset) {
+    req->header.acceptType(fuerte::ContentType::Json); // shell expects raw JSON
+  }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
   std::unique_ptr<fuerte::Response> response;

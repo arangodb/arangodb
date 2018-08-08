@@ -1081,6 +1081,12 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   return true;
 }
 
+void RocksDBEdgeIndex::afterTruncate() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->clear();
+  RocksDBIndex::afterTruncate();
+}
+
 void RocksDBEdgeIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();

@@ -1209,9 +1209,6 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
 }
 
 void RocksDBVPackIndex::recalculateEstimates() {
-  if (ServerState::instance()->isCoordinator()) {
-    return;
-  }
   if (unique()) {
     return;
   }
@@ -1225,6 +1222,12 @@ void RocksDBVPackIndex::recalculateEstimates() {
                                   RocksDBVPackIndex::HashForKey(it->key());
                               _estimator->insert(hash);
                             });
+}
+
+void RocksDBVPackIndex::afterTruncate() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->clear();
+  RocksDBIndex::afterTruncate();
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
