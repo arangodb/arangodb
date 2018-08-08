@@ -54,6 +54,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _agencyPrefix;
   }
 
+  void syncDBServerStatusQuo();
+
 protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms,

@@ -22,10 +22,13 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActionBase.h"
-#include "MaintenanceFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ActionBase.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 
 const char ActionBase::KEY[]="key";
@@ -53,7 +56,12 @@ ActionBase::ActionBase(MaintenanceFeature& feature,
   _id = _feature.nextActionId();
 }
 
-ActionBase::~ActionBase() {}
+ActionBase::~ActionBase() {
+  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  if (cf != nullptr) {
+    cf->syncDBServerStatusQuo();
+  }
+}
 
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {

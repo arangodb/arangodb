@@ -32,10 +32,11 @@
 #include "Cluster/MaintenanceWorker.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer* server)
+MaintenanceFeature::MaintenanceFeature(ApplicationServer* server)
   : ApplicationFeature(server, "Maintenance") {
 
 //  startsAfter("EngineSelector");    // ??? what should this be

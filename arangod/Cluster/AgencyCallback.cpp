@@ -30,11 +30,13 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 
 AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
