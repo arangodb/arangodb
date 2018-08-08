@@ -1,4 +1,4 @@
-v3.3.14 (XXXX-XX-XX)
+v3.3.14 (2018-08-08)
 --------------------
 
 * fixed issue #5943: misplaced database ui icon and wrong cursor type were used
