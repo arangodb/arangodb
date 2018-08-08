@@ -741,6 +741,11 @@ bool mkdir(const file_path_t path) NOEXCEPT {
     // workaround for path MAX_PATH
     auto dirname = path_prefix + path;
 
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &dirname[0], &dirname[0] + dirname.size(), L'/', file_path_delimiter
+    );
+
     return 0 != ::CreateDirectoryW(dirname.c_str(), nullptr);
   #else
     return 0 == ::mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO);
@@ -943,6 +948,11 @@ bool remove(const file_path_t path) NOEXCEPT {
     // workaround for path MAX_PATH
     auto fullpath = path_prefix + path;
 
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
+    );
+
     bool result;
     auto res = exists_directory(result, path) && result
              ? ::RemoveDirectoryW(fullpath.c_str())
@@ -970,6 +980,11 @@ bool set_cwd(const file_path_t path) NOEXCEPT {
 
     // workaround for path MAX_PATH
     auto fullpath = path_prefix + path;
+
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
+    );
 
     return 0 != SetCurrentDirectory(fullpath.c_str());
   #else
