@@ -56,7 +56,7 @@ var helpArangoStatement = arangosh.createHelpHeadline('ArangoStatement help') +
   ' > stmt.setCount(<value>)               set count flag (return number of' + '\n' +
   '                                        results in "count" attribute)   ' + '\n' +
   'Get query options:                                                      ' + '\n' +
-  ' > stmt.setBatchSize()                  return the max. number of results' + '\n' +
+  ' > stmt.getBatchSize()                  return the max. number of results' + '\n' +
   '                                        to be transferred per roundtrip ' + '\n' +
   ' > stmt.getCount()                      return count flag (return number' + '\n' +
   '                                        of results in "count" attribute)' + '\n' +
