@@ -199,7 +199,7 @@ function applierProperties(global, config) {
   if (config === undefined) {
     requestResult = internal.db._connection.GET(url);
   } else {
-    requestResult = internal.db._connection.PUT(url, JSON.stringify(config));
+    requestResult = internal.db._connection.PUT(url, config);
   }
   arangosh.checkRequestResult(requestResult);
   return requestResult;
@@ -266,7 +266,7 @@ var sync = function (global, config) {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = internal.db._connection.PUT_RAW(url, JSON.stringify(config || {}), headers);
+  const requestResult = internal.db._connection.PUT_RAW(url, config || {}, headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
@@ -321,7 +321,7 @@ var setup = function (global, config) {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = internal.db._connection.PUT_RAW(url, JSON.stringify(config), headers);
+  const requestResult = internal.db._connection.PUT_RAW(url, config, headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {

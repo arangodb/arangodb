@@ -206,11 +206,11 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
   } else if (partialUpdate === undefined || partialUpdate === true) {
     requestResult = this._database._connection.PATCH(
-      this._baseurl('properties'), JSON.stringify(properties)
+      this._baseurl('properties'), properties
     );
   } else {
     requestResult = this._database._connection.PUT(
-      this._baseurl('properties'), JSON.stringify(properties)
+      this._baseurl('properties'), properties
     );
   }
 
@@ -257,7 +257,7 @@ ArangoView.prototype.drop = function () {
 
 ArangoView.prototype.rename = function (name) {
   var body = { name: name };
-  var requestResult = this._database._connection.PUT(this._baseurl('rename'), JSON.stringify(body));
+  var requestResult = this._database._connection.PUT(this._baseurl('rename'), body);
 
   arangosh.checkRequestResult(requestResult);
 

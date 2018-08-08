@@ -120,6 +120,11 @@ exception from the GPL license:
 * Project Home: http://www.zlib.net/
 * License: [free as-is license](http://www.zlib.net/zlib_license.html)
 
+### HTTP Parser
+
+* Project Home: https://github.com/nodejs/http-parser
+* License: [MIT License](https://github.com/nodejs/http-parser/blob/master/LICENSE-MIT)
+
 ## Programs
 
 ### cmake

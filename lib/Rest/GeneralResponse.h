@@ -165,8 +165,7 @@ class GeneralResponse {
 
  protected:
   ResponseCode _responseCode;  // http response code
-  std::unordered_map<std::string, std::string>
-      _headers;  // headers/metadata map
+  std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
 
   ContentType _contentType;
   ConnectionType _connectionType;

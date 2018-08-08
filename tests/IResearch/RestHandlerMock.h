@@ -27,33 +27,22 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 
-class TRI_vocbase_t; // forward declaration
+struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
-
 class VocbaseContext; // forward declaration
-
 }
 
 struct GeneralRequestMock: public arangodb::GeneralRequest {
-  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
   int64_t _contentLength;
   std::unique_ptr<arangodb::VocbaseContext> _context; // VocbaseContext required for use with RestVocbaseBaseHandler
-  std::unordered_map<std::string, std::string> _headers; // request headers parameters
   arangodb::velocypack::Builder _payload; // request body
-  std::unordered_map<std::string, std::string> _values; // query string parameters
 
   GeneralRequestMock(TRI_vocbase_t& vocbase);
-  virtual std::unordered_map<std::string, std::vector<std::string>> arrayValues() const override;
-  virtual int64_t contentLength() const override;
-  virtual std::string const& header(std::string const& key) const override;
-  virtual std::string const& header(std::string const& key, bool& found) const override;
-  virtual std::unordered_map<std::string, std::string> const& headers() const override;
+  virtual size_t contentLength() const override;
+  virtual arangodb::StringRef rawPayload() const;
   virtual arangodb::velocypack::Slice payload(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
-  virtual std::string const& value(std::string const& key) const override;
-  virtual std::string const& value(std::string const& key, bool& found) const override;
-  virtual std::unordered_map<std::string, std::string> const& values() const override;
 };
 
 struct GeneralResponseMock: public arangodb::GeneralResponse {
