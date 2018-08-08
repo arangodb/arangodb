@@ -144,12 +144,13 @@ struct BatchRequest {
         case BatchOperation::READ:
           optional.insert("graphName");
           break;
+        case BatchOperation::UPDATE:
+          optional.insert("keepNull"); // please fall through
         case BatchOperation::INSERT:
         case BatchOperation::UPSERT:
-        case BatchOperation::UPDATE:
         case BatchOperation::REPSERT:
         case BatchOperation::REPLACE:
-          optional.insert("returnNew"); //please fall through
+          optional.insert("returnNew"); // please fall through
         case BatchOperation::REMOVE:
           optional.insert("waitForSync");
           optional.insert("returnOld");
