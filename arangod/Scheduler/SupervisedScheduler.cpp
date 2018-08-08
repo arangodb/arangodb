@@ -256,7 +256,7 @@ void SupervisedScheduler::runSupervisor()
     startOneThread();
   }
 
-  uint64_t jobsDone, lastJobsDone = 0, jobsSubmitted;
+  uint64_t jobsDone, lastJobsDone = 0, jobsSubmitted, lastJobsSubmitted = 0;
   uint64_t jobsStallingTick = 0, queueLength, lastQueueLength = 0;
 
   while (!_stopping) {
@@ -280,13 +280,20 @@ void SupervisedScheduler::runSupervisor()
     //  2. The queue length is bigger than 50 and 1.5 times of what it was last time.
     //      (this is a spike detector)
     bool doStartOneThread =
-      (jobsStallingTick > 5) || ((queueLength >= 50) && (1.5 * lastQueueLength < queueLength));
+      /*(jobsStallingTick > 5) ||*/ ((lastQueueLength >= 50) && (lastQueueLength < queueLength))
+      || (lastJobsSubmitted > jobsDone);
+
 
     bool doStopOneThread =
-      (queueLength == 0);
+      //((lastQueueLength < 50) || (lastQueueLength > queueLength)) && (lastJobsSubmitted < jobsDone);
+      // == !doStartOneThread
+      ((queueLength == 0) && (lastQueueLength == 0));
+
+
 
     lastJobsDone = jobsDone;
     lastQueueLength = queueLength;
+    lastJobsSubmitted = jobsSubmitted;
 
     if (doStartOneThread && _numWorker < _maxNumWorker) {
       jobsStallingTick = 0;
