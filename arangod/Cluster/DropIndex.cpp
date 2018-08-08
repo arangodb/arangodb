@@ -108,15 +108,7 @@ bool DropIndex::first() {
     setState(FAILED);
     return false;
   }
-<<<<<<< HEAD
 
   setState(COMPLETE);
   return false;
-  
-}
-=======
->>>>>>> 5914ff9492a16f3af8b1655752bf6a58ffa72b81
-
-  return false;
-
 }
