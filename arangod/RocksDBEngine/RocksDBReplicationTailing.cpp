@@ -170,7 +170,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
             uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(tick)));
-            marker->add("types", VPackValue(REPLICATION_COLLECTION_DROP));
+            marker->add("type", VPackValue(REPLICATION_COLLECTION_DROP));
             marker->add("database", VPackValue(std::to_string(dbid)));
             if (!uuid.empty()) {
               marker->add("cuid", VPackValuePair(uuid.data(), uuid.size(),
