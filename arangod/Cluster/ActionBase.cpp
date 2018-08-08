@@ -47,36 +47,48 @@ const char ActionBase::LOCAL_LEADER[]="localLeader";
 const char ActionBase::GLOB_UID[]="globallyUniqueId";
 const char ActionBase::OBJECT_ID[]="objectId";
 
+inline static uint64_t secs_since_epoch() {
+  return uint64_t(
+    std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::system_clock::now().time_since_epoch()).count());
+}
+
 ActionBase::ActionBase(MaintenanceFeature& feature,
                        ActionDescription const& desc)
   : _feature(feature), _description(desc), _state(READY),
-    _actionCreated(std::chrono::system_clock::now()), _progress(0) {
+    _actionCreated(secs_since_epoch()), _progress(0) {
+  
   _hash = _description.hash();
   _clientId = std::to_string(_hash);
   _id = _feature.nextActionId();
+  
 }
 
 ActionBase::~ActionBase() {
-  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (cf != nullptr) {
-    cf->syncDBServerStatusQuo();
-  }
 }
 
 
 bool ActionBase::first() {
-  _actionStarted = std::chrono::system_clock::now();
+  _actionStarted = secs_since_epoch();
   return false;
 }
 
 void ActionBase::complete() {
-  _actionDone = std::chrono::system_clock::now();
-  setState(COMPLETE);
+  _actionDone = secs_since_epoch();
+  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  if (cf != nullptr) {
+    cf->syncDBServerStatusQuo();
+  }
+  _state = COMPLETE;
 }
 
 void ActionBase::fail() {
-  _actionDone = std::chrono::system_clock::now();
-  setState(FAILED);
+  _actionDone = secs_since_epoch();
+  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  if (cf != nullptr) {
+    cf->syncDBServerStatusQuo();
+  }
+  _state = FAILED;
 }
 
 /// @brief execution finished successfully or failed ... and race timer expired
@@ -87,10 +99,8 @@ bool ActionBase::done() const {
 
   // test clock ... avoid race of same task happening again too quickly
   if (ret_flag) {
-    std::chrono::seconds secs(_feature.getSecondsActionsBlock());
-    std::chrono::system_clock::time_point raceOver = _actionDone + secs;
-
-    ret_flag = (raceOver <= std::chrono::system_clock::now());
+    uint64_t raceOver = _actionDone + _feature.getSecondsActionsBlock();
+    ret_flag = (raceOver <= secs_since_epoch());
   } // if
 
   return (ret_flag);
@@ -163,7 +173,7 @@ void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& desc
 
 void ActionBase::startStats() {
 
-  _actionStarted = std::chrono::system_clock::now();
+// done when first  _actionStarted = std::chrono::system_clock::now();
 
   return;
 
@@ -173,7 +183,7 @@ void ActionBase::startStats() {
 void ActionBase::incStats() {
 
   ++_progress;
-  _actionLastStat = std::chrono::system_clock::now();
+  //_actionLastStat = std::chrono::system_clock::now();
 
   return;
 
@@ -182,7 +192,7 @@ void ActionBase::incStats() {
 
 void ActionBase::endStats() {
 
-  _actionDone = std::chrono::system_clock::now();
+  //_actionDone = std::chrono::system_clock::now();
 
   return;
 
@@ -207,9 +217,9 @@ void ActionBase::toVelocyPack(VPackBuilder & builder) const {
   builder.add("progress", VPackValue(_progress));
 #if 0  /// hmm, several should be reported as duration instead of time_point
   builder.add("created", VPackValue(timepointToString(_actionCreated.count())));
-  builder.add("started", VPackValue(_actionStarted.count()));
-  builder.add("lastStat", VPackValue(_actionLastStat.count()));
-  builder.add("done", VPackValue(_actionDone.count()));
+  builder.add("started", VPackValue(_actionStarted));
+  builder.add("lastStat", VPackValue(_actionLastStat));
+  builder.add("done", VPackValue(_actionDone));
 #endif
   builder.add("result", VPackValue(_result.errorNumber()));
 

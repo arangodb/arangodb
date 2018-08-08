@@ -123,11 +123,6 @@ class ActionBase {
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
   void setState(ActionState state) {
-    if ((FAILED == state || COMPLETE == state)
-        && std::chrono::system_clock::time_point() == _actionDone) {
-      _actionDone = std::chrono::system_clock::now();
-    } // if
-
     _state = state;
   }
 
@@ -209,10 +204,10 @@ protected:
 
   // times for user reporting (and _actionDone used by done() to prevent
   //  race conditions of same task executing twice
-  std::chrono::system_clock::time_point _actionCreated;
-  std::chrono::system_clock::time_point _actionStarted;
-  std::chrono::system_clock::time_point _actionLastStat;
-  std::chrono::system_clock::time_point _actionDone;
+  std::atomic<uint64_t> _actionCreated;
+  std::atomic<uint64_t> _actionStarted;
+  std::atomic<uint64_t> _actionLastStat;
+  std::atomic<uint64_t> _actionDone;
 
   std::atomic<uint64_t> _progress;
 
