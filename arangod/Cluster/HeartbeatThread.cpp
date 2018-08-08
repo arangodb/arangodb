@@ -387,13 +387,17 @@ void HeartbeatThread::runDBServer() {
         {
           CONDITION_LOCKER(locker, _condition);
           wasNotified = _wasNotified;
-          if (!wasNotified) {
+          if (!wasNotified && !isStopping()) {
             if (remain.count() > 0) {
               locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
               wasNotified = _wasNotified;
             }
           }
           _wasNotified = false;
+        }
+
+        if (isStopping()) {
+          break;
         }
 
         if (!wasNotified) {
@@ -448,10 +452,14 @@ void HeartbeatThread::runSingleServer() {
   uint64_t lastSentVersion = 0;
   auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
-    auto remain = _interval - (std::chrono::steady_clock::now() - start);
-    if (remain.count() > 0) {
-      std::this_thread::sleep_for(remain);
+    {
+      CONDITION_LOCKER(locker, _condition);
+      auto remain = _interval - (std::chrono::steady_clock::now() - start);
+      if (remain.count() > 0 && !isStopping()) {
+        locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
+      }
     }
+
     start = std::chrono::steady_clock::now();
 
     if (isStopping()) {
@@ -632,6 +640,7 @@ void HeartbeatThread::runSingleServer() {
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
@@ -909,8 +918,11 @@ void HeartbeatThread::runCoordinator() {
         DBServerUpdateCounter = 0;
       }
 
+      CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
-      std::this_thread::sleep_for(remain);
+      if (remain.count() > 0 && !isStopping()) {
+        locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
+      }
 
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
@@ -929,7 +941,7 @@ void HeartbeatThread::runCoordinator() {
 bool HeartbeatThread::init() {
   // send the server state a first time and use this as an indicator about
   // the agency's health
-  if (!sendServerState()) {
+  if (ServerState::instance()->isClusterRole() && !sendServerState()) {
     return false;
   }
 
@@ -1239,7 +1251,7 @@ void HeartbeatThread::recordThreadDeath(const std::string & threadName) {
 void HeartbeatThread::logThreadDeaths(bool force) {
 
   bool doLogging(force);
-    
+
   MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
 
   if (std::chrono::hours(1) < (std::chrono::system_clock::now() - deadThreadsPosted)) {
@@ -1252,7 +1264,7 @@ void HeartbeatThread::logThreadDeaths(bool force) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
-  
+
     for (auto const& it : deadThreads) {
       std::ostringstream oss;
       auto tm = *std::gmtime(&it.first);
