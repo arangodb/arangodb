@@ -101,15 +101,18 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   # read in the context, split into long and short
   infile = io.open(filepath, 'r', encoding='utf-8', newline=None)
   for line in infile:
+    stripped_line = re.sub('<[^<]+?>', '', line) # remove HTML tags
     if first:
-      if blockType == "arangosh" and not line.startswith("arangosh&gt;"):
+      if blockType == "arangosh" and not stripped_line.startswith("arangosh&gt;"):
         raise Exception ("mismatching blocktype - expecting 'arangosh' to start with 'arangosh&gt' - in %s while inspecting %s - referenced via %s have '%s'" %(filepath, tag, placeIntoFilePath, line))
-      if blockType == "curl" and not line.startswith("shell> curl"):
-        raise Exception("mismatching blocktype - expecting 'curl' to start with 'shell > curl' in %s while inspecting %s - referenced via %s have '%s'" %(filepath, tag, placeIntoFilePath, line))
+      # HACK: highlight.js may add HTML to the prefix
+      # <span class="hljs-meta">shell&gt;</span><span class="bash"> curl ...
+      if blockType == "curl" and not stripped_line.startswith("shell&gt; curl"):
+        raise Exception("mismatching blocktype - expecting 'curl' to start with 'shell> curl' in %s while inspecting %s - referenced via %s have '%s'" %(filepath, tag, placeIntoFilePath, line))
       first = False
 
     if blockType == "arangosh":
-      if line.startswith("arangosh&gt;") or line.startswith("........&gt;"):
+      if stripped_line.startswith("arangosh&gt;") or stripped_line.startswith("........&gt;"):
         if lastline != None:
           # short = short + lastline
           # shortLines = shortLines + 1
@@ -133,7 +136,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
             lastline = None
 
     if blockType == "curl":
-      if line.startswith("shell&gt; curl"):
+      if stripped_line.startswith("shell&gt; curl"):
         curlState = CURL_STATE_CMD
       elif curlState == CURL_STATE_CMD and line.startswith("HTTP/"):
         curlState = CURL_STATE_HEADER

@@ -7,6 +7,8 @@ devel
 * The server will no longer lowercase the input in --server.endpoint. This means
   Unix domain socket paths will now  be treated as specified, previously they were lowercased
 
+* fixed logging of requests. A wrong log level was used
+
 * fixed issue #5943: misplaced database ui icon and wrong cursor type were used
 
 * fixed issue #5354: updated the web UI JSON editor, improved usability

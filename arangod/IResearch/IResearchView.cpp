@@ -1207,8 +1207,8 @@ arangodb::Result IResearchView::dropImpl() {
 
   if (!res.ok()) {
     return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to remove links while removing IResearch view '") + std::to_string(id()) + "'"
+      res.errorNumber(),
+      std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
     );
   }
 
