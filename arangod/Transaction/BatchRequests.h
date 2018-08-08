@@ -1,6 +1,8 @@
 #ifndef ARANGOD_TRANSACTION_BATCHREQUESTS_H
 #define ARANGOD_TRANSACTION_BATCHREQUESTS_H 1
 
+#include "boost/optional.hpp"
+
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/OperationOptions.h"
 
@@ -21,50 +23,8 @@ enum class Operation {
   REPSERT,
 };
 
-struct OperationHash {
-  size_t operator()(Operation value) const noexcept {
-    typedef std::underlying_type<decltype(value)>::type UnderlyingType;
-    return std::hash<UnderlyingType>()(UnderlyingType(value));
-  }
-};
-
-inline std::unordered_map<Operation, std::string, OperationHash> const&
-getBatchToStingMap(){
-  static const std::unordered_map<Operation, std::string, OperationHash>
-  // NOLINTNEXTLINE(cert-err58-cpp)
-  batchToStringMap{
-      {Operation::READ, "read"},
-      {Operation::INSERT, "insert"},
-      {Operation::REMOVE, "remove"},
-      {Operation::REPLACE, "replace"},
-      {Operation::UPDATE, "update"},
-      {Operation::UPSERT, "upsert"},
-      {Operation::REPSERT, "repsert"},
-  };
-  return batchToStringMap;
-};
-
-inline std::string batchToString(Operation op) {
-  auto const& map = getBatchToStingMap();
-  return map.at(op);
-}
-
-inline std::unordered_map<std::string, Operation> ensureStringToBatchMapIsInitialized() {
- std::unordered_map<std::string, Operation> stringToBatchMap;
-  for (auto const& it : getBatchToStingMap()) {
-    stringToBatchMap.insert({it.second, it.first});
-  }
-  return stringToBatchMap;
-}
-
-inline Operation stringToBatch(std::string const& op) {
-  static const auto stringToBatchMap = ensureStringToBatchMapIsInitialized();
-  auto it = stringToBatchMap.find(op);
-  if (it == stringToBatchMap.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not convert string to batch operation");
-  }
-  return it->second;
-}
+std::string batchToString(Operation op);
+boost::optional<Operation> stringToBatch(std::string const& op);
 
 using DocumentSlice = VPackSlice;
 
@@ -77,15 +37,15 @@ struct RemoveDoc {
   VPackSlice pattern;
 };
 
-struct DefaultDoc {
+struct PatternWithKeyAndDoc {
   std::string key;
   VPackSlice pattern;
   VPackSlice document;
 };
 
-struct ReadDoc : public DefaultDoc{};
-struct UpdateDoc : public DefaultDoc{};
-struct ReplaceDoc : public DefaultDoc{};
+struct ReadDoc : public PatternWithKeyAndDoc{};
+struct UpdateDoc : public PatternWithKeyAndDoc{};
+struct ReplaceDoc : public PatternWithKeyAndDoc{};
 
 struct UpsertDoc {
   std::string key;
@@ -121,8 +81,6 @@ public:
   std::vector<DocType> const& data() const { return _data; }
   OperationOptions const& options() const { return _options; }
 };
-
-
 
 }
 } //arangodb

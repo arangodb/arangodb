@@ -471,6 +471,7 @@ SET(ARANGOD_SOURCES
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
   Transaction/V8Context.cpp
+  Transaction/BatchRequests.h
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp
