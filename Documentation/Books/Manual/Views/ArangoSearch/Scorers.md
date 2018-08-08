@@ -1,4 +1,4 @@
-###ArangoSearch Scorers
+### ArangoSearch Scorers
 
 ArangoSearch accesses scorers directly by their internal names. The
 name (in upper-case) of the scorer is the function name to be used in the
