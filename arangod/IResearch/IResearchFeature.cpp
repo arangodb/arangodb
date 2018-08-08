@@ -149,7 +149,6 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     "__ARANGOSEARCH_SCORE_DEBUG",  // name
     ".",    // value to convert
     true,   // deterministic
-    false,  // can't throw
     true,   // can be run on server
     [](arangodb::aql::Query*,
        arangodb::transaction::Methods*,
@@ -166,7 +165,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "EXISTS",      // name
     ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -175,7 +173,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "STARTS_WITH", // name
     ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -184,7 +181,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "PHRASE",      // name
     ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -193,7 +189,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "MIN_MATCH",   // name
     ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -202,7 +197,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "BOOST",       // name
     ".,.",         // positional arguments (filter expression, boost)
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -211,7 +205,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "ANALYZER",    // name
     ".,.",         // positional arguments (filter expression, analyzer)
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -281,7 +274,6 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
       true,   // deterministic
-      false,  // can't throw
       true,   // can be run on server
       &scorer // function implementation (use function name as placeholder)
     });

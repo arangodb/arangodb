@@ -136,7 +136,6 @@ struct IResearchQueryStringTermSetup {
       "_NONDETERM_",
       ".",
       false, // fake non-deterministic
-      false, // fake can throw
       true,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
@@ -148,7 +147,6 @@ struct IResearchQueryStringTermSetup {
       "_FORWARD_",
       ".",
       true, // fake deterministic
-      false, // fake can throw
       true,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());

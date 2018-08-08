@@ -1592,8 +1592,6 @@ void Ast::injectBindParameters(
            node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
            // mark node as executable on db-server
            node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-           // mark node as non-throwing
-           node->setFlag(DETERMINED_THROWS);
            // mark node as deterministic
            node->setFlag(DETERMINED_NONDETERMINISTIC);
 
@@ -2856,7 +2854,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
   }
 
   if (canModifyResultType) {
-    if (rhs->isConstant() && !lhs->canThrow()) {
+    if (rhs->isConstant() && lhs->isDeterministic()) {
       // right operand is a constant value
       if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         if (rhs->isFalse()) {
@@ -2893,7 +2891,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (!lhs->canThrow() && rhs->type == NODE_TYPE_ARRAY &&
+  if (lhs->isDeterministic() && rhs->type == NODE_TYPE_ARRAY &&
       rhs->numMembers() <= 1 && (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
                                  node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
     // turn an IN or a NOT IN with few members into an equality comparison
