@@ -61,12 +61,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid number of shards");
     }
-
-    VPackSlice keyGenSlice = info.get("keyOptions");
-    if (!KeyGenerator::canUseType(keyGenSlice)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                     "the specified key generator is not supported for sharded collections");
-    }
   }
 
   if (info.hasKey("avoidServers")) {
@@ -287,7 +281,8 @@ void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo con
   if (!usesSameShardingStrategy(other)) {
     // other collection has a different sharding strategy
     // adjust our sharding so it uses the same strategy as the other collection
-    _shardingStrategy = std::move(application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->create(other->shardingStrategyName(), this));
+    auto shr = application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding");
+    _shardingStrategy = shr->create(other->shardingStrategyName(), this);
   }
 
   _distributeShardsLike = cid;

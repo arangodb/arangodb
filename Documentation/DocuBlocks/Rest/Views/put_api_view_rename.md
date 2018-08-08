@@ -40,7 +40,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
     assert(response.code === 200);
     db._flushCache();
-    db._dropView(viewNewName);
+    db._dropView("viewNewName");
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN

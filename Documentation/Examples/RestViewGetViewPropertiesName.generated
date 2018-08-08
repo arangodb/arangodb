@@ -1,10 +1,17 @@
-shell> curl --dump - http://localhost:8529/_api/view/products/properties
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/_api/view/products/properties</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"locale"</span> : <span class="hljs-string">"C"</span>, 
+  <span class="hljs-string">"links"</span> : { 
+  }, 
   <span class="hljs-string">"commit"</span> : { 
     <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
     <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
@@ -27,8 +34,5 @@ x-content-type-options: nosniff
       } 
     } 
   }, 
-  <span class="hljs-string">"locale"</span> : <span class="hljs-string">"c.UTF-8"</span>, 
-  <span class="hljs-string">"collections"</span> : [ ], 
-  <span class="hljs-string">"links"</span> : { 
-  } 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"105461"</span> 
 }
