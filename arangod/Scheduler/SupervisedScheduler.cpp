@@ -285,9 +285,24 @@ void SupervisedScheduler::runSupervisor()
 
 
     bool doStopOneThread =
-      //((lastQueueLength < 50) || (lastQueueLength > queueLength)) && (lastJobsSubmitted < jobsDone);
+      (
+        (
+          (lastQueueLength < 10) || (lastQueueLength >= queueLength)
+        )
+        &&
+        (lastJobsSubmitted <= jobsDone)
+        &&
+        ((rand() & 15) == 0)
+      )
+
       // == !doStartOneThread
-      ((queueLength == 0) && (lastQueueLength == 0));
+      ||
+      (
+        (queueLength == 0)
+        &&
+        (lastQueueLength == 0)
+      );
+
 
 
 
