@@ -410,6 +410,11 @@ static int distributeBabyOnShards(
       _key = collinfo->keyGenerator()->generate();
     } else {
       userSpecifiedKey = true;
+      if (keySlice.isString()) {
+        VPackValueLength l;
+        char const* p = keySlice.getString(l);
+        collinfo->keyGenerator()->track(p, l);
+      }
     }
 
     // Now find the responsible shard:
