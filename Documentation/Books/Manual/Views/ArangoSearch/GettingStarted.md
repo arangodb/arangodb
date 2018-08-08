@@ -64,7 +64,7 @@ v0.properties({
 
 ## Query data using created View with linked collections
 ```javascript
-db._query("FOR doc IN VIEW ExampleView FILTER PHRASE(doc.text, '型数 据库', 'text_zh') OR STARTS_WITH(doc.b, 'ba') SORT (doc) DESC RETURN doc");
+db._query("FOR doc IN VIEW ExampleView FILTER PHRASE(doc.text, '型数 据库', 'text_zh') OR STARTS_WITH(doc.b, 'ba') SORT TFIDF(doc) DESC RETURN doc");
 ```
 
 ## Examine query result
