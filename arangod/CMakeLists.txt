@@ -180,6 +180,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
+  Aql/Arithmetic.cpp
   Aql/Ast.cpp
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp

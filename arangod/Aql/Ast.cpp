@@ -2236,7 +2236,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
     return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor);
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
 
   return result;
 }
@@ -2245,7 +2245,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
 std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode const* node,
                                                                     Variable const* searchVariable,
                                                                     bool& isSafeForOptimization) {
-  auto isTargetVariable = [&](AstNode const* node) {
+  auto isTargetVariable = [&searchVariable](AstNode const* node) {
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
       auto sub = node->getMemberUnchecked(0);
       if (sub->type == NODE_TYPE_REFERENCE) {
@@ -2282,7 +2282,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode cons
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
 
-  std::function<bool(AstNode const*)> visitor = [&](AstNode const* node) {
+  std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization, &result, &isTargetVariable, &searchVariable](AstNode const* node) {
     if (!isSafeForOptimization) {
       return false;
     }
@@ -2322,7 +2322,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode cons
     return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor);
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
 
   return result;
 }
@@ -2373,7 +2373,7 @@ bool Ast::getReferencedAttributes(AstNode const* node,
     return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor);
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
   return isSafeForOptimization;
 }
 
@@ -2987,7 +2987,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         auto l = left->getIntValue();
         auto r = right->getIntValue();
         // check if the result would overflow
-        useDoublePrecision = IsUnsafeAddition<int64_t>(l, r);
+        useDoublePrecision = isUnsafeAddition<int64_t>(l, r);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3009,7 +3009,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         auto l = left->getIntValue();
         auto r = right->getIntValue();
         // check if the result would overflow
-        useDoublePrecision = IsUnsafeSubtraction<int64_t>(l, r);
+        useDoublePrecision = isUnsafeSubtraction<int64_t>(l, r);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3031,7 +3031,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         auto l = left->getIntValue();
         auto r = right->getIntValue();
         // check if the result would overflow
-        useDoublePrecision = IsUnsafeMultiplication<int64_t>(l, r);
+        useDoublePrecision = isUnsafeMultiplication<int64_t>(l, r);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3059,7 +3059,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
         // check if the result would overflow
         useDoublePrecision =
-            (IsUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
+            (isUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3090,7 +3090,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         }
 
         // check if the result would overflow
-        useDoublePrecision = IsUnsafeDivision<int64_t>(l, r);
+        useDoublePrecision = isUnsafeDivision<int64_t>(l, r);
 
         if (!useDoublePrecision) {
           // can calculate using integers

@@ -335,6 +335,20 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
 
   Using any of these functions from inside AQL will now produce an error.
 
+- in previous versions, the AQL optimizer used two different ways of converting 
+  strings into numbers. The two different ways have been unified into a single
+  way that behaves like the `TO_NUMBER` AQL function, which is also the documented
+  behavior.
+
+  The change affects arithmetic operations with strings that contain numbers and
+  other trailing characters, e.g.
+
+      expression         3.3 result          3.4 result       TO_NUMBER()
+      0 + "1a"           0 + 1 = 1           0 + 0 = 0        TO_NUMBER("1a") = 0
+      0 + "1 "           0 + 1 = 1           0 + 1 = 1        TO_NUMBER("1 ") = 1
+      0 + " 1"           0 + 1 = 1           0 + 1 = 1        TO_NUMBER(" 1") = 1
+      0 + "a1"           0 + 0 = 0           0 + 0 = 0        TO_NUMBER("a1") = 0
+
 
 Usage of V8
 -----------
