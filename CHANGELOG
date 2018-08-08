@@ -3,7 +3,13 @@ devel
 
 * fixed issue #6106: Arithmetic operator type casting documentation incorrect
 
-* fixed logging of requests. A wrong log level was used.
+* The arangosh now supports the velocystream transport protocol via the schemas 
+  "vst+tcp://", "vst+ssl://", "vst+unix://" schemes. 
+
+* The server will no longer lowercase the input in --server.endpoint. This means
+  Unix domain socket paths will now  be treated as specified, previously they were lowercased
+
+* fixed logging of requests. A wrong log level was used
 
 * fixed issue #5943: misplaced database ui icon and wrong cursor type were used
 
@@ -25,6 +31,7 @@ devel
 * fixed issue #5884: Subquery nodes are no longer created on DBServers
 
 * intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries 
+
   (not within a JS transaction), standalone truncate as well as for the "import" API
 
 * the AQL editor in the web UI now supports GeoJSON types and is able to render them.

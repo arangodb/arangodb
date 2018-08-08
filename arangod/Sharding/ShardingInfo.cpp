@@ -287,7 +287,8 @@ void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo con
   if (!usesSameShardingStrategy(other)) {
     // other collection has a different sharding strategy
     // adjust our sharding so it uses the same strategy as the other collection
-    _shardingStrategy = std::move(application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->create(other->shardingStrategyName(), this));
+    auto shr = application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding");
+    _shardingStrategy = shr->create(other->shardingStrategyName(), this);
   }
 
   _distributeShardsLike = cid;
