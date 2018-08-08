@@ -692,6 +692,8 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
   
   SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
                                   *col, AccessMode::Type::EXCLUSIVE);
+  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
   Result res = trx.begin();
   if (!res.ok()) {
     return res;

@@ -632,8 +632,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
   
-  if (trx->isSingleOperationTransaction() &&
-      trx->isLocked(&_logicalCollection, AccessMode::Type::EXCLUSIVE) &&
+  if (state->isExclusiveTransactionOnSingleCollection() &&
+      state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
       _numberDocuments >= 16384) {
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumwent the normal rocksdb::Transaction.
@@ -674,6 +674,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
     }
     _numberDocuments = 0; // protected by collection lock
+    compact(); 
     return; // done
   }
   
