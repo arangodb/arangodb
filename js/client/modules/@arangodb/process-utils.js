@@ -831,7 +831,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       requestOptions.method = 'PUT';
 
       print(coords[0].url + "/_admin/cluster/maintenance");
-      download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify({ body: "on" }), requestOptions);
+      download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
     }
   } catch (err) {
     print("error while setting cluster maintenance mode:", err);
@@ -927,7 +927,19 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
     });
     if (toShutdown.length > 0) {
-      print(toShutdown.length + ' arangods ' + nonAgenciesCount + ' not agents are still running...');
+      let roles = {};
+      toShutdown.forEach(arangod => { 
+        if (!roles.hasOwnProperty(arangod.role)) {
+          roles[arangod.role] = 0;
+        } 
+        ++roles[arangod.role]; 
+      });
+      let roleNames = [];
+      for (let r in roles) {
+        // e.g. 2 + coordinator + (s)
+        roleNames.push(roles[r] + ' ' + r + '(s)');
+      }
+      print(roleNames.join(', ') + ' are still running...');
       require('internal').wait(1, false);
     }
   }

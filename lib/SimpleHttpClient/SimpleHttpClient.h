@@ -190,7 +190,7 @@ class SimpleHttpClient {
   ~SimpleHttpClient();
 
  public:
-  void setInterrupted(bool value) noexcept;
+  void setInterrupted(bool value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates the connection used by the client
@@ -284,7 +284,7 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_params._warn || forceWarn) {
-      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << _errorMessage;
+      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _errorMessage;
     }
   }
 
@@ -321,13 +321,7 @@ class SimpleHttpClient {
 
   SimpleHttpClientParams& params() { return _params; };
   
-  /// @brief if true, makes the SimpleHttpClient consider the case of
-  /// server shutdown as a case for aborting the request
-  void checkForGlobalAbort(bool value) noexcept;
- 
-  /// @brief checks if connection is aborted, and may also set it to
-  /// aborted if the server is shutting down 
-  bool isAborted() noexcept;
+  bool isAborted() const noexcept { return _aborted.load(std::memory_order_acquire); }
 
   void setAborted(bool value) noexcept;
 
@@ -494,7 +488,8 @@ class SimpleHttpClient {
   
   std::atomic<bool> _aborted;
 
-  bool _checkForGlobalAbort;
+  // empty map, used for headers
+  static std::unordered_map<std::string, std::string> const NO_HEADERS;
 };
 }
 }

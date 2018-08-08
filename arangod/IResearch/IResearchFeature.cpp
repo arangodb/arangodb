@@ -570,7 +570,7 @@ void IResearchFeature::Async::Thread::run() {
 IResearchFeature::Async::Async(): _terminate(false) {
   static const unsigned int MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
   static const unsigned int MIN_THREADS = 1; // at least one thread is required
-  auto poolSize = std::max(
+  auto const poolSize = std::max(
     MIN_THREADS,
     std::min(MAX_THREADS, std::thread::hardware_concurrency() / 4) // arbitrary fraction of available cores
   );
@@ -635,6 +635,9 @@ void IResearchFeature::Async::start() {
   for (auto& thread: _pool) {
     thread.start(&_join);
   }
+
+  LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+    << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)

@@ -63,7 +63,11 @@ class RocksDBMethods {
   explicit RocksDBMethods(RocksDBTransactionState* state) : _state(state) {}
   virtual ~RocksDBMethods() {}
 
-  rocksdb::ReadOptions const& readOptions();
+  /// @brief current sequence number
+  rocksdb::SequenceNumber sequenceNumber();
+
+  /// @brief read options for use with iterators
+  rocksdb::ReadOptions iteratorReadOptions();
 
   /// @brief returns true if indexing was disabled by this call
   /// the default implementation is to do nothing
@@ -82,10 +86,10 @@ class RocksDBMethods {
   virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                                   RocksDBKey const&) = 0;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(
+  /*std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ColumnFamilyHandle* cf) {
     return this->NewIterator(this->readOptions(), cf);
-  }
+  }*/
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) = 0;
 

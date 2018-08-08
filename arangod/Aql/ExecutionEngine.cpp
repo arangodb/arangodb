@@ -484,11 +484,15 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
   Result res{TRI_ERROR_INTERNAL};
   ExecutionState state = ExecutionState::WAITING;
   try {
-    _query->setContinueCallback([&]() { _query->tempSignalAsyncResponse(); });
-    while (state == ExecutionState::WAITING) {
-      std::tie(state, res) = shutdown(errorCode);
-      if (state == ExecutionState::WAITING) {
-        _query->tempWaitForAsyncResponse();
+    std::shared_ptr<SharedQueryState> sharedState = _query->sharedState();
+    if (sharedState != nullptr) {
+      sharedState->setContinueCallback();
+      
+      while (state == ExecutionState::WAITING) {
+        std::tie(state, res) = shutdown(errorCode);
+        if (state == ExecutionState::WAITING) {
+          sharedState->waitForAsyncResponse();
+        }
       }
     }
   } catch (...) {

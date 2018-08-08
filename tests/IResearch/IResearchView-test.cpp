@@ -416,7 +416,6 @@ SECTION("test_defaults") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -2995,7 +2994,8 @@ SECTION("test_transaction_snapshot") {
 SECTION("test_update_overwrite") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\" \
+    \"type\": \"arangosearch\", \
+    \"locale\": \"en\" \
   }");
 
   // modify meta params
@@ -3009,10 +3009,10 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-        \"locale\": \"en\" \
+        \"locale\": \"de\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("en", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
       // not for persistence
@@ -3069,7 +3069,7 @@ SECTION("test_update_overwrite") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("ru", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
       // not for persistence
@@ -3138,6 +3138,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
       CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3217,7 +3218,7 @@ SECTION("test_update_overwrite") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("ru", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       CHECK((logicalView->updateProperties(updateJson->slice(), false, false).ok()));
 
       // not for persistence
@@ -3290,6 +3291,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection0->id());
       expectedLinkMeta["testCollection0"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3369,6 +3371,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection1->id());
       expectedLinkMeta["testCollection1"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
@@ -3548,12 +3551,45 @@ SECTION("test_update_overwrite") {
       }
     }
   }
+
+  // add link (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+  }
 }
 
 SECTION("test_update_partial") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\" \
+    \"type\": \"arangosearch\", \
+    \"locale\": \"en\" \
   }");
   bool persisted = false;
   auto before = StorageEngineMock::before;
@@ -3570,10 +3606,10 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-      \"locale\": \"en\" \
+      \"locale\": \"de\" \
     }");
 
-    expectedMeta._locale = irs::locale_utils::locale("en", true);
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
     // not for persistence
@@ -3636,6 +3672,7 @@ SECTION("test_update_partial") {
       \"locale\": 123 \
     }");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     // not for persistence
@@ -3703,6 +3740,7 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
       CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3783,7 +3821,7 @@ SECTION("test_update_partial") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("ru", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
       CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
@@ -3936,6 +3974,7 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
@@ -4042,6 +4081,7 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
@@ -4128,6 +4168,7 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     // not for persistence
@@ -4261,6 +4302,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
 
     {
@@ -4324,6 +4366,7 @@ SECTION("test_update_partial") {
           \"testCollection\": null \
       }}");
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.clear();
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -4388,6 +4431,7 @@ SECTION("test_update_partial") {
         \"testCollection\": null \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     // not for persistence
@@ -4453,6 +4497,7 @@ SECTION("test_update_partial") {
         \"testCollection\": null \
     }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
     // not for persistence
@@ -4723,6 +4768,38 @@ SECTION("test_update_partial") {
         CHECK((false == slice.hasKey("links")));
       }
     }
+  }
+
+  // add link (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
 
