@@ -37,19 +37,6 @@
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
-// BatchOperation and helpers
-////////////////////////////////////////////////////////////////////////////////
-
-namespace arangodb {
-namespace rest {
-namespace batch_document_handler {
-
-
-}
-}
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // RestBatchDocumentHandler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,13 +79,18 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
     return RestStatus::DONE;
   }
 
-  //auto maybeRequest = barch::fromVelocypack(_request->payload(), maybeOp.get());
-  //if (maybeRequest.fail()) {
-  //  generateError(maybeRequest);
-  //  return RestStatus::FAIL;
-  //}
+  std::vector<OperationResult> vec;
   auto maybeRequest = batch::createRequestFromSlice<batch::RemoveDoc>(_request->payload());
+  if(maybeRequest.fail()){
+    OperationResult res{maybeRequest};
+    vec.push_back(std::move(res));
+    generateBatchResponse(std::move(vec), &velocypack::Options::Defaults);
+    return RestStatus::FAIL;
+  }
+
+  // return something so executeBatechRequest can become a free-standing function
   executeBatchRequest(collection, std::move(maybeRequest.get()));
+
 
   return RestStatus::DONE;
 }
