@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #6128: ArangoDb Cluster: Task moved from DBS to Coordinator
+
 * fixed issue #6106: Arithmetic operator type casting documentation incorrect
 
 * The arangosh now supports the velocystream transport protocol via the schemas 
