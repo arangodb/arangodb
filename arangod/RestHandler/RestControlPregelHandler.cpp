@@ -24,7 +24,6 @@
 #include "RestControlPregelHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/Graphs.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Conductor.h"
@@ -33,7 +32,8 @@
 #include "Transaction/StandaloneContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/Graphs.h"
+#include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "VocBase/Methods/Tasks.h"
 
 #include <velocypack/Builder.h>
@@ -133,12 +133,13 @@ void RestControlPregelHandler::startExecution() {
       return;
     }
 
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    auto graph = lookupGraphByName(ctx, gs);
-    if (nullptr == graph) {
-      generateError(TRI_ERROR_GRAPH_NOT_FOUND);
+    graph::GraphManager gmngr{_vocbase};
+    auto graphRes = gmngr.lookupGraphByName(gs);
+    if (graphRes.fail()) {
+      generateError(graphRes.copy_result());
       return;
     }
+    std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
 
     auto gv = graph->vertexCollections();
     for (auto& v : gv) {
