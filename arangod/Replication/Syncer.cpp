@@ -320,7 +320,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
       });
 
       cb();
-    });
+    }, false);
   } catch (...) {
     // will get here only if Scheduler::post threw
     jobDone();
