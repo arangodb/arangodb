@@ -225,7 +225,7 @@ int RocksDBIndex::drop() {
   // edge index needs to be dropped with prefix_same_as_start = false
   // otherwise full index scan will not work
   bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  const bool rangeDelete = coll->numberDocuments() >= 16384;
+  const bool rangeDelete = coll->numberDocuments() >= 32 * 1024;
 
   arangodb::Result r = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),
                                                     prefix_same_as_start, rangeDelete);
@@ -264,7 +264,6 @@ void RocksDBIndex::afterTruncate() {
     createCache();
     TRI_ASSERT(_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,

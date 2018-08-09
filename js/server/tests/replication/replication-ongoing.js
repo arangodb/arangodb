@@ -442,7 +442,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          for (let i = 0; i < 25000; i++) {
+          for (let i = 0; i < (32 * 1024 + 1); i++) {
             c.insert({value:i});
           }
         },

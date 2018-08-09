@@ -1083,11 +1083,12 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
 
 void RocksDBEdgeIndex::afterTruncate() {
   TRI_ASSERT(_estimator != nullptr);
-  _estimator->clear();
+  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
   RocksDBIndex::afterTruncate();
 }
 
 void RocksDBEdgeIndex::recalculateEstimates() {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 

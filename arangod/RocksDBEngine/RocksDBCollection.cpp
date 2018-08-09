@@ -634,7 +634,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   
   if (state->isExclusiveTransactionOnSingleCollection() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
-      _numberDocuments >= 16384) {
+      _numberDocuments >= 32 * 1024) {
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
@@ -680,98 +680,94 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
-    
-  } else {
-    // delete documents
-    RocksDBKeyBounds documentBounds =
-    RocksDBKeyBounds::CollectionDocuments(_objectId);
-    rocksdb::Comparator const* cmp =
-    RocksDBColumnFamily::documents()->GetComparator();
-    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-    rocksdb::Slice const end = documentBounds.end();
-    ro.iterate_upper_bound = &end;
-    
-    // avoid OOM error for truncate by committing earlier
-    uint64_t const prvICC = state->options().intermediateCommitCount;
-    state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
-    
-    std::unique_ptr<rocksdb::Iterator> iter =
-    mthds->NewIterator(ro, documentBounds.columnFamily());
-    iter->Seek(documentBounds.start());
-    
-    uint64_t found = 0;
-    while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
-      
-      ++found;
-      TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-      VPackSlice doc = VPackSlice(iter->value().data());
-      TRI_ASSERT(doc.isObject());
-      
-      // To print the WAL we need key and RID
-      VPackSlice key;
-      TRI_voc_rid_t rid = 0;
-      transaction::helpers::extractKeyAndRevFromDocument(doc, key, rid);
-      TRI_ASSERT(key.isString());
-      TRI_ASSERT(rid != 0);
-      
-      RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
-      
-      state->prepareOperation(_logicalCollection.id(),
-                              rid, // actual revision ID!!
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-      
-      LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
-      auto res = removeDocument(trx, docId, doc, options);
-      
-      if (res.fail()) {
-        // Failed to remove document in truncate. Throw
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      
-      res = state->addOperation(_logicalCollection.id(), docId.id(),
-                                TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-      
-      // transaction size limit reached
-      if (res.fail()) {
-        // This should never happen...
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      
-      trackWaitForSync(trx, options);
-      
-      guard.commit();
-      
-      iter->Next();
-    }
-    
-    // reset to previous value after truncate is finished
-    state->options().intermediateCommitCount = prvICC;
-    
-    if (found > 64 * 1024) {
-      // also compact the ranges in order to speed up all further accesses
-      compact();
-    }
-    
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if (state->numCommits() == 0) {
-      // check IN TRANSACTION if documents have been deleted
-      if (mthds->countInBounds(RocksDBKeyBounds::CollectionDocuments(_objectId), true)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "deletion check in collection truncate "
-                                       "failed - not all documents have been "
-                                       "deleted");
-      }
-    }
-#endif
+    return;
   }
   
+  // normal transactional truncate
+  RocksDBKeyBounds documentBounds =
+  RocksDBKeyBounds::CollectionDocuments(_objectId);
+  rocksdb::Comparator const* cmp =
+  RocksDBColumnFamily::documents()->GetComparator();
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+  rocksdb::Slice const end = documentBounds.end();
+  ro.iterate_upper_bound = &end;
+  
+  // avoid OOM error for truncate by committing earlier
+  uint64_t const prvICC = state->options().intermediateCommitCount;
+  state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
+  
+  std::unique_ptr<rocksdb::Iterator> iter =
+  mthds->NewIterator(ro, documentBounds.columnFamily());
+  iter->Seek(documentBounds.start());
+  
+  uint64_t found = 0;
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    
+    ++found;
+    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    VPackSlice doc = VPackSlice(iter->value().data());
+    TRI_ASSERT(doc.isObject());
+    
+    // To print the WAL we need key and RID
+    VPackSlice key;
+    TRI_voc_rid_t rid = 0;
+    transaction::helpers::extractKeyAndRevFromDocument(doc, key, rid);
+    TRI_ASSERT(key.isString());
+    TRI_ASSERT(rid != 0);
+    
+    RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction());
+    
+    state->prepareOperation(_logicalCollection.id(),
+                            rid, // actual revision ID!!
+                            TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    
+    LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
+    auto res = removeDocument(trx, docId, doc, options);
+    
+    if (res.fail()) {
+      // Failed to remove document in truncate. Throw
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    res = state->addOperation(_logicalCollection.id(), docId.id(),
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    
+    // transaction size limit reached
+    if (res.fail()) {
+      // This should never happen...
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    guard.commit();
+    trackWaitForSync(trx, options);
+    iter->Next();
+  }
+  
+  // reset to previous value after truncate is finished
+  state->options().intermediateCommitCount = prvICC;
+  
+  if (found > 64 * 1024) {
+    // also compact the ranges in order to speed up all further accesses
+    compact();
+  }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (state->numCommits() == 0) {
+    // check IN TRANSACTION if documents have been deleted
+    if (mthds->countInBounds(RocksDBKeyBounds::CollectionDocuments(_objectId), true)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "deletion check in collection truncate "
+                                     "failed - not all documents have been "
+                                     "deleted");
+    }
+  }
+#endif
+
   TRI_IF_FAILURE("FailAfterAllCommits") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_SegfaultDebugging("SegfaultAfterAllCommits");
   }
-
 }
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,

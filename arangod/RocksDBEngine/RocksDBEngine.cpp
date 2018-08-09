@@ -1196,7 +1196,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 ) {
   auto* coll = toRocksDBCollection(collection);
   const bool prefix_same_as_start = true;
-  const bool rangeDelete = coll->numberDocuments() >= 16384;
+  const bool rangeDelete = coll->numberDocuments() >= 32 * 1024;
   
   rocksdb::WriteOptions wo;
 
@@ -1707,7 +1707,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
     const auto cnt = _settingsManager->loadCounter(objectId);
     const uint64_t numberDocuments = cnt.added() - cnt.removed();
-    const bool rangeDelete = numberDocuments >= 16384;
+    const bool rangeDelete = numberDocuments >= 32 * 1024;
 
     // remove indexes
     VPackSlice indexes = value.slice().get("indexes");
