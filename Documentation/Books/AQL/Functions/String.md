@@ -426,9 +426,9 @@ If the regular expression in *regex* is invalid, a warning will be raised
 and the function will return *null*.
 
 ```js
-REGEX_MATCHES("hypertext language, programming", "[\s, ]+", true) // [" "]
-REGEX_MATCHES(this|is|a|text", "[|]", true) // ["|"]
-REGEX_MATCHES(thisisatext", "[|]", true) // [""]
+REGEX_MATCHES("my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, true) // ["my-us3r_n4m3"]
+REGEX_MATCHES(["#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true) // null
+REGEX_MATCHES("john@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", false) // ["john@doe.com", "john", "doe.", "om"]
 ```
 
 REGEX_SPLIT()
