@@ -2194,7 +2194,7 @@ bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
         << "iterating over collection journal file '" << filename << "'";
 
     std::unique_ptr<MMFilesDatafile> datafile(
-        MMFilesDatafile::open(filename, true));
+        MMFilesDatafile::open(filename, true, false));
 
     if (datafile != nullptr) {
       TRI_IterateDatafile(datafile.get(), cb);
@@ -2804,7 +2804,7 @@ bool MMFilesEngine::checkDatafileHeader(MMFilesDatafile* datafile,
       reinterpret_cast<MMFilesCollectionHeaderMarker const*>(ptr);
 
   if (cm->base.getType() != TRI_DF_MARKER_COL_HEADER) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
         << "collection header mismatch in file '" << filename
         << "', expected TRI_DF_MARKER_COL_HEADER, found " << cm->base.getType();
     return false;
@@ -2819,7 +2819,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
                                   bool ignoreErrors) {
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
-  LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
+  LOG_TOPIC(TRACE, Logger::DATAFILES) << "checking collection directory '"
                                       << physical->path() << "'";
 
   std::vector<MMFilesDatafile*> all;
@@ -2887,6 +2887,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 
     // file is a journal or datafile, open the datafile
     if (extension == "db") {
+      bool autoSeal = false;
+
       // found a compaction file. now rename it back
       if (filetype == "compaction") {
         std::string relName = "datafile-" + qualifier + "." + extension;
@@ -2917,14 +2919,24 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
           }
         }
 
+        // if we found a compaction file, it may not have been sealed yet
+        // however, we require datafiles to be sealed, so we auto-seal
+        // it now
+        autoSeal = true;
         // reuse newName
         filename = std::move(newName);
-      }
+      } else if (filetype == "datafile") {
+        // if we found a datafile, it should have been sealed already
+        // however, in some old cases, "compaction" files may have been
+        // renamed to "datafile"s without being sealed, so we have to
+        // seal here
+        autoSeal = true;
+      } 
 
       TRI_set_errno(TRI_ERROR_NO_ERROR);
 
       std::unique_ptr<MMFilesDatafile> df(
-          MMFilesDatafile::open(filename, ignoreErrors));
+          MMFilesDatafile::open(filename, ignoreErrors, autoSeal));
 
       if (df == nullptr) {
         LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
@@ -3012,8 +3024,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   // stop if necessary
   if (stop) {
     for (auto& datafile : all) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "closing datafile '"
-                                                << datafile->getName() << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closing datafile '"
+                                                    << datafile->getName() << "'";
       delete datafile;
     }
 
@@ -3029,30 +3041,33 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   std::sort(journals.begin(), journals.end(), DatafileComparator());
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());
 
+  for (auto const& it : datafiles) {
+    LOG_TOPIC(TRACE, Logger::DATAFILES) << "found datafile '" << it->getName() << "', isSealed: " << it->isSealed();
+  }
+  for (auto const& it : journals) {
+    LOG_TOPIC(TRACE, Logger::DATAFILES) << "found journal '" << it->getName() << "', isSealed: " << it->isSealed();
+  }
+  for (auto const& it : compactors) {
+    LOG_TOPIC(TRACE, Logger::DATAFILES) << "found compactor '" << it->getName() << "', isSealed: " << it->isSealed();
+  }
+
   if (journals.size() > 1) {
-    LOG_TOPIC(DEBUG, Logger::FIXME) << "found more than a single journal for collection '" << collection->name() << "'. now turning extra journals into datafiles";
+    LOG_TOPIC(DEBUG, Logger::DATAFILES) << "found more than a single journal for collection '" << collection->name() << "'. now turning extra journals into datafiles";
 
     MMFilesDatafile* journal = journals.back();
     journals.pop_back();
 
     // got more than one journal. now add all the journals but the last one as datafiles
     for (auto& it : journals) {
-      std::string dname("datafile-" + std::to_string(it->fid()) + ".db");
-      std::string filename =
-          arangodb::basics::FileUtils::buildFilename(physical->path(), dname);
-
-      int res = it->rename(filename);
-
+      int res = physical->sealDatafile(it, false);
+      
       if (res == TRI_ERROR_NO_ERROR) {
         datafiles.emplace_back(it);
-        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-            << "renamed extra journal to '" << filename << "'";
       } else {
         result = res;
         stop = true;
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "cannot rename extra journal to '" << filename
-            << "': " << TRI_errno_string(res);
+        LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
+            << "cannot convert extra journal '" << it->getName() << "' into a datafile: " << TRI_errno_string(res);
         break;
       }
     }
@@ -3069,8 +3084,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   // stop if necessary
   if (stop) {
     for (auto& datafile : all) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "closing datafile '"
-                                                << datafile->getName() << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closing datafile '"
+                                                    << datafile->getName() << "'";
       delete datafile;
     }
 
@@ -3080,12 +3095,11 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TOPIC(DEBUG, Logger::FIXME) << "collection inventory for '"
-                                  << collection->name() << "': datafiles: "
-                                  << datafiles.size() << ", journals: "
-                                  << journals.size() << ", compactors: "
-                                  << compactors.size();
-
+  LOG_TOPIC(DEBUG, Logger::DATAFILES) << "collection inventory for '"
+                                      << collection->name() << "': datafiles: "
+                                      << datafiles.size() << ", journals: "
+                                      << journals.size() << ", compactors: "
+                                      << compactors.size();
 
   // add the datafiles and journals
   physical->setInitialFiles(std::move(datafiles), std::move(journals), std::move(compactors));
