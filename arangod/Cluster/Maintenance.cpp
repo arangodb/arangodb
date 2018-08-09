@@ -191,7 +191,7 @@ void handlePlanShard(
       // If comparison has brought any updates
       if (properties->slice() != VPackSlice::emptyObjectSlice()
           || leading != shouldBeLeading) {
-        actions.push_back(
+        actions.emplace_back(
           ActionDescription(
             {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, shname},
               {LEADER, shouldBeLeading ? std::string() : leaderId},
@@ -207,7 +207,7 @@ void handlePlanShard(
 
         if (difference.slice().isArray()) {
           for (auto const& index : VPackArrayIterator(difference.slice())) {
-            actions.push_back(
+            actions.emplace_back(
               ActionDescription({{NAME, "EnsureIndex"}, {COLLECTION, shname},
                 {DATABASE, dbname}, {TYPE, index.get(TYPE).copyString()},
                 {FIELDS, index.get(FIELDS).toJson()}
@@ -217,7 +217,7 @@ void handlePlanShard(
         }
       }
     } else {                   // Create the sucker!
-      actions.push_back(
+      actions.emplace_back(
         ActionDescription(
           {{NAME, "CreateCollection"}, {COLLECTION, colname}, {SHARD, shname},
             {DATABASE, dbname}, {LEADER, shouldBeLeading ? std::string() : leaderId}},
@@ -242,7 +242,7 @@ void handleLocalShard(
   }
   bool localLeader = cprops.get(LEADER).copyString().empty();
   if (plannedLeader == UNDERSCORE + serverId && localLeader) {
-    actions.push_back(
+    actions.emplace_back(
       ActionDescription (
         {{NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}}));
   } else {
@@ -257,7 +257,7 @@ void handleLocalShard(
     }
 
     if (drop) {
-      actions.push_back(
+      actions.emplace_back(
         ActionDescription({{NAME, "DropCollection"},
             {DATABASE, dbname}, {COLLECTION, colname}}));
     } else {
@@ -276,7 +276,7 @@ void handleLocalShard(
                   indis.find(id)                 != indis.end()) {
                 indis.erase(id);
               } else {
-                actions.push_back(
+                actions.emplace_back(
                   ActionDescription(
                   {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
               }
@@ -319,7 +319,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
     if (!local.hasKey(dbname)) {
-      actions.push_back(
+      actions.emplace_back(
         ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
     }
   }
@@ -327,7 +327,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   for (auto const& ldb : VPackObjectIterator(local)) {
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string> {"Databases", dbname})) {
-      actions.push_back(
+      actions.emplace_back(
         ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));
     }
   }
@@ -762,7 +762,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             }
 
             auto const leader = pservers[0].copyString();
-            actions.push_back(
+            actions.emplace_back(
               ActionDescription(
                 {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
                  {COLLECTION, colname}, {SHARD, shname}, {LEADER, leader}}));

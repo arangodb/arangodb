@@ -46,6 +46,8 @@ class ActionBase {
  public:
   ActionBase (MaintenanceFeature&, ActionDescription const&);
 
+  ActionBase (MaintenanceFeature&, ActionDescription&&);
+
   ActionBase() = delete;
 
   virtual ~ActionBase();

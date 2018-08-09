@@ -53,9 +53,18 @@ inline static uint64_t secs_since_epoch() {
       std::chrono::system_clock::now().time_since_epoch()).count());
 }
 
-ActionBase::ActionBase(MaintenanceFeature& feature,
-                       ActionDescription const& desc)
+ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
   : _feature(feature), _description(desc), _state(READY),
+    _actionCreated(secs_since_epoch()), _progress(0) {
+  
+  _hash = _description.hash();
+  _clientId = std::to_string(_hash);
+  _id = _feature.nextActionId();
+  
+}
+
+ActionBase::ActionBase(MaintenanceFeature& feature,  ActionDescription&& desc)
+  : _feature(feature), _description(std::move(desc)), _state(READY),
     _actionCreated(secs_since_epoch()), _progress(0) {
   
   _hash = _description.hash();
