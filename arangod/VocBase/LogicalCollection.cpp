@@ -164,7 +164,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
   TRI_ASSERT(_physical != nullptr);
 
   _sharding = std::make_unique<ShardingInfo>(*other._sharding.get(), this);
-  
+
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -233,7 +233,7 @@ LogicalCollection::LogicalCollection(
   }
 
   TRI_ASSERT(!guid().empty());
-  
+
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 
@@ -243,9 +243,9 @@ LogicalCollection::LogicalCollection(
   if (!keyOpts.isNone()) {
     _keyOptions = VPackBuilder::clone(keyOpts).steal();
   }
-  
+
   _sharding = std::make_unique<ShardingInfo>(info, this);
-  
+
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -256,7 +256,7 @@ LogicalCollection::LogicalCollection(
   // together.
   prepareIndexes(info.get("indexes"));
 }
-   
+
 LogicalCollection::~LogicalCollection() {}
 
 /*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
@@ -264,7 +264,7 @@ LogicalCollection::~LogicalCollection() {}
 
   return category;
 }
-  
+
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
@@ -320,7 +320,7 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(map);
 }
-  
+
 int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID) {
   bool usesDefaultShardKeys;
@@ -1517,7 +1517,7 @@ bool LogicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
     return false;
   }
   size_t split;
-  return TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split);
+  return KeyGenerator::validateId(docId, static_cast<size_t>(len), &split);
 }
 
 TRI_voc_rid_t LogicalCollection::newRevisionId() const {
