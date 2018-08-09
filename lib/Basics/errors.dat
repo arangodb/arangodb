@@ -376,6 +376,10 @@ ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
 ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The collection is already used in the orphans of the graph.",
 ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,1939,"edge collection does not exist or is not part of the graph","the specified edge collection does not exist or is not part of the graph.",
 ERROR_GRAPH_EMPTY,1940,"empty graph","The requested graph has no edge collections."
+ERROR_GRAPH_INTERNAL_DATA_CORRUPT,1941,"internal graph data corrupt","The _graphs collection contains invalid data."
+ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,1942,"edge collection already set","Tried to add an edge collection which is already defined."
+ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orphan list argument is malformed. It has to be an array of strings."
+ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
 
 ################################################################################
 ## Session errors
@@ -436,6 +440,7 @@ ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the smart graph attribute."
 ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart graph attribute","The given smartGraph attribute is illegal and connot be used for sharding. All system attributes are forbidden."
+ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH,4005,"smart graph attribute mismatch","The smart graph attribute of the given collection does not match the smart graph attribute of the graph."
 
 ################################################################################
 ## Cluster repair errors

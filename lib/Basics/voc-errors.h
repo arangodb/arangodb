@@ -1512,6 +1512,27 @@ constexpr int TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           
 /// The requested graph has no edge collections.
 constexpr int TRI_ERROR_GRAPH_EMPTY                                             = 1940;
 
+/// 1941: ERROR_GRAPH_INTERNAL_DATA_CORRUPT
+/// "internal graph data corrupt"
+/// The _graphs collection contains invalid data.
+constexpr int TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT                             = 1941;
+
+/// 1942: ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET
+/// "edge collection already set"
+/// Tried to add an edge collection which is already defined.
+constexpr int TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET              = 1942;
+
+/// 1943: ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST
+/// "malformed orphan list"
+/// the orphan list argument is malformed. It has to be an array of strings.
+constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      = 1943;
+
+/// 1944: ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT
+/// "edge definition collection is a document collection"
+/// the collection used as a relation is existing, but is a document
+/// collection, it cannot be used here.
+constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.
@@ -1664,6 +1685,12 @@ constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         
 /// The given smartGraph attribute is illegal and connot be used for sharding.
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
+
+/// 4005: ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH
+/// "smart graph attribute mismatch"
+/// The smart graph attribute of the given collection does not match the smart
+/// graph attribute of the graph.
+constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
 
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"

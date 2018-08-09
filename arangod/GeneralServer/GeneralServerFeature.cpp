@@ -39,6 +39,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Graph/Graph.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -61,6 +62,7 @@
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestExplainHandler.h"
+#include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
@@ -69,9 +71,9 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
-#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -335,6 +337,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::EDGES_PATH,
       RestHandlerCreator<RestEdgesHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::GHARIAL_PATH,
+      RestHandlerCreator<RestGraphHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::ENDPOINT_PATH,

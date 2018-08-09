@@ -28,23 +28,22 @@
 namespace arangodb {
 class Result {
  public:
-  /**
-   * @brief Construct with success
-   */
-  Result();
+  Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
-  /**
-   * @brief Construct with error number
-   * @param errorNumer  Said error number
-   */
-  Result(int errorNumber);
+  Result(bool avoidCastingErrors) = delete;
 
-  /**
-   * @brief Construct with error number and message
-   * @param  errorNumber   Said error number
-   * @param  errorMessage  Said error message
-   */
-  Result(int errorNumber, std::string const& errorMessage);
+  Result(int errorNumber)
+      : _errorNumber(errorNumber){
+    if (errorNumber != TRI_ERROR_NO_ERROR) {
+      _errorMessage = TRI_errno_string(errorNumber);
+    }
+  }
+
+  Result(int errorNumber, std::string const& errorMessage)
+      : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
+
+  Result(int errorNumber, std::string&& errorMessage)
+      : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
   
   /**
    * @brief Construct with error number and message
