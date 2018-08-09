@@ -40,11 +40,22 @@ describe('_api/batch/document', () => {
     });
   };
 
-  const metaOfDoc = doc => ({
-    _key: doc._key,
-    _rev: doc._rev,
-    _id: doc._id,
-  });
+
+  const metaOfDoc= (doc, other) => {
+    var rv = {
+      _key: doc._key,
+      _rev: doc._rev,
+      _id: doc._id,
+    };
+    if(other){
+      // rv = { ...rv, ...other }; // es6
+      rv = Object.assign(rv, other);
+    }
+    return rv;
+  };
+
+  const revOfDoc = field => (response, idx) => response.json.result[idx][field]['_rev'];
+  const revOfNewDoc = revOfDoc('new');
 
   // Consider these variations (working requests) when writing tests:
   // - how many documents are requested
@@ -380,9 +391,9 @@ describe('_api/batch/document', () => {
       const response = updateDocs(body = {
         data: docsByVal.map(doc => ({
           pattern: {_key: doc._key},
-          updateDocument: { x : 42 }
+          updateDocument: { val : null }
         })),
-        options: {}
+          options: { }
       });
 
       print("############################################");
@@ -391,7 +402,43 @@ describe('_api/batch/document', () => {
       expect(response.statusCode).to.equal(202);
       expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
       expect(response.json.error).to.equal(false);
-      expect(response.json.result).to.deep.equal(docsByVal.map(doc => ({new: metaOfDoc(doc)})));
+      print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+      print("original documents");
+      print(docsByVal);
+      print("mapped with new _rev");
+      print(docsByVal.map((doc, idx) => ({ new: metaOfDoc( doc, { _rev: revOfNewDoc(response, idx)} )
+                                      })
+                         )
+           );
+      print("result:");
+      print(response.json.result);
+      print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+      expect(response.json.result).to.deep.equal(docsByVal.map((doc, idx) => ({new: metaOfDoc(doc, { _rev: revOfNewDoc(response, idx)} )})));
+      expect(response.json.result).to.not.deep.equal(docsByVal.map(doc => ({new: metaOfDoc(doc)})));
+      expect(db[colName].count()).to.equal(3);
+      print("############################################");
+    });
+
+    it('update all documents in a batch - keepNull false', () => {
+      print("############################################");
+      print('update all documents in a batch - keepNull false');
+      let body;
+      const response = updateDocs(body = {
+        data: docsByVal.map(doc => ({
+          pattern: {_key: doc._key},
+          updateDocument: { val : null }
+        })),
+          options: { returnNew : true,
+                     keepNull : false }
+      });
+
+      print("############################################");
+      print(response.json);
+
+      expect(response.statusCode).to.equal(202);
+      expect(response.json).to.be.an('object').that.has.all.keys(['error', 'result']);
+      expect(response.json.error).to.equal(false);
+      expect(response.json.result).to.deep.equal(docsByVal.map((doc, idx) => ({new: metaOfDoc(doc, { _rev : revOfNewDoc(response, idx)} )})));
       expect(db[colName].count()).to.equal(3);
       print("############################################");
     });
@@ -545,11 +592,10 @@ describe('_api/batch/document', () => {
       expect(response.json.error).to.equal(false);
       expect(response.json.result).to.deep.equal(docsByVal.map((doc, idx) =>
         ({ old: doc,
-           new: ( (x,y) => { x['x'] = 42;
-                             x['_rev']=response.json.result[y]['new']['_rev'];
-                             return x;
-                           }
-                )(metaOfDoc(doc), idx)
+           new: metaOfDoc(doc, { _rev:  revOfNewDoc(response, idx),
+                                 x: 42
+                               }
+                         )
         })
       ));
       expect(db[colName].count()).to.equal(n);

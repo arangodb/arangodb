@@ -83,7 +83,7 @@ optionsFromVelocypack(VPackSlice const optionsSlice
 
 
 struct BatchRequest {
-  static ResultT<BatchRequest> fromVelocypack(VPackSlice const slice, BatchOperation batchOp) {
+  static ResultT<BatchRequest> fromVelocypack(VPackSlice const slice, batch::Operation batchOp) {
 
     AttributeSet required = {"data"};
     AttributeSet optional = {"options"};
@@ -103,24 +103,24 @@ struct BatchRequest {
     required.insert("pattern");
 
     switch (batchOp) {
-      case BatchOperation::READ:
-      case BatchOperation::REMOVE:
+      case batch::Operation::READ:
+      case batch::Operation::REMOVE:
         break;
-      case BatchOperation::INSERT:
+      case batch::Operation::INSERT:
         required.clear();
         required.insert("insertDocument");
         break;
-      case BatchOperation::REPLACE:
+      case batch::Operation::REPLACE:
         required.insert("replaceDocument");
         break;
-      case BatchOperation::UPDATE:
+      case batch::Operation::UPDATE:
         required.insert("updateDocument");
         break;
-      case BatchOperation::UPSERT:
+      case batch::Operation::UPSERT:
         required.insert("insertDocument");
         required.insert("updateDocument");
         break;
-      case BatchOperation::REPSERT:
+      case batch::Operation::REPSERT:
         required.insert("replaceDocument");
         required.insert("updateDocument");
         break;
@@ -141,16 +141,17 @@ struct BatchRequest {
       // mergeObjects "ignoreRevs"  "isRestore" keepNull?!
       deprecated = {};
       switch (batchOp) {
-        case BatchOperation::READ:
+        case batch::Operation::READ:
           optional.insert("graphName");
           break;
-        case BatchOperation::INSERT:
-        case BatchOperation::UPSERT:
-        case BatchOperation::UPDATE:
-        case BatchOperation::REPSERT:
-        case BatchOperation::REPLACE:
-          optional.insert("returnNew"); //please fall through
-        case BatchOperation::REMOVE:
+        case batch::Operation::UPDATE:
+          optional.insert("keepNull"); // please fall through
+        case batch::Operation::INSERT:
+        case batch::Operation::UPSERT:
+        case batch::Operation::REPSERT:
+        case batch::Operation::REPLACE:
+          optional.insert("returnNew"); // please fall through
+        case batch::Operation::REMOVE:
           optional.insert("waitForSync");
           optional.insert("returnOld");
           optional.insert("silent");
@@ -171,14 +172,14 @@ struct BatchRequest {
 
   explicit BatchRequest(VPackSlice const slice
                        ,OperationOptions options_
-                       ,BatchOperation op)
+                       ,batch::Operation op)
            :options(std::move(options_))
            ,operation(op)
            ,payload(slice)
   {};
 
   OperationOptions const options;
-  BatchOperation operation;
+  batch::Operation operation;
   VPackSlice const payload;
 };
 
@@ -218,7 +219,7 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
   std::string const& collection = suffixes[0];
   std::string const& opString = suffixes[1];
 
-  auto maybeOp = stringToBatch(opString);
+  auto maybeOp = batch::stringToBatch(opString);
 
   if (!maybeOp) {
     std::stringstream err;
@@ -291,28 +292,28 @@ void arangodb::RestBatchDocumentHandler::executeBatchRequest(
 
     OperationResult operationResult;
     switch (request.operation) {
-      case BatchOperation::READ:
+      case batch::Operation::READ:
         generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                       TRI_ERROR_NOT_IMPLEMENTED);
         break;
-      case BatchOperation::INSERT:
+      case batch::Operation::INSERT:
         generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                       TRI_ERROR_NOT_IMPLEMENTED);
         break;
-      case BatchOperation::REMOVE:
+      case batch::Operation::REMOVE:
         operationResult = trx->removeBatch(collection, payload, request.options);
         break;
-      case BatchOperation::REPLACE:
+      case batch::Operation::REPLACE:
         operationResult = trx->replaceBatch(collection, payload, request.options);
         break;
-      case BatchOperation::UPDATE:
+      case batch::Operation::UPDATE:
         operationResult = trx->updateBatch(collection, payload, request.options);
         break;
-      case BatchOperation::UPSERT:
+      case batch::Operation::UPSERT:
         generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                       TRI_ERROR_NOT_IMPLEMENTED);
         break;
-      case BatchOperation::REPSERT:
+      case batch::Operation::REPSERT:
         generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                       TRI_ERROR_NOT_IMPLEMENTED);
         break;
