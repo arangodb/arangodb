@@ -525,10 +525,6 @@ void HeartbeatThread::runSingleServer() {
         ApplicationServer::server->beginShutdown();
         break;
       }
-      
-      auto readOnlySlice = response.get(std::vector<std::string>(
-                                    {AgencyCommManager::path(), "Readonly"}));
-      updateServerMode(readOnlySlice);
 
       // performing failover checks
       VPackSlice async = response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
@@ -588,6 +584,11 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
+        
+        // put the leader in optional read-only mode
+        auto readOnlySlice = response.get(std::vector<std::string>(
+                                          {AgencyCommManager::path(), "Readonly"}));
+        updateServerMode(readOnlySlice);
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
@@ -605,6 +606,8 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leader;
 
       ServerState::instance()->setFoxxmaster(leaderStr);
+      ServerState::instance()->setReadOnly(true); // Disable writes with dirty-read header
+      
       std::string endpoint = ci->getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
