@@ -26,6 +26,16 @@ Define if the request should wait until synced to disk.
 @RESTQUERYPARAM{keepNull,boolean,optional}
 Define if values set to null should be stored. By default the key is not removed from the document.
 
+@RESTQUERYPARAM{returnOld,boolean,optional}
+Define if a presentation of the deleted document should
+be returned within the response object.
+
+@RESTQUERYPARAM{returnNew,boolean,optional}
+Define if a presentation of the newly create
+
+@RESTQUERYPARAM{keepNull,boolean,optional}
+Define if values set to null should be stored. By default the key is not removed from the document.
+
 @RESTALLBODYPARAM{updateAttributes,object,required}
 The body has to be a JSON object containing the attributes to be updated.
 

@@ -323,6 +323,9 @@ SET(ARANGOD_SOURCES
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/EdgeCollectionInfo.cpp
+  Graph/Graph.cpp
+  Graph/GraphManager.cpp
+  Graph/GraphOperations.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathOptions.cpp
@@ -404,6 +407,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
   RestHandler/RestExplainHandler.cpp
+  RestHandler/RestGraphHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
@@ -507,6 +511,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
+  V8Server/v8-general-graph.cpp
   VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
@@ -516,7 +521,6 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
-  VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp

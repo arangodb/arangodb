@@ -58,6 +58,10 @@ namespace velocypack {
 class Builder;
 }
 
+namespace graph {
+class Graph;
+}
+
 namespace aql {
 
 struct AstNode;
@@ -280,7 +284,7 @@ class Query {
   std::string getStateString() const;
 
   /// @brief look up a graph in the _graphs collection
-  Graph const* lookupGraphByName(std::string const& name);
+  graph::Graph const* lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
@@ -355,7 +359,7 @@ class Query {
   V8Context* _context;
 
   /// @brief graphs used in query, identified by name
-  std::unordered_map<std::string, std::unique_ptr<Graph>> _graphs;
+  std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
   /// @brief the actual query string
   QueryString _queryString;
