@@ -741,7 +741,7 @@ void arangodb::aql::removeCollectVariablesRule(
     auto collectNode = ExecutionNode::castTo<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
-    auto varsUsedLater = n->getVarsUsedLater();
+    auto const& varsUsedLater = n->getVarsUsedLater();
     auto outVariable = collectNode->outVariable();
 
     if (outVariable != nullptr &&
@@ -1862,9 +1862,8 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
     auto outvars = n->getVariablesSetHere();
     TRI_ASSERT(outvars.size() == 1);
-    auto varsUsedLater = n->getVarsUsedLater();
 
-    if (varsUsedLater.find(outvars[0]) == varsUsedLater.end()) {
+    if (!n->isVarUsedLater(outvars[0])) {
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
       // calculation node,
@@ -5069,14 +5068,13 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
     auto node = ExecutionNode::castTo<ModificationNode*>(n);
     TRI_ASSERT(node != nullptr);
 
-    auto varsUsedLater = n->getVarsUsedLater();
-    if (varsUsedLater.find(node->getOutVariableOld()) == varsUsedLater.end()) {
+    if (!n->isVarUsedLater(node->getOutVariableOld())) {
       // "$OLD" is not used later
       node->clearOutVariableOld();
       modified = true;
     }
 
-    if (varsUsedLater.find(node->getOutVariableNew()) == varsUsedLater.end()) {
+    if (!n->isVarUsedLater(node->getOutVariableNew())) {
       // "$NEW" is not used later
       node->clearOutVariableNew();
       modified = true;
@@ -5188,22 +5186,18 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
-    auto varsUsedLater = n->getVarsUsedLater();
-
     // note that we can NOT optimize away the vertex output variable
     // yet, as many traversal internals depend on the number of vertices
     // found/built
     auto outVariable = traversal->edgeOutVariable();
-    if (outVariable != nullptr &&
-        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal edge outVariable not used later
       traversal->setEdgeOutput(nullptr);
       modified = true;
     }
 
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr &&
-        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
@@ -5351,10 +5345,8 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
-    auto varsUsedLater = n->getVarsUsedLater();
     auto outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr &&
-        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
@@ -5422,6 +5414,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   }
 
   bool modified = false;
+  std::vector<ExecutionNode*> subNodes;
 
   for (auto const& n : nodes) {
     auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(n);
@@ -5486,16 +5479,11 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
         // ...that use our subquery as its input
         if (subqueryVars.find(listNode->inVariable()) != subqueryVars.end()) {
           // bingo!
-          auto queryVariables = plan->getAst()->variables();
-          std::vector<ExecutionNode*> subNodes(
-              subqueryNode->getSubquery()->getDependencyChain(true));
 
           // check if the subquery result variable or any of the aliases are used after the FOR loop
           bool mustAbort = false;
-          std::unordered_set<Variable const*> varsUsedLater(
-              listNode->getVarsUsedLater());
           for (auto const& itSub : subqueryVars) {
-            if (varsUsedLater.find(itSub) != varsUsedLater.end()) {
+            if (listNode->isVarUsedLater(itSub)) {
               // exit the loop
               current = nullptr;
               mustAbort = true;
@@ -5510,11 +5498,15 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
             plan->unlinkNode(toRemove, false);
           }
 
+          subNodes.clear();
+          subNodes.reserve(4);
+          subqueryNode->getSubquery()->getDependencyChain(subNodes, true);
           TRI_ASSERT(!subNodes.empty());
           auto returnNode = ExecutionNode::castTo<ReturnNode*>(subNodes[0]);
           TRI_ASSERT(returnNode->getType() == EN::RETURN);
 
           modified = true;
+          auto queryVariables = plan->getAst()->variables();
           auto previous = n->getFirstDependency();
           auto insert = n->getFirstParent();
           TRI_ASSERT(insert != nullptr);

@@ -23,6 +23,7 @@
 
 #include "AstNode.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Arithmetic.h"
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
@@ -359,21 +360,6 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
       return 0;
     }
   }
-}
-
-/// @brief returns whether or not the string is empty
-static bool IsEmptyString(char const* p, size_t length) {
-  char const* e = p + length;
-
-  while (p < e) {
-    if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' &&
-        *p != '\b') {
-      return false;
-    }
-    ++p;
-  }
-
-  return true;
 }
 
 /// @brief create the node
@@ -1229,19 +1215,15 @@ AstNode const* AstNode::castToNumber(Ast* ast) const {
       case VALUE_TYPE_DOUBLE:
         // already numeric!
         return this;
-      case VALUE_TYPE_STRING:
-        try {
-          // try converting string to number
-          double v = std::stod(std::string(value.value._string, value.length));
-          return ast->createNodeValueDouble(v);
-        } catch (...) {
-          if (IsEmptyString(value.value._string, value.length)) {
-            // empty string => 0
-            return ast->createNodeValueInt(0);
-          }
-          // conversion failed
+      case VALUE_TYPE_STRING: {
+        bool failed;
+        double v = arangodb::aql::stringToNumber(std::string(value.value._string, value.length), failed);  
+        if (failed) {
+          return ast->createNodeValueInt(0);
         }
-        // intentionally falls through
+        return ast->createNodeValueDouble(v);
+      }
+      // intentionally falls through
     }
     // intentionally falls through
   } else if (type == NODE_TYPE_ARRAY) {

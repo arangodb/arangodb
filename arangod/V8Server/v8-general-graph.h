@@ -18,32 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_GRAPHS_H
-#define ARANGOD_VOCBASE_GRAPHS_H 1
+#ifndef ARANGOD_V8_SERVER_V8_GENERAL_GRAPH_H
+#define ARANGOD_V8_SERVER_V8_GENERAL_GRAPH_H 1
 
-#include "VocBase/vocbase.h"
+#include <v8.h>
 
-namespace arangodb {
-namespace aql {
-class Graph;
-}
+struct TRI_vocbase_t;
+struct TRI_v8_global_t;
 
-namespace transaction {
-class Context;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
-///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
-
-}  // namespace arangodb
+void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
+                            TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
+                            v8::Isolate* isolate);
 
 #endif
-

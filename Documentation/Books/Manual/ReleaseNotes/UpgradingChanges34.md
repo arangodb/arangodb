@@ -335,6 +335,20 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
 
   Using any of these functions from inside AQL will now produce an error.
 
+- in previous versions, the AQL optimizer used two different ways of converting 
+  strings into numbers. The two different ways have been unified into a single
+  way that behaves like the `TO_NUMBER` AQL function, which is also the documented
+  behavior.
+
+  The change affects arithmetic operations with strings that contain numbers and
+  other trailing characters, e.g.
+
+      expression         3.3 result          3.4 result       TO_NUMBER()
+      0 + "1a"           0 + 1 = 1           0 + 0 = 0        TO_NUMBER("1a") = 0
+      0 + "1 "           0 + 1 = 1           0 + 1 = 1        TO_NUMBER("1 ") = 1
+      0 + " 1"           0 + 1 = 1           0 + 1 = 1        TO_NUMBER(" 1") = 1
+      0 + "a1"           0 + 0 = 0           0 + 0 = 0        TO_NUMBER("a1") = 0
+
 
 Usage of V8
 -----------
@@ -481,3 +495,58 @@ to "MMFilesCompactor".
 
 This change will be visible only on systems which allow assigning names to
 threads.
+
+
+Deprecated features
+===================
+
+The following features and APIs are deprecated in ArangoDB 3.4, and will be 
+removed in future versions of ArangoDB:
+
+* the JavaScript-based traversal REST API at `/_api/traversal`:
+
+  This API has several limitations (including low result set sizes) and has 
+  effectively been unmaintained since the introduction of AQL's general 
+  *TRAVERSAL* clause.
+
+  It is recommended to migrate client applications that use the REST API at
+  `/_api/traversal` to use AQL-based traversal queries instead.
+
+* the REST API at `/_api/endpoints`:
+
+  The API `/_api/endpoint` is deprecated since ArangoDB version 3.1. 
+  For cluster mode there is `/_api/cluster/endpoints` to find all current 
+  coordinator endpoints.
+
+* the REST API for WAL tailing at `/_api/replication/logger-follow`:
+
+  The `logger-follow` WAL tailing API has several limitations. A better API
+  was introduced at endpoint `/_api/wal/tail` in ArangoDB 3.3.
+
+  Client applications using the old tailing API at `/_api/replication/logger-follow`
+  should switch to the new API eventually.
+
+* the AQL geo functions `NEAR` and `WITHIN`:
+
+  The special purpose `NEAR` AQL function can be substituted with the
+  following AQL (provided there is a geo index present on the `doc.latitude`
+  and `doc.longitude` attributes) since ArangoDB 3.2:
+
+      FOR doc in geoSort
+        SORT DISTANCE(doc.latitude, doc.longitude, 0, 0)
+        LIMIT 5
+        RETURN doc
+
+  `WITHIN` can be substituted with the following AQL since ArangoDB 3.2:
+
+      FOR doc in geoFilter
+        FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000
+        RETURN doc
+
+  Compared to using the special purpose AQL functions this approach has the
+  advantage that it is more composable, and will also honor any `LIMIT` values
+  used in the AQL query.
+
+  In ArangoDB 3.4, `NEAR` and `WITHIN` will still work and automatically be
+  rewritten by the AQL query optimizer to the above forms. However, AQL queries
+  using `NEAR` and `WITHIN` should eventually be adjusted.
