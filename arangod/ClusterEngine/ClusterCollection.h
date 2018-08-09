@@ -191,19 +191,19 @@ class ClusterCollection final : public PhysicalCollection {
 
   virtual int lockRead(bool useDeadlockDetector,
                        TransactionState const* state,
-                       double timeout);
+                       double timeout) override final;
 
 
   virtual int lockWrite(bool useDeadlockDetector,
                        TransactionState const* state,
-                       double timeout);
+                       double timeout) override final;
 
   virtual int unlockRead(bool useDeadlockDetector,
-                       TransactionState const* state);
+                       TransactionState const* state) override final;
 
 
   virtual int unlockWrite(bool useDeadlockDetector,
-                       TransactionState const* state);
+                       TransactionState const* state) override final;
 
 
  protected:

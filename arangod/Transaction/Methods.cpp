@@ -2294,6 +2294,9 @@ OperationResult transaction::Methods::modifyBatchLocal(
 
     VPackSlice newVal = entry.get(label);
 
+    // TODO [tobi&lars] we should avoid rebuilding the object here somehow. it
+    // can be expensive. is this really necessary?
+
     VPackBuilder newSlice;
     newSlice.openObject();
     newSlice.add("_key", key);
@@ -2301,23 +2304,28 @@ OperationResult transaction::Methods::modifyBatchLocal(
     newSlice.close();
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-
-      result =
-          collection->update(this, newSlice.slice(), newDocument, options, resultMarkerTick,
-                              !isLocked(collection, AccessMode::Type::WRITE),
-                              actualRevision, previous, pattern);
+      result = collection->update(
+          this, newSlice.slice(), newDocument, options, resultMarkerTick,
+          !isLocked(collection, AccessMode::Type::WRITE), actualRevision,
+          previous, pattern);
 
     } else {
+      // TODO [tobi&lars] TRI_ASSERT(operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
-      result =
-          collection->replace(this, newSlice.slice(), newDocument, options, resultMarkerTick,
-                             !isLocked(collection, AccessMode::Type::WRITE),
-                             actualRevision, previous, pattern);
+      result = collection->replace(
+          this, newSlice.slice(), newDocument, options, resultMarkerTick,
+          !isLocked(collection, AccessMode::Type::WRITE), actualRevision,
+          previous, pattern);
     }
 
+    // TODO [tobi&lars] Similar to the remove case, to me it seems the logic
+    // here differs from the one in modifyLocal.
+    // e.g., if a conflict occurs without babies, we still have to call
+    // buildDocumentIdentity and maybe return the old doc.
+    // maybe we even want to do that in the babies case if we have a new
+    // result object?
+
     if (result.ok() && !options.silent) {
-
-
 
       response.add(VPackValue("new"));
       if (options.returnNew) {
@@ -2342,6 +2350,9 @@ OperationResult transaction::Methods::modifyBatchLocal(
   });
 }
 
+// TODO [tobi&lars] We have to think about how to build the response compatible
+// to the old trx-API. I suggest building response-objects, similar to the
+// request objects.
 OperationResult transaction::Methods::processBatchLocal(
   std::string const&        collectionName,
   VPackSlice const          request,
@@ -2376,9 +2387,24 @@ OperationResult transaction::Methods::processBatchLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  // TODO [tobi&lars] replication code
+  /*
+  ReplicationType replicationType = ReplicationType::NONE;
+  if (_state->isDBServer()) {
+    ...
+  }
+  */
+
+  // TODO [tobi&lars] when removing, returnNew was ignored before (and, of
+  // course, should not be set). The new BatchRequest types should, however,
+  // take care of that anyway, so this is probably safe; however, an assert
+  // could not harm.
   if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
+
+  // TODO [tobi&lars] the old removeLocal method does not lock at this point.
+  // while it seems sane, make sure this is correct!
 
   // Remove/update/replace are a read and a write, let's get the write lock already
   // for the read operation:
@@ -2462,11 +2488,30 @@ OperationResult transaction::Methods::processBatchLocal(
 
   LOG_TOPIC(INFO, Logger::FIXME) << "reponse: " << response.toJson();
 
+  // TODO [tobi&lars] replication:
+  /*
+  if (res.ok() && replicationType == ReplicationType::LEADER) {
+  ...
+  }
+  */
+
+  // TODO [tobi&lars] the original functions check for res.ok() here. so if an
+  // operation on a single document fails, the behaviour here changes:
+  // before, it did not wait for sync, now it does. this is probably ok.
+
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
     EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
+
+  // TODO [tobi&lars] is this needed here?
+  /*
+  if (options.silent) {
+    // We needed the results, but do not want to report:
+    response.clear();
+  }
+  */
 
   std::unordered_map<int, size_t> countErrorCodes;  // not yet implemented
   return OperationResult(std::move(result), response.steal(), nullptr, options, countErrorCodes);
@@ -2490,6 +2535,12 @@ OperationResult transaction::Methods::removeBatchLocal(
     auto optionsCopy = options;
     result = collection->remove(this, key, optionsCopy, resultMarkerTick,
                                      false, actualRevision, previous, pattern);
+
+    // TODO [tobi&lars] previous logic when buildDocumentIdentity is called:
+    // if !res.ok() && res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies
+    //      || !options.silent
+    //    then buildDocumentIdentity
+    // This does not seem to match this block.
 
     if (result.ok() && !options.silent) {
       response.add(VPackValue("old"));

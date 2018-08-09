@@ -191,10 +191,14 @@ class RocksDBCollection final : public PhysicalCollection {
   void adjustNumberDocuments(int64_t adjustment);
   uint64_t objectId() const { return _objectId; }
 
-  int lockRead(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
-  int lockWrite(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
-  int unlockRead(bool useDeadlockDetector, TransactionState const* state);
-  int unlockWrite(bool useDeadlockDetector, TransactionState const* state);
+  int lockRead(bool useDeadlockDetector, TransactionState const* state,
+               double timeout = 0.0) override final;
+  int lockWrite(bool useDeadlockDetector, TransactionState const* state,
+                double timeout = 0.0) override final;
+  int unlockRead(bool useDeadlockDetector,
+                 TransactionState const* state) override final;
+  int unlockWrite(bool useDeadlockDetector,
+                  TransactionState const* state) override final;
 
   int lockRead(double timeout = 0.0);
   int lockWrite(double timeout = 0.0);

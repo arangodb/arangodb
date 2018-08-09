@@ -317,13 +317,17 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Locking --
   ///////////////////////////////////
 
-  int lockRead(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
+  int lockRead(bool useDeadlockDetector, TransactionState const* state,
+               double timeout = 0.0) override final;
 
-  int lockWrite(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
+  int lockWrite(bool useDeadlockDetector, TransactionState const* state,
+                double timeout = 0.0) override final;
 
-  int unlockRead(bool useDeadlockDetector, TransactionState const* state);
+  int unlockRead(bool useDeadlockDetector,
+                 TransactionState const* state) override final;
 
-  int unlockWrite(bool useDeadlockDetector, TransactionState const* state);
+  int unlockWrite(bool useDeadlockDetector,
+                  TransactionState const* state) override final;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
