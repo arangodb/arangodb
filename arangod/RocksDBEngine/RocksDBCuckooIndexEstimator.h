@@ -341,7 +341,7 @@ class RocksDBCuckooIndexEstimator {
   Result bufferTruncate(rocksdb::SequenceNumber seq) {
     Result res = basics::catchVoidToResult([&]() -> void {
       WRITE_LOCKER(locker, _lock);
-      _truncateBuffer.emplace_back(seq);
+      _truncateBuffer.emplace(seq);
       _needToPersist.store(true);
     });
     return res;
@@ -589,17 +589,17 @@ class RocksDBCuckooIndexEstimator {
           rocksdb::SequenceNumber ignoreSeq = 0;
           // check for a truncate marker
           if (!_truncateBuffer.empty()) {
-            auto it = _truncateBuffer.begin();
-            if (*it <= commitSeq) {
+            auto it = _truncateBuffer.begin(); // sorted ASC
+            while (*it <= commitSeq && *it >= ignoreSeq) {
               ignoreSeq = *it;
               foundTruncate = true;
-              _truncateBuffer.erase(it);
+              it = _truncateBuffer.erase(it);
             }
           }
           
           // check for inserts
           if (!_insertBuffers.empty()) {
-            auto it = _insertBuffers.begin();
+            auto it = _insertBuffers.begin(); // sorted ASC
             if (it->first <= commitSeq) {
               if (it->first > ignoreSeq) {
                 inserts = std::move(it->second);
@@ -611,7 +611,7 @@ class RocksDBCuckooIndexEstimator {
 
           // check for removals
           if (!_removalBuffers.empty()) {
-            auto it = _removalBuffers.begin();
+            auto it = _removalBuffers.begin(); // sorted ASC
             if (it->first <= commitSeq) {
               if (it->first > ignoreSeq) {
                 removals = std::move(it->second);
@@ -1003,7 +1003,7 @@ class RocksDBCuckooIndexEstimator {
   std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
   std::map<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
   std::map<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
-  std::vector<rocksdb::SequenceNumber> _truncateBuffer;
+  std::set<rocksdb::SequenceNumber> _truncateBuffer;
 
   HashKey _hasherKey;        // Instance to compute the first hash function
   Fingerprint _fingerprint;  // Instance to compute a fingerprint of a key
