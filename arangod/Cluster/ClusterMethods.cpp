@@ -691,7 +691,7 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
 
   // We need to replace the distribute with the cid.
   col->distributeShardsLike(cidString, other->shardingInfo());
-  
+
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
   }
@@ -1621,8 +1621,7 @@ int deleteBatchDocumentOnCoordinator(
     // Now find the responsible shard:
     bool usesDefaultShardingAttributes;
     ShardID shardID;
-    int error = ci->getResponsibleShard(
-        collinfo.get(),
+    int error = collinfo->getResponsibleShard(
         VPackSlice::emptyObjectSlice(), true,
         shardID, usesDefaultShardingAttributes, _key.toString());
 
