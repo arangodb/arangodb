@@ -179,10 +179,8 @@ std::string const Graph::id() const {
 std::string const& Graph::rev() const { return _rev; }
 
 void Graph::addVertexCollection(std::string const& name) {
-  if (_orphanColls.find(name) != _orphanColls.end()) {
-    // Promote Orphans to vertices
-    _orphanColls.erase(name);
-  }
+  // Promote Orphans to vertices
+  _orphanColls.erase(name);
   _vertexColls.emplace(name);
 }
 

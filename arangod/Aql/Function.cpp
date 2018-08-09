@@ -29,12 +29,11 @@ using namespace arangodb::aql;
 /// @brief create the function
 Function::Function(std::string const& name,
                    char const* arguments,
-                   bool isDeterministic, bool canThrow, bool canRunOnDBServer,
+                   bool isDeterministic, bool canRunOnDBServer,
                    FunctionImplementation const& implementation)
     : name(name),
       arguments(arguments),
       isDeterministic(isDeterministic),
-      canThrow(canThrow),
       canRunOnDBServer(canRunOnDBServer),
       implementation(implementation),
       conversions() {
@@ -45,7 +44,6 @@ Function::Function(std::string const& name,
   LOG_TOPIC(TRACE, Logger::FIXME) << "registered AQL function '" << name <<
                                      "'. cacheable: " << isCacheable() <<
                                      ", deterministic: " << isDeterministic <<
-                                     ", canThrow: " << canThrow <<
                                      ", canRunOnDBServer: " << canRunOnDBServer <<
                                      ", hasCxxImplementation: " << (implementation != nullptr) <<
                                      ", hasConversions: " << !conversions.empty();
