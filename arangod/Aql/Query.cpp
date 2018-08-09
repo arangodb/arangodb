@@ -39,6 +39,8 @@
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -49,12 +51,9 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/Graphs.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifndef USE_PLAN_CACHE
 #undef USE_PLAN_CACHE
@@ -1444,24 +1443,24 @@ std::shared_ptr<transaction::Context> Query::createTransactionContext() {
 
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
-Graph const* Query::lookupGraphByName(std::string const& name) {
+graph::Graph const* Query::lookupGraphByName(std::string const& name) {
   auto it = _graphs.find(name);
 
-  if (it == _graphs.end()) {
-    std::unique_ptr<arangodb::aql::Graph> g(
-        arangodb::lookupGraphByName(createTransactionContext(), name));
- 
-    if (g == nullptr) {
-      return nullptr;
-    }
- 
-    auto result = _graphs.emplace(name, std::move(g));
-    TRI_ASSERT(result.second);
-    it = result.first;
+  if (it != _graphs.end()) {
+    return it->second.get();
   }
- 
-  TRI_ASSERT((*it).second != nullptr);
-  return (*it).second.get();
+  graph::GraphManager graphManager{_vocbase, _contextOwnedByExterior};
+
+  auto g = graphManager.lookupGraphByName(name);
+
+  if (g.fail()) {
+    return nullptr;
+  }
+
+  auto graph = g.get().get();
+  _graphs.emplace(name, std::move(g.get()));
+
+  return graph;
 }
 
 /// @brief returns the next query id

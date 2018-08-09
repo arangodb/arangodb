@@ -752,7 +752,7 @@ void MMFilesEngine::waitForSyncTimeout(double maxWait) {
 }
 
 Result MMFilesEngine::flushWal(bool waitForSync, bool waitForCollector,
-                             bool writeShutdownFile) {
+                               bool writeShutdownFile) {
   return MMFilesLogfileManager::instance()->flush(
                         waitForSync, waitForCollector, writeShutdownFile);
 }

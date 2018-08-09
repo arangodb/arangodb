@@ -423,7 +423,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
           restrictedShard.emplace(modNode.restrictedShard());
         }
 
-        handleCollection(col, AccessMode::Type::WRITE, scatter, restrictedShard);
+        handleCollection(col, modNode.getOptions().exclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE, scatter, restrictedShard);
         updateCollection(col);
         break;
       }
@@ -993,7 +993,7 @@ Result EngineInfoContainerDBServer::buildEngines(
     // Now we send to DBServers.
     // We expect a body with {snippets: {id => engineId}, traverserEngines:
     // [engineId]}}
-
+                               
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest("", coordTransactionID, serverDest,
                                RequestType::POST, url, infoBuilder.toJson(),

@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
+#include "Graph/Graph.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -1592,8 +1593,6 @@ void Ast::injectBindParameters(
            node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
            // mark node as executable on db-server
            node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-           // mark node as non-throwing
-           node->setFlag(DETERMINED_THROWS);
            // mark node as deterministic
            node->setFlag(DETERMINED_NONDETERMINISTIC);
 
@@ -2236,7 +2235,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
     return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor);
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
 
   return result;
 }
@@ -2245,7 +2244,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
 std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode const* node,
                                                                     Variable const* searchVariable,
                                                                     bool& isSafeForOptimization) {
-  auto isTargetVariable = [&](AstNode const* node) {
+  auto isTargetVariable = [&searchVariable](AstNode const* node) {
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
       auto sub = node->getMemberUnchecked(0);
       if (sub->type == NODE_TYPE_REFERENCE) {
@@ -2282,7 +2281,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode cons
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
 
-  std::function<bool(AstNode const*)> visitor = [&](AstNode const* node) {
+  std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization, &result, &isTargetVariable, &searchVariable](AstNode const* node) {
     if (!isSafeForOptimization) {
       return false;
     }
@@ -2322,7 +2321,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode cons
     return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor);
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
 
   return result;
 }
@@ -2373,7 +2372,7 @@ bool Ast::getReferencedAttributes(AstNode const* node,
     return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor);
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
   return isSafeForOptimization;
 }
 
@@ -2856,7 +2855,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
   }
 
   if (canModifyResultType) {
-    if (rhs->isConstant() && !lhs->canThrow()) {
+    if (rhs->isConstant() && lhs->isDeterministic()) {
       // right operand is a constant value
       if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         if (rhs->isFalse()) {
@@ -2893,7 +2892,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (!lhs->canThrow() && rhs->type == NODE_TYPE_ARRAY &&
+  if (lhs->isDeterministic() && rhs->type == NODE_TYPE_ARRAY &&
       rhs->numMembers() <= 1 && (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
                                  node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
     // turn an IN or a NOT IN with few members into an equality comparison
@@ -2987,7 +2986,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         auto l = left->getIntValue();
         auto r = right->getIntValue();
         // check if the result would overflow
-        useDoublePrecision = IsUnsafeAddition<int64_t>(l, r);
+        useDoublePrecision = isUnsafeAddition<int64_t>(l, r);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3009,7 +3008,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         auto l = left->getIntValue();
         auto r = right->getIntValue();
         // check if the result would overflow
-        useDoublePrecision = IsUnsafeSubtraction<int64_t>(l, r);
+        useDoublePrecision = isUnsafeSubtraction<int64_t>(l, r);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3031,7 +3030,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         auto l = left->getIntValue();
         auto r = right->getIntValue();
         // check if the result would overflow
-        useDoublePrecision = IsUnsafeMultiplication<int64_t>(l, r);
+        useDoublePrecision = isUnsafeMultiplication<int64_t>(l, r);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3059,7 +3058,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
         // check if the result would overflow
         useDoublePrecision =
-            (IsUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
+            (isUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3090,7 +3089,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         }
 
         // check if the result would overflow
-        useDoublePrecision = IsUnsafeDivision<int64_t>(l, r);
+        useDoublePrecision = isUnsafeDivision<int64_t>(l, r);
 
         if (!useDoublePrecision) {
           // can calculate using integers
