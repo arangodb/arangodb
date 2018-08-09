@@ -366,6 +366,71 @@ RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
+REGEX_MATCHES()
+------------
+
+`REGEX_MATCHES(text, regex, caseInsensitive) → strArray`
+
+Return the matches of the given string *text* into a list of strings, using the *regex*.
+
+- **text** (string): the string to split
+- **regex** (string): a regular expression to use for matching the *text*
+- returns **strArray** (array): an array of strings
+
+The regular expression may consist of literal characters and the following 
+characters and sequences:
+
+- `.` – the dot matches any single character except line terminators.
+To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+- `\d` – matches a single digit, equivalent to `[0-9]`
+- `\s` – matches a single whitespace character
+- `\S` – matches a single non-whitespace character
+- `\t` – matches a tab character
+- `\r` – matches a carriage return
+- `\n` – matches a line-feed character
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+(here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
+enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
+- `[x-z]` – range of characters. Matches any of the characters in the 
+specified range, e.g. `[0-9A-F]` to match any character in
+*0123456789ABCDEF*
+- `[^x-z]` – negated range of characters. Matches any other character than the
+ones specified in the range
+- `(xyz)` – defines and matches a pattern group
+- `(x|y)` – matches either *x* or *y*
+- `^` – matches the beginning of the string (e.g. `^xyz`)
+- <code>$</code> – matches the end of the string (e.g. <code>xyz$</code>)
+
+Note that the characters `.`, `*`, `?`, `[`, `]`, `(`, `)`, `{`, `}`, `^`, 
+and `$` have a special meaning in regular expressions and may need to be 
+escaped using a backslash, which requires escaping itself (`\\`). A literal
+backslash needs to be escaped using another escaped backslash, i.e. `\\\\`.
+In arangosh, the amount of backslashes needs to be doubled.
+
+Characters and sequences may optionally be repeated using the following
+quantifiers:
+
+- `x*` – matches zero or more occurrences of *x*
+- `x+` – matches one or more occurrences of *x*
+- `x?` – matches one or zero occurrences of *x*
+- `x{y}` – matches exactly *y* occurrences of *x*
+- `x{y,z}` – matches between *y* and *z* occurrences of *x*
+- `x{y,}` – matches at least *y* occurences of *x*
+
+Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
+you need to define a pattern group by wrapping the subexpression in parentheses
+and place the quantifier right behind it: `(xyz)+`.
+
+If the regular expression in *regex* is invalid, a warning will be raised
+and the function will return *null*.
+
+```js
+REGEX_MATCHES("hypertext language, programming", "[\s, ]+", true) // [" "]
+REGEX_MATCHES(this|is|a|text", "[|]", true) // ["|"]
+REGEX_MATCHES(thisisatext", "[|]", true) // [""]
+```
+
 REGEX_SPLIT()
 ------------
 

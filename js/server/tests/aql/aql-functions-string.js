@@ -626,6 +626,27 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT("test", "meow", "foo", "bar", "git")');
     },
 
+
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test RegexMatches
+// //////////////////////////////////////////////////////////////////////////////
+    testToRegexMatchesValues: function () {
+      [ 
+        [ "hypertext language, programming", "[\s, ]+", true, [" "] ],
+        [ "this|is|a|text", "[|]", true, ["|"] ],
+        [ "thisisatext", "[|]", true, [""] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, ["a,b"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, [".\n", "\n"] ],
+      ].forEach(function(test) {
+        assertEqual([ test[3] ], getQueryResults('RETURN REGEX_MATCHES(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ')'), test);
+      });
+    },
+
+    testRegexMatchesInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test", "meow", "foo", "bar")');
+    },
     
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test like function, invalid arguments
