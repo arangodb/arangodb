@@ -206,8 +206,10 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    b.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    b.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -362,8 +364,10 @@ Result PhysicalCollection::newObjectForInsert(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -387,8 +391,11 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
     TRI_ASSERT(s.isString());
     builder.add(StaticStrings::KeyString, s);
   }
+    
+  // temporary buffer for stringifying revision ids
+  char ridBuffer[21];
   revisionId = newRevisionId();
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+  builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   builder.close();
 }
 
@@ -445,8 +452,10 @@ Result PhysicalCollection::newObjectForReplace(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes

@@ -395,7 +395,7 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 
   if (!indexesSlice.isArray()) {
     // always point to an array
-    indexesSlice = basics::VelocyPackHelper::EmptyArrayValue();
+    indexesSlice = arangodb::velocypack::Slice::emptyArraySlice();
   }
 
   _physical->prepareIndexes(indexesSlice);
@@ -1213,10 +1213,7 @@ Result LogicalCollection::update(transaction::Methods* trx,
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            planId()
-          ),
+          *this,
           oldDoc,
           builder->slice(),
           false
@@ -1322,10 +1319,7 @@ Result LogicalCollection::replace(transaction::Methods* trx,
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          vocbase().name(),
-          trx->resolver()->getCollectionNameCluster(
-            planId()
-          ),
+          *this,
           oldDoc,
           builder->slice(),
           false
@@ -1434,7 +1428,7 @@ bool LogicalCollection::isSatellite() const { return _replicationFactor == 0; }
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
   if (_keyOptions == nullptr) {
-    return arangodb::basics::VelocyPackHelper::NullValue();
+    return arangodb::velocypack::Slice::nullSlice();
   }
   return VPackSlice(_keyOptions->data());
 }

@@ -190,9 +190,11 @@ APIs:
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
 
-- `GET /_admin/status` now returns the attribute `operationMode` instead of `mode`.
-  The previously existing attribute `writeOpsEnabled` is no longer returned and was
-  replaced with an attribute `readOnly` with the inverted meaning.
+- `GET /_admin/status` now returns the attribute `operationMode` in addition to
+  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
+  attribute `readOnly`, which is has an inverted value compared to the original
+  attribute. In future releases the old attributes will be deprecated in favor
+  of the new ones.
 
 - if authentication is turned on, requests to databases by users with insufficient 
   access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
@@ -262,9 +264,6 @@ AQL
 - the AQL functions `CALL` and `APPLY` may now throw the errors 1540
 (`ERROR_QUERY_FUNCTION_NAME_UNKNOWN`) and 1541 (`ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH`)
 instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
-
-- the `NEAR` AQL function now does not default to a limit of 100 documents 
-  any more, but will return all documents if no limit is specified.
 
 - the existing "fulltext-index-optimizer" optimizer rule has been removed 
   because its duty is now handled by the new "replace-function-with-index" rule.

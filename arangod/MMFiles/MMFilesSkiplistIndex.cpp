@@ -399,13 +399,13 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
   }
   _dataBuilder->openArray();
   if (lower == nullptr) {
-    _dataBuilder->add(arangodb::basics::VelocyPackHelper::NullValue());
+    _dataBuilder->add(arangodb::velocypack::Slice::nullSlice());
   } else {
     lower->toVelocyPackValue(*(_dataBuilder.get()));
   }
 
   if (upper == nullptr) {
-    _dataBuilder->add(arangodb::basics::VelocyPackHelper::NullValue());
+    _dataBuilder->add(arangodb::velocypack::Slice::nullSlice());
   } else {
     upper->toVelocyPackValue(*(_dataBuilder.get()));
   }

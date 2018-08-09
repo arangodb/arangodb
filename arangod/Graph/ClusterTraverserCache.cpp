@@ -86,7 +86,7 @@ void ClusterTraverserCache::insertVertexIntoResult(StringRef id,
     std::string msg = "vertex '" + id.toString() + "' not found";
     _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
     // Document not found append NULL
-    result.add(VelocyPackHelper::NullValue());
+    result.add(arangodb::velocypack::Slice::nullSlice());
   } else {
     // FIXME: fix TraverserCache lifetime and use addExternal
     result.add(it->second);

@@ -187,6 +187,12 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
     "/_api/simple/remove-by-keys";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tasks path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::TASKS_PATH = "/_api/tasks";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -286,7 +292,7 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   if (slice.isNone()) {
     // will happen if silent == true
-    slice = VelocyPackHelper::EmptyObjectValue();
+    slice = arangodb::velocypack::Slice::emptyObjectSlice();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {

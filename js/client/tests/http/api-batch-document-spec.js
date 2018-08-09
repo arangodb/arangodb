@@ -330,7 +330,7 @@ describe('_api/batch/document', () => {
                   updateDocument: { x : 42 }
                  }
                 ],
-          options: { waitForSync : true },
+          options: { waitForSync : true, returnOld: true },
         });
 
         print("############################################");

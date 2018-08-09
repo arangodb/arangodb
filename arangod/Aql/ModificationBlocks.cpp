@@ -158,7 +158,7 @@ ModificationBlock::getSome(size_t atMost) {
   }
 
   traceGetSomeEnd(replyBlocks.get(), getHasMoreState());
-  
+
   return {getHasMoreState(), std::move(replyBlocks)};
 }
 

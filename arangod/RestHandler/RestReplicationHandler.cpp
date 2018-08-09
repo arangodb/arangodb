@@ -1074,7 +1074,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // Always ignore `shadowCollections` they were accidentially dumped in arangodb versions
   // earlier than 3.3.6
-  toMerge.add("shadowCollections", arangodb::basics::VelocyPackHelper::NullValue());
+  toMerge.add("shadowCollections", arangodb::velocypack::Slice::nullSlice());
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
@@ -1852,7 +1852,7 @@ void RestReplicationHandler::handleCommandSync() {
   engine->waitForSyncTimeout(waitForSyncTimeout);
 
   TRI_ASSERT(!config._skipCreateDrop);
-  std::unique_ptr<InitialSyncer> syncer;
+  std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(config));

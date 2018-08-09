@@ -885,8 +885,8 @@ void transaction::Methods::buildDocumentIdentityInObject(
   builder.add(StaticStrings::KeyString,
               VPackValuePair(key.data(), key.length(), VPackValueType::String));
 
-  // TRI_ASSERT(rid != 0);
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
+  char ridBuffer[21];
+  builder.add(StaticStrings::RevString, TRI_RidToValuePair(rid, &ridBuffer[0]));
 
   if (oldRid != 0) {
     builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));

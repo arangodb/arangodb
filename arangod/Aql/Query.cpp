@@ -1312,7 +1312,7 @@ uint64_t Query::hash() {
   }
 
   // also hash "optimizer" options
-  VPackSlice options = basics::VelocyPackHelper::EmptyObjectValue();
+  VPackSlice options = arangodb::velocypack::Slice::emptyObjectSlice();
 
   if (_options != nullptr && _options->slice().isObject()) {
     options = _options->slice().get("optimizer");

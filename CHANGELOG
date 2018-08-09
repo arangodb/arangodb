@@ -9,6 +9,13 @@ devel
 * Bugfix: The AQL syntax variants `UPDATE/REPLACE k WITH d` now correctly take
   _rev from k instead of d (when ignoreRevs is false) and ignore d._rev.
 
+* Added C++ implementation, load balancer support, and user restriction to tasks API
+
+  If a task is accessed on a different coordinator than where it was created,
+  the request(s) will be forwarded to the correct coordinator. If a
+  task is accessed by a different user than the one who created it, the request
+  will be denied.
+
 * Added load balancer support and user-restriction to async jobs API.
 
   If an async job is accessed on a different coordinator than where it was
@@ -96,7 +103,7 @@ devel
 * if authentication is turned on requests to databases by users with insufficient rights
  will be answered with the HTTP forbidden (401) response.
 
-* upgraded bundled RocksDB library version to 5.14
+* upgraded bundled RocksDB library version to 5.15
 
 * added key generators `uuid` and `padded`
 
@@ -105,9 +112,9 @@ devel
   The `padded` key generator generates keys of a fixed length (16 bytes) in
   ascending lexicographical sort order.
 
-* The REST API of `/_admin/status` changed: Field "mode" is now named "operationMode",
-  field "writeOpsEnabled" no longer exists and is replaced by field "readOnly" with
-  the inverted meaning.
+* The REST API of `/_admin/status` added: "operationMode" filed with same meaning as
+  the "mode" field and field "readOnly" that has the inverted meaning of the field
+  "writeOpsEnabled". The old field names will be deprecated in upcoming versions.
 
 * added `COUNT_DISTINCT` AQL function
 
@@ -121,8 +128,6 @@ devel
 
 * the existing "fulltext-index-optimizer" optimizer rule has been removed because its
   duty is now handled by the "replace-function-with-index" rule.
-
-* The `NEAR` AQL function now does not default to a limit of 100 documents any more.
 
 * added option "--latency true" option to arangoimport. Lists microsecond latency
   statistics on 10 second intervals.

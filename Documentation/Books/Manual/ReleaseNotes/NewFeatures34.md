@@ -175,7 +175,7 @@ to RocksDB collections, so it should be used with extreme care.
 
 ### RocksDB library upgrade
 
-The version of the bundled RocksDB library was upgraded from 5.9 to 5.14.2.
+The version of the bundled RocksDB library was upgraded from 5.9 to 5.15.
 
 
 Collection and document operations
@@ -469,8 +469,9 @@ The following AQL functions have been added in ArangoDB 3.4:
   comparison order
 * `SORTED_UNIQUE`: same as `SORTED`, but additionally removes duplicates
 * `COUNT_DISTINCT`: counts the number of distinct / unique items in an array
-
-The following AQL functions have been added to make working with geographical
+* `LEVENSHTEIN_DISTANCE`: calculates the Levenshtein distance between two string values
+ 
+The following AQL functions have been added to make working with geographical 
 data easier:
 
 * `GEO_POINT`

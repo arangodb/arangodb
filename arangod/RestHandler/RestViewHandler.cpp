@@ -53,8 +53,15 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view->toVelocyPack(builder, detailed, false);
+
+  auto res = view->toVelocyPack(builder, detailed, false);
+
   builder.close();
+
+  if (!res.ok()) {
+    generateError(res);
+  }
+
   generateOk(rest::ResponseCode::OK, builder);
 }
 
@@ -306,8 +313,14 @@ void RestViewHandler::getViews() {
   for (auto view: views) {
     if (view && (!excludeSystem || !view->system())) {
       builder.openObject();
-      view->toVelocyPack(builder, false, false);
+
+      auto res = view->toVelocyPack(builder, false, false);
+
       builder.close();
+
+      if (!res.ok()) {
+        generateError(res);
+      }
     }
   }
 

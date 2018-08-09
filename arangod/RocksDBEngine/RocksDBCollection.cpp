@@ -80,7 +80,7 @@ struct IndexingDisabler {
   IndexingDisabler(RocksDBMethods* mthd, bool disableIndexing)
       : mthd(mthd), disableIndexing(disableIndexing) {
     if (disableIndexing) {
-      mthd->DisableIndexing();
+      disableIndexing = mthd->DisableIndexing();
     }
   }
 
@@ -91,7 +91,7 @@ struct IndexingDisabler {
   }
 
   RocksDBMethods* mthd;
-  bool const disableIndexing;
+  bool disableIndexing;
 };
 
 RocksDBCollection::RocksDBCollection(
@@ -839,7 +839,6 @@ Result RocksDBCollection::update(
 
   Result res;
 
-
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
                          trx->isSingleOperationTransaction());
@@ -888,7 +887,6 @@ Result RocksDBCollection::replace(
   ) {
 
   Result res;
-
 
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),

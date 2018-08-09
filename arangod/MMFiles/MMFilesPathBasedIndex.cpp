@@ -228,7 +228,7 @@ std::vector<std::pair<VPackSlice, uint32_t>> MMFilesPathBasedIndex::buildIndexVa
         break;
       }
       // null, note that this will be copied later!
-      result.emplace_back(arangodb::basics::VelocyPackHelper::NullValue(), 0); // fake offset 0
+      result.emplace_back(arangodb::velocypack::Slice::nullSlice(), 0); // fake offset 0
     } else {
       result.emplace_back(slice, static_cast<uint32_t>(slice.start() - documentSlice.start()));
     }
@@ -255,7 +255,7 @@ void MMFilesPathBasedIndex::buildIndexValues(
       if (_sparse) {
         return;
       }
-      sliceStack.emplace_back(arangodb::basics::VelocyPackHelper::NullValue(), 0);
+      sliceStack.emplace_back(arangodb::velocypack::Slice::nullSlice(), 0);
     } else {
       sliceStack.emplace_back(slice, static_cast<uint32_t>(slice.start() - document.start()));
     }
@@ -271,7 +271,7 @@ void MMFilesPathBasedIndex::buildIndexValues(
   // with None values to be able to use the index for a prefix match.
 
   // Trivial case to bottom out with Illegal types.
-  VPackSlice illegalSlice = arangodb::basics::VelocyPackHelper::IllegalValue();
+  VPackSlice illegalSlice = arangodb::velocypack::Slice::illegalSlice();
 
   auto finishWithNones = [&]() -> void {
     if (!_allowPartialIndex || level == 0) {
@@ -328,7 +328,7 @@ void MMFilesPathBasedIndex::buildIndexValues(
     for (size_t i = _expanding[level] + 1; i < n; i++) {
       if (!current2.isObject()) {
         if (!_sparse) {
-          moveOn(arangodb::basics::VelocyPackHelper::NullValue());
+          moveOn(arangodb::velocypack::Slice::nullSlice());
         }
         doneNull = true;
         break;
@@ -336,7 +336,7 @@ void MMFilesPathBasedIndex::buildIndexValues(
       current2 = current2.get(_paths[level][i]);
       if (current2.isNone()) {
         if (!_sparse) {
-          moveOn(arangodb::basics::VelocyPackHelper::NullValue());
+          moveOn(arangodb::velocypack::Slice::nullSlice());
         }
         doneNull = true;
         break;
