@@ -215,7 +215,7 @@ function hasIResearch (db) {
               helper.switchUser(name, dbName);
             };
 
-            const checkRESTCodeOnly = (e) => {
+            const checkError = (e) => {
               expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
               expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
             };
@@ -254,11 +254,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } final {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                   }
-                  expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -295,7 +298,7 @@ function hasIResearch (db) {
                       tasks.register(task);
                       wait(keySpaceId, name);
                     } catch (e) {
-                      checkRESTCodeOnly(e);
+                      checkError(e);
                     }
                     if(!dbLevel['rw'].has(name)) {
                       expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
@@ -306,7 +309,7 @@ function hasIResearch (db) {
                     tasks.register(task);
                     expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
                   }
                 }
               });

@@ -224,7 +224,7 @@ function hasIResearch (db) {
             helper.switchUser(name, dbName);
           };
 
-        const checkRESTCodeOnly = (e) => {
+        const checkError = (e) => {
           expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
           expect(e.errorNum).to.oneOf([errors.ERROR_FORBIDDEN.code, errors.ERROR_ARANGO_READ_ONLY.code], "Expected to get forbidden error number, but got another one");
         };
@@ -255,7 +255,8 @@ function hasIResearch (db) {
                 try {
                   db._view(testViewName).rename(testViewRename);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
                 expect(rootTestView(testViewRename)).to.equal(false, `${name} was able to rename a view with insufficent rights`);
               }
@@ -269,11 +270,12 @@ function hasIResearch (db) {
               } else {
                 try {
                   db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, true);
-                  if(!dbLevel['rw'].has(name)) {
-                    expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
-                  }
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
+                }
+                if(!dbLevel['rw'].has(name)) {
+                    expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
                 }
               }
             });
@@ -286,11 +288,12 @@ function hasIResearch (db) {
               } else {
                 try {
                   db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, false);
-                  if(!dbLevel['rw'].has(name)) {
-                    expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
-                  }
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
+                }
+                if(!dbLevel['rw'].has(name)) {
+                    expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
                 }
               }
             });
@@ -303,11 +306,12 @@ function hasIResearch (db) {
               } else {
                 try {
                   db._view(testViewName).properties({}, false);
-                  if(!dbLevel['rw'].has(name)) {
-                    expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
-                  }
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
+                }
+                if(!dbLevel['rw'].has(name)) {
+                    expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
                 }
               }
             });
@@ -320,10 +324,11 @@ function hasIResearch (db) {
               } else {
                 try {
                   db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
-                  expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
               }
             });
 
@@ -335,10 +340,11 @@ function hasIResearch (db) {
               } else {
                 try {
                   db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
-                  expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
               }
             });
 
@@ -351,10 +357,11 @@ function hasIResearch (db) {
               } else {
                 try {
                   db._view(testViewName).properties({ links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } }, true);
-                  expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(true).to.equal(false, `${name} was able to update a view with insufficent rights`);
               }
             });
           });
