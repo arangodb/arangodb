@@ -1378,7 +1378,9 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   } else if (body->IsString()) { // assume JSON
     TRI_Utf8ValueNFC bodyString(body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
-    req->header.contentType(fuerte::ContentType::Json);
+    if (req->header.contentType() == fuerte::ContentType::Unset) {
+      req->header.contentType(fuerte::ContentType::Json);
+    }
   } else if (!body->IsUndefined() && !body->IsNull()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer, &_vpackOptions);
@@ -1390,7 +1392,9 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     req->addVPack(std::move(buffer));
     req->header.contentType(fuerte::ContentType::VPack);
   }
-  req->header.acceptType(fuerte::ContentType::VPack);
+  if (req->header.acceptType() == fuerte::ContentType::Unset) {
+    req->header.acceptType(fuerte::ContentType::VPack);
+  }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
   std::unique_ptr<fuerte::Response> response;
@@ -1421,7 +1425,9 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   if (body->IsString()) { // assume JSON
     TRI_Utf8ValueNFC bodyString(body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
-    req->header.contentType(fuerte::ContentType::Json);
+    if (req->header.contentType() == fuerte::ContentType::Unset) {
+      req->header.contentType(fuerte::ContentType::Json);
+    }
   } else if (!body->IsUndefined() && !body->IsNull()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
@@ -1433,7 +1439,9 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     req->addVPack(std::move(buffer));
     req->header.contentType(fuerte::ContentType::VPack);
   }
-  req->header.acceptType(fuerte::ContentType::VPack);
+  if (req->header.acceptType() == fuerte::ContentType::Unset) {
+    req->header.acceptType(fuerte::ContentType::VPack);
+  }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
   std::unique_ptr<fuerte::Response> response;
