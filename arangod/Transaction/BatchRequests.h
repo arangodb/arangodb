@@ -5,6 +5,7 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -64,25 +65,11 @@ struct RepsetDoc {
 template <typename T>
 struct batchSlice;
 
-template<>
-struct batchSlice<RemoveDoc> {
-  static std::pair<OperationOptions,std::vector<RemoveDoc>> fromVPack(VPackSlice slice);
-};
-
-template<>
-struct batchSlice<UpdateDoc> {
-  static std::pair<OperationOptions,std::vector<UpdateDoc>> fromVPack(VPackSlice slice);
-};
-
-template<>
-struct batchSlice<ReplaceDoc> {
-  static std::pair<OperationOptions,std::vector<ReplaceDoc>> fromVPack(VPackSlice slice);
-};
-
+//// replace with normal functions when `constexpr if()` is availalbe
 template <typename DocType>
 class Request {
   Request(VPackSlice slice) : _data() {
-    std::tie(_options,_data) = batchSlice<DocType>::fromVPack(slice);
+    std::tie(_options,_data) = batchSlice<DocType>::fromVPack(slice); // replace with constexpr if() and normal functions
   };
   std::vector<DocType> _data;
   OperationOptions _options;
@@ -90,8 +77,29 @@ public:
   std::size_t size()   const { return _data.size(); };
   std::vector<DocType> const& data() const { return _data; }
   OperationOptions const& options() const { return _options; }
+  OperationResult exectue(transaction::Methods *trx, std::string const& collection) {
+    return batchSlice<DocType>::execute(trx, collection, *this);
+  }
 };
 
-}
-} //arangodb
+template<>
+struct batchSlice<RemoveDoc> {
+  static auto fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<RemoveDoc>> ;
+  static OperationResult execute(transaction::Methods* trx, std::string const& collection, Request<RemoveDoc> const& request);
+};
+
+template<>
+struct batchSlice<UpdateDoc> {
+  static auto fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<UpdateDoc>> ;
+  static OperationResult execute(transaction::Methods* trx, std::string const& collection, Request<UpdateDoc> const& request);
+};
+
+template<>
+struct batchSlice<ReplaceDoc> {
+  static auto fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<ReplaceDoc>> ;
+  static OperationResult execute(transaction::Methods* trx, std::string const& collection, Request<ReplaceDoc> const& request);
+};
+
+} // batch
+} // arangodb
 #endif

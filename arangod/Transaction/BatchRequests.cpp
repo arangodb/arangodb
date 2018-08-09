@@ -1,6 +1,6 @@
 #include "BatchRequests.h"
-
 #include <unordered_map>
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 namespace batch {
@@ -61,17 +61,31 @@ boost::optional<Operation> stringToBatch(std::string const& op) {
 
 
 // request parsing and verification
-std::pair<OperationOptions,std::vector<RemoveDoc>> batchSlice<RemoveDoc>::fromVPack(VPackSlice slice){
+auto batchSlice<RemoveDoc>::fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<RemoveDoc>> {
+  return {};
+}
+auto batchSlice<UpdateDoc>::fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<UpdateDoc>> {
   return {};
 }
 
-std::pair<OperationOptions,std::vector<UpdateDoc>> batchSlice<UpdateDoc>::fromVPack(VPackSlice slice){
+auto batchSlice<ReplaceDoc>::fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<ReplaceDoc>> {
   return {};
 }
 
-std::pair<OperationOptions,std::vector<ReplaceDoc>> batchSlice<ReplaceDoc>::fromVPack(VPackSlice slice){
-  return {};
+// execute
+OperationResult batchSlice<RemoveDoc>::execute(transaction::Methods* trx, std::string const& collection, Request<RemoveDoc> const& request){
+    //return trx->remove(collection, request);
+    return {};
 }
 
+OperationResult batchSlice<UpdateDoc>::execute(transaction::Methods* trx, std::string const& collection, Request<UpdateDoc> const& request){
+    //return trx->update(collection, request);
+    return {};
+}
+
+OperationResult batchSlice<ReplaceDoc>::execute(transaction::Methods* trx, std::string const& collection, Request<ReplaceDoc> const& request){
+    //return trx->replace(collection, request);
+    return {};
+}
 
 }}

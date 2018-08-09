@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "Cluster/ResultT.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -49,7 +50,7 @@ struct VPackHashedSlice {
   constexpr VPackHashedSlice() noexcept : slice(), hash(0) {}
   VPackHashedSlice(arangodb::velocypack::Slice slice, uint64_t hash) noexcept : slice(slice), hash(hash) {}
   explicit VPackHashedSlice(arangodb::velocypack::Slice slice) : slice(slice), hash(slice.hash()) {}
-  
+
   VPackHashedSlice(VPackHashedSlice const& other) noexcept : slice(other.slice), hash(other.hash) {}
   VPackHashedSlice(VPackHashedSlice&& other) noexcept : slice(other.slice), hash(other.hash) {}
   VPackHashedSlice& operator=(VPackHashedSlice const& other) noexcept { slice = other.slice; hash = other.hash; return *this; }
@@ -81,11 +82,11 @@ class VelocyPackHelper {
   struct VPackStringHash {
     size_t operator()(arangodb::velocypack::Slice const&) const noexcept;
   };
-  
+
   struct VPackKeyHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
   };
-  
+
   struct VPackHashedStringHash {
     size_t operator()(VPackHashedSlice const& slice) const noexcept { return static_cast<size_t>(slice.hash); }
   };
@@ -111,13 +112,13 @@ class VelocyPackHelper {
     bool operator()(arangodb::velocypack::Slice const&,
                     arangodb::velocypack::Slice const&) const noexcept;
   };
-  
+
   /// @brief Comparator that only takes _id/_key into account.
   struct VPackIdEqual {
     bool operator()(arangodb::velocypack::Slice const&,
                     arangodb::velocypack::Slice const&) const;
   };
-  
+
   struct VPackHashedStringEqual {
     bool operator()(VPackHashedSlice const&,
                     VPackHashedSlice const&) const noexcept;
@@ -211,7 +212,7 @@ class VelocyPackHelper {
     }
     return defaultValue;
   }
-  
+
   template <typename T>
   static typename std::enable_if<std::is_unsigned<T>::value, T>::type getNumericValue(VPackSlice const& slice, T defaultValue) {
     if (slice.isNumber()) {
@@ -281,14 +282,14 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensures a sub-element is of type string
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string checkAndGetStringValue(VPackSlice const&,
                                             std::string const&);
-  
+
   static void ensureStringValue(VPackSlice const&,
                                 std::string const&);
 
@@ -405,8 +406,8 @@ class VelocyPackHelper {
   /// @brief compares two VelocyPack string values
   //////////////////////////////////////////////////////////////////////////////
 
-  static int compareStringValues(char const* left, VPackValueLength nl, 
-                                 char const* right, VPackValueLength nr, 
+  static int compareStringValues(char const* left, VPackValueLength nl,
+                                 char const* right, VPackValueLength nr,
                                  bool useUTF8);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -435,7 +436,7 @@ class VelocyPackHelper {
 
   static double toDouble(VPackSlice const&, bool&);
 
-  // modify a VPack double value in place 
+  // modify a VPack double value in place
   static void patchDouble(VPackSlice slice, double value);
 
   static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
@@ -457,6 +458,17 @@ class VelocyPackHelper {
       bool sanitizeCustom = true);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
+
+
+  static  Result expectedType(VPackValueType expected, VPackValueType got);
+
+  using AttributeSet = std::unordered_map<std::string, VPackValueType>;
+  using AttributeVec = std::vector<std::pair<std::string, VPackSlice const>>;
+
+  static  ResultT<AttributeVec> expectedAttributes(VPackSlice slice,
+      AttributeSet const& required, AttributeSet const& optional, AttributeSet const& deprecated,
+      bool checkTypes
+  );
 
   static uint8_t const KeyAttribute = 0x31;
   static uint8_t const RevAttribute = 0x32;

@@ -42,7 +42,6 @@ namespace batch_document_handler {
 // Request structs and parsers
 ////////////////////////////////////////////////////////////////////////////////
 
-using AttributeSet = std::set<std::string>;
 
 inline Result expectedType(VPackValueType expected, VPackValueType got){
   if(expected == got) { return {}; };
@@ -50,6 +49,8 @@ inline Result expectedType(VPackValueType expected, VPackValueType got){
   err << "Expected type " << valueTypeName(expected) << ", got " << valueTypeName(got) << " instead.";
   return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
 }
+
+using AttributeSet = std::set<std::string>;
 
 // should be an official velocypack helper when finished
 inline ResultT<AttributeSet> expectedAttributes(

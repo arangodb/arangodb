@@ -62,38 +62,38 @@ static std::unique_ptr<VPackCustomTypeHandler> CustomTypeHandler;
 // the table contains a special value -50 to indicate that the value is an external which must be resolved further
 // the type Custom has the same weight as the String type, because the Custom type is used to store _id (which is a string)
 static int8_t const TypeWeights[256] = {
-  0  /* 0x00 */,   4  /* 0x01 */,   4  /* 0x02 */,   4  /* 0x03 */,   4  /* 0x04 */,   4  /* 0x05 */,   4  /* 0x06 */,   4  /* 0x07 */, 
-  4  /* 0x08 */,   4  /* 0x09 */,   5  /* 0x0a */,   5  /* 0x0b */,   5  /* 0x0c */,   5  /* 0x0d */,   5  /* 0x0e */,   5  /* 0x0f */, 
-  5  /* 0x10 */,   5  /* 0x11 */,   5  /* 0x12 */,   4  /* 0x13 */,   5  /* 0x14 */,   0  /* 0x15 */,   0  /* 0x16 */,  -1  /* 0x17 */, 
-  0  /* 0x18 */,   1  /* 0x19 */,   1  /* 0x1a */,   2  /* 0x1b */,   2  /* 0x1c */, -50  /* 0x1d */, -99  /* 0x1e */,  99  /* 0x1f */, 
-  2  /* 0x20 */,   2  /* 0x21 */,   2  /* 0x22 */,   2  /* 0x23 */,   2  /* 0x24 */,   2  /* 0x25 */,   2  /* 0x26 */,   2  /* 0x27 */, 
-  2  /* 0x28 */,   2  /* 0x29 */,   2  /* 0x2a */,   2  /* 0x2b */,   2  /* 0x2c */,   2  /* 0x2d */,   2  /* 0x2e */,   2  /* 0x2f */, 
-  2  /* 0x30 */,   2  /* 0x31 */,   2  /* 0x32 */,   2  /* 0x33 */,   2  /* 0x34 */,   2  /* 0x35 */,   2  /* 0x36 */,   2  /* 0x37 */, 
-  2  /* 0x38 */,   2  /* 0x39 */,   2  /* 0x3a */,   2  /* 0x3b */,   2  /* 0x3c */,   2  /* 0x3d */,   2  /* 0x3e */,   2  /* 0x3f */, 
-  3  /* 0x40 */,   3  /* 0x41 */,   3  /* 0x42 */,   3  /* 0x43 */,   3  /* 0x44 */,   3  /* 0x45 */,   3  /* 0x46 */,   3  /* 0x47 */, 
-  3  /* 0x48 */,   3  /* 0x49 */,   3  /* 0x4a */,   3  /* 0x4b */,   3  /* 0x4c */,   3  /* 0x4d */,   3  /* 0x4e */,   3  /* 0x4f */, 
-  3  /* 0x50 */,   3  /* 0x51 */,   3  /* 0x52 */,   3  /* 0x53 */,   3  /* 0x54 */,   3  /* 0x55 */,   3  /* 0x56 */,   3  /* 0x57 */, 
-  3  /* 0x58 */,   3  /* 0x59 */,   3  /* 0x5a */,   3  /* 0x5b */,   3  /* 0x5c */,   3  /* 0x5d */,   3  /* 0x5e */,   3  /* 0x5f */, 
-  3  /* 0x60 */,   3  /* 0x61 */,   3  /* 0x62 */,   3  /* 0x63 */,   3  /* 0x64 */,   3  /* 0x65 */,   3  /* 0x66 */,   3  /* 0x67 */, 
-  3  /* 0x68 */,   3  /* 0x69 */,   3  /* 0x6a */,   3  /* 0x6b */,   3  /* 0x6c */,   3  /* 0x6d */,   3  /* 0x6e */,   3  /* 0x6f */, 
-  3  /* 0x70 */,   3  /* 0x71 */,   3  /* 0x72 */,   3  /* 0x73 */,   3  /* 0x74 */,   3  /* 0x75 */,   3  /* 0x76 */,   3  /* 0x77 */, 
-  3  /* 0x78 */,   3  /* 0x79 */,   3  /* 0x7a */,   3  /* 0x7b */,   3  /* 0x7c */,   3  /* 0x7d */,   3  /* 0x7e */,   3  /* 0x7f */, 
-  3  /* 0x80 */,   3  /* 0x81 */,   3  /* 0x82 */,   3  /* 0x83 */,   3  /* 0x84 */,   3  /* 0x85 */,   3  /* 0x86 */,   3  /* 0x87 */, 
-  3  /* 0x88 */,   3  /* 0x89 */,   3  /* 0x8a */,   3  /* 0x8b */,   3  /* 0x8c */,   3  /* 0x8d */,   3  /* 0x8e */,   3  /* 0x8f */, 
-  3  /* 0x90 */,   3  /* 0x91 */,   3  /* 0x92 */,   3  /* 0x93 */,   3  /* 0x94 */,   3  /* 0x95 */,   3  /* 0x96 */,   3  /* 0x97 */, 
-  3  /* 0x98 */,   3  /* 0x99 */,   3  /* 0x9a */,   3  /* 0x9b */,   3  /* 0x9c */,   3  /* 0x9d */,   3  /* 0x9e */,   3  /* 0x9f */, 
-  3  /* 0xa0 */,   3  /* 0xa1 */,   3  /* 0xa2 */,   3  /* 0xa3 */,   3  /* 0xa4 */,   3  /* 0xa5 */,   3  /* 0xa6 */,   3  /* 0xa7 */, 
-  3  /* 0xa8 */,   3  /* 0xa9 */,   3  /* 0xaa */,   3  /* 0xab */,   3  /* 0xac */,   3  /* 0xad */,   3  /* 0xae */,   3  /* 0xaf */, 
-  3  /* 0xb0 */,   3  /* 0xb1 */,   3  /* 0xb2 */,   3  /* 0xb3 */,   3  /* 0xb4 */,   3  /* 0xb5 */,   3  /* 0xb6 */,   3  /* 0xb7 */, 
-  3  /* 0xb8 */,   3  /* 0xb9 */,   3  /* 0xba */,   3  /* 0xbb */,   3  /* 0xbc */,   3  /* 0xbd */,   3  /* 0xbe */,   3  /* 0xbf */, 
-  3  /* 0xc0 */,   3  /* 0xc1 */,   3  /* 0xc2 */,   3  /* 0xc3 */,   3  /* 0xc4 */,   3  /* 0xc5 */,   3  /* 0xc6 */,   3  /* 0xc7 */, 
-  2  /* 0xc8 */,   2  /* 0xc9 */,   2  /* 0xca */,   2  /* 0xcb */,   2  /* 0xcc */,   2  /* 0xcd */,   2  /* 0xce */,   2  /* 0xcf */, 
-  2  /* 0xd0 */,   2  /* 0xd1 */,   2  /* 0xd2 */,   2  /* 0xd3 */,   2  /* 0xd4 */,   2  /* 0xd5 */,   2  /* 0xd6 */,   2  /* 0xd7 */, 
-  0  /* 0xd8 */,   0  /* 0xd9 */,   0  /* 0xda */,   0  /* 0xdb */,   0  /* 0xdc */,   0  /* 0xdd */,   0  /* 0xde */,   0  /* 0xdf */, 
-  0  /* 0xe0 */,   0  /* 0xe1 */,   0  /* 0xe2 */,   0  /* 0xe3 */,   0  /* 0xe4 */,   0  /* 0xe5 */,   0  /* 0xe6 */,   0  /* 0xe7 */, 
-  0  /* 0xe8 */,   0  /* 0xe9 */,   0  /* 0xea */,   0  /* 0xeb */,   0  /* 0xec */,   0  /* 0xed */,   0  /* 0xee */,   0  /* 0xef */, 
-  3  /* 0xf0 */,   3  /* 0xf1 */,   3  /* 0xf2 */,   3  /* 0xf3 */,   3  /* 0xf4 */,   3  /* 0xf5 */,   3  /* 0xf6 */,   3  /* 0xf7 */, 
-  3  /* 0xf8 */,   3  /* 0xf9 */,   3  /* 0xfa */,   3  /* 0xfb */,   3  /* 0xfc */,   3  /* 0xfd */,   3  /* 0xfe */,   3  /* 0xff */, 
+  0  /* 0x00 */,   4  /* 0x01 */,   4  /* 0x02 */,   4  /* 0x03 */,   4  /* 0x04 */,   4  /* 0x05 */,   4  /* 0x06 */,   4  /* 0x07 */,
+  4  /* 0x08 */,   4  /* 0x09 */,   5  /* 0x0a */,   5  /* 0x0b */,   5  /* 0x0c */,   5  /* 0x0d */,   5  /* 0x0e */,   5  /* 0x0f */,
+  5  /* 0x10 */,   5  /* 0x11 */,   5  /* 0x12 */,   4  /* 0x13 */,   5  /* 0x14 */,   0  /* 0x15 */,   0  /* 0x16 */,  -1  /* 0x17 */,
+  0  /* 0x18 */,   1  /* 0x19 */,   1  /* 0x1a */,   2  /* 0x1b */,   2  /* 0x1c */, -50  /* 0x1d */, -99  /* 0x1e */,  99  /* 0x1f */,
+  2  /* 0x20 */,   2  /* 0x21 */,   2  /* 0x22 */,   2  /* 0x23 */,   2  /* 0x24 */,   2  /* 0x25 */,   2  /* 0x26 */,   2  /* 0x27 */,
+  2  /* 0x28 */,   2  /* 0x29 */,   2  /* 0x2a */,   2  /* 0x2b */,   2  /* 0x2c */,   2  /* 0x2d */,   2  /* 0x2e */,   2  /* 0x2f */,
+  2  /* 0x30 */,   2  /* 0x31 */,   2  /* 0x32 */,   2  /* 0x33 */,   2  /* 0x34 */,   2  /* 0x35 */,   2  /* 0x36 */,   2  /* 0x37 */,
+  2  /* 0x38 */,   2  /* 0x39 */,   2  /* 0x3a */,   2  /* 0x3b */,   2  /* 0x3c */,   2  /* 0x3d */,   2  /* 0x3e */,   2  /* 0x3f */,
+  3  /* 0x40 */,   3  /* 0x41 */,   3  /* 0x42 */,   3  /* 0x43 */,   3  /* 0x44 */,   3  /* 0x45 */,   3  /* 0x46 */,   3  /* 0x47 */,
+  3  /* 0x48 */,   3  /* 0x49 */,   3  /* 0x4a */,   3  /* 0x4b */,   3  /* 0x4c */,   3  /* 0x4d */,   3  /* 0x4e */,   3  /* 0x4f */,
+  3  /* 0x50 */,   3  /* 0x51 */,   3  /* 0x52 */,   3  /* 0x53 */,   3  /* 0x54 */,   3  /* 0x55 */,   3  /* 0x56 */,   3  /* 0x57 */,
+  3  /* 0x58 */,   3  /* 0x59 */,   3  /* 0x5a */,   3  /* 0x5b */,   3  /* 0x5c */,   3  /* 0x5d */,   3  /* 0x5e */,   3  /* 0x5f */,
+  3  /* 0x60 */,   3  /* 0x61 */,   3  /* 0x62 */,   3  /* 0x63 */,   3  /* 0x64 */,   3  /* 0x65 */,   3  /* 0x66 */,   3  /* 0x67 */,
+  3  /* 0x68 */,   3  /* 0x69 */,   3  /* 0x6a */,   3  /* 0x6b */,   3  /* 0x6c */,   3  /* 0x6d */,   3  /* 0x6e */,   3  /* 0x6f */,
+  3  /* 0x70 */,   3  /* 0x71 */,   3  /* 0x72 */,   3  /* 0x73 */,   3  /* 0x74 */,   3  /* 0x75 */,   3  /* 0x76 */,   3  /* 0x77 */,
+  3  /* 0x78 */,   3  /* 0x79 */,   3  /* 0x7a */,   3  /* 0x7b */,   3  /* 0x7c */,   3  /* 0x7d */,   3  /* 0x7e */,   3  /* 0x7f */,
+  3  /* 0x80 */,   3  /* 0x81 */,   3  /* 0x82 */,   3  /* 0x83 */,   3  /* 0x84 */,   3  /* 0x85 */,   3  /* 0x86 */,   3  /* 0x87 */,
+  3  /* 0x88 */,   3  /* 0x89 */,   3  /* 0x8a */,   3  /* 0x8b */,   3  /* 0x8c */,   3  /* 0x8d */,   3  /* 0x8e */,   3  /* 0x8f */,
+  3  /* 0x90 */,   3  /* 0x91 */,   3  /* 0x92 */,   3  /* 0x93 */,   3  /* 0x94 */,   3  /* 0x95 */,   3  /* 0x96 */,   3  /* 0x97 */,
+  3  /* 0x98 */,   3  /* 0x99 */,   3  /* 0x9a */,   3  /* 0x9b */,   3  /* 0x9c */,   3  /* 0x9d */,   3  /* 0x9e */,   3  /* 0x9f */,
+  3  /* 0xa0 */,   3  /* 0xa1 */,   3  /* 0xa2 */,   3  /* 0xa3 */,   3  /* 0xa4 */,   3  /* 0xa5 */,   3  /* 0xa6 */,   3  /* 0xa7 */,
+  3  /* 0xa8 */,   3  /* 0xa9 */,   3  /* 0xaa */,   3  /* 0xab */,   3  /* 0xac */,   3  /* 0xad */,   3  /* 0xae */,   3  /* 0xaf */,
+  3  /* 0xb0 */,   3  /* 0xb1 */,   3  /* 0xb2 */,   3  /* 0xb3 */,   3  /* 0xb4 */,   3  /* 0xb5 */,   3  /* 0xb6 */,   3  /* 0xb7 */,
+  3  /* 0xb8 */,   3  /* 0xb9 */,   3  /* 0xba */,   3  /* 0xbb */,   3  /* 0xbc */,   3  /* 0xbd */,   3  /* 0xbe */,   3  /* 0xbf */,
+  3  /* 0xc0 */,   3  /* 0xc1 */,   3  /* 0xc2 */,   3  /* 0xc3 */,   3  /* 0xc4 */,   3  /* 0xc5 */,   3  /* 0xc6 */,   3  /* 0xc7 */,
+  2  /* 0xc8 */,   2  /* 0xc9 */,   2  /* 0xca */,   2  /* 0xcb */,   2  /* 0xcc */,   2  /* 0xcd */,   2  /* 0xce */,   2  /* 0xcf */,
+  2  /* 0xd0 */,   2  /* 0xd1 */,   2  /* 0xd2 */,   2  /* 0xd3 */,   2  /* 0xd4 */,   2  /* 0xd5 */,   2  /* 0xd6 */,   2  /* 0xd7 */,
+  0  /* 0xd8 */,   0  /* 0xd9 */,   0  /* 0xda */,   0  /* 0xdb */,   0  /* 0xdc */,   0  /* 0xdd */,   0  /* 0xde */,   0  /* 0xdf */,
+  0  /* 0xe0 */,   0  /* 0xe1 */,   0  /* 0xe2 */,   0  /* 0xe3 */,   0  /* 0xe4 */,   0  /* 0xe5 */,   0  /* 0xe6 */,   0  /* 0xe7 */,
+  0  /* 0xe8 */,   0  /* 0xe9 */,   0  /* 0xea */,   0  /* 0xeb */,   0  /* 0xec */,   0  /* 0xed */,   0  /* 0xee */,   0  /* 0xef */,
+  3  /* 0xf0 */,   3  /* 0xf1 */,   3  /* 0xf2 */,   3  /* 0xf3 */,   3  /* 0xf4 */,   3  /* 0xf5 */,   3  /* 0xf6 */,   3  /* 0xf7 */,
+  3  /* 0xf8 */,   3  /* 0xf9 */,   3  /* 0xfa */,   3  /* 0xfb */,   3  /* 0xfc */,   3  /* 0xfd */,   3  /* 0xfe */,   3  /* 0xff */,
 };
 
 // a default custom type handler that prevents throwing exceptions when
@@ -400,7 +400,7 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
   }
   return (l < r ? -1 : 1);
 }
-  
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief compares two VelocyPack string values
 //////////////////////////////////////////////////////////////////////////////
@@ -414,11 +414,11 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
     size_t len = static_cast<size_t>(nl < nr ? nl : nr);
     res = memcmp(left, right, len);
   }
-  
+
   if (res != 0) {
     return (res < 0 ? -1 : 1);
   }
-  
+
   // res == 0
   if (nl == nr) {
     return 0;
@@ -763,7 +763,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
   //   // (or vice versa). Anyway, the compare value is the same for both,
   //   return 0;
   // }
-  
+
   auto lhsType = lhs.type();
 
   switch (lhsType) {
@@ -786,7 +786,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::SmallInt: {
       return compareNumberValues(lhsType, lhs, rhs);
     }
-    case VPackValueType::String: 
+    case VPackValueType::String:
     case VPackValueType::Custom: {
       VPackValueLength nl;
       VPackValueLength nr;
@@ -806,7 +806,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       } else {
         left = lhs.getString(nl);
       }
-      
+
       if (rhs.isCustom()) {
         if (rhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -841,7 +841,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
           rhsValue = ar.value();
           ar.next();
         }
-        
+
         int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
         if (result != 0) {
           return result;
@@ -976,8 +976,8 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
   failed = true;
   return 0.0;
 }
-  
-// modify a VPack double value in place 
+
+// modify a VPack double value in place
 void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   TRI_ASSERT(slice.isDouble());
   // get pointer to the start of the value
@@ -995,7 +995,7 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
 #else
   // other platforms support unaligned writes
   *reinterpret_cast<double*>(p + 1) = value;
-#endif  
+#endif
 }
 
 #ifndef USE_ENTERPRISE
@@ -1126,8 +1126,107 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for 'id' attribute");
   }
 
-  TRI_ASSERT(id.isNone()); 
+  TRI_ASSERT(id.isNone());
   return 0;
+}
+
+Result VelocyPackHelper::expectedType(VPackValueType expected, VPackValueType got){
+  if(expected == got) { return {}; };
+  std::stringstream err;
+  err << "Expected type " << valueTypeName(expected) << ", got " << valueTypeName(got) << " instead.";
+  return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
+}
+
+// should be an official VelocyPack helper when finished
+ResultT<arangodb::basics::VelocyPackHelper::AttributeVec> VelocyPackHelper::expectedAttributes(VPackSlice slice,
+    AttributeSet const& required, AttributeSet const& optional, AttributeSet const& deprecated,
+    bool checkTypes){
+
+  using AttributeSet = arangodb::basics::VelocyPackHelper::AttributeSet;
+  using AttributeVec = arangodb::basics::VelocyPackHelper::AttributeVec;
+  AttributeVec rv;
+
+  auto result = expectedType(VPackValueType::Object, slice.type());
+  if(result.fail()){
+    return result;
+  }
+
+  static auto const contains = [](AttributeSet const& set,
+                     std::string const& needle,
+                     VPackValueType& matchType) -> bool {
+    auto found = set.find(needle);
+    auto rv = found != set.end();
+    if(rv) {
+      matchType = found->second;
+    }
+    return rv;
+  };
+
+  static auto const pushKeys = [](std::vector<std::string const*> vec,
+                                  AttributeSet const& set) -> void {
+    for (auto& i : set) {
+      vec.push_back(&(i.first));
+    }
+    //we could do a unique but decided against it
+  };
+
+  for (auto const& it : VPackObjectIterator(slice)) {
+    std::string key = it.key.copyString();
+
+    VPackValueType matched = VPackValueType::None;
+    if (contains(required, key, matched) || contains(optional, key, matched)) {
+      if(checkTypes){
+        auto check = expectedType(matched, it.value.type());
+        if(check.fail()){
+          return {check};
+        }
+      }
+      rv.push_back(std::pair<std::string,VPackSlice const>(std::move(key),it.value));
+      continue;
+    }
+    else if (contains(deprecated, key, matched)) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "Deprecated attribute `" << key;
+      if(checkTypes){
+        auto check = expectedType(matched, it.value.type());
+        if(check.fail()){
+          return {check};
+        }
+      }
+      rv.push_back(std::pair<std::string,VPackSlice const>(std::move(key),it.value));
+      continue;
+    } else {
+      std::stringstream err;
+      err << "Encountered unexpected attribute `" << key
+          << "`, allowed attributes are {";
+      std::vector<std::string const*> attributes;
+      pushKeys(attributes, required);
+      pushKeys(attributes, optional);
+      pushKeys(attributes, deprecated);
+      bool first = true;
+      for (auto const& it : attributes) {
+        if (!first) { err << ", "; }
+        first = false;
+        err << it;
+      }
+      err << "}.";
+
+      return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
+    }
+  }
+
+  // check if each required item is in the result set
+  std::unordered_set<std::string> rvSet;
+  for(auto const& i : rv){
+    rvSet.insert(i.first);
+  }
+
+  for(auto const& i : required){
+    if( rvSet.find(i.first) == rvSet.end() ){
+      return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, "Not all required arguments are present" };
+    }
+  }
+
+  return ResultT<AttributeVec>::success(rv);
 }
 
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
