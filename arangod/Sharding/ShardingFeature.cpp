@@ -52,14 +52,19 @@ void ShardingFeature::prepare() {
       ShardingStrategyCommunityCompat::NAME, [](ShardingInfo* sharding) {
         return std::make_unique<ShardingStrategyCommunityCompat>(sharding);
       });
-  registerFactory(ShardingStrategyHash::NAME, [](ShardingInfo* sharding) {
-    return std::make_unique<ShardingStrategyHash>(sharding);
-  });
-#ifdef USE_ENTERPRISE
+  // note: enterprise-compat is always there so users can downgrade from
+  // enterprise edition to community edition
   registerFactory(
       ShardingStrategyEnterpriseCompat::NAME, [](ShardingInfo* sharding) {
         return std::make_unique<ShardingStrategyEnterpriseCompat>(sharding);
       });
+  registerFactory(
+      ShardingStrategyHash::NAME, [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyHash>(sharding);
+      });
+#ifdef USE_ENTERPRISE
+  // the following sharding strategies are only available in the enterprise 
+  // edition
   registerFactory(
       ShardingStrategyEnterpriseSmartEdgeCompat::NAME,
       [](ShardingInfo* sharding) {
@@ -72,6 +77,18 @@ void ShardingFeature::prepare() {
         return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(
             sharding);
       });
+#else
+  // in the community-version register some stand-ins for the sharding
+  // strategies only available in the enterprise edition
+  // note: these standins will actually not do any sharding, but always
+  // throw an exception telling the user that the selected sharding
+  // strategy is only available in the enterprise edition
+  for (auto const& name : std::vector<std::string>{"enterprise-smart-edge-compat", "enterprise-hash-smart-edge"}) {
+    registerFactory(name,
+      [name](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyOnlyInEnterprise>(name);
+      });
+  }
 #endif
 }
 
@@ -145,6 +162,8 @@ std::string ShardingFeature::getDefaultShardingStrategy(
     // on a DB server, we will not use sharding
     return ShardingStrategyNone::NAME;
   }
+  
+  // before 3.4, there were only hard-coded sharding strategies
 
   // no sharding strategy found in collection meta data
 #ifdef USE_ENTERPRISE
@@ -164,6 +183,7 @@ std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
     VPackSlice const& properties) const {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
 
+  // from 3.4 onwards, the default sharding strategy for new collections is "hash"
 #ifdef USE_ENTERPRISE
   bool isSmart =
       VelocyPackHelper::getBooleanValue(properties, "isSmart", false);
