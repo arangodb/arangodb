@@ -30,9 +30,9 @@
 #include "Indexes/Index.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/V8Context.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -71,8 +71,10 @@ aql::QueryResultV8 AqlQuery(
     arangodb::aql::PART_MAIN
   );
 
+  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+  ss->setContinueCallback(); 
+
   aql::QueryResultV8 queryResult;
-  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
   while (true) {
     auto state = query.executeV8(isolate,
         static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
@@ -80,7 +82,7 @@ aql::QueryResultV8 AqlQuery(
     if (state != aql::ExecutionState::WAITING) {
       break;
     }
-    query.tempWaitForAsyncResponse();
+    ss->waitForAsyncResponse();
   }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -219,7 +221,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<transaction::V8Context> transactionContext =
       transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, collection, AccessMode::Type::READ
+    transactionContext, *collection, AccessMode::Type::READ
   );
   Result res = trx.begin();
 
@@ -310,7 +312,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<transaction::V8Context> transactionContext =
       transaction::V8Context::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, col, AccessMode::Type::READ
+    transactionContext, *col, AccessMode::Type::READ
   );
   Result res = trx.begin();
 

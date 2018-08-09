@@ -33,6 +33,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Sharding/ShardingFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -86,9 +87,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
 
   TestAnalyzer(irs::string_ref const& value)
     : irs::analysis::analyzer(TestAnalyzer::type()) {
-    _attrs.emplace(_freq); // required by postings_writer::end_term(...)
     _attrs.emplace(_inc); // required by field_data::invert(...)
-    _attrs.emplace(_pos); // required to match with PHRASE(...)
     _attrs.emplace(_term);
 
     if (value == "X") {
@@ -117,9 +116,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
  private:
   irs::attribute_view _attrs;
   irs::bytes_ref _data;
-  irs::frequency _freq;
   irs::increment _inc;
-  irs::position _pos;
   TestTermAttribute _term;
   TestAttributeX _x;
   TestAttributeY _y;
@@ -155,6 +152,7 @@ struct IResearchIndexSetup {
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false); // requires for IResearchView::open()
     auto d = static_cast<arangodb::DatabasePathFeature*>(features.back().first);
     d->setDirectory(TRI_GetTempPath());
+    features.emplace_back(new arangodb::ShardingFeature(&server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true); // required by TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required by TRI_vocbase_t(...)
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // QueryRegistryFeature required to be present before calling TRI_vocbase_t(...)
@@ -531,7 +529,7 @@ SECTION("test_async_index") {
 
       arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(collection0->vocbase()),
-        collection0,
+        *collection0,
         arangodb::AccessMode::Type::WRITE
       );
       resThread0 = trx.begin().ok();
@@ -569,7 +567,7 @@ SECTION("test_async_index") {
 
       arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(collection1->vocbase()),
-        collection1,
+        *collection1,
         arangodb::AccessMode::Type::WRITE
       );
       resThread1 = trx.begin().ok();

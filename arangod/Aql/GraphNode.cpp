@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
+#include "Graph/Graph.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 

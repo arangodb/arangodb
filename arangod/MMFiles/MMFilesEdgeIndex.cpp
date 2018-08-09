@@ -60,8 +60,7 @@ MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx, index),
       _index(indexImpl),
-      _mmdr(mmdr),
-      _context(trx, collection, _mmdr, index->fields().size()),
+      _context(trx, collection, mmdr, index->fields().size()),
       _keys(std::move(keys)),
       _iterator(_keys->slice()),
       _posInBuffer(0),

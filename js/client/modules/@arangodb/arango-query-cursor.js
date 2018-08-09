@@ -216,7 +216,7 @@ ArangoQueryCursor.prototype.next = function () {
       this._hasMore = false;
 
       // load more results
-      var requestResult = this._database._connection.PUT(this._baseurl(), '');
+      var requestResult = this._database._connection.PUT(this._baseurl(), null);
 
       arangosh.checkRequestResult(requestResult);
 
@@ -256,7 +256,7 @@ ArangoQueryCursor.prototype.dispose = function () {
     return;
   }
 
-  var requestResult = this._database._connection.DELETE(this._baseurl(), '');
+  var requestResult = this._database._connection.DELETE(this._baseurl());
 
   arangosh.checkRequestResult(requestResult);
 

@@ -265,21 +265,14 @@ class ExecutionNode {
   }
 
   /// @brief get the node and its dependencies as a vector
-  std::vector<ExecutionNode*> getDependencyChain(bool includeSelf) {
-    std::vector<ExecutionNode*> result;
-
+  void getDependencyChain(std::vector<ExecutionNode*>& result, bool includeSelf) {
     auto current = this;
     while (current != nullptr) {
       if (includeSelf || current != this) {
         result.emplace_back(current);
       }
-      if (! current->hasDependency()) {
-        break;
-      }
       current = current->getFirstDependency();
     }
-
-    return result;
   }
 
   /// @brief inspect one index; only skiplist indices which match attrs in

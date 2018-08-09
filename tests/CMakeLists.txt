@@ -52,10 +52,13 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryJoin-test.cpp
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
+    IResearch/RestHandlerMock.cpp
     IResearch/StorageEngineMock.cpp
     IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
+    RestHandler/RestViewHandler-test.cpp
     Utils/CollectionNameResolver-test.cpp
+    V8Server/v8-views-test.cpp
     VocBase/LogicalDataSource-test.cpp
     VocBase/vocbase-test.cpp
   )
@@ -120,7 +123,6 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
-  Cluster/ShardDistributionReporterTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoJsonTest.cpp
   Geo/GeoFunctionsTest.cpp
@@ -131,6 +133,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
+  Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )

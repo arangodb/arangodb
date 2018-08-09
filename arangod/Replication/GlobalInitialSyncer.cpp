@@ -164,23 +164,22 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
 
   try {
     // actually sync the database
-    for (auto const& database : VPackObjectIterator(databases)) {
+    for (auto const& dbEntry : VPackObjectIterator(databases)) {
       if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
       } else if (isAborted()) {
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
       }
 
-      VPackSlice it = database.value;
-      if (!it.isObject()) {
+      VPackSlice dbInventory = dbEntry.value;
+      if (!dbInventory.isObject()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "database declaration is invalid in response");
       }
 
-      VPackSlice const nameSlice = it.get("name");
-      VPackSlice const idSlice = it.get("id");
-      VPackSlice const collections = it.get("collections");
-
+      VPackSlice const nameSlice = dbInventory.get("name");
+      VPackSlice const idSlice = dbInventory.get("id");
+      VPackSlice const collections = dbInventory.get("collections");
       if (!nameSlice.isString() || !idSlice.isString() ||
           !collections.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -192,22 +191,20 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       if (vocbase == nullptr) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
       }
-
+      
       DatabaseGuard guard(nameSlice.copyString());
 
       // change database name in place
       auto configurationCopy = _state.applier;
-
       configurationCopy._database = nameSlice.copyString();
 
       auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
-
       syncer->useAsChildSyncer(_state.master, _state.barrier.id,
                                _state.barrier.updateTime, _batch.id,
                                _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
-      Result r = syncer->runWithInventory(false, collections);
+      Result r = syncer->runWithInventory(false, dbInventory);
       if (r.fail()) {
         return r;
       }
@@ -228,8 +225,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief add or remove databases such that the local inventory mirrors the
-/// masters
+/// @brief add or remove databases such that the local inventory
+/// mirrors the masters
 Result GlobalInitialSyncer::updateServerInventory(
     VPackSlice const& masterDatabases) {
   std::set<std::string> existingDBs;

@@ -85,7 +85,8 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
   }
 
   if (!definition.isObject()
-      || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
+      || !(definition.get(StaticStrings::ViewIdField).isString() ||
+           definition.get(StaticStrings::ViewIdField).isNumber())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error finding view for link '" << id() << "'";
     TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -93,14 +94,12 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false;
   }
 
-  auto identifier = definition.get(StaticStrings::ViewIdField);
-  auto viewId = identifier.getNumber<uint64_t>();
+  auto idSlice = definition.get(StaticStrings::ViewIdField);
+  std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
   auto& vocbase = _collection.vocbase();
 
   TRI_ASSERT(ClusterInfo::instance());
-  auto logicalView  = ClusterInfo::instance()->getView(
-    vocbase.name(), basics::StringUtils::itoa(viewId)
-  );
+  auto logicalView  = ClusterInfo::instance()->getView(vocbase.name(), viewId);
 
   if (!logicalView
       || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
@@ -196,7 +195,7 @@ void IResearchLinkCoordinator::toVelocyPack(
   );
   builder.add(
     StaticStrings::ViewIdField,
-    arangodb::velocypack::Value(_view->id())
+    arangodb::velocypack::Value(_view->guid())
   );
 
   if (withFigures) {

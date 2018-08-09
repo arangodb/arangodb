@@ -30,6 +30,8 @@ class Result {
  public:
   Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
+  Result(bool avoidCastingErrors) = delete;
+
   Result(int errorNumber)
       : _errorNumber(errorNumber){
     if (errorNumber != TRI_ERROR_NO_ERROR) {

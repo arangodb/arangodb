@@ -366,6 +366,73 @@ RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
+REGEX_SPLIT()
+------------
+
+`REGEX_SPLIT(text, splitExpression, caseInsensitive, limit) → strArray`
+
+Split the given string *text* into a list of strings, using the *separator*.
+
+- **text** (string): the string to split
+- **splitExpression** (string): a regular expression to use for splitting the *text*
+- **limit** (number, *optional*): limit the number of split values in the result.
+  If no *limit* is given, the number of splits returned is not bounded.
+- returns **strArray** (array): an array of strings
+
+The regular expression may consist of literal characters and the following 
+characters and sequences:
+
+- `.` – the dot matches any single character except line terminators.
+  To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+- `\d` – matches a single digit, equivalent to `[0-9]`
+- `\s` – matches a single whitespace character
+- `\S` – matches a single non-whitespace character
+- `\t` – matches a tab character
+- `\r` – matches a carriage return
+- `\n` – matches a line-feed character
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+  (here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
+enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
+- `[x-z]` – range of characters. Matches any of the characters in the 
+  specified range, e.g. `[0-9A-F]` to match any character in
+  *0123456789ABCDEF*
+- `[^x-z]` – negated range of characters. Matches any other character than the
+ones specified in the range
+- `(xyz)` – defines and matches a pattern group
+- `(x|y)` – matches either *x* or *y*
+- `^` – matches the beginning of the string (e.g. `^xyz`)
+- <code>$</code> – matches the end of the string (e.g. <code>xyz$</code>)
+
+Note that the characters `.`, `*`, `?`, `[`, `]`, `(`, `)`, `{`, `}`, `^`, 
+and `$` have a special meaning in regular expressions and may need to be 
+escaped using a backslash, which requires escaping itself (`\\`). A literal
+backslash needs to be escaped using another escaped backslash, i.e. `\\\\`.
+In arangosh, the amount of backslashes needs to be doubled.
+
+Characters and sequences may optionally be repeated using the following
+quantifiers:
+
+- `x*` – matches zero or more occurrences of *x*
+- `x+` – matches one or more occurrences of *x*
+- `x?` – matches one or zero occurrences of *x*
+- `x{y}` – matches exactly *y* occurrences of *x*
+- `x{y,z}` – matches between *y* and *z* occurrences of *x*
+- `x{y,}` – matches at least *y* occurences of *x*
+
+Note that `xyz+` matches *xyzzz*, but if you want to match *xyzxyz* instead,
+you need to define a pattern group by wrapping the subexpression in parentheses
+and place the quantifier right behind it: `(xyz)+`.
+
+If the regular expression in *splitExpression* is invalid, a warning will be raised
+and the function will return *null*.
+
+```js
+REGEX_SPLIT("This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 4) // ["This is a line", "\n", " This is yet another lin", "\r"]
+REGEX_SPLIT("hypertext language, programming", "[\s, ]+") // ["hypertext", "language", "programming"]
+REGEX_SPLIT("ca,bc,a,bca,bca,bc", "a,b", true, 5) // ["c", "c,", "c", "c", "c"]
+```
+
 REGEX_TEST()
 ------------
 
@@ -392,9 +459,9 @@ characters and sequences:
 - `\t` – matches a tab character
 - `\r` – matches a carriage return
 - `\n` – matches a line-feed character
-- `[xyz]` – set of characters. matches any of the enclosed characters (i.e.
-  *x*, *y* or *z* in this case
-- `[^xyz]` – negated set of characters. matches any other character than the
+- `[xyz]` – set of characters. Matches any of the enclosed characters
+  (here: *x*, *y* or *z*)
+- `[^xyz]` – negated set of characters. Matches any other character than the
   enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
 - `[x-z]` – range of characters. Matches any of the characters in the 
   specified range, e.g. `[0-9A-F]` to match any character in
@@ -673,6 +740,19 @@ Return a substring of *value*.
 - **length** (number, *optional*): at most *length* characters, omit to get the
   substring from *offset* to the end of the string
 - returns **substring** (string): a substring of *value*
+
+TOKENS()
+--------
+
+`TOKENS(input, analyzer) → array`
+
+Split the **input** string with the help of the specified **analyzer** into an array.
+The resulting array can i.e. be used in subsequent `FILTER` statements with the **IN** operator.
+This can be used to better understand how the specific analyzer is going to behave.
+
+- *input* string to tokenize
+- *analyzer* one of the [available string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
+
 
 TO_BASE64()
 -----------

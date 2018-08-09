@@ -50,11 +50,11 @@ div.jsoneditor-value {
 
 div.jsoneditor-readonly {
   min-width: 16px;
-  color: gray;
+  color: #808080;
 }
 
 div.jsoneditor-empty {
-  border-color: lightgray;
+  border-color: #d3d3d3;
   border-style: dashed;
   border-radius: 2px;
 }
@@ -62,7 +62,7 @@ div.jsoneditor-empty {
 div.jsoneditor-field.jsoneditor-empty::after,
 div.jsoneditor-value.jsoneditor-empty::after {
   pointer-events: none;
-  color: lightgray;
+  color: #d3d3d3;
   font-size: 8pt;
 }
 
@@ -94,7 +94,7 @@ a.jsoneditor-value.jsoneditor-url:focus {
 div.jsoneditor td.jsoneditor-separator {
   padding: 3px 0;
   vertical-align: top;
-  color: gray;
+  color: #808080;
 }
 
 div.jsoneditor-field[contenteditable=true]:focus,
@@ -197,6 +197,27 @@ div.jsoneditor-tree button.jsoneditor-invisible {
   background: none;
 }
 
+div.jsoneditor-tree div.jsoneditor-show-more {
+  display: inline-block;
+  padding: 3px 4px;
+  margin: 2px 0;
+  background-color: #e5e5e5;
+  border-radius: 3px;
+  color: #808080;
+  font-family: arial, sans-serif;
+  font-size: 10pt;
+}
+
+div.jsoneditor-tree div.jsoneditor-show-more a {
+  display: inline-block;
+  color: #808080;
+}
+
+div.jsoneditor-tree div.jsoneditor-show-more a:hover,
+div.jsoneditor-tree div.jsoneditor-show-more a:focus {
+  color: #ee422e;
+}
+
 div.jsoneditor {
   color: #1A1A1A;
   border: 1px solid #3883fa;
@@ -214,7 +235,10 @@ div.jsoneditor-tree table.jsoneditor-tree {
   border-collapse: collapse;
   border-spacing: 0;
   width: 100%;
-  margin: 0;
+}
+
+div.jsoneditor-tree div.jsoneditor-tree-inner {
+  padding-bottom: 300px;
 }
 
 div.jsoneditor-outer {
@@ -226,6 +250,16 @@ div.jsoneditor-outer {
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
+}
+
+div.jsoneditor-outer.has-nav-bar {
+  margin: -61px 0 0 0;
+  padding: 61px 0 0 0;
+}
+
+div.jsoneditor-outer.has-status-bar {
+  margin: -35px 0 -26px 0;
+  padding: 35px 0 26px 0;
 }
 
 textarea.jsoneditor-text,
@@ -255,7 +289,7 @@ textarea.jsoneditor-text {
 
 tr.jsoneditor-highlight,
 tr.jsoneditor-selected {
-  background-color: #e6e6e6;
+  background-color: #d3d3d3;
 }
 
 tr.jsoneditor-selected button.jsoneditor-dragarea,
@@ -300,7 +334,7 @@ div.jsoneditor td,
 div.jsoneditor th,
 div.jsoneditor textarea,
 .jsoneditor-schema-error {
-  font-family: droid sans mono, consolas, monospace, courier new, courier, sans-serif;
+  font-family: "dejavu sans mono", "droid sans mono", consolas, monaco, "lucida console", "courier new", courier, monospace, sans-serif;
   font-size: 10pt;
   color: #1A1A1A;
 }
@@ -504,13 +538,14 @@ div.jsoneditor-contextmenu {
 div.jsoneditor-contextmenu ul,
 div.jsoneditor-contextmenu li {
   box-sizing: content-box;
+  position: relative;
 }
 
 div.jsoneditor-contextmenu ul {
   position: relative;
   left: 0;
   top: 0;
-  width: 124px;
+  width: 128px;
   background: white;
   border: 1px solid #d3d3d3;
   box-shadow: 2px 2px 12px rgba(128, 128, 128, 0.3);
@@ -520,10 +555,11 @@ div.jsoneditor-contextmenu ul {
 }
 
 div.jsoneditor-contextmenu ul li button {
-  padding: 0;
+  position: relative;
+  padding: 0 4px 0 0;
   margin: 0;
-  width: 124px;
-  height: 24px;
+  width: 128px;
+  height: auto;
   border: none;
   cursor: pointer;
   color: #4d4d4d;
@@ -531,7 +567,6 @@ div.jsoneditor-contextmenu ul li button {
   font-size: 10pt;
   font-family: arial, sans-serif;
   box-sizing: border-box;
-  line-height: 26px;
   text-align: left;
 }
 
@@ -550,7 +585,8 @@ div.jsoneditor-contextmenu ul li button:focus {
 }
 
 div.jsoneditor-contextmenu ul li button.jsoneditor-default {
-  width: 92px;
+  width: 96px;
+  /* 128px - 32px */
 }
 
 div.jsoneditor-contextmenu ul li button.jsoneditor-expand {
@@ -561,7 +597,9 @@ div.jsoneditor-contextmenu ul li button.jsoneditor-expand {
 }
 
 div.jsoneditor-contextmenu div.jsoneditor-icon {
-  float: left;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 24px;
   height: 24px;
   border: none;
@@ -570,22 +608,28 @@ div.jsoneditor-contextmenu div.jsoneditor-icon {
   background-image: url("../img/jsoneditor-icons.svg");
 }
 
+div.jsoneditor-contextmenu ul li ul div.jsoneditor-icon {
+  margin-left: 24px;
+}
+
+div.jsoneditor-contextmenu div.jsoneditor-text {
+  padding: 4px 0 4px 24px;
+  word-wrap: break-word;
+}
+
+div.jsoneditor-contextmenu div.jsoneditor-text.jsoneditor-right-margin {
+  padding-right: 24px;
+}
+
 div.jsoneditor-contextmenu ul li button div.jsoneditor-expand {
-  float: right;
+  position: absolute;
+  top: 0;
+  right: 0;
   width: 24px;
   height: 24px;
   padding: 0;
   margin: 0 4px 0 0;
   background: url("../img/jsoneditor-icons.svg") 0 -72px;
-  opacity: 0.4;
-}
-
-div.jsoneditor-contextmenu ul li button:hover div.jsoneditor-expand,
-div.jsoneditor-contextmenu ul li button:focus div.jsoneditor-expand,
-div.jsoneditor-contextmenu ul li.jsoneditor-selected div.jsoneditor-expand,
-div.jsoneditor-contextmenu ul li button.jsoneditor-expand:hover div.jsoneditor-expand,
-div.jsoneditor-contextmenu ul li button.jsoneditor-expand:focus div.jsoneditor-expand {
-  opacity: 1;
 }
 
 div.jsoneditor-contextmenu div.jsoneditor-separator {
@@ -596,57 +640,31 @@ div.jsoneditor-contextmenu div.jsoneditor-separator {
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-remove > div.jsoneditor-icon {
-  background-position: -24px -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-remove:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-remove:focus > div.jsoneditor-icon {
   background-position: -24px 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-append > div.jsoneditor-icon {
-  background-position: 0 -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-append:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-append:focus > div.jsoneditor-icon {
   background-position: 0 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-insert > div.jsoneditor-icon {
-  background-position: 0 -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-insert:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-insert:focus > div.jsoneditor-icon {
   background-position: 0 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-duplicate > div.jsoneditor-icon {
-  background-position: -48px -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-duplicate:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-duplicate:focus > div.jsoneditor-icon {
   background-position: -48px 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-sort-asc > div.jsoneditor-icon {
-  background-position: -168px -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-sort-asc:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-sort-asc:focus > div.jsoneditor-icon {
   background-position: -168px 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-sort-desc > div.jsoneditor-icon {
-  background-position: -192px -24px;
+  background-position: -192px 0;
 }
 
-div.jsoneditor-contextmenu button.jsoneditor-sort-desc:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-sort-desc:focus > div.jsoneditor-icon {
-  background-position: -192px 0;
+div.jsoneditor-contextmenu button.jsoneditor-transform > div.jsoneditor-icon {
+  background-position: -216px 0;
 }
 
 /* ContextMenu - sub menu */
@@ -690,48 +708,293 @@ div.jsoneditor-contextmenu ul li ul li button:focus {
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-type-string > div.jsoneditor-icon {
-  background-position: -144px -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-type-string:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-type-string:focus > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-type-string.jsoneditor-selected > div.jsoneditor-icon {
   background-position: -144px 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-type-auto > div.jsoneditor-icon {
-  background-position: -120px -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-type-auto:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-type-auto:focus > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-type-auto.jsoneditor-selected > div.jsoneditor-icon {
   background-position: -120px 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-type-object > div.jsoneditor-icon {
-  background-position: -72px -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-type-object:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-type-object:focus > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-type-object.jsoneditor-selected > div.jsoneditor-icon {
   background-position: -72px 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-type-array > div.jsoneditor-icon {
-  background-position: -96px -24px;
-}
-
-div.jsoneditor-contextmenu button.jsoneditor-type-array:hover > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-type-array:focus > div.jsoneditor-icon,
-div.jsoneditor-contextmenu button.jsoneditor-type-array.jsoneditor-selected > div.jsoneditor-icon {
   background-position: -96px 0;
 }
 
 div.jsoneditor-contextmenu button.jsoneditor-type-modes > div.jsoneditor-icon {
   background-image: none;
   width: 6px;
+}
+
+/* pico modal styling */
+
+.jsoneditor-modal-overlay {
+  position: absolute !important;
+  background: rgb(1,1,1) !important;
+  opacity: 0.3 !important;
+}
+
+.jsoneditor-modal {
+  position: absolute !important;
+  max-width: 95% !important;
+  width: auto !important;
+  border-radius: 2px !important;
+  padding: 45px 15px 15px 15px !important;
+  box-shadow: 2px 2px 12px rgba(128, 128, 128, 0.3) !important;
+  color: #4d4d4d;
+  line-height: 1.3em;
+}
+
+.jsoneditor-modal.jsoneditor-modal-transform {
+  width: 600px !important;
+}
+
+.jsoneditor-modal .pico-modal-header {
+  position: absolute;
+  box-sizing: border-box;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 0 10px;
+  height: 30px;
+  line-height: 30px;
+  font-family: arial, sans-serif;
+  font-size: 11pt;
+  background: #3883fa;
+  color: white;
+}
+
+.jsoneditor-modal table {
+  width: 100%;
+}
+
+.jsoneditor-modal table th,
+.jsoneditor-modal table td {
+  padding: 5px 20px 5px 0;
+  text-align: left;
+  vertical-align: top;
+  font-weight: normal;
+  color: #4d4d4d;
+  line-height: 32px;
+}
+
+.jsoneditor-modal p:first-child {
+  margin-top: 0;
+}
+
+.jsoneditor-modal a {
+  color: #3883fa;
+}
+
+
+
+.jsoneditor-modal table td.jsoneditor-modal-input {
+  text-align: right;
+  padding-right: 0;
+  white-space: nowrap;
+}
+
+.jsoneditor-modal table td.jsoneditor-modal-actions {
+  padding-top: 15px;
+}
+
+.jsoneditor-modal .pico-close {
+  background: none !important;
+  font-size: 24px !important;
+  top: 7px !important;
+  right: 7px !important;
+  color: white;
+}
+
+.jsoneditor-modal select,
+.jsoneditor-modal textarea,
+.jsoneditor-modal input,
+.jsoneditor-modal #query {
+  background: #ffffff;
+  border: 1px solid #d3d3d3;
+  color: #4d4d4d;
+  border-radius: 3px;
+  padding: 4px;
+}
+
+.jsoneditor-modal,
+.jsoneditor-modal table td,
+.jsoneditor-modal table th,
+.jsoneditor-modal select,
+.jsoneditor-modal option,
+.jsoneditor-modal textarea,
+.jsoneditor-modal input,
+.jsoneditor-modal #query {
+  font-size: 10.5pt;
+  font-family: arial, sans-serif;
+}
+
+.jsoneditor-modal #query,
+.jsoneditor-modal .jsoneditor-transform-preview {
+  font-family: "dejavu sans mono", "droid sans mono", consolas, monaco, "lucida console", "courier new", courier, monospace, sans-serif;
+  font-size: 10pt;
+}
+
+.jsoneditor-modal input[type="button"],
+.jsoneditor-modal input[type="submit"] {
+  background: #f5f5f5;
+  padding: 4px 20px;
+}
+
+.jsoneditor-modal select,
+.jsoneditor-modal input {
+  cursor: pointer;
+}
+
+.jsoneditor-modal input {
+  padding: 4px;
+}
+
+.jsoneditor-modal input[type="text"] {
+  cursor: inherit;
+}
+
+.jsoneditor-modal input[disabled] {
+  background: #d3d3d3;
+  color: #808080;
+}
+
+.jsoneditor-modal .jsoneditor-select-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.jsoneditor-modal .jsoneditor-select-wrapper:after {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #666;
+  position: absolute;
+  right: 8px;
+  top: 14px;
+  pointer-events: none;
+}
+
+.jsoneditor-modal select {
+  padding: 3px 24px 3px 10px;
+  min-width: 180px;
+  max-width: 350px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  text-indent: 0;
+  text-overflow: "";
+  font-size: 10pt;
+  line-height: 1.5em;
+}
+
+.jsoneditor-modal select::-ms-expand {
+  display: none;
+}
+
+.jsoneditor-modal .jsoneditor-button-group input {
+  padding: 4px 10px;
+  margin: 0;
+  border-radius: 0;
+  border-left-style: none;
+}
+
+.jsoneditor-modal .jsoneditor-button-group input.jsoneditor-button-first {
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+  border-left-style: solid;
+}
+
+.jsoneditor-modal .jsoneditor-button-group input.jsoneditor-button-last {
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+}
+
+.jsoneditor-modal .jsoneditor-button-group.jsoneditor-button-group-value-asc input.jsoneditor-button-asc,
+.jsoneditor-modal .jsoneditor-button-group.jsoneditor-button-group-value-desc input.jsoneditor-button-desc {
+  background: #3883fa;
+  border-color: #3883fa;
+  color: white;
+}
+
+.jsoneditor-modal #query,
+.jsoneditor-modal .jsoneditor-transform-preview {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.jsoneditor-modal .jsoneditor-transform-preview {
+  background: #f5f5f5;
+  height: 200px;
+}
+
+.jsoneditor-modal .jsoneditor-transform-preview.jsoneditor-error {
+  color: #ee422e;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-wizard {
+  line-height: 1.2em;
+  width: 100%;
+  background: #ffffe0;
+  border: 1px solid #ffe99a;
+  padding: 0 10px 10px;
+  border-radius: 3px;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-wizard-label {
+  font-style: italic;
+  margin: 4px 0 2px 0;
+}
+
+.jsoneditor-modal .jsoneditor-inline {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  padding: 2px;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-filter {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-filter-field {
+  width: 170px;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-filter-relation {
+  width: 100px;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-filter-value {
+  min-width: 100px;
+  flex: 1;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-sort-field {
+  width: 170px;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-sort-order {
+  width: 150px;
+}
+
+.jsoneditor-modal .jsoneditor-jmespath-select-fields {
+  width: 100%;
+}
+
+.jsoneditor-modal .selectr-selected {
+  border-color: #d3d3d3;
+  padding: 4px 28px 4px 8px;
+}
+
+.jsoneditor-modal .selectr-selected .selectr-tag {
+  background-color: #3883fa;
+  border-radius: 5px;
 }
 div.jsoneditor-menu {
   width: 100%;
@@ -788,6 +1051,14 @@ div.jsoneditor-menu > button.jsoneditor-expand-all {
   background-position: 0 -120px;
 }
 
+div.jsoneditor-menu > button.jsoneditor-sort {
+  background-position: -120px -96px;
+}
+
+div.jsoneditor-menu > button.jsoneditor-transform {
+  background-position: -144px -96px;
+}
+
 div.jsoneditor-menu > button.jsoneditor-undo {
   background-position: -24px -96px;
 }
@@ -810,6 +1081,10 @@ div.jsoneditor-menu > button.jsoneditor-compact {
 
 div.jsoneditor-menu > button.jsoneditor-format {
   background-position: -72px -120px;
+}
+
+div.jsoneditor-menu > button.jsoneditor-repair {
+  background-position: -96px -96px;
 }
 
 div.jsoneditor-menu > div.jsoneditor-modes {
@@ -926,4 +1201,578 @@ table.jsoneditor-search button.jsoneditor-previous {
 
 table.jsoneditor-search button.jsoneditor-previous:hover {
   background-position: -148px -49px;
+}
+div.jsoneditor div.autocomplete.dropdown {
+  position: absolute;
+  background: white;
+  box-shadow: 2px 2px 12px rgba(128, 128, 128, 0.3);
+  border: 1px solid #d3d3d3;
+  z-index: 100;
+  overflow-x: hidden;
+  overflow-y: auto;
+  cursor: default;
+  margin: 0;
+  padding-left: 2pt;
+  padding-right: 5pt;
+  text-align: left;
+  outline: 0;
+  font-family: "dejavu sans mono", "droid sans mono", consolas, monaco, "lucida console", "courier new", courier, monospace, sans-serif;
+  font-size: 10pt;
+}
+
+div.jsoneditor div.autocomplete.dropdown .item {
+  color: #333;
+}
+
+div.jsoneditor div.autocomplete.dropdown .item.hover {
+  background-color: #ddd;
+}
+
+div.jsoneditor div.autocomplete.hint {
+  color: #aaa;
+  top: 4px;
+  left: 4px;
+}
+div.jsoneditor-treepath {
+  padding: 0 5px;
+  overflow: hidden;
+}
+
+div.jsoneditor-treepath div.jsoneditor-contextmenu-root {
+  position: absolute;
+  left: 0;
+}
+
+div.jsoneditor-treepath span.jsoneditor-treepath-element {
+  margin: 1px;
+  font-family: arial, sans-serif;
+  font-size: 10pt;
+}
+
+div.jsoneditor-treepath span.jsoneditor-treepath-seperator {
+  margin: 2px;
+  font-size: 9pt;
+  font-family: arial, sans-serif;
+}
+
+div.jsoneditor-treepath span.jsoneditor-treepath-element:hover,
+div.jsoneditor-treepath span.jsoneditor-treepath-seperator:hover {
+  cursor: pointer;
+  text-decoration: underline;
+}
+div.jsoneditor-statusbar {
+  line-height: 26px;
+  height: 26px;
+  margin-top: -1px;
+  color: #808080;
+  background-color: #ebebeb;
+  border-top: 1px solid #d3d3d3;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  font-size: 10pt;
+}
+
+div.jsoneditor-statusbar > .jsoneditor-curserinfo-label {
+  margin: 0 2px 0 4px;
+}
+
+div.jsoneditor-statusbar > .jsoneditor-curserinfo-val {
+  margin-right: 12px;
+}
+
+div.jsoneditor-statusbar > .jsoneditor-curserinfo-count {
+  margin-left: 4px;
+}
+div.jsoneditor-navigation-bar {
+  width: 100%;
+  height: 26px;
+  line-height: 26px;
+  padding: 0;
+  margin: 0;
+  border-bottom: 1px solid #d3d3d3;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  color: #808080;
+  background-color: #ebebeb;
+  overflow: hidden;
+  font-family: arial, sans-serif;
+  font-size: 10pt;
+}
+/*!
+ * Selectr 2.4.0
+ * https://github.com/Mobius1/Selectr
+ *
+ * Released under the MIT license
+ */
+
+.selectr-container {
+  position: relative;
+}
+
+.selectr-container li {
+  list-style: none;
+}
+
+.selectr-hidden {
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0px, 0px, 0px, 0px);
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0 none;
+}
+
+.selectr-visible {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  z-index: 11;
+}
+
+.selectr-desktop.multiple .selectr-visible {
+  display: none;
+}
+
+.selectr-desktop.multiple.native-open .selectr-visible {
+  top: 100%;
+  min-height: 200px !important;
+  height: auto;
+  opacity: 1;
+  display: block;
+}
+
+.selectr-container.multiple.selectr-mobile .selectr-selected {
+  z-index: 0;
+}
+
+.selectr-selected {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 28px 7px 14px;
+  cursor: pointer;
+  border: 1px solid #999;
+  border-radius: 3px;
+  background-color: #fff;
+}
+
+.selectr-selected::before {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 0;
+  height: 0;
+  content: '';
+  -o-transform: rotate(0deg) translate3d(0px, -50%, 0px);
+  -ms-transform: rotate(0deg) translate3d(0px, -50%, 0px);
+  -moz-transform: rotate(0deg) translate3d(0px, -50%, 0px);
+  -webkit-transform: rotate(0deg) translate3d(0px, -50%, 0px);
+  transform: rotate(0deg) translate3d(0px, -50%, 0px);
+  border-width: 4px 4px 0 4px;
+  border-style: solid;
+  border-color: #6c7a86 transparent transparent;
+}
+
+.selectr-container.open .selectr-selected::before,
+.selectr-container.native-open .selectr-selected::before {
+  border-width: 0 4px 4px 4px;
+  border-style: solid;
+  border-color: transparent transparent #6c7a86;
+}
+
+.selectr-label {
+  display: none;
+  overflow: hidden;
+  width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.selectr-placeholder {
+  color: #6c7a86;
+}
+
+.selectr-tags {
+  margin: 0;
+  padding: 0;
+  white-space: normal;
+}
+
+.has-selected .selectr-tags {
+  margin: 0 0 -2px;
+}
+
+.selectr-tag {
+  list-style: none;
+  position: relative;
+  float: left;
+  padding: 2px 25px 2px 8px;
+  margin: 0 2px 2px 0;
+  cursor: default;
+  color: #fff;
+  border: medium none;
+  border-radius: 10px;
+  background: #acb7bf none repeat scroll 0 0;
+}
+
+.selectr-container.multiple.has-selected .selectr-selected {
+  padding: 5px 28px 5px 5px;
+}
+
+.selectr-options-container {
+  position: absolute;
+  z-index: 10000;
+  top: calc(100% - 1px);
+  left: 0;
+  display: none;
+  box-sizing: border-box;
+  width: 100%;
+  border-width: 0 1px 1px;
+  border-style: solid;
+  border-color: transparent #999 #999;
+  border-radius: 0 0 3px 3px;
+  background-color: #fff;
+}
+
+.selectr-container.open .selectr-options-container {
+  display: block;
+}
+
+.selectr-input-container {
+  position: relative;
+  display: none;
+}
+
+.selectr-clear,
+.selectr-input-clear,
+.selectr-tag-remove {
+  position: absolute;
+  top: 50%;
+  right: 22px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  cursor: pointer;
+  -o-transform: translate3d(0px, -50%, 0px);
+  -ms-transform: translate3d(0px, -50%, 0px);
+  -moz-transform: translate3d(0px, -50%, 0px);
+  -webkit-transform: translate3d(0px, -50%, 0px);
+  transform: translate3d(0px, -50%, 0px);
+  border: medium none;
+  background-color: transparent;
+  z-index: 11;
+}
+
+.selectr-clear,
+.selectr-input-clear {
+  display: none;
+}
+
+.selectr-container.has-selected .selectr-clear,
+.selectr-input-container.active .selectr-input-clear {
+  display: block;
+}
+
+.selectr-selected .selectr-tag-remove {
+  right: 2px;
+}
+
+.selectr-clear::before,
+.selectr-clear::after,
+.selectr-input-clear::before,
+.selectr-input-clear::after,
+.selectr-tag-remove::before,
+.selectr-tag-remove::after {
+  position: absolute;
+  top: 5px;
+  left: 9px;
+  width: 2px;
+  height: 10px;
+  content: ' ';
+  background-color: #6c7a86;
+}
+
+.selectr-tag-remove::before,
+.selectr-tag-remove::after {
+  top: 4px;
+  width: 3px;
+  height: 12px;
+  background-color: #fff;
+}
+
+.selectr-clear:before,
+.selectr-input-clear::before,
+.selectr-tag-remove::before {
+  -o-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  -moz-transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+
+.selectr-clear:after,
+.selectr-input-clear::after,
+.selectr-tag-remove::after {
+  -o-transform: rotate(-45deg);
+  -ms-transform: rotate(-45deg);
+  -moz-transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+  transform: rotate(-45deg);
+}
+
+.selectr-input-container.active,
+.selectr-input-container.active .selectr-clear {
+  display: block;
+}
+
+.selectr-input {
+  top: 5px;
+  left: 5px;
+  box-sizing: border-box;
+  width: calc(100% - 30px);
+  margin: 10px 15px;
+  padding: 7px 30px 7px 9px;
+  border: 1px solid #999;
+  border-radius: 3px;
+}
+
+.selectr-notice {
+  display: none;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 16px;
+  border-top: 1px solid #999;
+  border-radius: 0 0 3px 3px;
+  background-color: #fff;
+}
+
+.selectr-container.notice .selectr-notice {
+  display: block;
+}
+
+.selectr-container.notice .selectr-selected {
+  border-radius: 3px 3px 0 0;
+}
+
+.selectr-options {
+  position: relative;
+  top: calc(100% + 2px);
+  display: none;
+  overflow-x: auto;
+  overflow-y: scroll;
+  max-height: 200px;
+  margin: 0;
+  padding: 0;
+}
+
+.selectr-container.open .selectr-options,
+.selectr-container.open .selectr-input-container,
+.selectr-container.notice .selectr-options-container {
+  display: block;
+}
+
+.selectr-option {
+  position: relative;
+  display: block;
+  padding: 5px 20px;
+  list-style: outside none none;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.selectr-options.optgroups > .selectr-option {
+  padding-left: 25px;
+}
+
+.selectr-optgroup {
+  font-weight: bold;
+  padding: 0;
+}
+
+.selectr-optgroup--label {
+  font-weight: bold;
+  margin-top: 10px;
+  padding: 5px 15px;
+}
+
+.selectr-match {
+  text-decoration: underline;
+}
+
+.selectr-option.selected {
+  background-color: #ddd;
+}
+
+.selectr-option.active {
+  color: #fff;
+  background-color: #5897fb;
+}
+
+.selectr-option.disabled {
+  opacity: 0.4;
+}
+
+.selectr-option.excluded {
+  display: none;
+}
+
+.selectr-container.open .selectr-selected {
+  border-color: #999 #999 transparent #999;
+  border-radius: 3px 3px 0 0;
+}
+
+.selectr-container.open .selectr-selected::after {
+  -o-transform: rotate(180deg) translate3d(0px, 50%, 0px);
+  -ms-transform: rotate(180deg) translate3d(0px, 50%, 0px);
+  -moz-transform: rotate(180deg) translate3d(0px, 50%, 0px);
+  -webkit-transform: rotate(180deg) translate3d(0px, 50%, 0px);
+  transform: rotate(180deg) translate3d(0px, 50%, 0px);
+}
+
+.selectr-disabled {
+  opacity: .6;
+}
+
+.selectr-empty,
+.has-selected .selectr-placeholder {
+  display: none;
+}
+
+.has-selected .selectr-label {
+  display: block;
+}
+
+/* TAGGABLE */
+
+.taggable .selectr-selected {
+  padding: 4px 28px 4px 4px;
+}
+
+.taggable .selectr-selected::after {
+  display: table;
+  content: " ";
+  clear: both;
+}
+
+.taggable .selectr-label {
+  width: auto;
+}
+
+.taggable .selectr-tags {
+  float: left;
+  display: block;
+}
+
+.taggable .selectr-placeholder {
+  display: none;
+}
+
+.input-tag {
+  float: left;
+  min-width: 90px;
+  width: auto;
+}
+
+.selectr-tag-input {
+  border: medium none;
+  padding: 3px 10px;
+  width: 100%;
+  font-family: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+}
+
+.selectr-input-container.loading::after {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  width: 20px;
+  height: 20px;
+  content: '';
+  -o-transform: translate3d(0px, -50%, 0px);
+  -ms-transform: translate3d(0px, -50%, 0px);
+  -moz-transform: translate3d(0px, -50%, 0px);
+  -webkit-transform: translate3d(0px, -50%, 0px);
+  transform: translate3d(0px, -50%, 0px);
+  -o-transform-origin: 50% 0 0;
+  -ms-transform-origin: 50% 0 0;
+  -moz-transform-origin: 50% 0 0;
+  -webkit-transform-origin: 50% 0 0;
+  transform-origin: 50% 0 0;
+  -moz-animation: 500ms linear 0s normal forwards infinite running spin;
+  -webkit-animation: 500ms linear 0s normal forwards infinite running spin;
+  animation: 500ms linear 0s normal forwards infinite running spin;
+  border-width: 3px;
+  border-style: solid;
+  border-color: #aaa #ddd #ddd;
+  border-radius: 50%;
+}
+
+@-webkit-keyframes spin {
+  0% {
+    -webkit-transform: rotate(0deg) translate3d(0px, -50%, 0px);
+    transform: rotate(0deg) translate3d(0px, -50%, 0px);
+  }
+
+  100% {
+    -webkit-transform: rotate(360deg) translate3d(0px, -50%, 0px);
+    transform: rotate(360deg) translate3d(0px, -50%, 0px);
+  }
+}
+
+@keyframes spin {
+  0% {
+    -webkit-transform: rotate(0deg) translate3d(0px, -50%, 0px);
+    transform: rotate(0deg) translate3d(0px, -50%, 0px);
+  }
+
+  100% {
+    -webkit-transform: rotate(360deg) translate3d(0px, -50%, 0px);
+    transform: rotate(360deg) translate3d(0px, -50%, 0px);
+  }
+}
+
+.selectr-container.open.inverted .selectr-selected {
+  border-color: transparent #999 #999;
+  border-radius: 0 0 3px 3px;
+}
+
+.selectr-container.inverted .selectr-options-container {
+  border-width: 1px 1px 0;
+  border-color: #999 #999 transparent;
+  border-radius: 3px 3px 0 0;
+  background-color: #fff;
+}
+
+.selectr-container.inverted .selectr-options-container {
+  top: auto;
+  bottom: calc(100% - 1px);
+}
+
+.selectr-container ::-webkit-input-placeholder {
+  color: #6c7a86;
+  opacity: 1;
+}
+
+.selectr-container ::-moz-placeholder {
+  color: #6c7a86;
+  opacity: 1;
+}
+
+.selectr-container :-ms-input-placeholder {
+  color: #6c7a86;
+  opacity: 1;
+}
+
+.selectr-container ::placeholder {
+  color: #6c7a86;
+  opacity: 1;
 }

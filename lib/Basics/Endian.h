@@ -17,7 +17,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Kaveh Vahedipour
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_ENDIAN_H

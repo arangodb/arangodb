@@ -335,7 +335,7 @@ SECTION("test_readCustomizedValues") {
   }
 
   CHECK(true == (expectedItem.empty()));
-  CHECK(std::string("ru_RU.UTF-8") == iresearch::locale_utils::name(meta._locale));
+  CHECK(std::string("ru_RU.KOI8-R") == iresearch::locale_utils::name(meta._locale));
 }
 
 SECTION("test_writeDefaults") {
