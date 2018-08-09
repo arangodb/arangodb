@@ -271,14 +271,6 @@ void SupervisedScheduler::runSupervisor()
 
     queueLength = jobsSubmitted - jobsDone;
 
-    // TODO: Currently the conditions to spawn a new thread are not very sophisticated.
-    // A thread is stoped when the queue is empty. In real life this should rarely happen
-    // thus a thread that was started once, never terminates.
-    // A new thread is started when:
-    //  1. jobsStallingTick > 5, which means that 5 times in a row, the supervisor observed that no
-    //      job finished.
-    //  2. The queue length is bigger than 50 and 1.5 times of what it was last time.
-    //      (this is a spike detector)
     bool doStartOneThread =
       /*(jobsStallingTick > 5) ||*/
       ((lastQueueLength >= 3 * _numWorker) && ((lastQueueLength + _numWorker) < queueLength))
@@ -294,7 +286,6 @@ void SupervisedScheduler::runSupervisor()
           &&
           (lastJobsSubmitted <= jobsDone)
         )
-
         ||
         (
           (queueLength == 0)
@@ -325,12 +316,7 @@ void SupervisedScheduler::runSupervisor()
       break ;
     }
 
-
-    // TODO: CHECK HERE IF A spuriously wake up could shutdown the supervisor
-    auto status = _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
-    if (status != std::cv_status::timeout) {
-      break ;
-    }
+    _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
   }
 }
 
