@@ -586,12 +586,25 @@ class RocksDBCuckooIndexEstimator {
         {
           WRITE_LOCKER(locker, _lock);
 
+          rocksdb::SequenceNumber ignoreSeq = 0;
+          // check for a truncate marker
+          if (!_truncateBuffer.empty()) {
+            auto it = _truncateBuffer.begin();
+            if (*it <= commitSeq) {
+              ignoreSeq = *it;
+              foundTruncate = true;
+              _truncateBuffer.erase(it);
+            }
+          }
+          
           // check for inserts
           if (!_insertBuffers.empty()) {
             auto it = _insertBuffers.begin();
             if (it->first <= commitSeq) {
-              inserts = std::move(it->second);
-              TRI_ASSERT(!inserts.empty());
+              if (it->first > ignoreSeq) {
+                inserts = std::move(it->second);
+                TRI_ASSERT(!inserts.empty());
+              }
               _insertBuffers.erase(it);
             }
           }
@@ -600,32 +613,24 @@ class RocksDBCuckooIndexEstimator {
           if (!_removalBuffers.empty()) {
             auto it = _removalBuffers.begin();
             if (it->first <= commitSeq) {
-              removals = std::move(it->second);
-              TRI_ASSERT(!removals.empty());
+              if (it->first > ignoreSeq) {
+                removals = std::move(it->second);
+                TRI_ASSERT(!removals.empty());
+              }
               _removalBuffers.erase(it);
             }
           }
-          
-          // check for a truncate marker
-          if (!_truncateBuffer.empty()) {
-            auto it = _truncateBuffer.begin();
-            if (*it <= commitSeq) {
-              inserts.clear();
-              removals.clear();
-              foundTruncate = true;
-              _truncateBuffer.erase(it);
-            }
-          }
+        }
+        
+        if (foundTruncate) {
+          clear(); // clear estimates
+          foundTruncate = false;
         }
 
         // no inserts or removals left to apply, drop out of loop
         if (inserts.empty() && removals.empty()) {
-          if (foundTruncate) {
-            this->clear();
-          }
           break;
         }
-        TRI_ASSERT(!foundTruncate);
         
         if (!inserts.empty()) {
           // apply inserts
