@@ -459,13 +459,11 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
 OperationResult GraphOperations::eraseOrphanCollection(
     bool waitForSync, std::string collectionName, bool dropCollection) {
   // check if collection exists within the orphan collections
-  std::set<std::string> orphanCollections =
-          _graph.orphanCollections();
-
   bool found = false;
   for (auto const& oName : _graph.orphanCollections()) {
     if (oName == collectionName) {
       found = true;
+      break;
     }
   }
   if (!found) {
