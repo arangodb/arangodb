@@ -179,7 +179,7 @@ function TasksAuthSuite () {
       assertEqual(result.status, 200);
     },
 
-    testAsyncForwardingDifferentUser: function() {
+    testTaskForwardingDifferentUser: function() {
       let url = baseTasksUrl;
       const task = {
         command: `const time = Date.now();`,

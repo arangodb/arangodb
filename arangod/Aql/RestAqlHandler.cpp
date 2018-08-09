@@ -725,14 +725,10 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         } else {
           auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
           if (block == nullptr) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "unexpected node type");
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
           }
-          if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-              block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "unexpected node type");
-          }
+          TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
+                     block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
           std::tie(state, items) = block->getSomeForShard(atMost, shardId);
           if (state == ExecutionState::WAITING) {
             return RestStatus::WAITING;
@@ -759,11 +755,11 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
           skipped = tmpRes.second;
         } else {
           auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
-          if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-              block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                            "unexpected node type");
+          if (block == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
           }
+          TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
+                     block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
 
           auto tmpRes = block->skipSomeForShard(atMost, shardId);
           if (tmpRes.first == ExecutionState::WAITING) {
@@ -780,7 +776,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
       } else if (operation == "initializeCursor") {
         auto pos =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
-        std::unique_ptr<AqlItemBlock> items;
         Result res;
         if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
           auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
@@ -789,8 +784,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
           }
           res = tmpRes.second;
         } else {
-          items.reset(new AqlItemBlock(query->resourceMonitor(),
-                                       querySlice.get("items")));
+          auto items = std::make_unique<AqlItemBlock>(query->resourceMonitor(), querySlice.get("items"));
           auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
           if (tmpRes.first == ExecutionState::WAITING) {
             return RestStatus::WAITING;

@@ -200,8 +200,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     };
 
     if (std::find(disallowedRoles.begin(), disallowedRoles.end(), _requestedRole) != disallowedRoles.end()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Invalid role provided. Possible values: PRIMARY, "
-                    "SECONDARY, COORDINATOR";
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Invalid role provided for `--cluster.my-role`. Possible values: DBSERVER, PRIMARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
     ServerState::instance()->setRole(_requestedRole);
@@ -421,7 +420,7 @@ void ClusterFeature::start() {
     builder.add("endpoint", VPackValue(_myAddress));
     builder.add("host", VPackValue(ServerState::instance()->getHost()));
     builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
-    builder.add("storageEngine", VPackValue(EngineSelectorFeature::engineName()));
+    builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
   } catch (...) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
     FATAL_ERROR_EXIT();

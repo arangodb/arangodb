@@ -432,12 +432,13 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
 
 v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
                                           char const* text,
+                                          size_t len,
                                           char** error) {
   yyscan_t scanner;
   yylex_init(&scanner);
   struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
-  YY_BUFFER_STATE buf = yy_scan_string(text, scanner);
+  YY_BUFFER_STATE buf = yy_scan_bytes(text, len, scanner);
 
   int c = yylex(scanner);
   v8::Handle<v8::Value> value = ParseValue(isolate, scanner, c);

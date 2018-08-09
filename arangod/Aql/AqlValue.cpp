@@ -23,6 +23,7 @@
 
 #include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/Arithmetic.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -601,28 +602,9 @@ double AqlValue::toDouble(transaction::Methods* trx, bool& failed) const {
         return s.getBoolean() ? 1.0 : 0.0;
       }
       if (s.isString()) {
-        std::string v(s.copyString());
-        try {
-          size_t behind = 0;
-          double value = std::stod(v, &behind);
-          while (behind < v.size()) {
-            char c = v[behind];
-            if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
-              failed = true;
-              return 0.0;
-            }
-            ++behind;
-          }
-          TRI_ASSERT(!failed);
-          return value;
-        } catch (...) {
-          if (v.empty()) {
-            return 0.0;
-          }
-          // conversion failed
-          break;
-        }
-      } else if (s.isArray()) {
+        return arangodb::aql::stringToNumber(s.copyString(), failed);  
+      } 
+      if (s.isArray()) {
         auto length = s.length();
         if (length == 0) {
           return 0.0;

@@ -37,8 +37,6 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -311,6 +309,10 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
 
 /// @brief send a WAL flush command
 Result DatabaseInitialSyncer::sendFlush() {
+  if (isAborted()) {
+    return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+  }
+
   std::string const url = "/_admin/wal/flush";
 
   VPackBuilder builder;
@@ -318,6 +320,7 @@ Result DatabaseInitialSyncer::sendFlush() {
   builder.add("waitForSync", VPackValue(true));
   builder.add("waitForCollector", VPackValue(true));
   builder.add("waitForCollectorQueue", VPackValue(true));
+  builder.add("maxWaitTime", VPackValue(60.0));
   builder.close();
 
   VPackSlice bodySlice = builder.slice();
@@ -464,7 +467,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(
 }
 
 /// @brief order a new chunk from the /dump API
-void DatabaseInitialSyncer::orderDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                                            std::string const& baseUrl, 
                                            arangodb::LogicalCollection* coll, 
                                            std::string const& leaderColl,
@@ -476,131 +479,137 @@ void DatabaseInitialSyncer::orderDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
   using ::arangodb::basics::StringUtils::itoa;
       
   if (isAborted()) {
-    sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED), nullptr);
+    sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
     return;
   }
-  
-  std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
-    
-  if (!_config.isChild()) {
-    _config.batch.extend(_config.connection, _config.progress);
-    _config.barrier.extend(_config.connection);
-  }
+ 
+  try { 
+    std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
+      
+    if (!_config.isChild()) {
+      _config.batch.extend(_config.connection, _config.progress);
+      _config.barrier.extend(_config.connection);
+    }
 
-  // assemble URL to call
-  std::string url = baseUrl + "&from=" + itoa(fromTick) + "&chunkSize=" + itoa(chunkSize);
+    // assemble URL to call
+    std::string url = baseUrl + "&from=" + itoa(fromTick) + "&chunkSize=" + itoa(chunkSize);
 
-  if (_config.flushed) {
-    url += "&flush=false";
-  } else {
-    // only flush WAL once
-    url += "&flush=true&flushWait=15";
-    _config.flushed = true;
-  }
+    if (_config.flushed) {
+      url += "&flush=false";
+    } else {
+      // only flush WAL once
+      url += "&flush=true&flushWait=15";
+      _config.flushed = true;
+    }
 
-  auto headers = replutils::createHeaders();
-  if (batch == 1) {
-    // use async mode for first batch
-    headers[StaticStrings::Async] = "store";
-  }
+    auto headers = replutils::createHeaders();
+    if (batch == 1) {
+      // use async mode for first batch
+      headers[StaticStrings::Async] = "store";
+    }
 
 #if VPACK_DUMP
-  int vv = _config.master.majorVersion * 1000000 +
-           _config.master.minorVersion * 1000;
-  if (vv >= 3003009) {
-    headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
-  }
+    int vv = _config.master.majorVersion * 1000000 +
+            _config.master.minorVersion * 1000;
+    if (vv >= 3003009) {
+      headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
+    }
 #endif
-  
-  _config.progress.set(std::string("fetching master collection dump for collection '") +
-                       coll->name() + "', type: " + typeString + ", id: " +
-                       leaderColl + ", batch " + itoa(batch));
+    
+    _config.progress.set(std::string("fetching master collection dump for collection '") +
+                        coll->name() + "', type: " + typeString + ", id: " +
+                        leaderColl + ", batch " + itoa(batch));
 
-  ++stats.numDumpRequests;
-  double t = TRI_microtime();
+    ++stats.numDumpRequests;
+    double t = TRI_microtime();
 
-  // send request
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::GET, url,
-                                              nullptr, 0, headers));
+    // send request
+    std::unique_ptr<httpclient::SimpleHttpResult> response(
+        _config.connection.client->retryRequest(rest::RequestType::GET, url,
+                                                nullptr, 0, headers));
 
-  if (replutils::hasFailed(response.get())) {
-    stats.waitedForDump += TRI_microtime() - t;
-    sharedStatus->gotResponse(replutils::buildHttpError(response.get(), url, _config.connection), nullptr);
-    return;
-  }
-
-  // use async mode for first batch
-  if (batch == 1) {
-    bool found = false;
-    std::string jobId =
-        response->getHeaderField(StaticStrings::AsyncId, found);
-
-    if (!found) {
-      sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                                std::string("got invalid response from master at ") +
-                                _config.master.endpoint + url +
-                                ": could not find 'X-Arango-Async' header"), nullptr);
+    if (replutils::hasFailed(response.get())) {
+      stats.waitedForDump += TRI_microtime() - t;
+      sharedStatus->gotResponse(replutils::buildHttpError(response.get(), url, _config.connection));
       return;
     }
 
-    double const startTime = TRI_microtime();
+    // use async mode for first batch
+    if (batch == 1) {
+      bool found = false;
+      std::string jobId =
+          response->getHeaderField(StaticStrings::AsyncId, found);
 
-    // wait until we get a reasonable response
-    while (true) {
-      if (!_config.isChild()) {
-        _config.batch.extend(_config.connection, _config.progress);
-        _config.barrier.extend(_config.connection);
+      if (!found) {
+        sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                                  std::string("got invalid response from master at ") +
+                                  _config.master.endpoint + url +
+                                  ": could not find 'X-Arango-Async' header"));
+        return;
       }
 
-      std::string const jobUrl = "/_api/job/" + jobId;
-      response.reset(_config.connection.client->request(
-          rest::RequestType::PUT, jobUrl, nullptr, 0));
+      double const startTime = TRI_microtime();
 
-      if (response != nullptr && response->isComplete()) {
-        if (response->hasHeaderField("x-arango-async-id")) {
-          // got the actual response
-          break;
+      // wait until we get a reasonable response
+      while (true) {
+        if (!_config.isChild()) {
+          _config.batch.extend(_config.connection, _config.progress);
+          _config.barrier.extend(_config.connection);
         }
 
-        if (response->getHttpReturnCode() == 404) {
-          // unknown job, we can abort
+        std::string const jobUrl = "/_api/job/" + jobId;
+        response.reset(_config.connection.client->request(
+            rest::RequestType::PUT, jobUrl, nullptr, 0));
+
+        if (response != nullptr && response->isComplete()) {
+          if (response->hasHeaderField("x-arango-async-id")) {
+            // got the actual response
+            break;
+          }
+
+          if (response->getHttpReturnCode() == 404) {
+            // unknown job, we can abort
+            sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                                      std::string("job not found on master at ") +
+                                      _config.master.endpoint));
+            return;
+          }
+        }
+
+        double waitTime = TRI_microtime() - startTime;
+
+        if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >=
+            _config.applier._initialSyncMaxWaitTime) {
           sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                                    std::string("job not found on master at ") +
-                                    _config.master.endpoint), nullptr);
+                                    std::string("timed out waiting for response from master at ") +
+                                    _config.master.endpoint));
           return;
         }
-      }
 
-      double waitTime = TRI_microtime() - startTime;
-
-      if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >=
-          _config.applier._initialSyncMaxWaitTime) {
-        sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                                  std::string("timed out waiting for response from master at ") +
-                                  _config.master.endpoint), nullptr);
-        return;
+        if (isAborted()) {
+          sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
+          return;
+        }
+          
+        std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
+        std::this_thread::sleep_for(sleepTime);
       }
-
-      if (isAborted()) {
-        sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED), nullptr);
-        return;
-      }
-        
-      std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
-      std::this_thread::sleep_for(sleepTime);
+      // fallthrough here in case everything went well
     }
-    // fallthrough here in case everything went well
-  }
 
-  stats.waitedForDump += TRI_microtime() - t;
-    
-  if (replutils::hasFailed(response.get())) {
-    // failure
-    sharedStatus->gotResponse(replutils::buildHttpError(response.get(), url, _config.connection), nullptr);
-  } else {
-    // success!
-    sharedStatus->gotResponse(Result(), std::move(response));
+    stats.waitedForDump += TRI_microtime() - t;
+      
+    if (replutils::hasFailed(response.get())) {
+      // failure
+      sharedStatus->gotResponse(replutils::buildHttpError(response.get(), url, _config.connection));
+    } else {
+      // success!
+      sharedStatus->gotResponse(std::move(response));
+    }
+  } catch (basics::Exception const& ex) {
+    sharedStatus->gotResponse(Result(ex.code(), ex.what()));
+  } catch (std::exception const& ex) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
 }
 
@@ -643,30 +652,24 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
   
   double const startTime = TRI_microtime();
 
+  // the shared status will wait in its destructor until all posted 
+  // requests have been completed/canceled!
   auto self = shared_from_this();
   auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
-
-  // wait until all posted jobs have been completed/canceled
-  auto guard = scopeGuard([&sharedStatus]() {
-    while (sharedStatus->hasJobInFlight()) { 
-      std::this_thread::yield(); 
-    }
-  });
-
+    
   // order initial chunk. this will block until the initial response
   // has arrived
-  orderDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats, batch, fromTick, chunkSize);
+  fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats, batch, fromTick, chunkSize);
 
   while (true) {
     std::unique_ptr<httpclient::SimpleHttpResult> dumpResponse;
-    {
-      // block until we either got a response or were shut down
-      Result res = sharedStatus->waitForResponse(dumpResponse);
+    
+    // block until we either got a response or were shut down
+    Result res = sharedStatus->waitForResponse(dumpResponse);
 
-      if (res.fail()) {
-        // no response or error or shutdown
-        return res;
-      }
+    if (res.fail()) {
+      // no response or error or shutdown
+      return res;
     }
 
     // now we have got a response!
@@ -723,28 +726,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
     if (checkMore && !isAborted()) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
-      
-      // by indicating that we have posted an async job, this function
-      // will block on exit until all posted jobs have finished
-      sharedStatus->jobPosted();
-
-      try {
-        SchedulerFeature::SCHEDULER->post(
-          [this, self, &stats, &baseUrl, sharedStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
-            // whatever happens next, when we leave this here, we need to indicate
-            // that there is no more posted yet.
-            // otherwise this thread may block forever waiting on the dispatched jobs
-            // to finish
-            auto guard = scopeGuard([&sharedStatus]() {
-              sharedStatus->jobDone();
-            });
-
-            orderDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats, batch + 1, fromTick, chunkSize);
-        }, false);
-      } catch (...) {
-        // will get here only if Scheduler::post threw
-        sharedStatus->jobDone();
-      }
+      sharedStatus->request(
+        [this, self, &stats, &baseUrl, sharedStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
+          fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats, batch + 1, fromTick, chunkSize);
+        }
+      );
     }
 
     SingleCollectionTransaction trx(
@@ -764,7 +750,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 //    trx.state()->options().intermediateCommitSize = 16 * 1024 * 1024;
 #endif
 
-    Result res = trx.begin();
+    res = trx.begin();
 
     if (!res.ok()) {
       return Result(

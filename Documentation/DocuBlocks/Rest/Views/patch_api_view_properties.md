@@ -27,14 +27,14 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestIResearchViewPatchProperties}
+@EXAMPLE_ARANGOSH_RUN{RestViewPatchProperties}
     var viewName = "products";
     var viewType = "arangosearch";
 
     var view = db._createView(viewName, viewType);
     var url = "/_api/view/" + view.name() + "/properties";
 
-    var response = logCurlRequest('PATCH', url, { <view-type-properties> });
+    var response = logCurlRequest('PATCH', url, { });
 
     assert(response.code === 200);
 

@@ -54,6 +54,7 @@ option(VERBOSE "be verbose about flags used" OFF)
 
 # use standalone boost asio
 add_definitions("-DARANGODB_STANDALONE_ASIO=1")
+add_definitions("-DFUERTE_STANDALONE_ASIO=1")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -851,6 +852,7 @@ add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
