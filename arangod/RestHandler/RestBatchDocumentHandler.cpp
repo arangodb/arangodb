@@ -23,15 +23,16 @@
 
 #include "RestBatchDocumentHandler.h"
 
+
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ResultT.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-//#include "Basics/StringRef.h"
 
-#include "RestBatchDocumentHandlerHelper.h"
+#include "Transaction/BatchRequests.h"
 
 using namespace arangodb;
 
@@ -43,145 +44,6 @@ namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
 
-Result
-CheckAttributesInVelocypackArray(VPackSlice const dataSlice
-                       ,AttributeSet const& required
-                       ,AttributeSet const& optional
-                       ,AttributeSet const& deprecated
-                       ){
-
-  Result result = expectedType(VPackValueType::Array, dataSlice.type());
-  if(result.fail()){
-    return result;
-  }
-
-  std::vector<PatternWithKey> data;
-
-  for (auto const& dataItemSlice : VPackArrayIterator(dataSlice)) {
-    auto maybeAttributes = expectedAttributes(dataItemSlice, required, optional, deprecated);
-
-    if (maybeAttributes.fail()){
-      return {maybeAttributes};
-    }
-  }
-
-  return {};
-};
-
-
-ResultT<OperationOptions>
-optionsFromVelocypack(VPackSlice const optionsSlice
-                     ,AttributeSet const& required
-                     ,AttributeSet const& optional
-                     ,AttributeSet const& deprecated
-                     ){
-  Result res = expectedAttributes(optionsSlice, required, optional, deprecated);
-  if (res.fail()) { return prefixResultMessage(res, "Error occured while pasing options for batchDocumentOperation: "); }
-  OperationOptions options = createOperationOptions(optionsSlice);
-  return ResultT<OperationOptions>::success(std::move(options));
-};
-
-
-struct BatchRequest {
-  static ResultT<BatchRequest> fromVelocypack(VPackSlice const slice, batch::Operation batchOp) {
-
-    AttributeSet required = {"data"};
-    AttributeSet optional = {"options"};
-    AttributeSet deprecated;
-
-    auto const maybeAttributes = expectedAttributes(slice, required, optional, deprecated);
-    if(maybeAttributes.fail()){ return {maybeAttributes}; }
-
-    ////////////////////////////////////////////////////////////////////////////////////////
-    // data
-    VPackSlice const dataSlice = slice.get("data"); // data is requuired
-
-    required.clear();
-    optional.clear();
-    deprecated.clear();
-
-    required.insert("pattern");
-
-    switch (batchOp) {
-      case batch::Operation::READ:
-      case batch::Operation::REMOVE:
-        break;
-      case batch::Operation::INSERT:
-        required.clear();
-        required.insert("insertDocument");
-        break;
-      case batch::Operation::REPLACE:
-        required.insert("replaceDocument");
-        break;
-      case batch::Operation::UPDATE:
-        required.insert("updateDocument");
-        break;
-      case batch::Operation::UPSERT:
-        required.insert("insertDocument");
-        required.insert("updateDocument");
-        break;
-      case batch::Operation::REPSERT:
-        required.insert("replaceDocument");
-        required.insert("updateDocument");
-        break;
-    }
-
-    auto maybeData = CheckAttributesInVelocypackArray(dataSlice, required, optional, deprecated);
-    if (maybeData.fail()) {
-      return prefixResultMessage(maybeData, "When parsing attribute 'data'");
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////
-    // options
-    OperationOptions options;
-
-    if(maybeAttributes.get().find("options") != maybeAttributes.get().end()) {
-      required = {};
-      optional = {"oneTransactionPerDOcument", "checkGraphs", "graphName"};
-      // mergeObjects "ignoreRevs"  "isRestore" keepNull?!
-      deprecated = {};
-      switch (batchOp) {
-        case batch::Operation::READ:
-          optional.insert("graphName");
-          break;
-        case batch::Operation::UPDATE:
-          optional.insert("keepNull"); // please fall through
-        case batch::Operation::INSERT:
-        case batch::Operation::UPSERT:
-        case batch::Operation::REPSERT:
-        case batch::Operation::REPLACE:
-          optional.insert("returnNew"); // please fall through
-        case batch::Operation::REMOVE:
-          optional.insert("waitForSync");
-          optional.insert("returnOld");
-          optional.insert("silent");
-          break;
-      }
-      VPackSlice const optionsSlice = slice.get("options");
-
-      auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
-      if (maybeOptions.fail()) {
-        return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
-      }
-      options = maybeOptions.get();
-    }
-
-    // create
-    return BatchRequest(slice, std::move(options), batchOp);
-  }
-
-  explicit BatchRequest(VPackSlice const slice
-                       ,OperationOptions options_
-                       ,batch::Operation op)
-           :options(std::move(options_))
-           ,operation(op)
-           ,payload(slice)
-  {};
-
-  OperationOptions const options;
-  batch::Operation operation;
-  VPackSlice const payload;
-};
 
 }
 }
@@ -230,112 +92,17 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
     return RestStatus::DONE;
   }
 
-  auto maybeRequest = BatchRequest::fromVelocypack(_request->payload(), maybeOp.get());
-  if (maybeRequest.fail()) {
-    generateError(maybeRequest);
-    return RestStatus::FAIL;
-  }
-
-  executeBatchRequest(collection, maybeRequest.get());
+  //auto maybeRequest = barch::fromVelocypack(_request->payload(), maybeOp.get());
+  //if (maybeRequest.fail()) {
+  //  generateError(maybeRequest);
+  //  return RestStatus::FAIL;
+  //}
+  auto maybeRequest = batch::createRequestFromSlice<batch::RemoveDoc>(_request->payload());
+  executeBatchRequest(collection, std::move(maybeRequest.get()));
 
   return RestStatus::DONE;
 }
 
-void arangodb::RestBatchDocumentHandler::executeBatchRequest(
-    std::string const& collection, const BatchRequest& request) {
-
-  TRI_ASSERT(request.payload.isObject());
-  std::vector<OperationResult> opResults; // will hold the result
-
-  velocypack::Options vOptions;
-  std::shared_ptr<velocypack::CustomTypeHandler> vCustomHandler; // we need to store the shared pointer to the CustomTypeHandler
-                                                                 // otherwise the options copy will become invalid
-  bool vOptionsSet = false;
-  VPackBuilder builder;
-
-  VPackSlice data = request.payload.get("data");
-  TRI_ASSERT(data.isArray());
-
-  if(data.isEmptyArray()){
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_VALIDATION_FAILED, "you did not provide any data for the restBatchHandeler");
-  }
-
-  for(auto slice : VPackArrayIterator(data)){
-    bool doBreak = false;
-    VPackSlice payload;
-
-    if(!request.options.oneTransactionPerDocument){
-      payload = request.payload;
-      doBreak = true;
-    } else {
-      builder.clear();
-      builder.openObject();
-      builder.add("data", slice);
-      builder.close();
-      payload = builder.slice();
-    }
-
-    auto trx = createTransaction(collection, AccessMode::Type::WRITE);
-    if(!vOptionsSet){
-      vOptions = *(trx->transactionContextPtr()->getVPackOptionsForDump());
-      vCustomHandler= trx->transactionContextPtr()->orderCustomTypeHandler();
-    }
-
-    Result transactionResult = trx->begin();
-
-    if (transactionResult.fail()) {
-      opResults.push_back(OperationResult(transactionResult));
-      if(doBreak) { break; };
-      continue;
-    }
-
-
-    OperationResult operationResult;
-    switch (request.operation) {
-      case batch::Operation::READ:
-        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                      TRI_ERROR_NOT_IMPLEMENTED);
-        break;
-      case batch::Operation::INSERT:
-        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                      TRI_ERROR_NOT_IMPLEMENTED);
-        break;
-      case batch::Operation::REMOVE:
-        operationResult = trx->removeBatch(collection, payload, request.options);
-        break;
-      case batch::Operation::REPLACE:
-        operationResult = trx->replaceBatch(collection, payload, request.options);
-        break;
-      case batch::Operation::UPDATE:
-        operationResult = trx->updateBatch(collection, payload, request.options);
-        break;
-      case batch::Operation::UPSERT:
-        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                      TRI_ERROR_NOT_IMPLEMENTED);
-        break;
-      case batch::Operation::REPSERT:
-        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                      TRI_ERROR_NOT_IMPLEMENTED);
-        break;
-    }
-    transactionResult = trx->finish(operationResult.result);
-
-    if (operationResult.ok() && transactionResult.fail()) {
-      opResults.push_back(OperationResult(transactionResult));
-      if(doBreak) { break; };
-      continue;
-    }
-    opResults.push_back(std::move(operationResult));
-
-    if(doBreak) { break; };
-
-  } // for item in "data"
-
-  generateBatchResponse(
-      opResults,
-      &vOptions
-  );
-}
 
 void RestBatchDocumentHandler::generateBatchResponse(
     std::unique_ptr<VPackBuilder> result,

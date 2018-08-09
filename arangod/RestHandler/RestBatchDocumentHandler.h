@@ -32,6 +32,9 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Transaction/BatchRequests.h"
 
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+
 namespace arangodb {
 namespace rest {
 namespace batch_document_handler {
@@ -76,10 +79,42 @@ class RestBatchDocumentHandler : public RestVocbaseBaseHandler {
   // helper function for replace and update
   bool modifyDocument(bool);
 
-  // execute BatchRequest
-  void executeBatchRequest(std::string const &collection
-                          ,const rest::batch_document_handler::BatchRequest &request);
+  template <typename T>
+  void executeBatchRequest(
+      std::string const& collection, batch::Request<T>&& request) {
 
+    std::vector<OperationResult> opResults; // will hold the result
+
+    velocypack::Options vOptions;
+    std::shared_ptr<velocypack::CustomTypeHandler> vCustomHandler; // we need to store the shared pointer to the CustomTypeHandler
+                                                                   // otherwise the options copy will become invalid
+    bool vOptionsSet = false;
+    VPackBuilder builder;
+
+
+
+    auto trx = createTransaction(collection, AccessMode::Type::WRITE);
+    if(!vOptionsSet){
+      vOptions = *(trx->transactionContextPtr()->getVPackOptionsForDump());
+      vCustomHandler= trx->transactionContextPtr()->orderCustomTypeHandler();
+    }
+
+    Result transactionResult = trx->begin();
+
+    if (transactionResult.fail()) {
+      opResults.push_back(OperationResult(transactionResult));
+    }
+
+
+    OperationResult operationResult = request.execute(trx.get(), collection);
+    opResults.push_back(std::move(operationResult));
+
+
+    generateBatchResponse(
+        opResults,
+        &vOptions
+    );
+  }
 
   void generateBatchResponse(
       std::vector<OperationResult> const& result,

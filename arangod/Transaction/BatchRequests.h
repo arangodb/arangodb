@@ -65,38 +65,55 @@ struct RepsetDoc {
 template <typename T>
 struct batchSlice;
 
+template <typename T> class Request;
+
+template<typename DocType>
+ResultT<Request<DocType>> createRequestFromSlice(VPackSlice slice){
+  auto maybeData = batchSlice<DocType>::fromVPack(slice); // replace with constexpr if() and normal functions
+  if(maybeData.fail()){
+    return { maybeData };
+  }
+
+  auto data = maybeData.get();
+  return ResultT<Request<DocType>>::success(
+      Request<DocType>(std::move(data.first), std::move(data.second))
+  );
+};
+
 //// replace with normal functions when `constexpr if()` is availalbe
 template <typename DocType>
 class Request {
-  Request(VPackSlice slice) : _data() {
-    std::tie(_options,_data) = batchSlice<DocType>::fromVPack(slice); // replace with constexpr if() and normal functions
+  Request(std::vector<DocType>&& data, OperationOptions&& opts) : _data(std::move(data)), _options(std::move(opts)) {
   };
   std::vector<DocType> _data;
   OperationOptions _options;
 public:
+  template <typename T> friend ResultT<Request<T>> createRequestFromSlice(VPackSlice slice);
   std::size_t size()   const { return _data.size(); };
   std::vector<DocType> const& data() const { return _data; }
   OperationOptions const& options() const { return _options; }
-  OperationResult exectue(transaction::Methods *trx, std::string const& collection) {
+  OperationResult execute(transaction::Methods *trx, std::string const& collection) {
     return batchSlice<DocType>::execute(trx, collection, *this);
   }
 };
 
+template<typename T> using OperationData = ResultT<std::pair<std::vector<T>,OperationOptions>>;
+
 template<>
 struct batchSlice<RemoveDoc> {
-  static auto fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<RemoveDoc>> ;
+  static auto fromVPack(VPackSlice slice) -> OperationData<RemoveDoc> ;
   static OperationResult execute(transaction::Methods* trx, std::string const& collection, Request<RemoveDoc> const& request);
 };
 
 template<>
-struct batchSlice<UpdateDoc> {
-  static auto fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<UpdateDoc>> ;
+  struct batchSlice<UpdateDoc> {
+  static auto fromVPack(VPackSlice slice) -> OperationData<UpdateDoc> ;
   static OperationResult execute(transaction::Methods* trx, std::string const& collection, Request<UpdateDoc> const& request);
 };
 
 template<>
 struct batchSlice<ReplaceDoc> {
-  static auto fromVPack(VPackSlice slice) -> std::pair<OperationOptions,std::vector<ReplaceDoc>> ;
+  static auto fromVPack(VPackSlice slice) -> OperationData<ReplaceDoc>;
   static OperationResult execute(transaction::Methods* trx, std::string const& collection, Request<ReplaceDoc> const& request);
 };
 
