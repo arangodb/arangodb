@@ -1711,55 +1711,6 @@ bool AstNode::isArrayComparisonOperator() const {
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN);
 }
 
-/// @brief whether or not a node (and its subnodes) can throw a runtime
-/// exception
-bool AstNode::canThrow() const {
-  if (hasFlag(DETERMINED_THROWS)) {
-    // fast track exit
-    return hasFlag(VALUE_THROWS);
-  }
-
-  // check sub-nodes first
-  size_t const n = numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    auto member = getMember(i);
-    if (member->canThrow()) {
-      // if any sub-node may throw, the whole branch may throw
-      setFlag(DETERMINED_THROWS);
-      return true;
-    }
-  }
-
-  // no sub-node throws, now check ourselves
-
-  if (type == NODE_TYPE_FCALL) {
-    auto func = static_cast<Function*>(getData());
-
-    // built-in functions may or may not throw
-    // we are currently reporting non-deterministic functions as
-    // potentially throwing. This is not correct on the one hand, but on
-    // the other hand we must not optimize or move non-deterministic functions
-    // during optimization
-    if (func->canThrow) {
-      setFlag(DETERMINED_THROWS, VALUE_THROWS);
-      return true;
-    }
-
-    setFlag(DETERMINED_THROWS);
-    return false;
-  }
-
-  if (type == NODE_TYPE_FCALL_USER) {
-    // user functions can always throw
-    setFlag(DETERMINED_THROWS, VALUE_THROWS);
-    return true;
-  }
-
-  // everything else does not throw!
-  setFlag(DETERMINED_THROWS);
-  return false;
-}
-
 /// @brief whether or not a node (and its subnodes) can safely be executed on
 /// a DB server
 bool AstNode::canRunOnDBServer() const {

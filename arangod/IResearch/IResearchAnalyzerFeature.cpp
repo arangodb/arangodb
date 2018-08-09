@@ -224,7 +224,6 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     "TOKENS", // name
     ".,.", // positional arguments (data,analyzer)
     true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
-    true, // can throw
     true, // can be run on server
     aqlFnTokens // function implementation
   });

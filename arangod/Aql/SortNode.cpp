@@ -151,10 +151,6 @@ SortInformation SortNode::getSortInformation(
       break;
     }
 
-    if (!result.canThrow && setter->canThrow()) {
-      result.canThrow = true;
-    }
-
     if (setter->getType() == ExecutionNode::CALCULATION) {
       // variable introduced by a calculation
       auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();

@@ -301,9 +301,6 @@ class ClusterEngine final : public StorageEngine {
 
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() override;
-
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules() override;
 
