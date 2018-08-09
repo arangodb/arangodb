@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,18 +41,15 @@ CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
                                JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
   // Get job details from agency:
-  std::string path = pos[status] + _jobId + "/";
-  auto tmp_server = _snapshot.hasAsString(path + "server");
-  auto tmp_creator = _snapshot.hasAsString(path + "creator");
-
-  if (tmp_server.second && tmp_creator.second) {
-    _server = tmp_server.first;
-    _creator = tmp_creator.first;
-  } else {
+  try {
+    std::string path = pos[status] + _jobId + "/";
+    _server = _snapshot.get(path + "server").getString();
+    _creator = _snapshot.get(path + "creator").getString();
+  } catch (std::exception const& e) {
     std::stringstream err;
-    err << "Failed to find job " << _jobId << " in agency.";
+    err << "Failed to find job " << _jobId << " in agency: " << e.what();
     LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
-    finish(tmp_server.first, "", false, err.str());
+    finish(_server, "", false, err.str());
     _status = FAILED;
   }
 }
@@ -68,8 +65,8 @@ JOB_STATUS CleanOutServer::status() {
     return _status;
   }
 
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const todos = _snapshot.get(toDoPrefix).children();
+  Node::Children const pends = _snapshot.get(pendingPrefix).children();
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -85,8 +82,8 @@ JOB_STATUS CleanOutServer::status() {
 
   if (found > 0) {  // some subjob still running
     // timeout here:
-    auto tmp_time = _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated");
-    std::string timeCreatedString = tmp_time.first;
+    std::string timeCreatedString
+      = _snapshot.get(pendingPrefix + _jobId + "/timeCreated").getString();
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(7200.0)) {
@@ -96,7 +93,7 @@ JOB_STATUS CleanOutServer::status() {
     return PENDING;
   }
 
-  Node::Children const failed = _snapshot.hasAsChildren(failedPrefix).first;
+  Node::Children const failed = _snapshot.get(failedPrefix).children();
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -108,7 +105,7 @@ JOB_STATUS CleanOutServer::status() {
     abort();
     return FAILED;
   }
-
+  
   // all subjobs done:
 
   // Put server in /Target/CleanedServers:
@@ -125,7 +122,7 @@ JOB_STATUS CleanOutServer::status() {
       }
       addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
       Builder job;
-      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      _snapshot.get(pendingPrefix + _jobId).toBuilder(job);
       addPutJobIntoSomewhere(reportTrx, "Finished", job.slice(), "");
       addReleaseServer(reportTrx, _server);
     }
@@ -194,7 +191,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
 bool CleanOutServer::start() {
   // If anything throws here, the run() method catches it and finishes
   // the job.
-
+ 
   // Check if the server exists:
   if (!_snapshot.has(plannedServers + "/" + _server)) {
     finish("", "", false, "server does not exist as DBServer in Plan");
@@ -219,14 +216,15 @@ bool CleanOutServer::start() {
 
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
-  auto cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
-  if (cleanedServersNode.second) {
-    cleanedServersNode.first.toBuilder(cleanedServersBuilder);
-  } else {
+  try {
+    auto cleanedServersNode = _snapshot.get(cleanedPrefix);
+    cleanedServersNode.toBuilder(cleanedServersBuilder);
+  }
+  catch (...) {
     // ignore this check
     cleanedServersBuilder.clear();
     {
-      VPackArrayBuilder guard(&cleanedServersBuilder);
+      VPackArrayBuilder guard(&cleanedServersBuilder); 
     }
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
@@ -240,22 +238,17 @@ bool CleanOutServer::start() {
   }
 
   // Check that _to is not in `Target/FailedServers`:
-  //  (this node is expected to NOT exists, so make test before processing
-  //   so that hasAsNode does not generate a warning log message)
   VPackBuilder failedServersBuilder;
-  if (_snapshot.has(failedServersPrefix)) {
-    auto failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
-    if (failedServersNode.second) {
-      failedServersNode.first.toBuilder(failedServersBuilder);
-    } else {
-      // ignore this check
-      failedServersBuilder.clear();
-      {
-        VPackObjectBuilder guard(&failedServersBuilder);
-      }
+  try {
+    auto failedServersNode = _snapshot.get(failedServersPrefix);
+    failedServersNode.toBuilder(failedServersBuilder);
+  }
+  catch (...) {
+    // ignore this check
+    failedServersBuilder.clear();
+    { VPackObjectBuilder guard(&failedServersBuilder); 
     }
-  } // if
-
+  }
   VPackSlice failedServers = failedServersBuilder.slice();
   if (failedServers.isObject()) {
     Slice found = failedServers.get(_server);
@@ -281,8 +274,9 @@ bool CleanOutServer::start() {
     // will not be in the snapshot under ToDo, but in this case we find it
     // in _jb:
     if (_jb == nullptr) {
-      auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId,todo);
-      if (!tmp_todo.second) {
+      try {
+        _snapshot.get(toDoPrefix + _jobId).toBuilder(todo);
+      } catch (std::exception const&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " +
@@ -295,7 +289,7 @@ bool CleanOutServer::start() {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC(WARN, Logger::SUPERVISION) << e.what() << ": "
+        LOG_TOPIC(WARN, Logger::SUPERVISION) << e.what() << ": " 
           << __FILE__ << ":" << __LINE__;
         return false;
       }
@@ -349,22 +343,22 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
   std::vector<std::string> servers = availableServers(_snapshot);
 
-  Node::Children const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
+  Node::Children const& databases = _snapshot.get("/Plan/Collections").children();
   size_t sub = 0;
 
   for (auto const& database : databases) {
-
+    
     // Find shardsLike dependencies
     for (auto const& collptr : database.second->children()) {
-
+      
       auto const& collection = *(collptr.second);
-
+      
       if (collection.has("distributeShardsLike")) {
         continue;
       }
 
-      for (auto const& shard : collection.hasAsChildren("shards").first) {
-
+      for (auto const& shard : collection("shards").children()) {
+        
         // Only shards, which are affected
         int found = -1;
         int count = 0;
@@ -429,11 +423,11 @@ bool CleanOutServer::checkFeasibility() {
   uint64_t maxReplFact = 1;
   std::vector<std::string> tooLargeCollections;
   std::vector<uint64_t> tooLargeFactors;
-  Node::Children const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
+  Node::Children const& databases = _snapshot.get("/Plan/Collections").children();
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {
-        uint64_t replFact = (*collptr.second).hasAsUInt("replicationFactor").first;
+        uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
         if (replFact > numRemaining) {
           tooLargeCollections.push_back(collptr.first);
           tooLargeFactors.push_back(replFact);
@@ -484,8 +478,8 @@ arangodb::Result CleanOutServer::abort() {
   }
 
   // Abort all our subjobs:
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const todos = _snapshot.get(toDoPrefix).children();
+  Node::Children const pends = _snapshot.get(pendingPrefix).children();
 
   for (auto const& subJob : todos) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -501,5 +495,6 @@ arangodb::Result CleanOutServer::abort() {
   finish(_server, "", false, "job aborted");
 
   return result;
-
+  
 }
+

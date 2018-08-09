@@ -799,7 +799,7 @@ endif()
 ## OPENSSL
 ################################################################################
 
-# Some special stuff for Mac OSX and homebrew as a preparation for the
+# Some special stuff for Mac OSX and homebrew as a preparation for the 
 # generic FindOpenSSL script:
 if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
   message("searching openssl with brew (${BREW})")

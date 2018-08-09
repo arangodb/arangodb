@@ -38,14 +38,9 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
                         AgentInterface* agent) : _job(nullptr) {
 
   std::string path = pos[status] + id;
-  auto typePair = snapshot.hasAsString(path + "/type");
-  std::string type;
-
-  if (typePair.second) {
-    type = typePair.first;
-  } // if
-
-
+  auto const& job  = snapshot(path);
+  auto const& type = job("type").getString();
+  
   if        (type == "failedLeader") {
     _job = std::make_unique<FailedLeader>(snapshot, agent, status, id);
   } else if (type == "failedFollower") {
@@ -72,7 +67,7 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
 void JobContext::create(std::shared_ptr<VPackBuilder> b) {
   if (_job != nullptr) {
     _job->create(b);
-  }
+  } 
 }
 
 void JobContext::start() {
@@ -92,3 +87,4 @@ void JobContext::abort() {
     _job->abort();
   }
 }
+

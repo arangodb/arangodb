@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/asio-helper.h"
-#include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
 
@@ -52,7 +51,7 @@ struct AgencyVersions {
 
 class AgencyCallbackRegistry;
 
-class HeartbeatThread : public CriticalThread,
+class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
   HeartbeatThread(AgencyCallbackRegistry*, std::chrono::microseconds,
@@ -87,27 +86,7 @@ class HeartbeatThread : public CriticalThread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() { return HasRunOnce.load(std::memory_order_acquire); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief break runDBserver out of wait on condition after setting state in
-  /// base class
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void beginShutdown() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add thread name to ongoing list of threads that have crashed
-  ///        unexpectedly
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void recordThreadDeath(const std::string & threadName);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief post list of deadThreads to current log.  Called regularly, but only
-  ///        posts to log roughly every 60 minutes
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void logThreadDeaths(bool force=false);
+  static bool hasRunOnce() { return HasRunOnce.load(); }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -128,11 +107,11 @@ class HeartbeatThread : public CriticalThread,
   //////////////////////////////////////////////////////////////////////////////
 
   void runDBServer();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop, single server version
   //////////////////////////////////////////////////////////////////////////////
-
+  
   void runSingleServer();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -164,7 +143,7 @@ class HeartbeatThread : public CriticalThread,
   //////////////////////////////////////////////////////////////////////////////
 
   void syncDBServerStatusQuo();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
   //////////////////////////////////////////////////////////////////////////////
@@ -289,7 +268,7 @@ class HeartbeatThread : public CriticalThread,
   /// to be started when the current one has terminated. This and the
   /// previous one are protected by the statusLock.
   //////////////////////////////////////////////////////////////////////////////
-
+  
   bool _launchAnotherBackgroundJob;
 
   // when was the javascript sync routine last run?

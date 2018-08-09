@@ -54,7 +54,7 @@ struct HealthRecord {
   std::string hostId;
   size_t version;
 
-  explicit HealthRecord() : version(0) {}
+  HealthRecord() : version(0) {}
 
   HealthRecord(
     std::string const& sn, std::string const& ep, std::string const& ho) :
@@ -71,34 +71,34 @@ struct HealthRecord {
   HealthRecord& operator=(Node const& node) {
     version = 0;
     if (shortName.empty()) {
-      shortName = node.hasAsString("ShortName").first;
+      shortName = node("ShortName").getString();
     }
     if (endpoint.empty()) {
-      endpoint = node.hasAsString("Endpoint").first;
+      endpoint = node("Endpoint").getString();
     }
     if (node.has("Status")) {
-      status = node.hasAsString("Status").first;
+      status = node("Status").getString();
       if (node.has("SyncStatus")) { // New format
         version = 2;
-        syncStatus = node.hasAsString("SyncStatus").first;
+        syncStatus = node("SyncStatus").getString();
         if (node.has("SyncTime")) {
-          syncTime = node.hasAsString("SyncTime").first;
+          syncTime = node("SyncTime").getString();
         }
         if (node.has("LastAcked")) {
-          lastAcked = node.hasAsString("LastAcked").first;
+          lastAcked = node("LastAcked").getString();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
-        syncStatus = node.hasAsString("LastHeartbeatStatus").first;
+        syncStatus = node("LastHeartbeatStatus").getString();
         if (node.has("LastHeartbeatSent")) {
-          syncTime = node.hasAsString("LastHeartbeatSent").first;
+          syncTime = node("LastHeartbeatSent").getString();
         }
         if (node.has("LastHeartbeatAcked")) {
-          lastAcked = node.hasAsString("LastHeartbeatAcked").first;
+          lastAcked = node("LastHeartbeatAcked").getString();
         }
       }
       if (node.has("Host")) {
-        hostId = node.hasAsString("Host").first;
+        hostId = node("Host").getString();
       }
     }
     return *this;
@@ -149,7 +149,7 @@ struct HealthRecord {
 std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision()
-  : arangodb::CriticalThread("Supervision"),
+  : arangodb::Thread("Supervision"),
   _agent(nullptr),
   _snapshot("Supervision"),
   _transient("Transient"),
@@ -200,8 +200,8 @@ void Supervision::upgradeOne(Builder& builder) {
 void Supervision::upgradeZero(Builder& builder) {
   _lock.assertLockedByCurrentThread();
   // "/arango/Target/FailedServers" is still an array
-  Slice fails = _snapshot.hasAsSlice(failedServersPrefix).first;
-  if (fails.isArray()) {
+  Slice fails = _snapshot(failedServersPrefix).slice();
+  if (_snapshot(failedServersPrefix).slice().isArray()) {
     { VPackArrayBuilder trx(&builder);
       { VPackObjectBuilder o(&builder);
         builder.add(VPackValue(failedServersPrefix));
@@ -225,7 +225,7 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
   if (_snapshot.has(healthPrefix)) {
     HealthRecord hr;
     { VPackObjectBuilder oo(&b);
-      for (auto recPair : _snapshot.hasAsChildren(healthPrefix).first) {
+      for (auto recPair : _snapshot(healthPrefix).children()) {
         if (recPair.second->has("ShortName") &&
             recPair.second->has("Endpoint")) {
           hr = *recPair.second;
@@ -314,7 +314,7 @@ void handleOnStatusCoordinator(
 
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     // if the current foxxmaster server failed => reset the value to ""
-    if (snapshot.hasAsString(foxxmaster).first == serverID) {
+    if (snapshot.has(foxxmaster) && snapshot(foxxmaster).getString() == serverID) {
       VPackBuilder create;
       { VPackArrayBuilder tx(&create);
         { VPackObjectBuilder d(&create);
@@ -380,7 +380,7 @@ void handleOnStatus(
 // Build transaction for removing unattended servers from health monitoring
 query_t arangodb::consensus::removeTransactionBuilder(
   std::vector<std::string> const& todelete) {
-
+  
   query_t del = std::make_shared<Builder>();
   { VPackArrayBuilder trxs(del.get());
     { VPackArrayBuilder trx(del.get());
@@ -392,7 +392,7 @@ query_t arangodb::consensus::removeTransactionBuilder(
           { VPackObjectBuilder oper(del.get());
             del->add("op", VPackValue("delete")); }}}}}
   return del;
-
+  
 }
 
 // Check all DB servers, guarded above doChecks
@@ -403,10 +403,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
   // Book keeping
   std::vector<check_t> ret;
-  auto const& machinesPlanned = _snapshot.hasAsChildren(std::string("Plan/")+type).first;
-  auto const& serversRegistered = _snapshot.hasAsNode(currentServersRegisteredPrefix).first;
+  auto const& machinesPlanned = _snapshot(std::string("Plan/")+type).children();
+  auto const& serversRegistered = _snapshot(currentServersRegisteredPrefix);
   std::vector<std::string> todelete;
-  for (auto const& machine : _snapshot.hasAsChildren(healthPrefix).first) {
+  for (auto const& machine : _snapshot(healthPrefix).children()) {
     if ((type == "DBServers" && machine.first.compare(0,4,"PRMR") == 0) ||
         (type == "Coordinators" && machine.first.compare(0,4,"CRDN") == 0) ||
         (type == "Singles" && machine.first.compare(0,4,"SNGL") == 0)) {
@@ -431,21 +431,20 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
     // short name arrives asynchronous to machine registering, make sure
     //  it has arrived before trying to use it
-    auto tmp_shortName = _snapshot.hasAsString(targetShortID + serverID + "/ShortName");
-    if (tmp_shortName.second) {
+    if (LEAF == _snapshot(targetShortID + serverID + "/ShortName").type()) {
 
-      shortName = tmp_shortName.first;
+      shortName = _snapshot(targetShortID + serverID + "/ShortName").getString();
 
       // Endpoint
       std::string endpoint;
       std::string epPath = serverID + "/endpoint";
       if (serversRegistered.has(epPath)) {
-        endpoint = serversRegistered.hasAsString(epPath).first;
+        endpoint = serversRegistered(epPath).getString();
       }
       std::string hostId;
       std::string hoPath = serverID + "/host";
       if (serversRegistered.has(hoPath)) {
-        hostId = serversRegistered.hasAsString(hoPath).first;
+        hostId = serversRegistered(hoPath).getString();
       }
 
       // Health records from persistence, from transience and a new one
@@ -454,20 +453,20 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Get last health entries from transient and persistent key value stores
       if (_transient.has(healthPrefix + serverID)) {
-        transist = _transient.hasAsNode(healthPrefix + serverID).first;
+        transist = _transient(healthPrefix + serverID);
       }
       if (_snapshot.has(healthPrefix + serverID)) {
-        persist = _snapshot.hasAsNode(healthPrefix + serverID).first;
+        persist = _snapshot(healthPrefix + serverID);
       }
 
       // New health record (start with old add current information from sync)
       // Sync.time is copied to Health.syncTime
       // Sync.status is copied to Health.syncStatus
       std::string syncTime = _transient.has(syncPrefix + serverID) ?
-        _transient.hasAsString(syncPrefix + serverID + "/time").first :
+        _transient(syncPrefix + serverID + "/time").getString() :
         timepointToString(std::chrono::system_clock::time_point());
       std::string syncStatus = _transient.has(syncPrefix + serverID) ?
-        _transient.hasAsString(syncPrefix + serverID + "/status").first : "UNKNOWN";
+        _transient(syncPrefix + serverID + "/status").getString() : "UNKNOWN";
 
       // Last change registered in sync (transient != sync)
       // Either now or value in transient
@@ -595,15 +594,18 @@ void Supervision::reportStatus(std::string const& status) {
   bool persist = false;
   query_t report;
 
-  { // Do I have to report to agency under
+  { // Do I have to report to agency under 
     _lock.assertLockedByCurrentThread();
-    if (_snapshot.hasAsString("/Supervision/State/Mode").first != status) {
-      // This includes the case that the mode is not set, since status
-      // is never empty
+    if (_snapshot.has("/Supervision/State/Mode") &&
+        _snapshot("/Supervision/State/Mode").isString()) {
+      if (_snapshot("/Supervision/State/Mode").getString() != status) {
+        persist = true;
+      }
+    } else {
       persist = true;
     }
   }
-
+  
   report = std::make_shared<VPackBuilder>();
   { VPackArrayBuilder trx(report.get());
     { VPackObjectBuilder br(report.get());
@@ -617,7 +619,7 @@ void Supervision::reportStatus(std::string const& status) {
   if (status != "Maintenance") {
     transient(_agent, *report);
   }
-
+  
   if (persist) {
     write_ret_t res = singleWriteTransaction(_agent, *report);
   }
@@ -667,7 +669,7 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
-
+      
       {
         MUTEX_LOCKER(locker, _lock);
 
@@ -682,7 +684,8 @@ void Supervision::run() {
         // Supervision needs to wait until the agent has finished leadership
         // preparation or else the local agency snapshot might be behind its
         // last state.
-        if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
+        if (
+          _agent->leading() && _agent->getPrepareLeadership() == 0) {
 
           if (_jobId == 0 || _jobId == _jobIdMax) {
             getUniqueIds();  // cannot fail but only hang
@@ -711,18 +714,18 @@ void Supervision::run() {
             }
 
             handleJobs();
-
+            
           } else {
 
             reportStatus("Maintenance");
-
+            
           }
         }
       }
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
   }
-
+  
   if (shutdown) {
     ApplicationServer::server->beginShutdown();
   }
@@ -731,7 +734,8 @@ void Supervision::run() {
 // Guarded by caller
 bool Supervision::isShuttingDown() {
   _lock.assertLockedByCurrentThread();
-  return _snapshot.hasAsBool("Shutdown").first;
+  return (_snapshot.has("Shutdown") && _snapshot("Shutdown").isBool()) ?
+    _snapshot("/Shutdown").getBool() : false;
 }
 
 // Guarded by caller
@@ -739,7 +743,7 @@ std::string Supervision::serverHealth(std::string const& serverName) {
   _lock.assertLockedByCurrentThread();
   std::string const serverStatus(healthPrefix + serverName + "/Status");
   return (_snapshot.has(serverStatus)) ?
-    _snapshot.hasAsString(serverStatus).first : std::string();
+    _snapshot(serverStatus).getString() : std::string();
 }
 
 // Guarded by caller
@@ -749,7 +753,7 @@ void Supervision::handleShutdown() {
   _selfShutdown = true;
   LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for clients to shut down";
   auto const& serversRegistered =
-      _snapshot.hasAsChildren(currentServersRegisteredPrefix).first;
+      _snapshot(currentServersRegisteredPrefix).children();
   bool serversCleared = true;
   for (auto const& server : serversRegistered) {
     if (server.first == "Version") {
@@ -807,14 +811,14 @@ bool Supervision::handleJobs() {
 void Supervision::workJobs() {
   _lock.assertLockedByCurrentThread();
 
-  for (auto const& todoEnt : _snapshot.hasAsChildren(toDoPrefix).first) {
+  for (auto const& todoEnt : _snapshot(toDoPrefix).children()) {
     JobContext(
-      TODO, (*todoEnt.second).hasAsString("jobId").first, _snapshot, _agent).run();
+      TODO, (*todoEnt.second)("jobId").getString(), _snapshot, _agent).run();
   }
 
-  for (auto const& pendEnt : _snapshot.hasAsChildren(pendingPrefix).first) {
+  for (auto const& pendEnt : _snapshot(pendingPrefix).children()) {
     JobContext(
-      PENDING, (*pendEnt.second).hasAsString("jobId").first, _snapshot, _agent).run();
+      PENDING, (*pendEnt.second)("jobId").getString(), _snapshot, _agent).run();
   }
 
 }
@@ -822,7 +826,7 @@ void Supervision::workJobs() {
 
 void Supervision::enforceReplication() {
   _lock.assertLockedByCurrentThread();
-  auto const& plannedDBs = _snapshot.hasAsChildren(planColPrefix).first;
+  auto const& plannedDBs = _snapshot(planColPrefix).children();
 
   for (const auto& db_ : plannedDBs) { // Planned databases
     auto const& db = *(db_.second);
@@ -830,8 +834,8 @@ void Supervision::enforceReplication() {
       auto const& col = *(col_.second);
 
       size_t replicationFactor;
-      if (col.hasAsUInt("replicationFactor").second) {
-        replicationFactor = col.hasAsUInt("replicationFactor").first;
+      if (col.has("replicationFactor") && col("replicationFactor").isUInt()) {
+        replicationFactor = col("replicationFactor").getUInt();
       } else {
         LOG_TOPIC(DEBUG, Logger::SUPERVISION)
           << "no replicationFactor entry in " << col.toJson();
@@ -847,23 +851,23 @@ void Supervision::enforceReplication() {
       bool clone = col.has("distributeShardsLike");
 
       if (!clone) {
-        for (auto const& shard_ : col.hasAsChildren("shards").first) { // Pl shards
+        for (auto const& shard_ : col("shards").children()) { // Pl shards
           auto const& shard = *(shard_.second);
 
           size_t actualReplicationFactor = shard.slice().length();
           if (actualReplicationFactor != replicationFactor) {
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
-            auto const& todo = _snapshot.hasAsChildren(toDoPrefix).first;
+            auto const& todo = _snapshot(toDoPrefix).children();
             bool found = false;
             for (auto const& pair : todo) {
               auto const& job = pair.second;
-              auto tmp_type = job->hasAsString("type");
-              auto tmp_shard = job->hasAsString("shard");
-              if ((tmp_type.first == "addFollower"
-                   || tmp_type.first == "removeFollower"
-                   || tmp_type.first == "moveShard")
-                  && tmp_shard.first == shard_.first) {
+              if (job->has("type") &&
+                  ((*job)("type").getString() == "addFollower" ||
+                   (*job)("type").getString() == "removeFollower" ||
+                   (*job)("type").getString() == "moveShard") &&
+                  job->has("shard") &&
+                  (*job)("shard").getString() == shard_.first) {
                 found = true;
                 LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "already found "
                   "addFollower or removeFollower job in ToDo, not scheduling "
@@ -901,19 +905,18 @@ void Supervision::fixPrototypeChain(Builder& migrate) {
 
   std::function<std::string (std::string const&, std::string const&)> resolve;
   resolve = [&] (std::string const& db, std::string const& col) {
+    Node const& n = snap(planColPrefix + db + "/" + col);
     std::string s;
-    auto tmp_n = snap.hasAsNode(planColPrefix + db + "/" + col);
-    if (tmp_n.second) {
-      Node const& n = tmp_n.first;
-      s = n.hasAsString("distributeShardsLike").first;
+    if (n.has("distributeShardsLike")) {
+      s = n("distributeShardsLike").getString();
     }
     return (s.empty()) ? col : resolve(db, s);
   };
 
-  for (auto const& database : _snapshot.hasAsChildren(planColPrefix).first) {
+  for (auto const& database : _snapshot(planColPrefix).children()) {
     for (auto const& collection : database.second->children()) {
       if (collection.second->has("distributeShardsLike")) {
-        auto prototype = (*collection.second).hasAsString("distributeShardsLike").first;
+        auto prototype = (*collection.second)("distributeShardsLike").getString();
         if (!prototype.empty()) {
           std::string u;
           try {
@@ -941,8 +944,8 @@ void Supervision::fixPrototypeChain(Builder& migrate) {
 void Supervision::shrinkCluster() {
   _lock.assertLockedByCurrentThread();
 
-  auto const& todo = _snapshot.hasAsChildren(toDoPrefix).first;
-  auto const& pending = _snapshot.hasAsChildren(pendingPrefix).first;
+  auto const& todo = _snapshot(toDoPrefix).children();
+  auto const& pending = _snapshot(pendingPrefix).children();
 
   if (!todo.empty() || !pending.empty()) { // This is low priority
     return;
@@ -954,8 +957,8 @@ void Supervision::shrinkCluster() {
   size_t targetNumDBServers;
   std::string const NDBServers ("/Target/NumberOfDBServers");
 
-  if (_snapshot.hasAsUInt(NDBServers).second) {
-    targetNumDBServers = _snapshot.hasAsUInt(NDBServers).first;
+  if (_snapshot.has(NDBServers) && _snapshot(NDBServers).isUInt()) {
+    targetNumDBServers = _snapshot(NDBServers).getUInt();
   } else {
     LOG_TOPIC(TRACE, Logger::SUPERVISION)
       << "Targeted number of DB servers not set yet";
@@ -984,12 +987,13 @@ void Supervision::shrinkCluster() {
      **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
-    auto const& databases = _snapshot.hasAsChildren(planColPrefix).first;
+    auto const& databases = _snapshot(planColPrefix).children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
         auto const& node = *collptr.second;
-        if (node.hasAsUInt("replicationFactor").second) {
-          auto replFact = node.hasAsUInt("replicationFactor").first;
+        if (node.has("replicationFactor") &&
+            node("replicationFactor").isUInt()) {
+          auto replFact = node("replicationFactor").getUInt();
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
