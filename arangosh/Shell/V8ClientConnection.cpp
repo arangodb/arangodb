@@ -1400,7 +1400,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   std::unique_ptr<fuerte::Response> response;
   try {
     response = _connection->sendRequestSync(std::move(req));
-  } catch (fuerte::ErrorCondition ec) {
+  } catch (fuerte::ErrorCondition const& ec) {
     return handleResult(isolate, nullptr, ec);
   }
   
@@ -1447,7 +1447,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   std::unique_ptr<fuerte::Response> response;
   try {
     response = _connection->sendRequestSync(std::move(req));
-  } catch (fuerte::ErrorCondition e) {
+  } catch (fuerte::ErrorCondition const& e) {
     _lastErrorMessage.assign(fuerte::to_string(e));
     _lastHttpReturnCode = 505;
   }
