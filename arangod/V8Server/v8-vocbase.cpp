@@ -79,6 +79,7 @@
 #include "V8Server/v8-views.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
+#include "V8Server/v8-general-graph.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -836,14 +837,17 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     options,
     arangodb::aql::PART_MAIN
   );
+
+  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+  ss->setContinueCallback();
+  
   aql::QueryResultV8 queryResult;
-  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
   while (true) {
     auto state = query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry), queryResult);
     if (state != aql::ExecutionState::WAITING) {
       break;
     }
-    query.tempWaitForAsyncResponse();
+    ss->waitForAsyncResponse();
   }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -2065,6 +2069,7 @@ void TRI_InitV8VocBridge(
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Views(context, &vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
+  TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 
   TRI_InitV8cursor(context, v8g);
 

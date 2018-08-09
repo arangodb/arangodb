@@ -52,7 +52,7 @@ exports.properties = function (properties) {
   var requestResult;
 
   if (properties !== undefined) {
-    requestResult = db._connection.PUT('/_api/query-cache/properties', JSON.stringify(properties));
+    requestResult = db._connection.PUT('/_api/query-cache/properties', properties);
   } else {
     requestResult = db._connection.GET('/_api/query-cache/properties');
   }

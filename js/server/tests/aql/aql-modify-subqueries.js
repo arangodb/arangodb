@@ -771,13 +771,16 @@ function ahuacatlModifySuite () {
         c.insert({ id: 42 });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected;
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
+        expected = { writesExecuted: 100, writesIgnored: 400 };
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+      } else {
+        expected = { writesExecuted: 100, writesIgnored: 0 };
       }
 
       assertEqual(0, c.count());

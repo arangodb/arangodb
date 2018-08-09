@@ -157,7 +157,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  rocksdb::ReadOptions options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   if (!reverse) {
     // we need to have a pointer to a slice for the upper bound
     // so we need to assign the slice to an instance variable here
@@ -679,12 +679,13 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   }
 
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    LocalDocumentId rev = RocksDBValue::documentId(existing);
-    ManagedDocumentResult mmdr;
-    bool success = _collection.getPhysical()->readDocument(trx, rev, mmdr);
+    LocalDocumentId documentId = RocksDBValue::documentId(existing);
+    std::string existingKey;
+
+    bool success = _collection.getPhysical()->readDocumentWithCallback(trx, documentId, [&](LocalDocumentId const&, VPackSlice doc) {
+      existingKey = doc.get(StaticStrings::KeyString).copyString();
+    });
     TRI_ASSERT(success);
-    std::string existingKey(
-        VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
 
     if (mode == OperationMode::internal) {
       return IndexResult(res, std::move(existingKey));

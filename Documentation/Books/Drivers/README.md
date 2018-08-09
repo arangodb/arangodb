@@ -1,7 +1,12 @@
+---
+page-toc:
+  disable: true
+---
 ArangoDB VERSION_NUMBER Drivers Documentation
 =============================================
 
-**Official drivers**
+Official drivers
+----------------
 
 Name | Language | Repository | &nbsp;
 -----|----------|------------|-------
@@ -11,14 +16,16 @@ Name | Language | Repository | &nbsp;
 [ArangoDB-PHP](PHP/README.md) | PHP | https://github.com/arangodb/arangodb-php | [Changelog](https://github.com/arangodb/arangodb-php/blob/devel/CHANGELOG.md#readme)
 [Go-Driver](GO/README.md) | Go | https://github.com/arangodb/go-driver | [Changelog](https://github.com/arangodb/go-driver/blob/master/CHANGELOG.md#readme)
 
-**Integrations**
+Integrations
+------------
 
 Name | Language | Repository | &nbsp;
 -----|----------|------------|-------
 [Spring Data](SpringData/README.md) | Java | https://github.com/arangodb/spring-data | [Changelog](https://github.com/arangodb/spring-data/blob/master/ChangeLog.md#readme)
 [ArangoDB-Spark-Connector](SparkConnector/README.md) | Scala, Java | https://github.com/arangodb/arangodb-spark-connector | [Changelog](https://github.com/arangodb/arangodb-spark-connector/blob/master/ChangeLog.md#readme)
 
-**Community drivers**
+Community drivers
+-----------------
 
 Please note that this list is not exhaustive.
 

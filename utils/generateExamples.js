@@ -147,6 +147,7 @@ function main(argv) {
     serverArgs["log.file"] = fs.join(tmpDataDir, "log");
     serverArgs["server.authentication"] = "false";
     serverArgs["server.endpoint"] = serverEndpoint;
+    serverArgs["server.storage-engine"] = "mmfiles"; // examples depend on it
 
     print("================================================================================");
     ARANGOD = locateProgram("arangod", "Cannot find arangod to execute tests against");

@@ -74,11 +74,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   // validate id string
   VPackValueLength len;
   char const* docId = slice.getString(len);
-  if (len < 3) {
-    return false;
-  }
-  size_t split;
-  return TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split);
+  return KeyGenerator::validateId(docId, static_cast<size_t>(len));
 }
 
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {

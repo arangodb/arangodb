@@ -1022,14 +1022,23 @@ void TRI_vocbase_t::inventory(
   result.close(); // </collection>
   
   result.add("views", VPackValue(VPackValueType::Array, true));
-  for (auto const& dataSource : dataSourceById) {
-    if (dataSource.second->category() != LogicalView::category()) {
-      continue;
+  if (ServerState::instance()->isCoordinator()) {
+    auto views = ClusterInfo::instance()->getViews(name());
+    for (auto const& view : views) {
+      result.openObject();
+      view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+      result.close();
     }
-    LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
-    result.openObject();
-    view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
-    result.close();
+  } else {
+    for (auto const& dataSource : dataSourceById) {
+      if (dataSource.second->category() != LogicalView::category()) {
+        continue;
+      }
+      LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
+      result.openObject();
+      view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+      result.close();
+    }
   }
   result.close(); // </views>
 }
@@ -1207,8 +1216,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   }
 
   auto res2 = engine->persistCollection(*this, *collection);
-  // API compatibility, we always return the collection, even if creation
-  // failed.
+  // API compatibility, we always return the collection,
+  // even if creation failed.
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {

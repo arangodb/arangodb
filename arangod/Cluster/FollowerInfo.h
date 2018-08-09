@@ -97,4 +97,3 @@ class FollowerInfo {
 }  // end namespace arangodb
 
 #endif
-#define ARANGOD_CLUSTER_CLUSTER_INFO_H 1

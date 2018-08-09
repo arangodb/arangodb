@@ -25,6 +25,12 @@
     margin-bottom: 1px;
   }
 
+  .sectionShardContent {
+    .pure-g {
+      width: auto;
+    }
+  }
+
   .shardSyncIcons {
     .fa {
       color: $c-warning;

@@ -1,4 +1,4 @@
-shell> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection</span>
 
 HTTP/1.1 204 No Content
 x-content-type-options: nosniff

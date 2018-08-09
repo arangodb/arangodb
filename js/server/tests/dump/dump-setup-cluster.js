@@ -219,8 +219,28 @@ function setupSatelliteCollections() {
     c.save({ _key: "text" + i, value: t });
   });
 
+  // setup a view
+  try {
+    c = db._create("UnitTestsDumpViewCollection");
+
+    let view = db._createView("UnitTestsDumpView", "arangosearch", {});
+    view.properties({ links: {
+      "UnitTestsDumpViewCollection": { 
+        includeAllFields: true,
+        fields: {
+          text: { analyzers: [ "text_en" ] }
+        }
+      }
+    } });
+
+    /*for (i = 0; i < 10000; ++i) {
+      c.save({ _key: "test" + i, value: i });
+    }*/
+  } catch (err) { }
+
   setupSmartGraph();
   setupSatelliteCollections();
+
 })();
 
 return {

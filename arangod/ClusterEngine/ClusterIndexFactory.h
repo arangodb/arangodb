@@ -31,6 +31,13 @@ class ClusterIndexFactory final : public IndexFactory {
  public:
   ClusterIndexFactory();
   ~ClusterIndexFactory() = default;
+  
+  Result enhanceIndexDefinition(
+    velocypack::Slice const definition,
+    velocypack::Builder& normalized,
+    bool isCreation,
+    bool isCoordinator
+  ) const override;
 
   void fillSystemIndexes(
     arangodb::LogicalCollection& col,

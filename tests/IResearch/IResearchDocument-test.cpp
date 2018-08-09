@@ -32,6 +32,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -143,6 +144,7 @@ struct IResearchDocumentSetup {
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::ShardingFeature(&server), true); 
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
@@ -171,8 +173,8 @@ struct IResearchDocumentSetup {
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
-    analyzers->emplace("iresearch-document-empty", "iresearch-document-empty", "en"); // cache analyzer
-    analyzers->emplace("iresearch-document-invalid", "iresearch-document-invalid", "en"); // cache analyzer
+    analyzers->emplace("iresearch-document-empty", "iresearch-document-empty", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
+    analyzers->emplace("iresearch-document-invalid", "iresearch-document-invalid", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -697,7 +699,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
     auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(expected_analyzer->attributes().features() == field.features());
+    CHECK(irs::flags({TestAttribute::type()}) == field.features());
   }
 
   ++it;
@@ -1354,8 +1356,8 @@ SECTION("FieldIterator_nullptr_analyzer") {
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
-    analyzers.emplace("empty", "iresearch-document-empty", "en");
-    analyzers.emplace("invalid", "iresearch-document-invalid", "en");
+    analyzers.emplace("empty", "iresearch-document-empty", "en", irs::flags{TestAttribute::type()});
+    analyzers.emplace("invalid", "iresearch-document-invalid", "en", irs::flags{TestAttribute::type()});
   }
 
   // last analyzer invalid

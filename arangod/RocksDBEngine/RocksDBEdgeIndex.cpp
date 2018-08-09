@@ -103,7 +103,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
 
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   // intentional copy of the options
-  rocksdb::ReadOptions options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.fill_cache = EdgeIndexFillBlockCache;
   _iterator = mthds->NewIterator(options, index->columnFamily());
 }
@@ -790,9 +790,9 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   }
 
   // try to find the right bounds
-  rocksdb::ReadOptions ro = mthds->readOptions();
-  ro.prefix_same_as_start = false;
-  ro.total_order_seek = true;
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+  ro.prefix_same_as_start = false; // key-prefix includes edge (i.e. "collection/vertex")
+  ro.total_order_seek = true; // otherwise full-index-scan does not work
   ro.verify_checksums = false;
   ro.fill_cache = EdgeIndexFillBlockCache;
 
@@ -852,7 +852,6 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice const& upper) {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto rocksColl = toRocksDBCollection(&_collection);
-  ManagedDocumentResult mmdr;
   bool needsInsert = false;
   std::string previous = "";
   VPackBuilder builder;
@@ -860,10 +859,10 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   // intentional copy of the read options
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::Slice const end = upper;
-  rocksdb::ReadOptions options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
-  options.prefix_same_as_start = false;
-  options.total_order_seek = true;
+  options.prefix_same_as_start = false; // key-prefix includes edge
+  options.total_order_seek = true; // otherwise full-index-scan does not work
   options.verify_checksums = false;
   options.fill_cache = EdgeIndexFillBlockCache;
   std::unique_ptr<rocksdb::Iterator> it(
@@ -944,17 +943,15 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
     }
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
-      if (rocksColl->readDocument(trx, docId, mmdr)) {
+      if (!rocksColl->readDocumentWithCallback(trx, docId, [&](LocalDocumentId const&, VPackSlice doc) {
         builder.add(VPackValue(docId.id()));
-
-        VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =
             _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
                          : transaction::helpers::extractFromFromDocument(doc);
         TRI_ASSERT(toFrom.isString());
         builder.add(toFrom);
+      })) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      } else {
         // Data Inconsistency.
         // We have a revision id without a document...
         TRI_ASSERT(false);
@@ -1092,10 +1089,10 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options;
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
-  options.prefix_same_as_start = false;
-  options.total_order_seek = true;
+  options.prefix_same_as_start = false;  // key-prefix includes edge
+  options.total_order_seek = true; // otherwise full scan fails
   options.verify_checksums = false;
-  options.fill_cache = EdgeIndexFillBlockCache;
+  options.fill_cache = false;
   std::unique_ptr<rocksdb::Iterator> it(
       rocksutils::globalRocksDB()->NewIterator(options, _cf));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
