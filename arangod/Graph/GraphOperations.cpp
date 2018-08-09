@@ -563,9 +563,9 @@ OperationResult GraphOperations::addEdgeDefinition(
   // ... in different graph
   GraphManager gmngr{_vocbase};
 
-  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()))};
+  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()), _graph.name())};
   if (result.fail()) {
-    // If this fails we will not persists.
+    // If this fails we will not persist.
     return result;
   }
 
