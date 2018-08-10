@@ -707,7 +707,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
     {
       VPackObjectBuilder guard(&answerBuilder);
       if (operation == "lock") {
-        // Mark current thread as potentially blocking:
         int res = query->trx()->lockCollections();
         // let exceptions propagate from here
 
