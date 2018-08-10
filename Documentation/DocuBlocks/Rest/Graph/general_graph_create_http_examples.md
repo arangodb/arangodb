@@ -8,43 +8,87 @@ The creation of a graph requires the name of the graph and a
 definition of its edges.
 [See also edge definitions](../../Manual/Graphs/GeneralGraphs/Management.html#edge-definitions).
 
+@RESTQUERYPARAM{waitForSync,bool,optional}
+define if the request should wait until everything is synced to disc.
+Will change the success response code.
+
 @RESTBODYPARAM{name,string,required,string}
 Name of the graph.
 
-@RESTBODYPARAM{edgeDefinitions,string,optional,string}
-An array of definitions for the edge
+@RESTBODYPARAM{edgeDefinitions,array,optional,post_api_gharial_create_edge_defs}
+An array of definitions for the relations of the graph.
+Each has the following type:
 
-@RESTBODYPARAM{orphanCollections,string,optional,string}
+@RESTSTRUCT{relation,post_api_gharial_create_edge_defs,object,optional,post_api_gharial_create_edge_defs_relation}
+An object describing exactly on relation in this graph. It defines the EdgeCollection
+where the edges are stored in and defines invariants for the collections where edges
+are allowed to start from and where they are allowed to point to.
+
+@RESTSTRUCT{collection,post_api_gharial_create_edge_defs_relation,string,required,}
+Name of the edge collection.
+
+@RESTSTRUCT{from,post_api_gharial_create_edge_defs_relation,array,required,post_api_gharial_create_edge_defs_relation_from}
+List of vertex collection names.
+Edges in collection can only be inserted if their _from is in any of the collections here.
+
+
+@RESTSTRUCT{fromCollection,post_api_gharial_create_edge_defs_relation_from,string,required,}
+The name of a vertex collection
+
+@RESTSTRUCT{to,post_api_gharial_create_edge_defs_relation,array,required,post_api_gharial_create_edge_defs_relation_to}
+List of vertex collection names.
+Edges in collection can only be inserted if their _to is in any of the collections here.
+
+@RESTSTRUCT{toCollection,post_api_gharial_create_edge_defs_relation_to,string,required,}
+The name of a vertex collection
+
+@RESTBODYPARAM{orphanCollections,array,optional,post_api_gharial_create_orphans}
 An array of additional vertex collections.
+
+@RESTSTRUCT{orphanCollection,post_api_gharial_create_orphans,string,required,}
+The name of a vertex collection
 
 @RESTBODYPARAM{isSmart,boolean,optional,boolean}
 Define if the created graph should be smart.
 This only has effect in Enterprise Edition.
 
 @RESTBODYPARAM{options,object,optional,post_api_gharial_create_opts}
-a JSON object which is only useful in Enterprise Edition and with isSmart set to true.
+a JSON object to define options for creating collections within this graph.
 It can contain the following attributes:
 
-@RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,required,}
+@RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,optional,}
+Only has effect in Enterprise Edition and it is required if isSmart is true.
 The attribute name that is used to smartly shard the vertices of a graph.
-Every vertex in this Graph has to have this attribute.
+Every vertex in this SmartGraph has to have this attribute.
 Cannot be modified later.
 
 @RESTSTRUCT{numberOfShards,post_api_gharial_create_opts,integer,required,}
 The number of shards that is used for every collection within this graph.
 Cannot be modified later.
 
+@RESTSTRUCT{replicationFactor,post_api_gharial_create_opts,integer,required,}
+The replication factor used when initially creating collections for this graph.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
 Is returned if the graph could be created and waitForSync is enabled
-for the `_graphs` collection.  The response body contains the
-graph configuration that has been stored.
+for the `_graphs` collection, or given in the request.
+The response body contains the graph configuration that has been stored.
 
 @RESTRETURNCODE{202}
 Is returned if the graph could be created and waitForSync is disabled
-for the `_graphs` collection. The response body contains the
-graph configuration that has been stored.
+for the `_graphs` collection and not given in the request.
+The response body contains the graph configuration that has been stored.
+
+@RESTRETURNCODE{400}
+Returned if the request is in a wrong format.
+
+@RESTRETURNCODE{403}
+Returned if your user has insufficient rights.
+In order to create a graph you at least need to have the following privileges:
+1. `Administrate` access on the Database.
+2. `Read Only` access on every collection used within this graph.
 
 @RESTRETURNCODE{409}
 Returned if there is a conflict storing the graph.  This can occur
@@ -94,6 +138,7 @@ different signature used in any other graph.
     }],
     isSmart: true,
     options: {
+      replicationFactor: 2,
       numberOfShards: 9,
       smartGraphAttribute: "region"
     }
