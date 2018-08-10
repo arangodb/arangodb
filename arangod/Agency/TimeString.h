@@ -10,7 +10,12 @@ inline std::string timepointToString(std::chrono::system_clock::time_point const
   return std::string(buffer, len - 1);
 }
 
-inline std::chrono::system_clock::time_point stringToTimepoint(std::string const& s) {
+inline std::string timepointToString(std::chrono::system_clock::duration const& d) {
+  return timepointToString(std::chrono::system_clock::time_point() + d);
+}
+
+
+  inline std::chrono::system_clock::time_point stringToTimepoint(std::string const& s) {
   if (!s.empty()) {
     try {
       std::tm tt;
@@ -27,4 +32,3 @@ inline std::chrono::system_clock::time_point stringToTimepoint(std::string const
   }
   return std::chrono::time_point<std::chrono::system_clock>();
 }
-

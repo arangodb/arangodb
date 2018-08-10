@@ -60,7 +60,7 @@ class ActionBase {
   /// @brief initial call to object to perform a unit of work.
   ///   really short tasks could do all work here and return false
   /// @return true to continue processing, false done (result() set)
-  virtual bool first();
+  virtual bool first() = 0;
 
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
@@ -102,9 +102,6 @@ class ActionBase {
 
   void complete();
   void fail();
-
-  virtual arangodb::Result run(
-    std::chrono::duration<double> const&, bool& finished);
 
   virtual arangodb::Result kill(Signal const& signal);
 
@@ -206,10 +203,10 @@ protected:
 
   // times for user reporting (and _actionDone used by done() to prevent
   //  race conditions of same task executing twice
-  std::atomic<uint64_t> _actionCreated;
-  std::atomic<uint64_t> _actionStarted;
-  std::atomic<uint64_t> _actionLastStat;
-  std::atomic<uint64_t> _actionDone;
+  std::atomic<std::chrono::system_clock::duration> _actionCreated;
+  std::atomic<std::chrono::system_clock::duration> _actionStarted;
+  std::atomic<std::chrono::system_clock::duration> _actionLastStat;
+  std::atomic<std::chrono::system_clock::duration> _actionDone;
 
   std::atomic<uint64_t> _progress;
 

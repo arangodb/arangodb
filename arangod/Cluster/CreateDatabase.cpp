@@ -51,8 +51,6 @@ CreateDatabase::~CreateDatabase() {};
 
 bool CreateDatabase::first() {
 
-  ActionBase::first();
-
   VPackSlice users;
   auto database = _description.get(DATABASE);
 
@@ -73,13 +71,12 @@ bool CreateDatabase::first() {
   if (!_result.ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "CreateDatabase: failed to create database " << database << ": " << _result;
-    fail();
     return false;
   }
 
   LOG_TOPIC(INFO, Logger::MAINTENANCE)
     << "CreateDatabase: database  " << database << " created";
-  complete();
+
   return false;
 
 }

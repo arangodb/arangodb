@@ -277,7 +277,7 @@ std::shared_ptr<Action> MaintenanceFeature::preAction(
 std::shared_ptr<Action> MaintenanceFeature::postAction(
   std::shared_ptr<ActionDescription> const & description) {
 
-  return createAction(description, true);
+  return createAction(description, false);
 
 } // MaintenanceFeature::postAction
 

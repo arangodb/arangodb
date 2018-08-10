@@ -22,8 +22,10 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ActionBase.h"
+
+#include "Agency/TimeString.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 
@@ -47,49 +49,34 @@ const char ActionBase::LOCAL_LEADER[]="localLeader";
 const char ActionBase::GLOB_UID[]="globallyUniqueId";
 const char ActionBase::OBJECT_ID[]="objectId";
 
-inline static uint64_t secs_since_epoch() {
-  return uint64_t(
-    std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::system_clock::now().time_since_epoch()).count());
+inline static std::chrono::system_clock::duration secs_since_epoch() {
+  return std::chrono::system_clock::now().time_since_epoch();
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
   : _feature(feature), _description(desc), _state(READY),
     _actionCreated(secs_since_epoch()), _progress(0) {
-  
+
   _hash = _description.hash();
   _clientId = std::to_string(_hash);
   _id = _feature.nextActionId();
-  
+
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature,  ActionDescription&& desc)
   : _feature(feature), _description(std::move(desc)), _state(READY),
     _actionCreated(secs_since_epoch()), _progress(0) {
-  
+
   _hash = _description.hash();
   _clientId = std::to_string(_hash);
   _id = _feature.nextActionId();
-  
+
 }
+
 
 ActionBase::~ActionBase() {
 }
 
-
-bool ActionBase::first() {
-  _actionStarted = secs_since_epoch();
-  return false;
-}
-
-void ActionBase::complete() {
-  _actionDone = secs_since_epoch();
-  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (cf != nullptr) {
-    cf->syncDBServerStatusQuo();
-  }
-  _state = COMPLETE;
-}
 
 void ActionBase::fail() {
   _actionDone = secs_since_epoch();
@@ -104,7 +91,7 @@ void ActionBase::fail() {
 bool ActionBase::done() const {
 
   return (COMPLETE==_state || FAILED==_state) &&
-    _actionDone + _feature.getSecondsActionsBlock() <= secs_since_epoch();
+    _actionDone.load() + std::chrono::seconds(_feature.getSecondsActionsBlock()) <= secs_since_epoch();
 
 } // ActionBase::done
 
@@ -125,11 +112,11 @@ VPackSlice const ActionBase::properties() const {
 void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & description) {
 
   _preAction = description;
-  _feature.preAction(description);
+  std::shared_ptr<Action> new_action = _feature.preAction(description);
 
   // shift from EXECUTING to WAITINGPRE ... EXECUTING is set to block other
   //  workers from picking it up
-  if (_preAction) {
+  if (_preAction && new_action->ok()) {
     setState(WAITINGPRE);
   } else {
     _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
@@ -155,12 +142,12 @@ void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& desc
 
   // preAction() sets up what we need
   _postAction = description;
-  _feature.postAction(description);
+  std::shared_ptr<Action> new_action = _feature.postAction(description);
 
   // shift from EXECUTING to WAITINGPOST ... EXECUTING is set to block other
   //  workers from picking it up
-  if (_postAction) {
-    setState(WAITINGPOST);
+  if (_postAction && new_action->ok()) {
+    new_action->setState(WAITINGPOST);
   } else {
     _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters for _postAction.");
   } // else
@@ -170,22 +157,23 @@ void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& desc
 
 void ActionBase::startStats() {
 
-// done when first  _actionStarted = std::chrono::system_clock::now();
+  _actionStarted = secs_since_epoch();
 
 } // ActionBase::startStats
 
 
+/// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
 
   ++_progress;
-  //_actionLastStat = std::chrono::system_clock::now();
+  _actionLastStat = secs_since_epoch();
 
 } // ActionBase::incStats
 
 
 void ActionBase::endStats() {
 
-  //_actionDone = std::chrono::system_clock::now();
+  _actionDone = secs_since_epoch();
 
 } // ActionBase::endStats
 
@@ -206,12 +194,12 @@ void ActionBase::toVelocyPack(VPackBuilder & builder) const {
   builder.add("id", VPackValue(_id));
   builder.add("state", VPackValue(_state));
   builder.add("progress", VPackValue(_progress));
-#if 0  /// hmm, several should be reported as duration instead of time_point
-  builder.add("created", VPackValue(timepointToString(_actionCreated.count())));
-  builder.add("started", VPackValue(_actionStarted));
-  builder.add("lastStat", VPackValue(_actionLastStat));
-  builder.add("done", VPackValue(_actionDone));
-#endif
+
+  builder.add("created", VPackValue(timepointToString(_actionCreated.load())));
+  builder.add("started", VPackValue(timepointToString(_actionStarted.load())));
+  builder.add("lastStat", VPackValue(timepointToString(_actionLastStat.load())));
+  builder.add("done", VPackValue(timepointToString(_actionDone.load())));
+
   builder.add("result", VPackValue(_result.errorNumber()));
 
   builder.add(VPackValue("description"));
@@ -226,11 +214,6 @@ VPackBuilder ActionBase::toVelocyPack() const {
   return builder;
 }
 
-
-arangodb::Result ActionBase::run(
-  std::chrono::duration<double> const& duration, bool& finished) {
-  return Result();
-}
 
 
 /**

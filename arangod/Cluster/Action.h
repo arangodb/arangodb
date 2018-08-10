@@ -73,9 +73,6 @@ public:
   /// @brief is object in a usable condition
   bool ok() const { return (nullptr != _action.get() && _action->ok()); };
 
-  arangodb::Result run(
-    std::chrono::duration<double> const& duration, bool& finished);
-
   /// @brief kill action with signal
   arangodb::Result kill(Signal const& signal);
 

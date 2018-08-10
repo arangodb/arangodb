@@ -140,12 +140,6 @@ void Action::endStats() {
   _action->endStats();
 }
 
-arangodb::Result Action::run(
-  std::chrono::duration<double> const& duration, bool& finished) {
-  TRI_ASSERT(_action != nullptr);
-  return _action->run(duration, finished);
-}
-
 void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(_action != nullptr);
   _action->toVelocyPack(builder);
