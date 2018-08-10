@@ -32,11 +32,10 @@ namespace arangodb {
 
 namespace graph {
 struct BaseOptions;
+class Graph;
 }
 
 namespace aql {
-
-class Graph;
 
 // @brief This is a pure virtual super-class for all AQL graph operations
 //        It does the generally required:
@@ -145,7 +144,7 @@ class GraphNode : public ExecutionNode {
   Variable const* _edgeOutVariable;
 
   /// @brief our graph...
-  Graph const* _graphObj;
+  graph::Graph const* _graphObj;
 
   /// @brief Temporary pseudo variable for the currently traversed object.
   Variable const* _tmpObjVariable;

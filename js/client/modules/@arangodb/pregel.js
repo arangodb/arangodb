@@ -60,7 +60,7 @@ var startExecution = function(algo, second, params) {
     message.params = params;
   }
 
-  var requestResult = db._connection.POST(API, JSON.stringify(message));
+  var requestResult = db._connection.POST(API, message);
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };

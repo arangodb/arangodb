@@ -60,7 +60,7 @@ function ReplicationApiSuite () {
     tearDown : function () {
       // avoid hanging tests! by canceling batches
       batchesToFree.forEach( function(id){
-          arango.DELETE_RAW("/_api/replication/batch/"+ id, "");
+          arango.DELETE_RAW("/_api/replication/batch/"+ id);
       });
 
       collection.drop();
@@ -80,7 +80,7 @@ function ReplicationApiSuite () {
       assertTrue(obj.hasOwnProperty("id"));
 
       // delete batch
-      result = arango.DELETE_RAW("/_api/replication/batch/"+ obj.id, "");
+      result = arango.DELETE_RAW("/_api/replication/batch/"+ obj.id);
       assertEqual(204, result.code);
 
     },
@@ -138,7 +138,7 @@ function ReplicationApiSuite () {
       assertEqual(400, result.code);
 
       // delete batch
-      result = arango.DELETE_RAW("/_api/replication/batch/"+ batchObj.id, "");
+      result = arango.DELETE_RAW("/_api/replication/batch/"+ batchObj.id);
       assertEqual(204, result.code);
 
       batchesToFree.pop();

@@ -172,11 +172,9 @@ function hasIResearch (db) {
             helper.switchUser(name, dbName);
           };
 
-        // FIXME: temporary OFF exact codes validation while expecting "Forbidden" everywhere
         const checkRESTCodeOnly = (e) => {
-          expect(e.code).to.be.oneOf([403, 500], "Expected to get forbidden or internal REST error code, but got another one");
-          // FIXME: uncomment to see unexpected codes
-          // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+          expect(e.code).to.be.oneOf([403], "Expected to get forbidden or internal REST error code, but got another one");
+          expect(e.errorNum).to.oneOf([errors.ERROR_FORBIDDEN.code, errors.ERROR_ARANGO_READ_ONLY.code], "Expected to get forbidden error number, but got another one");
         };
 
           describe('drop a', () => {
