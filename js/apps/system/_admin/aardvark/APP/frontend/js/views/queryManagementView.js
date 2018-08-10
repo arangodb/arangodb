@@ -39,6 +39,14 @@
       }, self.refreshRate);
     },
 
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     events: {
       'click #deleteSlowQueryHistory': 'deleteSlowQueryHistoryModal',
       'click #arangoQueryManagementTable .fa-minus-circle': 'deleteRunningQueryModal'
