@@ -2,15 +2,16 @@
 @startDocuBlock general_graph_get_http_examples
 @brief Get a graph from the graph module.
 
-@RESTHEADER{GET /_api/gharial/{graph-name}, Get a graph}
+@RESTHEADER{GET /_api/gharial/{graph}, Get a graph}
 
 @RESTDESCRIPTION
-Gets a graph from the collection *_graphs*.
-Returns the definition content of this graph.
+Selects information for a given graph.
+Will return the edge definitions as well as the orphan collections.
+Or returns a 404 if the graph does not exist.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name,string,required}
+@RESTURLPARAM{graph,string,required}
 The name of the graph.
 
 @RESTRETURNCODES
