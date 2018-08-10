@@ -7093,6 +7093,13 @@
                         "type": "boolean"
                     }, 
                     {
+                        "description": "Define if a presentation of the deleted document should\nbe returned within the response object.\n\n", 
+                        "in": "query", 
+                        "name": "returnOld", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
                         "description": "If the \"If-Match\" header is given, then it must contain exactly one Etag. The document is updated,\nif it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative\nyou can supply the Etag in an attribute rev in the URL.\n\n", 
                         "in": "header", 
                         "name": "if-match", 
@@ -7214,6 +7221,27 @@
                         "type": "boolean"
                     }, 
                     {
+                        "description": "Define if a presentation of the deleted document should\nbe returned within the response object.\n\n", 
+                        "in": "query", 
+                        "name": "returnOld", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if a presentation of the newly create\n\n", 
+                        "in": "query", 
+                        "name": "returnNew", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if values set to null should be stored. By default the key is not removed from the document.\n\n", 
+                        "in": "query", 
+                        "name": "keepNull", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
                         "description": "The body has to be a JSON object containing the attributes to be updated.\n\n", 
                         "in": "body", 
                         "name": "Json Request Body", 
@@ -7274,6 +7302,27 @@
                         "description": "Define if the request should wait until synced to disk.\n\n", 
                         "in": "query", 
                         "name": "waitForSync", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if values set to null should be stored. By default the key is not removed from the document.\n\n", 
+                        "in": "query", 
+                        "name": "keepNull", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if a presentation of the deleted document should\nbe returned within the response object.\n\n", 
+                        "in": "query", 
+                        "name": "returnOld", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if a presentation of the newly create\n\n", 
+                        "in": "query", 
+                        "name": "returnNew", 
                         "required": false, 
                         "type": "boolean"
                     }, 
@@ -7618,6 +7667,20 @@
                         "type": "boolean"
                     }, 
                     {
+                        "description": "Define if a presentation of the deleted document should\nbe returned within the response object.\n\n", 
+                        "in": "query", 
+                        "name": "returnOld", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if a presentation of the newly created document\nshould be returned within the response object.\n\n", 
+                        "in": "query", 
+                        "name": "returnNew", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
                         "description": "If the \"If-Match\" header is given, then it must contain exactly one Etag. The document is updated,\nif it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative\nyou can supply the Etag in an attribute rev in the URL.\n\n", 
                         "in": "header", 
                         "name": "if-match", 
@@ -7739,6 +7802,20 @@
                         "type": "boolean"
                     }, 
                     {
+                        "description": "Define if a presentation of the deleted document should\nbe returned within the response object.\n\n", 
+                        "in": "query", 
+                        "name": "returnOld", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if a presentation of the newly create\n\n", 
+                        "in": "query", 
+                        "name": "returnNew", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
                         "description": "If the \"If-Match\" header is given, then it must contain exactly one Etag. The document is updated,\nif it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative\nyou can supply the Etag in an attribute rev in the URL.\n\n", 
                         "in": "header", 
                         "name": "if-match", 
@@ -7808,6 +7885,27 @@
                         "description": "Define if the request should wait until synced to disk.\n\n", 
                         "in": "query", 
                         "name": "waitForSync", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if values set to null should be stored. By default the key is not removed from the document.\n\n", 
+                        "in": "query", 
+                        "name": "keepNull", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if a presentation of the deleted document should\nbe returned within the response object.\n\n", 
+                        "in": "query", 
+                        "name": "returnOld", 
+                        "required": false, 
+                        "type": "boolean"
+                    }, 
+                    {
+                        "description": "Define if a presentation of the newly create\n\n", 
+                        "in": "query", 
+                        "name": "returnNew", 
                         "required": false, 
                         "type": "boolean"
                     }, 

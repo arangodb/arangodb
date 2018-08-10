@@ -185,7 +185,7 @@ bool ConditionFinder::handleFilterCondition(
 
     // a variable used in a FILTER
     AstNode* var = const_cast<AstNode*>(it.second);
-    if (!var->canThrow() && var->isDeterministic() && var->isSimple()) {
+    if (var->isDeterministic() && var->isSimple()) {
       // replace all variables inside the FILTER condition with the
       // expressions represented by the variables
       var = it.second->clone(_plan->getAst());
@@ -201,8 +201,7 @@ bool ConditionFinder::handleFilterCondition(
               auto s = ExecutionNode::castTo<CalculationNode*>(setter);
               auto filterExpression = s->expression();
               AstNode* inNode = filterExpression->nodeForModification();
-              if (!inNode->canThrow() && inNode->isDeterministic() &&
-                  inNode->isSimple()) {
+              if (inNode->isDeterministic() && inNode->isSimple()) {
                 return inNode;
               }
             }

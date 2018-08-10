@@ -82,14 +82,6 @@ class Expression {
   /// @brief get the underlying AST node
   inline AstNode* nodeForModification() const { return _node; }
 
-  /// @brief whether or not the expression can throw an exception
-  inline bool canThrow() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-    return _canThrow;
-  }
-
   /// @brief whether or not the expression can safely run on a DB server
   inline bool canRunOnDBServer() {
     if (_type == UNPROCESSED) {
@@ -368,9 +360,6 @@ class Expression {
 
   /// @brief type of expression
   ExpressionType _type;
-
-  /// @brief whether or not the expression may throw a runtime exception
-  bool _canThrow;
 
   /// @brief whether or not the expression can be run safely on a DB server
   bool _canRunOnDBServer;

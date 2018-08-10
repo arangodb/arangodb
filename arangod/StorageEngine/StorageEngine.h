@@ -398,9 +398,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // AQL functions
   // -------------
 
-  /// @brief Add engine-specific AQL functions.
-  virtual void addAqlFunctions() {}
-
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules() {}
 
