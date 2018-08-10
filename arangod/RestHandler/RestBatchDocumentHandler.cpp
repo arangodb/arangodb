@@ -83,8 +83,11 @@ RestStatus arangodb::RestBatchDocumentHandler::execute() {
   auto maybeRequest = batch::createRequestFromSlice<batch::RemoveDoc>(_request->payload());
   if(maybeRequest.fail()){
     OperationResult res{maybeRequest};
+    LOG_DEVEL << res.errorMessage();
     vec.push_back(std::move(res));
-    generateBatchResponse(std::move(vec), &velocypack::Options::Defaults);
+    VPackOptions opts = velocypack::Options::Defaults;
+    opts.escapeUnicode = true;
+    generateBatchResponse(std::move(vec), &opts);
     return RestStatus::FAIL;
   }
 
