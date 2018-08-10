@@ -8,6 +8,8 @@ The creation of a graph requires the name of the graph and a
 definition of its edges.
 [See also edge definitions](../../Manual/Graphs/GeneralGraphs/Management.html#edge-definitions).
 
+@RESTQUERYPARAMETERS
+
 @RESTQUERYPARAM{waitForSync,bool,optional}
 define if the request should wait until everything is synced to disc.
 Will change the success response code.
@@ -30,7 +32,6 @@ Name of the edge collection.
 @RESTSTRUCT{from,post_api_gharial_create_edge_defs_relation,array,required,post_api_gharial_create_edge_defs_relation_from}
 List of vertex collection names.
 Edges in collection can only be inserted if their _from is in any of the collections here.
-
 
 @RESTSTRUCT{fromCollection,post_api_gharial_create_edge_defs_relation_from,string,required,}
 The name of a vertex collection
@@ -87,8 +88,9 @@ Returned if the request is in a wrong format.
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
 In order to create a graph you at least need to have the following privileges:
-1. `Administrate` access on the Database.
-2. `Read Only` access on every collection used within this graph.
+
+  1. `Administrate` access on the Database.
+  2. `Read Only` access on every collection used within this graph.
 
 @RESTRETURNCODE{409}
 Returned if there is a conflict storing the graph.  This can occur
