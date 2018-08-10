@@ -135,8 +135,6 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & desc
     _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
   } // else
 
-  return;
-
 } // ActionBase::createPreAction
 
 
@@ -167,16 +165,12 @@ void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& desc
     _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters for _postAction.");
   } // else
 
-  return;
-
 } // ActionBase::createPostAction
 
 
 void ActionBase::startStats() {
 
 // done when first  _actionStarted = std::chrono::system_clock::now();
-
-  return;
 
 } // ActionBase::startStats
 
@@ -186,16 +180,12 @@ void ActionBase::incStats() {
   ++_progress;
   //_actionLastStat = std::chrono::system_clock::now();
 
-  return;
-
 } // ActionBase::incStats
 
 
 void ActionBase::endStats() {
 
   //_actionDone = std::chrono::system_clock::now();
-
-  return;
 
 } // ActionBase::endStats
 
