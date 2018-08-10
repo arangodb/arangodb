@@ -127,16 +127,13 @@ cluster is down, or in a bad state, irrespective of the value of this setting.
 
 ### `spec.rocksdb.encryption.keySecretName`
 
-{% hint 'info' %}
-This feature is only available in the
-[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
-{% endhint %}
-
 This setting specifies the name of a Kubernetes `Secret` that contains
 an encryption key used for encrypting all data stored by ArangoDB servers.
 When an encryption key is used, encryption of the data in the cluster is enabled,
 without it encryption is disabled.
 The default value is empty.
+
+This requires the Enterprise version.
 
 The encryption key cannot be changed after the cluster has been created.
 
