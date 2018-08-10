@@ -73,10 +73,13 @@ function ReplicationApiSuite () {
 
     testCreateBatchId : function () {
       // create batch
-      var doc = {};
-      var result = arango.POST_RAW("/_api/replication/batch", JSON.stringify(doc));
+      let headers = { 
+        "content-type" : "application/json", 
+        "accept" : "application/json"
+      };
+      let result = arango.POST_RAW("/_api/replication/batch", '{}', headers);
       assertEqual(200, result.code);
-      var obj = JSON.parse(result.body);
+      let obj = JSON.parse(result.body);
       assertTrue(obj.hasOwnProperty("id"));
 
       // delete batch
@@ -91,8 +94,11 @@ function ReplicationApiSuite () {
 
     testKeys : function () {
       // create batch
-      var doc = {};
-      var result = arango.POST_RAW("/_api/replication/batch", JSON.stringify(doc));
+      let headers = { 
+        "content-type" : "application/json", 
+        "accept" : "application/json"
+      };
+      let result = arango.POST_RAW("/_api/replication/batch", '{}', headers);
       assertEqual(200, result.code);
       var batchObj = JSON.parse(result.body);
       assertTrue(batchObj.hasOwnProperty("id"));
@@ -100,7 +106,7 @@ function ReplicationApiSuite () {
 
       // create keys
       result = arango.POST_RAW("/_api/replication/keys?collection=" + cn + 
-                                   "&batchId=" + batchObj.id, JSON.stringify(doc));
+                                   "&batchId=" + batchObj.id, '{}', headers);
       assertEqual(200, result.code);
       var keysObj = JSON.parse(result.body);
       assertTrue(keysObj.hasOwnProperty("count"));
@@ -109,10 +115,7 @@ function ReplicationApiSuite () {
 
       // fetch keys
       result = arango.PUT_RAW("/_api/replication/keys/"+ batchObj.id +
-                              "?collection=" + cn +
-                              "&type=keys"
-                             ,JSON.stringify(doc)
-                             );
+                              "?collection=" + cn + "&type=keys", '{}', headers);
 
       assertEqual(200, result.code);
       keysObj = JSON.parse(result.body);
@@ -122,9 +125,7 @@ function ReplicationApiSuite () {
                               "?collection=" + cn +
                               "&type=keys" +
                               "&chunk=" + Math.pow(2,60) +
-                              "&chunkSize=" + Math.pow(2,60)
-                             ,JSON.stringify(doc)
-                             );
+                              "&chunkSize=" + Math.pow(2,60), '{}', headers);
       assertEqual(400, result.code);
 
       // iterator should be invalid
@@ -132,13 +133,11 @@ function ReplicationApiSuite () {
                               "?collection=" + cn +
                               "&type=keys" +
                               "&chunk=" + 5 +
-                              "&chunkSize=" + 2000
-                             ,JSON.stringify(doc)
-                             );
+                              "&chunkSize=" + 2000, '{}', headers);
       assertEqual(400, result.code);
 
       // delete batch
-      result = arango.DELETE_RAW("/_api/replication/batch/"+ batchObj.id);
+      result = arango.DELETE_RAW("/_api/replication/batch/" + batchObj.id);
       assertEqual(204, result.code);
 
       batchesToFree.pop();

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, Buffer, VPACK_TO_V8, V8_TO_VPACK */
+/*global arango, VPACK_TO_V8, V8_TO_VPACK */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test request module
@@ -32,20 +32,6 @@
 
 var jsunity = require('jsunity');
 var expect = require('chai').expect;
-var request = require('@arangodb/request');
-var url = require('url');
-var querystring = require('querystring');
-var qs = require('qs');
-
-var buildUrl = function (append, base) {
-  base = base === false ? '' : '/_admin/echo';
-  append = append || '';
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + base + append;
-};
-
-var buildUrlBroken = function (append) {
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_not-there' + append;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -69,11 +55,8 @@ function versionJsonJson() {
     'accept'      : 'application/json'
   };
 
-  var res = request.post(buildUrl(path, false), {headers : headers, timeout: 300});
+  var res = arango.POST_RAW(path, "", headers);
 
-  expect(res).to.be.an.instanceof(request.Response);
-  expect(res.body).to.be.a('string');
-  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   expect(String(res.headers['content-type'])).to.have.string("application/json");
 
   var obj = JSON.parse(res.body);
@@ -95,11 +78,9 @@ function versionVpackJson() {
     'accept'      : 'application/json'
   };
 
-  var res = request.post(buildUrl(path, false), {headers : headers, timeout: 300});
+  var res = arango.POST_RAW(path, "", headers);
 
-  expect(res).to.be.an.instanceof(request.Response);
   expect(res.body).to.be.a('string');
-  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   expect(String(res.headers['content-type'])).to.have.string("application/json");
 
   var obj = JSON.parse(res.body);
@@ -120,11 +101,8 @@ function versionJsonVpack () {
     'accept'      : 'application/x-velocypack'
   };
 
-  var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
+  var res = arango.POST_RAW(path, "", headers);
 
-  expect(res).to.be.an.instanceof(request.Response);
-  expect(res.body).to.be.a('string');
-  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 
   var obj = VPACK_TO_V8(res.body);
@@ -145,11 +123,8 @@ function versionVpackVpack () {
     'accept'      : 'application/x-velocypack'
   };
 
-  var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
+  var res = arango.POST_RAW(path, "", headers);
 
-  expect(res).to.be.an.instanceof(request.Response);
-  expect(res.body).to.be.a('string');
-  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 
   var obj = VPACK_TO_V8(res.body);
@@ -174,11 +149,11 @@ function echoVpackVpack () {
 
   var obj = { "server" : "arango" , "version" : "3.0.devel" };
   var body = V8_TO_VPACK(obj);
-  var res = request.post(buildUrl(path),{ headers : headers, body : body, timeout: 300});
+  
+  var res = arango.POST_RAW(path, body, headers);
 
-  expect(res).to.be.an.instanceof(request.Response);
   expect(res.body).to.be.a('string');
-  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+  expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
