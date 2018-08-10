@@ -92,10 +92,6 @@ private:
       _handler(std::move(handler)), _due(clock::now() + delay), _cancelled(false) {}
 
     void cancel() { _cancelled = true; };
-    bool operator <(const DelayedWorkItem & rhs) const
-    {
-      return _due < rhs._due;
-    }
   };
 
   class WorkGuard {
@@ -154,9 +150,17 @@ public:
   // For tasks above 50ms the Cron Thread is woken up to potentially update its sleep time, which
   // could now be shorter than before.
 
+  struct compare {
+    bool operator()(std::shared_ptr<DelayedWorkItem> const &left,
+      std::shared_ptr<DelayedWorkItem> const &right) {
+      // Reverse order, because std::priority_queue is a max heap.
+      return right->_due < left->_due;
+    }
+  };
+
   std::priority_queue<std::shared_ptr<DelayedWorkItem>,
                       std::vector<std::shared_ptr<DelayedWorkItem>>,
-                      std::greater<std::shared_ptr<DelayedWorkItem>>> _priorityQueue;
+                      compare> _priorityQueue;
   std::mutex _priorityQueueMutex;
   std::condition_variable _conditionCron;
 

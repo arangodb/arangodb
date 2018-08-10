@@ -110,11 +110,16 @@ void Scheduler::shutdown () {
 
 void Scheduler::runCron() {
 
+  std::unique_lock<std::mutex> guard(_priorityQueueMutex);
+
+  uint64_t tick = 0;
+
   while (!isStopping()) {
+
+    tick++;
 
     auto now = clock::now();
 
-    std::unique_lock<std::mutex> guard(_priorityQueueMutex);
 
     clock::duration sleepTime = std::chrono::milliseconds(50);
 
@@ -127,7 +132,7 @@ void Scheduler::runCron() {
       } else {
         auto then = (top->_due - now);
 
-        sleepTime = sleepTime > then ? then : sleepTime;
+        sleepTime = (sleepTime > then ? then : sleepTime);
         break ;
       }
     }
@@ -147,8 +152,8 @@ Scheduler::WorkHandle Scheduler::postDelay(clock::duration delay,
   }
 
   std::unique_lock<std::mutex> guard(_priorityQueueMutex);
-
   auto handle = std::make_shared<Scheduler::DelayedWorkItem>(callback, delay);
+
   _priorityQueue.push(handle);
 
   if (delay < std::chrono::milliseconds(50)) {

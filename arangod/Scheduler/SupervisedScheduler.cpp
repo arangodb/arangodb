@@ -209,12 +209,6 @@ void SupervisedScheduler::shutdown () {
   Scheduler::shutdown();
 }
 
-SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler &scheduler) :
-  _queueRetryCount(100),
-  _sleepTimeout_ms(100),
-  _stop(false),
-  _thread(new SupervisedSchedulerWorkerThread(scheduler)) {}
-
 void SupervisedScheduler::runWorker()
 {
   uint64_t id;
@@ -227,6 +221,9 @@ void SupervisedScheduler::runWorker()
   }
 
   auto &state = _workerStates[id];
+
+  state._sleepTimeout_ms = 20 * (id + 1);
+  state._queueRetryCount = (512 >> id) + 3;
 
   while (true) {
     std::unique_ptr<WorkItem> work = getWork(state);
@@ -380,6 +377,11 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler::WorkerState &
   _stop(that._stop.load()),
   _thread(std::move(that._thread)) {}
 
+SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler &scheduler) :
+  _queueRetryCount(100),
+  _sleepTimeout_ms(100),
+  _stop(false),
+  _thread(new SupervisedSchedulerWorkerThread(scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() {
   return _thread->start();
