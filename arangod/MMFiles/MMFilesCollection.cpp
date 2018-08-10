@@ -683,11 +683,14 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile,
     std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
     std::string filename =
         arangodb::basics::FileUtils::buildFilename(path(), dname);
+      
+    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closing and renaming journal file '"
+                                                  << datafile->getName() << "'";
 
     res = datafile->rename(filename);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed file '"
+      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed and renamed journal file '"
                                                     << datafile->getName() << "'";
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
