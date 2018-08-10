@@ -254,14 +254,11 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    wait(keySpaceId, name);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                   } catch (e) {
                     checkError(e);
-                    return;
-                  } final {
-                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                   }
-                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                 }
               });
 
