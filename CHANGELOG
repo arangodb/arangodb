@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed some web ui action events related to Running Queries view and Slow
+  Queries History view
+
 * fixed issue #6106: Arithmetic operator type casting documentation incorrect
 
 * The arangosh now supports the velocystream transport protocol via the schemas 
