@@ -5,7 +5,7 @@
 @RESTHEADER{GET /_api/gharial, List all graphs}
 
 @RESTDESCRIPTION
-Lists all graph names stored in this database.
+Lists all graphs stored in this database.
 
 @RESTRETURNCODES
 
