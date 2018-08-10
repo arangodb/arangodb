@@ -1,4 +1,5 @@
-### ArangoSearch Scorers
+ArangoSearch Scorers
+====================
 
 ArangoSearch accesses scorers directly by their internal names. The
 name (in upper-case) of the scorer is the function name to be used in the
@@ -31,12 +32,12 @@ Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaRank'.
 
 The user is then immediately able to run queries with the said scorer, e.g.
 
-    SORT DNARANK(doc, 123, 456, "abc", { "def", "ghi" })
+    SORT DNARANK(doc, 123, 456, "abc", { "def": "ghi" })
 
 The function arguments will then be serialized into a JSON representation:
 
 ```json
-[ 123, 456, "abc", { "def", "ghi" } ]
+[ 123, 456, "abc", { "def": "ghi" } ]
 ```
 
 and passed to the scorer implementation.
@@ -44,13 +45,8 @@ and passed to the scorer implementation.
 Runtime-plugging functionality for scores is not avaiable in ArangoDB at this
 point in time, so ArangoDB comes with a few default-initialized scores:
 
-- *attribute-name*
-  order results based on the value of **attribute-name**
+- *attribute-name*: order results based on the value of **attribute-name**
 
-- BM25
-  order results based on the
-  [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
+- BM25: order results based on the [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
 
-- TFIDF
-  order results based on the
-  [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF)
+- TFIDF: order results based on the [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF)
