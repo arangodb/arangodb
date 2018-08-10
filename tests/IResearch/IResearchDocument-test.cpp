@@ -173,8 +173,8 @@ struct IResearchDocumentSetup {
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
-    analyzers->emplace("iresearch-document-empty", "iresearch-document-empty", "en"); // cache analyzer
-    analyzers->emplace("iresearch-document-invalid", "iresearch-document-invalid", "en"); // cache analyzer
+    analyzers->emplace("iresearch-document-empty", "iresearch-document-empty", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
+    analyzers->emplace("iresearch-document-invalid", "iresearch-document-invalid", "en", irs::flags{ TestAttribute::type() }); // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -699,7 +699,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
     auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(expected_analyzer->attributes().features() == field.features());
+    CHECK(irs::flags({TestAttribute::type()}) == field.features());
   }
 
   ++it;
@@ -1356,8 +1356,8 @@ SECTION("FieldIterator_nullptr_analyzer") {
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
 
-    analyzers.emplace("empty", "iresearch-document-empty", "en");
-    analyzers.emplace("invalid", "iresearch-document-invalid", "en");
+    analyzers.emplace("empty", "iresearch-document-empty", "en", irs::flags{TestAttribute::type()});
+    analyzers.emplace("invalid", "iresearch-document-invalid", "en", irs::flags{TestAttribute::type()});
   }
 
   // last analyzer invalid

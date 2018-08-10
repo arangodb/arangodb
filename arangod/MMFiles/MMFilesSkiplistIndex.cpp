@@ -510,8 +510,7 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(
     bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
     : IndexIterator(collection, trx, index),
       _skiplistIndex(skiplist),
-      _mmdr(mmdr),
-      _context(trx, collection, _mmdr, index->fields().size()),
+      _context(trx, collection, mmdr, index->fields().size()),
       _numPaths(numPaths),
       _reverse(reverse),
       _cursor(nullptr),
@@ -826,13 +825,12 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
       innerRes = TRI_ERROR_INTERNAL;
     }
 
-    auto cleanup = [this, &elements] {
+    auto guard = scopeGuard([this, &elements] {
       for (auto& element : elements) {
         // free all elements to prevent leak
         _allocator->deallocate(element);
       }
-    };
-    TRI_DEFER(cleanup());
+    });
 
     if (innerRes != TRI_ERROR_NO_ERROR) {
       return IndexResult(innerRes, this);
@@ -841,13 +839,11 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
     auto found = _skiplistIndex->rightLookup(&context, elements[badIndex]);
     TRI_ASSERT(found);
     LocalDocumentId rev(found->document()->localDocumentId());
-    ManagedDocumentResult mmdr;
+    std::string existingId;
 
-    _collection.getPhysical()->readDocument(trx, rev, mmdr);
-
-    std::string existingId(VPackSlice(mmdr.vpack())
-                            .get(StaticStrings::KeyString)
-                            .copyString());
+    _collection.getPhysical()->readDocumentWithCallback(trx, rev, [&existingId](LocalDocumentId const&, VPackSlice doc) {
+      existingId = doc.get(StaticStrings::KeyString).copyString();
+    });
 
     if (mode == OperationMode::internal) {
       return IndexResult(res, std::move(existingId));

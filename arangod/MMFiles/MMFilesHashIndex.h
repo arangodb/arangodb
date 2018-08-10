@@ -54,11 +54,11 @@ struct MMFilesHashIndexHelper {
   MMFilesHashIndexHelper(size_t n, bool allowExpansion)
     : _numFields(n), _allowExpansion(allowExpansion) {}
 
-  static inline uint64_t HashKey(void*, VPackSlice const* key) {
+  static inline uint64_t HashKey(VPackSlice const* key) {
     return MMFilesHashIndexElement::hash(*key);
   }
 
-  static inline uint64_t HashElement(void*, MMFilesHashIndexElement const* element, bool byKey) {
+  static inline uint64_t HashElement(MMFilesHashIndexElement const* element, bool byKey) {
     uint64_t hash = element->hash();
 
     if (byKey) {

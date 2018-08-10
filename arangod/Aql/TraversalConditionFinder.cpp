@@ -486,9 +486,9 @@ TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
       _planAltered(planAltered) {}
 
 bool TraversalConditionFinder::before(ExecutionNode* en) {
-  if (!_condition->isEmpty() && en->canThrow()) {
+  if (!_condition->isEmpty() && !en->isDeterministic()) {
     // we already found a FILTER and
-    // something that can throw is not safe to optimize
+    // something that is not deterministic is not safe to optimize
 
     _filterVariables.clear();
     // What about _condition?

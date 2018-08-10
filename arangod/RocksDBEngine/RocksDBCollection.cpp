@@ -77,9 +77,9 @@ using namespace arangodb;
 // back on later in its dtor 
 // this is just a performance optimization for small transactions
 struct IndexingDisabler {
-  IndexingDisabler(RocksDBMethods* mthd, bool disableIndexing) 
-      : mthd(mthd), disableIndexing(disableIndexing) {
-    if (disableIndexing) {
+  IndexingDisabler(RocksDBMethods* mthd, bool disable) 
+      : mthd(mthd), disableIndexing(disable) {
+    if (disable) {
       disableIndexing = mthd->DisableIndexing();
     }
   }
@@ -382,13 +382,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   // We are sure that we do not have an index of this type.
-  // We also hold the lock.
-  // Create it
+  // We also hold the lock. Create it
 
   idx = engine->indexFactory().prepareIndexFromSlice(
     info, true, _logicalCollection, false
   );
-  TRI_ASSERT(idx != nullptr);
+  if (!idx) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  }
 
   int res = saveIndex(trx, idx);
 
@@ -606,13 +607,6 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
   );
 }
 
-std::unique_ptr<IndexIterator> RocksDBCollection::getSortedAllIterator(
-    transaction::Methods* trx) const {
-  return std::unique_ptr<RocksDBSortedAllIterator>(
-    new RocksDBSortedAllIterator(&_logicalCollection, trx, primaryIndex())
-  );
-}
-
 void RocksDBCollection::invokeOnAllElements(
     transaction::Methods* trx,
     std::function<bool(LocalDocumentId const&)> callback) {
@@ -642,7 +636,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
   rocksdb::Comparator const* cmp =
       RocksDBColumnFamily::documents()->GetComparator();
-  rocksdb::ReadOptions ro = mthd->readOptions();
+  rocksdb::ReadOptions ro = mthd->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
 
@@ -729,6 +723,30 @@ LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
                                              VPackSlice const& key) const {
   TRI_ASSERT(key.isString());
   return primaryIndex()->lookupKey(trx, StringRef(key));
+}
+
+bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
+                                       VPackSlice const& key,
+                                       TRI_voc_rid_t& revisionId) const {
+  TRI_ASSERT(key.isString());
+  LocalDocumentId documentId;
+  revisionId = 0;
+  // lookup the revision id in the primary index
+  if (!primaryIndex()->lookupRevision(trx, StringRef(key), documentId, revisionId)) {
+    // document not found
+    TRI_ASSERT(revisionId == 0);
+    return false;
+  }
+
+  // document found, but revisionId may not have been present in the primary index
+  // this can happen for "older" collections
+  TRI_ASSERT(documentId.isSet());
+
+  // now look up the revision id in the actual document data
+        
+  return readDocumentWithCallback(trx, documentId, [&revisionId](LocalDocumentId const&, VPackSlice doc) {
+    revisionId = transaction::helpers::extractRevFromDocument(doc);
+  });
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx,
@@ -1140,6 +1158,22 @@ void RocksDBCollection::figuresSpecific(
           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
   builder->add("documentsSize", VPackValue(out));
+  bool cacheInUse = useCache();
+  builder->add("cacheInUse", VPackValue(cacheInUse));
+  if (cacheInUse) {
+    builder->add("cacheSize", VPackValue(_cache->size()));
+    builder->add("cacheUsage", VPackValue(_cache->usage()));
+    auto hitRates = _cache->hitRates();
+    double rate = hitRates.first;
+    rate = std::isnan(rate) ? 0.0 : rate;
+    builder->add("cacheLifeTimeHitRate", VPackValue(rate));
+    rate = hitRates.second;
+    rate = std::isnan(rate) ? 0.0 : rate;
+    builder->add("cacheWindowedHitRate", VPackValue(rate));
+  } else {
+    builder->add("cacheSize", VPackValue(0));
+    builder->add("cacheUsage", VPackValue(0));
+  }
 }
 
 void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
@@ -1240,24 +1274,21 @@ arangodb::Result RocksDBCollection::fillIndexes(
   }
 
   // we will need to remove index elements created before an error
-  // occured, this needs to happen since we are non transactional
+  // occurred, this needs to happen since we are non transactional
   if (!res.ok()) {
     it->reset();
     batch.Clear();
 
-    ManagedDocumentResult mmdr;
-
     arangodb::Result res2;  // do not overwrite original error
     auto removeCb = [&](LocalDocumentId token) {
-      if (res2.ok() && numDocsWritten > 0 &&
-          this->readDocument(trx, token, mmdr)) {
-        // we need to remove already inserted documents up to numDocsWritten
-        res2 = ridx->removeInternal(trx, &batched, mmdr.localDocumentId(),
-                                    VPackSlice(mmdr.vpack()),
-                                    Index::OperationMode::rollback);
-        if (res2.ok()) {
-          numDocsWritten--;
-        }
+      if (res2.ok() && numDocsWritten > 0) {
+        readDocumentWithCallback(trx, token, [&](LocalDocumentId const& documentId, VPackSlice doc) {
+          // we need to remove already inserted documents up to numDocsWritten
+          res2 = ridx->removeInternal(trx, &batched, documentId, doc, Index::OperationMode::rollback);
+          if (res2.ok()) {
+            numDocsWritten--;
+          }
+        });
       }
     };
 
@@ -1337,7 +1368,7 @@ Result RocksDBCollection::removeDocument(
 
   /*LOG_TOPIC(ERR, Logger::FIXME)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+      << " seq: " << mthd->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
   Result resInner;
@@ -1474,7 +1505,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
     mdr.reset();
   }
@@ -1537,7 +1568,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
   }
   return res;

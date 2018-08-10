@@ -33,8 +33,8 @@ namespace iresearch {
 arangodb::LogicalDataSource::Type const& dataSourceType();
 arangodb::LogTopic& logTopic();
 
-static auto& DATA_SOURCE_TYPE = dataSourceType();
-static auto& TOPIC = logTopic();
+ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
+ADB_IGNORE_UNUSED static auto& TOPIC = logTopic();
 
 struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////

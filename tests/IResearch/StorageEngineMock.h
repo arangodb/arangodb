@@ -142,7 +142,6 @@ class StorageEngineMock: public arangodb::StorageEngine {
   std::atomic<size_t> vocbaseCount;
 
   StorageEngineMock();
-  virtual void addAqlFunctions() override;
   virtual void addOptimizerRules() override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;

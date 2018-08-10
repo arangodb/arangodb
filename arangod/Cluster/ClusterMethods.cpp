@@ -344,7 +344,7 @@ static int distributeBabyOnShards(
     temp.openObject();
     temp.add(StaticStrings::KeyString, value);
     temp.close();
-  
+
     error = collinfo->getResponsibleShard(temp.slice(), false, shardID, usesDefaultShardingAttributes);
   } else {
     error = collinfo->getResponsibleShard(value, false, shardID, usesDefaultShardingAttributes);
@@ -410,6 +410,11 @@ static int distributeBabyOnShards(
       _key = collinfo->keyGenerator()->generate();
     } else {
       userSpecifiedKey = true;
+      if (keySlice.isString()) {
+        VPackValueLength l;
+        char const* p = keySlice.getString(l);
+        collinfo->keyGenerator()->track(p, l);
+      }
     }
 
     // Now find the responsible shard:
@@ -586,7 +591,7 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
 
   // We need to replace the distribute with the cid.
   col->distributeShardsLike(cidString, other->shardingInfo());
-  
+
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
   }
@@ -2463,7 +2468,7 @@ int modifyDocumentOnCoordinator(
           "shard:" + shard, reqType,
           baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
           ::CreateNoLockHeader(trx, shard));
-          
+
     }
   }
 

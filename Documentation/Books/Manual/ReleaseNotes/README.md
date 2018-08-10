@@ -49,20 +49,12 @@ Additional changelogs for tools not included in the main repository:
 - [ArangoDB Starter](https://github.com/arangodb-helper/arangodb/blob/master/CHANGELOG.md)
 - [ArangoSync](https://github.com/arangodb/arangosync/blob/master/CHANGELOG)
 
-Known Issues
-------------
-
-For a list of known issues, please refer to one of the following sections:
-
-- [Known Issues in 3.2](KnownIssues32.md)
-
-
 Incompatible changes
 --------------------
 
 For a list of incompatible changes, please refer to one of the following sections.
-Also see [Upgrading](../Upgrading/README.md) in the 
-Administration chapter.
+Also see [Version Specific Upgrade Information](../Upgrading/VersionSpecific/README.md)
+in the _Upgrading_ chapter.
 
 - Incompatible changes in 3.x:
   [3.4](UpgradingChanges34.md),
@@ -77,3 +69,10 @@ Administration chapter.
   [2.5](UpgradingChanges25.md),
   [2.4](UpgradingChanges24.md),
   [2.3](UpgradingChanges23.md)
+
+Known Issues
+------------
+
+For a list of known issues, please refer to one of the following sections:
+
+- [Known Issues in 3.2](KnownIssues32.md)

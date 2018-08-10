@@ -683,11 +683,14 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile,
     std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
     std::string filename =
         arangodb::basics::FileUtils::buildFilename(path(), dname);
+      
+    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closing and renaming journal file '"
+                                                  << datafile->getName() << "'";
 
     res = datafile->rename(filename);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed file '"
+      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed and renamed journal file '"
                                                     << datafile->getName() << "'";
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
@@ -2114,7 +2117,9 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   idx = engine->indexFactory().prepareIndexFromSlice(
     info, true, _logicalCollection, false
   );
-  TRI_ASSERT(idx != nullptr);
+  if (!idx) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  }
 
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index

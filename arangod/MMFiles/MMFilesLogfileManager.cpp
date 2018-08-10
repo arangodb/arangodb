@@ -1305,8 +1305,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType i
 
 // get a logfile for writing. this may return nullptr
 int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
-                                        MMFilesWalLogfile::StatusType& status,
-                                        MMFilesWalLogfile*& result) {
+                                               MMFilesWalLogfile::StatusType& status,
+                                               MMFilesWalLogfile*& result) {
   // always initialize the result
   result = nullptr;
 

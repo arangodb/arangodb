@@ -42,17 +42,8 @@ function runSetup () {
   db._query("FOR i IN 1..10000 INSERT { value: i, modified: false } INTO UnitTestsRecovery");
 
   try {
-    db._executeTransaction({
-      intermediateCommitCount: 1000,
-      collections: {
-        write: 'UnitTestsRecovery'
-      },
-      action: function () {
-        var db = require('@arangodb').db;
-        db._query("FOR doc IN UnitTestsRecovery UPDATE doc WITH { modified: true } INTO UnitTestsRecovery");
-        fail();
-      }
-    });
+    db._query("FOR doc IN UnitTestsRecovery UPDATE doc WITH { modified: true } INTO UnitTestsRecovery", 
+    {}, { intermediateCommitCount: 1000});
   } catch (err) {
     // intentionally fail
   }

@@ -86,7 +86,7 @@ class IndexFactory {
     IndexNormalizer const& normalizer
   );
 
-  Result enhanceIndexDefinition(
+  virtual Result enhanceIndexDefinition(
     velocypack::Slice const definition,
     velocypack::Builder& normalized,
     bool isCreation,
