@@ -115,7 +115,8 @@ public:
   };
 
   /// @brief _queries, the actual map of maps for the registry
-  std::unordered_map<std::string, std::unordered_map<QueryId, QueryInfo*>>
+  /// maps from vocbase name to list queries
+  std::unordered_map<std::string, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
       _queries;
 
   /// @brief _lock, the read/write lock for access

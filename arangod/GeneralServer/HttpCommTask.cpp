@@ -595,7 +595,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
 
     std::string const& body = request->body();
 
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE)) {
+    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS)) {
       LOG_TOPIC(TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";

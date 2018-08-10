@@ -35,8 +35,9 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Basics/files.h"
+#include "Sharding/ShardingFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -85,6 +86,7 @@ struct IResearchLinkSetup {
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(new arangodb::ShardingFeature(&server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
@@ -229,8 +231,8 @@ SECTION("test_defaults") {
     auto slice = builder->slice();
     CHECK((
       slice.hasKey("view")
-      && slice.get("view").isNumber()
-      && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+      && slice.get("view").isString()
+      && logicalView->guid() == slice.get("view").copyString()
       && slice.hasKey("figures")
       && slice.get("figures").isObject()
       && slice.get("figures").hasKey("memory")
@@ -282,8 +284,8 @@ SECTION("test_defaults") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -299,8 +301,8 @@ SECTION("test_defaults") {
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -375,7 +377,7 @@ SECTION("test_init") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 101 }");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 43 }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 43, \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 101 ] } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 43, \"type\": \"arangosearch\", \"collections\": [ 101 ] }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
@@ -460,7 +462,9 @@ SECTION("test_drop") {
       CHECK((actual.empty()));
     }
 
+    CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
     CHECK((TRI_ERROR_NO_ERROR == link0->drop()));
+    CHECK((false == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
 
     // collection not in view after
     {
@@ -540,7 +544,9 @@ SECTION("test_unload") {
       CHECK((actual.empty()));
     }
 
+    CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get()) == *logicalView)));
     link->unload();
+    CHECK((false == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get()) == *logicalView)));
 
     // collection in view after unload
     {

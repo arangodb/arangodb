@@ -28,38 +28,45 @@
 #error use <Basics/Common.h>
 #endif
 
-/// @brief warn if return value is unused
+// warn if return value is unused
 #if defined(__GNUC__) || defined(__GNUG__)
-#define TRI_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#define ADB_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #elif defined(__clang__) 
-#define TRI_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#define ADB_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #else
-#define TRI_WARN_UNUSED_RESULT /* unused */
+#define ADB_WARN_UNUSED_RESULT /* unused */
 #endif
 
-/// @brief unreachable code marker
+// suppress unused variable warning
+#if defined(__GNUC__)
+#define ADB_IGNORE_UNUSED __attribute__((unused))
+#else
+#define ADB_IGNORE_UNUSED /* unused */
+#endif
+
+// unreachable code marker
 #if defined(_MSC_VER)
-#define TRI_UNREACHABLE __assume(false)
+#define ADB_UNREACHABLE __assume(false)
 #elif defined(__GNUC__) || defined(__GNUG__)
-#define TRI_UNREACHABLE __builtin_unreachable()
+#define ADB_UNREACHABLE __builtin_unreachable()
 #elif defined(__clang__)
-#define TRI_UNREACHABLE __builtin_unreachable()
+#define ADB_UNREACHABLE __builtin_unreachable()
 #else
-#define TRI_UNREACHABLE TRI_ASSERT(false); std::abort()
+#define ADB_UNREACHABLE TRI_ASSERT(false); std::abort()
 #endif
 
-/// @brief likely/unlikely branch indicator
-/// macro definitions similar to the ones at
-/// https://kernelnewbies.org/FAQ/LikelyUnlikely
+// likely/unlikely branch indicator
+// macro definitions similar to the ones at
+// https://kernelnewbies.org/FAQ/LikelyUnlikely
 #if defined(__GNUC__) || defined(__GNUG__)
-#define TRI_LIKELY(v) __builtin_expect (!!(v), 1)
-#define TRI_UNLIKELY(v) __builtin_expect (!!(v), 0)
+#define ADB_LIKELY(v) __builtin_expect (!!(v), 1)
+#define ADB_UNLIKELY(v) __builtin_expect (!!(v), 0)
 #else
-#define TRI_LIKELY(v) v
-#define TRI_UNLIKELY(v) v
+#define ADB_LIKELY(v) v
+#define ADB_UNLIKELY(v) v
 #endif
 
-/// @brief sizetint_t
+// sizetint_t
 #if defined(TRI_OVERLOAD_FUNCS_SIZE_T)
 #if TRI_SIZEOF_SIZE_T == 8
 #define sizetint_t uint64_t

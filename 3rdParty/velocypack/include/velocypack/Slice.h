@@ -110,6 +110,9 @@ class Slice {
   // creates a slice of type Smallint(0)
   static constexpr Slice zeroSlice() noexcept { return Slice("\x30"); }
   
+  // creates a slice of type String, empty
+  static constexpr Slice emptyStringSlice() noexcept { return Slice("\x40"); }
+  
   // creates a slice of type Array, empty
   static constexpr Slice emptyArraySlice() noexcept { return Slice("\x01"); }
   

@@ -60,8 +60,7 @@ MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx, index),
       _index(indexImpl),
-      _mmdr(mmdr),
-      _context(trx, collection, _mmdr, index->fields().size()),
+      _context(trx, collection, mmdr, index->fields().size()),
       _keys(std::move(keys)),
       _iterator(_keys->slice()),
       _posInBuffer(0),
@@ -188,16 +187,15 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(
                                                   false)}}),
             false, false) {
   TRI_ASSERT(iid != 0);
-  size_t indexBuckets = 1;
   size_t initialSize = 64;
   auto physical = static_cast<MMFilesCollection*>(collection.getPhysical());
-    TRI_ASSERT(physical != nullptr);
-    indexBuckets = static_cast<size_t>(physical->indexBuckets());
+  TRI_ASSERT(physical != nullptr);
+  size_t indexBuckets = static_cast<size_t>(physical->indexBuckets());
 
   if (collection.isAStub()) {
-      // in order to reduce memory usage
-      indexBuckets = 1;
-      initialSize = 4;
+    // in order to reduce memory usage
+    indexBuckets = 1;
+    initialSize = 4;
   }
 
   auto context = [this]() -> std::string { return this->context(); };

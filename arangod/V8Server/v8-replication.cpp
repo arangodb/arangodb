@@ -214,7 +214,7 @@ static void SynchronizeReplication(
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  std::unique_ptr<InitialSyncer> syncer;
+  std::shared_ptr<InitialSyncer> syncer;
 
   if (applierType == APPLIER_DATABASE) { 
     // database-specific synchronization
@@ -236,7 +236,7 @@ static void SynchronizeReplication(
     if (r.fail()) {
       LOG_TOPIC(ERR, Logger::REPLICATION) << "initial sync failed for database '" << vocbase.name() << "': " << r.errorMessage();
       TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() +
-                                     ". last progress message was '" + syncer->progress() + "'");
+                                     ". last progress message was: '" + syncer->progress() + "'");
     }
 
     if (keepBarrier) {
@@ -265,11 +265,11 @@ static void SynchronizeReplication(
 
     result->Set(TRI_V8_ASCII_STRING(isolate, "collections"), collections);
   } catch (arangodb::basics::Exception const& ex) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer->progress() + "'");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was: '" + syncer->progress() + "'");
   } catch (std::exception const& ex) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer->progress() + "'");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was: '" + syncer->progress() + "'");
   } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: unknown exception. last progress message was '") + syncer->progress() + "'");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: unknown exception. last progress message was: '") + syncer->progress() + "'");
   }
 
   // Now check forSynchronousReplication flag and tell ClusterInfo

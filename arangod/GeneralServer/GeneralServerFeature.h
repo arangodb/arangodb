@@ -118,7 +118,9 @@ class GeneralServerFeature final
  private:
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
-  std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
+  std::unique_ptr<
+      std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>>
+      _combinedRegistries;
   std::vector<rest::GeneralServer*> _servers;
   uint64_t _numIoThreads;
 };

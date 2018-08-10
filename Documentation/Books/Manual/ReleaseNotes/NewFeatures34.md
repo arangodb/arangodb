@@ -175,7 +175,7 @@ to RocksDB collections, so it should be used with extreme care.
 
 ### RocksDB library upgrade
 
-The version of the bundled RocksDB library was upgraded from 5.9 to 5.14.2.
+The version of the bundled RocksDB library was upgraded from 5.9 to 5.15.
 
 
 Collection and document operations
@@ -409,6 +409,14 @@ except the meta data files such as `ENGINE`, `LOCK`, `SERVER`, `UUID` and `VERSI
 And as no files need to be read on coordinator startup except these mentioned
 files, it also reduces the possibility of data corruption on coordinator nodes.
 
+### `DBSERVER` role as alias of `PRIMARY`
+
+When starting a _DBServer_, the value `DBSERVER` can now be specified (as alias of
+`PRIMARY`) in the option `--cluster.my-role`. The value `PRIMARY` is still accepted.
+
+All REST APIs that currently return "PRIMARY" as _role_, will continue to return
+"PRIMARY".
+
 
 AQL
 ---
@@ -427,6 +435,9 @@ functions:
 * `db._queryProfile()` will run the query, collect the runtime costs of each component
   of the query, and finally show the query's execution plan with actual runtime information.
   This is very useful for debugging AQL query performance and optimizing queries.
+
+For more information please refer to the [Query Profiling](../../AQL/ExecutionAndPerformance/QueryProfiler.html)
+page.
 
 ### Revised cluster-internal AQL protocol
 
@@ -469,8 +480,11 @@ The following AQL functions have been added in ArangoDB 3.4:
   comparison order
 * `SORTED_UNIQUE`: same as `SORTED`, but additionally removes duplicates
 * `COUNT_DISTINCT`: counts the number of distinct / unique items in an array
-
-The following AQL functions have been added to make working with geographical
+* `LEVENSHTEIN_DISTANCE`: calculates the Levenshtein distance between two string values
+* `REGEX_SPLIT`: splits a string using a regular expression
+* `TOKENS`: splits a string into tokens using a language-specific text analyzer
+ 
+The following AQL functions have been added to make working with geographical 
 data easier:
 
 * `GEO_POINT`

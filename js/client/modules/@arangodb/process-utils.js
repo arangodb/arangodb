@@ -534,7 +534,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
 
   internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, false, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -584,7 +584,7 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, false, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -622,7 +622,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     print(args);
   }
 
-  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir, coreCheck);
+  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir, false, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -646,7 +646,7 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
     args['flatCommands'] = ['--quiet'];
   }
 
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, false, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -672,6 +672,7 @@ function checkArangoAlive (arangod, options) {
 
   if (!ret) {
     print('ArangoD with PID ' + arangod.pid + ' gone:');
+    arangod.exitStatus = res;
     print(arangod);
 
     if (res.hasOwnProperty('signal') &&
@@ -787,7 +788,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if (options.valgrind) {
     waitOnServerForGC(arangod, options, 60);
   }
-  if ((arangod.exitStatus === undefined) ||
+  if ((!arangod.hasOwnProperty('exitStatus')) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
       arangod.exitStatus = killExternal(arangod.pid, abortSignal);
@@ -830,7 +831,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       requestOptions.method = 'PUT';
 
       print(coords[0].url + "/_admin/cluster/maintenance");
-      download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify({ body: "on" }), requestOptions);
+      download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
     }
   } catch (err) {
     print("error while setting cluster maintenance mode:", err);
@@ -839,24 +840,27 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   // Shut down all non-agency servers:
   const n = instanceInfo.arangods.length;
 
-  let nonagencies = instanceInfo.arangods
-    .filter(arangod => arangod.role !== 'agent');
-  nonagencies.sort((a, b) => {
+  let toShutdown = instanceInfo.arangods.slice();
+  toShutdown.sort((a, b) => {
     if (a.role === b.role) return 0;
     if (a.role === 'coordinator' &&
         b.role === 'dbserver') return -1;
     if (b.role === 'coordinator' &&
         a.role === 'dbserver') return 1;
+    if (a.role === 'agent') return 1;
+    if (b.role === 'agent') return -1;
     return 0;
   });
-  print('Shutdown order ' + JSON.stringify(nonagencies));
-  nonagencies.forEach(arangod => {
-    wait(0.025, false);
-    shutdownArangod(arangod, options, forceTerminate);
-  });
+  print('Shutdown order ' + JSON.stringify(toShutdown));
 
-  let agentsKilled = false;
-  let nrAgents = n - nonagencies.length;
+  let nonAgenciesCount = instanceInfo.arangods
+      .filter(arangod => {
+        if (arangod.hasOwnProperty('exitStatus') && 
+            (arangod.exitStatus.status !== 'RUNNING')) {
+          return false;
+        }
+        return (arangod.role !== 'agent');
+      }).length;
 
   let timeout = 666;
   if (options.valgrind) {
@@ -867,58 +871,75 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   }
 
   var shutdownTime = internal.time();
-
-  let toShutdown = instanceInfo.arangods.slice();
   while (toShutdown.length > 0) {
-    // Once all other servers are shut down, we take care of the agents,
-    // we do this exactly once (agentsKilled flag) and only if there
-    // are agents:
-    if (!agentsKilled && nrAgents > 0 && toShutdown.length === nrAgents) {
-      instanceInfo.arangods
-        .filter(arangod => arangod.role === 'agent')
-        .forEach(arangod => shutdownArangod(arangod, options));
-      agentsKilled = true;
-    }
     toShutdown = toShutdown.filter(arangod => {
-      arangod.exitStatus = statusExternal(arangod.pid, false);
-
+      if (!arangod.hasOwnProperty('exitStatus')) {
+        if ((nonAgenciesCount > 0) && (arangod.role === 'agent')) {
+          return true;
+        }
+        shutdownArangod(arangod, options, false);
+        arangod.exitStatus = {
+          status: 'RUNNING'
+        };
+        print("Commanded shut down: " + JSON.stringify(arangod));
+        return true;
+      }
+      if (arangod.exitStatus.status === 'RUNNING') {
+        arangod.exitStatus = statusExternal(arangod.pid, false);
+      }
       if (arangod.exitStatus.status === 'RUNNING') {
         let localTimeout = timeout;
         if (arangod.role === 'agent') {
           localTimeout = localTimeout + 60;
         }
         if ((internal.time() - shutdownTime) > localTimeout) {
-          print('forcefully terminating ' + yaml.safeDump(arangod.pid) +
-            ' after ' + timeout + 's grace period; marking crashy.');
+          print('forcefully terminating ' + yaml.safeDump(arangod) +
+                ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashed = true;
-          /* TODO!
-          if (platform.substr(0, 3) === 'win') {
-            const procdumpArgs = [
-              '-accepteula',
-              '-ma',
-              arangod.pid,
-              fs.join(instanceInfo.rootDir, 'core.dmp')
-            ];
-          }
-          */
           arangod.exitStatus = killExternal(arangod.pid, abortSignal);
-          analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
+          analyzeServerCrash(arangod,
+                             options,
+                             'shutdown timeout; instance "' +
+                             arangod.role +
+                             '" forcefully KILLED after 60s - ' +
+                             arangod.exitStatus.signal);
+          if (arangod.role !== 'agent') {
+            nonAgenciesCount --;
+          }
           return false;
         } else {
           return true;
         }
       } else if (arangod.exitStatus.status !== 'TERMINATED') {
+        if (arangod.role !== 'agent') {
+          nonAgenciesCount --;
+        }
         if (arangod.exitStatus.hasOwnProperty('signal')) {
-          analyzeServerCrash(arangod, options, 'instance Shutdown - ' + arangod.exitStatus.signal);
+          analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
           serverCrashed = true;
         }
       } else {
-        print('Server shutdown: Success: pid', arangod.pid);
+        if (arangod.role !== 'agent') {
+          nonAgenciesCount --;
+        }
+        print('Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
         return false;
       }
     });
     if (toShutdown.length > 0) {
-      print(toShutdown.length + ' arangods are still running...');
+      let roles = {};
+      toShutdown.forEach(arangod => { 
+        if (!roles.hasOwnProperty(arangod.role)) {
+          roles[arangod.role] = 0;
+        } 
+        ++roles[arangod.role]; 
+      });
+      let roleNames = [];
+      for (let r in roles) {
+        // e.g. 2 + coordinator + (s)
+        roleNames.push(roles[r] + ' ' + r + '(s)');
+      }
+      print(roleNames.join(', ') + ' are still running...');
       require('internal').wait(1, false);
     }
   }
@@ -1043,7 +1064,10 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       if (!checkArangoAlive(arangod, options)) {
         instanceInfo.arangods.forEach(arangod => {
-          arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+          if (!arangod.hasOwnProperty('exitStatus') ||
+              (arangod.exitStatus.status === 'RUNNING')) {
+            arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+          }
           analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });
 

@@ -72,9 +72,7 @@ GeneralCommTask::GeneralCommTask(GeneralServer &server,
     : IoTask(server, context, "GeneralCommTask"),
       SocketTask(server, context, std::move(socket), std::move(info),
                  keepAliveTimeout, skipSocketInit),
-      _auth(nullptr) {
-  _auth = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
+      _auth(AuthenticationFeature::instance()) {
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -467,7 +465,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   auto self = shared_from_this();
 
   if (jobId != nullptr) {
-    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
+    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager

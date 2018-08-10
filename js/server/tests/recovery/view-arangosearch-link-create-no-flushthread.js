@@ -45,7 +45,7 @@ function runSetup () {
   internal.debugSetFailAt("FlushThreadDisableAll");
   internal.wait(2); // make sure failure point takes effect
 
-  var meta = { properties: { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } } };
+  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._dropView('UnitTestsRecoveryFail');
   db._createView('UnitTestsRecoveryFail', 'arangosearch', meta);
 
@@ -79,19 +79,19 @@ function recoverySuite () {
       var v = db._view('UnitTestsRecoveryEmpty');
       assertEqual(v.name(), 'UnitTestsRecoveryEmpty');
       assertEqual(v.type(), 'arangosearch');
-      assertEqual(v.properties().properties.links, {});
+      assertEqual(v.properties().links, {});
 
       v = db._view('UnitTestsRecoveryFail');
       assertEqual(v.name(), 'UnitTestsRecoveryFail');
       assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().properties.links;
-      assertEqual(v.properties().properties.links, {});
+      var p = v.properties().links;
+      assertEqual(v.properties().links, {});
 
-      var meta = { properties: { links : { "UnitTestsRecoveryDummy" : { includeAllFields : true } } } };
+      var meta = { links : { "UnitTestsRecoveryDummy" : { includeAllFields : true } } };
       v = db._view('UnitTestsRecoveryWithLink');
       assertEqual(v.name(), 'UnitTestsRecoveryWithLink');
       assertEqual(v.type(), 'arangosearch');
-      p = v.properties().properties.links;
+      p = v.properties().links;
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
     }

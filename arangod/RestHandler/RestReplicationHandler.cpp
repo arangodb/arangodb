@@ -686,11 +686,11 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci->getCollections(dbName);
+  auto views = ci->getViews(dbName);
 
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
-  resultBuilder.add(VPackValue("collections"));
-  resultBuilder.openArray();
+  resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     // We want to check if the collection is usable and all followers
     // are in sync:
@@ -714,9 +714,16 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady, allInSync);
   }
   resultBuilder.close();  // collections
+  resultBuilder.add("views", VPackValue(VPackValueType::Array));
+  for (auto const& view : views) {
+    resultBuilder.openObject();
+    view->toVelocyPack(resultBuilder, /*details*/false, /*forPersistence*/true);
+    resultBuilder.close();
+  }
+  resultBuilder.close();  // views
+
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
-  auto tickString = std::to_string(tick);
-  resultBuilder.add("tick", VPackValue(tickString));
+  resultBuilder.add("tick", VPackValue(std::to_string(tick)));
   resultBuilder.add("state", VPackValue("unused"));
   resultBuilder.close();  // base
   generateResult(rest::ResponseCode::OK, resultBuilder.slice());
@@ -898,9 +905,7 @@ Result RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
-        SingleCollectionTransaction trx(
-          ctx, col, AccessMode::Type::EXCLUSIVE
-        );
+        SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
 
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
@@ -1074,7 +1079,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // Always ignore `shadowCollections` they were accidentially dumped in arangodb versions
   // earlier than 3.3.6
-  toMerge.add("shadowCollections", arangodb::basics::VelocyPackHelper::NullValue());
+  toMerge.add("shadowCollections", arangodb::velocypack::Slice::nullSlice());
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
@@ -1759,6 +1764,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
     return;
   }
   
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: "
+    << nameSlice.copyString();
   auto view = _vocbase.lookupView(nameSlice.copyString());
 
   if (view) {
@@ -1852,7 +1859,7 @@ void RestReplicationHandler::handleCommandSync() {
   engine->waitForSyncTimeout(waitForSyncTimeout);
 
   TRI_ASSERT(!config._skipCreateDrop);
-  std::unique_ptr<InitialSyncer> syncer;
+  std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(config));
@@ -2109,9 +2116,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (readLockId.isNone()) {
     // Short cut for the case that the collection is empty
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(
-      ctx, col.get(), AccessMode::Type::EXCLUSIVE
-    );
+    SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
     auto res = trx.begin();
 
     if (res.ok()) {
@@ -2323,8 +2328,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  auto trx =
-      std::make_shared<SingleCollectionTransaction>(ctx, col.get(), access);
+  auto trx = std::make_shared<SingleCollectionTransaction>(ctx, *col, access);
+
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   Result res = trx->begin();

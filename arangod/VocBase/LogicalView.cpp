@@ -95,7 +95,7 @@ LogicalView::LogicalView(
     PreCommitCallback const& preCommit /*= PreCommitCallback()*/
 ) {
   auto const* viewTypes =
-    application_features::ApplicationServer::getFeature<ViewTypesFeature>("ViewTypes");
+    application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
 
   if (!viewTypes) {
     LOG_TOPIC(ERR, Logger::VIEWS)
@@ -257,40 +257,16 @@ arangodb::Result LogicalViewStorageEngine::appendVelocyPack(
 ) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
+
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failure to get storage engine during storage engine persistance of view '") + view.name() + "'"
+    );
+  }
 
   try {
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // during recovery entry is being played back from the engine
-      if (!engine->inRecovery()) {
-        arangodb::velocypack::Builder builder;
-        auto res = engine->getViews(view.vocbase(), builder);
-        TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
-        auto slice  = builder.slice();
-        TRI_ASSERT(slice.isArray());
-        auto viewId = std::to_string(view.id());
-
-        // We have not yet persisted this view
-        for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
-          auto id = arangodb::basics::VelocyPackHelper::getStringRef(
-            entry,
-            StaticStrings::DataSourceId,
-            arangodb::velocypack::StringRef()
-          );
-
-          if (!id.compare(viewId)) {
-            return arangodb::Result(
-              TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-              std::string("view id '") + viewId + "already exists in the sotrage engine"
-            );
-          }
-        }
-      }
-    #endif
-
-    engine->createView(view.vocbase(), view.id(), view);
-
-    return engine->persistView(view.vocbase(), view);
+    return engine->createView(view.vocbase(), view.id(), view);
   } catch (std::exception const& e) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
@@ -330,7 +306,8 @@ Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
 
     // store new view definition to disk
     if (!engine->inRecovery()) {
-      engine->changeView(vocbase(), id(), *this, doSync);
+      // write WAL 'change' marker
+      return engine->changeView(vocbase(), *this, doSync);
     }
   } catch (basics::Exception const& ex) {
     name(std::move(oldName));
@@ -342,8 +319,7 @@ Result LogicalViewStorageEngine::rename(std::string&& newName, bool doSync) {
     return TRI_ERROR_INTERNAL;
   }
 
-  // write WAL 'rename' marker
-  return engine->renameView(vocbase(), *this, oldName);
+  return TRI_ERROR_NO_ERROR;
 }
 
 arangodb::Result LogicalViewStorageEngine::updateProperties(
@@ -368,7 +344,7 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   }
 
   try {
-    engine->changeView(vocbase(), id(), *this, doSync);
+    engine->changeView(vocbase(), *this, doSync);
   } catch (arangodb::basics::Exception const& e) {
     return { e.code() };
   } catch (...) {

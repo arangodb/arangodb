@@ -131,7 +131,7 @@ void RocksDBReplicationContext::internalBind(
 
     if (_trx) {
       auto state = RocksDBTransactionState::toState(_trx.get());
-      snap = state->stealSnapshot();
+      snap = state->stealReadSnapshot();
       _trx->abort();
       _trx.reset();
     }
@@ -295,6 +295,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpJson(
     VPackDumper dumper(&adapter, &collectionIter->vpackOptions);
     dumper.dump(velocypack::Slice(rocksValue.data()));
     buff.appendText("}\n");
+    return true;
   };
 
   TRI_ASSERT(collectionIter->iter && !collectionIter->sorted());
@@ -350,12 +351,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpVPack(TRI_vocbase_t* voc
 
   VPackBuilder builder(buffer, &collectionIter->vpackOptions);
   auto cb = [&builder](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-
     builder.openObject();
     builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
     builder.add(VPackValue("data"));
     builder.add(velocypack::Slice(rocksValue.data()));
     builder.close();
+    return true;
   };
 
   TRI_ASSERT(collectionIter->iter && !collectionIter->sorted());
@@ -392,6 +393,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   }
   _collection->setSorted(true, _trx.get());
   TRI_ASSERT(_collection->sorted() && _lastIteratorOffset == 0);
+  
+  // reserve some space in the result builder to avoid frequent reallocations
+  b.reserve(8192);
+  // temporary buffer for stringifying revision ids
+  char ridBuffer[21];
 
   std::string lowKey;
   std::string highKey;  // needs to be a string (not ref) as the rocksdb slice will not be valid outside the callback
@@ -399,37 +405,40 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   uint64_t hash = 0x012345678;
 
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-    highKey = RocksDBKey::primaryKey(rocksKey).toString();
+    StringRef key = RocksDBKey::primaryKey(rocksKey);
+    highKey.assign(key.data(), key.size());
 
     TRI_voc_rid_t docRev;
-    if(!RocksDBValue::revisionId(rocksValue, docRev)){
+    if (!RocksDBValue::revisionId(rocksValue, docRev)) {
       // for collections that do not have the revisionId in the value
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
-      if(_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
+      if (false == _collection->logical.readDocumentWithCallback(_trx.get(), documentId, [&docRev](LocalDocumentId const&, VPackSlice doc) {
+        docRev = TRI_ExtractRevisionId(doc);
+      })) {
         TRI_ASSERT(false);
-        return;
+        return true;
       }
-      VPackSlice doc(_collection->mdr.vpack());
-      docRev = TRI_ExtractRevisionId(doc);
     }
 
     // set type
     if (lowKey.empty()) {
-      lowKey = highKey;
+      lowKey.assign(key.data(), key.size());
     }
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
 
     builder.clear();
-    builder.add(VPackValue(highKey));
+    builder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
     hash ^= builder.slice().hashString();
     builder.clear();
-    builder.add(VPackValue(TRI_RidToString(docRev)));
-    hash ^= builder.slice().hash();
+    builder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
+    hash ^= builder.slice().hashString();
+
+    return true;
   }; //cb
 
-  b.openArray();
+  b.openArray(true);
   while (_collection->hasMore) {
     try {
       _collection->hasMore = _collection->iter->next(cb, chunkSize);
@@ -445,8 +454,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       b.close();
       lowKey.clear();      // reset string
       hash = 0x012345678;  // the next block ought to start with a clean sheet
-    } catch (std::exception const&) {
-      return rv.reset(TRI_ERROR_INTERNAL);
+    } catch (std::exception const& ex) {
+      return rv.reset(TRI_ERROR_INTERNAL, ex.what());
     }
   }
 
@@ -514,33 +523,40 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
   }
 
+  // reserve some space in the result builder to avoid frequent reallocations
+  b.reserve(8192);
+  // temporary buffer for stringifying revision ids
+  char ridBuffer[21];
+
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     TRI_voc_rid_t docRev;
-    if(!RocksDBValue::revisionId(rocksValue, docRev)){
+    if (!RocksDBValue::revisionId(rocksValue, docRev)) {
       // for collections that do not have the revisionId in the value
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
-      if(_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
+      if (false == _collection->logical.readDocumentWithCallback(_trx.get(), documentId, [&docRev](LocalDocumentId const&, VPackSlice doc) {
+        docRev = TRI_ExtractRevisionId(doc);
+      })) {
         TRI_ASSERT(false);
-        return;
+        return true;
       }
-      VPackSlice doc(_collection->mdr.vpack());
-      docRev = TRI_ExtractRevisionId(doc);
     }
 
     StringRef docKey(RocksDBKey::primaryKey(rocksKey));
-    b.openArray();
+    b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
-    b.add(VPackValue(TRI_RidToString(docRev)));
+    b.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
     b.close();
+
+    return true;
   };
 
-  b.openArray();
+  b.openArray(true);
   // chunkSize is going to be ignored here
   try {
     _collection->hasMore = primary->next(cb, chunkSize);
     _lastIteratorOffset++;
-  } catch (std::exception const&) {
-    return rv.reset(TRI_ERROR_INTERNAL);
+  } catch (std::exception const& ex) {
+    return rv.reset(TRI_ERROR_INTERNAL, ex.what());
   }
   b.close();
 
@@ -605,14 +621,15 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
 
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     auto documentId = RocksDBValue::documentId(rocksValue);
-    bool ok = _collection->logical.readDocument(_trx.get(), documentId, _collection->mdr);
+    bool ok = _collection->logical.readDocumentWithCallback(_trx.get(), documentId, [&b](LocalDocumentId const&, VPackSlice doc) {
+      TRI_ASSERT(doc.isObject());
+      b.add(doc);
+    });
     if (!ok) {
       // TODO: do something here?
-      return;
+      return true;
     }
-    VPackSlice current(_collection->mdr.vpack());
-    TRI_ASSERT(current.isObject());
-    b.add(current);
+    return true;
   };
 
   auto buffer = b.buffer();
@@ -646,6 +663,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
       hasMore = _collection->iter->next(
           [&b](rocksdb::Slice const&, rocksdb::Slice const&) {
             b.add(VPackValue(VPackValueType::Null));
+            return true;
           },
           1);
     } else {

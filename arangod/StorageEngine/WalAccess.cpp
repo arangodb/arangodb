@@ -33,6 +33,20 @@ bool WalAccessContext::shouldHandleDB(TRI_voc_tick_t dbid) const {
   return _filter.vocbase == 0 || _filter.vocbase == dbid;
 }
 
+/// @brief check if view should be handled, might already be deleted
+bool WalAccessContext::shouldHandleView(TRI_voc_tick_t dbid,
+                                        TRI_voc_cid_t vid) const {
+  if (dbid == 0 || vid == 0 || !shouldHandleDB(dbid)) {
+    return false;
+  }
+  
+  if (_filter.vocbase == 0 || (_filter.vocbase == dbid &&
+                               (_filter.collection == 0 || _filter.collection == vid))) {
+    return true;
+  }
+  return false;
+}
+
 /// @brief Check if collection is in filter, will load collection
 bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid,
                                               TRI_voc_cid_t cid) {

@@ -26,6 +26,8 @@
 #define ARANGO_READ_WRITE_SPIN_LOCK_H 1
 
 #include "Basics/Common.h"
+#include "Basics/SharedAtomic.h"
+#include "Basics/SharedCounter.h"
 #include "Basics/cpu-relax.h"
 
 #include <atomic>

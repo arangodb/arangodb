@@ -33,8 +33,8 @@ namespace iresearch {
 arangodb::LogicalDataSource::Type const& dataSourceType();
 arangodb::LogTopic& logTopic();
 
-static auto& DATA_SOURCE_TYPE = dataSourceType();
-static auto& TOPIC = logTopic();
+ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
+ADB_IGNORE_UNUSED static auto& TOPIC = logTopic();
 
 struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////
@@ -42,12 +42,6 @@ struct StaticStrings {
   ///        corresponding link definitions
   ////////////////////////////////////////////////////////////////////////////////
   static std::string const LinksField;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the name of the field in the IResearch View definition denoting the
-  ///        corresponding properties definitions
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::string const PropertiesField;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the id of the field in the IResearch Link definition denoting the

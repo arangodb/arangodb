@@ -54,13 +54,12 @@ struct data_container_t {
 };
 
 struct AssocMultiTestHelper {
-  static inline uint64_t HashKey(void* userData, void const* e) {
+  static inline uint64_t HashKey(void const* e) {
     int const* key = (int const*) e;
     return fasthash64(key, sizeof(int), 0x12345678);
   }
 
-  static inline uint64_t HashElement(void* userData,
-                                     void const* e, 
+  static inline uint64_t HashElement(void const* e, 
                                      bool byKey) {
     data_container_t const* element = (data_container_t const*) e;
 

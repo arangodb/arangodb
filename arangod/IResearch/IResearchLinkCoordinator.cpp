@@ -85,7 +85,8 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
   }
 
   if (!definition.isObject()
-      || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
+      || !(definition.get(StaticStrings::ViewIdField).isString() ||
+           definition.get(StaticStrings::ViewIdField).isNumber())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error finding view for link '" << id() << "'";
     TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -93,14 +94,12 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false;
   }
 
-  auto identifier = definition.get(StaticStrings::ViewIdField);
-  auto viewId = identifier.getNumber<uint64_t>();
+  auto idSlice = definition.get(StaticStrings::ViewIdField);
+  std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
   auto& vocbase = _collection.vocbase();
 
   TRI_ASSERT(ClusterInfo::instance());
-  auto logicalView  = ClusterInfo::instance()->getView(
-    vocbase.name(), basics::StringUtils::itoa(viewId)
-  );
+  auto logicalView  = ClusterInfo::instance()->getView(vocbase.name(), viewId);
 
   if (!logicalView
       || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
@@ -150,12 +149,18 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     #endif
 
     return link && link->init(definition) ? ptr : nullptr;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while creating IResearch view Coordinator link '" << id << "': " << e.code() << " "  << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating IResearch view Coordinator link '" << id << "'" << e.what();
+      << "caught exception while creating IResearch view Coordinator link '" << id << "': " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while creating IResearch view Coordinator link '" << id << "'";
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -190,7 +195,7 @@ void IResearchLinkCoordinator::toVelocyPack(
   );
   builder.add(
     StaticStrings::ViewIdField,
-    arangodb::velocypack::Value(_view->id())
+    arangodb::velocypack::Value(_view->guid())
   );
 
   if (withFigures) {

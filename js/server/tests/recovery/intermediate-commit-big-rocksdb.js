@@ -39,22 +39,16 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  db._executeTransaction({
-    intermediateCommitCount: 1000,
-    collections: {
-      write: 'UnitTestsRecovery'
-    },
-    action: function () {
-      var db = require('@arangodb').db;
+  try {
+    db._query(`FOR i IN 0..20000 FILTER i < 20000 OR FAIL('peng')
+    INSERT { _key: CONCAT('test', i), value: i } INTO UnitTestsRecovery \n 
+    OPTIONS {waitForSync: true}`, 
+    {}, {intermediateCommitCount: 1000});
+  } catch (err) {
+    // intentionally fail
+  }
 
-      var i, c = db._collection('UnitTestsRecovery');
-      for (i = 0; i < 20000; ++i) {
-        c.insert({ _key: 'test' + i, value: i }, { waitForSync: i === 19999 });
-      }
-
-      internal.debugSegfault('crashing server');
-    }
-  });
+  internal.debugSegfault('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

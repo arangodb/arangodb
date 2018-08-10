@@ -269,7 +269,7 @@ static void JS_ProcessJsonFile(
 
       char* error = nullptr;
       v8::Handle<v8::Value> object =
-          TRI_FromJsonString(isolate, line.c_str(), &error);
+          TRI_FromJsonString(isolate, line.c_str(), line.size(), &error);
 
       if (object->IsUndefined()) {
         if (error != nullptr) {

@@ -313,15 +313,14 @@ MMFilesHashIndex::MMFilesHashIndex(
     : MMFilesPathBasedIndex(iid, collection, info,
                             sizeof(LocalDocumentId) + sizeof(uint32_t), false),
       _uniqueArray(nullptr) {
-  size_t indexBuckets = 1;
   auto physical = static_cast<MMFilesCollection*>(collection.getPhysical());
 
-    TRI_ASSERT(physical != nullptr);
-    indexBuckets = static_cast<size_t>(physical->indexBuckets());
+  TRI_ASSERT(physical != nullptr);
+  size_t indexBuckets = static_cast<size_t>(physical->indexBuckets());
 
   if (collection.isAStub()) {
-      // in order to reduce memory usage
-      indexBuckets = 1;
+    // in order to reduce memory usage
+    indexBuckets = 1;
   }
 
   if (_unique) {
@@ -614,12 +613,11 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
       IndexResult error(res, this);
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         LocalDocumentId rev(_uniqueArray->_hashArray->find(&context, hashElement)->localDocumentId());
-        ManagedDocumentResult mmdr;
+        std::string existingId;
 
-        _collection.getPhysical()->readDocument(trx, rev, mmdr);
-
-        std::string existingId(
-          VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
+        _collection.getPhysical()->readDocumentWithCallback(trx, rev, [&existingId](LocalDocumentId const&, VPackSlice doc) {
+          existingId = doc.get(StaticStrings::KeyString).copyString();
+        });
 
         if (mode == OperationMode::internal) {
           error = IndexResult(res, std::move(existingId));

@@ -29,6 +29,7 @@ BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server, bool isClient)
     : ApplicationFeaturePhase(server, "BasicsPhase") {
   setOptional(false);
   startsAfter("GreetingsPhase");
+  startsAfter("Sharding");
 
 #ifdef USE_ENTERPRISE
   startsAfter("Encryption");

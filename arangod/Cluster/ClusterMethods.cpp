@@ -345,11 +345,9 @@ static int distributeBabyOnShards(
     temp.add(StaticStrings::KeyString, value);
     temp.close();
   
-    error = ci->getResponsibleShard(collinfo.get(), temp.slice(), false, shardID,
-                                    usesDefaultShardingAttributes);
+    error = collinfo->getResponsibleShard(temp.slice(), false, shardID, usesDefaultShardingAttributes);
   } else {
-    error = ci->getResponsibleShard(collinfo.get(), value, false, shardID,
-                                    usesDefaultShardingAttributes);
+    error = collinfo->getResponsibleShard(value, false, shardID, usesDefaultShardingAttributes);
   }
   if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -412,17 +410,20 @@ static int distributeBabyOnShards(
       _key = collinfo->keyGenerator()->generate();
     } else {
       userSpecifiedKey = true;
+      if (keySlice.isString()) {
+        VPackValueLength l;
+        char const* p = keySlice.getString(l);
+        collinfo->keyGenerator()->track(p, l);
+      }
     }
 
     // Now find the responsible shard:
     bool usesDefaultShardingAttributes;
     int error = TRI_ERROR_NO_ERROR;
     if (userSpecifiedKey) {
-      error = ci->getResponsibleShard(collinfo.get(), value, true, shardID,
-                                      usesDefaultShardingAttributes);
+      error = collinfo->getResponsibleShard(value, true, shardID, usesDefaultShardingAttributes);
     } else {
-      error = ci->getResponsibleShard(collinfo.get(), value, true, shardID,
-                                      usesDefaultShardingAttributes, _key);
+      error = collinfo->getResponsibleShard(value, true, shardID, usesDefaultShardingAttributes, _key);
     }
     if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -589,18 +590,10 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   }
 
   // We need to replace the distribute with the cid.
-  col->distributeShardsLike(cidString);
-
+  col->distributeShardsLike(cidString, other->shardingInfo());
+  
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
-  }
-
-  if (col->replicationFactor() != other->replicationFactor()) {
-    col->replicationFactor(other->replicationFactor());
-  }
-
-  if (col->numberOfShards() != other->numberOfShards()) {
-    col->numberOfShards(other->numberOfShards());
   }
 
   auto shards = other->shardIds();
@@ -621,8 +614,6 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   }
   return result;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -661,7 +652,7 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
 
-bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+bool shardKeysChanged(LogicalCollection const& collection,
                       VPackSlice const& oldValue, VPackSlice const& newValue,
                       bool isPatch) {
   if (!oldValue.isObject() || !newValue.isObject()) {
@@ -669,16 +660,12 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
     return true;
   }
 #ifdef DEBUG_SYNC_REPLICATION
-  if (dbname == "sync-replication-test") {
+  if (collection.vocbase().name() == "sync-replication-test") {
     return false;
   }
 #endif
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> c = ci->getCollection(dbname, collname);
-
-  TRI_ASSERT(c != nullptr);
-  std::vector<std::string> const& shardKeys = c->shardKeys();
+  std::vector<std::string> const& shardKeys = collection.shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
     if (shardKeys[i] == StaticStrings::KeyString) {
@@ -692,21 +679,16 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
       continue;
     }
 
-    // a temporary buffer to hold a null value
-    char buffer[1];
-    VPackSlice nullValue =
-        arangodb::velocypack::buildNullValue(&buffer[0], sizeof(buffer));
-
     VPackSlice o = oldValue.get(shardKeys[i]);
 
     if (o.isNone()) {
       // if attribute is undefined, use "null" instead
-      o = nullValue;
+      o = arangodb::velocypack::Slice::nullSlice();
     }
 
     if (n.isNone()) {
       // if attribute is undefined, use "null" instead
-      n = nullValue;
+      n = arangodb::velocypack::Slice::nullSlice();
     }
 
     if (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0) {
@@ -1305,9 +1287,8 @@ int deleteDocumentOnCoordinator(
       } else {
         // Now find the responsible shard:
         bool usesDefaultShardingAttributes;
-        int error = ci->getResponsibleShard(
-            collinfo.get(),
-            arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
+        int error = collinfo->getResponsibleShard(
+            arangodb::velocypack::Slice::emptyObjectSlice(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 
         if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
@@ -2058,7 +2039,7 @@ void fetchVerticesFromEngines(
   // Fill everything we did not find with NULL
   for (auto const& v : vertexIds) {
     result.emplace(
-        v, VPackBuilder::clone(arangodb::basics::VelocyPackHelper::NullValue())
+        v, VPackBuilder::clone(arangodb::velocypack::Slice::nullSlice())
                .steal());
   }
   vertexIds.clear();

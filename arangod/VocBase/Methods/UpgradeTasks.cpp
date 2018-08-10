@@ -139,18 +139,19 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   overw.close();
 
   VPackBuilder newDesc = VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
-
   bool dropped = collection.dropIndex(iid);
 
   if (!dropped) {
     res.reset(TRI_ERROR_INTERNAL);
+
     return res;
   }
 
   bool created = false;
   auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
-  arangodb::SingleCollectionTransaction trx(ctx, &collection,
-                                            arangodb::AccessMode::Type::EXCLUSIVE);
+  arangodb::SingleCollectionTransaction trx(
+    ctx, collection, arangodb::AccessMode::Type::EXCLUSIVE
+  );
 
   res = trx.begin();
 

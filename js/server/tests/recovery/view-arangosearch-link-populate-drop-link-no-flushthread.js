@@ -79,7 +79,7 @@ function recoverySuite () {
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().properties.links;
+      var p = v.properties().links;
       assertFalse(p.hasOwnProperty('UnitTestsRecoveryDummy'));
 
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;

@@ -382,12 +382,14 @@ function check-dangling-anchors()
             echo "${RESET}"
         else
             if test -n "$ANCHOR"; then
-                if grep -q "^$ANCHOR$" "/tmp/tags/$FN"; then
+                if grep -q "^$ANCHOR$" "/tmp/tags/${FN}"; then
                     true
                 else
                     echo "${ERR_COLOR}"
                     echo "Anchor not found in $i"
                     NO=$((NO + 1))
+                    echo "${RESET}${WRN_COLOR}available anchors in that file:${RESET}${STD_COLOR}"
+                    cat "/tmp/tags/${FN}" |sort
                     echo "${RESET}"
                 fi
             fi
