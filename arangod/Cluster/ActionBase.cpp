@@ -84,9 +84,9 @@ void ActionBase::complete() {
     cf->syncDBServerStatusQuo();	
   }
   LOG_TOPIC(WARN, Logger::MAINTENANCE)
-    << "Action " << _description << "completed after "
+    << "Action " << _description << " completed in "
     << std::chrono::duration<double>(
-      _actionDone.load() - _actionStarted.load()).count();
+      _actionDone.load() - _actionStarted.load()).count() << " seconds";
   _state = COMPLETE;	
 }
 
@@ -99,7 +99,9 @@ void ActionBase::fail() {
   }
   LOG_TOPIC(WARN, Logger::MAINTENANCE)
     << "Action " << _description << "failed after "
-    << std::chrono::duration<double>(_actionDone.load() - _actionStarted.load()).count();
+    << std::chrono::duration<double>(
+      _actionDone.load() - _actionStarted.load()).count() << " seconds";
+  
   _state = FAILED;
 }
 
