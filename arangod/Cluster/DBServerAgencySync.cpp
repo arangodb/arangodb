@@ -83,31 +83,24 @@ Result getLocalCollections(VPackBuilder& collections) {
 
     try {
       DatabaseGuard guard(*vocbase);      
+      collections.add(VPackValue(database));
+      VPackObjectBuilder db(&collections);
+      auto cols = vocbase->collections(false);
+      
+      for (auto const& collection : cols) {
+        collections.add(VPackValue(collection->name()));
+        VPackObjectBuilder col(&collections);
+        collection->toVelocyPack(collections,true,false);
+        collections.add(
+          "theLeader", VPackValue(collection->followers()->getLeader()));
+      }        
     } catch (std::exception const& e) {
       return Result(
         TRI_ERROR_INTERNAL,
         std::string("Failed to guard database ") +  database + ": " + e.what());
     }
-    
-    collections.add(VPackValue(database));
-    VPackObjectBuilder db(&collections);
-    auto cols = vocbase->collections(false);
-
-    std::sort(cols.begin(), cols.end(),
-              [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
-                return StringUtils::tolower(lhs->name()) <
-                StringUtils::tolower(rhs->name());
-              });
-    
-    for (auto const& collection : cols) {
-      collections.add(VPackValue(collection->name()));
-      VPackObjectBuilder col(&collections);
-      collection->toVelocyPack(collections,true,false);
-      collections.add(
-        "theLeader", VPackValue(collection->followers()->getLeader()));
-    }        
   }
-
+  
   return Result();
   
 }
@@ -156,21 +149,19 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto start = clock::now();
   try {
     // in previous life handlePlanChange
-
     
     VPackObjectBuilder o(&rb);
     
     tmp = arangodb::maintenance::phaseOne(
       plan->slice(), local.slice(), serverId, *mfeature, rb);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-/*    try {
+    try {
       glc = getLocalCollections(local);
     } catch (std::exception const& e) {
       auto error = std::string("failed to collect local collection info") + e.what();
       LOG_TOPIC(ERR, Logger::HEARTBEAT) << error;
       return result;
-      }*/
+    }
     
     auto current = clusterInfo->getCurrent();
     tmp = arangodb::maintenance::phaseTwo(
