@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -133,27 +134,34 @@ bool UpdateCollection::first() {
     return false;
   }
 
-  Result found = methods::Collections::lookup(
-    vocbase, collection, [&](LogicalCollection& coll) {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  try {
+    Result found = methods::Collections::lookup(
+      vocbase, collection, [&](LogicalCollection& coll) {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Updating local collection " + collection;
 
-      // We adjust local leadership, note that the planned
-      // resignation case is not handled here, since then
-      // ourselves does not appear in shards[shard] but only
-      // "_" + ourselves.
-      handleLeadership(coll, localLeader, plannedLeader);
-      _result = Collections::updateProperties(&coll, props);
-    });
+        // We adjust local leadership, note that the planned
+        // resignation case is not handled here, since then
+        // ourselves does not appear in shards[shard] but only
+        // "_" + ourselves.
+        handleLeadership(coll, localLeader, plannedLeader);
+        _result = Collections::updateProperties(&coll, props);
+      });
 
-  if (found.fail()) {
-    std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
-    errorMsg += collection + "in database " + database;
-    _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    if (found.fail()) {
+      std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
+      errorMsg += collection + "in database " + database;
+      _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+      fail();
+      return false;
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
     fail();
     return false;
   }
-
+  
   complete();
   return false;
 

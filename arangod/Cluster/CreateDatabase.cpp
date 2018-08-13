@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb::application_features;
@@ -68,17 +69,26 @@ bool CreateDatabase::first() {
     FATAL_ERROR_EXIT();
   }
 
-  // Assertion in constructor makes sure that we have DATABASE.
-  _result = Databases::create(_description.get(DATABASE), users, properties());
-  if (!_result.ok()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "CreateDatabase: failed to create database " << database << ": " << _result;
-    fail();
-    return false;
-  }
+  try {
 
-  LOG_TOPIC(INFO, Logger::MAINTENANCE)
-    << "CreateDatabase: database  " << database << " created";
+    DatabaseGuard guard(*systemVocbase);
+    
+    // Assertion in constructor makes sure that we have DATABASE.
+    _result = Databases::create(_description.get(DATABASE), users, properties());
+    if (!_result.ok()) {
+      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "CreateDatabase: failed to create database " << database << ": " << _result;
+      fail();
+      return false;
+    }
+    
+    LOG_TOPIC(INFO, Logger::MAINTENANCE)
+      << "CreateDatabase: database  " << database << " created";
+    
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
+  }
 
   complete();
   return false;

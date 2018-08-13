@@ -83,7 +83,7 @@ void ActionBase::complete() {
   if (cf != nullptr) {	
     cf->syncDBServerStatusQuo();	
   }
-  LOG_TOPIC(WARN, Logger::MAINTENANCE)
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "Action " << _description << " completed in "
     << std::chrono::duration<double>(
       _actionDone.load() - _actionStarted.load()).count() << " seconds";

@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Indexes.h"
@@ -99,40 +100,52 @@ bool EnsureIndex::first() {
     return false;
   }
 
-  auto col = vocbase->lookupCollection(collection);
-  if (col == nullptr) {
-    std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
-    errorMsg += collection + " in database " + database;
-    _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-    fail();
-    return false;
-  }
-
-  auto const props = properties();
   VPackBuilder body;
-  { VPackObjectBuilder b(&body);
-    body.add(COLLECTION, VPackValue(collection));
-    for (auto const& i : VPackObjectIterator(props)) {
-      body.add(i.key.copyString(), i.value);
-    }}
-
-  VPackBuilder index;
-  _result = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
-
-  if (_result.ok()) {
-    VPackSlice created = index.slice().get("isNewlyCreated");
-    std::string log =  std::string("Index ") + id;
-    log += (created.isBool() && created.getBool() ? std::string(" created")
-            : std::string(" updated"));
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << log;
-  } else {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "Failed to ensure index " << body.slice().toJson();
-    fail();
-    return false;
+  
+  try { // now try to guard the database
+    
+    DatabaseGuard guard(*vocbase);
+    
+    auto col = vocbase->lookupCollection(collection);
+    if (col == nullptr) {
+      std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
+      errorMsg += collection + " in database " + database;
+      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
+      fail();
+      return false;
+    }
+    
+    auto const props = properties();
+    { VPackObjectBuilder b(&body);
+      body.add(COLLECTION, VPackValue(collection));
+      for (auto const& i : VPackObjectIterator(props)) {
+        body.add(i.key.copyString(), i.value);
+      }}
+    
+    VPackBuilder index;
+    _result = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
+    
+    if (_result.ok()) {
+      VPackSlice created = index.slice().get("isNewlyCreated");
+      std::string log =  std::string("Index ") + id;
+      log += (created.isBool() && created.getBool() ? std::string(" created")
+              : std::string(" updated"));
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << log;
+    } else {
+      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "Failed to ensure index " << body.slice().toJson();
+      fail();
+      return false;
+    }
+    
+  } catch (std::exception const& e) { // Guard failed?
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();     
+      fail();
+      return false;
   }
 
   complete();
   return false;
-
+    
 }

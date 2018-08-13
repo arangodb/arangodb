@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -113,6 +114,7 @@ bool CreateCollection::first() {
     << "creating local shard '" << database << "/" << shard
     << "' for central '" << database << "/" << collection << "'";
 
+  
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
@@ -122,58 +124,69 @@ bool CreateCollection::first() {
     return false;
   }
 
-  auto cluster =
-    ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  try { // now try to guard the vocbase
 
-  bool waitForRepl =
-    (props.hasKey(WAIT_FOR_SYNC_REPL) &&
-     props.get(WAIT_FOR_SYNC_REPL).isBool()) ?
-    props.get(WAIT_FOR_SYNC_REPL).getBool() :
-    cluster->createWaitsForSyncReplication();
+    DatabaseGuard guard(*vocbase);
 
-  bool enforceReplFact =
-    (props.hasKey(ENF_REPL_FACT) &&
-     props.get(ENF_REPL_FACT).isBool()) ?
-    props.get(ENF_REPL_FACT).getBool() : true;
+    auto cluster =
+      ApplicationServer::getFeature<ClusterFeature>("Cluster");
 
-  TRI_col_type_e type(props.get(TYPE).getNumber<TRI_col_type_e>());
+    bool waitForRepl =
+      (props.hasKey(WAIT_FOR_SYNC_REPL) &&
+       props.get(WAIT_FOR_SYNC_REPL).isBool()) ?
+      props.get(WAIT_FOR_SYNC_REPL).getBool() :
+      cluster->createWaitsForSyncReplication();
 
-  VPackBuilder docket;
-  { VPackObjectBuilder d(&docket);
-    for (auto const& i : VPackObjectIterator(props)) {
-      auto const& key = i.key.copyString();
-      if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
-        if (key == GLOB_UID || key == OBJECT_ID) {
-          LOG_TOPIC(WARN, Logger::MAINTENANCE)
-            << "unexpected " << key << " in " << props.toJson();
+    bool enforceReplFact =
+      (props.hasKey(ENF_REPL_FACT) &&
+       props.get(ENF_REPL_FACT).isBool()) ?
+      props.get(ENF_REPL_FACT).getBool() : true;
+
+    TRI_col_type_e type(props.get(TYPE).getNumber<TRI_col_type_e>());
+
+    VPackBuilder docket;
+    { VPackObjectBuilder d(&docket);
+      for (auto const& i : VPackObjectIterator(props)) {
+        auto const& key = i.key.copyString();
+        if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
+          if (key == GLOB_UID || key == OBJECT_ID) {
+            LOG_TOPIC(WARN, Logger::MAINTENANCE)
+              << "unexpected " << key << " in " << props.toJson();
+          }
+          continue;
         }
-        continue;
+        docket.add(key, i.value);
       }
-      docket.add(key, i.value);
+      docket.add("planId", VPackValue(collection));
     }
-    docket.add("planId", VPackValue(collection));
-  }
 
-  _result = Collections::create(
-    vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
-    [=](LogicalCollection& col) {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
-      << "/" << shard << " successfully created";
-      col.followers()->setTheLeader(leader);
-      if (leader.empty()) {
-        col.followers()->clear();
-      }
-    });
+    _result = Collections::create(
+      vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
+      [=](LogicalCollection& col) {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
+        << "/" << shard << " successfully created";
+        col.followers()->setTheLeader(leader);
+        if (leader.empty()) {
+          col.followers()->clear();
+        }
+      });
 
-  if (_result.fail()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "creating local shard '" << database << "/" << shard
-      << "' for central '" << database << "/" << collection << "' failed: "
-      << _result;
+    if (_result.fail()) {
+      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        << "creating local shard '" << database << "/" << shard
+        << "' for central '" << database << "/" << collection << "' failed: "
+        << _result;
+      fail();
+      return false;
+    }
+
+  } catch (std::exception const& e) { // Guard failed?
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
     fail();
     return false;
   }
-
+    
   complete();
   return false;
 

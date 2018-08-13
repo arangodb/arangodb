@@ -31,6 +31,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -104,6 +105,10 @@ bool ResignShardLeadership::first() {
   // problem, since similar problems can arise in failover scenarios anyway.
 
   try {
+
+    // Guard database againts deletion for now
+    DatabaseGuard guard(*vocbase);
+    
     // we know the shard exists locally!
 
     col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
@@ -123,6 +128,7 @@ bool ResignShardLeadership::first() {
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
      }
+
   } catch (std::exception const& e) {
     std::string errorMsg( "ResignLeadership: exception thrown when resigning:");
     errorMsg += e.what();

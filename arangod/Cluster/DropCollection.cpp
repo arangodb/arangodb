@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -75,23 +76,32 @@ bool DropCollection::first() {
     return false;
   }
 
-  Result found = methods::Collections::lookup(
-    vocbase, collection, [&](LogicalCollection& coll) {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  try {
+
+    DatabaseGuard guard(*vocbase);
+
+    Result found = methods::Collections::lookup(
+      vocbase, collection, [&](LogicalCollection& coll) {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Dropping local collection " + collection;
-      _result = Collections::drop(vocbase, &coll, false, 120);
-    });
+        _result = Collections::drop(vocbase, &coll, false, 120);
+      });
 
-  if (found.fail()) {
-    std::string errorMsg("DropCollection: failed to lookup local collection ");
-    errorMsg += database + "/" + collection;
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
+    if (found.fail()) {
+      std::string errorMsg("DropCollection: failed to lookup local collection ");
+      errorMsg += database + "/" + collection;
+      _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+      fail();
+      return false;
+    }
+
+    complete();
     return false;
+
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << " action " << _description << " failed with exception " << e.what();
   }
-
-  complete();
-  return false;
-
+    
 }

@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb::application_features;
@@ -60,16 +61,28 @@ bool DropDatabase::first() {
     FATAL_ERROR_EXIT();
   }
 
-  auto result = Databases::drop(systemVocbase, database);
-  if (!result.ok()) {
-    _result = result;
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "DropDatabase: dropping database " << database << " failed: "
-      << result.errorMessage();
+  try {
+
+    DatabaseGuard guard(*systemVocbase);
+    
+    auto result = Databases::drop(systemVocbase, database);
+    if (!result.ok()) {
+      _result = result;
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "DropDatabase: dropping database " << database << " failed: "
+        << result.errorMessage();
+      fail();
+      return false;
+    }
+
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
     fail();
     return false;
   }
-
+  
   complete();
   return false;
+
 }

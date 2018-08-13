@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Utils/DatabaseGuard.h" 
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Methods/Databases.h"
@@ -85,32 +86,44 @@ bool DropIndex::first() {
     return false;
   }
 
-  auto col = vocbase->lookupCollection(collection);
-  if (col == nullptr) {
-    std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
-    errorMsg += collection + " in database " + database;
-    _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
-    return false;
-  }
+  try {
 
-  Result found = methods::Collections::lookup(
-    vocbase, collection, [&](LogicalCollection& coll) {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    DatabaseGuard guard(*vocbase);
+  
+    auto col = vocbase->lookupCollection(collection);
+    if (col == nullptr) {
+      std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
+      errorMsg += collection + " in database " + database;
+      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+      fail();
+      return false;
+    }
+
+    Result found = methods::Collections::lookup(
+      vocbase, collection, [&](LogicalCollection& coll) {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Dropping local index " + collection + "/" + id;
-      _result = Indexes::drop(&coll, index.slice());
-    });
+        _result = Indexes::drop(&coll, index.slice());
+      });
 
-  if (found.fail()) {
-    std::string errorMsg("DropIndex: Failed to lookup local collection ");
-    errorMsg += collection + "in database " + database;
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    if (found.fail()) {
+      std::string errorMsg("DropIndex: Failed to lookup local collection ");
+      errorMsg += collection + "in database " + database;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+      _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+      fail();
+      return false;
+    }
+
+    complete();
+    return false;
+
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
     fail();
     return false;
   }
-
-  complete();
-  return false;
+  
 }

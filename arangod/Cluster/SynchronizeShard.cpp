@@ -713,221 +713,229 @@ arangodb::Result SynchronizeShard::synchronise() {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
 
-  auto collection = vocbase->lookupCollection(shard);
-  if (collection == nullptr) {
-    std::string errorMsg(
-      "SynchronizeShard::synchronizeOneShard: Failed to lookup local shard ");
-    errorMsg += shard;
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
-    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-  }
+  try { 
 
-  auto ep = clusterInfo->getServerEndpoint(leader);
-  size_t c;
-  if (!count(collection, c).ok()) {
-    std::string errorMsg(
-      "SynchronizeShard::synchronizeOneShard: Failed to get a count on leader ");
-    errorMsg += shard;
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
-    return arangodb::Result(TRI_ERROR_INTERNAL, errorMsg);
-  }
-
-  if (c == 0) {
-    // We have a short cut:
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
-      "synchronizeOneShard: trying short cut to synchronize local shard '" <<
-      database << "/" << shard << "' for central '" << database << "/" <<
-      planId << "'";
-    try {
-
-      auto asResult = addShardFollower(ep, database, shard, 0, clientId, 60.0);
-
-      if (asResult.ok()) {
-
-        auto const endTime = system_clock::now();
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
-          "synchronizeOneShard: shortcut worked, done, " << database << "/" <<
-          shard << ", " << database << "/" << planId <<", started: " << startTimeStr
-          << " ended: " << timepointToString(endTime);
-        collection->followers()->setTheLeader(leader);
-        complete();
-        return Result();
-      }
-    } catch (...) {}
-  }
-
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "synchronizeOneShard: trying to synchronize local shard '" << database
-    << "/" << shard << "' for central '" << database << "/" << planId << "'";
-
-  try {
-    // First once without a read transaction:
-
-    if (isStopping()) {
+    auto collection = vocbase->lookupCollection(shard);
+    if (collection == nullptr) {
+      std::string errorMsg(
+        "SynchronizeShard::synchronizeOneShard: Failed to lookup local shard ");
+      errorMsg += shard;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
       fail();
-      return Result(TRI_ERROR_INTERNAL, "server is shutting down");
+      return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
 
-    collection->followers()->setTheLeader(leader);
-
-    if (leader.empty()) {
-      collection->followers()->clear();
+    auto ep = clusterInfo->getServerEndpoint(leader);
+    size_t c;
+    if (!count(collection, c).ok()) {
+      std::string errorMsg(
+        "SynchronizeShard::synchronizeOneShard: Failed to get a count on leader ");
+      errorMsg += shard;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+      fail();
+      return arangodb::Result(TRI_ERROR_INTERNAL, errorMsg);
     }
 
-    // do not reset followers when we resign at this time...we are
-    // still the only source of truth to trust, in particular, in the
-    // planned leader resignation, we will shortly after the call to
-    // this function here report the controlled resignation to the
-    // agency. This report must still contain the correct follower list
-    // or else the supervision is super angry with us.
+    if (c == 0) {
+      // We have a short cut:
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
+        "synchronizeOneShard: trying short cut to synchronize local shard '" <<
+        database << "/" << shard << "' for central '" << database << "/" <<
+        planId << "'";
+      try {
 
-    startTime = system_clock::now();
+        auto asResult = addShardFollower(ep, database, shard, 0, clientId, 60.0);
 
-    VPackBuilder config;
-    { VPackObjectBuilder o(&config);
-      config.add(ENDPOINT, VPackValue(ep));
-      config.add(INCREMENTAL, VPackValue(true));
-      config.add(KEEP_BARRIER, VPackValue(true));
-      config.add(LEADER_ID, VPackValue(leader));
-      config.add(SKIP_CREATE_DROP, VPackValue(true));
-      config.add(RESTRICT_TYPE, VPackValue(INCLUDE));
-      config.add(VPackValue(RESTRICT_COLLECTIONS));
-      { VPackArrayBuilder a(&config);
-        config.add(VPackValue(shard)); }
-      config.add(INCLUDE_SYSTEM, VPackValue(true));
-      config.add("verbose", VPackValue(false)); }
+        if (asResult.ok()) {
 
-    auto details = std::make_shared<VPackBuilder>();
+          auto const endTime = system_clock::now();
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
+            "synchronizeOneShard: shortcut worked, done, " << database << "/" <<
+            shard << ", " << database << "/" << planId <<", started: " << startTimeStr
+                                                           << " ended: " << timepointToString(endTime);
+          collection->followers()->setTheLeader(leader);
+          complete();
+          return Result();
+        }
+      } catch (...) {}
+    }
 
-    Result syncRes = replicationSynchronize(
-      collection, config.slice(), APPLIER_DATABASE, details);
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "synchronizeOneShard: trying to synchronize local shard '" << database
+      << "/" << shard << "' for central '" << database << "/" << planId << "'";
 
-    auto sy = details->slice();
-    auto const endTime = system_clock::now();
-    bool longSync = false;
+    try {
+      // First once without a read transaction:
 
-    // Long shard sync initialisation
-    if (endTime-startTime > seconds(5)) {
-      LOG_TOPIC(WARN, Logger::MAINTENANCE) <<
-        "synchronizeOneShard: long call to syncCollection for shard"
+      if (isStopping()) {
+        fail();
+        return Result(TRI_ERROR_INTERNAL, "server is shutting down");
+      }
+
+      collection->followers()->setTheLeader(leader);
+
+      if (leader.empty()) {
+        collection->followers()->clear();
+      }
+
+      // do not reset followers when we resign at this time...we are
+      // still the only source of truth to trust, in particular, in the
+      // planned leader resignation, we will shortly after the call to
+      // this function here report the controlled resignation to the
+      // agency. This report must still contain the correct follower list
+      // or else the supervision is super angry with us.
+
+      startTime = system_clock::now();
+
+      VPackBuilder config;
+      { VPackObjectBuilder o(&config);
+        config.add(ENDPOINT, VPackValue(ep));
+        config.add(INCREMENTAL, VPackValue(true));
+        config.add(KEEP_BARRIER, VPackValue(true));
+        config.add(LEADER_ID, VPackValue(leader));
+        config.add(SKIP_CREATE_DROP, VPackValue(true));
+        config.add(RESTRICT_TYPE, VPackValue(INCLUDE));
+        config.add(VPackValue(RESTRICT_COLLECTIONS));
+        { VPackArrayBuilder a(&config);
+          config.add(VPackValue(shard)); }
+        config.add(INCLUDE_SYSTEM, VPackValue(true));
+        config.add("verbose", VPackValue(false)); }
+
+      auto details = std::make_shared<VPackBuilder>();
+
+      Result syncRes = replicationSynchronize(
+        collection, config.slice(), APPLIER_DATABASE, details);
+
+      auto sy = details->slice();
+      auto const endTime = system_clock::now();
+      bool longSync = false;
+
+      // Long shard sync initialisation
+      if (endTime-startTime > seconds(5)) {
+        LOG_TOPIC(WARN, Logger::MAINTENANCE)
+          << "synchronizeOneShard: long call to syncCollection for shard"
           << shard << " " << syncRes.errorMessage() <<  " start time: "
           << timepointToString(startTime) <<  "end time: "
           << timepointToString(system_clock::now());
-      longSync = true;
-    }
+        longSync = true;
+      }
 
-    //
-    if (!syncRes.ok()) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "synchronizeOneShard: could not initially synchronize shard " << shard
-        << syncRes.errorMessage();
-      fail();
-      return syncRes;
-
-    } else {
-
-      VPackSlice collections = sy.get(COLLECTIONS);
-
-      if (collections.length() == 0 ||
-          collections[0].get("name").copyString() != shard) {
-
-        if (longSync) {
-          LOG_TOPIC(ERR, Logger::MAINTENANCE)
-            << "synchronizeOneShard: long sync, before cancelBarrier"
-            << timepointToString(system_clock::now());
-        }
-        cancelBarrier(ep, database, sy.get(BARRIER_ID).getNumber<int64_t>(), clientId);
-        if (longSync) {
-          LOG_TOPIC(ERR, Logger::MAINTENANCE)
-            << "synchronizeOneShard: long sync, after cancelBarrier"
-            << timepointToString(system_clock::now());
-        }
-        std::string errorMessage("synchronizeOneShard: Shard ");
-        errorMessage += shard + " seems to be gone from leader!";
-        LOG_TOPIC(ERR,  Logger::MAINTENANCE) << errorMessage;
+      //
+      if (!syncRes.ok()) {
+        LOG_TOPIC(ERR, Logger::MAINTENANCE)
+          << "synchronizeOneShard: could not initially synchronize shard " << shard
+          << syncRes.errorMessage();
         fail();
-        return Result(TRI_ERROR_INTERNAL, errorMessage);
+        return syncRes;
 
       } else {
 
-        // Now start a read transaction to stop writes:
-        uint64_t lockJobId = 0;
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
-          << database << ":" << collection->name();
-        Result result = startReadLockOnLeader(
-          ep, database, collection->name(), clientId, lockJobId);
-        if (result.ok()) {
-          LOG_TOPIC(DEBUG, Logger::FIXME) << "lockJobId: " <<  lockJobId;
+        VPackSlice collections = sy.get(COLLECTIONS);
+
+        if (collections.length() == 0 ||
+            collections[0].get("name").copyString() != shard) {
+
+          if (longSync) {
+            LOG_TOPIC(ERR, Logger::MAINTENANCE)
+              << "synchronizeOneShard: long sync, before cancelBarrier"
+              << timepointToString(system_clock::now());
+          }
+          cancelBarrier(ep, database, sy.get(BARRIER_ID).getNumber<int64_t>(), clientId);
+          if (longSync) {
+            LOG_TOPIC(ERR, Logger::MAINTENANCE)
+              << "synchronizeOneShard: long sync, after cancelBarrier"
+              << timepointToString(system_clock::now());
+          }
+          std::string errorMessage("synchronizeOneShard: Shard ");
+          errorMessage += shard + " seems to be gone from leader!";
+          LOG_TOPIC(ERR,  Logger::MAINTENANCE) << errorMessage;
+          fail();
+          return Result(TRI_ERROR_INTERNAL, errorMessage);
+
         } else {
-          LOG_TOPIC(ERR, Logger::MAINTENANCE)
-            << "synchronizeOneShard: error in startReadLockOnLeader:"
-            << result.errorMessage();
-        }
 
-        cancelBarrier(ep, database, sy.get("barrierId").getNumber<int64_t>(), clientId);
-
-        if (lockJobId != 0) {
-
-          VPackBuilder builder;
-          { VPackObjectBuilder o(&builder);
-            builder.add(ENDPOINT, VPackValue(ep));
-            builder.add(DATABASE, VPackValue(database));
-            builder.add(COLLECTION, VPackValue(shard));
-            builder.add(LEADER_ID, VPackValue(leader));
-            builder.add("from", sy.get(LAST_LOG_TICK));
-            builder.add("requestTimeout", VPackValue(60.0));
-            builder.add("connectTimeout", VPackValue(60.0));
+          // Now start a read transaction to stop writes:
+          uint64_t lockJobId = 0;
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
+            << database << ":" << collection->name();
+          Result result = startReadLockOnLeader(
+            ep, database, collection->name(), clientId, lockJobId);
+          if (result.ok()) {
+            LOG_TOPIC(DEBUG, Logger::FIXME) << "lockJobId: " <<  lockJobId;
+          } else {
+            LOG_TOPIC(ERR, Logger::MAINTENANCE)
+              << "synchronizeOneShard: error in startReadLockOnLeader:"
+              << result.errorMessage();
           }
 
-          Result fres = replicationSynchronizeFinalize (builder.slice());
+          cancelBarrier(ep, database, sy.get("barrierId").getNumber<int64_t>(), clientId);
 
-          if (fres.ok()) {
-            result = addShardFollower(ep, database, shard, lockJobId, clientId, 60.0);
+          if (lockJobId != 0) {
 
+            VPackBuilder builder;
+            { VPackObjectBuilder o(&builder);
+              builder.add(ENDPOINT, VPackValue(ep));
+              builder.add(DATABASE, VPackValue(database));
+              builder.add(COLLECTION, VPackValue(shard));
+              builder.add(LEADER_ID, VPackValue(leader));
+              builder.add("from", sy.get(LAST_LOG_TICK));
+              builder.add("requestTimeout", VPackValue(60.0));
+              builder.add("connectTimeout", VPackValue(60.0));
+            }
+
+            Result fres = replicationSynchronizeFinalize (builder.slice());
+
+            if (fres.ok()) {
+              result = addShardFollower(ep, database, shard, lockJobId, clientId, 60.0);
+
+              if (!result.ok()) {
+                LOG_TOPIC(ERR, Logger::MAINTENANCE)
+                  << "synchronizeOneShard: failed to add follower"
+                  << result.errorMessage();
+              }
+            } else {
+              std::string errorMessage(
+                "synchronizeOneshard: error in syncCollectionFinalize: ") ;
+              errorMessage += fres.errorMessage();
+              result = Result(TRI_ERROR_INTERNAL, errorMessage);
+            }
+
+            result = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
             if (!result.ok()) {
               LOG_TOPIC(ERR, Logger::MAINTENANCE)
-                << "synchronizeOneShard: failed to add follower"
-                << result.errorMessage();
+                << "synchronizeOneShard: read lock has timed out for shard " << shard;
             }
           } else {
-            std::string errorMessage(
-              "synchronizeOneshard: error in syncCollectionFinalize: ") ;
-            errorMessage += fres.errorMessage();
-            result = Result(TRI_ERROR_INTERNAL, errorMessage);
-          }
-
-          result = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
-          if (!result.ok()) {
             LOG_TOPIC(ERR, Logger::MAINTENANCE)
-              << "synchronizeOneShard: read lock has timed out for shard " << shard;
+              << "synchronizeOneShard: lockJobId was false for shard" << shard;
           }
-        } else {
-          LOG_TOPIC(ERR, Logger::MAINTENANCE)
-            << "synchronizeOneShard: lockJobId was false for shard" << shard;
-        }
 
-        if (result.ok()) {
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-            << "synchronizeOneShard: synchronization worked for shard " << shard;
-        } else {
-          LOG_TOPIC(ERR, Logger::MAINTENANCE)
-            << "synchronizeOneShard: synchronization failed for shard " << shard;
+          if (result.ok()) {
+            LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+              << "synchronizeOneShard: synchronization worked for shard " << shard;
+          } else {
+            LOG_TOPIC(ERR, Logger::MAINTENANCE)
+              << "synchronizeOneShard: synchronization failed for shard " << shard;
+          }
         }
       }
+    } catch (std::exception const& e) {
+      auto const endTime = system_clock::now();
+      LOG_TOPIC(ERR,Logger::MAINTENANCE)
+        << "synchronization of local shard '" << database << "/" << shard
+        << "' for central '" << database << "/" << planId << "' failed: "
+        << e.what() << timepointToString(endTime);
+      fail();
+      return Result (TRI_ERROR_INTERNAL, e.what());
     }
   } catch (std::exception const& e) {
-    auto const endTime = system_clock::now();
-    LOG_TOPIC(ERR,Logger::MAINTENANCE)
-      << "synchronization of local shard '" << database << "/" << shard
-      << "' for central '" << database << "/" << planId << "' failed: "
-      << e.what() << timepointToString(endTime);
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
     fail();
-    return Result (TRI_ERROR_INTERNAL, e.what());
+    return Result(TRI_ERROR_INTERNAL, e.what());
   }
-
+  
   // Tell others that we are done:
   auto const endTime = system_clock::now();
   LOG_TOPIC(INFO, Logger::MAINTENANCE)
