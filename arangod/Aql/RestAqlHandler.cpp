@@ -45,7 +45,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/SmartContext.h"
@@ -217,7 +216,7 @@ void RestAqlHandler::setupClusterQuery() {
   if (ttl <= 0) {
     ttl = _queryRegistry->defaultTTL();
   }
-  
+
   // creates a StandaloneContext or a leasing context
   auto ctx = transaction::SmartContext::Create(_vocbase);
 
@@ -287,7 +286,7 @@ bool RestAqlHandler::registerSnippets(
       options,
       (needToLock ? PART_MAIN : PART_DEPENDENT)
     );
-    
+
     // enables the query to get the correct transaction
     query->setTransactionContext(ctx);
 
@@ -588,7 +587,7 @@ RestStatus RestAqlHandler::execute() {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "Unknown GET API");
       } else {
         // for /_api/aql/hasMore, now always return with a hard-coded response
-        // that contains  "hasMore" : true. This seems good enough to ensure 
+        // that contains  "hasMore" : true. This seems good enough to ensure
         // compatibility with 3.3.
         VPackBuilder answerBody;
         {
@@ -797,7 +796,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
       } else if (operation == "shutdown") {
         int errorCode = VelocyPackHelper::getNumericValue<int>(
             querySlice, "code", TRI_ERROR_INTERNAL);
-        
+
         ExecutionState state;
         Result res;
         std::tie(state, res) = query->engine()->shutdown(errorCode);  // pass errorCode to shutdown

@@ -25,7 +25,7 @@
 #ifndef ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
 
-#include "Scheduler/SocketTask.h"
+#include "GeneralServer/SocketTask.h"
 
 #include <openssl/ssl.h>
 #include "GeneralServer/GeneralServer.h"
@@ -33,7 +33,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "Scheduler/Socket.h"
+#include "GeneralServer/Socket.h"
 
 namespace arangodb {
 class AuthenticationFeature;

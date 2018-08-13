@@ -31,7 +31,6 @@
 #include "Basics/socket-utils.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"

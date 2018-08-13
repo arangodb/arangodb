@@ -26,7 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Scheduler/Socket.h"
+#include "GeneralServer/Socket.h"
 
 namespace arangodb {
 namespace rest {

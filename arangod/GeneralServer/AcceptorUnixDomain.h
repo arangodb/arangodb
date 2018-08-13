@@ -17,35 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_JOB_GUARD_H
-#define ARANGOD_SCHEDULER_JOB_GUARD_H 1
+#ifndef ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H
+#define ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H 1
 
-#include "Basics/Common.h"
-
-#include "Basics/SameThreadAsserter.h"
-#include "Scheduler/Scheduler.h"
+#include "GeneralServer/Acceptor.h"
 
 namespace arangodb {
-
-
-class JobGuard : public SameThreadAsserter {
+class AcceptorUnixDomain final : public Acceptor {
  public:
-  JobGuard(JobGuard const&) = delete;
-  JobGuard& operator=(JobGuard const&) = delete;
-
-  explicit JobGuard(rest::Scheduler* scheduler) {}
-  ~JobGuard() {}
+  AcceptorUnixDomain(rest::GeneralServer &server,
+                     rest::GeneralServer::IoContext &context, Endpoint* endpoint)
+      : Acceptor(server, context, endpoint),
+        _acceptor(context.newDomainAcceptor()) {}
 
  public:
-  void work() {
-  }
+  void open() override;
+  void close() override;
+  void asyncAccept(AcceptHandler const& handler) override;
 
  private:
-  void release() {
-  }
+  std::unique_ptr<asio_ns::local::stream_protocol::acceptor> _acceptor;
 };
 }
 

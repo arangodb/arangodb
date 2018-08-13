@@ -37,9 +37,8 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/Acceptor.h"
-#include "Scheduler/JobGuard.h"
-#include "Scheduler/Task.h"
+#include "GeneralServer/Acceptor.h"
+#include "GeneralServer/Task.h"
 #include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;

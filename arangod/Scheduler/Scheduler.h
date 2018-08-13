@@ -40,7 +40,6 @@
 #include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
-class JobGuard;
 class ListenTask;
 
 namespace velocypack {

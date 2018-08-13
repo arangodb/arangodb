@@ -28,7 +28,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/asio_ns.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 
 #include "GeneralServer/GeneralServer.h"
 

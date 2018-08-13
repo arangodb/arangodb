@@ -33,9 +33,8 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/Acceptor.h"
-#include "Scheduler/JobGuard.h"
-#include "Scheduler/Task.h"
+#include "GeneralServer/Acceptor.h"
+#include "GeneralServer/Task.h"
 #include "Statistics/RequestStatistics.h"
 
 
@@ -269,7 +268,7 @@ void SupervisedScheduler::runSupervisor()
     queueLength = jobsSubmitted - jobsDone;
 
     bool doStartOneThread =
-      (/*(_numWorker < numCpuCores) &&*/ (lastQueueLength >= 3 * _numWorker) && ((lastQueueLength + _numWorker) < queueLength))
+      (/*(_numWorker < numCpuCores) &&*/ (queueLength >= 3 * _numWorker) && ((lastQueueLength + _numWorker) < queueLength))
       || (lastJobsSubmitted > jobsDone);
 
 

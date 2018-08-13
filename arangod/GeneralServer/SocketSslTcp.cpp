@@ -20,7 +20,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Scheduler/SocketSslTcp.h"
+#include "GeneralServer/SocketSslTcp.h"
 
 #include <thread>
 

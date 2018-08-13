@@ -20,11 +20,11 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Scheduler/AcceptorUnixDomain.h"
+#include "GeneralServer/AcceptorUnixDomain.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Endpoint/EndpointUnixDomain.h"
-#include "Scheduler/SocketUnixDomain.h"
+#include "GeneralServer/SocketUnixDomain.h"
 
 using namespace arangodb;
 

@@ -27,7 +27,7 @@
 
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "Scheduler/Socket.h"
+#include "GeneralServer/Socket.h"
 #include "Ssl/SslServerFeature.h"
 
 namespace arangodb {

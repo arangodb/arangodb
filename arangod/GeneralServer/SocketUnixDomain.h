@@ -23,7 +23,7 @@
 #ifndef ARANGOD_SCHEDULER_SOCKET_UNIXDOMAIN_H
 #define ARANGOD_SCHEDULER_SOCKET_UNIXDOMAIN_H 1
 
-#include "Scheduler/Socket.h"
+#include "GeneralServer/Socket.h"
 
 namespace arangodb {
 namespace basics {

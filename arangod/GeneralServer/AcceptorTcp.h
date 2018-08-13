@@ -20,26 +20,25 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H
-#define ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H 1
+#ifndef ARANGOD_SCHEDULER_ACCEPTORTCP_H
+#define ARANGOD_SCHEDULER_ACCEPTORTCP_H 1
 
-#include "Scheduler/Acceptor.h"
+#include "GeneralServer/Acceptor.h"
 
 namespace arangodb {
-class AcceptorUnixDomain final : public Acceptor {
+class AcceptorTcp final : public Acceptor {
  public:
-  AcceptorUnixDomain(rest::GeneralServer &server,
-                     rest::GeneralServer::IoContext &context, Endpoint* endpoint)
-      : Acceptor(server, context, endpoint),
-        _acceptor(context.newDomainAcceptor()) {}
+  AcceptorTcp(rest::GeneralServer &server,
+              rest::GeneralServer::IoContext &context, Endpoint* endpoint)
+      : Acceptor(server, context, endpoint), _acceptor(context.newAcceptor()) {}
 
  public:
   void open() override;
-  void close() override;
-  void asyncAccept(AcceptHandler const& handler) override;
+  void close() override { _acceptor->close(); };
+  void asyncAccept(Acceptor::AcceptHandler const& handler) override;
 
  private:
-  std::unique_ptr<asio_ns::local::stream_protocol::acceptor> _acceptor;
+  std::unique_ptr<asio_ns::ip::tcp::acceptor> _acceptor;
 };
 }
 

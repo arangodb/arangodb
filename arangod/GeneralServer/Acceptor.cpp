@@ -20,26 +20,28 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_ACCEPTORTCP_H
-#define ARANGOD_SCHEDULER_ACCEPTORTCP_H 1
+#include "GeneralServer/Acceptor.h"
 
-#include "Scheduler/Acceptor.h"
+#include "Basics/operating-system.h"
+#include "GeneralServer/AcceptorTcp.h"
 
-namespace arangodb {
-class AcceptorTcp final : public Acceptor {
- public:
-  AcceptorTcp(rest::GeneralServer &server,
-              rest::GeneralServer::IoContext &context, Endpoint* endpoint)
-      : Acceptor(server, context, endpoint), _acceptor(context.newAcceptor()) {}
-
- public:
-  void open() override;
-  void close() override { _acceptor->close(); };
-  void asyncAccept(Acceptor::AcceptHandler const& handler) override;
-
- private:
-  std::unique_ptr<asio_ns::ip::tcp::acceptor> _acceptor;
-};
-}
-
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+#include "GeneralServer/AcceptorUnixDomain.h"
 #endif
+
+using namespace arangodb;
+
+Acceptor::Acceptor(rest::GeneralServer &server,
+                   rest::GeneralServer::IoContext &context, Endpoint* endpoint)
+    : _server(server), _context(context), _endpoint(endpoint) {}
+
+std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer &server,
+                                            rest::GeneralServer::IoContext &context,
+                                            Endpoint* endpoint) {
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+  if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
+    return std::make_unique<AcceptorUnixDomain>(server, context, endpoint);
+  }
+#endif
+  return std::make_unique<AcceptorTcp>(server, context, endpoint);
+}

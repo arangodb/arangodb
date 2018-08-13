@@ -40,7 +40,6 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -916,9 +915,9 @@ Result RemoteBlock::sendAsyncRequest(
   if (!_ownName.empty()) {
     headers.emplace("Shard-Id", _ownName);
   }
-    
+
   std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
@@ -1373,7 +1372,7 @@ SortingGatherBlock::SortingGatherBlock(
     _sortRegisters
   );
 }
-  
+
 SortingGatherBlock::~SortingGatherBlock() {
   clearBuffers();
 }
@@ -1497,7 +1496,7 @@ SortingGatherBlock::getSome(size_t atMost) {
   // pull more blocks from dependencies . . .
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
-  
+
   size_t available = 0;
   {
     ExecutionState blockState;

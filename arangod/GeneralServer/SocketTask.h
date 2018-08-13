@@ -25,13 +25,13 @@
 #ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
 #define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
 
-#include "Scheduler/Task.h"
+#include "GeneralServer/Task.h"
 
 #include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
 #include "Endpoint/ConnectionInfo.h"
-#include "Scheduler/Socket.h"
+#include "GeneralServer/Socket.h"
 #include "Statistics/RequestStatistics.h"
 
 #include "GeneralServer/IoTask.h"

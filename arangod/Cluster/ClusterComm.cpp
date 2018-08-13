@@ -32,7 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
@@ -1102,7 +1101,7 @@ size_t ClusterComm::performSingleRequest(
     size_t& nrDone, arangodb::LogTopic const& logTopic) {
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   ClusterCommRequest& req(requests[0]);
-  
+
   req.result = *syncRequest("", coordinatorTransactionID, req.destination,
                             req.requestType, req.path, req.getBody(),
                             req.getHeaders(), timeout);
@@ -1198,7 +1197,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 #endif
 #endif
 
-  
+
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);
   } else {

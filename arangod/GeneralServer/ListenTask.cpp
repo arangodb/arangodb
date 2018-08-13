@@ -27,8 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
-#include "Scheduler/Acceptor.h"
-#include "Scheduler/JobGuard.h"
+#include "GeneralServer/Acceptor.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;

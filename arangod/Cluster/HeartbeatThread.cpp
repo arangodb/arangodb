@@ -46,7 +46,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-globals.h"
@@ -135,9 +134,6 @@ class HeartbeatBackgroundJob {
   }
 
   void operator()() {
-    // first tell the scheduler that this thread is working:
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.work();
 
     double now = TRI_microtime();
     if (now > _startTime + 5.0) {
@@ -172,7 +168,6 @@ void HeartbeatThread::runBackgroundJob() {
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
       _launchAnotherBackgroundJob = false;
 
-      // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _lastSyncTime = TRI_microtime();
       SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
     } else {
@@ -525,7 +520,7 @@ void HeartbeatThread::runSingleServer() {
         ApplicationServer::server->beginShutdown();
         break;
       }
-      
+
       auto readOnlySlice = response.get(std::vector<std::string>(
                                     {AgencyCommManager::path(), "Readonly"}));
       updateServerMode(readOnlySlice);
@@ -569,7 +564,7 @@ void HeartbeatThread::runSingleServer() {
           continue; // try again next time
         }
       }
-      
+
       TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
       auto sendTransient = [&]() {
         VPackBuilder builder;
@@ -695,7 +690,7 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
   if (readOnlySlice.isBoolean()) {
     readOnly = readOnlySlice.getBool();
   }
-  
+
   ServerState::instance()->setReadOnly(readOnly);
 }
 
@@ -1051,7 +1046,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       }
       std::string const name = options.value.get("name").copyString();
       TRI_ASSERT(!name.empty());
-      
+
       VPackSlice const idSlice = options.value.get("id");
       if (!idSlice.isString()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Missing id in agency database plan";
@@ -1177,7 +1172,6 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
 
-  // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
   SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
 
@@ -1253,7 +1247,7 @@ void HeartbeatThread::logThreadDeaths(bool force) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
-    
+
     for (auto const& it : deadThreads) {
       buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
 
