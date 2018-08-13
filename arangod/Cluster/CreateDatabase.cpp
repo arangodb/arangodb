@@ -51,6 +51,8 @@ CreateDatabase::~CreateDatabase() {};
 
 bool CreateDatabase::first() {
 
+  ActionBase::first();
+  
   VPackSlice users;
   auto database = _description.get(DATABASE);
 

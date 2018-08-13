@@ -69,6 +69,8 @@ ResignShardLeadership::~ResignShardLeadership() {};
 
 bool ResignShardLeadership::first() {
 
+  ActionBase::first();
+  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(SHARD);
 

@@ -101,6 +101,8 @@ CreateCollection::~CreateCollection() {};
 
 bool CreateCollection::first() {
 
+  ActionBase::first();
+  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = _description.get(SHARD);

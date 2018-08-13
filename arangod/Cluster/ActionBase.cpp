@@ -83,7 +83,7 @@ void ActionBase::complete() {
   if (cf != nullptr) {	
     cf->syncDBServerStatusQuo();	
   }
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC(WARN, Logger::MAINTENANCE)
     << "Action " << _description << "completed after "
     << std::chrono::duration<double>(
       _actionDone.load() - _actionStarted.load()).count();
@@ -139,6 +139,12 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & desc
   } // else
 
 } // ActionBase::createPreAction
+
+
+bool ActionBase::first() {	
+  _actionStarted = secs_since_epoch();	
+  return false;	
+}
 
 
 /// @brief Retrieve pointer to action that should run before this one

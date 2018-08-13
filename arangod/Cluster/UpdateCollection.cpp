@@ -116,6 +116,8 @@ UpdateCollection::~UpdateCollection() {};
 
 bool UpdateCollection::first() {
 
+  ActionBase::first();
+  
   auto const& database   = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& plannedLeader = _description.get(LEADER);

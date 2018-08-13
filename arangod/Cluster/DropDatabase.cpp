@@ -50,6 +50,8 @@ DropDatabase::~DropDatabase() {};
 
 bool DropDatabase::first() {
 
+  ActionBase::first();
+  
   auto const& database = _description.get(DATABASE);
   auto* systemVocbase =
     ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();

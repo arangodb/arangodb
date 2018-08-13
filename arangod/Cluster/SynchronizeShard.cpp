@@ -942,6 +942,7 @@ arangodb::Result SynchronizeShard::synchronise() {
 SynchronizeShard::~SynchronizeShard() {};
 
 bool SynchronizeShard::first() {
+  ActionBase::first();
   _result = synchronise();
   return false;
 }

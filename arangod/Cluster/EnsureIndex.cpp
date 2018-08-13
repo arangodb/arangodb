@@ -82,6 +82,8 @@ EnsureIndex::~EnsureIndex() {};
 
 bool EnsureIndex::first() {
 
+  ActionBase::first();
+  
   arangodb::Result res;
 
   auto const& database = _description.get(DATABASE);
