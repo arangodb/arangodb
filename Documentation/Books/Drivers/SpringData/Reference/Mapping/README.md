@@ -159,3 +159,7 @@ To deactivate the type mapping process, you can return `null` from the `typeKey(
 | @GeoIndexed             | field                     | describes how to index the field                                                                                                                    |
 | @FulltextIndex          | class                     | describes a fulltext index                                                                                                                          |
 | @FulltextIndexed        | field                     | describes how to index the field                                                                                                                    |
+| @CreatedBy              | field                     | Declares a field as the one representing the principal that created the entity containing the field.                                                |
+| @CreatedDate            | field                     | Declares a field as the one representing the date the entity containing the field was created.                                                      |
+| @LastModifiedBy         | field                     | Declares a field as the one representing the principal that recently modified the entity containing the field.                                      |
+| @LastModifiedDate       | field                     | Declares a field as the one representing the date the entity containing the field was recently modified.                                            |
