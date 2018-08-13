@@ -23,7 +23,7 @@ Most modern CPU's have builtin support for hardware AES encryption, which makes 
 Limitations
 ===========
 
-Encryption feature has two limitations that are:
+Encryption feature has the following limitations:
 - Encrypting a single collection is not supported, this means that all the databases are encrypted.
 - Database cannot be encrypted at runtime.
 - The Encryption feature requires the RocksDB storage engine.
