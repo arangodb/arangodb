@@ -38,7 +38,7 @@
 
 using namespace arangodb;
 
-ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection) 
+ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection)
     : _collection(collection),
       _numberOfShards(basics::VelocyPackHelper::readNumericValue<size_t>(info, "numberOfShards", 1)),
       _replicationFactor(1),
@@ -47,7 +47,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _shardKeys(),
       _shardIds(new ShardMap()),
       _shardingStrategy() {
-  
+
   bool const isSmart = basics::VelocyPackHelper::readBooleanValue(info, "isSmart", false);
 
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
@@ -60,12 +60,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     if ((_numberOfShards == 0 && !isSmart) || _numberOfShards > 1000) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid number of shards");
-    }
-
-    VPackSlice keyGenSlice = info.get("keyOptions");
-    if (!KeyGenerator::canUseType(keyGenSlice)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                     "the specified key generator is not supported for sharded collections");
     }
   }
 
@@ -176,12 +170,12 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
   }
 
-  // set the sharding strategy      
+  // set the sharding strategy
   _shardingStrategy = application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->fromVelocyPack(info, this);
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
-ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collection) 
+ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collection)
     : _collection(collection),
       _numberOfShards(other.numberOfShards()),
       _replicationFactor(other.replicationFactor()),
@@ -203,7 +197,7 @@ ShardingInfo::~ShardingInfo() {}
 bool ShardingInfo::usesSameShardingStrategy(ShardingInfo const* other) const {
   return _shardingStrategy->isCompatible(other->_shardingStrategy.get());
 }
-  
+
 std::string ShardingInfo::shardingStrategyName() const {
   return _shardingStrategy->name();
 }
@@ -274,7 +268,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
 
   _shardingStrategy->toVelocyPack(result);
 }
-  
+
 std::string ShardingInfo::distributeShardsLike() const {
   return _distributeShardsLike;
 }
@@ -287,7 +281,8 @@ void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo con
   if (!usesSameShardingStrategy(other)) {
     // other collection has a different sharding strategy
     // adjust our sharding so it uses the same strategy as the other collection
-    _shardingStrategy = std::move(application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding")->create(other->shardingStrategyName(), this));
+    auto shr = application_features::ApplicationServer::getFeature<ShardingFeature>("Sharding");
+    _shardingStrategy = shr->create(other->shardingStrategyName(), this);
   }
 
   _distributeShardsLike = cid;
@@ -307,7 +302,7 @@ std::vector<std::string> const& ShardingInfo::avoidServers() const {
 void ShardingInfo::avoidServers(std::vector<std::string> const& avoidServers) {
   _avoidServers = avoidServers;
 }
-  
+
 size_t ShardingInfo::replicationFactor() const {
   return _replicationFactor;
 }
@@ -317,9 +312,9 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
 }
 
 bool ShardingInfo::isSatellite() const {
-  return _replicationFactor == 0; 
+  return _replicationFactor == 0;
 }
-  
+
 size_t ShardingInfo::numberOfShards() const {
   return _numberOfShards;
 }
@@ -331,7 +326,7 @@ void ShardingInfo::numberOfShards(size_t numberOfShards) {
   TRI_ASSERT(numberOfShards == 0);
   _numberOfShards = numberOfShards;
 }
-  
+
 bool ShardingInfo::usesDefaultShardKeys() const {
   return _shardingStrategy->usesDefaultShardKeys();
 }
@@ -367,7 +362,7 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(std::unordered_set<std::string>
 void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _shardIds = map;
 }
-  
+
 int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
                                       bool docComplete, ShardID& shardID,
                                       bool& usesDefaultShardKeys,

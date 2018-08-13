@@ -71,9 +71,9 @@ var registerTask = function (options) {
   }
   if (options.hasOwnProperty('id')) {
     URL += '/' + options.id;
-    requestResult = db._connection.PUT(URL, JSON.stringify(options));
+    requestResult = db._connection.PUT(URL, options);
   } else {
-    requestResult = db._connection.POST(URL, JSON.stringify(options));
+    requestResult = db._connection.POST(URL, options);
   }
 
   arangosh.checkRequestResult(requestResult);

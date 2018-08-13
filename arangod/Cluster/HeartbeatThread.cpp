@@ -167,6 +167,7 @@ void HeartbeatThread::runBackgroundJob() {
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
     TRI_ASSERT(_backgroundJobScheduledOrRunning);
+
     if (_launchAnotherBackgroundJob) {
       jobNr = ++_backgroundJobsPosted;
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
@@ -174,7 +175,8 @@ void HeartbeatThread::runBackgroundJob() {
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _lastSyncTime = TRI_microtime();
-      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
+      SchedulerFeature::SCHEDULER->post(
+          HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -1179,8 +1181,8 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
-
+  SchedulerFeature::SCHEDULER->post(
+      HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1241,6 +1243,8 @@ void HeartbeatThread::logThreadDeaths(bool force) {
 
   bool doLogging(force);
 
+  MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
+
   if (std::chrono::hours(1) < (std::chrono::system_clock::now() - deadThreadsPosted)) {
     doLogging = true;
   } // if
@@ -1248,9 +1252,10 @@ void HeartbeatThread::logThreadDeaths(bool force) {
   if (doLogging) {
     deadThreadsPosted = std::chrono::system_clock::now();
 
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "HeartbeatThread ok.";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
+    
     for (auto const& it : deadThreads) {
       buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
 

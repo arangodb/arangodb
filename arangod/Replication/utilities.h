@@ -141,6 +141,7 @@ struct BatchInfo {
 
 struct MasterInfo {
   std::string endpoint;
+  std::string engine; // storage engine (optional)
   TRI_server_id_t serverId{0};
   int majorVersion{0};
   int minorVersion{0};

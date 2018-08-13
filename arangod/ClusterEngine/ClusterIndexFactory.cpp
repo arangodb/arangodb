@@ -120,50 +120,23 @@ ClusterIndexFactory::ClusterIndexFactory() {
       }
     );
   }
-
-  // both engines support all types right now
-  static const std::vector<std::string> supported_norm = {
-    "edge",
-    "fulltext",
-    "geo",
-    "geo1",
-    "geo2",
-    "hash",
-    "persistent",
-    "primary",
-    "skiplist"
-  };
-
-  // delegate normalization to the 'actualEngine'
-  // FIXME TODO is it actually correct to tie the definition in the Agency to the DBServer engine?
-  for (auto& typeStr: supported_norm) {
-    emplaceNormalizer(
-      typeStr,
-      [](
-         velocypack::Builder& normalized,
-         velocypack::Slice definition,
-         bool isCreation
-      ) -> Result {
-        auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-
-        if (!ce) {
-          return TRI_ERROR_INTERNAL;
-        }
-
-        auto* ae = ce->actualEngine();
-
-        if (!ae) {
-          return TRI_ERROR_INTERNAL;
-        }
-
-        normalized.clear(); // enhanceIndexDefinition(...) expects an empty open object
-
-        return ae->indexFactory().enhanceIndexDefinition(
-          definition, normalized, isCreation, true
-        );
-      }
-    );
+}
+  
+Result ClusterIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
+                                                   VPackBuilder& normalized,
+                                                   bool isCreation,
+                                                   bool isCoordinator) const {
+  auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  
+  if (!ce) {
+    return TRI_ERROR_INTERNAL;
   }
+  auto* ae = ce->actualEngine();
+  if (!ae) {
+    return TRI_ERROR_INTERNAL;
+  }
+  return ae->indexFactory().enhanceIndexDefinition(definition, normalized,
+                                                   isCreation, isCoordinator);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(

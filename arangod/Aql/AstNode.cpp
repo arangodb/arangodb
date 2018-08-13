@@ -23,6 +23,7 @@
 
 #include "AstNode.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Arithmetic.h"
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
@@ -359,21 +360,6 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
       return 0;
     }
   }
-}
-
-/// @brief returns whether or not the string is empty
-static bool IsEmptyString(char const* p, size_t length) {
-  char const* e = p + length;
-
-  while (p < e) {
-    if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' &&
-        *p != '\b') {
-      return false;
-    }
-    ++p;
-  }
-
-  return true;
 }
 
 /// @brief create the node
@@ -1229,19 +1215,15 @@ AstNode const* AstNode::castToNumber(Ast* ast) const {
       case VALUE_TYPE_DOUBLE:
         // already numeric!
         return this;
-      case VALUE_TYPE_STRING:
-        try {
-          // try converting string to number
-          double v = std::stod(std::string(value.value._string, value.length));
-          return ast->createNodeValueDouble(v);
-        } catch (...) {
-          if (IsEmptyString(value.value._string, value.length)) {
-            // empty string => 0
-            return ast->createNodeValueInt(0);
-          }
-          // conversion failed
+      case VALUE_TYPE_STRING: {
+        bool failed;
+        double v = arangodb::aql::stringToNumber(std::string(value.value._string, value.length), failed);  
+        if (failed) {
+          return ast->createNodeValueInt(0);
         }
-        // intentionally falls through
+        return ast->createNodeValueDouble(v);
+      }
+      // intentionally falls through
     }
     // intentionally falls through
   } else if (type == NODE_TYPE_ARRAY) {
@@ -1727,55 +1709,6 @@ bool AstNode::isArrayComparisonOperator() const {
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN);
-}
-
-/// @brief whether or not a node (and its subnodes) can throw a runtime
-/// exception
-bool AstNode::canThrow() const {
-  if (hasFlag(DETERMINED_THROWS)) {
-    // fast track exit
-    return hasFlag(VALUE_THROWS);
-  }
-
-  // check sub-nodes first
-  size_t const n = numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    auto member = getMember(i);
-    if (member->canThrow()) {
-      // if any sub-node may throw, the whole branch may throw
-      setFlag(DETERMINED_THROWS);
-      return true;
-    }
-  }
-
-  // no sub-node throws, now check ourselves
-
-  if (type == NODE_TYPE_FCALL) {
-    auto func = static_cast<Function*>(getData());
-
-    // built-in functions may or may not throw
-    // we are currently reporting non-deterministic functions as
-    // potentially throwing. This is not correct on the one hand, but on
-    // the other hand we must not optimize or move non-deterministic functions
-    // during optimization
-    if (func->canThrow) {
-      setFlag(DETERMINED_THROWS, VALUE_THROWS);
-      return true;
-    }
-
-    setFlag(DETERMINED_THROWS);
-    return false;
-  }
-
-  if (type == NODE_TYPE_FCALL_USER) {
-    // user functions can always throw
-    setFlag(DETERMINED_THROWS, VALUE_THROWS);
-    return true;
-  }
-
-  // everything else does not throw!
-  setFlag(DETERMINED_THROWS);
-  return false;
 }
 
 /// @brief whether or not a node (and its subnodes) can safely be executed on

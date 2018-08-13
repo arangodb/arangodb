@@ -485,12 +485,14 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
   ExecutionState state = ExecutionState::WAITING;
   try {
     std::shared_ptr<SharedQueryState> sharedState = _query->sharedState();
-    sharedState->setContinueCallback();
-    
-    while (state == ExecutionState::WAITING) {
-      std::tie(state, res) = shutdown(errorCode);
-      if (state == ExecutionState::WAITING) {
-        sharedState->waitForAsyncResponse();
+    if (sharedState != nullptr) {
+      sharedState->setContinueCallback();
+      
+      while (state == ExecutionState::WAITING) {
+        std::tie(state, res) = shutdown(errorCode);
+        if (state == ExecutionState::WAITING) {
+          sharedState->waitForAsyncResponse();
+        }
       }
     }
   } catch (...) {

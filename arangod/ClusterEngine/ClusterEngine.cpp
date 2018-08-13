@@ -390,10 +390,6 @@ int ClusterEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief Add engine-specific AQL functions.
-void ClusterEngine::addAqlFunctions() {
-}
-
 /// @brief Add engine-specific optimizer rules
 void ClusterEngine::addOptimizerRules() {
   if (engineType() == ClusterEngineType::MMFilesEngine) {

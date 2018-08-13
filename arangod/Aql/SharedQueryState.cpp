@@ -31,6 +31,8 @@ using namespace arangodb::aql;
 void SharedQueryState::invalidate() {
   CONDITION_LOCKER(guard, _condition);
   _valid = false;
+  _wasNotified = true;
+  guard.signal();
 }
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
@@ -71,7 +73,7 @@ bool SharedQueryState::execute(std::function<bool()> const& cb) {
       // We are shutting down
       return false;
     }
-    scheduler->post(_continueCallback);
+    scheduler->post(_continueCallback, false);
   } else {
     _wasNotified = true;
     guard.signal();
@@ -82,8 +84,9 @@ bool SharedQueryState::execute(std::function<bool()> const& cb) {
 
 /// @brief setter for the continue callback:
 ///        We can either have a handler or a callback
-void SharedQueryState::setContinueCallback() {
+void SharedQueryState::setContinueCallback() noexcept {
   CONDITION_LOCKER(guard, _condition);
+  _continueCallback = nullptr;
   _hasHandler = false;
 }
 

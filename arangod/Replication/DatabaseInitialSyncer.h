@@ -52,7 +52,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
       InitialSyncerIncrementalSyncStats& stats,
       std::string const& keysId, uint64_t chunkId, std::string const& lowString,
       std::string const& highString,
-      std::vector<std::pair<std::string, uint64_t>> const& markers);
+      std::vector<std::string> const& markers);
 
  public:
   /// @brief apply phases
@@ -165,7 +165,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
  private:
   /// @brief order a new chunk from the /dump API
-  void orderDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+  void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       std::string const& baseUrl, 
                       arangodb::LogicalCollection* coll, 
                       std::string const& leaderColl,
