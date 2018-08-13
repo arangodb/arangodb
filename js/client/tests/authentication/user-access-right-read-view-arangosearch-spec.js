@@ -294,7 +294,7 @@ function hasIResearch (db) {
                   checkError(e);
                   return;
                 }
-                expect(false).to.equal(true, `${name} managed to perform a query on view with insufficient rights`);
+                expect(false).to.equal(true, `${name} managed to get the view properties with insufficient rights`);
               });
             });
           });

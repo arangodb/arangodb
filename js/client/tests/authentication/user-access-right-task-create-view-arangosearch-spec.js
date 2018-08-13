@@ -207,6 +207,12 @@ function hasIResearch (db) {
               return view != null;
             };
 
+            const rootTestViewLinksEmpty = (viewName = testViewName) => {
+              helper.switchUser('root', dbName);
+              var view = db._view(viewName);
+              return Object.keys(view.properties().links).length === 0;
+            };
+
             const rootDropView = () => {
               helper.switchUser('root', dbName);
               try {
@@ -254,11 +260,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
                     checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                   }
-                  expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -285,7 +294,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+                  if (colLevel['rw'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
@@ -296,18 +305,22 @@ function hasIResearch (db) {
                       wait(keySpaceId, name);
                     } catch (e) {
                       checkError(e);
+                      return;
                     }
-                    if(!dbLevel['rw'].has(name)) {
-                      expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                    }
+                    expect(rootTestView(testViewName)).to.equal(true, `${name} was unable to create a view with sufficent rights`);
+                    expect(rootTestViewLinksEmpty(testViewName)).to.equal(true, 'View links expected to be empty, but were creater afterwards with insufficent rights');
                   }
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
                     checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
             });
