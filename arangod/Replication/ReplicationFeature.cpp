@@ -34,13 +34,14 @@
 #include "Rest/GeneralResponse.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 
-ReplicationFeature::ReplicationFeature(ApplicationServer* server)
+ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false) {
@@ -239,3 +240,5 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
     }
   }
 }
+
+} // arangodb

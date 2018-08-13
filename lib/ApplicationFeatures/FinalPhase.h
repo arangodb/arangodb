@@ -27,10 +27,12 @@
 
 namespace arangodb {
 namespace application_features {
+
 class FinalFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit FinalFeaturePhase(ApplicationServer* server);
+  explicit FinalFeaturePhase(ApplicationServer& server);
 };
+
 }  // namespace application_features
 }  // namespace arangodb
 

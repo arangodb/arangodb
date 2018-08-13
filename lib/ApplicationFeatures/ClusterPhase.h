@@ -27,10 +27,12 @@
 
 namespace arangodb {
 namespace application_features {
+
 class ClusterFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit ClusterFeaturePhase(ApplicationServer* server);
+  explicit ClusterFeaturePhase(ApplicationServer& server);
 };
+
 }  // namespace application_features
 }  // namespace arangodb
 

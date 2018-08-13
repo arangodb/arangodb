@@ -139,7 +139,7 @@ struct IResearchViewSetup {
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
-  IResearchViewSetup(): server(nullptr, nullptr) {
+  IResearchViewSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -158,37 +158,37 @@ struct IResearchViewSetup {
       features.emplace(name, std::make_pair(ftr, start));
     };
 
-    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
     // setup required application features
-    buildFeatureEntry(new arangodb::V8DealerFeature(&server), false);
-    buildFeatureEntry(new arangodb::ViewTypesFeature(&server), true);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false);
-    buildFeatureEntry(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
-    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), true);
-    buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
-    buildFeatureEntry(new arangodb::DatabaseFeature(&server), false);
-    buildFeatureEntry(new arangodb::DatabasePathFeature(&server), false);
-    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(&server), false);
-    buildFeatureEntry(new arangodb::AqlFeature(&server), true);
-    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(&server), true);
+    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
+    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
+    buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
+    buildFeatureEntry(new arangodb::AuthenticationFeature(server), true);
+    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
+    buildFeatureEntry(new arangodb::DatabaseFeature(server), false);
+    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
+    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(server), false);
+    buildFeatureEntry(new arangodb::AqlFeature(server), true);
+    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
 
     // We need this feature to be added now in order to create the system database
     arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
 
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
  
-    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::ShardingFeature(&server), false); 
-    buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false); 
+    buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
 
     #if USE_ENTERPRISE
-    buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    buildFeatureEntry(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -2359,7 +2359,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
+    StorageEngineMock(s.server).registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
@@ -2387,7 +2387,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
+    StorageEngineMock(s.server).registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 

@@ -38,8 +38,9 @@
 
 struct IResearchViewMetaSetup {
   StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
 
-  IResearchViewMetaSetup() {
+  IResearchViewMetaSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
   }
 
