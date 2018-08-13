@@ -12,7 +12,7 @@ but when the data is already on disk, you also need protection.
 That is where the Encryption feature comes in. 
 
 The Encryption feature of ArangoDB will encrypt all data that ArangoDB 
-is storing in your database before it is written to disk.
+is storing in your database before it is written to disk. This feature applies to all ArangoDB Deployments.
 
 The data is encrypted with AES-256-CTR, which is a strong encryption
 algorithm, that is very suitable for multi-processor environments. This means that 
@@ -20,7 +20,13 @@ your data is safe, but your database is still fast, even under load.
 
 Most modern CPU's have builtin support for hardware AES encryption, which makes it even faster.
 
-Note: The Encryption feature requires the RocksDB storage engine.
+Limitations
+===========
+
+Encryption feature has two limitations that are:
+- Encrypting a single collection is not supported, this means that all the databases are encrypted.
+- Database cannot be encrypted at runtime.
+- The Encryption feature requires the RocksDB storage engine.
 
 ## Encryption keys 
 
