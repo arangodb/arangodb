@@ -114,7 +114,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
   
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "DBServerAgencySync::execute starting";
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::execute starting";
   DatabaseFeature* dbfeature = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
   MaintenanceFeature* mfeature = 
@@ -124,7 +124,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   DBServerAgencySyncResult result;
 
   if (vocbase == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute no vocbase";
     return result;
   }
@@ -142,7 +142,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     glc = getLocalCollections(local);
   } catch (std::exception const& e) {
     auto error = std::string("failed to collect local collection info") + e.what();
-    LOG_TOPIC(ERR, Logger::HEARTBEAT) << error;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << error;
     return result;
   }
 
@@ -159,7 +159,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       glc = getLocalCollections(local);
     } catch (std::exception const& e) {
       auto error = std::string("failed to collect local collection info") + e.what();
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << error;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << error;
       return result;
     }
     
@@ -168,7 +168,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       plan->slice(), current->slice(), local.slice(), serverId, *mfeature, rb);
     
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::HEARTBEAT)
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "Failed to handle plan change: " << e.what();
   }
   auto report = rb.slice();
@@ -196,7 +196,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     AgencyWriteTransaction currentTransaction(operations);
     AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
     if (!r.successful()) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Error reporting to agency";
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
     }
   }
   
@@ -209,7 +209,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto took = duration<double>(clock::now()-start).count();
   if (took > 30.0) {
-    LOG_TOPIC(WARN, Logger::HEARTBEAT) << "DBServerAgencySync::execute "
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
       "took " << took << " s to execute handlePlanChange";
   }
 
