@@ -1130,34 +1130,37 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
-  bool shouldUpdate = false;
+
+  /*TRY_MUTEX_LOCKER(mutexLocker, *_statusLock);
+    if (mutexLocker == true) {*/
 
   MUTEX_LOCKER(mutexLocker, *_statusLock);
-
+  bool shouldUpdate = false;
+    
   if (_desiredVersions->plan > _currentVersions.plan) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-        << "Plan version " << _currentVersions.plan
-        << " is lower than desired version " << _desiredVersions->plan;
+      << "Plan version " << _currentVersions.plan
+      << " is lower than desired version " << _desiredVersions->plan;
     shouldUpdate = true;
   }
   if (_desiredVersions->current > _currentVersions.current) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-        << "Current version " << _currentVersions.current
-        << " is lower than desired version " << _desiredVersions->current;
+      << "Current version " << _currentVersions.current
+      << " is lower than desired version " << _desiredVersions->current;
     shouldUpdate = true;
   }
-
+    
   // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
   //  perform a safety execution of job in case other plan changes somehow incomplete or undetected
   double now = TRI_microtime();
   if (now > _lastSyncTime + 7.4 || asyncPush) {
     shouldUpdate = true;
   }
-
+    
   if (!shouldUpdate) {
     return;
   }
-
+    
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
   if (_desiredVersions->plan > ci->getPlanVersion()) {
@@ -1166,21 +1169,22 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   if (_desiredVersions->current > ci->getCurrentVersion()) {
     ci->invalidateCurrent();
   }
-
+    
   if (_backgroundJobScheduledOrRunning) {
     _launchAnotherBackgroundJob = true;
     return;
   }
-
+    
   // schedule a job for the change:
   uint64_t jobNr = ++_backgroundJobsPosted;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
-
+    
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
-
+  SchedulerFeature::SCHEDULER->post(
+    HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
+    
 }
 
 ////////////////////////////////////////////////////////////////////////////////

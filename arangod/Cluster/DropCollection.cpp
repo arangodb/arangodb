@@ -69,6 +69,7 @@ bool DropCollection::first() {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropCollection: failed to drop local collection " << database
       << "/" << collection << ": " << errorMsg;
+    fail();
     return false;
   }
 
@@ -84,9 +85,11 @@ bool DropCollection::first() {
     errorMsg += database + "/" + collection;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    fail();
     return false;
   }
 
+  complete();
   return false;
 
 }

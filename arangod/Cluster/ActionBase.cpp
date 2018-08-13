@@ -73,8 +73,21 @@ ActionBase::ActionBase(MaintenanceFeature& feature,  ActionDescription&& desc)
 
 }
 
-
 ActionBase::~ActionBase() {
+}
+
+
+void ActionBase::complete() {	
+  _actionDone = secs_since_epoch();	
+  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");	
+  if (cf != nullptr) {	
+    cf->syncDBServerStatusQuo();	
+  }
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    << "Action " << _description << "completed after "
+    << std::chrono::duration<double>(
+      _actionDone.load() - _actionStarted.load()).count();
+  _state = COMPLETE;	
 }
 
 
@@ -84,6 +97,9 @@ void ActionBase::fail() {
   if (cf != nullptr) {
     cf->syncDBServerStatusQuo();
   }
+  LOG_TOPIC(WARN, Logger::MAINTENANCE)
+    << "Action " << _description << "failed after "
+    << std::chrono::duration<double>(_actionDone.load() - _actionStarted.load()).count();
   _state = FAILED;
 }
 

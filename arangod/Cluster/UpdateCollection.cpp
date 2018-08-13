@@ -127,6 +127,7 @@ bool UpdateCollection::first() {
     std::string errorMsg("UpdateCollection: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    fail();
     return false;
   }
 
@@ -147,9 +148,11 @@ bool UpdateCollection::first() {
     std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
     errorMsg += collection + "in database " + database;
     _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    fail();
     return false;
   }
 
+  complete();
   return false;
 
 }

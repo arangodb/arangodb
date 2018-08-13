@@ -64,8 +64,10 @@ bool DropDatabase::first() {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "DropDatabase: dropping database " << database << " failed: "
       << result.errorMessage();
+    fail();
     return false;
   }
 
+  complete();
   return false;
 }

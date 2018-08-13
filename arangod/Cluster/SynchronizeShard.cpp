@@ -647,7 +647,7 @@ arangodb::Result SynchronizeShard::synchronise() {
   while(true) {
 
     if (isStopping()) {
-
+      fail();
       return Result(TRI_ERROR_INTERNAL, "shutting down");
     }
 
@@ -663,6 +663,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         << "synchronizeOneShard: cancelled, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
         << startTimeStr << ", ended " << timepointToString(endTime);
+      fail();
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
@@ -689,6 +690,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         << "synchronizeOneShard: already done, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
         << startTimeStr << ", ended " << timepointToString(endTime);
+      complete();
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
@@ -717,6 +719,7 @@ arangodb::Result SynchronizeShard::synchronise() {
       "SynchronizeShard::synchronizeOneShard: Failed to lookup local shard ");
     errorMsg += shard;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    fail();
     return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
   }
 
@@ -749,6 +752,7 @@ arangodb::Result SynchronizeShard::synchronise() {
           shard << ", " << database << "/" << planId <<", started: " << startTimeStr
           << " ended: " << timepointToString(endTime);
         collection->followers()->setTheLeader(leader);
+        complete();
         return Result();
       }
     } catch (...) {}
@@ -930,7 +934,7 @@ arangodb::Result SynchronizeShard::synchronise() {
     << "synchronizeOneShard: done, " << database << "/" << shard << ", "
     << database << "/" << planId << ", started: "
     << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
-
+  complete();
   return Result();
 
 }
