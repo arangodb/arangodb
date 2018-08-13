@@ -47,6 +47,13 @@ Action::Action(
 
 Action::Action(
   MaintenanceFeature& feature,
+  ActionDescription&& description) : _action(nullptr) {
+  TRI_ASSERT(description.has("name"));
+  create(feature, std::move(description));
+}
+
+Action::Action(
+  MaintenanceFeature& feature,
   std::shared_ptr<ActionDescription> const description)
   : _action(nullptr) {
   TRI_ASSERT(description->has("name"));

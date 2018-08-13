@@ -46,6 +46,9 @@ public:
   Action(MaintenanceFeature&, ActionDescription const&);
 
   /// @brief construct with description
+  Action(MaintenanceFeature&, ActionDescription&&);
+
+  /// @brief construct with description
   Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const);
 
   /**
