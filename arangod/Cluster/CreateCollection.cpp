@@ -56,21 +56,21 @@ CreateCollection::CreateCollection(
     fail();
   }
   TRI_ASSERT(desc.has(DATABASE));
-  
+
   if (!desc.has(COLLECTION)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "CreateCollection: cluster-wide collection must be specified";
     fail();
   }
   TRI_ASSERT(desc.has(COLLECTION));
-  
+
   if (!desc.has(SHARD)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "CreateCollection: shard must be specified";
     fail();
   }
   TRI_ASSERT(desc.has(SHARD));
-  
+
   if (!desc.has(LEADER)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "CreateCollection: shard leader must be specified";
@@ -89,10 +89,10 @@ CreateCollection::CreateCollection(
   if (type != TRI_COL_TYPE_DOCUMENT && type != TRI_COL_TYPE_EDGE) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "CreateCollection: invalid collection type number " << type;
-    fail();    
+    fail();
   }
   TRI_ASSERT(type == TRI_COL_TYPE_DOCUMENT || type == TRI_COL_TYPE_EDGE);
-  
+
 }
 
 CreateCollection::~CreateCollection() {};
@@ -101,8 +101,6 @@ CreateCollection::~CreateCollection() {};
 
 bool CreateCollection::first() {
 
-  ActionBase::first();
-  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = _description.get(SHARD);
@@ -118,7 +116,6 @@ bool CreateCollection::first() {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    fail();
     return false;
   }
 
@@ -164,17 +161,15 @@ bool CreateCollection::first() {
         col.followers()->clear();
       }
     });
-  
+
   if (_result.fail()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "creating local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << collection << "' failed: "
       << _result;
-    fail();
     return false;
   }
 
-  complete();
   return false;
 
 }

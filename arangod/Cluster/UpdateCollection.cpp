@@ -47,24 +47,29 @@ UpdateCollection::UpdateCollection(
       << "UpdateCollection: collection must be specified";
     fail();
   }
+  TRI_ASSERT(desc.has(COLLECTION));
+
 
   if (!desc.has(DATABASE)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "UpdateCollection: database must be specified";
     fail();
   }
+  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(LEADER)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "UpdateCollection: leader must be stecified";
     fail();
   }
+  TRI_ASSERT(desc.has(LEADER));
 
   if (!desc.has(LOCAL_LEADER)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "UpdateCollection: local leader must be stecified";
     fail();
   }
+  TRI_ASSERT(desc.has(LOCAL_LEADER));
 }
 
 void handleLeadership(
@@ -111,8 +116,6 @@ UpdateCollection::~UpdateCollection() {};
 
 bool UpdateCollection::first() {
 
-  ActionBase::first();
-  
   auto const& database   = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& plannedLeader = _description.get(LEADER);
@@ -124,7 +127,6 @@ bool UpdateCollection::first() {
     std::string errorMsg("UpdateCollection: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    fail();
     return false;
   }
 
@@ -145,11 +147,9 @@ bool UpdateCollection::first() {
     std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
     errorMsg += collection + "in database " + database;
     _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    fail();
     return false;
   }
 
-  complete();
   return false;
 
 }

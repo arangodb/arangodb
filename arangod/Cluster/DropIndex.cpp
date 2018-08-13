@@ -66,8 +66,6 @@ DropIndex::~DropIndex() {};
 
 bool DropIndex::first() {
 
-  ActionBase::first();
-
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& id = _description.get(INDEX);
@@ -81,7 +79,6 @@ bool DropIndex::first() {
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
     return false;
   }
 
@@ -91,7 +88,6 @@ bool DropIndex::first() {
     errorMsg += collection + " in database " + database;
     _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
     return false;
   }
 
@@ -107,10 +103,8 @@ bool DropIndex::first() {
     errorMsg += collection + "in database " + database;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    fail();
     return false;
   }
 
-  complete();
   return false;
 }

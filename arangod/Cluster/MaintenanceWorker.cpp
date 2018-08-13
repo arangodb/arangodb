@@ -129,7 +129,6 @@ void MaintenanceWorker::nextState(bool actionMore) {
       // if action's state not set, assume it succeeded when result ok
       if (_curAction->result().ok()
           && FAILED != _curAction->getState()) {
-//        _curAction->incStats();
         _curAction->endStats();
         _curAction->setState(COMPLETE);
 

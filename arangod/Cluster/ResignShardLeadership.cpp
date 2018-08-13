@@ -54,22 +54,20 @@ ResignShardLeadership::ResignShardLeadership(
       << "ResignShardLeadership: database must be specified";
     fail();
   }
+  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(SHARD)) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "ResignShardLeadership: shard must be specified";
     fail();
   }
+  TRI_ASSERT(desc.has(SHARD));
 
 }
 
 ResignShardLeadership::~ResignShardLeadership() {};
 
-
-
 bool ResignShardLeadership::first() {
-
-  ActionBase::first();
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(SHARD);
@@ -83,7 +81,6 @@ bool ResignShardLeadership::first() {
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
     return false;
   }
 
@@ -93,7 +90,6 @@ bool ResignShardLeadership::first() {
     errorMsg += collection + " in database " + database;
     _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
     return false;
   }
   // This starts a write transaction, just to wait for any ongoing
@@ -128,11 +124,9 @@ bool ResignShardLeadership::first() {
     errorMsg += e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     _result = Result(TRI_ERROR_INTERNAL, errorMsg);
-    fail();
     return false;
   }
 
-  complete();
   return false;
 
 }

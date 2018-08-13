@@ -284,7 +284,6 @@ struct IResearchExpressionFilterSetup {
       "_REFERENCE_",
       ".",
       false, // fake non-deterministic
-      false, // fake can throw
       true,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());

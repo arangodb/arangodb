@@ -50,8 +50,6 @@ DropDatabase::~DropDatabase() {};
 
 bool DropDatabase::first() {
 
-  ActionBase::first();
-
   auto const& database = _description.get(DATABASE);
   auto* systemVocbase =
     ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
@@ -66,11 +64,8 @@ bool DropDatabase::first() {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "DropDatabase: dropping database " << database << " failed: "
       << result.errorMessage();
-    fail();
     return false;
   }
-  
-  complete();
-  return false;
 
+  return false;
 }
