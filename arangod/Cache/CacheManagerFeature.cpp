@@ -96,7 +96,7 @@ void CacheManagerFeature::validateOptions(
 void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    scheduler->post(fn);
+    scheduler->post(fn, false);
     return true;
   };
   _manager.reset(new Manager(postFn, _cacheSize));

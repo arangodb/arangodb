@@ -595,7 +595,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase,
 
   auto idxs = coll.getIndexes();
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->post(fn);
+    SchedulerFeature::SCHEDULER->post(fn, false);
   };
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
