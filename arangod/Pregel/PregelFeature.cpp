@@ -71,7 +71,6 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 static PregelFeature* Instance = nullptr;
-static std::atomic<uint64_t> _uniqueId;
 
 std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,

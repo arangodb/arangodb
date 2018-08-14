@@ -602,7 +602,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys", "cid", "count",
                                              "statusString", "version",
-                                             "distributeShardsLike", "objectId"};
+                                             "distributeShardsLike", "objectId",
+                                             "indexes"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
 
