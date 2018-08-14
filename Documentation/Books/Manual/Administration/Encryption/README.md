@@ -12,7 +12,7 @@ but when the data is already on disk, you also need protection.
 That is where the Encryption feature comes in. 
 
 The Encryption feature of ArangoDB will encrypt all data that ArangoDB 
-is storing in your database before it is written to disk. This feature applies to all ArangoDB Deployments.
+is storing in your database before it is written to disk. This feature applies to all ArangoDB deployment modes.
 
 The data is encrypted with AES-256-CTR, which is a strong encryption
 algorithm, that is very suitable for multi-processor environments. This means that 
