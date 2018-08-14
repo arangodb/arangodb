@@ -66,6 +66,7 @@ function hasIResearch (db) {
 
 !hasIResearch(db) ? describe.skip : describe('User Rights Management', () => {
   it('should check if all users are created', () => {
+    //require('internal').sleep(30);
     helper.switchUser('root', '_system');
     if (db._views() === 0) {
       return; // arangosearch views are not supported
@@ -81,28 +82,29 @@ function hasIResearch (db) {
       for (let name of userSet) {
         try {
             helper.switchUser(name, dbName);
+            //if(systemLevel['none'].has(name) && (colLevel['ro'].has(name) || colLevel['none'].has(name)) && (dbLevel['ro'].has(name) || dbLevel['rw'].has(name))) { continue; }
         } catch (e) {
             continue;
         }
 
         describe(`user ${name}`, () => {
-          before(() => {
+          /*before(() => {
             helper.switchUser(name, dbName);
-          });
+          });*/
 
         describe('administrate on db level', () => {
           before(() => {
             db._useDatabase(dbName);
-            rootCreateCollection(testCol1Name);
+            /*rootCreateCollection(testCol1Name);
             rootCreateCollection(testCol2Name);
             rootPrepareCollection(testCol1Name);
-            rootPrepareCollection(testCol2Name);
+            rootPrepareCollection(testCol2Name);*/
           });
 
-          after(() => {
+          /*after(() => {
             rootDropCollection(testCol1Name);
             rootDropCollection(testCol2Name);
-          });
+          });*/
 
           const rootTestCollection = (colName, switchBack = true) => {
             helper.switchUser('root', dbName);
@@ -164,8 +166,8 @@ function hasIResearch (db) {
                   users.grantCollection(user, dbName, colName, explicitRight);
                 }
               }
-            helper.switchUser(user, dbName);
             }
+            helper.switchUser(user, dbName);
           };
 
           const rootDropCollection = (colName) => {
@@ -182,7 +184,7 @@ function hasIResearch (db) {
             if (switchBack) {
                 helper.switchUser(name, dbName);
             }
-            return view != null;
+            return view !== null;
           };
 
           const rootGetViewProps = (viewName, switchBack = true) => {
@@ -196,7 +198,9 @@ function hasIResearch (db) {
 
           const rootCreateView = (viewName, properties = null) => {
             if (rootTestView(viewName, false)) {
-              db._dropView(viewName);
+              try {
+                db._dropView(viewName);
+              } catch (ignored) {}
             }
             let view =  db._createView(viewName, testViewType, {});
             if (properties != null) {
@@ -217,10 +221,11 @@ function hasIResearch (db) {
           };
 
           const rootDropView = (viewName) => {
-            helper.switchUser('root', dbName);
-            try {
-              db._dropView(viewName);
-            } catch (ignored) { }
+            if (rootTestView(viewName, false)) {
+              try {
+                db._dropView(viewName);
+              } catch (ignored) {}
+            } 
             helper.switchUser(name, dbName);
           };
 
@@ -231,20 +236,38 @@ function hasIResearch (db) {
 
           describe('update a', () => {
             beforeEach(() => {
+              rootDropView(testViewRename);
+              rootDropView(testViewName);
+
+              rootDropCollection(testCol1Name);
+              rootDropCollection(testCol2Name);
+
+              rootCreateCollection(testCol1Name);
+              rootCreateCollection(testCol2Name);
+              rootPrepareCollection(testCol1Name);
+              rootPrepareCollection(testCol2Name);
+
               rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
             });
 
-            afterEach(() => {
+            /*afterEach(() => {
+              rootDropView(testViewRename);
               rootDropView(testViewName);
             });
 
             before(() => {
-                db._useDatabase(dbName);
+              db._useDatabase(dbName);
+              //rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
             });
 
             after(() => {
-              rootDropView(testViewRename);
-            });
+              
+              rootDropView(testViewName);
+              
+              //ADD
+              rootDropCollection(testCol1Name);
+              rootDropCollection(testCol2Name);
+            });*/
 
             it('view by name', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
@@ -266,7 +289,7 @@ function hasIResearch (db) {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, true);
-                expect(rootGetViewProps(testViewName)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
+                expect(rootGetViewProps(testViewName, true)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
               } else {
                 try {
                   db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, true);
@@ -284,7 +307,7 @@ function hasIResearch (db) {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                 db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, false);
-                expect(rootGetViewProps(testViewName)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
+                expect(rootGetViewProps(testViewName, true)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
               } else {
                 try {
                   db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, false);
@@ -302,7 +325,7 @@ function hasIResearch (db) {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                 db._view(testViewName).properties({}, false);
-                expect(rootGetViewProps(testViewName)).to.deep.equal(rootGetDefaultViewProps(), 'View properties update reported success, but properties were not updated');
+                expect(rootGetViewProps(testViewName, true)).to.deep.equal(rootGetDefaultViewProps(), 'View properties update reported success, but properties were not updated');
               } else {
                 try {
                   db._view(testViewName).properties({}, false);
@@ -320,7 +343,7 @@ function hasIResearch (db) {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                 db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
-                expect(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
+                expect(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
               } else {
                 try {
                   db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
@@ -336,7 +359,7 @@ function hasIResearch (db) {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                 db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
-                expect(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
+                expect(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
               } else {
                 try {
                   db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
@@ -353,7 +376,7 @@ function hasIResearch (db) {
               rootGrantCollection(testCol2Name, name, 'rw');
               if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._view(testViewName).properties({ links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } }, true);
-                expect(rootGetViewProps(testViewName)["links"][testCol2Name]["analyzers"]).to.eql(["text_de"], 'View link update reported success, but property was not updated');
+                expect(rootGetViewProps(testViewName, true)["links"][testCol2Name]["analyzers"]).to.eql(["text_de"], 'View link update reported success, but property was not updated');
               } else {
                 try {
                   db._view(testViewName).properties({ links: { [testCol2Name]: { includeAllFields: true, analyzers: ["text_de"] } } }, true);

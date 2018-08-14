@@ -225,8 +225,8 @@ function hasIResearch (db) {
                     users.grantCollection(user, dbName, colName, explicitRight);
                   }
                 }
-              helper.switchUser(user, dbName);
               }
+              helper.switchUser(user, dbName);
             };
 
             const rootPrepareCollection = (colName, numDocs = 1, defKey = true) => {
