@@ -363,6 +363,19 @@ struct TRI_v8_global_t {
   /// @brief users template
   v8::Persistent<v8::ObjectTemplate> UsersTempl;
 
+  /// @brief general graphs module template
+  v8::Persistent<v8::ObjectTemplate> GeneralGraphModuleTempl;
+
+  /// @brief general graph class template
+  v8::Persistent<v8::ObjectTemplate> GeneralGraphTempl;
+
+#ifdef USE_ENTERPRISE
+  /// @brief smart graph class template
+  v8::Persistent<v8::ObjectTemplate> SmartGraphTempl;
+  // there is no smart graph module becuase they are
+  // identical, just return different graph instances.
+#endif
+
   /// @brief Buffer template
   v8::Persistent<v8::FunctionTemplate> BufferTempl;
 

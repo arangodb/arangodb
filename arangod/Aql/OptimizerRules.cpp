@@ -403,7 +403,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
     // check the filter condition
     if ((inNode->type != NODE_TYPE_OPERATOR_BINARY_IN &&
          inNode->type != NODE_TYPE_OPERATOR_BINARY_NIN) ||
-        inNode->canThrow() || !inNode->isDeterministic()) {
+        !inNode->isDeterministic()) {
       // we better not tamper with this filter
       continue;
     }
@@ -539,13 +539,6 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
     oldParent->addDependency(calculationNode);
     setter->setParent(calculationNode);
 
-    if (setter->getType() == EN::CALCULATION) {
-      // mark the original node as being removable, even if it can throw
-      // this is special as the optimizer will normally not remove any nodes
-      // if they throw - even when fully unused otherwise
-      ExecutionNode::castTo<CalculationNode*>(setter)->canRemoveIfThrows(true);
-    }
-
     AstNode* clone = ast->clone(inNode);
     // set sortedness bit for the IN operator
     clone->setBoolValue(true);
@@ -614,9 +607,8 @@ void arangodb::aql::removeRedundantSortsRule(
                 // a sort directly followed by another sort: now remove one of
                 // them
 
-                if (other.canThrow || !other.isDeterministic) {
-                  // if the sort can throw or is non-deterministic, we must not
-                  // remove it
+                if (!other.isDeterministic) {
+                  // if the sort is non-deterministic, we must not remove it
                   break;
                 }
 
@@ -657,9 +649,8 @@ void arangodb::aql::removeRedundantSortsRule(
         } else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
         } else if (current->getType() == EN::CALCULATION) {
-          // ok: a filter does not depend on sort order only if it does not
-          // throw
-          if (current->canThrow()) {
+          // ok: a calculation does not depend on sort order only if it is deterministic
+          if (!current->isDeterministic()) {
             ++nodesRelyingOnSort;
           }
         } else if (current->getType() == EN::ENUMERATE_LIST ||
@@ -745,7 +736,7 @@ void arangodb::aql::removeUnnecessaryFiltersRule(
 
     TRI_ASSERT(root != nullptr);
 
-    if (root->canThrow() || !root->isDeterministic()) {
+    if (!root->isDeterministic()) {
       // we better not tamper with this filter
       continue;
     }
@@ -790,7 +781,7 @@ void arangodb::aql::removeCollectVariablesRule(
     auto collectNode = ExecutionNode::castTo<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
-    auto varsUsedLater = n->getVarsUsedLater();
+    auto const& varsUsedLater = n->getVarsUsedLater();
     auto outVariable = collectNode->outVariable();
 
     if (outVariable != nullptr &&
@@ -1114,7 +1105,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
 
-    if (nn->expression()->canThrow() || !nn->expression()->isDeterministic()) {
+    if (!nn->expression()->isDeterministic()) {
       // we will only move expressions up that cannot throw and that are
       // deterministic
       continue;
@@ -1170,7 +1161,7 @@ void arangodb::aql::moveCalculationsDownRule(
 
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
-    if (nn->expression()->canThrow() || !nn->expression()->isDeterministic()) {
+    if (!nn->expression()->isDeterministic()) {
       // we will only move expressions down that cannot throw and that are
       // deterministic
       continue;
@@ -1412,7 +1403,7 @@ void arangodb::aql::splitFiltersRule(Optimizer* opt,
     auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
     auto const expression = cn->expression();
 
-    if (expression->canThrow() || !expression->isDeterministic() ||
+    if (!expression->isDeterministic() ||
         expression->node()->type != NODE_TYPE_OPERATOR_BINARY_AND) {
       continue;
     }
@@ -1488,8 +1479,9 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
         break;
       }
 
-      if (current->canThrow()) {
-        // must not move a filter beyond a node that can throw
+      if (!current->isDeterministic()) {
+        // TODO: validate if this is actually necessary
+        // must not move a filter beyond a node that is non-deterministic
         break;
       }
 
@@ -1892,16 +1884,16 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
     if (n->getType() == EN::CALCULATION) {
       auto nn = ExecutionNode::castTo<CalculationNode*>(n);
 
-      if (nn->canThrow() && !nn->canRemoveIfThrows()) {
-        // If this node can throw, we must not optimize it away!
+      if (!nn->isDeterministic()) {
+        // If this node is non-deterministic, we must not optimize it away!
         continue;
       }
       // will remove calculation when we get here
     } else if (n->getType() == EN::SUBQUERY) {
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
 
-      if (nn->canThrow()) {
-        // subqueries that can throw must not be optimized away
+      if (!nn->isDeterministic()) {
+        // subqueries that are non-deterministic must not be optimized away
         continue;
       }
 
@@ -1914,9 +1906,8 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
     auto outvars = n->getVariablesSetHere();
     TRI_ASSERT(outvars.size() == 1);
-    auto varsUsedLater = n->getVarsUsedLater();
 
-    if (varsUsedLater.find(outvars[0]) == varsUsedLater.end()) {
+    if (!n->isVarUsedLater(outvars[0])) {
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
       // calculation node,
@@ -1927,9 +1918,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
       // it's a temporary variable that we can fuse with the other
       // calculation easily
 
-      if (n->canThrow() || !ExecutionNode::castTo<CalculationNode*>(n)
-                                ->expression()
-                                ->isDeterministic()) {
+      if (!ExecutionNode::castTo<CalculationNode*>(n)->expression()->isDeterministic()) {
         continue;
       }
 
@@ -4799,7 +4788,7 @@ struct OrSimplifier {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
       if (!preferRight && qualifies(lhs, attributeName)) {
-        if (rhs->isDeterministic() && !rhs->canThrow()) {
+        if (rhs->isDeterministic()) {
           attr = lhs;
           value = rhs;
           return true;
@@ -4807,7 +4796,7 @@ struct OrSimplifier {
       }
 
       if (qualifies(rhs, attributeName)) {
-        if (lhs->isDeterministic() && !lhs->canThrow()) {
+        if (lhs->isDeterministic()) {
           attr = rhs;
           value = lhs;
           return true;
@@ -4818,7 +4807,7 @@ struct OrSimplifier {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
       if (rhs->isArray() && qualifies(lhs, attributeName)) {
-        if (rhs->isDeterministic() && !rhs->canThrow()) {
+        if (rhs->isDeterministic()) {
           attr = lhs;
           value = rhs;
           return true;
@@ -5210,14 +5199,13 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
     auto node = ExecutionNode::castTo<ModificationNode*>(n);
     TRI_ASSERT(node != nullptr);
 
-    auto varsUsedLater = n->getVarsUsedLater();
-    if (varsUsedLater.find(node->getOutVariableOld()) == varsUsedLater.end()) {
+    if (!n->isVarUsedLater(node->getOutVariableOld())) {
       // "$OLD" is not used later
       node->clearOutVariableOld();
       modified = true;
     }
 
-    if (varsUsedLater.find(node->getOutVariableNew()) == varsUsedLater.end()) {
+    if (!n->isVarUsedLater(node->getOutVariableNew())) {
       // "$NEW" is not used later
       node->clearOutVariableNew();
       modified = true;
@@ -5330,22 +5318,18 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
-    auto varsUsedLater = n->getVarsUsedLater();
-
     // note that we can NOT optimize away the vertex output variable
     // yet, as many traversal internals depend on the number of vertices
     // found/built
     auto outVariable = traversal->edgeOutVariable();
-    if (outVariable != nullptr &&
-        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal edge outVariable not used later
       traversal->setEdgeOutput(nullptr);
       modified = true;
     }
 
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr &&
-        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
@@ -5497,10 +5481,8 @@ void arangodb::aql::removeTraversalPathVariable(
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
-    auto varsUsedLater = n->getVarsUsedLater();
     auto outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr &&
-        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
@@ -5568,6 +5550,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   }
 
   bool modified = false;
+  std::vector<ExecutionNode*> subNodes;
 
   for (auto const& n : nodes) {
     auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(n);
@@ -5577,8 +5560,8 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
       continue;
     }
 
-    if (subqueryNode->canThrow()) {
-      // can't inline throwing subqueries
+    if (!subqueryNode->isDeterministic()) {
+      // can't inline non-deterministic subqueries
       continue;
     }
 
@@ -5633,17 +5616,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
         // ...that use our subquery as its input
         if (subqueryVars.find(listNode->inVariable()) != subqueryVars.end()) {
           // bingo!
-          auto queryVariables = plan->getAst()->variables();
-          std::vector<ExecutionNode*> subNodes(
-              subqueryNode->getSubquery()->getDependencyChain(true));
 
           // check if the subquery result variable or any of the aliases are
           // used after the FOR loop
           bool mustAbort = false;
-          std::unordered_set<Variable const*> varsUsedLater(
-              listNode->getVarsUsedLater());
           for (auto const& itSub : subqueryVars) {
-            if (varsUsedLater.find(itSub) != varsUsedLater.end()) {
+            if (listNode->isVarUsedLater(itSub)) {
               // exit the loop
               current = nullptr;
               mustAbort = true;
@@ -5658,11 +5636,15 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
             plan->unlinkNode(toRemove, false);
           }
 
+          subNodes.clear();
+          subNodes.reserve(4);
+          subqueryNode->getSubquery()->getDependencyChain(subNodes, true);
           TRI_ASSERT(!subNodes.empty());
           auto returnNode = ExecutionNode::castTo<ReturnNode*>(subNodes[0]);
           TRI_ASSERT(returnNode->getType() == EN::RETURN);
 
           modified = true;
+          auto queryVariables = plan->getAst()->variables();
           auto previous = n->getFirstDependency();
           auto insert = n->getFirstParent();
           TRI_ASSERT(insert != nullptr);
@@ -6176,7 +6158,6 @@ static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort,
       info.exesToModify.emplace(sort, expr);
       info.nodesToRemove.emplace(expr->node());
     }
-    calc->canRemoveIfThrows(true);
     return true;
   }
   return false;
@@ -6203,31 +6184,27 @@ static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn,
 
   std::vector<AstNodeType> parents;  // parents and current node
   size_t orsInBranch = 0;
-  Ast::traverseReadOnly(
-      expr->node(),
-      [&](AstNode const* node) {  // pre
-        parents.push_back(node->type);
-        if (Ast::IsOrOperatorType(node->type)) {
-          orsInBranch++;
-          return false;
-        }
-        return true;
-      },
-      [&](AstNode const* node) {  // post
-        size_t pl = parents.size();
-        if (orsInBranch == 0 &&
-            (pl == 1 || Ast::IsAndOperatorType(parents[pl - 2]))) {
-          // do not visit below OR or into <=, <, >, >= expressions
-          if (checkGeoFilterExpression(plan, node, info)) {
-            info.exesToModify.emplace(fn, expr);
-            calc->canRemoveIfThrows(true);
-          }
-        }
-        parents.pop_back();
-        if (Ast::IsOrOperatorType(node->type)) {
-          orsInBranch--;
-        }
-      });
+  Ast::traverseReadOnly(expr->node(),
+                        [&](AstNode const* node) { // pre
+                          parents.push_back(node->type);
+                          if (Ast::IsOrOperatorType(node->type)) {
+                            orsInBranch++;
+                            return false;
+                          }
+                          return true;
+                        }, [&](AstNode const* node) { // post
+                          size_t pl = parents.size();
+                          if (orsInBranch == 0 && (pl == 1 || Ast::IsAndOperatorType(parents[pl - 2]))) {
+                            // do not visit below OR or into <=, <, >, >= expressions
+                            if (checkGeoFilterExpression(plan, node, info)) {
+                              info.exesToModify.emplace(fn, expr);
+                            }
+                          }
+                          parents.pop_back();
+                          if (Ast::IsOrOperatorType(node->type)) {
+                            orsInBranch--;
+                          }
+                        });
 }
 
 // modify plan

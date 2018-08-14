@@ -325,7 +325,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
       LOG_TOPIC(WARN, Logger::PREGEL)
           << "No further action taken after receiving all responses";
     }
-  });
+    }, false);
   return VPackBuilder();
 }
 
@@ -776,7 +776,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
         PregelFeature::handleWorkerRequest(
           _vocbaseGuard.database(), path, message.slice(), response
         );
-      });
+      }, false);
     }
     return TRI_ERROR_NO_ERROR;
   }
