@@ -38,8 +38,35 @@ class MaintenanceFeature;
 
 namespace maintenance {
 
-
 class Action;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Base class for db server level procedures.  These procedures were
+/// previously written in javascript and migrated to C++.
+///
+/// The design encorporates features "desired" for future enhancement but not
+/// necessarily used in the initial implementation.  Examples:  kill(), planned
+/// pause(), pre and post actions.  The planned usage patterns are not tested.
+///
+/// The MaintenanceWorker::run() function performs the actual execution of an
+/// ActionBase object.  The logical execution looks like this:
+///
+///     Action myAction([an array of action properties]);
+///
+///     if (myAction->ok() && myAction->first()) {
+///       while (myAction->ok() && myAction->next()) ;
+///     }
+///     myAction->notifyDone();
+///
+/// The return boolean of first() and next() indicate whether or not another
+/// iteration of the ActionBase object is needed.  ActionBase's internal Result
+/// object is consulted for whether or not it is ok().
+///
+/// - first() is a required function for the derived classes.
+/// - next() is optional, first() should return false if next() not used.
+/// - notifyDone() is based upon initial javascript port, but virtualized to allow
+///                future adaptation.
+////////////////////////////////////////////////////////////////////////////////
 
 class ActionBase {
 
@@ -56,15 +83,21 @@ class ActionBase {
   // MaintenanceWork entry points
   //
 
-
   /// @brief initial call to object to perform a unit of work.
   ///   really short tasks could do all work here and return false
   /// @return true to continue processing, false done (result() set)
-  virtual bool first();
+  virtual bool first() = 0;
 
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
   virtual bool next() { return false; }
+
+  /// @brief routine that performs an action once state transitions to
+  /// FAILED or COMPLETE.  Current performs ClusterFeature::syncDBServerStatusQuo()
+  /// call on all ActionBase objects.  Slightly different from done() in that
+  /// it calls immediately upon reaching target states where done() includes a
+  /// a timeout against thrashing.
+  virtual void notifyDone();
 
   //
   // common property or decription names
@@ -100,7 +133,6 @@ class ActionBase {
     return _state;
   }
 
-  void complete();
   void fail();
 
   virtual arangodb::Result kill(Signal const& signal);
@@ -122,7 +154,18 @@ class ActionBase {
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
   void setState(ActionState state) {
-    _state = state;
+    if ((FAILED == state || COMPLETE == state) && _state != state) {
+      _state = state;
+      endStats();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "Action " << _description << " moved to state " << state << " after "
+        << std::chrono::duration<double>(
+          _actionDone.load() - _actionStarted.load()).count() << " seconds";
+
+      notifyDone();
+    } else {
+      _state = state;
+    }
   }
 
   /// @brief update incremental statistics

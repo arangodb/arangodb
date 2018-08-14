@@ -117,8 +117,6 @@ UpdateCollection::~UpdateCollection() {};
 
 bool UpdateCollection::first() {
 
-  ActionBase::first();
-  
   auto const& database   = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& plannedLeader = _description.get(LEADER);
@@ -130,7 +128,6 @@ bool UpdateCollection::first() {
     std::string errorMsg("UpdateCollection: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    fail();
     return false;
   }
 
@@ -152,17 +149,16 @@ bool UpdateCollection::first() {
       std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
       errorMsg += collection + "in database " + database;
       _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-      fail();
       return false;
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE)
-      << "action " << _description << " failed with exception " << e.what();
-    fail();
+    std::string errorMsg( "UpdateCollection: failed with exception ");
+    errorMsg += e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    _result = Result(TRI_ERROR_INTERNAL, errorMsg);
     return false;
   }
-  
-  complete();
+
   return false;
 
 }

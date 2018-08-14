@@ -52,8 +52,6 @@ CreateDatabase::~CreateDatabase() {};
 
 bool CreateDatabase::first() {
 
-  ActionBase::first();
-  
   VPackSlice users;
   auto database = _description.get(DATABASE);
 
@@ -72,25 +70,26 @@ bool CreateDatabase::first() {
   try {
 
     DatabaseGuard guard(*systemVocbase);
-    
+
     // Assertion in constructor makes sure that we have DATABASE.
     _result = Databases::create(_description.get(DATABASE), users, properties());
     if (!_result.ok()) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "CreateDatabase: failed to create database " << database << ": " << _result;
-      fail();
       return false;
     }
-    
+
     LOG_TOPIC(INFO, Logger::MAINTENANCE)
       << "CreateDatabase: database  " << database << " created";
-    
+
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "action " << _description << " failed with exception " << e.what();
+    std::string errorMsg( "CreateDatabase: failed with exception ");
+    errorMsg += e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    _result = Result(TRI_ERROR_INTERNAL, errorMsg);
+    return false;
   }
 
-  complete();
   return false;
 
 }

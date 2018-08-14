@@ -70,8 +70,6 @@ ResignShardLeadership::~ResignShardLeadership() {};
 
 bool ResignShardLeadership::first() {
 
-  ActionBase::first();
-  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(SHARD);
 
@@ -84,7 +82,6 @@ bool ResignShardLeadership::first() {
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
     return false;
   }
 
@@ -94,7 +91,6 @@ bool ResignShardLeadership::first() {
     errorMsg += collection + " in database " + database;
     _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
     return false;
   }
   // This starts a write transaction, just to wait for any ongoing
@@ -108,7 +104,7 @@ bool ResignShardLeadership::first() {
 
     // Guard database againts deletion for now
     DatabaseGuard guard(*vocbase);
-    
+
     // we know the shard exists locally!
 
     col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
@@ -130,15 +126,13 @@ bool ResignShardLeadership::first() {
      }
 
   } catch (std::exception const& e) {
-    std::string errorMsg( "ResignLeadership: exception thrown when resigning:");
+    std::string errorMsg( "ResignLeadership: failed with exception ");
     errorMsg += e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     _result = Result(TRI_ERROR_INTERNAL, errorMsg);
-    fail();
     return false;
   }
 
-  complete();
   return false;
 
 }

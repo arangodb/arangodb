@@ -83,8 +83,6 @@ EnsureIndex::~EnsureIndex() {};
 
 bool EnsureIndex::first() {
 
-  ActionBase::first();
-  
   arangodb::Result res;
 
   auto const& database = _description.get(DATABASE);
@@ -96,35 +94,33 @@ bool EnsureIndex::first() {
     std::string errorMsg("EnsureIndex: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    fail();
     return false;
   }
 
   VPackBuilder body;
-  
+
   try { // now try to guard the database
-    
+
     DatabaseGuard guard(*vocbase);
-    
+
     auto col = vocbase->lookupCollection(collection);
     if (col == nullptr) {
       std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
       errorMsg += collection + " in database " + database;
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-      fail();
       return false;
     }
-    
+
     auto const props = properties();
     { VPackObjectBuilder b(&body);
       body.add(COLLECTION, VPackValue(collection));
       for (auto const& i : VPackObjectIterator(props)) {
         body.add(i.key.copyString(), i.value);
       }}
-    
+
     VPackBuilder index;
     _result = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
-    
+
     if (_result.ok()) {
       VPackSlice created = index.slice().get("isNewlyCreated");
       std::string log =  std::string("Index ") + id;
@@ -134,18 +130,17 @@ bool EnsureIndex::first() {
     } else {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "Failed to ensure index " << body.slice().toJson();
-      fail();
       return false;
     }
-    
+
   } catch (std::exception const& e) { // Guard failed?
-    LOG_TOPIC(WARN, Logger::MAINTENANCE)
-      << "action " << _description << " failed with exception " << e.what();     
-      fail();
-      return false;
+    std::string errorMsg( "EnsureIndex: failed with exception ");
+    errorMsg += e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    _result = Result(TRI_ERROR_INTERNAL, errorMsg);
+    return false;
   }
 
-  complete();
   return false;
-    
+
 }

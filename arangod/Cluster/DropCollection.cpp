@@ -59,8 +59,6 @@ DropCollection::~DropCollection() {};
 
 bool DropCollection::first() {
 
-  ActionBase::first();
-  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
 
@@ -72,7 +70,6 @@ bool DropCollection::first() {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "DropCollection: failed to drop local collection " << database
       << "/" << collection << ": " << errorMsg;
-    fail();
     return false;
   }
 
@@ -92,16 +89,16 @@ bool DropCollection::first() {
       errorMsg += database + "/" + collection;
       _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-      fail();
       return false;
     }
 
-    complete();
     return false;
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << " action " << _description << " failed with exception " << e.what();
+    std::string errorMsg( "DropCollection: failed with exception ");
+    errorMsg += e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    _result = Result(TRI_ERROR_INTERNAL, errorMsg);
+    return false;
   }
-    
 }
