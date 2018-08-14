@@ -20,8 +20,7 @@ your data is safe, but your database is still fast, even under load.
 
 Most modern CPU's have builtin support for hardware AES encryption, which makes it even faster.
 
-Limitations
-===========
+## Limitations
 
 Encryption feature has the following limitations:
 - Encrypting a single collection is not supported, this means that all the databases are encrypted.
