@@ -1982,6 +1982,37 @@ double FilterNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
+std::vector<std::pair<Variable const*, Collection const*>> FilterNode::collectionVariables() const {
+  std::vector<std::pair<Variable const*, Collection const*>> collectionVariables;
+
+  Variable const* inputVariable = nullptr;
+  std::vector<Variable const*> v = getVariablesUsedHere();
+  if (v.size() > 1) {
+    // If there is a key variable:
+    inputVariable = v[1];
+  } else {
+    inputVariable = v[0];
+  }
+  auto setter = _plan->getVarSetBy(inputVariable->id);
+
+  if (setter->getType() == ExecutionNode::INDEX) {
+    IndexNode const* c = ExecutionNode::castTo<IndexNode const*>(setter);
+    collectionVariables.emplace_back(inputVariable, c->collection());
+  } else if (setter->getType() == ExecutionNode::CALCULATION) {
+    CalculationNode const* c = ExecutionNode::castTo<CalculationNode const*>(setter);
+    auto vars = c->getVariablesUsedHere();
+    for (auto v : vars) {
+      auto innerSetter = _plan->getVarSetBy(v->id);
+      if (innerSetter->getType() == ExecutionNode::INDEX ||
+          innerSetter->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+        collectionVariables.emplace_back(v, ExecutionNode::castTo<CollectionAccessingNode const*>(innerSetter)->collection());
+      }
+    }
+  }
+
+  return collectionVariables;
+}
+
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")),
