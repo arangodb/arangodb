@@ -48,10 +48,9 @@ This format allows line breaks for formatting (i.e. pretty printing):
 ```
 
 It requires parsers to read the entire input in order to verify that the
-array is properly closed at the very end.
-[_arangoimport_](../Programs/Arangoimport/README.md) will need to read the
-whole input before it can send the first batch to the server. By default,
-it will allow importing such files up to a size of about 16 MB.
+array is properly closed at the very end. _arangoimport_ will need to read
+the whole input before it can send the first batch to the server.
+By default, it will allow importing such files up to a size of about 16 MB.
 If you want to allow your _arangoimport_ instance to use more memory, increase
 the maximum file size by specifying the command-line option `--batch-size`.
 For example, to set the batch size to 32 MB, use the following command:
