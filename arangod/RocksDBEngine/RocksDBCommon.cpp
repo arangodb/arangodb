@@ -187,7 +187,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       if (!s.ok()) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "RocksDB key deletion failed: " << s.ToString();
-        return TRI_ERROR_INTERNAL;
+        return rocksutils::convertStatus(s);
       }
       return {};
     }

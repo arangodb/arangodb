@@ -331,7 +331,7 @@ uint64_t RocksDBLogValue::objectId(rocksdb::Slice const& slice) {
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::CollectionTruncate);
   return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
-                              3 * sizeof(uint64_t));
+                              2 * sizeof(uint64_t));
 }
 
 /// For DocumentRemoveV2 and SingleRemoveV2
