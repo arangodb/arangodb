@@ -1,5 +1,7 @@
-v3.3.14 (2018-08-08)
+v3.3.14 (2018-08-15)
 --------------------
+
+* upgraded arangodb starter version to 0.13.1
 
 * fixed internal issue #2869: when attaching a follower with global applier to an authenticated leader
                               already existing users have not been replicated, all users created/modified
