@@ -1657,7 +1657,15 @@ class Graph {
       throw err;
     }
 
-    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+    var options = {};
+    if (self.__replicationFactor) {
+      options.replicationFactor = self.__replicationFactor;
+    }
+    if (self.__numberOfShards) {
+      options.numberOfShards = self.__numberOfShards;
+    }
+
+    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition], false, options);
 
     // evaluate collections to add to orphanage
     var possibleOrphans = [];
