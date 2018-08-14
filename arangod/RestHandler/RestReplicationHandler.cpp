@@ -280,6 +280,7 @@ RestStatus RestReplicationHandler::execute() {
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       } else {
+        grantTemporaryRights();
         handleCommandInventory();
       }
     } else if (command == "keys") {
@@ -333,6 +334,7 @@ RestStatus RestReplicationHandler::execute() {
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       } else {
+        grantTemporaryRights();
         handleCommandDump();
       }
     } else if (command == "restore-collection") {
@@ -1696,6 +1698,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
   }
 
   std::string dbName = _vocbase->name();
+
+  grantTemporaryRights();
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
