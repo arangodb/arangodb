@@ -369,19 +369,19 @@ RANDOM_TOKEN(8) // "m9w50Ft9"
 REGEX_MATCHES()
 ------------
 
-`REGEX_MATCHES(text, regex, caseInsensitive) → strArray`
+`REGEX_MATCHES(text, regex, caseInsensitive) → stringArray`
 
-Return the matches of the given string *text* into a list of strings, using the *regex*.
+Return the matches in the given string *text*, using the *regex*.
 
-- **text** (string): the string to split
+- **text** (string): the string to search in
 - **regex** (string): a regular expression to use for matching the *text*
-- returns **strArray** (array): an array of strings
+- returns **stringArray** (array): an array of strings containing the matches
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
 
 - `.` – the dot matches any single character except line terminators.
-To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
+  To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* flag.
 - `\d` – matches a single digit, equivalent to `[0-9]`
 - `\s` – matches a single whitespace character
 - `\S` – matches a single non-whitespace character
@@ -389,14 +389,14 @@ To include line terminators, use `[\s\S]` instead to simulate `.` with *DOTALL* 
 - `\r` – matches a carriage return
 - `\n` – matches a line-feed character
 - `[xyz]` – set of characters. Matches any of the enclosed characters
-(here: *x*, *y* or *z*)
+  (here: *x*, *y* or *z*)
 - `[^xyz]` – negated set of characters. Matches any other character than the
-enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
+  enclosed ones (i.e. anything but *x*, *y* or *z* in this case)
 - `[x-z]` – range of characters. Matches any of the characters in the 
-specified range, e.g. `[0-9A-F]` to match any character in
-*0123456789ABCDEF*
+  specified range, e.g. `[0-9A-F]` to match any character in
+  *0123456789ABCDEF*
 - `[^x-z]` – negated range of characters. Matches any other character than the
-ones specified in the range
+  ones specified in the range
 - `(xyz)` – defines and matches a pattern group
 - `(x|y)` – matches either *x* or *y*
 - `^` – matches the beginning of the string (e.g. `^xyz`)
@@ -426,15 +426,15 @@ If the regular expression in *regex* is invalid, a warning will be raised
 and the function will return *null*.
 
 ```js
-REGEX_MATCHES("my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, true) // ["my-us3r_n4m3"]
-REGEX_MATCHES(["#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true) // null
-REGEX_MATCHES("john@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", false) // ["john@doe.com", "john", "doe.", "om"]
+REGEX_MATCHES("My-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true) // ["My-us3r_n4m3"]
+REGEX_MATCHES("#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true) // null
+REGEX_MATCHES("john@doe.com", "^([a-z0-9_\.-]+)@([\da-z-]+)\.([a-z\.]{2,6})$", false) // ["john@doe.com", "john", "doe", "com"]
 ```
 
 REGEX_SPLIT()
 ------------
 
-`REGEX_SPLIT(text, splitExpression, caseInsensitive, limit) → strArray`
+`REGEX_SPLIT(text, splitExpression, caseInsensitive, limit) → stringArray`
 
 Split the given string *text* into a list of strings, using the *separator*.
 
@@ -442,7 +442,7 @@ Split the given string *text* into a list of strings, using the *separator*.
 - **splitExpression** (string): a regular expression to use for splitting the *text*
 - **limit** (number, *optional*): limit the number of split values in the result.
   If no *limit* is given, the number of splits returned is not bounded.
-- returns **strArray** (array): an array of strings
+- returns **stringArray** (array): an array of strings
 
 The regular expression may consist of literal characters and the following 
 characters and sequences:
@@ -600,7 +600,7 @@ REVERSE()
 
 `REVERSE(value) → reversedString`
 
-Return the reverse of the string *str*.
+Return the reverse of the string *value*.
 
 - **value** (string): a string
 - returns **reversedString** (string): a new string with the characters in
