@@ -53,7 +53,7 @@
   #define IR_WSTR(x) L ## x // cannot use _T(...) macro when _MBCS is defined
 #else
   #include <unistd.h> // close
-  #include <sys/types.h>
+  #include <sys/types.h> // for blksize_t
   #define file_blksize_t blksize_t
   #define file_path_delimiter '/'
   #define file_path_t char*

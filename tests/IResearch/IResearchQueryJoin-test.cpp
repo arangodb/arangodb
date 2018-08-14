@@ -39,6 +39,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
@@ -199,6 +200,7 @@ struct IResearchQueryJoinSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(new arangodb::ShardingFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
@@ -233,7 +235,6 @@ struct IResearchQueryJoinSetup {
       "_NONDETERM_",
       ".",
       false, // fake non-deterministic
-      false, // fake can throw
       true,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
@@ -245,7 +246,6 @@ struct IResearchQueryJoinSetup {
       "_FORWARD_",
       ".",
       true, // fake deterministic
-      false, // fake can throw
       true,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
@@ -255,7 +255,7 @@ struct IResearchQueryJoinSetup {
     // external function names must be registred in upper-case
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
-    arangodb::aql::Function customScorer("CUSTOMSCORER", ".|+", true, false, true);
+    arangodb::aql::Function customScorer("CUSTOMSCORER", ".|+", true, true);
     arangodb::iresearch::addFunction(*arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS, customScorer);
 
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<

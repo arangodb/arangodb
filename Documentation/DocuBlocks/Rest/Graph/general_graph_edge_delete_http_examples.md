@@ -23,6 +23,10 @@ The *_key* attribute of the vertex.
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Define if the request should wait until synced to disk.
 
+@RESTQUERYPARAM{returnOld,boolean,optional}
+Define if a presentation of the deleted document should
+be returned within the response object.
+
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{if-match,string,optional}

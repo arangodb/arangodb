@@ -210,6 +210,231 @@ function BaseTestConfig() {
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test existing collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testInsertHugeIncrementalMoreOnMaster: function() {
+      connectToMaster();
+
+      var st;
+
+      compare(
+        function(state) {
+          var c = db._create(cn),
+            i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({
+              _key: "test" + i
+            });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+
+          st = _.clone(state); // save state
+        },
+        function(state) {
+        },
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+
+      connectToMaster();
+      var c = db._collection(cn);
+      let docs = [];
+      // insert some documents "before"
+      for (let i = 0; i < 110000; ++i) {
+        docs.push({ _key: "a" + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      
+      // insert some documents "after"
+      for (let i = 0; i < 110000; ++i) {
+        docs.push({ _key: "z" + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+
+      // update the state
+      st.checksum = collectionChecksum(cn);
+      st.count = collectionCount(cn);
+      assertEqual(225000, collectionCount(cn));
+
+      connectToSlave();
+
+      // and sync again
+      var syncResult = replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      assertEqual(st.count, collectionCount(cn));
+      assertEqual(st.checksum, collectionChecksum(cn));
+    },
+    
+    testInsertHugeIncrementalMoreOnSlave: function() {
+      connectToMaster();
+
+      var st;
+
+      compare(
+        function(state) {
+          var c = db._create(cn),
+            i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({
+              _key: "test" + i
+            });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+
+          st = _.clone(state); // save state
+        },
+        function(state) {
+        },
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+
+      connectToSlave();
+
+      var c = db._collection(cn);
+      let docs = [];
+      // insert some documents "before"
+      for (let i = 0; i < 110000; ++i) {
+        docs.push({ _key: "a" + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      
+      // insert some documents "after"
+      for (let i = 0; i < 110000; ++i) {
+        docs.push({ _key: "z" + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+
+      assertEqual(225000, collectionCount(cn));
+
+      // and sync again
+      var syncResult = replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      assertEqual(st.count, collectionCount(cn));
+      assertEqual(st.checksum, collectionChecksum(cn));
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test existing collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testInsertHugeIncrementalLessOnMaster: function() {
+      connectToMaster();
+
+      var st;
+
+      compare(
+        function(state) {
+          let c = db._create(cn);
+          let docs = [];
+          // insert some documents "before"
+          for (let i = 0; i < 110000; ++i) {
+            docs.push({ _key: "a" + i });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
+          }
+          
+          // insert some documents "after"
+          for (let i = 0; i < 110000; ++i) {
+            docs.push({ _key: "z" + i });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(220000, state.count);
+
+          st = _.clone(state); // save state
+        },
+        function(state) {
+        },
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+
+      connectToMaster();
+      var c = db._collection(cn);
+      let docs = [];
+      // remove some documents from the "front"
+      for (let i = 0; i < 50000; ++i) {
+        docs.push({ _key: "a" + i });
+        if (docs.length === 5000) {
+          c.remove(docs);
+          docs = [];
+        }
+      }
+      
+      // remove some documents from the "back"
+      for (let i = 0; i < 50000; ++i) {
+        docs.push({ _key: "z" + i });
+        if (docs.length === 5000) {
+          c.remove(docs);
+          docs = [];
+        }
+      }
+
+      // update the state
+      st.checksum = collectionChecksum(cn);
+      st.count = collectionCount(cn);
+      assertEqual(120000, collectionCount(cn));
+
+      connectToSlave();
+
+      // and sync again
+      var syncResult = replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      assertEqual(st.count, collectionCount(cn));
+      assertEqual(st.checksum, collectionChecksum(cn));
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection properties

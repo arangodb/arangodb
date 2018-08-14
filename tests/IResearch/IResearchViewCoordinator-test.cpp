@@ -41,16 +41,19 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
 #include "Agency/Store.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/Methods/Indexes.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Agency/AgencyFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
@@ -74,6 +77,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -162,6 +166,7 @@ struct IResearchViewCoordinatorSetup {
     buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(&server), true);
     buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
     buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
     #if USE_ENTERPRISE
@@ -971,8 +976,8 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1017,8 +1022,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1061,8 +1067,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1194,8 +1201,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1239,8 +1247,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1511,8 +1520,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1555,8 +1565,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1703,8 +1714,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1749,8 +1761,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1794,8 +1807,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1854,6 +1868,40 @@ SECTION("test_update_links_partial_add") {
     REQUIRE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
     CHECK(!link);
+  }
+
+  // add link (collection not authorized)
+  {
+    auto const collectionId = "1";
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection1));
+    auto logicalView = vocbase->createView(viewJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::removeAllUsers()
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(linksJson->slice(), true, false).errorNumber()));
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection1));
+    logicalView = ci->getView(vocbase->name(), viewId); // get new version of the view
+    REQUIRE((false == !logicalView));
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
 
@@ -2077,8 +2125,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2121,8 +2170,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2251,8 +2301,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2372,8 +2423,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2660,8 +2712,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2706,8 +2759,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2750,8 +2804,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -3016,8 +3071,9 @@ SECTION("test_drop_link") {
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
       CHECK(slice.hasKey("view"));
-      CHECK(slice.get("view").isNumber());
-      CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+      CHECK(slice.get("view").isString());
+      CHECK(view->id() == 42);
+      CHECK(view->guid() == slice.get("view").copyString());
       CHECK(slice.hasKey("figures"));
       CHECK(slice.get("figures").isObject());
       CHECK(slice.get("figures").hasKey("memory"));
@@ -3085,6 +3141,43 @@ SECTION("test_drop_link") {
 
     // there is no more view
     CHECK(nullptr == ci->getView(vocbase->name(), view->name()));
+  }
+
+  // add link (collection not authorized)
+  {
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\" : { \"includeAllFields\" : true } } }");
+    auto const collectionId = "1";
+    auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection1));
+    auto logicalView = vocbase->createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+    auto const viewId = std::to_string(logicalView->planId());
+
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::removeAllUsers()
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection1));
+    logicalView = ci->getView(vocbase->name(), viewId); // get new version of the view
+    REQUIRE((false == !logicalView));
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
 

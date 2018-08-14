@@ -167,7 +167,7 @@ void ShellFeature::start() {
         break;
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
     ok = false;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception";

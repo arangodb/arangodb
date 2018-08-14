@@ -12,7 +12,7 @@ Returns a _DocumentCollection_ instance for the given collection name.
 
 **Arguments**
 
-* **collectionName**: `string`
+- **collectionName**: `string`
 
   Name of the edge collection.
 
@@ -20,7 +20,7 @@ Returns a _DocumentCollection_ instance for the given collection name.
 
 ```js
 const db = new Database();
-const collection = db.collection("potatos");
+const collection = db.collection("potatoes");
 ```
 
 ## database.edgeCollection
@@ -31,7 +31,7 @@ Returns an _EdgeCollection_ instance for the given collection name.
 
 **Arguments**
 
-* **collectionName**: `string`
+- **collectionName**: `string`
 
   Name of the edge collection.
 
@@ -39,7 +39,7 @@ Returns an _EdgeCollection_ instance for the given collection name.
 
 ```js
 const db = new Database();
-const collection = db.edgeCollection("potatos");
+const collection = db.edgeCollection("potatoes");
 ```
 
 ## database.listCollections
@@ -51,7 +51,7 @@ descriptions.
 
 **Arguments**
 
-* **excludeSystem**: `boolean` (Default: `true`)
+- **excludeSystem**: `boolean` (Default: `true`)
 
   Whether system collections should be excluded.
 
@@ -80,7 +80,7 @@ _DocumentCollection_ and _EdgeCollection_ instances for the collections.
 
 **Arguments**
 
-* **excludeSystem**: `boolean` (Default: `true`)
+- **excludeSystem**: `boolean` (Default: `true`)
 
   Whether system collections should be excluded.
 

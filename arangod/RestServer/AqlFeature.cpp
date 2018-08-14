@@ -60,7 +60,7 @@ AqlFeature* AqlFeature::lease() {
   return aql;
 }
 
-void AqlFeature::unlease() {
+void AqlFeature::unlease() noexcept {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   AqlFeature* aql = AqlFeature::_AQL;
   TRI_ASSERT(aql != nullptr);

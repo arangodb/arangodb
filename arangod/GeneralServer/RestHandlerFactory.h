@@ -29,7 +29,6 @@
 namespace arangodb {
 class GeneralRequest;
 class GeneralResponse;
-struct ConnectionInfo;
 
 namespace rest {
 class RestHandler;
@@ -43,11 +42,8 @@ class RestHandlerFactory {
   typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*,
                                       void* data);
   
- public:
-  // cppcheck-suppress *
-  RestHandlerFactory() : _notFound(nullptr) {}
-  
- public:
+   // cppcheck-suppress *
+  RestHandlerFactory() {}
 
   // creates a new handler
   RestHandler* createHandler(std::unique_ptr<GeneralRequest>,
@@ -60,19 +56,12 @@ class RestHandlerFactory {
   void addPrefixHandler(std::string const& path, create_fptr,
                         void* data = nullptr);
 
-  // adds a path and constructor to the factory
-  void addNotFoundHandler(create_fptr);
-
  private:
-
   // list of constructors
   std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;
 
   // list of prefix handlers
   std::vector<std::string> _prefixes;
-
-  // constructor for a not-found handler
-  create_fptr _notFound;
 };
 }
 }

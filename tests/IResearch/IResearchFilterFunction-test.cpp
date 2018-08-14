@@ -30,6 +30,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -90,6 +91,7 @@ struct IResearchFilterSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
+    features.emplace_back(new arangodb::ShardingFeature(&server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
@@ -123,7 +125,6 @@ struct IResearchFilterSetup {
       "_NONDETERM_",
       ".",
       false, // fake non-deterministic
-      false, // fake can throw
       true,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
@@ -135,7 +136,6 @@ struct IResearchFilterSetup {
       "_FORWARD_",
       ".",
       true, // fake deterministic
-      false, // fake can throw
       true,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());

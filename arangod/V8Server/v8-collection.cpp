@@ -990,7 +990,7 @@ static void JS_FiguresVocbaseCol(
 
   SingleCollectionTransaction trx(
     transaction::V8Context::Create(collection->vocbase(), true),
-    collection,
+    *collection,
     AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -1385,7 +1385,7 @@ static void JS_PropertiesVocbaseCol(
     consoleColl->name(),
     [&](LogicalCollection& coll)->void {
     VPackObjectBuilder object(&builder, true);
-    methods::Collections::Context ctxt(coll.vocbase(), &coll);
+    methods::Collections::Context ctxt(coll.vocbase(), coll);
     Result res = methods::Collections::properties(ctxt, builder);
 
     if (res.fail()) {
@@ -1866,8 +1866,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength < 3 || !args[0]->IsString()) {
       // TODO extend this for named graphs, use the Graph class
-      TRI_V8_THROW_EXCEPTION_USAGE(
-                                   "_pregelStart(<algorithm>, <vertexCollections>,"
+      TRI_V8_THROW_EXCEPTION_USAGE("_pregelStart(<algorithm>, <vertexCollections>,"
                                    "<edgeCollections>[, {maxGSS:100, ...}]");
   }
   auto parse = [](v8::Local<v8::Value> const& value, std::vector<std::string> &out) {
@@ -1911,114 +1910,15 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
   }
 
-  // now check the access rights to collections
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    VPackSlice storeSlice = paramBuilder.slice().get("store");
-    bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
-    for (std::string const& ec : paramVertices) {
-      bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
-      bool canRead = exec->canUseCollection(ec, auth::Level::RO);
-      if ((storeResults && !canWrite) || !canRead) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-      }
-    }
-    for (std::string const& ec : paramEdges) {
-      bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
-      bool canRead = exec->canUseCollection(ec, auth::Level::RO);
-      if ((storeResults && !canWrite) || !canRead) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-      }
-    }
-  }
-
   auto& vocbase = GetContextVocBase(isolate);
-
-  for (std::string const& name : paramVertices) {
-    if (ss->isCoordinator()) {
-      try {
-        auto coll =
-          ClusterInfo::instance()->getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
-          TRI_V8_THROW_EXCEPTION_USAGE(
-                                       "Cannot use pregel on system collection");
-        }
-
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-        }
-      } catch (...) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-    } else  if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      auto coll = vocbase.lookupCollection(name);
-
-      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED
-          || coll->deleted()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-    } else {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
+  auto res = pregel::PregelFeature::startExecution(vocbase, algorithm,
+                                                   paramVertices, paramEdges,
+                                                   paramBuilder.slice());
+  if (res.first.fail()) {
+    TRI_V8_THROW_EXCEPTION(res.first);
   }
 
-  std::vector<CollectionID> edgeColls;
-
-  // load edge collection
-  for (std::string const& name : paramEdges) {
-    if (ss->isCoordinator()) {
-      try {
-        auto coll =
-          ClusterInfo::instance()->getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
-          TRI_V8_THROW_EXCEPTION_USAGE(
-                                       "Cannot use pregel on system collection");
-        }
-
-        if (!coll->isSmart()) {
-          std::vector<std::string> eKeys = coll->shardKeys();
-          if ( eKeys.size() != 1 || eKeys[0] != "vertex") {
-            TRI_V8_THROW_EXCEPTION_USAGE(
-                                         "Edge collection needs to be sharded after 'vertex', or use "
-                                         "smart graphs");
-          }
-        }
-
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-        }
-
-        // smart edge collections contain multiple actual collections
-        std::vector<std::string> actual = coll->realNamesForRead();
-
-        edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
-      } catch (...) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      auto coll = vocbase.lookupCollection(name);
-
-      if (coll == nullptr || coll->deleted()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-      std::vector<std::string> actual = coll->realNamesForRead();
-      edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
-    } else {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-  }
-
-  uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
-  auto c = std::make_unique<pregel::Conductor>(
-    en, vocbase, paramVertices, edgeColls, algorithm, paramBuilder.slice()
-  );
-  pregel::PregelFeature::instance()->addConductor(std::move(c), en);
-  TRI_ASSERT(pregel::PregelFeature::instance()->conductor(en));
-  pregel::PregelFeature::instance()->conductor(en)->start();
-
-  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(en)));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(res.second)));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2075,7 +1975,7 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>)");
   }
-  
+
   pregel::PregelFeature* feature = pregel::PregelFeature::instance();
   if (!feature) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
@@ -2087,14 +1987,14 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
     if (!c) {
       TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
     }
-    
+
     VPackBuilder docs;
     c->collectAQLResults(docs);
     if (docs.isEmpty()) {
       TRI_V8_RETURN_NULL();
     }
     TRI_ASSERT(docs.slice().isArray());
-    
+
     VPackOptions resultOptions = VPackOptions::Defaults;
     auto documents = TRI_VPackToV8(isolate, docs.slice(), &resultOptions);
     TRI_V8_RETURN(documents);
@@ -2124,7 +2024,7 @@ static void JS_RevisionVocbaseCol(
 
   TRI_voc_rid_t revisionId;
 
-  methods::Collections::Context ctxt(collection->vocbase(), collection);
+  methods::Collections::Context ctxt(collection->vocbase(), *collection);
   auto res = methods::Collections::revisionId(ctxt, revisionId);
 
   if (res.fail()) {
@@ -2301,7 +2201,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   auto transactionContext =
       std::make_shared<transaction::V8Context>(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, collection, AccessMode::Type::WRITE
+    transactionContext, *collection, AccessMode::Type::WRITE
   );
 
   if (!payloadIsArray && !options.overwrite) {
@@ -2451,8 +2351,9 @@ static void JS_TruncateVocbaseCol(
 
   auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    ctx, collection, AccessMode::Type::EXCLUSIVE
+    ctx, *collection, AccessMode::Type::EXCLUSIVE
   );
+  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -2755,6 +2656,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_profileQuery()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_query()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_remove()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_replace()"));
@@ -2880,7 +2782,7 @@ static void JS_WarmupVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::warmup(collection->vocbase(), collection);
+  auto res = methods::Collections::warmup(collection->vocbase(), *collection);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

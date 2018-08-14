@@ -38,6 +38,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Graph/Graph.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -51,6 +52,7 @@
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCollectionHandler.h"
+#include "RestHandler/RestControlPregelHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -59,6 +61,7 @@
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestExplainHandler.h"
+#include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
@@ -67,9 +70,9 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
-#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -220,12 +223,16 @@ void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
     server->stopListening();
   }
+  
+  _jobManager->deleteJobs();
 }
 
 void GeneralServerFeature::unprepare() {
   for (auto& server : _servers) {
     delete server;
   }
+
+  _jobManager.reset();
 
   GENERAL_SERVER = nullptr;
   JOB_MANAGER = nullptr;
@@ -305,10 +312,13 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
 
-
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
       RestHandlerCreator<RestCollectionHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
+      RestHandlerCreator<RestControlPregelHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
@@ -326,6 +336,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::EDGES_PATH,
       RestHandlerCreator<RestEdgesHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::GHARIAL_PATH,
+      RestHandlerCreator<RestGraphHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::ENDPOINT_PATH,

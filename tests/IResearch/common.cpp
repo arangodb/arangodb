@@ -188,11 +188,13 @@ arangodb::aql::QueryResult executeQuery(
     arangodb::aql::PART_MAIN
   );
 
+  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+
   arangodb::aql::QueryResult result;
   while (true) {
     auto state = query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY, result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      query.tempWaitForAsyncResponse();
+      ss->waitForAsyncResponse();
     } else {
       break;
     }

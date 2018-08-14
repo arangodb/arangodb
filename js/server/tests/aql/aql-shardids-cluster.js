@@ -40,7 +40,7 @@ const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-d
 function ahuacatlShardIdsTestSuite () {
   var collection = null;
   var cn = "UnitTestsShardIds";
-  
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +95,7 @@ function ahuacatlShardIdsTestSuite () {
         assertEqual(count[s], actual.json.length);
         sum += actual.json.length;
       });
-      
+
       assertEqual(100, sum);
     }
   };
@@ -113,7 +113,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     db._drop(cn);
     db._drop(cnKey);
   };
-  
+
   const allNodesOfTypeAreRestrictedToShard = (nodes, typeName, col) => {
     let relevantNodes = nodes.filter(node => node.type === typeName);
     assertTrue(relevantNodes.length !== 0);
@@ -161,7 +161,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
       let shardsToCount = new Map();
       for (const [shard, count] of Object.entries(fullCounts)) {
-        shardsToCount.set(shard, count); 
+        shardsToCount.set(shard, count);
       }
       assertEqual(numberOfShards, shardsToCount.size);
       let sum = 0;
@@ -173,7 +173,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       let shardsByKeyToCount = new Map();
       fullCounts = collectionByKey.count(true);
       for (const [shard, count] of Object.entries(fullCounts)) {
-        shardsByKeyToCount.set(shard, count); 
+        shardsByKeyToCount.set(shard, count);
       }
       assertEqual(numberOfShards, shardsByKeyToCount.size);
       sum = 0;
@@ -252,7 +252,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               FILTER joined.joinValue == doc.joinValue
             RETURN [doc, joined]
         `;
-        validatePlan(query, "IndexNode", collectionByKey);
+
         let res = db._query(query).toArray();
         // we find 4 in first Loop, and 4 joins each
         assertEqual(16, res.length);
@@ -261,6 +261,24 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(i % 5, joined.value);
           assertEqual(doc.joinValue, joined.joinValue);
         }
+      }
+    },
+
+    testRestrictMultipleShardsStringKeys : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == "key${i}"
+            FOR joined IN ${cnKey}
+              FILTER joined.${shardKey} == "key${i}"
+              FILTER joined.joinValue == doc.joinValue
+            RETURN [doc, joined]
+        `;
+
+        validatePlan(query, "IndexNode", collectionByKey);
       }
     },
 
