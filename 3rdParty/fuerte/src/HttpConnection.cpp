@@ -105,9 +105,7 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
   _state(Connection::State::Disconnected),
   _numQueued(0),
   _active(false),
-  _queue(1024),
-  _authHeader(""),
-  _inFlight(nullptr) {
+  _queue(1024) {
   // initialize http parsing code
   _parserSettings.on_message_begin = ::on_message_began;
   _parserSettings.on_status = ::on_status;
@@ -135,7 +133,6 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
   
 template<SocketType ST>
 HttpConnection<ST>::~HttpConnection() {
-  _protocol.shutdown();
   shutdownConnection(ErrorCondition::Canceled);
 }
   
@@ -249,7 +246,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   assert(req.header.restVerb != RestVerb::Illegal);
 
   std::string header;
-  header.reserve(128);  // TODO is there a meaningful size ?
+  header.reserve(230);  // TODO is there a meaningful size ?
   header.append(fu::to_string(req.header.restVerb));
   header.push_back(' ');
 
@@ -467,7 +464,6 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
       shutdownConnection(ErrorCondition::ProtocolError);  // will cleanup _inFlight
       return;
     } else if (_inFlight->message_complete) {
-      
       _timeout.cancel(); // got response in time
       // Remove consumed data from receive buffer.
       _receiveBuffer.consume(parsedBytes);
@@ -508,12 +504,16 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
     return; // do
   }
   assert(millis.count() > 0);
-  auto self = shared_from_this();
+  // use a weak-ptr to break cycles
+  auto self = weak_from_this();
   _timeout.expires_after(millis);
   _timeout.async_wait([this, self] (asio_ns::error_code const& e) {
     if (!e) {  // expired
       FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-      restartConnection(ErrorCondition::Timeout);
+      auto s = self.lock();
+      if (s) {
+        restartConnection(ErrorCondition::Timeout);
+      }
     }
   });
 }

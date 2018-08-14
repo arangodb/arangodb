@@ -278,7 +278,7 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
     callback();
   });
 
-  // no exception happen, cancel guards
+  // no exception happened, cancel guards
   guardV8.cancel();
   guardQueue.cancel();
 }

@@ -58,7 +58,6 @@ V8ClientConnection::V8ClientConnection()
       _lastErrorMessage(""),
       _version("arango"),
       _mode("unknown mode"),
-      _connection(nullptr),
       _loop(1),
       _vpackOptions(VPackOptions::Defaults) {
   _vpackOptions.buildUnindexedObjects = true;
@@ -139,7 +138,7 @@ void V8ClientConnection::init(ClientFeature* client) {
         }
       }
     }
-  } catch(fuerte::ErrorCondition const& e) { // connection error
+  } catch (fuerte::ErrorCondition const& e) { // connection error
     _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 505;
   }
@@ -149,6 +148,7 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
   if (_connection) {
     if (interrupted) {
       _connection->shutdownConnection(fuerte::ErrorCondition::Canceled);
+      _connection.reset();
     } else {
       if (_connection->state() == fuerte::Connection::State::Disconnected) {
         _connection->startConnection();
