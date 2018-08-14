@@ -1,6 +1,12 @@
 v3.3.14 (2018-08-08)
 --------------------
 
+* fixed internal issue #2869: when attaching a follower with global applier to an authenticated leader
+                              already existing users have not been replicated, all users created/modified
+                              later are replicated.
+
+* fixed internal issue #2865: dumping from an authenticated arangodb the users have not been included
+
 * fixed issue #5943: misplaced database ui icon and wrong cursor type were used
 
 * fixed issue #5354: updated the web UI JSON editor, improved usability
