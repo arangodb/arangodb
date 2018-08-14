@@ -497,7 +497,7 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
 
 WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "WindowsService"),
-    _server(server){
+    _server(&server) {
   _progress = 2;
   setOptional(true);
   requiresElevatedPrivileges(true);
