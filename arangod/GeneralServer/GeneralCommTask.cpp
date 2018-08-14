@@ -187,8 +187,8 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     }
     case ServerState::Mode::REDIRECT: {
       bool found = false;
-      std::string val = req.header(StaticStrings::AllowDirtyReads, found);
-      if (val == "true") {
+      std::string const& val = req.header(StaticStrings::AllowDirtyReads, found);
+      if (StringUtils::boolean(val)) {
         break; // continue with auth check
       }
       // intentional fallthrough
