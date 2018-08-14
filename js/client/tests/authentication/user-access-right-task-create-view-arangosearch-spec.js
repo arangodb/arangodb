@@ -300,15 +300,10 @@ function hasIResearch (db) {
                     expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
                     expect(rootTestViewHasLinks(testViewName, [`${testColName}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
                   } else {
-                    try {
-                      tasks.register(task);
-                      wait(keySpaceId, name);
-                    } catch (e) {
-                      checkError(e);
-                      return;
-                    }
+                    tasks.register(task);
+                    wait(keySpaceId, name);
                     expect(rootTestView(testViewName)).to.equal(true, `${name} was unable to create a view with sufficent rights`);
-                    expect(rootTestViewLinksEmpty(testViewName)).to.equal(true, 'View links expected to be empty, but were creater afterwards with insufficent rights');
+                    expect(rootTestViewLinksEmpty(testViewName)).to.equal(true, 'View links expected to be empty, but were created afterwards with insufficent rights');
                   }
                 } else {
                   try {
