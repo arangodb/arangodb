@@ -194,8 +194,6 @@ Result Graph::addOrphanCollection(std::string&& name) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void Graph::setSmartState(bool state) { _isSmart = state; }
-
 void Graph::setNumberOfShards(uint64_t numberOfShards) {
   _numberOfShards = numberOfShards;
 }

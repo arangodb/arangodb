@@ -34,7 +34,6 @@
 #include <fuerte/types.h>
 #include <velocypack/Parser.h>
 
-
 namespace {
 using namespace arangodb::fuerte::v1;
 using namespace arangodb::fuerte::v1::http;
@@ -205,7 +204,12 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
   
   _state.store(State::Disconnected, std::memory_order_release);
-  _timeout.cancel();    // cancel timeouts
+  try {
+    _timeout.cancel();    // cancel timeouts
+  } catch (...) {
+    // cancel() may throw, but we are not allowed to throw here
+    // as we may be called from the dtor
+  }
   _protocol.shutdown(); // Close socket
   _active.store(false); // no IO operations running
   

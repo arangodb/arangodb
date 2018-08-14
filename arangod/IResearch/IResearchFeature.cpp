@@ -419,10 +419,10 @@ class IResearchFeature::Async {
     mutable bool _wasNotified; // a notification was raised from another thread
 
     Thread(std::string const& name)
-      : arangodb::Thread(name), _terminate(nullptr), _wasNotified(false) {
+      : arangodb::Thread(name), _next(nullptr), _terminate(nullptr), _wasNotified(false) {
     }
     Thread(Thread&& other) // used in constructor before tasks are started
-      : arangodb::Thread(other.name()), _terminate(nullptr), _wasNotified(false) {
+      : arangodb::Thread(other.name()), _next(nullptr), _terminate(nullptr), _wasNotified(false) {
     }
     virtual bool isSystem() override { return true; } // or start(...) will fail
     virtual void run() override;
