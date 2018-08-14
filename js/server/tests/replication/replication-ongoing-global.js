@@ -94,7 +94,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
     username: "root",
     password: "",
     verbose: true,
-    includeSystem: false,
+    includeSystem: applierConfiguration.includeSystem,
     keepBarrier: false,
     restrictType: applierConfiguration.restrictType,
     restrictCollections: applierConfiguration.restrictCollections
