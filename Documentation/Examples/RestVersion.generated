@@ -1,4 +1,4 @@
-shell> curl --dump - http://localhost:8529/_api/version
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/_api/version</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -7,5 +7,5 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
   <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.devel"</span>, 
-  <span class="hljs-string">"license"</span> : <span class="hljs-string">"enterprise"</span> 
+  <span class="hljs-string">"license"</span> : <span class="hljs-string">"community"</span> 
 }

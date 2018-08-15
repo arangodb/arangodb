@@ -1,4 +1,4 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/12569 &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/102899</span> &lt;&lt;EOF
 {}
 EOF
 

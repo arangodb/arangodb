@@ -32,17 +32,16 @@
 
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
       _operationMode(OperationMode::MODE_SERVER),
       _consoleThread(nullptr) {
-  startsAfter("Server");
-  startsAfter("GeneralServer");
-  startsAfter("Bootstrap");
+  startsAfter("AgencyPhase");
 }
 
 void ConsoleFeature::start() {
@@ -79,3 +78,5 @@ void ConsoleFeature::unprepare() {
 
   std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;
 }
+
+} // arangodb

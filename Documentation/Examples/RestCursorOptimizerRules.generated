@@ -1,13 +1,13 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor</span> &lt;&lt;EOF
 { 
-  "query" : "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a + b == 3 RETURN i", 
-  "count" : true, 
-  "options" : { 
-    "maxPlans" : 1, 
-    "optimizer" : { 
-      "rules" : [ 
-        "-all", 
-        "+remove-unnecessary-filters" 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a + b == 3 RETURN i"</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"options"</span> : { 
+    <span class="hljs-string">"maxPlans"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"optimizer"</span> : { 
+      <span class="hljs-string">"rules"</span> : [ 
+        <span class="hljs-string">"-all"</span>, 
+        <span class="hljs-string">"+remove-unnecessary-filters"</span> 
       ] 
     } 
   } 
@@ -42,7 +42,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0010972023010253906</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00011229515075683594</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

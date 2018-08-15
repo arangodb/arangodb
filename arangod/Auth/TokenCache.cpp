@@ -402,6 +402,7 @@ std::string auth::TokenCache::generateJwt(VPackSlice const& payload) const {
   }
 }
 
+/// generate a JWT token for internal cluster communication
 void auth::TokenCache::generateJwtToken() {
   VPackBuilder body;
   body.openObject();

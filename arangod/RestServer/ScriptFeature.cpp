@@ -33,18 +33,19 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-ScriptFeature::ScriptFeature(application_features::ApplicationServer* server, int* result)
+namespace arangodb {
+
+ScriptFeature::ScriptFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Script"),
       _result(result) {
   setOptional(true);
-  startsAfter("Database");
-  startsAfter("Nonce");
-  startsAfter("Server");
-  startsAfter("GeneralServer");
+  startsAfter("AgencyPhase");
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -156,3 +157,5 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+} // arangodb

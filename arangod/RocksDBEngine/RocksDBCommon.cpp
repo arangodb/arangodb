@@ -184,7 +184,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     rocksdb::WriteBatch batch;
     rocksdb::ReadOptions readOptions;
     readOptions.iterate_upper_bound = &upper;
-    readOptions.prefix_same_as_start = prefix_same_as_start;
+    readOptions.prefix_same_as_start = prefix_same_as_start; // for edge index
     readOptions.total_order_seek = !prefix_same_as_start;
     readOptions.verify_checksums = false;
     readOptions.fill_cache = false;

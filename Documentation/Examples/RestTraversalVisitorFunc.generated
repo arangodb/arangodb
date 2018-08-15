@@ -1,9 +1,9 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal</span> &lt;&lt;EOF
 { 
-  "startVertex" : "persons/alice", 
-  "graphName" : "knows_graph", 
-  "direction" : "outbound", 
-  "visitor" : "result.visited.vertices.push(vertex._id);" 
+  <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"persons/alice"</span>, 
+  <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, 
+  <span class="hljs-string">"direction"</span> : <span class="hljs-string">"outbound"</span>, 
+  <span class="hljs-string">"visitor"</span> : <span class="hljs-string">"result.visited.vertices.push(vertex._id);"</span> 
 }
 EOF
 

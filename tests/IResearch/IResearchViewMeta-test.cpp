@@ -38,8 +38,9 @@
 
 struct IResearchViewMetaSetup {
   StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
 
-  IResearchViewMetaSetup() {
+  IResearchViewMetaSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
   }
 
@@ -335,7 +336,7 @@ SECTION("test_readCustomizedValues") {
   }
 
   CHECK(true == (expectedItem.empty()));
-  CHECK(std::string("ru_RU.UTF-8") == iresearch::locale_utils::name(meta._locale));
+  CHECK(std::string("ru_RU.KOI8-R") == iresearch::locale_utils::name(meta._locale));
 }
 
 SECTION("test_writeDefaults") {

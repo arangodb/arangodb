@@ -2,6 +2,7 @@ Write-ahead log
 ===============
 
 Both storage engines use a form of write ahead logging (WAL).  
+
 Starting with version 2.2 ArangoDB stores all data-modification operation in
 its write-ahead log. The write-ahead log is sequence of append-only files containing
 all the write operations that were executed on the server.
@@ -43,7 +44,7 @@ For all write-ahead log configuration options, please refer to the page [Write-a
 RocksDB WAL Details
 -------------------
 
-The options mentioned above only apply for MMFiles. The WAL in the rocksdb storage engine
+The options mentioned above only apply for MMFiles. The WAL in the RocksDB storage engine
 works slightly differently. 
 _Note:_ In rocksdb the WAL options are all prefixed with
 `--rocksdb.*`. The `--wal.*` options do have no effect.

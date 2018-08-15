@@ -26,8 +26,11 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 namespace traverser {
+
 class TraverserEngineRegistry;
+
 }
 
 class TraverserEngineRegistryFeature final
@@ -36,7 +39,8 @@ class TraverserEngineRegistryFeature final
   static traverser::TraverserEngineRegistry* TRAVERSER_ENGINE_REGISTRY;
 
   explicit TraverserEngineRegistryFeature(
-      application_features::ApplicationServer* server);
+    application_features::ApplicationServer& server
+  );
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

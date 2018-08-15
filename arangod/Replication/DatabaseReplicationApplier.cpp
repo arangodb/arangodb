@@ -159,13 +159,13 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   }
 }
 
-std::unique_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
-  return std::make_unique<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
+std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
+  return std::make_shared<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
 }
 
-std::unique_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
+std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
                                                                               bool useTick, TRI_voc_tick_t barrierId) const {
-  return std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
+  return std::make_shared<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
                                                            initialTick, useTick, barrierId);
 }
 

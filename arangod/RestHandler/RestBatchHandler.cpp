@@ -351,14 +351,24 @@ bool RestBatchHandler::getBoundaryHeader(std::string* result) {
     return false;
   }
 
-  std::string boundary = "--" + parts[1].substr(boundaryLength);
+  std::string boundary = parts[1].substr(boundaryLength);
 
-  if (boundary.size() < 5) {
+  if ((boundary.length() > 1) &&
+      (boundary[0]  == '"') &&
+      (boundary[boundary.length() -1] == '"')) {
+    StringUtils::trimInPlace(boundary, "\"");
+  } else if ((boundary.length() > 1) &&
+             (boundary[0] == '\'') &&
+             (boundary[boundary.length() -1] == '\'')) {
+    StringUtils::trimInPlace(boundary, "'");
+  }
+
+  if (boundary.size() < 3) {
     // 3 bytes is min length for boundary (without "--")
     return false;
   }
 
-  *result = boundary;
+  *result = "--" + boundary;
   return true;
 }
 

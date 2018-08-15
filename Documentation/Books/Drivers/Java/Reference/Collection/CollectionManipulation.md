@@ -66,7 +66,7 @@ Creates a collection with the given _options_ for this collection's name, then r
 
   - **distributeShardsLike**: `String`
 
-    (The default is ""): in an enterprise cluster, this attribute binds the specifics of sharding for the newly created collection to follow that of a specified existing collection. Note: Using this parameter has consequences for the prototype collection. It can no longer be dropped, before sharding imitating collections are dropped. Equally, backups and restores of imitating collections alone will generate warnings, which can be overridden, about missing sharding prototype.
+    (The default is ""): in an Enterprise Edition cluster, this attribute binds the specifics of sharding for the newly created collection to follow that of a specified existing collection. Note: Using this parameter has consequences for the prototype collection. It can no longer be dropped, before sharding imitating collections are dropped. Equally, backups and restores of imitating collections alone will generate warnings, which can be overridden, about missing sharding prototype.
 
 **Examples**
 
@@ -137,7 +137,7 @@ Alternative for [ArangoDatabase.createCollection](#arangodatabasecreatecollectio
 
   - **distributeShardsLike**: `String`
 
-    (The default is ""): in an enterprise cluster, this attribute binds the specifics of sharding for the newly created collection to follow that of a specified existing collection. Note: Using this parameter has consequences for the prototype collection. It can no longer be dropped, before sharding imitating collections are dropped. Equally, backups and restores of imitating collections alone will generate warnings, which can be overridden, about missing sharding prototype.
+    (The default is ""): in an Enterprise Edition cluster, this attribute binds the specifics of sharding for the newly created collection to follow that of a specified existing collection. Note: Using this parameter has consequences for the prototype collection. It can no longer be dropped, before sharding imitating collections are dropped. Equally, backups and restores of imitating collections alone will generate warnings, which can be overridden, about missing sharding prototype.
 
 **Examples**
 

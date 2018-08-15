@@ -1,5 +1,5 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=documents &amp;lt;&amp;lt;EOF
-{ <span class="hljs-string">"name"</span>: <span class="hljs-string">"test"</span> }
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&amp;<span class="hljs-built_in">type</span>=documents</span> &lt;&lt;EOF
+{ "name": "test" }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found

@@ -1,8 +1,8 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example</span> &lt;&lt;EOF
 { 
-  "collection" : "products", 
-  "example" : { 
-    "l" : 1 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"example"</span> : { 
+    <span class="hljs-string">"l"</span> : <span class="hljs-number">1</span> 
   } 
 }
 EOF

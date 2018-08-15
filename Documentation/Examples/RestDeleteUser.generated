@@ -1,4 +1,4 @@
-shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/user/userToDelete@myapp &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/user/userToDelete@myapp</span> &lt;&lt;EOF
 { 
 }
 EOF

@@ -1,8 +1,8 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction</span> &lt;&lt;EOF
 { 
-  "name" : "myfunctions::temperature::celsiustofahrenheit", 
-  "code" : "function (celsius) { return celsius * 1.8 + 32; }", 
-  "isDeterministic" : true 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"myfunctions::temperature::celsiustofahrenheit"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-string">"function (celsius) { return celsius * 1.8 + 32; }"</span>, 
+  <span class="hljs-string">"isDeterministic"</span> : <span class="hljs-literal">true</span> 
 }
 EOF
 

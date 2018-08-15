@@ -3,11 +3,10 @@ OAuth 1.0a
 
 `const createOAuth1Client = require('@arangodb/foxx/oauth1');`
 
-The OAuth1 module provides abstractions over OAuth 1.0a providers like Twitter, XING and Tumblr.
+The OAuth1 module provides abstractions over OAuth 1.0a providers like
+Twitter, XING and Tumblr.
 
 **Examples**
-
-The following extends the [user management example](../Users.md):
 
 ```js
 const router = createRouter();
@@ -103,19 +102,30 @@ Creates an OAuth1.0a client.
 
   * **requestTokenEndpoint**: `string`
 
-    The fully-qualified URL of the provider's [Temporary Credentials Request endpoint](https://tools.ietf.org/html/rfc5849#section-2.1). This URL is used to fetch the unauthenticated temporary credentials that will be used to generate the authorization redirect for the user.
+    The fully-qualified URL of the provider's
+    [Temporary Credentials Request endpoint](https://tools.ietf.org/html/rfc5849#section-2.1).
+    This URL is used to fetch the unauthenticated temporary credentials that
+    will be used to generate the authorization redirect for the user.
 
   * **authEndpoint**: `string`
 
-    The fully-qualified URL of the provider's [Resource Owner Authorization endpoint](https://tools.ietf.org/html/rfc5849#section-2.2). This is the URL the user will be redirected to in order to authorize the OAuth consumer (i.e. your service).
+    The fully-qualified URL of the provider's
+    [Resource Owner Authorization endpoint](https://tools.ietf.org/html/rfc5849#section-2.2).
+    This is the URL the user will be redirected to in order to authorize the
+    OAuth consumer (i.e. your service).
 
   * **accessTokenEndpoint**: `string`
 
-    The fully-qualified URL of the provider's [Token Request endpoint](https://tools.ietf.org/html/rfc5849#section-2.3). This URL is used to exchange the authenticated temporary credentials received from the authorization redirect for the actual token credentials that can be used to make requests to the API server.
+    The fully-qualified URL of the provider's
+    [Token Request endpoint](https://tools.ietf.org/html/rfc5849#section-2.3).
+    This URL is used to exchange the authenticated temporary credentials
+    received from the authorization redirect for the actual token credentials
+    that can be used to make requests to the API server.
 
   * **activeUserEndpoint**: `string` (optional)
 
-    The fully-qualified URL of the provider's endpoint for fetching details about the current user.
+    The fully-qualified URL of the provider's endpoint for fetching details
+    about the current user.
 
   * **clientId**: `string`
 
@@ -146,13 +156,21 @@ If you want to use Twitter as the OAuth 1.0a provider, use the following options
 
 You also need to obtain a client ID and client secret from Twitter:
 
-1. Create a regular account at [Twitter](https://www.twitter.com) or use an existing account you own.
-2. Visit the [Twitter Application Management](https://apps.twitter.com) dashboard and sign in with your Twitter account.
-3. Click on *Create New App* and follow the instructions provided. The *Callback URL* should match your *oauth_callback* later. You may be prompted to add a mobile phone number to your account and verify it.
-4. Open the *Keys and Access Tones* tab, then note down the *Consumer Key* and *Consumer Secret*.
-5. Set the option *clientId* to the *Consumer Key* and the option *clientSecret* to the *Consumer Secret*.
+1. Create a regular account at [Twitter](https://www.twitter.com) or use an
+   existing account you own.
+2. Visit the [Twitter Application Management](https://apps.twitter.com)
+   dashboard and sign in with your Twitter account.
+3. Click on *Create New App* and follow the instructions provided.
+   The *Callback URL* should match your *oauth_callback* later. You may be
+   prompted to add a mobile phone number to your account and verify it.
+4. Open the *Keys and Access Tones* tab, then note down the *Consumer Key*
+   and *Consumer Secret*.
+5. Set the option *clientId* to the *Consumer Key* and the option
+   *clientSecret* to the *Consumer Secret*.
 
-Note that if you only need read-only access to public information, [you can also use the *clientId* and *clientSecret* directly](https://dev.twitter.com/oauth/application-only) without OAuth 1.0a.
+Note that if you only need read-only access to public information, you can also
+[use the *clientId* and *clientSecret* directly](https://dev.twitter.com/oauth/application-only)
+without OAuth 1.0a.
 
 See [Twitter REST API Reference Documentation](https://dev.twitter.com/rest/reference).
 
@@ -167,10 +185,13 @@ If you want to use XING as the OAuth 1.0a provider, use the following options:
 
 You also need to obtain a client ID and client secret from XING:
 
-1. Create a regular account at [XING](https://xing.com) or use an existing account you own.
-2. Visit the [XING Developer](https://dev.xing.com) page and sign in with your XING account.
+1. Create a regular account at [XING](https://xing.com) or use an existing
+   account you own.
+2. Visit the [XING Developer](https://dev.xing.com) page and sign in with
+   your XING account.
 3. Click on *Create app* and note down the *Consumer key* and *Consumer secret*.
-4. Set the option *clientId* to the *Consumer key* and the option *clientSecret* to the *Consumer secret*.
+4. Set the option *clientId* to the *Consumer key* and the option
+   *clientSecret* to the *Consumer secret*.
 
 See [XING Developer Documentation](https://dev.xing.com/docs).
 
@@ -185,11 +206,15 @@ If you want to use Tumblr as the OAuth 1.0a provider, use the following options:
 
 You also need to obtain a client ID and client secret from Tumblr:
 
-1. Create a regular account at [Tumblr](https://www.tumblr.com) or use an existing account you own.
+1. Create a regular account at [Tumblr](https://www.tumblr.com) or use an
+   existing account you own.
 2. Visit the [Tumblr Applications](https://www.tumblr.com/oauth/apps) dashboard.
-3. Click on *Register application*, then follow the instructions provided. The *Default callback URL* should match your *oauth_callback* later.
-4. Note down the *OAuth Consumer Key* and *Secret Key*. The secret may be hidden by default.
-5. Set the option *clientId* to the *OAuth Consumer Key* and the option *clientSecret* to the *Secret Key*.
+3. Click on *Register application*, then follow the instructions provided.
+   The *Default callback URL* should match your *oauth_callback* later.
+4. Note down the *OAuth Consumer Key* and *Secret Key*. The secret may be
+   hidden by default.
+5. Set the option *clientId* to the *OAuth Consumer Key* and the option
+   *clientSecret* to the *Secret Key*.
 
 See [Tumblr API Documentation](https://www.tumblr.com/docs/en/api/v2).
 
@@ -198,7 +223,8 @@ Fetch an unauthenticated request token
 
 `oauth1.fetchRequestToken(oauth_callback, opts)`
 
-Fetches an `oauth_token` that can be used to create an authorization URL that redirects to the given `oauth_callback` on confirmation.
+Fetches an `oauth_token` that can be used to create an authorization URL that
+redirects to the given `oauth_callback` on confirmation.
 
 Performs a *POST* response to the *requestTokenEndpoint*.
 
@@ -237,7 +263,9 @@ Generates the authorization URL for the authorization endpoint.
 
   See [RFC 5849](https://tools.ietf.org/html/rfc5849).
 
-Returns a fully-qualified URL for the authorization endpoint of the provider by appending the `oauth_token` and any additional arguments from *opts* to the *authEndpoint*.
+Returns a fully-qualified URL for the authorization endpoint of the provider
+by appending the `oauth_token` and any additional arguments from *opts* to
+the *authEndpoint*.
 
 **Examples**
 
@@ -254,7 +282,9 @@ Exchange an authenticated request token for an access token
 
 `oauth1.exchangeRequestToken(oauth_token, oauth_verifier, opts)`
 
-Takes a pair of authenticated temporary credentials passed to the callback URL by the provider and exchanges it for an `oauth_token` and `oauth_token_secret` than can be used to perform authenticated requests to the OAuth 1.0a provider.
+Takes a pair of authenticated temporary credentials passed to the callback URL
+by the provider and exchanges it for an `oauth_token` and `oauth_token_secret`
+than can be used to perform authenticated requests to the OAuth 1.0a provider.
 
 Performs a *POST* response to the *accessTokenEndpoint*.
 
@@ -321,7 +351,8 @@ Create an authenticated request object
 
 `oauth1.createSignedRequest(method, url, parameters, oauth_token, oauth_token_secret)`
 
-Creates a request object that can be used to perform a request to the OAuth 1.0a provider with the provided token credentials.
+Creates a request object that can be used to perform a request to the OAuth 1.0a
+provider with the provided token credentials.
 
 **Arguments**
 
@@ -337,7 +368,8 @@ Creates a request object that can be used to perform a request to the OAuth 1.0a
 
 * **parameters**: `string | Object | null`
 
-  An additional object or query string containing query parameters or body parameters that will be part of the signed request.
+  An additional object or query string containing query parameters or body
+  parameters that will be part of the signed request.
 
 * **oauth_token**: `string`
 
@@ -357,7 +389,8 @@ Returns an object with three properties:
 
    * **accept**: The string `"application/json"`.
 
-   * **authorization**: An OAuth authorization header containing all OAuth parameters and the request signature.
+   * **authorization**: An OAuth authorization header containing all OAuth
+     parameters and the request signature.
 
 **Examples**
 

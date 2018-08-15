@@ -147,18 +147,27 @@ struct Functions {
                          VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
+    static AqlValue RegexMatches(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
    static AqlValue RegexReplace(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
-
-
+   static AqlValue RegexSplit(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+   static AqlValue ToBase64(arangodb::aql::Query*,transaction::Methods*,
+                            VPackFunctionParameters const&);
+   static AqlValue ToHex(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+   static AqlValue EncodeURIComponent(arangodb::aql::Query*, transaction::Methods*,
+                                       VPackFunctionParameters const&);
+   static AqlValue UUID(arangodb::aql::Query*, transaction::Methods*,
+                                       VPackFunctionParameters const&);
+   static AqlValue Soundex(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue LevenshteinDistance(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
    // Date
-   static AqlValue DateFromParameters(arangodb::aql::Query* query,
-                                      transaction::Methods* trx,
-                                      VPackFunctionParameters const& parameters,
-                                      char const* AFN,
-                                      bool asTimestamp);
    static AqlValue DateNow(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
    static AqlValue DateIso8601(arangodb::aql::Query*, transaction::Methods*,
@@ -465,6 +474,13 @@ struct Functions {
     /// @brief dummy function that will only throw an error when called
     static AqlValue NotImplemented(arangodb::aql::Query*, transaction::Methods*,
                                    VPackFunctionParameters const&);
+
+   private:
+    static AqlValue DateFromParameters(arangodb::aql::Query* query,
+                                       transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters,
+                                       char const* AFN,
+                                       bool asTimestamp);
 };
 
 }

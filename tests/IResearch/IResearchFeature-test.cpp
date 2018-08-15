@@ -32,9 +32,11 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchFeature.h"
 #include "Rest/Version.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 // -----------------------------------------------------------------------------
@@ -43,14 +45,19 @@
 
 struct IResearchFeatureSetup {
   StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
 
-  IResearchFeatureSetup() {
+  IResearchFeatureSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
   }
 
   ~IResearchFeatureSetup() {
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
@@ -69,8 +76,8 @@ TEST_CASE("IResearchFeatureTest", "[iresearch][iresearch-feature]") {
 
 SECTION("test_start") {
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  auto* functions = new arangodb::aql::AqlFunctionFeature(&server);
-  arangodb::iresearch::IResearchFeature iresearch(&server);
+  auto* functions = new arangodb::aql::AqlFunctionFeature(server);
+  arangodb::iresearch::IResearchFeature iresearch(server);
   auto cleanup = irs::make_finally([functions]()->void{ functions->unprepare(); });
 
   enum class FunctionType {
@@ -121,27 +128,21 @@ SECTION("IResearch_version") {
 }
 
 SECTION("test_async") {
-  struct DestructFlag {
-    bool* _flag;
-    DestructFlag(bool &flag): _flag(&flag) {}
-    ~DestructFlag() { if (_flag) *_flag = true; }
-    DestructFlag(DestructFlag const& other): _flag(other._flag) { }
-    DestructFlag(DestructFlag&& other) noexcept: _flag(other._flag) { other._flag = nullptr; }
-    DestructFlag& operator=(DestructFlag const& other) { _flag = other._flag; return *this; }
-    DestructFlag& operator=(DestructFlag&& other) noexcept { _flag = other._flag; other._flag = nullptr; return *this; }
-  };
-
   // schedule task (null resource mutex)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     bool deallocated = false;
-    DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(nullptr, 1, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    {
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
+      feature.async(nullptr, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    }
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100))));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
@@ -150,15 +151,19 @@ SECTION("test_async") {
   // schedule task (null resource mutex value)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
     bool deallocated = false;
-    DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(resourceMutex, 1, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    {
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
+      feature.async(resourceMutex, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    }
     CHECK((std::cv_status::timeout == cond.wait_for(lock, std::chrono::milliseconds(100))));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
@@ -167,13 +172,15 @@ SECTION("test_async") {
   // schedule task (null functr)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(resourceMutex, 1, {});
+    feature.async(resourceMutex, {});
     CHECK((std::cv_status::timeout == cond.wait_for(lock, std::chrono::milliseconds(100))));
     resourceMutex->reset(); // should not deadlock if task released
   }
@@ -181,15 +188,19 @@ SECTION("test_async") {
   // schedule task (wait indefinite)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     bool deallocated = false;
-    DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(nullptr, 0, [&cond, &mutex, flag, &count](size_t&, bool)->bool { ++count; SCOPED_LOCK(mutex); cond.notify_all(); return true; });
+    {
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
+      feature.async(nullptr, [&cond, &mutex, flag, &count](size_t&, bool)->bool { ++count; SCOPED_LOCK(mutex); cond.notify_all(); return true; });
+    }
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100)))); // first run invoked immediately
     CHECK((false == deallocated));
     CHECK((std::cv_status::timeout == cond.wait_for(lock, std::chrono::milliseconds(100))));
@@ -200,15 +211,19 @@ SECTION("test_async") {
   // single-run task
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
-    DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(resourceMutex, 1, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    {
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
+      feature.async(resourceMutex, [&cond, &mutex, flag](size_t&, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); return false; });
+    }
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100))));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
@@ -217,10 +232,11 @@ SECTION("test_async") {
   // multi-run task
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
-    DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;
@@ -228,15 +244,18 @@ SECTION("test_async") {
     std::chrono::system_clock::duration diff;
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(resourceMutex, 1, [&cond, &mutex, flag, &count, &last, &diff](size_t& timeoutMsec, bool)->bool {
-      diff = std::chrono::system_clock::now() - last;
-      last = std::chrono::system_clock::now();
-      timeoutMsec = 100;
-      if (++count <= 1) return true;
-      SCOPED_LOCK(mutex);
-      cond.notify_all();
-      return false;
-    });
+    {
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
+      feature.async(resourceMutex, [&cond, &mutex, flag, &count, &last, &diff](size_t& timeoutMsec, bool)->bool {
+        diff = std::chrono::system_clock::now() - last;
+        last = std::chrono::system_clock::now();
+        timeoutMsec = 100;
+        if (++count <= 1) return true;
+        SCOPED_LOCK(mutex);
+        cond.notify_all();
+        return false;
+      });
+    }
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(1000))));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK((true == deallocated));
@@ -247,18 +266,22 @@ SECTION("test_async") {
   // trigger task by notify
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
     bool execVal = true;
-    DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;
     auto last = std::chrono::system_clock::now();
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(resourceMutex, 1000, [&cond, &mutex, flag, &execVal, &count](size_t&, bool exec)->bool { execVal = exec; SCOPED_LOCK(mutex); cond.notify_all(); return ++count < 2; });
+    {
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
+      feature.async(resourceMutex, [&cond, &mutex, flag, &execVal, &count](size_t&, bool exec)->bool { execVal = exec; SCOPED_LOCK(mutex); cond.notify_all(); return ++count < 2; });
+    }
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100)))); // first run invoked immediately
     CHECK((false == deallocated));
     CHECK((std::cv_status::timeout == cond.wait_for(lock, std::chrono::milliseconds(100))));
@@ -275,18 +298,28 @@ SECTION("test_async") {
   // trigger by timeout
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
     bool execVal = false;
-    DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
     size_t count = 0;
     auto last = std::chrono::system_clock::now();
     SCOPED_LOCK_NAMED(mutex, lock);
 
-    feature.async(resourceMutex, 100, [&cond, &mutex, flag, &execVal, &count](size_t&, bool exec)->bool { execVal = exec; SCOPED_LOCK(mutex); cond.notify_all(); return ++count < 2; });
+    {
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
+      feature.async(resourceMutex, [&cond, &mutex, flag, &execVal, &count](size_t& timeoutMsec, bool exec)->bool {
+        execVal = exec;
+        SCOPED_LOCK(mutex);
+        cond.notify_all();
+        timeoutMsec = 100;
+        return ++count < 2;
+      });
+    }
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100)))); // first run invoked immediately
     CHECK((false == deallocated));
     CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(1000))));
@@ -302,7 +335,9 @@ SECTION("test_async") {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
 
     {
-      arangodb::iresearch::IResearchFeature feature(&server);
+      arangodb::iresearch::IResearchFeature feature(server);
+      server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+      feature.prepare(); // start thread pool
     }
   }
 
@@ -311,19 +346,68 @@ SECTION("test_async") {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
-    DestructFlag flag(deallocated);
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
 
     {
-      arangodb::iresearch::IResearchFeature feature(&server);
+      arangodb::iresearch::IResearchFeature feature(server);
+      server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+      feature.prepare(); // start thread pool
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
 
-      feature.async(resourceMutex, 1, [&cond, &mutex, flag](size_t& timeoutMsec, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); timeoutMsec = 100; return true; });
+      feature.async(resourceMutex, [&cond, &mutex, flag](size_t& timeoutMsec, bool)->bool { SCOPED_LOCK(mutex); cond.notify_all(); timeoutMsec = 100; return true; });
       CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(100))));
     }
 
     CHECK((true == deallocated));
+  }
+
+  // multiple tasks with same resourceMutex + resourceMutex reset (sequential creation)
+  {
+    arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    feature.prepare(); // start thread pool
+    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
+    bool deallocated0 = false;
+    bool deallocated1 = false;
+    std::condition_variable cond;
+    std::mutex mutex;
+    size_t count = 0;
+    SCOPED_LOCK_NAMED(mutex, lock);
+
+    {
+      std::shared_ptr<bool> flag(&deallocated0, [](bool* ptr)->void { *ptr = true; });
+      feature.async(resourceMutex, [&cond, &mutex, flag, &count](size_t& timeoutMsec, bool)->bool {
+        if (++count > 1) return false;
+        timeoutMsec = 100;
+        SCOPED_LOCK_NAMED(mutex, lock);
+        cond.notify_all();
+        cond.wait(lock);
+        return true;
+      });
+    }
+    CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(1000)))); // wait for the first task to start
+
+    std::thread thread([resourceMutex]()->void { resourceMutex->reset(); }); // try to aquire a write lock
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // hopefully a write-lock aquisition attempt is in progress
+
+    {
+      TRY_SCOPED_LOCK_NAMED(resourceMutex->mutex(), resourceLock);
+      CHECK((false == resourceLock.owns_lock())); // write-lock aquired successfully (read-locks blocked)
+    }
+
+    {
+      std::shared_ptr<bool> flag(&deallocated1, [](bool* ptr)->void { *ptr = true; });
+      feature.async(resourceMutex, [flag](size_t&, bool)->bool { return false; }); // will never get invoked because resourceMutex is reset
+    }
+    cond.notify_all(); // wake up first task after resourceMutex write-lock aquired (will process pending tasks)
+    lock.unlock(); // allow first task to run
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    CHECK((true == deallocated0));
+    CHECK((true == deallocated1));
+    thread.join();
   }
 }
 

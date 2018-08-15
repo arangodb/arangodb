@@ -463,7 +463,8 @@ ROUND(-2.51) // -3
 
 Rounding towards zero, also known as *trunc()* in C/C++, can be achieved with
 a combination of the [ternary operator](../Operators.md#ternary-operator),
-[CEIL()](#ceil) and [FLOOR()](#floor):
+[CEIL()](#ceil)
+and [FLOOR()](#floor):
 
 ```js
 LET rounded = value >= 0 ? FLOOR(value) : CEIL(value)

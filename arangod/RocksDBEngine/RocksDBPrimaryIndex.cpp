@@ -64,10 +64,6 @@
 
 using namespace arangodb;
 
-namespace {
-constexpr bool PrimaryIndexFillBlockCache = false;
-}
-
 // ================ Primary Index Iterator ================
 
 /// @brief hard-coded vector of the index attributes
@@ -150,14 +146,16 @@ void RocksDBPrimaryIndexIterator::reset() { _iterator.reset(); }
 // ================ PrimaryIndex ================
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(
-    arangodb::LogicalCollection* collection, VPackSlice const& info)
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+)
     : RocksDBIndex(0, collection,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(
                            StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   static_cast<RocksDBCollection*>(collection->getPhysical())->cacheEnabled()),
+                   static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
                    _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
   TRI_ASSERT(_objectId != 0);
@@ -169,8 +167,10 @@ void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
   if (useCache()) {
     // FIXME: make the factor configurable
-    RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    RocksDBCollection* rdb =
+      static_cast<RocksDBCollection*>(_collection.getPhysical());
     uint64_t numDocs = rdb->numberDocuments();
+
     if (numDocs > 0) {
       _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
     }
@@ -219,10 +219,6 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  auto options = mthds->readOptions();  // intentional copy
-  options.fill_cache = PrimaryIndexFillBlockCache;
-  TRI_ASSERT(options.snapshot != nullptr);
-
   arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
   if (!r.ok()) {
     return LocalDocumentId();
@@ -249,6 +245,40 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   }
 
   return RocksDBValue::documentId(value);
+}
+
+/// @brief reads a revision id from the primary index 
+/// if the document does not exist, this function will return false
+/// if the document exists, the function will return true
+/// the revision id will only be non-zero if the primary index
+/// value contains the document's revision id. note that this is not
+/// the case for older collections
+/// in this case the caller must fetch the revision id from the actual
+/// document
+bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
+                                         arangodb::StringRef keyRef,
+                                         LocalDocumentId& documentId,
+                                         TRI_voc_rid_t& revisionId) const {
+  documentId.clear();
+  revisionId = 0;
+
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(_objectId, keyRef);
+  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
+
+  // acquire rocksdb transaction
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
+  if (!r.ok()) {
+    return false;
+  }
+  
+  documentId = RocksDBValue::documentId(value);
+
+  // this call will populate revisionId if the revision id value is
+  // stored in the primary index
+  revisionId = RocksDBValue::revisionId(value);
+  return true;
 }
 
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
@@ -361,14 +391,14 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx, this);
     }
 
     return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx, this);
 }
 
 /// @brief specializes the condition for use with the index
@@ -407,8 +437,12 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys), !isId);
+
+  return new RocksDBPrimaryIndexIterator(
+    &_collection, trx, this, std::move(keys), !isId
+  );
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -430,8 +464,12 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys), !isId);
+
+  return new RocksDBPrimaryIndexIterator(
+    &_collection, trx, this, std::move(keys), !isId
+  );
 }
 
 /// @brief add a single value node to the iterator's keys
@@ -460,7 +498,7 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(key != nullptr);
 
-    if (!_isRunningInCluster && collection->id() != _collection->id()) {
+    if (!_isRunningInCluster && collection->id() != _collection.id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
@@ -474,15 +512,15 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
         }
 
-        if (_collection->planId() != c->getLocalCid() &&
-            _collection->planId() != c->getFromCid() &&
-            _collection->planId() != c->getToCid()) {
+        if (_collection.planId() != c->getLocalCid() &&
+            _collection.planId() != c->getFromCid() &&
+            _collection.planId() != c->getToCid()) {
           // invalid planId
           return;
         }
       } else
 #endif
-      if (collection->planId() != _collection->planId()) {
+      if (collection->planId() != _collection.planId()) {
         // only continue lookup if the id value is syntactically correct and
         // refers to "our" collection, using cluster collection id
         return;

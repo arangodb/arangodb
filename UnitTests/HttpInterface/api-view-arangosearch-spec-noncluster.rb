@@ -82,11 +82,16 @@ describe ArangoDB do
                  JSON
           doc = ArangoDB.log_post("#{prefix}-create-without properties", cmd, :body => body)
 
-          doc.code.should eq(400)
+          doc.code.should eq(201)
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
-          doc.parsed_response['error'].should eq(true)
-          doc.parsed_response['code'].should eq(400)
-          doc.parsed_response['errorNum'].should eq(10)
+          doc.parsed_response['name'].should eq("test")
+          doc.parsed_response['type'].should eq("arangosearch")
+
+          cmd2 = api + '/test'
+          doc2 = ArangoDB.log_delete("#{prefix}-create-without properties", cmd2)
+
+          doc2.code.should eq(200)
+          doc2.headers['content-type'].should eq("application/json; charset=utf-8")
         end
 
         it "duplicate name" do
@@ -432,7 +437,7 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response.should eq([])
+        doc.parsed_response['result'].should eq([])
       end
 
       it "short list" do
@@ -440,7 +445,7 @@ describe ArangoDB do
         body1 = <<-JSON
                { "name": "abc",
                  "type": "arangosearch",
-                 "properties": { "commit": { "commitIntervalMsec": 10 } }
+                 "commit": { "commitIntervalMsec": 10 }
                }
                JSON
         doc1 = ArangoDB.log_post("#{prefix}-short-list", cmd1, :body => body1)
@@ -453,7 +458,7 @@ describe ArangoDB do
         body2 = <<-JSON
                { "name": "def",
                  "type": "arangosearch",
-                 "properties": { "commit": { "commitIntervalMsec": 10 } }
+                 "commit": { "commitIntervalMsec": 10 }
                }
                JSON
         doc2 = ArangoDB.log_post("#{prefix}-short-list", cmd2, :body => body2)
@@ -466,11 +471,11 @@ describe ArangoDB do
         doc3 = ArangoDB.log_get("#{prefix}-short-list", cmd3)
         doc3.code.should eq(200)
         doc3.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc3.parsed_response.length.should eq(2)
-        doc3.parsed_response[0]['name'].should eq("abc")
-        doc3.parsed_response[1]['name'].should eq("def")
-        doc3.parsed_response[0]['type'].should eq("arangosearch")
-        doc3.parsed_response[1]['type'].should eq("arangosearch")
+        doc3.parsed_response.length.should eq(3)
+        doc3.parsed_response['result'][0]['name'].should eq("abc")
+        doc3.parsed_response['result'][1]['name'].should eq("def")
+        doc3.parsed_response['result'][0]['type'].should eq("arangosearch")
+        doc3.parsed_response['result'][1]['type'].should eq("arangosearch")
       end
 
       it "individual views" do
@@ -515,7 +520,7 @@ describe ArangoDB do
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
         doc1.parsed_response['name'].should eq('abc')
         doc1.parsed_response['type'].should eq('arangosearch')
-        doc1.parsed_response['properties'].should eq(nil)
+        doc1.parsed_response['commit'].should be_kind_of(Hash)
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-change-properties", cmd2)
@@ -534,7 +539,7 @@ describe ArangoDB do
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
         doc1.parsed_response['name'].should eq('abc')
         doc1.parsed_response['type'].should eq('arangosearch')
-        doc1.parsed_response['properties'].should eq(nil)
+        doc1.parsed_response['commit'].should be_kind_of(Hash)
         doc1.parsed_response['extra'].should eq(nil)
 
         cmd2 = api + '/abc/properties'
@@ -555,7 +560,7 @@ describe ArangoDB do
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
         doc1.parsed_response['name'].should eq('abc')
         doc1.parsed_response['type'].should eq('arangosearch')
-        doc1.parsed_response['properties'].should eq(nil)
+        doc1.parsed_response['commit'].should be_kind_of(Hash)
 
         cmd2 = api + '/abc/properties'
         doc2 = ArangoDB.log_get("#{prefix}-accept-patch", cmd2)

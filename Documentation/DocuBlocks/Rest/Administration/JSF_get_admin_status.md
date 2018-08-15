@@ -43,7 +43,7 @@ A coordinator or primary will also have
 
 - *serverInfo.serverId*: the server ide, e. g. *"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a"*.
 
-A coordintor will also have
+A coordinator will also have
 
 - *coordinator.foxxmaster*: the server id of the foxx master.
 

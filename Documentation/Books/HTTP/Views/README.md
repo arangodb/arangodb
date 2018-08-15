@@ -16,14 +16,7 @@ change the view name, but not the view identifier.
 Views have a type that is specified by the user when the view
 is created. 
 
-The only available view type currently is: "arangosearch".
-
-### ArangoSearch View
-
-A natively integrated AQL extension that allows one to:
- * evaluate together documents located in different collections
- * filter documents based on AQL boolean expressions and functions
- * sort the resultset based on how closely each document matched the filter
+The only available view type currently is: [ArangoSearch](ArangoSearch.md).
 
 ### View Identifier
 
@@ -63,3 +56,10 @@ the view name is *demo*, then the URL of that view is:
 
     http://localhost:8529/_api/view/demo
 
+### View Operations
+
+A view instance may be:
+* [Created](Creating.md)
+* [Retrieved](Getting.md)
+* [Modifled](Modifying.md)
+* [Deleted](Dropping.md)

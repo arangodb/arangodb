@@ -33,15 +33,17 @@
 #include <sys/sysinfo.h>
 #endif
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace arangodb {
+
 EnvironmentFeature::EnvironmentFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Environment") {
   setOptional(false);
-  startsAfter("Greetings");
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
+
   startsAfter("MaxMapCount");
 }
 
@@ -311,3 +313,5 @@ void EnvironmentFeature::start() {
   }
 #endif
 }
+
+} // arangodb

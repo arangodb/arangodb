@@ -82,7 +82,7 @@ namespace basics {
 /// The idea of the algorithm is as follows: Each slot in the hash table
 /// contains a pointer to the actual element, as well as two unsigned
 /// integers "prev" and "next" (being indices in the hash table) to
-/// organise a linked list of entries, *within the same hash table*. All
+/// organize a linked list of entries, *within the same hash table*. All
 /// elements with the same key are kept in a doubly linked list. The first
 /// element in such a linked list is kept at the position determined by
 /// its hash with respect to its key (or in the first free slot after this
@@ -252,7 +252,7 @@ class AssocMulti {
 #endif
 
     // compute the hash by the key only first
-    uint64_t hashByKey = _helper.HashElement(userData, element, true);
+    uint64_t hashByKey = _helper.HashElement(element, true);
     Bucket& b = _buckets[hashByKey & _bucketsMask];
 
     auto result =
@@ -674,7 +674,7 @@ class AssocMulti {
     }
 
     // compute the hash
-    uint64_t hashByKey = _helper.HashKey(userData, key);
+    uint64_t hashByKey = _helper.HashKey(key);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
     IndexType hashIndex = hashToIndex(hashByKey);
     IndexType i = hashIndex % b._nrAlloc;
@@ -737,7 +737,7 @@ class AssocMulti {
     }
 
     // compute the hash
-    uint64_t hashByKey = _helper.HashElement(userData, element, true);
+    uint64_t hashByKey = _helper.HashElement(element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
     IndexType hashIndex = hashToIndex(hashByKey);
     IndexType i = hashIndex % b._nrAlloc;
@@ -802,7 +802,7 @@ class AssocMulti {
       return;
     }
 
-    uint64_t hashByKey = _helper.HashElement(userData, element, true);
+    uint64_t hashByKey = _helper.HashElement(element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
     uint64_t hashByElm;
     IndexType i = findElementPlace(userData, b, element, true, hashByElm);
@@ -915,7 +915,7 @@ class AssocMulti {
         if (useHashCache) {
           // We need to exchange the hashCache value by that of the key:
           b->_table[i].writeHashCache(
-              _helper.HashElement(userData, b->_table[i].value, true));
+              _helper.HashElement(b->_table[i].value, true));
         }
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
         check(userData, false, false);
@@ -1043,7 +1043,7 @@ class AssocMulti {
           if (useHashCache) {
             hashByKey = oldTable[j].readHashCache();
           } else {
-            hashByKey = _helper.HashElement(userData, oldTable[j].value, true);
+            hashByKey = _helper.HashElement(oldTable[j].value, true);
           }
           IndexType insertPosition =
               insertFirst(userData, copy, oldTable[j].value, hashByKey);
@@ -1058,7 +1058,7 @@ class AssocMulti {
             if (useHashCache) {
               hashByElm = oldTable[k].readHashCache();
             } else {
-              hashByElm = _helper.HashElement(userData, oldTable[k].value, false);
+              hashByElm = _helper.HashElement(oldTable[k].value, false);
             }
             insertFurther(userData, copy, oldTable[k].value, hashByKey,
                           hashByElm, insertPosition);
@@ -1127,7 +1127,7 @@ class AssocMulti {
             if (b._table[i].prev == INVALID_INDEX) {
               // We are the first in a linked list.
               uint64_t hashByKey =
-                  _helper.HashElement(userData, b._table[i].value, true);
+                  _helper.HashElement(b._table[i].value, true);
               hashIndex = hashToIndex(hashByKey);
               j = hashIndex % b._nrAlloc;
               if (useHashCache && b._table[i].readHashCache() != hashByKey) {
@@ -1146,7 +1146,7 @@ class AssocMulti {
             } else {
               // We are not the first in a linked list.
               uint64_t hashByElm =
-                  _helper.HashElement(userData, b._table[i].value, false);
+                  _helper.HashElement(b._table[i].value, false);
               hashIndex = hashToIndex(hashByElm);
               j = hashIndex % b._nrAlloc;
               if (useHashCache && b._table[i].readHashCache() != hashByElm) {
@@ -1189,7 +1189,7 @@ class AssocMulti {
     // pointer into the table, which is either empty or points to
     // an entry that compares equal to element.
 
-    hashByElm = _helper.HashElement(userData, element, false);
+    hashByElm = _helper.HashElement(element, false);
     IndexType hashindex = hashToIndex(hashByElm);
     IndexType i = hashindex % b._nrAlloc;
 
@@ -1214,7 +1214,7 @@ class AssocMulti {
     // This performs a complete lookup for an element. It returns a slot
     // number. This slot is either empty or contains an element that
     // compares equal to element.
-    uint64_t hashByKey = _helper.HashElement(userData, element, true);
+    uint64_t hashByKey = _helper.HashElement(element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
     buck = const_cast<Bucket*>(&b);
     IndexType hashIndex = hashToIndex(hashByKey);
@@ -1306,7 +1306,7 @@ class AssocMulti {
       // Find out where this element ought to be:
       // If it is the start of one of the linked lists, we need to hash
       // by key, otherwise, we hash by the full identity of the element:
-      uint64_t hash = _helper.HashElement(userData, b._table[j].value,
+      uint64_t hash = _helper.HashElement(b._table[j].value,
                                    b._table[j].prev == INVALID_INDEX);
       IndexType hashIndex = hashToIndex(hash);
       IndexType k = hashIndex % b._nrAlloc;

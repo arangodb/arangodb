@@ -1,6 +1,6 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp</span> &lt;&lt;EOF
 { 
-  "passwd" : "secure" 
+  <span class="hljs-string">"passwd"</span> : <span class="hljs-string">"secure"</span> 
 }
 EOF
 

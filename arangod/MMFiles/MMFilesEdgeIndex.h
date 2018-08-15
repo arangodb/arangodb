@@ -48,7 +48,7 @@ class MMFilesEdgeIndex;
 
 struct MMFilesEdgeIndexHelper {
   /// @brief hashes an edge key
-  static inline uint64_t HashKey(void*, VPackSlice const* key) {
+  static inline uint64_t HashKey(VPackSlice const* key) {
     TRI_ASSERT(key != nullptr);
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
@@ -56,7 +56,7 @@ struct MMFilesEdgeIndexHelper {
   }
 
   /// @brief hashes an edge
-  static inline uint64_t HashElement(void*, MMFilesSimpleIndexElement const& element,
+  static inline uint64_t HashElement(MMFilesSimpleIndexElement const& element,
                                      bool byKey) {
     if (byKey) {
       return element.hash();
@@ -131,7 +131,6 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
 
  private:
   TRI_MMFilesEdgeIndexHash_t const* _index;
-  ManagedDocumentResult* _mmdr;
   IndexLookupContext _context;
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
@@ -146,7 +145,7 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
  public:
   MMFilesEdgeIndex() = delete;
 
-  MMFilesEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
+  MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }

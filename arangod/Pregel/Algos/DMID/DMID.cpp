@@ -526,9 +526,6 @@ struct DMIDComputation
           aggregate<bool>(NEW_MEMBER_AGG, true);
         }
       }
-      /*		vertex.getValue().setBestValidMemDeg(vertex.getValue()
-       .getMembershipDegree());
-       */
       bool isPartOfAnyCommunity = false;
       // Map.Entry<Long, Double> entry :
       // vertex.getValue().getMembershipDegree().entrySet()

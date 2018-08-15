@@ -42,7 +42,8 @@ rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 }
 
 RocksDBOptionFeature::RocksDBOptionFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
@@ -70,6 +71,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
       _useDirectReads(rocksDBDefaults.use_direct_reads),
@@ -92,8 +94,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 #endif
 
   setOptional(true);
-  startsAfter("Daemon");
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
 }
 
 void RocksDBOptionFeature::collectOptions(
@@ -168,6 +169,10 @@ void RocksDBOptionFeature::collectOptions(
                      " max-bytes-for-level-base * "
                      "(max-bytes-for-level-multiplier ^ (L-1))",
                      new DoubleParameter(&_maxBytesForLevelMultiplier));
+  
+  options->addOption("--rocksdb.block-align-data-blocks",
+                     "if true, aligns data blocks on lesser of page size and block size",
+                     new BooleanParameter(&_blockAlignDataBlocks));
 
   options->addOption("--rocksdb.enable-pipelined-write",
                      "if true, use a two stage write queue for WAL writes and memtable writes",
