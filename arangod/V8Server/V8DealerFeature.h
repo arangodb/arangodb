@@ -35,6 +35,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class Thread;
 class V8Context;
 
@@ -52,10 +53,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   static constexpr ssize_t ANY_CONTEXT = -1;
   static constexpr ssize_t ANY_CONTEXT_OR_PRIORITY = -2;
 
- public:
-  explicit V8DealerFeature(application_features::ApplicationServer* server);
+  explicit V8DealerFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -143,7 +142,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void applyContextUpdate(V8Context* context);
   void shutdownContexts();
 
- private:
   std::atomic<uint64_t> _nextId;
 
   std::unique_ptr<Thread> _gcThread;

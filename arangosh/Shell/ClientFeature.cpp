@@ -36,14 +36,18 @@
 #include <thread>
 #include <chrono>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ClientFeature::ClientFeature(application_features::ApplicationServer* server,
-                             bool allowJwtSecret, double connectionTimeout,
-                             double requestTimeout)
+namespace arangodb {
+
+ClientFeature::ClientFeature(
+    application_features::ApplicationServer& server,
+    bool allowJwtSecret,
+    double connectionTimeout,
+    double requestTimeout
+)
     : ApplicationFeature(server, "Client"),
       _databaseName("_system"),
       _authentication(true),
@@ -317,3 +321,5 @@ int ClientFeature::runMain(
     return EXIT_FAILURE;
   }
 }
+
+} // arangodb

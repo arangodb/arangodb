@@ -34,12 +34,13 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Daemon") {
   setOptional(true);
   startsAfter("GreetingsPhase");
@@ -376,3 +377,5 @@ int DaemonFeature::waitForChildProcess(int pid) {
   // enough time has elapsed... we now abort our loop
   return EXIT_SUCCESS;
 }
+
+} // arangodb

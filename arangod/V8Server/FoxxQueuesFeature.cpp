@@ -24,12 +24,14 @@
 
 #include "ProgramOptions/ProgramOptions.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 FoxxQueuesFeature::FoxxQueuesFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "FoxxQueues"),
       _pollInterval(1.0),
       _enabled(true) {
@@ -61,3 +63,4 @@ void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 }
 
+} // arangodb
