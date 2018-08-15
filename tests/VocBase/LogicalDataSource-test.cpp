@@ -62,6 +62,7 @@ struct LogicalDataSourceSetup {
   }
 
   ~LogicalDataSourceSetup() {
+    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
