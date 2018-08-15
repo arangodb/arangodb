@@ -22,10 +22,13 @@
 
 #include "GreetingsPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer* server, bool isClient)
+GreetingsFeaturePhase::GreetingsFeaturePhase(
+    ApplicationServer& server,
+    bool isClient
+)
     : ApplicationFeaturePhase(server, "GreetingsPhase") {
   setOptional(false);
 
@@ -43,3 +46,6 @@ GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer* server, bool isC
     startsAfter("LoggerBuffer");
   }
 }
+
+} // application_features
+} // arangodb

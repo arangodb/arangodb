@@ -63,7 +63,9 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() override;
   char const* name() const override final { return "RestBatchHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  // be pessimistic about what this handler does... it may invoke V8
+  // or not, but as we don't know where, we need to assume it
+  RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
 
  private:
   RestStatus executeHttp();

@@ -68,7 +68,7 @@ struct MMFilesEngineCollectionFiles {
 class MMFilesEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit MMFilesEngine(application_features::ApplicationServer*);
+  explicit MMFilesEngine(application_features::ApplicationServer& server);
 
   ~MMFilesEngine();
 

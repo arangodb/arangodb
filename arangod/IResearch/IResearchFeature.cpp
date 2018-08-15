@@ -632,10 +632,14 @@ void IResearchFeature::Async::start() {
     << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 
-IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
+IResearchFeature::IResearchFeature(
+    arangodb::application_features::ApplicationServer& server
+)
   : ApplicationFeature(server, IResearchFeature::name()),
     _async(std::make_unique<Async>()),
-    _running(false) {
+    _running(false),
+    _threads(0),
+    _threadsLimit(0) {
   setOptional(true);
   startsAfter("V8Phase");
 
@@ -662,8 +666,22 @@ void IResearchFeature::beginShutdown() {
 void IResearchFeature::collectOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options
 ) {
+  auto section = FEATURE_NAME;
+
   _running = false;
+  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
   ApplicationFeature::collectOptions(options);
+  options->addSection(section, std::string("Configure the ") + FEATURE_NAME + " feature");
+  options->addOption(
+    std::string("--") + section + ".threads",
+    "the exact number of threads to use for asynchronous tasks (0 == autodetect)",
+    new arangodb::options::UInt64Parameter(&_threads)
+  );
+  options->addOption(
+    std::string("--") + section + ".threads-limit",
+    "upper limit to the autodetected number of threads to use for asynchronous tasks (0 == use default)",
+    new arangodb::options::UInt64Parameter(&_threadsLimit)
+  );
 }
 
 /*static*/ std::string const& IResearchFeature::name() {

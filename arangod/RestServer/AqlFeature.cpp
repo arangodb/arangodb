@@ -31,14 +31,17 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
-using namespace arangodb;
+
 using namespace arangodb::application_features;
+
+namespace arangodb {
 
 AqlFeature* AqlFeature::_AQL = nullptr;
 Mutex AqlFeature::_aqlFeatureMutex;
 
 AqlFeature::AqlFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
   setOptional(false);
   startsAfter("V8Phase");
@@ -111,3 +114,4 @@ void AqlFeature::stop() {
   AqlFeature::_AQL = nullptr;
 }
 
+} // arangodb

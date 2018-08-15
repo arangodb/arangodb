@@ -472,7 +472,7 @@ DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
       name{n},
       type{t} {}
 
-DumpFeature::DumpFeature(application_features::ApplicationServer* server,
+DumpFeature::DumpFeature(application_features::ApplicationServer& server,
                          int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
       _clientManager{Logger::DUMP},
