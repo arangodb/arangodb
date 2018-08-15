@@ -888,11 +888,11 @@ All other characters are returned unchanged.
 - returns **upperCaseString** (string): *value* with lower-case characters converted
   to upper-case characters
   
-  UUID()
-  -----------
-  
-  `UUID() → UUIDString`
-  
-  Return a random and uniquely generated UUID.
+UUID()
+------
 
-  - returns **UUIDString** (string): a universally unique identifier
+`UUID() → UUIDString`
+
+Return a universally unique identifier value.
+
+- returns **UUIDString** (string): a universally unique identifier

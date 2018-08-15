@@ -26,14 +26,16 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::aql;
+
+namespace arangodb {
+namespace aql {
 
 AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 
 AqlFunctionFeature::AqlFunctionFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
   startsAfter("V8Phase");
@@ -365,3 +367,6 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"ASSERT", ".,.", false, true, &Functions::Assert});
   add({"WARN", ".,.", false, true, &Functions::Warn});
 }
+
+} // aql
+} // arangodb

@@ -34,14 +34,17 @@
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 CheckVersionFeature::CheckVersionFeature(
-    ApplicationServer* server, int* result,
-    std::vector<std::string> const& nonServerFeatures)
+    application_features::ApplicationServer& server,
+    int* result,
+    std::vector<std::string> const& nonServerFeatures
+)
     : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
       _result(result),
@@ -204,3 +207,5 @@ void CheckVersionFeature::checkVersion() {
     FATAL_ERROR_EXIT_CODE(*_result);
   }
 }
+
+} // arangodb

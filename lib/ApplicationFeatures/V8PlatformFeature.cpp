@@ -119,7 +119,8 @@ static void fatalCallback(char const* location, char const* message) {
 }
 
 V8PlatformFeature::V8PlatformFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "V8Platform") {
   setOptional(true);
   startsAfter("ClusterPhase");
@@ -228,4 +229,3 @@ void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
   // because Isolate::Dispose() will delete isolate!
   isolate->Dispose();
 }
-

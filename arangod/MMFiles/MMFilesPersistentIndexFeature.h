@@ -35,13 +35,16 @@ class OptimisticTransactionDB;
 }
 
 namespace arangodb {
+
 class MMFilesPersistentIndexKeyComparator;
 
 class MMFilesPersistentIndexFeature final : public application_features::ApplicationFeature {
  public:
-  explicit MMFilesPersistentIndexFeature(application_features::ApplicationServer* server);
+  explicit MMFilesPersistentIndexFeature(
+    application_features::ApplicationServer& server
+  );
   ~MMFilesPersistentIndexFeature();
-  
+
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -58,10 +61,8 @@ class MMFilesPersistentIndexFeature final : public application_features::Applica
   static MMFilesPersistentIndexFeature* instance();
 
  private:
-
   int dropPrefix(std::string const& prefix);
 
- private:
   rocksdb::OptimisticTransactionDB* _db;
   rocksdb::Options _options;
   MMFilesPersistentIndexKeyComparator* _comparator;

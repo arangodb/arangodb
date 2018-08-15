@@ -27,14 +27,17 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionManager.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 std::unique_ptr<TransactionManager> TransactionManagerFeature::MANAGER;
 
-TransactionManagerFeature::TransactionManagerFeature(ApplicationServer* server)
+TransactionManagerFeature::TransactionManagerFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "TransactionManager") {
   setOptional(false);
   startsAfter("BasicsPhase");
@@ -51,3 +54,5 @@ void TransactionManagerFeature::prepare() {
 void TransactionManagerFeature::unprepare() {
   MANAGER.reset();
 }
+
+} // arangodb
