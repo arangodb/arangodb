@@ -45,8 +45,9 @@
 
 struct IResearchFeatureSetup {
   StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
 
-  IResearchFeatureSetup() {
+  IResearchFeatureSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -75,8 +76,8 @@ TEST_CASE("IResearchFeatureTest", "[iresearch][iresearch-feature]") {
 
 SECTION("test_start") {
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  auto* functions = new arangodb::aql::AqlFunctionFeature(&server);
-  arangodb::iresearch::IResearchFeature iresearch(&server);
+  auto* functions = new arangodb::aql::AqlFunctionFeature(server);
+  arangodb::iresearch::IResearchFeature iresearch(server);
   auto cleanup = irs::make_finally([functions]()->void{ functions->unprepare(); });
 
   enum class FunctionType {
@@ -130,8 +131,8 @@ SECTION("test_async") {
   // schedule task (null resource mutex)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     bool deallocated = false;
     std::condition_variable cond;
@@ -150,8 +151,8 @@ SECTION("test_async") {
   // schedule task (null resource mutex value)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
     bool deallocated = false;
@@ -171,8 +172,8 @@ SECTION("test_async") {
   // schedule task (null functr)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     std::condition_variable cond;
@@ -187,8 +188,8 @@ SECTION("test_async") {
   // schedule task (wait indefinite)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     bool deallocated = false;
     std::condition_variable cond;
@@ -210,8 +211,8 @@ SECTION("test_async") {
   // single-run task
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -231,8 +232,8 @@ SECTION("test_async") {
   // multi-run task
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -265,8 +266,8 @@ SECTION("test_async") {
   // trigger task by notify
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -297,8 +298,8 @@ SECTION("test_async") {
   // trigger by timeout
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -334,8 +335,8 @@ SECTION("test_async") {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
 
     {
-      arangodb::iresearch::IResearchFeature feature(&server);
-      server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+      arangodb::iresearch::IResearchFeature feature(server);
+      server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
       feature.prepare(); // start thread pool
     }
   }
@@ -350,8 +351,8 @@ SECTION("test_async") {
     SCOPED_LOCK_NAMED(mutex, lock);
 
     {
-      arangodb::iresearch::IResearchFeature feature(&server);
-      server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+      arangodb::iresearch::IResearchFeature feature(server);
+      server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
       feature.prepare(); // start thread pool
       std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
 
@@ -365,8 +366,8 @@ SECTION("test_async") {
   // multiple tasks with same resourceMutex + resourceMutex reset (sequential creation)
   {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated0 = false;

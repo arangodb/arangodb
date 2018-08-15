@@ -36,13 +36,16 @@
 #include <iostream>
 #include <regex>
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ImportFeature::ImportFeature(application_features::ApplicationServer* server,
-                             int* result)
+namespace arangodb {
+
+ImportFeature::ImportFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
@@ -593,3 +596,5 @@ int ImportFeature::tryCreateDatabase(ClientFeature* client,
                                false);
   return TRI_ERROR_INTERNAL;
 }
+
+} // arangodb
