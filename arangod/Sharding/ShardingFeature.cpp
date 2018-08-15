@@ -33,12 +33,14 @@
 
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
+namespace arangodb {
+
 ShardingFeature::ShardingFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Sharding") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -178,3 +180,5 @@ std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
 
   return ShardingStrategyHash::NAME;
 }
+
+} // arangodb

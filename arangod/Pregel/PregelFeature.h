@@ -39,7 +39,7 @@ class RecoveryManager;
 
 class PregelFeature final : public application_features::ApplicationFeature {
  public:
-  explicit PregelFeature(application_features::ApplicationServer* server);
+  explicit PregelFeature(application_features::ApplicationServer& server);
   ~PregelFeature();
 
   static PregelFeature* instance();

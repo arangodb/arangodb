@@ -22,10 +22,10 @@
 
 #include "ServerPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-ServerFeaturePhase::ServerFeaturePhase(ApplicationServer* server)
+ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "ServerPhase") {
   setOptional(false);
   startsAfter("AQLPhase");
@@ -37,3 +37,6 @@ ServerFeaturePhase::ServerFeaturePhase(ApplicationServer* server)
   startsAfter("Statistics");
   startsAfter("Upgrade");
 }
+
+} // application_features
+} // arangodb

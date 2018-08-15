@@ -40,6 +40,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace {
+
 static bool checkMaxMappings = arangodb::MaxMapCountFeature::needsChecking(); 
 static uint64_t maxMappings = UINT64_MAX; 
 static std::string mapsFilename;
@@ -57,10 +58,12 @@ static constexpr double cacheLifetime = 7.5;
 
 static double lastLogStamp = 0.0;
 static constexpr double logFrequency = 10.0;
+
 }
-  
+
 MaxMapCountFeature::MaxMapCountFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "MaxMapCount") {
   setOptional(false);
   startsAfter("GreetingsPhase");
