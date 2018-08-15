@@ -41,26 +41,29 @@ using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 
 char const* planStr =
-#include "MaintenancePlan.json"
+#include "Plan.json"
 ;
 char const* currentStr =
-#include "MaintenanceCurrent.json"
+#include "Current.json"
 ;
-char const* dbs1Id  = "PRMR-297e18fd-15cb-4b29-b5be-8beb06a3bcea";
+char const* supervisionStr =
+#include "Supervision.json"
+;
+char const* dbs1Id  = "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602";
 char const* dbs1Str =
-#include "MaintenanceDBServer0001.json"
+#include "DBServer0001.json"
 ;
-char const* dbs2Id  = "PRMR-ab2038f2-b7bd-404b-a565-fce46c2af0fe";
+char const* dbs2Id  = "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b";
 char const* dbs2Str =
-#include "MaintenanceDBServer0002.json"
+#include "DBServer0002.json"
 ;
-char const* dbs3Id  = "PRMR-2650441a-751c-46ef-b892-220609137ec3";
+char const* dbs3Id  = "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0";
 char const* dbs3Str =
-#include "MaintenanceDBServer0003.json"
+#include "DBServer0003.json"
 ;
 
 std::string PLAN_COL_PATH = "/Collections/";
-std::string PLAN_DB_PATH = "/Databases/";
+std::string PLAN_DB_PATH = "/";
 
 Node createNodeFromBuilder(Builder const& builder) {
 
@@ -223,11 +226,18 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
   auto plan = createNode(planStr);
+  auto supervision = createNode(supervisionStr);
   auto current = createNode(currentStr);
 
-  std::vector<std::string> dbsIds;
-  for (auto const& dbs : plan("DBServers").children()) {
-    dbsIds.push_back(dbs.first);
+  std::map<std::string,std::string> dbsIds;
+  for (auto const& dbs : supervision("Health").children()) {
+    if (dbs.first.front() == 'P') {
+      dbsIds.emplace(dbs.first,(*dbs.second)("ShortName").getString());
+    }
+  }
+
+  for (auto const& id : dbsIds) {
+    std::cout << id.first << ": " << id.second << std::endl;
   }
 
   std::map<std::string, Node> localNodes {
@@ -315,7 +325,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       shards.add(VPackValue("s1016002"));
       { VPackArrayBuilder a(&shards);
         for (auto const& id : dbsIds) {
-          shards.add(VPackValue(id));
+          shards.add(VPackValue(id.first));
         }}}
 
     std::string colpath = PLAN_COL_PATH + "db3/1016001";
@@ -363,7 +373,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       shards.add(VPackValue("s1016002"));
       { VPackArrayBuilder a(&shards);
         for (auto const& id : dbsIds) {
-          shards.add(VPackValue(id));
+          shards.add(VPackValue(id.first));
         }}}
 
     plan(PLAN_COL_PATH + "db3/1016001") =
