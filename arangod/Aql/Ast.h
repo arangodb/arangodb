@@ -226,7 +226,7 @@ class Ast {
   AstNode* createNodeVariable(char const*, size_t, bool);
 
   /// @brief create an AST collection node
-  AstNode* createNodeCollection(char const*, AccessMode::Type);
+  AstNode* createNodeCollection(char const* name, AccessMode::Type);
 
   /// @brief create an AST view node
   AstNode* createNodeView(char const*);

@@ -198,8 +198,6 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_INTO "INTO keyword"
 %token T_AGGREGATE "AGGREGATE keyword"
 
-%token T_VIEW "VIEW keyword"
-
 %token T_GRAPH "GRAPH keyword"
 %token T_SHORTEST_PATH "SHORTEST_PATH keyword"
 %token T_DISTINCT "DISTINCT modifier"
@@ -1488,6 +1486,7 @@ graph_direction_steps:
   ;
 
 reference:
+/*
   T_VIEW T_STRING {
       auto* ast = parser->ast();
       auto* node = ast->createNodeView($2.value);
@@ -1496,7 +1495,7 @@ reference:
 
       $$ = node;
     }
-  | T_STRING {
+  |*/ T_STRING {
       // variable or collection
       auto ast = parser->ast();
       AstNode* node = nullptr;
@@ -1706,14 +1705,7 @@ collection_name:
   ;
 
 bind_parameter:
-  T_VIEW T_DATA_SOURCE_PARAMETER {
-      if ($2.length < 2 || $2.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $2.value, yylloc.first_line, yylloc.first_column);
-      }
-
-      $$ = parser->ast()->createNodeParameterView($2.value, $2.length);
-    }
-  | T_DATA_SOURCE_PARAMETER {
+    T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
       }

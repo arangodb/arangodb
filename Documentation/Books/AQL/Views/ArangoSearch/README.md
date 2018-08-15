@@ -174,57 +174,57 @@ are satisfied.
 
 to match documents which have a 'name' attribute
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER EXISTS(doc.name)
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER EXISTS(doc['name'])
       RETURN doc
 
 to match documents where 'body' was analyzed via the 'text_en' analyzer
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER EXISTS(doc.body, 'analyzer', 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER EXISTS(doc['body'], 'analyzer', 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER ANALYZER(EXISTS(doc['body'], 'analyzer'), 'text_en')
       RETURN doc
 
 to match documents which have an 'age' attribute of type number
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER EXISTS(doc.age, 'numeric')
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER EXISTS(doc['age'], 'numeric')
       RETURN doc
 
 to match documents where 'description' contains word 'quick' or word
 'brown' and has been analyzed with 'text_en' analyzer
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER ANALYZER(doc.description == 'quick' OR doc.description == 'brown', 'text_en')
       RETURN doc
 
 to match documents where 'description' contains at least 2 of 3 words 'quick', 
 'brown', 'fox' and has been analyzed with 'text_en' analyzer
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER ANALYZER(
         MIN_MATCH(doc.description == 'quick', doc.description == 'brown', doc.description == 'fox', 2),
         'text_en'
@@ -233,19 +233,19 @@ to match documents where 'description' contains at least 2 of 3 words 'quick',
 
 to match documents where 'description' contains a phrase 'quick brown'
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER PHRASE(doc.description, [ 'quick brown' ], 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER PHRASE(doc['description'], [ 'quick brown' ], 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER ANALYZER(PHRASE(doc['description'], [ 'quick brown' ]), 'text_en')
       RETURN doc
 
@@ -253,31 +253,31 @@ to match documents where 'body' contains the phrase consisting of a sequence
 like this:
 'quick' * 'fox jumps' (where the asterisk can be any single word)
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER PHRASE(doc.body, [ 'quick', 1, 'fox jumps' ], 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ], 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER ANALYZER(PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ]), 'text_en')
       RETURN doc
 
 to match documents where 'story' starts with 'In the beginning'
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER STARTS_WITH(doc.story, 'In the beginning')
       RETURN DOC
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER STARTS_WITH(doc['story'], 'In the beginning')
       RETURN DOC
 
@@ -287,7 +287,7 @@ to watch the analyzer doing its work
 
 to match documents where 'description' best matches 'a quick brown fox'
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER ANALYZER(doc.description IN TOKENS('a quick brown fox', 'text_en'), 'text_en')
       RETURN doc
 
@@ -337,20 +337,20 @@ Sorts documents using the [**term frequency–inverse document frequency** algor
 
 to sort documents by the value of the 'name' attribute
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       SORT doc.name
       RETURN doc
 
 or
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       SORT doc['name']
       RETURN doc
 
 to sort documents via the
 [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       SORT BM25(doc)
       RETURN doc
 
@@ -358,21 +358,21 @@ to sort documents via the
 [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
 with 'k' = 1.2 and 'b' = 0.75
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       SORT BM25(doc, 1.2, 0.75)
       RETURN doc
 
 to sort documents via the
 [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF)
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       SORT TFIDF(doc)
       RETURN doc
 
 to sort documents via the
 [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF) with norms
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       SORT TFIDF(doc, true)
       RETURN doc
 
@@ -380,7 +380,7 @@ to sort documents by value of 'name' and then by the
 [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF) where 'name' values are
 equivalent
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       SORT doc.name, TFIDF(doc)
       RETURN doc
 
@@ -404,7 +404,7 @@ We now want to search for documents where the attribute `body` starts with "This
 
 A simple AQL query executing this prefix search:
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
       FILTER STARTS_WITH(doc.body, 'ThisIs')
       RETURN doc
 

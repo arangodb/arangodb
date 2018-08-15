@@ -659,7 +659,7 @@ AstNode* Ast::createNodeView(char const* name) {
     return node;
   }
 
-  _query->registerErrorCustom(TRI_ERROR_INTERNAL, "AQL Collections addition of LogicalView failure while creating VIEW node");
+  _query->registerErrorCustom(TRI_ERROR_INTERNAL, "AQL collections addition of LogicalView failure while creating VIEW node");
 
   return nullptr;
 }
@@ -670,18 +670,7 @@ AstNode* Ast::createNodeReference(char const* variableName, size_t nameLength) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  AstNode* node = createNode(NODE_TYPE_REFERENCE);
-
-  auto variable = _scopes.getVariable(std::string(variableName, nameLength));
-
-  if (variable == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "variable not found in reference AstNode");
-  }
-
-  node->setData(variable);
-
-  return node;
+  return createNodeReference(std::string(variableName, nameLength));
 }
 
 /// @brief create an AST reference node

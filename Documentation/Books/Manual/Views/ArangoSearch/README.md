@@ -47,7 +47,7 @@ scorer. The first argument to any scorer function is the reference to the
 current document emitted by the `FOR` statement, i.e. it would be 'doc' for this
 statement:
 
-    FOR doc IN VIEW someView
+    FOR doc IN  someView
 
 IResearch provides a 'bm25' scorer implementing the
 [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). This scorer

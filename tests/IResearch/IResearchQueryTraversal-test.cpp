@@ -318,7 +318,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
 
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR v, e IN OUTBOUND SHORTEST_PATH 'testCollection0/6' TO 'testCollection0/5' edges FOR d IN VIEW testView FILTER d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC, d._id RETURN d"
+      "FOR v, e IN OUTBOUND SHORTEST_PATH 'testCollection0/6' TO 'testCollection0/5' edges FOR d IN testView FILTER d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC, d._id RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -351,7 +351,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
 
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR v, e, p IN 1..2 OUTBOUND 'testCollection0/0' edges FOR d IN VIEW testView FILTER d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC RETURN v"
+      "FOR v, e, p IN 1..2 OUTBOUND 'testCollection0/0' edges FOR d IN testView FILTER d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC RETURN v"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
