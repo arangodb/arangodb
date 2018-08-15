@@ -1,3 +1,4 @@
+/* global describe, it */
 "use strict";
 const util = require("@arangodb/util");
 const { expect } = require("chai");
