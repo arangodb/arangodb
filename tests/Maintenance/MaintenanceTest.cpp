@@ -49,21 +49,18 @@ char const* currentStr =
 char const* supervisionStr =
 #include "Supervision.json"
 ;
-char const* dbs1Id  = "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602";
 char const* dbs1Str =
 #include "DBServer0001.json"
 ;
-char const* dbs2Id  = "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b";
 char const* dbs2Str =
 #include "DBServer0002.json"
 ;
-char const* dbs3Id  = "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0";
 char const* dbs3Str =
 #include "DBServer0003.json"
 ;
 
 std::string PLAN_COL_PATH = "/Collections/";
-std::string PLAN_DB_PATH = "/";
+std::string PLAN_DB_PATH = "/Databases/";
 
 Node createNodeFromBuilder(Builder const& builder) {
 
@@ -232,18 +229,14 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   std::map<std::string,std::string> dbsIds;
   for (auto const& dbs : supervision("Health").children()) {
     if (dbs.first.front() == 'P') {
-      dbsIds.emplace(dbs.first,(*dbs.second)("ShortName").getString());
+      dbsIds.emplace((*dbs.second)("ShortName").getString(),dbs.first);
     }
   }
 
-  for (auto const& id : dbsIds) {
-    std::cout << id.first << ": " << id.second << std::endl;
-  }
-
   std::map<std::string, Node> localNodes {
-    {dbs1Id, createNode(dbs1Str)},
-    {dbs2Id, createNode(dbs2Str)},
-    {dbs3Id, createNode(dbs3Str)}};
+    {dbsIds["DBServer0001"], createNode(dbs1Str)},
+    {dbsIds["DBServer0002"], createNode(dbs2Str)},
+    {dbsIds["DBServer0003"], createNode(dbs3Str)}};
 
   SECTION("In sync should have 0 effects") {
 
@@ -261,7 +254,6 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     }
 
   }
-
 
   SECTION("Local databases one more empty database should be dropped") {
 
