@@ -22,7 +22,7 @@ brew upgrade arangodb
 Upgrading via Package
 --------------------------
 
-Download the latest ArangoDB Mac OS package and install it as usual by
+[Download](https://www.arangodb.com/download/) the latest ArangoDB Mac OS package and install it as usual by
 mounting the `.dmg` file. Just drag and drop the `ArangoDB3-CLI` (community) or
 the `ArangoDB3e-CLI` (enterprise) file into the shown `Applications` folder.
 You'll be asked if you want to replace the old file with the newer one.
@@ -38,6 +38,3 @@ The procedure described in this _Section_
 is a first step to upgrade more complex deployments such as
 [Cluster](../../Scalability/Cluster/README.md)
 or [Active Failover](../../Scalability/ActiveFailover/README.md). 
-
-**Note**: The latest available version can be found in the
-[download section](https://www.arangodb.com/download-major/macosx/).
