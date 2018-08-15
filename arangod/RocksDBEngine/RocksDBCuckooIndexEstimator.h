@@ -601,7 +601,7 @@ class RocksDBCuckooIndexEstimator {
           if (!_insertBuffers.empty()) {
             auto it = _insertBuffers.begin(); // sorted ASC
             if (it->first <= commitSeq) {
-              if (it->first > ignoreSeq) {
+              if (!foundTruncate || it->first > ignoreSeq) {
                 inserts = std::move(it->second);
                 TRI_ASSERT(!inserts.empty());
               }
@@ -613,7 +613,7 @@ class RocksDBCuckooIndexEstimator {
           if (!_removalBuffers.empty()) {
             auto it = _removalBuffers.begin(); // sorted ASC
             if (it->first <= commitSeq) {
-              if (it->first > ignoreSeq) {
+              if (!foundTruncate || it->first > ignoreSeq) {
                 removals = std::move(it->second);
                 TRI_ASSERT(!removals.empty());
               }
