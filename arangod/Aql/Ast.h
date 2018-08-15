@@ -171,6 +171,9 @@ class Ast {
 
   /// @brief create an AST filter node
   AstNode* createNodeFilter(AstNode const*);
+  
+  /// @brief create an AST search node
+  AstNode* createNodeSearch(AstNode const*);
 
   /// @brief create an AST filter node for an UPSERT query
   AstNode* createNodeUpsertFilter(AstNode const*, AstNode const*);
@@ -519,7 +522,7 @@ class Ast {
   /// @brief optimizes the LET statement
   AstNode* optimizeLet(AstNode*);
 
-  /// @brief optimizes the FILTER statement
+  /// @brief optimizes the FILTER or SEARCH statement
   AstNode* optimizeFilter(AstNode*);
 
   /// @brief optimizes the FOR statement

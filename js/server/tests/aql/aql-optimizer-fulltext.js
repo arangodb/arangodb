@@ -108,7 +108,7 @@ function optimizerRuleTestSuite() {
     },
 
     testRuleNotApplicable : function () {
-      let query = "FOR search IN ['prefix:möchten,müller', 'möchten,prefix:müller', 'möchten,müller', 'Flötenkröten,|goutieren', 'prefix:quergestreift,|koedern,|prefix:römer,-melken,-quasi'] RETURN (FOR d IN FULLTEXT(@@coll, @attr, search) SORT d.id RETURN d.id)";
+      let query = "FOR searchValue IN ['prefix:möchten,müller', 'möchten,prefix:müller', 'möchten,müller', 'Flötenkröten,|goutieren', 'prefix:quergestreift,|koedern,|prefix:römer,-melken,-quasi'] RETURN (FOR d IN FULLTEXT(@@coll, @attr, searchValue) SORT d.id RETURN d.id)";
 
       ["t1", "t2", "t3.e.x"].forEach(field => {
         let bindVars = {'@coll': colName, attr: field};

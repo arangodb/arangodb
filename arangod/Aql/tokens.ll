@@ -78,6 +78,10 @@ class Parser;
   return T_FILTER;
 }
 
+(?i:SEARCH) {
+  return T_SEARCH;
+}
+
 (?i:RETURN) {
   return T_RETURN;
 }

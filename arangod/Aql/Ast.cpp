@@ -283,6 +283,14 @@ AstNode* Ast::createNodeFilter(AstNode const* expression) {
   return node;
 }
 
+/// @brief create an AST search node
+AstNode* Ast::createNodeSearch(AstNode const* expression) {
+  AstNode* node = createNode(NODE_TYPE_SEARCH);
+  node->addMember(expression);
+
+  return node;
+}
+
 /// @brief create an AST filter node for an UPSERT query
 AstNode* Ast::createNodeUpsertFilter(AstNode const* variable,
                                      AstNode const* object) {
@@ -1891,7 +1899,8 @@ void Ast::validateAndOptimize() {
       ++ctx->filterDepth;
     }
 
-    if (node->type == NODE_TYPE_FILTER) {
+    if (node->type == NODE_TYPE_FILTER || 
+        node->type == NODE_TYPE_SEARCH) {
       TRI_ASSERT(ctx->filterDepth == -1);
       ctx->filterDepth = 0;
     } else if (node->type == NODE_TYPE_FCALL) {
@@ -1938,7 +1947,8 @@ void Ast::validateAndOptimize() {
       --ctx->filterDepth;
     }
 
-    if (node->type == NODE_TYPE_FILTER) {
+    if (node->type == NODE_TYPE_FILTER ||
+        node->type == NODE_TYPE_SEARCH) {
       ctx->filterDepth = -1;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
       --ctx->nestingLevel;
@@ -2089,8 +2099,9 @@ void Ast::validateAndOptimize() {
       return this->optimizeLet(node);
     }
 
-    // FILTER
-    if (node->type == NODE_TYPE_FILTER) {
+    // FILTER or SEARCH
+    if (node->type == NODE_TYPE_FILTER ||
+        node->type == NODE_TYPE_SEARCH) {
       return this->optimizeFilter(node);
     }
 
@@ -3334,10 +3345,10 @@ AstNode* Ast::optimizeLet(AstNode* node) {
   return node;
 }
 
-/// @brief optimizes the FILTER statement
+/// @brief optimizes the FILTER or SEARCH statement
 AstNode* Ast::optimizeFilter(AstNode* node) {
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
+  TRI_ASSERT(node->type == NODE_TYPE_FILTER || node->type == NODE_TYPE_SEARCH);
   TRI_ASSERT(node->numMembers() == 1);
 
   AstNode* expression = node->getMember(0);

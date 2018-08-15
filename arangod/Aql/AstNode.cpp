@@ -158,7 +158,9 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
     {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
-    {static_cast<int>(NODE_TYPE_VIEW), "view"}};
+    {static_cast<int>(NODE_TYPE_VIEW), "view"},
+    {static_cast<int>(NODE_TYPE_SEARCH), "search"}
+};
 
 /// @brief names for AST node value types
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
@@ -581,6 +583,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_WITH:
+    case NODE_TYPE_SEARCH:
       break;
   }
 
@@ -697,7 +700,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
-    case NODE_TYPE_WITH: {
+    case NODE_TYPE_WITH: 
+    case NODE_TYPE_SEARCH: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -2353,6 +2357,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
+    case NODE_TYPE_SEARCH:
       break;
   }
 
@@ -2526,6 +2531,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
+    case NODE_TYPE_SEARCH:
       break;
   }
   return ret;

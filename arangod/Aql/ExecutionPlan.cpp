@@ -1071,10 +1071,11 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-/// @brief create an execution plan element from an AST FILTER node
+/// @brief create an execution plan element from an AST FILTER or SEARCH node
 ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_FILTER || node->type == NODE_TYPE_SEARCH);
   TRI_ASSERT(node->numMembers() == 1);
 
   auto expression = node->getMember(0);
@@ -1085,11 +1086,21 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new FilterNode(this, nextId(), v));
+    if (node->type == NODE_TYPE_SEARCH) {
+      // TODO: actually create a SearchNode here!
+      en = registerNode(new FilterNode(this, nextId(), v));
+    } else {
+      en = registerNode(new FilterNode(this, nextId(), v));
+    }
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+    if (node->type == NODE_TYPE_SEARCH) {
+      // TODO: actually create a SearchNode here!
+      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+    } else {
+      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+    }
     previous = calc;
   }
 
@@ -1929,7 +1940,8 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
-      case NODE_TYPE_FILTER: {
+      case NODE_TYPE_FILTER: 
+      case NODE_TYPE_SEARCH: {
         en = fromNodeFilter(en, member);
         break;
       }

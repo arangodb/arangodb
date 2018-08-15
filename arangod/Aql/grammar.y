@@ -185,6 +185,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_FOR "FOR declaration"
 %token T_LET "LET declaration"
 %token T_FILTER "FILTER declaration"
+%token T_SEARCH "SEARCH declaration"
 %token T_RETURN "RETURN declaration"
 %token T_COLLECT "COLLECT declaration"
 %token T_SORT "SORT declaration"
@@ -440,6 +441,8 @@ statement_block_statement:
     }
   | filter_statement {
     }
+  | search_statement {
+    }
   | collect_statement {
     }
   | sort_statement {
@@ -512,6 +515,14 @@ filter_statement:
     T_FILTER expression {
       // operand is a reference. can use it directly
       auto node = parser->ast()->createNodeFilter($2);
+      parser->ast()->addOperation(node);
+    }
+  ;
+
+search_statement:
+    T_SEARCH expression {
+      // operand is a reference. can use it directly
+      auto node = parser->ast()->createNodeSearch($2);
       parser->ast()->addOperation(node);
     }
   ;

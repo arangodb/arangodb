@@ -54,7 +54,8 @@ Keywords
 On the top level, AQL offers the following operations:
 - `FOR`: array iteration
 - `RETURN`: results projection
-- `FILTER`: results filtering
+- `SEARCH`: view results filtering
+- `FILTER`: non-view results filtering
 - `SORT`: result sorting
 - `LIMIT`: result slicing
 - `LET`: variable assignment
@@ -126,11 +127,13 @@ The complete list of keywords is currently:
   <li>REMOVE</li>
   <li>REPLACE</li>
   <li>RETURN</li>
+  <li>SEARCH</li>
   <li>SHORTEST_PATH</li>
   <li>SORT</li>
   <li>TRUE</li>
   <li>UPDATE</li>
   <li>UPSERT</li>
+  <li>VIEW</li>
   <li>WITH</li>
 </ul>
 </div>
