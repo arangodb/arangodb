@@ -86,20 +86,20 @@ struct RestViewHandlerSetup {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  RestViewHandlerSetup(): server(nullptr, nullptr) {
+  RestViewHandlerSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for VocbaseContext
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for LogicalView::create(...)
+    features.emplace_back(new arangodb::AuthenticationFeature(server), false); // required for VocbaseContext
+    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for TRI_vocbase_t::renameView(...)
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t
+    features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for LogicalView::create(...)
 
 #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f: features) {

@@ -27,11 +27,12 @@
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-RandomFeature::RandomFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+RandomFeature::RandomFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Random"),
       _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);
@@ -59,3 +60,5 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void RandomFeature::prepare() {
   RandomGenerator::initialize((RandomGenerator::RandomType)_randomGenerator);
 }
+
+} // arangodb

@@ -102,7 +102,7 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
             VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
   }
-  
+
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
     uint64_t cid = ::readNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
@@ -112,8 +112,10 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
 }
 
-VPackFeature::VPackFeature(application_features::ApplicationServer* server,
-                           int* result)
+VPackFeature::VPackFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "VPack"),
       _result(result),
       _prettyPrint(true),

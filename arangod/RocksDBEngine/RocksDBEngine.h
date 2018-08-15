@@ -78,7 +78,7 @@ struct Options;
 class RocksDBEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit RocksDBEngine(application_features::ApplicationServer*);
+  explicit RocksDBEngine(application_features::ApplicationServer& server);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature

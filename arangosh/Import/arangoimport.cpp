@@ -50,23 +50,21 @@ int main(int argc, char* argv[]) {
 
     std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
         argv[0], "Usage: arangoimport [<options>]", "For more information use:", BIN_DIRECTORY));
-
     ApplicationServer server(options, BIN_DIRECTORY);
-
     int ret;
 
-    server.addFeature(new application_features::BasicFeaturePhase(&server, true));
-    server.addFeature(new application_features::GreetingsFeaturePhase(&server, true));
-    server.addFeature(new ClientFeature(&server, false));
-    server.addFeature(new ConfigFeature(&server, "arangoimport"));
-    server.addFeature(new ImportFeature(&server, &ret));
-    server.addFeature(new LoggerFeature(&server, false));
-    server.addFeature(new RandomFeature(&server));
-    server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"Import"}));
-    server.addFeature(new SslFeature(&server));
-    server.addFeature(new TempFeature(&server, "arangoimport"));
-    server.addFeature(new VersionFeature(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(server, true));
+    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
+    server.addFeature(new ClientFeature(server, false));
+    server.addFeature(new ConfigFeature(server, "arangoimport"));
+    server.addFeature(new ImportFeature(server, &ret));
+    server.addFeature(new LoggerFeature(server, false));
+    server.addFeature(new RandomFeature(server));
+    server.addFeature(new ShellColorsFeature(server));
+    server.addFeature(new ShutdownFeature(server, {"Import"}));
+    server.addFeature(new SslFeature(server));
+    server.addFeature(new TempFeature(server, "arangoimport"));
+    server.addFeature(new VersionFeature(server));
 
     try {
       server.run(argc, argv);

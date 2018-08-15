@@ -40,7 +40,8 @@ class RocksDBOptionFeature final
     : public application_features::ApplicationFeature {
  public:
   explicit RocksDBOptionFeature(
-      application_features::ApplicationServer* server);
+      application_features::ApplicationServer& server
+  );
   ~RocksDBOptionFeature() {}
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
