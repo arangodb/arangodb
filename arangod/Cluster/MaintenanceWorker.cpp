@@ -63,6 +63,7 @@ void MaintenanceWorker::run() {
         break;
 
       case eRUN_FIRST:
+        _curAction->startStats();
         more = _curAction->first();
         break;
 
@@ -99,7 +100,6 @@ void MaintenanceWorker::nextState(bool actionMore) {
     // There should be an valid _curAction
     if (_curAction) {
       if (eFIND_ACTION == _loopState) {
-        _curAction->startStats();
         _loopState = eRUN_FIRST;
       } else {
         _curAction->incStats();
