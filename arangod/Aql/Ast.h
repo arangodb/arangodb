@@ -342,9 +342,6 @@ class Ast {
   /// @brief create an AST calculated object element node
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
 
-  /// @brief create an AST collection pair node
-  AstNode* createNodeCollectionPair(AstNode const*, AstNode const*);
-
   /// @brief create an AST with collections node
   AstNode* createNodeWithCollections (AstNode const*);
 

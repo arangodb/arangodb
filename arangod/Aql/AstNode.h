@@ -363,10 +363,6 @@ struct AstNode {
   /// @brief whether or not a value node is of array type
   inline bool isObject() const { return (type == NODE_TYPE_OBJECT); }
 
-  inline bool isDataSource() const noexcept {
-    return (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW || type == NODE_TYPE_PARAMETER_DATASOURCE);
-  }
-
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
   AstNode const* getAttributeAccessForVariable(bool allowIndexedAccess) const {

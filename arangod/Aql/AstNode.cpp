@@ -762,7 +762,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
-  if (computedValue != nullptr && !isDataSource()) {
+  if (computedValue != nullptr) {
     delete[] computedValue;
   }
 }
