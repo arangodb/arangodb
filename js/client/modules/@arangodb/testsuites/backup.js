@@ -72,15 +72,12 @@ var dumpPath;
 // / We start a temporary system to generate the dumps that are agnostic
 // / of whether its a cluster or not.
 // //////////////////////////////////////////////////////////////////////////////
-const generateDumpData = (options) => {
+const generateDumpData = (options, serverOptions) => {
   if (dumpPath !== undefined) {
     return dumpPath;
   }
-  const auth = {
-    'server.authentication': 'false'
-  };
 
-  let instanceInfo = pu.startInstance('tcp', options, auth, 'backup');
+  let instanceInfo = pu.startInstance('tcp', options, serverOptions, 'backup');
 
   if (instanceInfo === false) {
     return failPreStartMessage('failed to start dataGenerator server!');
@@ -90,7 +87,7 @@ const generateDumpData = (options) => {
   let path = '';
 
   try {
-    let setup = tu.runInArangosh(options, instanceInfo, makePath('backup-setup.js'), auth);
+    let setup = tu.runInArangosh(options, instanceInfo, makePath('backup-setup.js'), {});
     if (!setup.status === true || !isAlive(instanceInfo, options)) {
       log('Setup failed');
       setup.failed = 1;
@@ -140,15 +137,6 @@ const generateDumpData = (options) => {
 // / set up the test according to the testcase.
 // //////////////////////////////////////////////////////////////////////////////
 const setServerOptions = (options, serverOptions, customInstanceInfos, startStopHandlers) => {
-  let path = generateDumpData(_.clone(options));
-  if (typeof path === 'object' && path.failed === 1) {
-    log('DUMPING FAILED!');
-    return path;
-  }
-
-  startStopHandlers['path'] = path;
-
-  const auth = { };
   if (startStopHandlers.useAuth) {
     serverOptions['server.authentication'] = 'true';
     serverOptions['server.jwt-secret'] = 'haxxmann';
@@ -156,7 +144,18 @@ const setServerOptions = (options, serverOptions, customInstanceInfos, startStop
     options['server.jwt-secret'] = 'haxxmann';
   } else {
     serverOptions['server.authentication'] = 'false';
+    options['server.authentication'] = 'false';
   }
+
+  let path = generateDumpData(_.clone(options), _.clone(serverOptions));
+  if (typeof path === 'object' && path.failed === 1) {
+    log('DUMPING FAILED!');
+    return path;
+  }
+
+  startStopHandlers['path'] = path;
+
+
   return {
     state: true
   };
