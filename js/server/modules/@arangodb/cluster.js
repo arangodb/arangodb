@@ -2155,6 +2155,29 @@ function queryAgencyJob(id) {
   return {error: true, errorMsg: "Did not find job.", id, job: null};
 }
 
+function getLocalInfo () {
+  var ret = {};
+  var dbs = getLocalDatabases();
+  var db = require('internal').db;
+  Object.keys(dbs).forEach(
+    function(database) {
+      db._useDatabase(database);
+      ret[database] = {};
+      db._collections().forEach(
+        function(col) {          
+          if (col.name().charAt(0)!='_') {
+            ret[col.name()] = col.properties();
+            ret[col.name()].indexes = [];
+            col.getIndexes().forEach(function(i) {
+              ret[col.name()].indexes.push(i);
+            });
+          }
+        });
+    });
+  db._useDatabase('_system');
+  return ret;
+}
+
 exports.coordinatorId = coordinatorId;
 exports.handlePlanChange = handlePlanChange;
 exports.isCluster = isCluster;
@@ -2174,6 +2197,8 @@ exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
 exports.fetchKey = fetchKey;
 exports.queryAgencyJob = queryAgencyJob;
+exports.getLocalDatabases = getLocalDatabases;
+exports.getLocalInfo = getLocalInfo;
 
 exports.executePlanForDatabases = executePlanForDatabases;
 exports.executePlanForCollections = executePlanForCollections;

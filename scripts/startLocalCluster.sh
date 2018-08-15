@@ -153,6 +153,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --log.file cluster/$port.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
+        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -193,6 +194,7 @@ start() {
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
         --log.level $LOG_LEVEL_CLUSTER \
+        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
