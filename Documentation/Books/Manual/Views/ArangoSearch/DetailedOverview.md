@@ -1,15 +1,11 @@
 # Detailed overview of ArangoSearch views
 
-## What is ArangoSearch view
+ArangoSearch provides a fulltext search and it is only a subset of its available 
+functionality, supported via the 'text' analyzer and 'tfidf'/'bm25' [scorers](Scorers.md), 
+without impact to performance when specifying documents from different collections or 
+filtering on multiple document attributes.
 
-### ArangoSearch is much more than a fulltext search
-
-But fulltext searching is a subset of its available functionality, supported via
-the 'text' analyzer and 'tfidf'/'bm25' [scorers](Scorers.md), without impact to performance
-when specifying documents from different collections or filtering on multiple
-document attributes.
-
-### View datasource
+## View datasource
 
 The IResearch functionality is exposed to ArangoDB via the the ArangoSearch view
 API because the ArangoSearch view is merely an identity transformation applied
@@ -18,7 +14,7 @@ In plain terms an ArangoSearch view only allows filtering and sorting of documen
 located in collections of the same database.
 The matching documents themselves are returned as-is from their corresponding collections.
 
-### Links to ArangoDB collections
+## Links to ArangoDB collections
 
 A concept of an ArangoDB collection 'link' is introduced to allow specifying
 which ArangoDB collections a given ArangoSearch View should query for documents
@@ -41,7 +37,7 @@ ArangoDB collection a link definition must be added to the properties of the
 said ArangoSearch view defining the link parameters as per the section
 [View definition/modification](#view-definitionmodification).
 
-### Analyzers
+## Analyzers
 
 To simplify query syntax ArangoSearch provides a concept of 
 [named analyzers](Analyzers.md) which
@@ -49,7 +45,7 @@ are merely aliases for type+configuration of IResearch analyzers. Management of
 named analyzers is exposed via both REST, GUI and JavaScript APIs, e.g.
 
 
-### View definition/modification
+## View definition/modification
 
 An ArangoSearch view is configured via an object containing a set of
 view-specific configuration directives and a map of link-specific configuration
@@ -68,12 +64,12 @@ During view modification the following directives apply:
   * link removal - JSON keyword *null* (i.e. nullify a link if present)
     any of the directives from the section [modifiable view properties](#view-properties-updatable)
 
-### View properties (non-updatable)
+## View properties (non-updatable)
 
 * locale: (optional; default: `C`)
   the default locale used for ordering processed attribute names
 
-### View properties (updatable)
+## View properties (updatable)
 
 * commit: (optional; default: use defaults for all values)
   configure ArangoSearch View commit policy for single-item inserts/removals,
@@ -137,7 +133,7 @@ During view modification the following directives apply:
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
-### Link properties
+## Link properties
 
 * analyzers: (optional; default: `[ 'identity' ]`)
   a list of analyzers, by name as defined via the [Analyzers](Analyzers.md), that

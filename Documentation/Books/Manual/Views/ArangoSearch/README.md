@@ -1,6 +1,4 @@
-# ArangoSearch views powered by IResearch in ArangoDB
-
-## What is ArangoSearch
+# ArangoSearch views powered by IResearch
 
 ArangoSearch is a natively integrated AQL extension making use of the IResearch library.
 
@@ -20,7 +18,7 @@ In plain terms this means a user can for example:
 * request documents where the 'name' attribute best matches gender
 * etc... (via custom analyzers)
 
-### The IResearch Library
+## The IResearch Library
 
 IResearch is a cross-platform open source indexing and searching engine written in modern C++,
 optimized for speed and memory footprint, with source available from https://github.com/iresearch-toolkit/iresearch
@@ -34,7 +32,7 @@ custom implementations of analyzers (used during the indexing and filtering
 stages) and scorers (used during the sorting stage) allowing full control over
 the behavior of the engine.
 
-### Using ArangoSearch views
+## Using ArangoSearch views
 To get more familiar with ArangoSearch usage, you may start with [Getting Started](GettingStarted.md) simple guide and then explore details of ArangoSearch in
  [Detailed Overview](DetailedOverview.md),
  [Analyzers](Analyzers.md)

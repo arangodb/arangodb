@@ -2,11 +2,13 @@
 
 ## The DDL configuration
 
+[DDL](https://en.wikipedia.org/wiki/Data_definition_language) is a data definition language or data description language for defining data structures, especially database schemas.
+
 All DDL operations on Views can be done via JavaScript or REST calls. The DDL syntax follows the well established ArangoDB guidelines and thus is very similar between JavaScript and REST. This article uses the JavaScript syntax.
 
 Assume the following collections were intially defined in a database using the following commands:
 
-```javascript
+```js
 c0 = db._create("ExampleCollection0");
 c1 = db._create("ExampleCollection1");
  
@@ -22,12 +24,12 @@ c1.save({ a: "baz", b: "foo", i: 7 });
 ```
 
 ## Creating a View (with default parameters)
-```javascript
+```js
 v0 = db._createView("ExampleView", "arangosearch", {});
 ```
 
 ## Linking created View with a collection and adding indexing parameters
-```javascript
+```js
 v0 = db._view("ExampleView");
 v0.properties({
     links: {
@@ -63,7 +65,7 @@ v0.properties({
 ```
 
 ## Query data using created View with linked collections
-```javascript
+```js
 db._query("FOR doc IN VIEW ExampleView FILTER PHRASE(doc.text, '型数 据库', 'text_zh') OR STARTS_WITH(doc.b, 'ba') SORT TFIDF(doc) DESC RETURN doc");
 ```
 
