@@ -439,7 +439,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
   // explicit collection and view with the same 'collection' name
   {
-    std::string const query = "LET c=5 FOR x IN collection_1 FILTER x.seq == c FOR d IN  collection_1 FILTER x.seq == d.seq RETURN x";
+    std::string const query = "LET c=5 FOR x IN collection_1 SEARCH x.seq == c FOR d IN  collection_1 SEARCH x.seq == d.seq RETURN x";
     auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
 
     CHECK((arangodb::tests::assertRules(vocbase, query, {}, boundParameters)));
@@ -451,7 +451,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
   // explicit collection and view with the same 'view' name
   {
-    std::string const query = "LET c=5 FOR x IN testView FILTER x.seq == c FOR d IN testView FILTER x.seq == d.seq RETURN x";
+    std::string const query = "LET c=5 FOR x IN testView SEARCH x.seq == c FOR d IN testView SEARCH x.seq == d.seq RETURN x";
     auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
 
     CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
@@ -463,7 +463,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
   // bind collection and view with the same name
   {
-    std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN  @@dataSource FILTER x.seq == d.seq RETURN x";
+    std::string const query = "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c FOR d IN  @@dataSource SEARCH x.seq == d.seq RETURN x";
     auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
 
     CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
@@ -474,7 +474,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
   // bind collection and view with the same name
   {
-    std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN  @@dataSource FILTER x.seq == d.seq RETURN d";
+    std::string const query = "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c FOR d IN  @@dataSource SEARCH x.seq == d.seq RETURN d";
     auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
 
     CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
@@ -621,10 +621,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // LET c=5
   // FOR x IN 1..7
   //   FOR d IN testView
-  //   FILTER c == x.seq
+  //   SEARCH c == x.seq
   // RETURN d;
   {
-    std::string const query = "LET c=5 FOR x IN 1..7 FOR d IN testView FILTER c == d.seq RETURN d";
+    std::string const query = "LET c=5 FOR x IN 1..7 FOR d IN testView SEARCH c == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -668,10 +668,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // FOR x IN 1..7
   //   FOR d IN testView
-  //   FILTER _FORWARD_(5) == x.seq
+  //   SEARCH _FORWARD_(5) == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR x IN 1..7 FOR d IN testView FILTER _FORWARD_(5) == d.seq RETURN d";
+    std::string const query = "FOR x IN 1..7 FOR d IN testView SEARCH _FORWARD_(5) == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -715,10 +715,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // FOR x IN 1..7
   //   FOR d IN testView
-  //   FILTER _NONDETERM_(5) == x.seq
+  //   SEARCH _NONDETERM_(5) == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR x IN 1..7 FOR d IN testView FILTER _NONDETERM_(5) == d.seq RETURN d";
+    std::string const query = "FOR x IN 1..7 FOR d IN testView SEARCH _NONDETERM_(5) == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -763,10 +763,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // LET c=_NONDETERM_(4)
   // FOR x IN 1..7
   //   FOR d IN testView
-  //   FILTER c == x.seq
+  //   SEARCH c == x.seq
   // RETURN d;
   {
-    std::string const query = "LET c=_NONDETERM_(4) FOR x IN 1..7 FOR d IN testView FILTER c == d.seq RETURN d";
+    std::string const query = "LET c=_NONDETERM_(4) FOR x IN 1..7 FOR d IN testView SEARCH c == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -811,10 +811,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // LET range=_NONDETERM_(0).._NONDETERM_(7)
   // FOR x IN range
   //   FOR d IN testView
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = " FOR x IN _NONDETERM_(0).._NONDETERM_(7) FOR d IN testView FILTER x == d.seq RETURN d";
+    std::string const query = " FOR x IN _NONDETERM_(0).._NONDETERM_(7) FOR d IN testView SEARCH x == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -856,10 +856,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // FOR x IN collection_3
   //   FOR d IN testView
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query =  "FOR x IN collection_3 FOR d IN testView FILTER x.seq == d.seq RETURN d";
+    std::string const query =  "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -901,11 +901,11 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // FOR x IN collection_3
   //   FOR d IN testView
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // SORT d.seq DESC
   // RETURN d;
   {
-    std::string const query = "FOR x IN collection_3 FOR d IN testView FILTER x.seq == d.seq SORT d.seq DESC RETURN d";
+    std::string const query = "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq SORT d.seq DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -947,12 +947,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // FOR x IN collection_3
   //   FOR d IN testView
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // SORT d.seq DESC
   // LIMIT 3
   // RETURN d;
   {
-    std::string const query = "FOR x IN collection_3 FOR d IN testView FILTER x.seq == d.seq SORT d.seq DESC LIMIT 3 RETURN d";
+    std::string const query = "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq SORT d.seq DESC LIMIT 3 RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -989,10 +989,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // FOR x IN collection_3
   //   FOR d IN testView
-  //   FILTER d.seq == x.seq && (d.value > 5 && d.value <= 100)
+  //   SEARCH d.seq == x.seq && (d.value > 5 && d.value <= 100)
   // RETURN d;
   {
-    std::string const query = "FOR x IN collection_3 FOR d IN testView FILTER x.seq == d.seq && (d.value > 5 && d.value <= 100) SORT d.seq DESC RETURN d";
+    std::string const query = "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq && (d.value > 5 && d.value <= 100) SORT d.seq DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1030,7 +1030,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // FOR x IN collection_3
   //   FOR d IN testView
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   //   SORT BM25(d) ASC, d.seq DESC
   // RETURN d;
   {
@@ -1047,7 +1047,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR x IN collection_3 FOR d IN testView FILTER x.seq == d.seq SORT BM25(d) ASC, d.seq DESC RETURN d"
+      "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq SORT BM25(d) ASC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -1072,7 +1072,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // Note: unable to push condition to the `View` now
   // FOR d IN testView
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
     std::string const query = "FOR d IN testView FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
@@ -1116,7 +1116,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // Note: unable to push condition to the `View` now
   // FOR d IN testView
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq && d.name == 'B'
+  //   SEARCH d.seq == x.seq && d.name == 'B'
   // RETURN d;
   {
     std::string const query = "FOR d IN testView FOR x IN collection_3 FILTER d.seq == x.seq && d.name == 'B' RETURN d";
@@ -1151,12 +1151,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN c)
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1193,12 +1193,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1235,13 +1235,13 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // LIMIT 2
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq LIMIT 2 RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq LIMIT 2 RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1276,12 +1276,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 3 RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 3 RETURN c)
   //   FOR x IN collection_3
-  //   FILTER d.seq == x.seq
+  //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1320,7 +1320,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN @@collection FILTER d.seq == x.seq RETURN d",
+      "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN @@collection SEARCH d.seq == x.seq RETURN d",
       arangodb::velocypack::Parser::fromJson("{ \"@collection\": \"invlaidCollectionName\" }")
     );
 
@@ -1332,11 +1332,11 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // FOR x IN 0..5
   //   FOR d IN testView
-  //   FILTER d.seq == x
+  //   SEARCH d.seq == x
   //   SORT customscorer(d,x)
   // RETURN d;
   {
-    std::string const query = "FOR x IN 0..5 FOR d IN testView FILTER d.seq == x SORT customscorer(d, x) DESC RETURN d";
+    std::string const query = "FOR x IN 0..5 FOR d IN testView SEARCH d.seq == x SORT customscorer(d, x) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1378,7 +1378,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // FOR x IN 0..5
   //   FOR d IN testView
-  //   FILTER d.seq == x
+  //   SEARCH d.seq == x
   //   SORT customscorer(x,x)
   // RETURN d;
   {
@@ -1394,10 +1394,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // FOR i IN 1..5
   //  FOR x IN collection_0
-  //    FOR d IN  FILTER d.seq == i && d.name == x.name
+  //    FOR d IN  SEARCH d.seq == i && d.name == x.name
   // SORT customscorer(d, x.seq)
   {
-    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FOR d IN testView FILTER d.seq == i AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
+    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FOR d IN testView SEARCH d.seq == i AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1432,11 +1432,11 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR i IN 1..5
-  //  FOR x IN collection_0 FILTER x.seq == i
-  //    FOR d IN  FILTER d.seq == x.seq && d.name == x.name
+  //  FOR x IN collection_0 SEARCH x.seq == i
+  //    FOR d IN  SEARCH d.seq == x.seq && d.name == x.name
   // SORT customscorer(d, x.seq)
   {
-    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FILTER x.seq == i FOR d IN testView FILTER d.seq == x.seq AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
+    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FILTER x.seq == i FOR d IN testView SEARCH d.seq == x.seq AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1472,11 +1472,11 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // unable to retrieve `d.seq` from self-referenced variable
   // FOR i IN 1..5
-  //  FOR d IN  FILTER d.seq == i SORT customscorer(d, d.seq)
-  //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
+  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, d.seq)
+  //    FOR x IN collection_0 SEARCH x.seq == d.seq && x.name == d.name
   // SORT customscorer(d, d.seq) DESC
   {
-    std::string const query = "FOR i IN 1..5 FOR d IN testView FILTER d.seq == i FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name SORT customscorer(d, d.seq) DESC RETURN d";
+    std::string const query = "FOR i IN 1..5 FOR d IN testView SEARCH d.seq == i FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name SORT customscorer(d, d.seq) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1491,11 +1491,11 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // unable to retrieve `x.seq` from inner loop
   // FOR i IN 1..5
-  //  FOR d IN  FILTER d.seq == i SORT customscorer(d, d.seq)
-  //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
+  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, d.seq)
+  //    FOR x IN collection_0 SEARCH x.seq == d.seq && x.name == d.name
   // SORT customscorer(d, x.seq) DESC
   {
-    std::string const query = "FOR i IN 1..5 FOR d IN testView FILTER d.seq == i FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name SORT customscorer(d, x.seq) DESC RETURN d";
+    std::string const query = "FOR i IN 1..5 FOR d IN testView SEARCH d.seq == i FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name SORT customscorer(d, x.seq) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1509,13 +1509,13 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // FOR i IN 1..5
-  //  FOR d IN  FILTER d.seq == i SORT customscorer(d, i) ASC
-  //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
+  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, i) ASC
+  //    FOR x IN collection_0 SEARCH x.seq == d.seq && x.name == d.name
   // SORT customscorer(d, i) DESC
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN testView FILTER d.seq == i SORT customscorer(d, i) ASC "
+      "  FOR d IN testView SEARCH d.seq == i SORT customscorer(d, i) ASC "
       "    FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name "
       "SORT customscorer(d, i) DESC RETURN d";
 
@@ -1554,12 +1554,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // we don't support scorers as a part of any expression (in sort or filter)
   //
   // FOR i IN 1..5
-  //   FOR d IN testView FILTER d.seq == i
+  //   FOR d IN testView SEARCH d.seq == i
   //     FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN testView FILTER d.seq == i "
+      "  FOR d IN testView SEARCH d.seq == i "
       "    FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)"
       "RETURN x";
 
@@ -1576,12 +1576,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // we don't support scorers as a part of any expression (in sort or filter)
   //
   // FOR i IN 1..5
-  //   FOR d IN testView FILTER d.seq == i
+  //   FOR d IN testView SEARCH d.seq == i
   //     FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN testView FILTER d.seq == i "
+      "  FOR d IN testView SEARCH d.seq == i "
       "    FOR x IN collection_1 FILTER x.seq == d.seq "
       "SORT 1 + TFIDF(d)"
       "RETURN d";
@@ -1598,12 +1598,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // we don't support scorers outside the view node
   //
-  // FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c)
   //     FOR x IN collection_1 FILTER x.seq == d.seq
   // SORT customscorer(d, x.seq)
   {
     std::string const query =
-     "FOR d IN (FOR c IN testView FILTER c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c) "
+     "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c) "
      "  FOR x IN collection_1 FILTER x.seq == d.seq "
      "    SORT customscorer(d, x.seq) "
      "RETURN x";
@@ -1620,13 +1620,13 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
   // multiple sorts (not supported now)
   // FOR i IN 1..5
-  //  FOR d IN  FILTER d.seq == i SORT customscorer(d, i) ASC
+  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, i) ASC
   //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
   // SORT customscorer(d, i) DESC
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN testView FILTER d.seq == i SORT tfidf(d, i) ASC "
+      "  FOR d IN testView SEARCH d.seq == i SORT tfidf(d, i) ASC "
       "    FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name "
       "SORT customscorer(d, i) DESC RETURN d";
 

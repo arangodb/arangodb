@@ -277,7 +277,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER STARTS_WITH(d.invalid_field, 'abc') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.invalid_field, 'abc') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -293,7 +293,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER STARTS_WITH(d.seq, '0') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.seq, '0') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -313,7 +313,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER starts_with(d.name, 'A') RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.name, 'A') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -350,7 +350,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER starts_with(d.prefix, 'abc') SORT d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.prefix, 'abc') SORT d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -383,7 +383,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -406,7 +406,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER STARTS_WITH(d.prefix, 'abc_invalid_prefix') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.prefix, 'abc_invalid_prefix') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
