@@ -1,0 +1,1756 @@
+R"=(
+{
+  "_system": {
+    "287": {
+      "s291": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      },
+      "s290": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      },
+      "s289": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      },
+      "s288": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "17": {
+      "s18": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "34": {
+      "s35": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "time"
+            ],
+            "id": "36",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ]
+      }
+    },
+    "8": {
+      "s9": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "6": {
+      "s7": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "3": {
+      "s4": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "user"
+            ],
+            "id": "5",
+            "sparse": true,
+            "type": "hash",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "319": {
+      "s320": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "10": {
+      "s11": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "15": {
+      "s16": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "19": {
+      "s20": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "28": {
+      "s29": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "21": {
+      "s22": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "queue",
+              "status",
+              "delayUntil"
+            ],
+            "id": "23",
+            "sparse": true,
+            "type": "skiplist",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "status",
+              "queue",
+              "delayUntil"
+            ],
+            "id": "24",
+            "sparse": true,
+            "type": "skiplist",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "37": {
+      "s38": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "time"
+            ],
+            "id": "39",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ]
+      }
+    },
+    "1": {
+      "s2": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "25": {
+      "s26": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "mount"
+            ],
+            "id": "27",
+            "sparse": true,
+            "type": "hash",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "31": {
+      "s32": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "time"
+            ],
+            "id": "33",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ]
+      }
+    },
+    "273": {
+      "s278": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      },
+      "s282": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      },
+      "s281": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      },
+      "s277": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      },
+      "s279": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      },
+      "s276": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      },
+      "s274": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      },
+      "s280": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      },
+      "s275": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          }
+        ]
+      }
+    }
+  },
+  "foo": {
+    "155": {
+      "s156": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "161": {
+      "s162": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "mount"
+            ],
+            "id": "165",
+            "sparse": true,
+            "type": "hash",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "151": {
+      "s152": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "166": {
+      "s167": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "321": {
+      "s322": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "146": {
+      "s147": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "153": {
+      "s154": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "298": {
+      "s300": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "customerId",
+              "_key"
+            ],
+            "id": "331",
+            "sparse": true,
+            "type": "hash",
+            "unique": true
+          },
+          {
+            "bestIndexedLevel": 17,
+            "fields": [
+              "position"
+            ],
+            "geoJson": true,
+            "id": "335",
+            "maxNumCoverCells": 8,
+            "sparse": true,
+            "type": "geo",
+            "unique": false,
+            "worstIndexedLevel": 4
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "lalala",
+              "tralala"
+            ],
+            "id": "343",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ]
+      },
+      "s302": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "customerId",
+              "_key"
+            ],
+            "id": "331",
+            "sparse": true,
+            "type": "hash",
+            "unique": true
+          },
+          {
+            "bestIndexedLevel": 17,
+            "fields": [
+              "position"
+            ],
+            "geoJson": true,
+            "id": "335",
+            "maxNumCoverCells": 8,
+            "sparse": true,
+            "type": "geo",
+            "unique": false,
+            "worstIndexedLevel": 4
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "lalala",
+              "tralala"
+            ],
+            "id": "343",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ]
+      },
+      "s299": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "customerId",
+              "_key"
+            ],
+            "id": "331",
+            "sparse": true,
+            "type": "hash",
+            "unique": true
+          },
+          {
+            "bestIndexedLevel": 17,
+            "fields": [
+              "position"
+            ],
+            "geoJson": true,
+            "id": "335",
+            "maxNumCoverCells": 8,
+            "sparse": true,
+            "type": "geo",
+            "unique": false,
+            "worstIndexedLevel": 4
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "lalala",
+              "tralala"
+            ],
+            "id": "343",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ]
+      },
+      "s301": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "fields": [
+              "_from"
+            ],
+            "id": "1",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "fields": [
+              "_to"
+            ],
+            "id": "2",
+            "sparse": false,
+            "type": "edge",
+            "unique": false
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "customerId",
+              "_key"
+            ],
+            "id": "331",
+            "sparse": true,
+            "type": "hash",
+            "unique": true
+          },
+          {
+            "bestIndexedLevel": 17,
+            "fields": [
+              "position"
+            ],
+            "geoJson": true,
+            "id": "335",
+            "maxNumCoverCells": 8,
+            "sparse": true,
+            "type": "geo",
+            "unique": false,
+            "worstIndexedLevel": 4
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "lalala",
+              "tralala"
+            ],
+            "id": "343",
+            "sparse": false,
+            "type": "skiplist",
+            "unique": false
+          }
+        ]
+      }
+    },
+    "307": {
+      "s311": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      },
+      "s316": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      },
+      "s314": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      },
+      "s312": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      },
+      "s315": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      },
+      "s313": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      },
+      "s310": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      },
+      "s308": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b",
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      },
+      "s309": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d7360139-6818-4b0a-8e2a-6c2e085c6602"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "objectId"
+            ],
+            "id": "351",
+            "sparse": true,
+            "type": "persistent",
+            "unique": false
+          },
+          {
+            "deduplicate": false,
+            "fields": [
+              "subjectId"
+            ],
+            "id": "357",
+            "sparse": false,
+            "type": "hash",
+            "unique": false
+          }
+        ]
+      }
+    },
+    "157": {
+      "s158": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "queue",
+              "status",
+              "delayUntil"
+            ],
+            "id": "159",
+            "sparse": true,
+            "type": "skiplist",
+            "unique": true
+          },
+          {
+            "deduplicate": true,
+            "fields": [
+              "status",
+              "queue",
+              "delayUntil"
+            ],
+            "id": "160",
+            "sparse": true,
+            "type": "skiplist",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "144": {
+      "s145": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    },
+    "142": {
+      "s143": {
+        "error": false,
+        "errorMessage": "",
+        "errorNum": 0,
+        "servers": [
+          "PRMR-20b40f90-8d25-44c6-a916-0caa9b354bf0",
+          "PRMR-d5bbda2e-0672-4997-9e1d-907ca18d229b"
+        ],
+        "indexes": [
+          {
+            "fields": [
+              "_key"
+            ],
+            "id": "0",
+            "sparse": false,
+            "type": "primary",
+            "unique": true
+          }
+        ]
+      }
+    }
+  }
+}
+)="
