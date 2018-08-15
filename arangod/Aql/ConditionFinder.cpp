@@ -48,6 +48,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::RETURN:
     case EN::TRAVERSAL:
     case EN::SHORTEST_PATH:
+    case EN::SEARCH:
 #ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif

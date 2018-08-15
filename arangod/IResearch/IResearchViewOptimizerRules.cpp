@@ -180,7 +180,7 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
       // in all these cases we better abort
       return true;
 
-    case EN::FILTER: {
+    case EN::SEARCH: {
       std::vector<Variable const*> invars(en->getVariablesUsedHere());
       TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
@@ -430,7 +430,7 @@ void handleViewsRule(
 
     // remove filters covered by a view
     nodes.clear(); // ensure array is empty
-    plan->findNodesOfType(nodes, ExecutionNode::FILTER, true);
+    plan->findNodesOfType(nodes, ExecutionNode::SEARCH, true);
 
     // `createdViewNodes` will not change
     auto const noMatch = createdViewNodes.end();
@@ -480,37 +480,6 @@ void handleViewsRule(
       }
     }
 
-//    nodes.clear(); // ensure array is empty
-//    plan->findNodesOfType(nodes, ExecutionNode::SORT, true);
-//
-//    for (auto* node : nodes) {
-//      // find the node with the sort expression
-//      auto inVar = static_cast<aql::SortNode const*>(node)->getVariablesUsedHere();
-//      TRI_ASSERT(!inVar.empty());
-//
-//      for (auto& var : inVar) {
-//        auto setter = plan->getVarSetBy(var->id);
-//
-//        if (!setter || setter->getType() != ExecutionNode::CALCULATION) {
-//          continue;
-//        }
-//
-//        auto const it = createdViewNodes.find(setter->getLoop());
-//
-//        if (it != noMatch) {
-//          if (!(*it)->isInInnerLoop()) {
-//            toUnlink.emplace(node);
-//            toUnlink.emplace(setter);
-//          }
-////FIXME uncomment when EnumerateViewNode can create variables
-////        toUnlink.emplace(setter);
-////        if (!(*it)->isInInnerLoop()) {
-////          toUnlink.emplace(node);
-////        }
-//        }
-//      }
-//    }
-//
     plan->unlinkNodes(toUnlink);
   }
 

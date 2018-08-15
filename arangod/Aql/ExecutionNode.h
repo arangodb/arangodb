@@ -146,6 +146,7 @@ class ExecutionNode {
     INDEX = 23,
     SHORTEST_PATH = 24,
     REMOTESINGLE = 25,
+    SEARCH = 26,
 #ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
 #endif
@@ -1066,7 +1067,7 @@ class FilterNode : public ExecutionNode {
   FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return FILTER; }
+  NodeType getType() const override { return FILTER; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
@@ -1099,6 +1100,24 @@ class FilterNode : public ExecutionNode {
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
+};
+
+class SearchNode : public FilterNode {
+  friend class ExecutionBlock;
+  friend class FilterBlock;
+  friend class RedundantCalculationsReplacer;
+
+ public:
+  SearchNode(ExecutionPlan* plan, size_t id, Variable const* inVariable)
+    : FilterNode(plan, id, inVariable) {
+  }
+
+  SearchNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : FilterNode(plan, base) {
+  }
+
+  /// @brief return the type of the node
+  NodeType getType() const override final { return SEARCH; }
 };
 
 /// @brief this is an auxilliary struct for processed sort criteria information
