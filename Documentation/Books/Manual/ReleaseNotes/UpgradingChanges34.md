@@ -306,9 +306,9 @@ The following APIs have been added or augmented:
 AQL
 ---
 
-- ArangoDB 3.4 adds two new view-related keywords to AQL: `VIEW` and `SEARCH`
+- ArangoDB 3.4 adds the new view-related `SEARCH` keyword to AQL:
 
-  Usage of these keywords as collection names, variable names or attribute names
+  Usage of this keyword as collection name, variable name or attribute name
   in AQL queries will not be possible without quoting. For example, the following
   AQL query will still work as it uses a quoted collection name and a quoted
   attribute name:

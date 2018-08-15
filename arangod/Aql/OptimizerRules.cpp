@@ -1520,7 +1520,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   template <typename T>
   void replaceInVariable(ExecutionNode* en) {
-    auto node = static_cast<T*>(en);
+    auto node = ExecutionNode::castTo<T*>(en);
     node->_inVariable = Variable::replace(node->_inVariable, _replacements);
   }
 
@@ -2305,6 +2305,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 #endif
       case EN::SUBQUERY:
       case EN::FILTER:
+      case EN::SEARCH:
         return false;  // skip. we don't care.
 
       case EN::CALCULATION: {

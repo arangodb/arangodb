@@ -159,7 +159,8 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
     {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
-    {static_cast<int>(NODE_TYPE_SEARCH), "search"}
+    {static_cast<int>(NODE_TYPE_SEARCH), "search"},
+    {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"}
 };
 
 /// @brief names for AST node value types
@@ -422,6 +423,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_ATTRIBUTE_ACCESS:
     case NODE_TYPE_FCALL_USER: {
       value.type = VALUE_TYPE_STRING;
@@ -672,6 +674,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_FCALL:
     case NODE_TYPE_FOR:
@@ -768,8 +771,9 @@ AstNode::~AstNode() {
 std::string AstNode::getString() const {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
              type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
-             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
-             type == NODE_TYPE_FCALL_USER || type == NODE_TYPE_VIEW);
+             type == NODE_TYPE_PARAMETER_DATASOURCE ||
+             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW ||
+             type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS || type == NODE_TYPE_FCALL_USER);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
   return std::string(getStringValue(), getStringLength());
 }
@@ -1064,8 +1068,9 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   if (verbose) {
     builder.add("typeID", VPackValue(static_cast<int>(type)));
   }
-  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_VIEW ||
+  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW ||
+      type == NODE_TYPE_PARAMETER || type == NODE_TYPE_PARAMETER_DATASOURCE ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS || 
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
     TRI_ASSERT(getStringValue() != nullptr);
@@ -2068,7 +2073,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     return;
   }
 
-  if (type == NODE_TYPE_PARAMETER) {
+  if (type == NODE_TYPE_PARAMETER || type == NODE_TYPE_PARAMETER_DATASOURCE) {
     // not used by V8
     buffer->appendChar('@');
     buffer->appendText(getStringValue(), getStringLength());
@@ -2334,6 +2339,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:
@@ -2506,6 +2512,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:

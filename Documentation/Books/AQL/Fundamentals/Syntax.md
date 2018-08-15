@@ -133,7 +133,6 @@ The complete list of keywords is currently:
   <li>TRUE</li>
   <li>UPDATE</li>
   <li>UPSERT</li>
-  <li>VIEW</li>
   <li>WITH</li>
 </ul>
 </div>

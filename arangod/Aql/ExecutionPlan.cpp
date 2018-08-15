@@ -863,7 +863,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     std::string const collectionName = expression->getString();
     auto collections = _ast->query()->collections();
     auto collection = collections->get(collectionName);
-
+    
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");

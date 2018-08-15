@@ -2,11 +2,9 @@ Views in AQL
 ============
 
 Conceptually a **view** is just another document data source, similar to an
-array or a document/edge collection. The only distinction is that when querying
-views the **VIEW** keyword must be specified in the **FOR** statement just
-before the view name, e.g.:
+array or a document/edge collection, e.g.:
 
-FOR doc IN  exampleView
+FOR doc IN exampleView
   FILTER ...
   SORT ...
   RETURN ...

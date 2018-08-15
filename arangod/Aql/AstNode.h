@@ -183,6 +183,7 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_SHORTEST_PATH = 75,
   NODE_TYPE_VIEW = 76,
   NODE_TYPE_SEARCH = 77,
+  NODE_TYPE_PARAMETER_DATASOURCE = 78,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -363,18 +364,7 @@ struct AstNode {
   inline bool isObject() const { return (type == NODE_TYPE_OBJECT); }
 
   inline bool isDataSource() const noexcept {
-    switch (type) {
-      case NODE_TYPE_COLLECTION:
-      case NODE_TYPE_VIEW:
-        return true;
-      case NODE_TYPE_PARAMETER:
-        return value.type == VALUE_TYPE_STRING
-          && value.length
-          && value.value._string
-          && '@' == value.value._string[0];
-      default:
-        return false;
-    }
+    return (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW || type == NODE_TYPE_PARAMETER_DATASOURCE);
   }
 
   /// @brief whether or not a value node is of type attribute access that
