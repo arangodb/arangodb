@@ -3,6 +3,9 @@ v3.3.14 (2018-08-15)
 
 * upgraded arangodb starter version to 0.13.1
 
+* fixed issue #5736: Foxx HTTP API responds with 500 error when request body
+  is too short
+
 * fixed issue #5831: custom queries in the ui could not be loaded if the user
   only has read access to the _system database.
 
