@@ -558,14 +558,10 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
   }
 }
 
-<<<<<<< HEAD
-
 void ClusterFeature::syncDBServerStatusQuo() {
   if (_heartbeatThread != nullptr) {
     _heartbeatThread->syncDBServerStatusQuo(true);
   }
 }
 
-=======
 } // arangodb
->>>>>>> 2bc672cebda307e1966e56ebed04683d5d8291d6
