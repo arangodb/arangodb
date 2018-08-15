@@ -26,12 +26,12 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:
-  LoggerFeature(application_features::ApplicationServer* server, bool threaded);
+  LoggerFeature(application_features::ApplicationServer& server, bool threaded);
   ~LoggerFeature();
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
                    char const* binaryPath) override final;
@@ -39,7 +39,6 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   void prepare() override final;
   void unprepare() override final;
 
- public:
   void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }
   void disableThreaded() { _threaded = false; }
   void setSupervisor(bool supervisor) { _supervisor = supervisor; }
@@ -62,12 +61,11 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _forceDirect = false;
   bool _useMicrotime = false;
   bool _showRole = false;
-
- private:
   bool _supervisor = false;
   bool _backgrounded = false;
   bool _threaded = false;
 };
+
 }
 
 #endif

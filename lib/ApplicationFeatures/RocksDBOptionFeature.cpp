@@ -42,7 +42,8 @@ rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 }
 
 RocksDBOptionFeature::RocksDBOptionFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),

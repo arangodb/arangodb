@@ -772,7 +772,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // prepare transaction for parallel read access
   RocksDBTransactionState::toState(trx)->prepareForParallelReads();
 
-  auto rocksColl = toRocksDBCollection(&_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
 
@@ -851,7 +851,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice const& lower,
                                       rocksdb::Slice const& upper) {
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto rocksColl = toRocksDBCollection(&_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
   bool needsInsert = false;
   std::string previous = "";
   VPackBuilder builder;
@@ -1081,7 +1081,14 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   return true;
 }
 
+void RocksDBEdgeIndex::afterTruncate() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
+  RocksDBIndex::afterTruncate();
+}
+
 void RocksDBEdgeIndex::recalculateEstimates() {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 

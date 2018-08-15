@@ -644,11 +644,6 @@ int Index::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
-// called after the collection was truncated
-int Index::afterTruncate() {
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief default implementation for sizeHint
 int Index::sizeHint(transaction::Methods*, size_t) {
   // do nothing
