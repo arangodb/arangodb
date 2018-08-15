@@ -48,10 +48,14 @@ class ShardingFeature : public application_features::ApplicationFeature {
 
   std::unique_ptr<ShardingStrategy> create(std::string const& name, ShardingInfo* sharding);
 
+  /// @brief returns the name of the default sharding strategy for new
+  /// collections
   std::string getDefaultShardingStrategyForNewCollection(
       VPackSlice const& properties) const;
 
  private:
+  /// @brief returns the name of the default sharding strategy for existing
+  /// collections without a sharding strategy assigned
   std::string getDefaultShardingStrategy(ShardingInfo const* sharding) const;
 
   std::unordered_map<std::string, ShardingStrategy::FactoryFunction> _factories;
