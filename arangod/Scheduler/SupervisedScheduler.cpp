@@ -185,9 +185,12 @@ void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
 bool SupervisedScheduler::start() {
 
   _manager.reset(new SupervisedSchedulerManagerThread(*this));
-  _manager->start();
+  if (!_manager->start()) {
+    LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not start supervisor thread";
+    return false;
+  }
 
-  return Scheduler::start();;
+  return Scheduler::start();
 }
 
 void SupervisedScheduler::beginShutdown() {
@@ -215,20 +218,23 @@ void SupervisedScheduler::runWorker()
   {
     // inform the supervisor that this thread is alive
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
-    id = _numWorker++;
+    id = _numWorker++;  // increase the number of workers here, to obtains the id
     _conditionSupervisor.notify_one();
   }
 
-  auto &state = _workerStates[id];
+  // copy shared_ptr
+  auto state = _workerStates[id];
 
-  state._sleepTimeout_ms = 20 * (id + 1);
-  state._queueRetryCount = (512 >> id) + 3;
+  state->_sleepTimeout_ms = 20 * (id + 1);
+  state->_queueRetryCount = (512 >> id) + 3;
 
   while (true) {
     std::unique_ptr<WorkItem> work = getWork(state);
     if (work == nullptr) {
       break ;
     }
+
+    _jobsDequeued++;
 
     try {
       work->_handler();
@@ -242,8 +248,6 @@ void SupervisedScheduler::runWorker()
 
     _jobsDone.fetch_add(1, std::memory_order_release);
   }
-
-  _numWorker--;
 }
 
 void SupervisedScheduler::runSupervisor()
@@ -254,22 +258,24 @@ void SupervisedScheduler::runSupervisor()
 
   uint64_t jobsDone, lastJobsDone = 0, jobsSubmitted, lastJobsSubmitted = 0;
   uint64_t jobsStallingTick = 0, queueLength, lastQueueLength = 0;
+  uint64_t jobsDequeued;
 
   while (!_stopping) {
     jobsDone = _jobsDone.load(std::memory_order_acquire);
     jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
+    jobsDequeued = _jobsDequeued.load(std::memory_order_acquire);
 
-    if (jobsDone == lastJobsDone && (jobsDone < jobsSubmitted)) {
+    if (jobsDone == lastJobsDone && (jobsDequeued < jobsSubmitted)) {
       jobsStallingTick++;
     } else if(jobsStallingTick != 0) {
       jobsStallingTick--;
     }
 
-    queueLength = jobsSubmitted - jobsDone;
+    queueLength = jobsSubmitted - jobsDequeued;
 
     bool doStartOneThread =
-      (/*(_numWorker < numCpuCores) &&*/ (queueLength >= 3 * _numWorker) && ((lastQueueLength + _numWorker) < queueLength))
-      || (lastJobsSubmitted > jobsDone);
+      ((/*(_numWorker < numCpuCores) &&*/ (queueLength >= 3 * _numWorker) && ((lastQueueLength + _numWorker) < queueLength))
+      || (lastJobsSubmitted > jobsDone)) && (queueLength != 0);
 
 
     bool doStopOneThread = (
@@ -301,18 +307,34 @@ void SupervisedScheduler::runSupervisor()
       break ;
     }
 
+    cleanupAbandonedThreads();
+
     _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
   }
 }
 
-std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork (WorkerState &state)
+void SupervisedScheduler::cleanupAbandonedThreads() {
+
+  for (auto i = _abandonedWorkerStates.begin();
+       i != _abandonedWorkerStates.end(); i++) {
+
+    auto &state = *i;
+
+    if (!state->_thread->isRunning()) {
+      _abandonedWorkerStates.erase(i);
+    }
+  }
+
+}
+
+std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork (std::shared_ptr<WorkerState> &state)
 {
   WorkItem *work;
 
-  while (!_stopping && !state._stop) {
+  while (!_stopping && !state->_stop) {
 
     uint64_t triesCount = 0;
-    while (triesCount < state._queueRetryCount) {
+    while (triesCount < state->_queueRetryCount) {
 
       // access queue via 0 1 2 0 1 2 0 1 ...
       if (_queue[triesCount % 3].pop(work)) {
@@ -325,14 +347,14 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork (Wor
 
     std::unique_lock<std::mutex> guard(_mutex);
 
-    if (_stopping || state._stop) {
+    if (_stopping || state->_stop) {
       break ;
     }
 
-    if (state._sleepTimeout_ms == 0) {
+    if (state->_sleepTimeout_ms == 0) {
       _conditionWork.wait(guard);
     } else {
-      _conditionWork.wait_for(guard, std::chrono::milliseconds(state._sleepTimeout_ms));
+      _conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
   }
 
@@ -345,10 +367,10 @@ void SupervisedScheduler::startOneThread()
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
   // start a new thread
-  _workerStates.emplace_back(*this);
-  if (!_workerStates.back().start()) {
+  _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
+  if (!_workerStates.back()->start()) {
     // failed to start a worker
-    _workerStates.pop_back();
+    _workerStates.pop_back();   // oop_back deletes shared_ptr, which deletes thread
     LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not start additional worker thread";
 
   } else {
@@ -360,14 +382,32 @@ void SupervisedScheduler::stopOneThread()
 {
   TRI_ASSERT(_numWorker > 0);
 
+  // copy shared_ptr
+  auto state = _workerStates.back();
+  _workerStates.pop_back();
+
   {
     std::unique_lock<std::mutex> guard(_mutex);
-    _workerStates.back()._stop = true;
+    state->_stop = true;
     _conditionWork.notify_all();
+    // _stop is set under the mutex, then all worker threads are notified.
+    // in any case, the stopped thread should notice that it is stoped.
   }
 
-  // wait for the thread to terminate
-  _workerStates.pop_back();
+
+  // However the thread may be working on a long job. Hence we enqueue it on
+  // the cleanup list and wait for its termination.
+  //
+  // Since the thread is effectively taken out of the pool, decrease the number of worker.
+  _numWorker--;
+
+  if (state->_thread->isRunning()) {
+      LOG_TOPIC(ERR, Logger::SUPERVISION) << "Abandon one thread.";
+    _abandonedWorkerStates.push_back(std::move(state));
+  } else {
+    state.reset();  // reset the shared_ptr. At this point we delete the thread object
+                    // Since the thread is already STOPPED, the join is a no op.
+  }
 }
 
 SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler::WorkerState &&that) :
