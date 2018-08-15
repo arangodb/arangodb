@@ -2156,25 +2156,18 @@ function queryAgencyJob(id) {
 }
 
 function getLocalInfo () {
-  var ret = {};
-  var dbs = getLocalDatabases();
   var db = require('internal').db;
-  Object.keys(dbs).forEach(
-    function(database) {
-      db._useDatabase(database);
-      ret[database] = {};
-      db._collections().forEach(
-        function(col) {          
-          if (col.name().charAt(0)!='_') {
-            ret[col.name()] = col.properties();
-            ret[col.name()].indexes = [];
-            col.getIndexes().forEach(function(i) {
-              ret[col.name()].indexes.push(i);
-            });
-          }
+  var ret = { result: {}};
+  db._collections().forEach(
+    function(col) {          
+      if (col.name().charAt(0)!='_') {
+        ret.result[col.name()] = col.properties();
+        ret.result[col.name()].indexes = [];
+        col.getIndexes().forEach(function(i) {
+          ret.result[col.name()].indexes.push(i);
         });
+      }
     });
-  db._useDatabase('_system');
   return ret;
 }
 
