@@ -1087,8 +1087,7 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
     if (node->type == NODE_TYPE_SEARCH) {
-      // TODO: actually create a SearchNode here!
-      en = registerNode(new FilterNode(this, nextId(), v));
+      en = registerNode(new SearchNode(this, nextId(), v));
     } else {
       en = registerNode(new FilterNode(this, nextId(), v));
     }
@@ -1096,8 +1095,7 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
     if (node->type == NODE_TYPE_SEARCH) {
-      // TODO: actually create a SearchNode here!
-      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+      en = registerNode(new SearchNode(this, nextId(), getOutVariable(calc)));
     } else {
       en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
     }
