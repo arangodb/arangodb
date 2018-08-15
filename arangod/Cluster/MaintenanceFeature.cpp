@@ -23,6 +23,7 @@
 
 #include "MaintenanceFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -36,7 +37,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-MaintenanceFeature::MaintenanceFeature(ApplicationServer* server)
+MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Maintenance") {
 
 //  startsAfter("EngineSelector");    // ??? what should this be
@@ -47,15 +48,6 @@ MaintenanceFeature::MaintenanceFeature(ApplicationServer* server)
 } // MaintenanceFeature::MaintenanceFeature
 
 
-MaintenanceFeature::MaintenanceFeature()
-  : ApplicationFeature(nullptr, "Maintenance") {
-
-  // must not use startsAfter/Before since nullptr given to ApplicationFeature
-  init();
-
-  return;
-
-} // MaintenanceFeature::MaintenanceFeature
 
 
 void MaintenanceFeature::init() {

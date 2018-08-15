@@ -189,7 +189,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new LockfileFeature(server));
     server.addFeature(new LoggerBufferFeature(server));
     server.addFeature(new LoggerFeature(server, true));
-    server.addFeature(new MaintenanceFeature(&server));
+    server.addFeature(new MaintenanceFeature(server));
     server.addFeature(new MaxMapCountFeature(server));
     server.addFeature(new NonceFeature(server));
     server.addFeature(new PageSizeFeature(server));

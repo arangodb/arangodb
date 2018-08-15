@@ -37,7 +37,7 @@ namespace arangodb {
 
 class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
-  explicit MaintenanceFeature(application_features::ApplicationServer*);
+  explicit MaintenanceFeature(application_features::ApplicationServer&);
 
   MaintenanceFeature();
 

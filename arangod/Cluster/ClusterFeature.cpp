@@ -41,11 +41,12 @@
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
+using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
+ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Cluster"),
     _unregisterOnShutdown(false),
     _enableCluster(false),
@@ -564,4 +565,4 @@ void ClusterFeature::syncDBServerStatusQuo() {
   }
 }
 
-} // arangodb
+

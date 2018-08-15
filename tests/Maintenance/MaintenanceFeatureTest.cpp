@@ -95,16 +95,12 @@ using namespace arangodb::maintenance;
 //
 class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
 public:
-  TestMaintenanceFeature() {
-
-  };
-
-  TestMaintenanceFeature(arangodb::application_features::ApplicationServer * as)
+  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
     : arangodb::MaintenanceFeature(as) {
 
     // begin with no threads to allow queue validation
     _maintenanceThreadsMax = 0;
-    as->addReporter(_progressHandler);
+    as.addReporter(_progressHandler);
   };
 
   virtual ~TestMaintenanceFeature() {
@@ -320,8 +316,13 @@ public:
 //
 TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
 
-    SECTION("Iterate Action 0 times - ok") {
-    TestMaintenanceFeature tf;
+  SECTION("Iterate Action 0 times - ok") {
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    
+    TestMaintenanceFeature tf(as);
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
     std::unique_ptr<ActionBase> action_base_ptr;
@@ -341,7 +342,11 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   }
 
   SECTION("Iterate Action 0 times - fail") {
-    TestMaintenanceFeature tf;
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature tf(as);
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
     std::unique_ptr<ActionBase> action_base_ptr;
@@ -362,7 +367,11 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   }
 
   SECTION("Iterate Action 1 time - ok") {
-    TestMaintenanceFeature tf;
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature tf(as);
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
     std::unique_ptr<ActionBase> action_base_ptr;
@@ -382,7 +391,11 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   }
 
   SECTION("Iterate Action 1 time - fail") {
-    TestMaintenanceFeature tf;
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature tf(as);
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
     std::unique_ptr<ActionBase> action_base_ptr;
@@ -403,7 +416,11 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   }
 
   SECTION("Iterate Action 2 times - ok") {
-    TestMaintenanceFeature tf;
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature tf(as);
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
     std::unique_ptr<ActionBase> action_base_ptr;
@@ -424,7 +441,11 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   }
 
   SECTION("Iterate Action 100 times - ok") {
-    TestMaintenanceFeature tf;
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature tf(as);
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
     std::unique_ptr<ActionBase> action_base_ptr;
@@ -444,7 +465,11 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   }
 
   SECTION("Iterate Action 100 times - fail") {
-    TestMaintenanceFeature tf;
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature tf(as);
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
     std::unique_ptr<ActionBase> action_base_ptr;
@@ -474,7 +499,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       std::make_shared<arangodb::options::ProgramOptions>(
         "test", std::string(), std::string(), "path");
     arangodb::application_features::ApplicationServer as(po, nullptr);
-    TestMaintenanceFeature * tf = new TestMaintenanceFeature(&as);
+    TestMaintenanceFeature * tf = new TestMaintenanceFeature(as);
     as.addFeature(tf);
     std::thread th(
       &arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
@@ -558,7 +583,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
       std::make_shared<arangodb::options::ProgramOptions>(
         "test", std::string(), std::string(), "path");
     arangodb::application_features::ApplicationServer as(po, nullptr);
-    TestMaintenanceFeature * tf = new TestMaintenanceFeature(&as);
+    TestMaintenanceFeature * tf = new TestMaintenanceFeature(as);
     as.addFeature(tf);
     std::thread th(
       &arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
@@ -613,7 +638,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     std::shared_ptr<arangodb::options::ProgramOptions> po = std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path");
     arangodb::application_features::ApplicationServer as(po, nullptr);
-    TestMaintenanceFeature * tf = new TestMaintenanceFeature(&as);
+    TestMaintenanceFeature * tf = new TestMaintenanceFeature(as);
     as.addFeature(tf);
     std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
 
@@ -666,7 +691,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     std::shared_ptr<arangodb::options::ProgramOptions> po = std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path");
     arangodb::application_features::ApplicationServer as(po, nullptr);
-    TestMaintenanceFeature * tf = new TestMaintenanceFeature(&as);
+    TestMaintenanceFeature * tf = new TestMaintenanceFeature(as);
     as.addFeature(tf);
     std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
 
