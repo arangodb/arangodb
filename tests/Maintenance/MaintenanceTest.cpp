@@ -402,7 +402,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   }
 
   // Plan also now has db3 =====================================================
-/*  SECTION("Add one collection to local") {
+  SECTION("Add one collection to local") {
 
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
@@ -426,7 +426,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       }
     }
 
-    }*/
+  }
 
   // Plan also now has db3 =====================================================
   SECTION("Modify journalSize in plan should update the according collection") {
@@ -487,10 +487,10 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
 
       std::cout << node.first << " " << actions.size() << std::endl;
-      /*REQUIRE(actions.size() == 1);
+      REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
         REQUIRE(action.name() == "UpdateCollection");
-        }*/
+      }
 
     }
   }
@@ -546,7 +546,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   }
 
   // Plan also now has db3 =====================================================
-  SECTION("Indexes missing in local") {
+  SECTION("Indexes missing in plan should be removed locally") {
 
     plan(PLAN_COL_PATH  + "_system/1010021/indexes") =
       arangodb::velocypack::Slice::emptyArraySlice();
@@ -561,6 +561,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
           plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
           actions);
 
+        std::cout << actions << std::endl;
         REQUIRE(actions.size() == 2);
         for (auto const action : actions) {
           REQUIRE(actions.front().name() == "DropIndex");

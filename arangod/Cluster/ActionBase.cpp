@@ -101,7 +101,6 @@ void ActionBase::fail() {
     << "Action " << _description << "failed after "
     << std::chrono::duration<double>(
       _actionDone.load() - _actionStarted.load()).count() << " seconds";
-  
   _state = FAILED;
 }
 
