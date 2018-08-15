@@ -123,7 +123,7 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>>
     RocksDBEngine::_recoveryHelpers;
 
 // create the storage engine
-RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
+RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(
         server,
         EngineName,
@@ -155,7 +155,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
 
-  server->addFeature(new RocksDBRecoveryManager(server));
+  server.addFeature(new RocksDBRecoveryManager(server));
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }

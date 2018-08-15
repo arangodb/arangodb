@@ -59,8 +59,9 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
+
+namespace arangodb {
 
 RocksDBRecoveryManager* RocksDBRecoveryManager::instance() {
   return ApplicationServer::getFeature<RocksDBRecoveryManager>(featureName());
@@ -69,7 +70,8 @@ RocksDBRecoveryManager* RocksDBRecoveryManager::instance() {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, featureName()),
       _db(nullptr),
       _inRecovery(true) {
@@ -499,3 +501,5 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
   return res;
 }
+
+} // arangodb

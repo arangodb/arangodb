@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #5736: Foxx HTTP API responds with 500 error when request body
+  is too short
+
 * fixed issue #6106: Arithmetic operator type casting documentation incorrect
 
 * The arangosh now supports the velocystream transport protocol via the schemas 

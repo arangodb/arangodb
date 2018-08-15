@@ -204,7 +204,7 @@ uint64_t PregelFeature::createExecutionNumber() {
   return TRI_NewServerSpecificTick();
 }
 
-PregelFeature::PregelFeature(application_features::ApplicationServer* server)
+PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   startsAfter("V8Phase");

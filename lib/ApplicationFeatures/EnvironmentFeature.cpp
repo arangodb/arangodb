@@ -33,11 +33,13 @@
 #include <sys/sysinfo.h>
 #endif
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace arangodb {
+
 EnvironmentFeature::EnvironmentFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Environment") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -311,3 +313,5 @@ void EnvironmentFeature::start() {
   }
 #endif
 }
+
+} // arangodb
