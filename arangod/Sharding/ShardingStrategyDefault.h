@@ -52,6 +52,31 @@ class ShardingStrategyNone final : public ShardingStrategy {
                           std::string const& key = "") override;
 };
 
+
+/// @brief a sharding class used to indicate that the selected sharding strategy
+/// is only available in the enterprise edition of ArangoDB
+/// calling getResponsibleShard on this class will always throw an exception
+/// with an appropriate error message
+class ShardingStrategyOnlyInEnterprise final : public ShardingStrategy {
+ public:
+  explicit ShardingStrategyOnlyInEnterprise(std::string const& name);
+
+  std::string const& name() const override { return _name; }
+
+  /// @brief does not really matter here
+  bool usesDefaultShardKeys() override { return true; }
+
+  /// @brief will always throw an exception telling the user the selected sharding is only
+  /// available in the enterprise edition 
+  int getResponsibleShard(arangodb::velocypack::Slice,
+                          bool docComplete, ShardID& shardID,
+                          bool& usesDefaultShardKeys,
+                          std::string const& key = "") override;
+ private:
+  /// @brief name of the sharding strategy we are replacing
+  std::string const _name;
+};
+
 /// @brief base class for hash-based sharding
 class ShardingStrategyHashBase : public ShardingStrategy {
  public:
@@ -91,8 +116,37 @@ class ShardingStrategyCommunityCompat final : public ShardingStrategyHashBase {
   static std::string const NAME;
 };
 
-/// @brief old version of the sharding used in the community edition
+/// @brief old version of the sharding used in the enterprise edition
 /// this is DEPRECATED and should not be used for new collections
+class ShardingStrategyEnterpriseBase : public ShardingStrategyHashBase {
+ public:
+  explicit ShardingStrategyEnterpriseBase(ShardingInfo* sharding);
+
+ protected:
+  /// @brief this implementation of "hashByAttributes" is slightly different
+  /// than the implementation in the Community version
+  /// we leave the differences in place, because making any changes here
+  /// will affect the data distribution, which we want to avoid
+  uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
+                            std::vector<std::string> const& attributes,
+                            bool docComplete, int& error,
+                            std::string const& key) override final;
+};
+
+/// @brief old version of the sharding used in the enterprise edition
+/// this is DEPRECATED and should not be used for new collections
+class ShardingStrategyEnterpriseCompat : public ShardingStrategyEnterpriseBase {
+ public:
+  explicit ShardingStrategyEnterpriseCompat(ShardingInfo* sharding);
+
+  std::string const& name() const override { return NAME; }
+
+  static std::string const NAME;
+};
+
+
+/// @brief default hash-based sharding strategy
+/// used for new collections from 3.4 onwards
 class ShardingStrategyHash final : public ShardingStrategyHashBase {
  public:
   explicit ShardingStrategyHash(ShardingInfo* sharding);
