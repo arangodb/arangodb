@@ -282,7 +282,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
 
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER d.value <= 100 COLLECT value = d.value WITH COUNT INTO size RETURN { 'value' : value, 'names' : size }"
+      "FOR d IN testView SEARCH d.value <= 100 COLLECT value = d.value WITH COUNT INTO size RETURN { 'value' : value, 'names' : size }"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -319,7 +319,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
 
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER d.value <= 100 COLLECT value = d.value INTO name = d.name RETURN { 'value' : value, 'names' : name }"
+      "FOR d IN testView SEARCH d.value <= 100 COLLECT value = d.value INTO name = d.name RETURN { 'value' : value, 'names' : name }"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -366,7 +366,7 @@ TEST_CASE("IResearchQueryTestAggregate", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER d.seq < 7 COLLECT AGGREGATE sumSeq = SUM(d.seq) RETURN sumSeq"
+      "FOR d IN testView SEARCH d.seq < 7 COLLECT AGGREGATE sumSeq = SUM(d.seq) RETURN sumSeq"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();

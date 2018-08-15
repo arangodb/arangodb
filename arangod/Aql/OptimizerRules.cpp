@@ -337,7 +337,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
                                      OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::FILTER, true);
+  plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
 
   bool modified = false;
 
@@ -839,7 +839,7 @@ class PropagateConstantAttributesHelper {
   void propagateConstants(ExecutionPlan* plan) {
     SmallVector<ExecutionNode*>::allocator_type::arena_type a;
     SmallVector<ExecutionNode*> nodes{a};
-    plan->findNodesOfType(nodes, EN::FILTER, true);
+    plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
 
     for (auto const& node : nodes) {
       auto fn = ExecutionNode::castTo<FilterNode*>(node);
@@ -4825,7 +4825,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt,
                                         OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::FILTER, true);
+  plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
 
   bool modified = false;
   for (auto const& n : nodes) {
@@ -5012,7 +5012,7 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
                                           OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::FILTER, true);
+  plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
 
   bool modified = false;
   for (auto const& n : nodes) {
