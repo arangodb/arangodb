@@ -280,6 +280,7 @@ RestStatus RestReplicationHandler::execute() {
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       } else {
+        grantTemporaryRights();
         handleCommandInventory();
       }
     } else if (command == "keys") {
@@ -333,6 +334,7 @@ RestStatus RestReplicationHandler::execute() {
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       } else {
+        grantTemporaryRights();
         handleCommandDump();
       }
     } else if (command == "restore-collection") {
@@ -352,6 +354,16 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       handleCommandRestoreData();
+    } else if (command == "restore-view") {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "views not supported in 3.3";
+      if (type != rest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+      VPackBuilder result;
+      result.openObject();
+      result.close();
+      generateResult(rest::ResponseCode::OK, result.slice());
+      return RestStatus::DONE;
     } else if (command == "sync") {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
@@ -931,6 +943,7 @@ Result RestReplicationHandler::processRestoreCollection(
                                         AccessMode::Type::EXCLUSIVE);
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
+        trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
         res = trx.begin();
         if (!res.ok()) {
           return res;
@@ -1685,6 +1698,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
   }
 
   std::string dbName = _vocbase->name();
+
+  grantTemporaryRights();
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();

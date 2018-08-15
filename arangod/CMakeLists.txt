@@ -207,6 +207,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/CriticalThread.cpp
   Cluster/CollectionLockState.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp

@@ -2320,11 +2320,12 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-  TRI_ASSERT(newIdx != nullptr);
-
-  TRI_UpdateTickServer(newIdx->id());
-
+  if (newIdx == nullptr) {
+    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+  }
+  
   auto const id = newIdx->id();
+  TRI_UpdateTickServer(id);
   for (auto& it : _indexes) {
     if (it->id() == id) {
       // index already exists
@@ -3282,9 +3283,7 @@ Result MMFilesCollection::update(
 
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
-      if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                     trx->resolver()->getCollectionNameCluster(
-                                         _logicalCollection->planId()),
+      if (arangodb::shardKeysChanged(_logicalCollection,
                                      oldDoc, builder->slice(), false)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
       }
@@ -3423,9 +3422,7 @@ Result MMFilesCollection::replace(
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                   trx->resolver()->getCollectionNameCluster(
-                                       _logicalCollection->planId()),
+    if (arangodb::shardKeysChanged(_logicalCollection,
                                    oldDoc, builder->slice(), false)) {
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
