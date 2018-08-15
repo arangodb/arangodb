@@ -4175,15 +4175,15 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         // track usage of the collection
         auto collection =
             ExecutionNode::castTo<IndexNode const*>(en)->collection();
-        if (_shardsUsed[collection].size() != 1 ||
-            *_shardsUsed[collection].begin() == "all") {
-          std::string shardId = getSingleShardId(_plan, en, collection);
-          if (shardId.empty()) {
+        std::string shardId = getSingleShardId(_plan, en, collection);
+        if (shardId.empty() && _shardsUsed[collection].empty()) {
+          _shardsUsed[collection].emplace("all");
+        } else if (!shardId.empty()) {
+          if (1 == _shardsUsed[collection].size() &&
+              "all" == *_shardsUsed[collection].begin()) {
             _shardsUsed[collection].clear();
-            _shardsUsed[collection].emplace("all");
-          } else {
-            _shardsUsed[collection].emplace(shardId);
           }
+          _shardsUsed[collection].emplace(shardId);
         }
         break;
       }
@@ -4214,10 +4214,13 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         auto collection =
             ExecutionNode::castTo<ModificationNode const*>(en)->collection();
         std::string shardId = getSingleShardId(_plan, en, collection);
-        if (shardId.empty()) {
-          _shardsUsed[collection].clear();
+        if (shardId.empty() && _shardsUsed[collection].empty()) {
           _shardsUsed[collection].emplace("all");
-        } else {
+        } else if (!shardId.empty()) {
+          if (1 == _shardsUsed[collection].size() &&
+              "all" == *_shardsUsed[collection].begin()) {
+            _shardsUsed[collection].clear();
+          }
           _shardsUsed[collection].emplace(shardId);
         }
         break;

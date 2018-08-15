@@ -31,7 +31,11 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var db = internal.db;
-const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } };
+const disableSingleDocOp = {
+  optimizer: {
+    rules: [ "-optimize-cluster-single-document-operations"]
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -55,7 +59,9 @@ function ahuacatlShardIdsTestSuite () {
         collection.save({ "value" : i });
       }
 
-      var result = collection.count(true), sum = 0, shards = Object.keys(result);
+      var result = collection.count(true);
+      var sum = 0;
+      var shards = Object.keys(result);
       assertEqual(4, shards.length);
       shards.forEach(function(key) {
         sum += result[key];
@@ -117,7 +123,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
   const allNodesOfTypeAreRestrictedToShard = (nodes, typeName, col) => {
     let relevantNodes = nodes.filter(node => node.type === typeName);
     assertTrue(relevantNodes.length !== 0);
-    return relevantNodes.every(node => col.shards().indexOf(node.restrictedTo) !== -1);
+    return relevantNodes.every(
+        node => col.shards().indexOf(node.restrictedTo) !== -1);
   };
 
   const hasDistributeNode = nodes => {
@@ -127,6 +134,9 @@ function ahuacatlShardIdsOptimizationTestSuite() {
   const validatePlan = (query, nodeType, c) => {
     const plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
     assertFalse(hasDistributeNode(plan.nodes));
+    if (!allNodesOfTypeAreRestrictedToShard(plan.nodes, nodeType, c)) {
+      db._explain(query, {}, disableSingleDocOp);
+    }
     assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, nodeType, c));
   };
 
@@ -148,7 +158,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
     setUp : function () {
       tearDown();
       collection = internal.db._create(cn, { numberOfShards });
-      collectionByKey = internal.db._create(cnKey, { numberOfShards, shardKeys: [shardKey] });
+      collectionByKey = internal.db._create(
+          cnKey, { numberOfShards, shardKeys: [shardKey] });
       let docs = [];
 
       for (let i = 0; i < 100; ++i) {
@@ -200,7 +211,10 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
 
       for (const doc of sample) {
-        const queryKey = `FOR doc IN ${cn} FILTER doc._key == "${doc._key}" RETURN doc`;
+        const queryKey = `
+          FOR doc IN ${cn}
+            FILTER doc._key == "${doc._key}"
+            RETURN doc`;
         validatePlan(queryKey, "IndexNode", collection);
         let res = db._query(queryKey, {}, disableSingleDocOp).toArray();
         assertEqual(1, res.length);
@@ -214,7 +228,10 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       collectionByKey.ensureHashIndex(shardKey);
 
       for (let i = 0; i < 25; ++i) {
-        const query = `FOR doc IN ${cnKey} FILTER doc.${shardKey} == ${i} RETURN doc`;
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i}
+            RETURN doc`;
         validatePlan(query, "IndexNode", collectionByKey);
         let res = db._query(query).toArray();
         assertEqual(4, res.length);
@@ -229,7 +246,10 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       collectionByKey.ensureSkiplist(shardKey);
 
       for (let i = 0; i < 25; ++i) {
-        const query = `FOR doc IN ${cnKey} FILTER doc.${shardKey} == ${i} RETURN doc`;
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i}
+            RETURN doc`;
         validatePlan(query, "IndexNode", collectionByKey);
         let res = db._query(query).toArray();
         assertEqual(4, res.length);
@@ -282,12 +302,62 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    /* Not supported yet
+    testRestrictOnPrimaryAndNonIndexedShardKey : function () {
+      dropIndexes(collectionByKey);
+      let sample = [];
+      for (let i = 0; i < 10; ++i) {
+        sample.push(collectionByKey.any());
+      }
+
+      for (const doc of sample) {
+        const queryKey = `
+          FOR doc IN ${cnKey}
+            FILTER doc._key == "${doc._key}"
+            FILTER doc.${shardKey} == ${doc[shardKey]}
+            RETURN doc`;
+        validatePlan(queryKey, "IndexNode", collectionByKey);
+        let res = db._query(queryKey, {}, disableSingleDocOp).toArray();
+        assertEqual(1, res.length);
+        assertEqual(doc._key, res[0]._key);
+        assertEqual(doc._rev, res[0]._rev);
+      }
+    },
+
+    testRestrictOnPrimaryAndNonIndexedShardKeyJoined : function () {
+      dropIndexes(collectionByKey);
+      let sample = [];
+      for (let i = 0; i < 10; ++i) {
+        sample.push(collectionByKey.any());
+      }
+
+      for (const doc of sample) {
+        const queryKey = `
+          FOR doc IN ${cnKey}
+            FILTER doc._key == "${doc._key}"
+            FILTER doc.${shardKey} == ${doc[shardKey]}
+            FOR joined IN ${cnKey}
+              FILTER joined._key == "${doc._key}"
+              FILTER joined.${shardKey} == ${doc[shardKey]}
+            RETURN [doc, joined]`;
+        validatePlan(queryKey, "IndexNode", collectionByKey);
+        let res = db._query(queryKey, {}, disableSingleDocOp).toArray();
+        assertEqual(1, res.length);
+        assertEqual(doc._key, res[0][0]._key);
+        assertEqual(doc._rev, res[0][0]._rev);
+        assertEqual(doc._key, res[0][1]._key);
+        assertEqual(doc._rev, res[0][1]._rev);
+      }
+    },
+
+    /* Not yet implemented
     testRestrictOnShardKeyNoIndex : function () {
       dropIndexes(collectionByKey);
 
       for (let i = 0; i < 25; ++i) {
-        const query = `FOR doc IN ${cnKey} FILTER doc.${shardKey} == ${i} RETURN doc`;
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i}
+            RETURN doc`;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
         let res = db._query(query).toArray();
         assertEqual(4, res.length);
@@ -295,8 +365,33 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(i, doc.value);
         }
       }
-    }
-    */
+    },
+
+    testRestrictMultipleShardsNoIndex : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i}
+            FOR joined IN ${cnKey}
+              FILTER joined.${shardKey} == ${i % 5}
+              FILTER joined.joinValue == doc.joinValue
+            RETURN [doc, joined]
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let res = db._query(query).toArray();
+        // we find 4 in first Loop, and 4 joins each
+        assertEqual(16, res.length);
+        for (let [doc, joined] of res) {
+          assertEqual(i, doc.value);
+          assertEqual(i % 5, joined.value);
+          assertEqual(doc.joinValue, joined.joinValue);
+        }
+      }
+    },*/
+
   };
 };
 
