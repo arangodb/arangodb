@@ -112,6 +112,36 @@ included in the list of attribute paths for the index:
 | a, b, c   | a, b      | not allowed |
 | a, b, c   | a, b, c   |     allowed |
 
+Sharding strategy
+-----------------
+
+strategy to use for the collection. Since ArangoDB 3.4 there are
+different sharding strategies to select from when creating a new 
+collection. The selected *shardingStrategy* value will remain
+fixed for the collection and cannot be changed afterwards. This is
+important to make the collection keep its sharding settings and
+always find documents already distributed to shards using the same
+initial sharding algorithm.
+
+The available sharding strategies are:
+- `community-compat`: default sharding used by ArangoDB community
+  versions before ArangoDB 3.4
+- `enterprise-compat`: default sharding used by ArangoDB enterprise
+  versions before ArangoDB 3.4
+- `enterprise-smart-edge-compat`: default sharding used by smart edge
+  collections in ArangoDB enterprise versions before ArangoDB 3.4
+- `hash`: default sharding used by ArangoDB 3.4 for new collections
+  (excluding smart edge collections)
+- `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
+  for new smart edge collections
+
+If no sharding strategy is specified, the default will be `hash` for
+all collections, and `enterprise-hash-smart-edge` for all smart edge
+collections (requires the *Enterprise Edition* of ArangoDB). 
+Manually overriding the sharding strategy does not yet provide a 
+benefit, but it may later in case other sharding strategies are added.
+
+
 Moving/Rebalancing _shards_
 ---------------------------
 

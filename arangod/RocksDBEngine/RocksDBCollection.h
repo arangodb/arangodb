@@ -283,8 +283,8 @@ inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
   return rv;
 }
 
-inline RocksDBCollection* toRocksDBCollection(LogicalCollection* logical) {
-  auto phys = logical->getPhysical();
+inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
+  auto phys = logical.getPhysical();
   TRI_ASSERT(phys != nullptr);
   return toRocksDBCollection(phys);
 }

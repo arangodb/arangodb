@@ -123,7 +123,7 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>>
     RocksDBEngine::_recoveryHelpers;
 
 // create the storage engine
-RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
+RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(
         server,
         EngineName,
@@ -155,7 +155,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
 
-  server->addFeature(new RocksDBRecoveryManager(server));
+  server.addFeature(new RocksDBRecoveryManager(server));
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
@@ -1194,8 +1194,10 @@ arangodb::Result RocksDBEngine::dropCollection(
     TRI_vocbase_t& vocbase,
     LogicalCollection& collection
 ) {
-  auto* coll = toRocksDBCollection(collection.getPhysical());
-  uint64_t const numberDocuments = coll->numberDocuments();
+  auto* coll = toRocksDBCollection(collection);
+  const bool prefix_same_as_start = true;
+  const bool rangeDelete = coll->numberDocuments() >= 32 * 1024;
+  
   rocksdb::WriteOptions wo;
 
   // If we get here the collection is safe to drop.
@@ -1218,15 +1220,13 @@ arangodb::Result RocksDBEngine::dropCollection(
   TRI_ASSERT(collection.status() == TRI_VOC_COL_STATUS_DELETED);
 
   // Prepare collection remove batch
+  rocksdb::WriteBatch batch;
   RocksDBLogValue logValue = RocksDBLogValue::CollectionDrop(
     vocbase.id(), collection.id(), StringRef(collection.guid())
   );
-  rocksdb::WriteBatch batch;
-
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
-
   key.constructCollection(vocbase.id(), collection.id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
@@ -1253,7 +1253,8 @@ arangodb::Result RocksDBEngine::dropCollection(
   // delete documents
   RocksDBKeyBounds bounds =
       RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  auto result = rocksutils::removeLargeRange(_db, bounds, true);
+  auto result = rocksutils::removeLargeRange(_db, bounds, prefix_same_as_start,
+                                             rangeDelete);
 
   if (result.fail()) {
     // We try to remove all documents.
@@ -1296,7 +1297,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // amount of documents. otherwise don't run compaction, because it will
   // slow things down a lot, especially during tests that create/drop LOTS
   // of collections
-  if (numberDocuments >= 16384) {
+  if (rangeDelete) {
     coll->compact();
   }
 
@@ -1677,7 +1678,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   Result res;
   rocksdb::WriteOptions wo;
 
-  // remove views
+  // remove view definitions
   iterateBounds(RocksDBKeyBounds::DatabaseViews(id),
                 [&](rocksdb::Iterator* it) {
     RocksDBKey key(it->key());
@@ -1701,6 +1702,12 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   iterateBounds(bounds, [&](rocksdb::Iterator* it) {
     RocksDBKey key(it->key());
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
+    
+    const uint64_t objectId =
+    basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
+    const auto cnt = _settingsManager->loadCounter(objectId);
+    const uint64_t numberDocuments = cnt.added() - cnt.removed();
+    const bool rangeDelete = numberDocuments >= 32 * 1024;
 
     // remove indexes
     VPackSlice indexes = value.slice().get("indexes");
@@ -1714,11 +1721,13 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         bool unique = basics::VelocyPackHelper::getBooleanValue(
           it, StaticStrings::IndexUnique.c_str(), false
         );
-        bool prefix_same_as_start = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
+        
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
-
-        res = rocksutils::removeLargeRange(_db, bounds, prefix_same_as_start);
+        // edge index drop fails otherwise
+        bool prefix_same_as_start = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
+        res = rocksutils::removeLargeRange(_db, bounds, prefix_same_as_start,
+                                           rangeDelete);
         if (res.fail()) {
           return;
         }
@@ -1730,12 +1739,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
       }
     }
+    
 
-    uint64_t objectId =
-        basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
-    res = rocksutils::removeLargeRange(_db, bounds, true);
+    res = rocksutils::removeLargeRange(_db, bounds, true, rangeDelete);
     if (res.fail()) {
       return;
     }
@@ -1757,6 +1765,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     return res;
   }
 
+  
+  // remove database meta-data
   RocksDBKey key;
   key.constructDatabase(id);
   res = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),

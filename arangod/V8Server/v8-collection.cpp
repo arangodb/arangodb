@@ -2354,6 +2354,7 @@ static void JS_TruncateVocbaseCol(
     ctx, *collection, AccessMode::Type::EXCLUSIVE
   );
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
   Result res = trx.begin();
 
   if (!res.ok()) {
