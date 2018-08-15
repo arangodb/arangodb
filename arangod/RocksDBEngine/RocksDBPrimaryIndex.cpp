@@ -193,7 +193,8 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                                arangodb::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
-  auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
+
+  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
     
   bool lockTimeout = false;
   if (useCache()) {
@@ -214,10 +215,6 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  auto options = mthds->readOptions();  // intentional copy
-  options.fill_cache = PrimaryIndexFillBlockCache;
-  TRI_ASSERT(options.snapshot != nullptr);
-
   arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
   if (!r.ok()) {
     return LocalDocumentId();
@@ -243,7 +240,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     }
   }
 
-  return LocalDocumentId(RocksDBValue::revisionId(value));
+  return RocksDBValue::documentId(value);
 }
 
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
@@ -254,7 +251,9 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(documentId.id());
+
+  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
+  auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
   if (mthd->Exists(_cf, key.ref())) {
     std::string existingId(slice.get(StaticStrings::KeyString).copyString());
@@ -284,7 +283,9 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId.id());
+ 
+  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
+  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
 
   TRI_ASSERT(mthd->Exists(_cf, key.ref()));
   blackListKey(key->string().data(),

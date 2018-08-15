@@ -466,8 +466,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   // We also hold the lock.
   // Create it
 
-  idx =
-      idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
   TRI_ASSERT(idx != nullptr);
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
@@ -546,12 +545,12 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-  TRI_ASSERT(newIdx != nullptr);
+  if (newIdx == nullptr) {
+    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+  }
 
   auto const id = newIdx->id();
-
   TRI_UpdateTickServer(id);
-
   for (auto& it : _indexes) {
     if (it->id() == id) {
       // index already exists
@@ -669,12 +668,6 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
       _logicalCollection, trx, mdr, primaryIndex()));
 }
 
-std::unique_ptr<IndexIterator> RocksDBCollection::getSortedAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) const {
-  return std::unique_ptr<RocksDBSortedAllIterator>(new RocksDBSortedAllIterator(
-      _logicalCollection, trx, mdr, primaryIndex()));
-}
-
 void RocksDBCollection::invokeOnAllElements(
     transaction::Methods* trx,
     std::function<bool(LocalDocumentId const&)> callback) {
@@ -705,7 +698,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
   rocksdb::Comparator const* cmp =
       RocksDBColumnFamily::documents()->GetComparator();
-  rocksdb::ReadOptions ro = mthd->readOptions();
+  rocksdb::ReadOptions ro = mthd->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
 
@@ -718,17 +711,21 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    LocalDocumentId docId(RocksDBKey::revisionId(RocksDBEntryType::Document, iter->key()));
     VPackSlice doc = VPackSlice(iter->value().data());
     TRI_ASSERT(doc.isObject());
 
-    VPackSlice key = doc.get(StaticStrings::KeyString);
+    VPackSlice key;
+    TRI_voc_rid_t rid = 0;
+    transaction::helpers::extractKeyAndRevFromDocument(doc, key, rid);
     TRI_ASSERT(key.isString());
+    TRI_ASSERT(rid != 0);
 
     blackListKey(iter->key().data(), static_cast<uint32_t>(iter->key().size()));
+    LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
 
     state->prepareOperation(_logicalCollection->cid(), docId.id(),
                             StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    
     auto res = removeDocument(trx, docId, doc, options, false);
     if (res.fail()) {
       // Failed to remove document in truncate.
@@ -946,9 +943,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                   trx->resolver()->getCollectionNameCluster(
-                                       _logicalCollection->planId()),
+    if (arangodb::shardKeysChanged(_logicalCollection,
                                    oldDoc, builder->slice(), false)) {
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
@@ -1049,9 +1044,7 @@ Result RocksDBCollection::replace(
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                   trx->resolver()->getCollectionNameCluster(
-                                       _logicalCollection->planId()),
+    if (arangodb::shardKeysChanged(_logicalCollection,
                                    oldDoc, builder->slice(), false)) {
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
@@ -1455,7 +1448,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 
   /*LOG_TOPIC(ERR, Logger::FIXME)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+      << " seq: " << mthd->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
   RocksDBOperationResult resInner;
@@ -1627,7 +1620,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
     mdr.reset();
   }
@@ -1689,7 +1682,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
   }
   return res;

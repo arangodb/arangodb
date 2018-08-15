@@ -218,5 +218,5 @@ exports.jsonml2xml = function (jsonml, html = false, indentLevel = 0) {
 };
 
 exports.isZipBuffer = function (buffer) {
-  return buffer instanceof Buffer && buffer.utf8Slice(0, 4) === 'PK\u0003\u0004';
+  return buffer instanceof Buffer && buffer.length >= 4 && buffer.utf8Slice(0, 4) === 'PK\u0003\u0004';
 };

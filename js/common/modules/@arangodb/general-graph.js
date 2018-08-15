@@ -320,10 +320,18 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // / internal helper to sort a graph's edge definitions
 // //////////////////////////////////////////////////////////////////////////////
 
-var sortEdgeDefinition = function (edgeDefinition) {
-  edgeDefinition.from = edgeDefinition.from.sort();
-  edgeDefinition.to = edgeDefinition.to.sort();
+var sortEdgeDefinitionInplace = function (edgeDefinition) {
+  edgeDefinition.from.sort();
+  edgeDefinition.to.sort();
   return edgeDefinition;
+};
+
+var sortEdgeDefinition = function (edgeDefinition) {
+  return {
+    collection: edgeDefinition.collection,
+    from: edgeDefinition.from.slice().sort(),
+    to: edgeDefinition.to.slice().sort(),
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -599,7 +607,7 @@ var checkROPermission = function(c) {
   let user = users.currentUser();
   if (user) {
     let p = users.permission(user, db._name(), c);
-    var err = new ArangoError();    
+    var err = new ArangoError();
     if (p === 'none') {
       //print(`Denied ${user} access to ${db._name()}/${c}`);
       err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
@@ -728,6 +736,13 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
   return result;
 };
 
+const edgeDefinitionsEqual = function (leftEdgeDef, rightEdgeDef) {
+  leftEdgeDef = sortEdgeDefinition(leftEdgeDef);
+  rightEdgeDef = sortEdgeDefinition(rightEdgeDef);
+  const stringify = obj => JSON.stringify(obj, Object.keys(obj).sort());
+  return stringify(leftEdgeDef) === stringify(rightEdgeDef);
+};
+
 // @brief Class Graph. Defines a graph in the Database.
 class Graph {
   constructor (info) {
@@ -776,7 +791,7 @@ class Graph {
 
     // Create Hidden Functions
     createHiddenProperty(this, '__updateBindCollections', updateBindCollections);
-    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinition);
+    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinitionInplace);
     updateBindCollections(self);
   }
 
@@ -888,9 +903,9 @@ class Graph {
     options = options || {};
     var query = `
       ${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, 'start')}
-      FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || 'ANY'} start 
+      FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || 'ANY'} start
       ${buildEdgeCollectionRestriction(options.edgeCollectionRestriction, bindVars, this)}
-      ${buildFilter(options.edgeExamples, bindVars, 'e')} 
+      ${buildFilter(options.edgeExamples, bindVars, 'e')}
       RETURN DISTINCT ${options.includeData === true ? 'e' : 'e._id'}`;
     return db._query(query, bindVars).toArray();
   }
@@ -907,8 +922,8 @@ class Graph {
       }
     }
     var bindVars = {};
-    var query = `${transformExampleToAQL({}, Array.isArray(options.vertexCollectionRestriction) && options.vertexCollectionRestriction.length > 0 ? options.vertexCollectionRestriction : Object.keys(this.__vertexCollections), bindVars, 'start')} 
-    ${buildFilter(vertexExample, bindVars, 'start')} 
+    var query = `${transformExampleToAQL({}, Array.isArray(options.vertexCollectionRestriction) && options.vertexCollectionRestriction.length > 0 ? options.vertexCollectionRestriction : Object.keys(this.__vertexCollections), bindVars, 'start')}
+    ${buildFilter(vertexExample, bindVars, 'start')}
     RETURN DISTINCT start`;
     return db._query(query, bindVars).toArray();
   }
@@ -1032,20 +1047,20 @@ class Graph {
       ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, 'left')}
         LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || 'ANY'} left
           ${buildEdgeCollectionRestriction(optionsVertex1.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"} 
-          ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''} 
+          OPTIONS {bfs: true, uniqueVertices: "global"}
+          ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
         ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, 'right')}
           FILTER right != left
           LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || 'ANY'} right
           ${buildEdgeCollectionRestriction(optionsVertex2.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"} 
-          ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''} 
+          OPTIONS {bfs: true, uniqueVertices: "global"}
+          ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
           LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)
           FILTER LENGTH(neighbors) > 0 `;
     if (optionsVertex1.includeData === true || optionsVertex2.includeData === true) {
-      query += `RETURN {left : left, right: right, neighbors: neighbors}`;
+      query += `RETURN {left : left._id, right: right._id, neighbors: neighbors}`;
     } else {
       query += `RETURN {left : left._id, right: right._id, neighbors: neighbors[*]._id}`;
     }
@@ -1553,7 +1568,7 @@ class Graph {
 // //////////////////////////////////////////////////////////////////////////////
 
   _extendEdgeDefinitions (edgeDefinition) {
-    edgeDefinition = sortEdgeDefinition(edgeDefinition);
+    sortEdgeDefinitionInplace(edgeDefinition);
     var self = this;
     var err;
     // check if edgeCollection not already used
@@ -1573,7 +1588,7 @@ class Graph {
           function (sGED) {
             var col = sGED.collection;
             if (col === eC) {
-              if (JSON.stringify(sGED) !== JSON.stringify(edgeDefinition)) {
+              if (!edgeDefinitionsEqual(sGED, edgeDefinition)) {
                 err = new ArangoError();
                 err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
                 err.errorMessage = col + ' ' +
@@ -1627,7 +1642,7 @@ class Graph {
 // //////////////////////////////////////////////////////////////////////////////
 
   _editEdgeDefinitions (edgeDefinition) {
-    edgeDefinition = sortEdgeDefinition(edgeDefinition);
+    sortEdgeDefinitionInplace(edgeDefinition);
     var self = this;
 
     // check, if in graphs edge definition
@@ -1836,15 +1851,15 @@ class Graph {
       ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, 'left')}
         LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || 'ANY'} left
           ${buildEdgeCollectionRestriction(optionsVertex1.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"} 
-          ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''} 
+          OPTIONS {bfs: true, uniqueVertices: "global"}
+          ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
         ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, 'right')}
           FILTER right != left
           LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || 'ANY'} right
           ${buildEdgeCollectionRestriction(optionsVertex2.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"} 
-          ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''} 
+          OPTIONS {bfs: true, uniqueVertices: "global"}
+          ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
           LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)
           FILTER LENGTH(neighbors) > 0 `;
@@ -2036,7 +2051,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
         (sGED) => {
           var col = sGED.collection;
           if (tmpCollections.indexOf(col) !== -1) {
-            if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
+            if (!edgeDefinitionsEqual(sGED, tmpEdgeDefinitions[col])) {
               let err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col + ' ' +
@@ -2073,12 +2088,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     }
   );
 
-  edgeDefinitions.forEach(
-    (eD, index) => {
-      var tmp = sortEdgeDefinition(eD);
-      edgeDefinitions[index] = tmp;
-    }
-  );
+  edgeDefinitions.forEach(sortEdgeDefinitionInplace);
   orphanCollections = orphanCollections.sort();
 
   var data = gdb.save({

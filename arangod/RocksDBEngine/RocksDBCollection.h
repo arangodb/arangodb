@@ -112,9 +112,6 @@ class RocksDBCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
 
-  std::unique_ptr<IndexIterator> getSortedAllIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const;
-
   void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback) override;

@@ -39,6 +39,7 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "Transaction/Helpers.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/ticks.h"
 
@@ -589,7 +590,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     //          - databases
 
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      storeMaxHLC(RocksDBKey::revisionId(RocksDBEntryType::Document, key));
+      storeMaxHLC(RocksDBKey::documentId(key).id());
       storeLastKeyValue(RocksDBKey::objectId(key),
                         RocksDBValue::keyValue(value));
     } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
@@ -641,14 +642,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     updateMaxTick(column_family_id, key, value);
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      uint64_t revisionId =
-          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
         it->second._sequenceNum = currentSeqNum;
         it->second._added++;
-        it->second._revisionId = revisionId;
+        it->second._revisionId = transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
       }
     } else {
       // We have to adjust the estimate with an insert
@@ -677,14 +676,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
                            const rocksdb::Slice& key) override {
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      uint64_t revisionId =
-          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
         it->second._sequenceNum = currentSeqNum;
         it->second._removed++;
-        it->second._revisionId = revisionId;
       }
     } else {
       // We have to adjust the estimate with an remove

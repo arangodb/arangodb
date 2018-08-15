@@ -57,6 +57,8 @@ function GeneralGraphCreationSuite() {
   var vn3 = "UnitTestVertices3";
   var vn4 = "UnitTestVertices4";
   var gn = "UnitTestGraph";
+  var gn1 = "UnitTestGraph1";
+  var gn2 = "UnitTestGraph2";
   var edgeDef = graph._edgeDefinitions(
     graph._relation(rn, [vn1], [vn1]),
     graph._relation(rn1,
@@ -110,6 +112,12 @@ function GeneralGraphCreationSuite() {
       try {
         graph._drop(gN2, true);
       } catch(ignore) {
+      }
+      if (db._collection("_graphs").exists(gn1)) {
+        db._collection("_graphs").remove(gn1);
+      }
+      if (db._collection("_graphs").exists(gn2)) {
+        db._collection("_graphs").remove(gn2);
       }
     },
 
@@ -465,6 +473,64 @@ function GeneralGraphCreationSuite() {
         assertEqual(err.errorNum, ERRORS.ERROR_GRAPH_DUPLICATE.code);
         assertEqual(err.errorMessage, ERRORS.ERROR_GRAPH_DUPLICATE.message);
       }
+    },
+
+    // Graphs may have overlapping edge collections, as long as their
+    // definitions are equal.
+    // This is also a regression test for a broken comparison of edge
+    // definitions, which did rely on the edge definition object's key order
+    // and thus sometimes reported spurious inequality.
+    test_createGraphsWithOverlappingEdgeDefinitions: function () {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
+      }
+      // try to provoke differently ordered keys in
+      // edge definitions that are actually equal.
+      const edgeDefs1 = [
+        {
+          collection: rn,
+          from: [vn1],
+          to: [vn1],
+        },
+      ];
+      const edgeDefs2 = [
+        {
+          to: [vn1],
+          from: [vn1],
+          collection: rn,
+        },
+      ];
+      graph._create(gn1, edgeDefs1);
+      graph._create(gn2, edgeDefs2);
+    },
+
+    // Graphs may have overlapping edge collections, as long as their
+    // definitions are equal.
+    // This is also a regression test for a broken comparison of edge
+    // definitions, which did rely on the edge definition's from and to
+    // arrays to be ordered.
+    test_createGraphsWithLargeOverlappingEdgeDefinitions: function () {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
+      }
+      // try to provoke differently ordered from and to arrays in
+      // edge definitions that are actually equal.
+      const edgeDefs1 = [
+        {
+          collection: rn,
+          from: [vn1, vn2, vn3, vn4],
+          to: [vn2, vn1, vn4, vn3],
+        },
+      ];
+      const edgeDefs2 = [
+        {
+          collection: rn,
+          from: [vn4, vn3, vn2, vn1],
+          to: [vn3, vn4, vn1, vn2],
+        },
+      ];
+      graph._create(gn1, edgeDefs1);
+      graph._create(gn2, edgeDefs2);
     },
 
     test_get_graph : function () {

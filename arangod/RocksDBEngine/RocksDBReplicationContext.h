@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
 #include "Utils/DatabaseGuard.h"
@@ -64,7 +65,7 @@ class RocksDBReplicationContext {
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
-  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
+  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier, bool sorted);
 
   // returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
@@ -115,7 +116,7 @@ class RocksDBReplicationContext {
   LogicalCollection* _collection;
   
   /// @brief Iterator on collection
-  std::unique_ptr<IndexIterator> _iter;
+  std::unique_ptr<RocksDBGenericIterator> _iter;
 
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
