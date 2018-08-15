@@ -2320,11 +2320,12 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-  TRI_ASSERT(newIdx != nullptr);
-
-  TRI_UpdateTickServer(newIdx->id());
-
+  if (newIdx == nullptr) {
+    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+  }
+  
   auto const id = newIdx->id();
+  TRI_UpdateTickServer(id);
   for (auto& it : _indexes) {
     if (it->id() == id) {
       // index already exists

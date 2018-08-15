@@ -42,6 +42,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Hints.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -623,6 +624,47 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   return guard.collection()->updateProperties(data, doSync);
 }
 
+
+/// @brief truncate a collections. Assumes no trx are running
+Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slice) {
+  if (!slice.isObject()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "collection slice is no object");
+  }
+  
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  auto* col = resolveCollection(vocbase, slice);
+  if (col == nullptr) {
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  if (!_ongoingTransactions.empty()) {
+    const char* msg = "Encountered truncate but still have ongoing transactions";
+    LOG_TOPIC(ERR, Logger::REPLICATION) << msg;
+    return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, msg);
+  }
+  
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
+                                  col->cid(), AccessMode::Type::EXCLUSIVE);
+  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  Result res = trx.begin();
+  if (!res.ok()) {
+    return res;
+  }
+  
+  OperationOptions opts;
+  OperationResult opRes = trx.truncate(col->name(), opts);
+  
+  if (opRes.fail()) {
+    return opRes.result;
+  }
+  
+  return trx.finish(opRes.result);
+}
+
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
                                      TRI_voc_tick_t firstRegularTick) {
@@ -708,6 +750,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   else if (type == REPLICATION_COLLECTION_CHANGE) {
     return changeCollection(slice);
+  } else if (type == REPLICATION_COLLECTION_TRUNCATE) {
+    return truncateCollection(slice);
   }
 
   else if (type == REPLICATION_INDEX_CREATE) {

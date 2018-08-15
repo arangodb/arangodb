@@ -79,7 +79,7 @@ add_definitions("-DARANGODB_STANDALONE_ASIO=0")
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")
 if (NOT DEFINED ARANGODB_VERSION_REVISION)
-  set(ARANGODB_VERSION_REVISION   "13")
+  set(ARANGODB_VERSION_REVISION   "14")
 endif()
 
 set(ARANGODB_PACKAGE_REVISION   "1")
@@ -799,7 +799,7 @@ endif()
 ## OPENSSL
 ################################################################################
 
-# Some special stuff for Mac OSX and homebrew as a preparation for the 
+# Some special stuff for Mac OSX and homebrew as a preparation for the
 # generic FindOpenSSL script:
 if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
   message("searching openssl with brew (${BREW})")
