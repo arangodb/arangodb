@@ -50,7 +50,7 @@ struct Options;
 class ClusterEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer*);
+  explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e) { _actualEngine = e; }

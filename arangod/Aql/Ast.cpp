@@ -1649,6 +1649,9 @@ void Ast::injectBindParameters(
         TRI_ASSERT(graphNode->isStringValue());
         std::string graphName = graphNode->getString();
         auto graph = _query->lookupGraphByName(graphName);
+        if (graph == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+        }
         TRI_ASSERT(graph != nullptr);
 
         auto vColls = graph->vertexCollections();
@@ -1686,6 +1689,9 @@ void Ast::injectBindParameters(
         TRI_ASSERT(graphNode->isStringValue());
         std::string graphName = graphNode->getString();
         auto graph = _query->lookupGraphByName(graphName);
+        if (graph == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+        }
         TRI_ASSERT(graph != nullptr);
         auto vColls = graph->vertexCollections();
 

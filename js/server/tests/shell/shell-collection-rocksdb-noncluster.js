@@ -60,9 +60,6 @@ function CollectionSuite() {
     },
     
     testCreateWithInvalidIndexes2 : function () {
-      let cn = "example";
-
-      db._drop(cn);
       try {
         db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
         fail();
@@ -71,6 +68,44 @@ function CollectionSuite() {
       }
 
       assertNull(db._collection(cn));
+    },
+
+    testTruncateSelectivityEstimates : function () {
+      let c = db._create(cn);
+      c.ensureHashIndex("value");
+      c.ensureSkiplist("value2");
+
+      // add enough docs to trigger RangeDelete in truncate
+      const docs = [];
+      for (let i = 0; i < 35000; ++i) {
+        docs.push({value: i % 250, value2: i % 100});
+      }
+      c.save(docs); 
+
+      c.truncate();
+      assertEqual(c.count(), 0);
+      assertEqual(c.all().toArray().length, 0);
+
+      // Test Selectivity Estimates
+      {
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
+        let indexes = c.getIndexes(true);
+        for (let i of indexes) {
+          switch (i.type) {
+            case 'primary':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            case 'hash':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            case 'skiplist':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            default:
+              fail();
+          }
+        }
+      }
     }
 
   };
