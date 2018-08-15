@@ -50,7 +50,7 @@ struct Options;
 class ClusterEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer*);
+  explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e) { _actualEngine = e; }
@@ -300,9 +300,6 @@ class ClusterEngine final : public StorageEngine {
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
-
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules() override;

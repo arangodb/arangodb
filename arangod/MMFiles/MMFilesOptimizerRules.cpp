@@ -104,12 +104,6 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
     ExecutionNode* collectionNode = nullptr;
 
     while (current != nullptr) {
-      if (current->canThrow()) {
-        // we shouldn't bypass a node that can throw
-        collectionNode = nullptr;
-        break;
-      }
-
       switch (current->getType()) {
         case EN::SORT:
         case EN::COLLECT:
@@ -161,12 +155,9 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
       // set the random iteration flag for the EnumerateCollectionNode
       ExecutionNode::castTo<EnumerateCollectionNode*>(collectionNode)->setRandom();
 
-      // remove the SortNode
-      // note: the CalculationNode will be removed by
-      // "remove-unnecessary-calculations"
-      // rule if not used
-
+      // remove the SortNode and the CalculationNode
       plan->unlinkNode(n);
+      plan->unlinkNode(setter);
       modified = true;
     }
   }

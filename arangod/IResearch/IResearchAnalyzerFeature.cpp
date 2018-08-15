@@ -224,7 +224,6 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     "TOKENS", // name
     ".,.", // positional arguments (data,analyzer)
     true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
-    true, // can throw
     true, // can be run on server
     aqlFnTokens // function implementation
   });
@@ -400,10 +399,10 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
 
 std::string const& IResearchAnalyzerFeature::AnalyzerPool::name() const noexcept {
   return _name;
-};
+}
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
-    arangodb::application_features::ApplicationServer* server
+    arangodb::application_features::ApplicationServer& server
 ): ApplicationFeature(server, IResearchAnalyzerFeature::name()),
   _analyzers(getStaticAnalyzers()), // load static analyzers
   _started(false) {

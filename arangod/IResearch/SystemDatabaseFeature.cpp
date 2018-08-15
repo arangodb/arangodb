@@ -42,7 +42,7 @@ void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
 }
 
 SystemDatabaseFeature::SystemDatabaseFeature(
-    application_features::ApplicationServer* server,
+    arangodb::application_features::ApplicationServer& server,
     TRI_vocbase_t* vocbase /*= nullptr*/
 ): ApplicationFeature(server, SystemDatabaseFeature::name()),
    _vocbase(vocbase) {

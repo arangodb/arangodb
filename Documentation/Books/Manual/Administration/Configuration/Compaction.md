@@ -20,7 +20,7 @@ these documents are marked as 'dead' with a deletion marker.
 
 Over time the number of dead documents may rise, and we don't want to use the previously mentioned
 resources, plus the disk space should be given back to the system.
-Thus several journal files can be combined to one, ommitting the dead documents.
+Thus several journal files can be combined to one, omitting the dead documents.
 
 Combining several of these data files into one is called compaction. The compaction process reads
 the alive documents from the original data files, and writes them into new data file.
