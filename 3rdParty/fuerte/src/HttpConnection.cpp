@@ -512,6 +512,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
       FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
       auto s = self.lock();
       if (s) {
+        // connection object still alive
         restartConnection(ErrorCondition::Timeout);
       }
     }

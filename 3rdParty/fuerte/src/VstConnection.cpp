@@ -51,6 +51,11 @@ VstConnection<ST>::VstConnection(
       _loopState(0),
       _writeQueue(1024){}
 
+template<SocketType ST>
+VstConnection<ST>::~VstConnection() {
+  shutdownConnection(ErrorCondition::Canceled);
+}
+
 static std::atomic<MessageID> vstMessageId(1);
 // sendRequest prepares a RequestItem for the given parameters
 // and adds it to the send queue.
@@ -92,7 +97,6 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
 // Activate this connection.
 template <SocketType ST>
 void VstConnection<ST>::startConnection() {
-  
   // start connecting only if state is disconnected
   Connection::State exp = Connection::State::Disconnected;
   if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
@@ -121,7 +125,11 @@ void VstConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   _state.store(State::Disconnected, std::memory_order_release);
   
   // cancel timeouts
-  _timeout.cancel();
+  try {
+    _timeout.cancel();
+  } catch (...) {
+    // cancel() may throw
+  }
   
   // Close socket
   _protocol.shutdown();
@@ -595,6 +603,7 @@ void VstConnection<ST>::setTimeout() {
     }
     return true;
   });
+
   if (waiting == 0) {
     _timeout.cancel();
     return;
@@ -604,9 +613,15 @@ void VstConnection<ST>::setTimeout() {
   }
   
   _timeout.expires_at(expires);
-  auto self = shared_from_this();
+  auto self = weak_from_this();
   _timeout.async_wait([this, self](asio_ns::error_code const& ec) {
     if (ec) {  // was canceled
+      return;
+    }
+      
+    // check if connection object is still alive
+    auto s = self.lock();
+    if (!s) {
       return;
     }
 
