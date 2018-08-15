@@ -22,14 +22,15 @@ Most modern CPU's have builtin support for hardware AES encryption, which makes 
 
 ## Limitations
 
-Encryption feature has the following limitations:
+The encryption feature has the following limitations:
+
 - Encrypting a single collection is not supported, this means that all the databases are encrypted.
 - Database cannot be encrypted at runtime.
 - The Encryption feature requires the RocksDB storage engine.
 
 ## Encryption keys 
 
-The Encryption feature of ArangoDB requires a single 32-byte key per server.
+The encryption feature of ArangoDB requires a single 32-byte key per server.
 It is recommended to use a different key for each server (when operating in a cluster configuration).
 Make sure to protect these keys! 
 
