@@ -30,12 +30,15 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
+namespace arangodb {
+
+MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
 
   setOptional(true);
@@ -76,3 +79,4 @@ void MMFilesWalRecoveryFeature::start() {
   databaseFeature->recoveryDone();
 }
 
+} // arangodb

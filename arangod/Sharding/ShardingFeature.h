@@ -31,29 +31,32 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+
 class ShardingInfo;
 
 class ShardingFeature : public application_features::ApplicationFeature {
  public:
-  explicit ShardingFeature(application_features::ApplicationServer*);
+  explicit ShardingFeature(application_features::ApplicationServer& server);
 
- public:
   void prepare() override final;
   void start() override final;
 
-  void registerFactory(std::string const& name, 
+  void registerFactory(std::string const& name,
                        ShardingStrategy::FactoryFunction const&);
 
   std::unique_ptr<ShardingStrategy> fromVelocyPack(arangodb::velocypack::Slice slice, ShardingInfo* sharding);
-  
+
   std::unique_ptr<ShardingStrategy> create(std::string const& name, ShardingInfo* sharding);
+
+  std::string getDefaultShardingStrategyForNewCollection(
+      VPackSlice const& properties) const;
 
  private:
   std::string getDefaultShardingStrategy(ShardingInfo const* sharding) const;
 
- private:
   std::unordered_map<std::string, ShardingStrategy::FactoryFunction> _factories;
 };
+
 }
 
 #endif
