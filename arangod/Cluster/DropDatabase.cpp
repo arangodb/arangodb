@@ -51,6 +51,8 @@ DropDatabase::~DropDatabase() {};
 
 bool DropDatabase::first() {
 
+  ActionBase::first();
+  
   auto const& database = _description.get(DATABASE);
   auto* systemVocbase =
     ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
@@ -62,23 +64,25 @@ bool DropDatabase::first() {
   try {
 
     DatabaseGuard guard(*systemVocbase);
-
+    
     auto result = Databases::drop(systemVocbase, database);
     if (!result.ok()) {
       _result = result;
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "DropDatabase: dropping database " << database << " failed: "
         << result.errorMessage();
+      fail();
       return false;
     }
 
   } catch (std::exception const& e) {
-    std::string errorMsg( "DropDatabase: failed with exception ");
-    errorMsg += e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    _result = Result(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
+    fail();
     return false;
   }
-
+  
+  complete();
   return false;
+
 }

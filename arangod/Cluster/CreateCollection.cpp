@@ -102,6 +102,8 @@ CreateCollection::~CreateCollection() {};
 
 bool CreateCollection::first() {
 
+  ActionBase::first();
+  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = _description.get(SHARD);
@@ -112,12 +114,13 @@ bool CreateCollection::first() {
     << "creating local shard '" << database << "/" << shard
     << "' for central '" << database << "/" << collection << "'";
 
-
+  
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
     errorMsg += database;
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    fail();
     return false;
   }
 
@@ -173,17 +176,18 @@ bool CreateCollection::first() {
         << "creating local shard '" << database << "/" << shard
         << "' for central '" << database << "/" << collection << "' failed: "
         << _result;
+      fail();
       return false;
     }
 
   } catch (std::exception const& e) { // Guard failed?
-    std::string errorMsg( "CreateCollection: failed with exception ");
-    errorMsg += e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    _result = Result(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
+    fail();
     return false;
   }
-
+    
+  complete();
   return false;
 
 }

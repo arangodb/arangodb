@@ -647,6 +647,7 @@ arangodb::Result SynchronizeShard::synchronise() {
   while(true) {
 
     if (isStopping()) {
+      fail();
       return Result(TRI_ERROR_INTERNAL, "shutting down");
     }
 
@@ -662,6 +663,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         << "synchronizeOneShard: cancelled, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
         << startTimeStr << ", ended " << timepointToString(endTime);
+      fail();
       return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
@@ -688,7 +690,8 @@ arangodb::Result SynchronizeShard::synchronise() {
         << "synchronizeOneShard: already done, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
         << startTimeStr << ", ended " << timepointToString(endTime);
-      return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: canceled");
+      complete();
+      return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -706,10 +709,11 @@ arangodb::Result SynchronizeShard::synchronise() {
       "SynchronizeShard::SynchronizeOneShard: Failed to lookup database ");
     errorMsg += database;
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+    fail();
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
 
-  try {
+  try { 
 
     auto collection = vocbase->lookupCollection(shard);
     if (collection == nullptr) {
@@ -717,6 +721,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         "SynchronizeShard::synchronizeOneShard: Failed to lookup local shard ");
       errorMsg += shard;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+      fail();
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
 
@@ -727,6 +732,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         "SynchronizeShard::synchronizeOneShard: Failed to get a count on leader ");
       errorMsg += shard;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+      fail();
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMsg);
     }
 
@@ -748,7 +754,7 @@ arangodb::Result SynchronizeShard::synchronise() {
             shard << ", " << database << "/" << planId <<", started: " << startTimeStr
                                                            << " ended: " << timepointToString(endTime);
           collection->followers()->setTheLeader(leader);
-
+          complete();
           return Result();
         }
       } catch (...) {}
@@ -762,6 +768,7 @@ arangodb::Result SynchronizeShard::synchronise() {
       // First once without a read transaction:
 
       if (isStopping()) {
+        fail();
         return Result(TRI_ERROR_INTERNAL, "server is shutting down");
       }
 
@@ -818,6 +825,7 @@ arangodb::Result SynchronizeShard::synchronise() {
         LOG_TOPIC(ERR, Logger::MAINTENANCE)
           << "synchronizeOneShard: could not initially synchronize shard " << shard
           << syncRes.errorMessage();
+        fail();
         return syncRes;
 
       } else {
@@ -841,6 +849,7 @@ arangodb::Result SynchronizeShard::synchronise() {
           std::string errorMessage("synchronizeOneShard: Shard ");
           errorMessage += shard + " seems to be gone from leader!";
           LOG_TOPIC(ERR,  Logger::MAINTENANCE) << errorMessage;
+          fail();
           return Result(TRI_ERROR_INTERNAL, errorMessage);
 
         } else {
@@ -917,22 +926,23 @@ arangodb::Result SynchronizeShard::synchronise() {
         << "synchronization of local shard '" << database << "/" << shard
         << "' for central '" << database << "/" << planId << "' failed: "
         << e.what() << timepointToString(endTime);
+      fail();
       return Result (TRI_ERROR_INTERNAL, e.what());
     }
   } catch (std::exception const& e) {
-    std::string errorMsg( "SynchronizeShard: failed with exception ");
-    errorMsg += e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    return Result(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "action " << _description << " failed with exception " << e.what();
+    fail();
+    return Result(TRI_ERROR_INTERNAL, e.what());
   }
-
+  
   // Tell others that we are done:
   auto const endTime = system_clock::now();
   LOG_TOPIC(INFO, Logger::MAINTENANCE)
     << "synchronizeOneShard: done, " << database << "/" << shard << ", "
     << database << "/" << planId << ", started: "
     << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
-
+  complete();
   return Result();
 
 }
@@ -940,6 +950,7 @@ arangodb::Result SynchronizeShard::synchronise() {
 SynchronizeShard::~SynchronizeShard() {};
 
 bool SynchronizeShard::first() {
+  ActionBase::first();
   _result = synchronise();
   return false;
 }
