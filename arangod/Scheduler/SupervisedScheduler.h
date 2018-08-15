@@ -107,10 +107,16 @@ public:
   // All those values are maintained by the supervisor thread.
   // Currently they are set once and for all the same, however a future
   // implementation my alter those values for each thread individually.
+  //
+  // _lastJobStarted is the timepoint when the last job in this thread was started.
+  // _working indicates if the thread is currently processing a job.
+  //    Hence if you want to know, if the thread has a long running job, test for
+  //    _working && (now - _lastJobStarted) > eps
   struct WorkerState {
     uint64_t _queueRetryCount;     // t1
     uint64_t _sleepTimeout_ms;    // t2
-    std::atomic<bool> _stop;
+    std::atomic<bool> _stop, _working;
+    clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
     char padding[40];
 
@@ -123,7 +129,7 @@ public:
 
   size_t _maxNumWorker;
   size_t _numIdleWorker;
-  std::vector<std::shared_ptr<WorkerState>> _workerStates;
+  std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
 
   std::mutex _mutex;
@@ -142,6 +148,7 @@ public:
   void stopOneThread();
 
   void cleanupAbandonedThreads();
+  void sortoutLongRunningThreads();
 
 };
 }

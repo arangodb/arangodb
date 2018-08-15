@@ -89,6 +89,7 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
   _numWorker(0),
   _stopping(false),
   _jobsSubmitted(0),
+  _jobsDequeued(0),
   _jobsDone(0),
   _wakeupQueueLength(5),
   _wakeupTime_ns(1000),
@@ -99,7 +100,6 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads,
   _queue[0].reserve(maxQueueSize);
   _queue[1].reserve(fifo1Size);
   _queue[2].reserve(fifo2Size);
-  _workerStates.reserve(maxThreads);
 }
 
 SupervisedScheduler::~SupervisedScheduler() {}
@@ -223,7 +223,7 @@ void SupervisedScheduler::runWorker()
   }
 
   // copy shared_ptr
-  auto state = _workerStates[id];
+  auto state = _workerStates.back();
 
   state->_sleepTimeout_ms = 20 * (id + 1);
   state->_queueRetryCount = (512 >> id) + 3;
@@ -237,7 +237,10 @@ void SupervisedScheduler::runWorker()
     _jobsDequeued++;
 
     try {
+      state->_lastJobStarted = clock::now();
+      state->_working = true;
       work->_handler();
+      state->_working = false;
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, Logger::THREADS) << "scheduler loop caught exception: "
                                       << ex.what();
@@ -301,13 +304,14 @@ void SupervisedScheduler::runSupervisor()
       stopOneThread();
     }
 
+    cleanupAbandonedThreads();
+    sortoutLongRunningThreads();
+
     std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
     if (_stopping) {
       break ;
     }
-
-    cleanupAbandonedThreads();
 
     _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
   }
@@ -324,7 +328,40 @@ void SupervisedScheduler::cleanupAbandonedThreads() {
       _abandonedWorkerStates.erase(i);
     }
   }
+}
 
+void SupervisedScheduler::sortoutLongRunningThreads() {
+
+  // Detaching a thread always implies starting a new thread. Hence check here
+  // if we can start a new thread.
+
+  auto now = clock::now();
+
+  for (auto i = _workerStates.begin(); i != _workerStates.end(); i++) {
+
+    auto &state = *i;
+
+    if (!state->_working) {
+      continue ;
+    }
+
+    if ((now - state->_lastJobStarted) > std::chrono::seconds(5)) {
+      LOG_TOPIC(ERR, Logger::SUPERVISION) << "Detach long running thread.";
+
+      {
+        std::unique_lock<std::mutex> guard(_mutex);
+        state->_stop = true;
+      }
+
+      // Move that thread to the abandoned thread
+      _abandonedWorkerStates.push_back(std::move(state));
+      _workerStates.erase(i);
+      _numWorker--;
+
+      // and now start another thread!
+      startOneThread();
+    }
+  }
 }
 
 std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork (std::shared_ptr<WorkerState> &state)
@@ -363,14 +400,18 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork (std
 
 void SupervisedScheduler::startOneThread()
 {
-  TRI_ASSERT(_numWorker < _maxNumWorker);
+  //TRI_ASSERT(_numWorker < _maxNumWorker);
+  if (_numWorker + _abandonedWorkerStates.size() >= _maxNumWorker) {
+    return ;  // do not add more threads, than maximum allows
+  }
+
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
   // start a new thread
   _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
   if (!_workerStates.back()->start()) {
     // failed to start a worker
-    _workerStates.pop_back();   // oop_back deletes shared_ptr, which deletes thread
+    _workerStates.pop_back();   // pop_back deletes shared_ptr, which deletes thread
     LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not start additional worker thread";
 
   } else {
