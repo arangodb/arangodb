@@ -2,11 +2,16 @@
 
 ## The DDL configuration
 
-[DDL](https://en.wikipedia.org/wiki/Data_definition_language) is a data definition language or data description language for defining data structures, especially database schemas.
+[DDL](https://en.wikipedia.org/wiki/Data_definition_language) is a data
+definition language or data description language for defining data structures,
+especially database schemas.
 
-All DDL operations on Views can be done via JavaScript or REST calls. The DDL syntax follows the well established ArangoDB guidelines and thus is very similar between JavaScript and REST. This article uses the JavaScript syntax.
+All DDL operations on Views can be done via JavaScript or REST calls. The DDL
+syntax follows the well established ArangoDB guidelines and thus is very
+similar between JavaScript and REST. This article uses the JavaScript syntax.
 
-Assume the following collections were intially defined in a database using the following commands:
+Assume the following collections were initially defined in a database using
+the following commands:
 
 ```js
 c0 = db._create("ExampleCollection0");
@@ -24,11 +29,13 @@ c1.save({ a: "baz", b: "foo", i: 7 });
 ```
 
 ## Creating a View (with default parameters)
+
 ```js
 v0 = db._createView("ExampleView", "arangosearch", {});
 ```
 
 ## Linking created View with a collection and adding indexing parameters
+
 ```js
 v0 = db._view("ExampleView");
 v0.properties({
@@ -65,12 +72,22 @@ v0.properties({
 ```
 
 ## Query data using created View with linked collections
+
 ```js
-db._query("FOR doc IN VIEW ExampleView FILTER PHRASE(doc.text, '型数 据库', 'text_zh') OR STARTS_WITH(doc.b, 'ba') SORT TFIDF(doc) DESC RETURN doc");
+db._query(`FOR doc IN VIEW ExampleView
+  FILTER PHRASE(doc.text, '型数 据库', 'text_zh') OR STARTS_WITH(doc.b, 'ba')
+  SORT TFIDF(doc) DESC
+  RETURN doc`);
 ```
 
 ## Examine query result
-Result of the latter query will include all documents from both linked collections that include `多模 型数` phrase in Chineese at any part of `text` property or `b` property in English that starts with `ba`. Additionally, descendant sorting using [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF) will be applied during a search:
+
+Result of the latter query will include all documents from both linked
+collections that include `多模 型数` phrase in Chinese at any part of `text`
+property or `b` property in English that starts with `ba`. Additionally,
+descendant sorting using [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF)
+will be applied during a search:
+
 ```json
 [
   {

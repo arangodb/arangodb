@@ -54,9 +54,9 @@ e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
 
     FOR doc IN someCollection
       FILTER doc.word IN TOKENS('a quick brown fox', 'text_en')
-      RETRUN doc
+      RETURN doc
 
-Runtime-plugging functionality for analyzers is not avaiable in ArangoDB at this
+Runtime-plugging functionality for analyzers is not available in ArangoDB at this
 point in time, so ArangoDB comes with a few default-initialized analyzers:
 
 * `identity`
