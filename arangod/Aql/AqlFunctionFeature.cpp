@@ -178,6 +178,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SUBSTRING", ".,.|.", true, true, &Functions::Substring});
   add({"CONTAINS", ".,.|.", true, true, &Functions::Contains});
   add({"LIKE", ".,.|.", true, true, &Functions::Like});
+  add({"REGEX_MATCHES", ".,.|.", true, true, &Functions::RegexMatches});
   add({"REGEX_SPLIT", ".,.|.,.", true, true, &Functions::RegexSplit});
   add({"REGEX_TEST", ".,.|.", true, true, &Functions::RegexTest});
   add({"REGEX_REPLACE", ".,.,.|.", true, true, &Functions::RegexReplace});
