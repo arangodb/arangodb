@@ -182,6 +182,23 @@ class ActionBase {
   /// @brief Return Result object contain action specific status
   Result result() const {return _result;}
 
+  /// @brief When object was constructed
+  std::chrono::system_clock::time_point getCreateTime() const
+    {return std::chrono::system_clock::time_point() + _actionCreated.load(); }
+
+  /// @brief When object was first started
+  std::chrono::system_clock::time_point getStartTime() const
+    {return std::chrono::system_clock::time_point() + _actionStarted.load(); }
+
+  /// @brief When object most recently iterated
+  std::chrono::system_clock::time_point getLastStatTime() const
+    {return std::chrono::system_clock::time_point() + _actionLastStat.load(); }
+
+  /// @brief When object finished executing
+  std::chrono::system_clock::time_point getDoneTime() const
+    {return std::chrono::system_clock::time_point() + _actionDone.load(); }
+
+
 protected:
 
   arangodb::MaintenanceFeature& _feature;
