@@ -29,11 +29,11 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class NonceFeature : public application_features::ApplicationFeature {
  public:
-  explicit NonceFeature(application_features::ApplicationServer*);
+  explicit NonceFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
@@ -41,6 +41,7 @@ class NonceFeature : public application_features::ApplicationFeature {
  private:
   uint64_t _size;
 };
+
 }
 
 #endif

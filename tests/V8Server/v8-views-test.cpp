@@ -131,7 +131,7 @@ struct V8ViewsSetup {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  V8ViewsSetup(): server(nullptr, nullptr) {
+  V8ViewsSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     v8Init(); // on-time initialize V8
@@ -140,13 +140,13 @@ struct V8ViewsSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for VocbaseContext
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for LogicalView::create(...)
+    features.emplace_back(new arangodb::AuthenticationFeature(server), false); // required for VocbaseContext
+    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for TRI_vocbase_t::renameView(...)
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t
+    features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for LogicalView::create(...)
 
 #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f: features) {

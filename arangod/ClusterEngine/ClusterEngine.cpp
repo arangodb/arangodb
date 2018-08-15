@@ -65,7 +65,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 // create the storage engine
-ClusterEngine::ClusterEngine(application_features::ApplicationServer* server)
+ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
   : StorageEngine(
       server,
       "Cluster",

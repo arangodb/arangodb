@@ -55,26 +55,24 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(argv[0], "Usage: arangodump [<options>]",
                                     "For more information use:",
                                     BIN_DIRECTORY));
-
     ApplicationServer server(options, BIN_DIRECTORY);
-
     int ret;
 
-    server.addFeature(new application_features::BasicFeaturePhase(&server, true));
-    server.addFeature(new application_features::GreetingsFeaturePhase(&server, true));
+    server.addFeature(new application_features::BasicFeaturePhase(server, true));
+    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
 
-    server.addFeature(new ClientFeature(&server, false));
-    server.addFeature(new ConfigFeature(&server, "arangodump"));
-    server.addFeature(new DumpFeature(&server, ret));
-    server.addFeature(new LoggerFeature(&server, false));
-    server.addFeature(new RandomFeature(&server));
-    server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"Dump"}));
-    server.addFeature(new SslFeature(&server));
-    server.addFeature(new VersionFeature(&server));
+    server.addFeature(new ClientFeature(server, false));
+    server.addFeature(new ConfigFeature(server, "arangodump"));
+    server.addFeature(new DumpFeature(server, ret));
+    server.addFeature(new LoggerFeature(server, false));
+    server.addFeature(new RandomFeature(server));
+    server.addFeature(new ShellColorsFeature(server));
+    server.addFeature(new ShutdownFeature(server, {"Dump"}));
+    server.addFeature(new SslFeature(server));
+    server.addFeature(new VersionFeature(server));
 
 #ifdef USE_ENTERPRISE
-    server.addFeature(new EncryptionFeature(&server));
+    server.addFeature(new EncryptionFeature(server));
 #endif
 
     try {

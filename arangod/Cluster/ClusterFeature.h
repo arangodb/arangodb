@@ -30,15 +30,15 @@
 #include "Cluster/ServerState.h"
 
 namespace arangodb {
+
 class AgencyCallbackRegistry;
 class HeartbeatThread;
 
 class ClusterFeature : public application_features::ApplicationFeature {
  public:
-  explicit ClusterFeature(application_features::ApplicationServer*);
+  explicit ClusterFeature(application_features::ApplicationServer& server);
   ~ClusterFeature();
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -71,7 +71,6 @@ protected:
   bool _createWaitsForSyncReplication = true;
   double _indexCreationTimeout = 3600.0;
 
- private:
   void reportRole(ServerState::RoleEnum);
 
  public:
@@ -103,6 +102,7 @@ protected:
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
 };
+
 }
 
 #endif

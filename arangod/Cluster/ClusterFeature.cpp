@@ -41,7 +41,6 @@
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -57,7 +56,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
     _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
   startsAfter("DatabasePhase");
-    }
+}
 
 ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
@@ -559,6 +558,7 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
   }
 }
 
+<<<<<<< HEAD
 
 void ClusterFeature::syncDBServerStatusQuo() {
   if (_heartbeatThread != nullptr) {
@@ -566,3 +566,6 @@ void ClusterFeature::syncDBServerStatusQuo() {
   }
 }
 
+=======
+} // arangodb
+>>>>>>> 2bc672cebda307e1966e56ebed04683d5d8291d6

@@ -156,7 +156,7 @@ std::string const MMFilesEngine::EngineName("mmfiles");
 std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 
 // create the storage engine
-MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
+MMFilesEngine::MMFilesEngine(application_features::ApplicationServer& server)
     : StorageEngine(
         server,
         EngineName,
@@ -171,10 +171,10 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
   startsAfter("BasicsPhase");
   startsAfter("MMFilesPersistentIndex"); // yes, intentional!
 
-  server->addFeature(new MMFilesWalRecoveryFeature(server));
-  server->addFeature(new MMFilesLogfileManager(server));
-  server->addFeature(new MMFilesPersistentIndexFeature(server));
-  server->addFeature(new MMFilesCompactionFeature(server));
+  server.addFeature(new MMFilesWalRecoveryFeature(server));
+  server.addFeature(new MMFilesLogfileManager(server));
+  server.addFeature(new MMFilesPersistentIndexFeature(server));
+  server.addFeature(new MMFilesCompactionFeature(server));
 }
 
 MMFilesEngine::~MMFilesEngine() {}
