@@ -51,9 +51,10 @@ class TestQueryRegistry: public QueryRegistry {
 
 class TestDatabaseFeature: public DatabaseFeature {
  public:
-  TestDatabaseFeature(application_features::ApplicationServer* server): DatabaseFeature(server) {}; 
+  TestDatabaseFeature(application_features::ApplicationServer& server)
+    : DatabaseFeature(server) {
+  }
 };
-
 
 TEST_CASE("🥑🔐 UserManager", "[authentication]") {
   TestQueryRegistry queryRegistry;

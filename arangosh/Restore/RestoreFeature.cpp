@@ -734,8 +734,10 @@ RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
                                  RestoreFeature::Stats& s, VPackSlice const& c)
     : directory{d}, feature{f}, options{o}, stats{s}, collection{c} {}
 
-RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
-                               int& exitCode)
+RestoreFeature::RestoreFeature(
+    application_features::ApplicationServer& server,
+    int& exitCode
+)
     : ApplicationFeature(server, RestoreFeature::featureName()),
       _clientManager{Logger::RESTORE},
       _clientTaskQueue{::processJob, ::handleJobResult},

@@ -49,7 +49,7 @@ class ViewTypesFeature final: public application_features::ApplicationFeature {
     LogicalView::PreCommitCallback const& preCommit
   )> ViewFactory;
 
-  explicit ViewTypesFeature(application_features::ApplicationServer* server);
+  explicit ViewTypesFeature(application_features::ApplicationServer& server);
 
   /// @return 'factory' for 'type' was added successfully
   arangodb::Result emplace(
