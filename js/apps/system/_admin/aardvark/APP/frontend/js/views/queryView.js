@@ -2610,6 +2610,9 @@
           if (originCallback) {
             originCallback();
           }
+        },
+        error: function (data, resp) {
+          arangoHelper.arangoError('User Queries', resp.responseText);
         }
       });
     },

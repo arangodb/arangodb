@@ -1,6 +1,9 @@
 v3.3.15 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5831: custom queries in the ui could not be loaded if the user
+  only has read access to the _system database.
+
 * fixed internal issue #2566: corrected web UI alignment of the nodes table
 
 
