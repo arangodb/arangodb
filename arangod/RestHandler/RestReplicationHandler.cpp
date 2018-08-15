@@ -1070,7 +1070,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
-  toMerge.add("version", VPackValue(LogicalCollection::VERSION_31));
+  toMerge.add("version", VPackValue(LogicalCollection::VERSION_33));
   if (!name.empty() && name[0] == '_' && !parameters.hasKey("isSystem")) {
     // system collection?
     toMerge.add("isSystem", VPackValue(true));
