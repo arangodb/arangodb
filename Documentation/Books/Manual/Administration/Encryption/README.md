@@ -12,7 +12,7 @@ but when the data is already on disk, you also need protection.
 That is where the Encryption feature comes in. 
 
 The Encryption feature of ArangoDB will encrypt all data that ArangoDB 
-is storing in your database before it is written to disk. This feature applies to all ArangoDB deployment modes.
+is storing in your database before it is written to disk.
 
 The data is encrypted with AES-256-CTR, which is a strong encryption
 algorithm, that is very suitable for multi-processor environments. This means that 
@@ -20,12 +20,18 @@ your data is safe, but your database is still fast, even under load.
 
 Most modern CPU's have builtin support for hardware AES encryption, which makes it even faster.
 
+The encryption feature is supported by all ArangoDB deployment modes.
+
 ## Limitations
 
 The encryption feature has the following limitations:
 
-- Encrypting a single collection is not supported, this means that all the databases are encrypted.
-- Database cannot be encrypted at runtime.
+- Encrypting a single collection is not supported: all the databases are
+  encrypted.
+- It is not possible to enable encryption at runtime: if you have existing
+  data you will need to take a backup first, then enable encryption and
+  start your server on an empty data-directory, and finally restore your
+  backup.  
 - The Encryption feature requires the RocksDB storage engine.
 
 ## Encryption keys 
@@ -35,6 +41,7 @@ It is recommended to use a different key for each server (when operating in a cl
 Make sure to protect these keys! 
 
 That means:
+
 - Do not write them to persistent disks or your server(s), always store them on an in-memory (`tmpfs`) filesystem.
 - Transport your keys safely to your server(s). There are various tools for managing secrets like this (e.g. vaultproject.io).
 - Store a copy of your key offline in a safe place. If you lose your key, there is NO way to get your data back.
