@@ -125,12 +125,13 @@ of the starters. E.g. `http://localhost:8528`.
 
 **Important:**
 
-The command above was introduced with 3.3.14 (and 3.2.17). If you are rolling upgrade
-to a version >= 3.3.14 or >=3.2.17 please use the command above.
+The command above was introduced with 3.3.14 (and 3.2.17). If you are rolling upgrade a 3.3.x version
+to a version higher or equal to 3.3.14, or if you are rolling upgrade a 3.2.x version to a version higher
+or equal to 3.2.17 please use the command above.
 
-If you are doing the rolling upgrade to a version >= 3.3.8 and <= 3.3.13 or if you are
-rolling upgrade to 3.2.15 or 3.2.16, a different command has to be used (on all _Starters_
-one by one):
+If you are doing the rolling upgrade of a 3.3.x version to a version between 3.3.8 and 3.3.13 (included),
+or if you are rolling upgrade a 3.2.x version to 3.2.15 or 3.2.16, a different command has to be used
+(on all _Starters_ one by one):
 
 ```
 curl -X POST --dump - http://localhost:8538/database-auto-upgrade
@@ -173,7 +174,7 @@ of the starters. E.g. `http://localhost:8528`.
 
 ### Aborting an upgrade
 
-Starting with 3.3.14 and 3.2.17, when an upgrade plan (in deployment
+Starting with 3.3.14 and 3.2.17, when an upgrade _plan_ (in deployment
 mode `activefailover` or `cluster`) is in progress or has failed, it can
 be aborted.
 
