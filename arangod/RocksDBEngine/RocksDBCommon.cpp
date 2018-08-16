@@ -155,8 +155,10 @@ std::size_t countKeyRange(rocksdb::DB* db,
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds,
-                        bool prefix_same_as_start,
+                        bool prefixSameAsStart,
                         bool useRangeDelete) {
+  
+  TRI_ASSERT(!useRangeDelete || static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDelete());
   LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range: " << bounds;
   
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
@@ -198,8 +200,8 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     rocksdb::WriteBatch batch;
     rocksdb::ReadOptions readOptions;
     readOptions.iterate_upper_bound = &upper;
-    readOptions.prefix_same_as_start = prefix_same_as_start; // for edge index
-    readOptions.total_order_seek = !prefix_same_as_start;
+    readOptions.prefix_same_as_start = prefixSameAsStart; // for edge index
+    readOptions.total_order_seek = !prefixSameAsStart;
     readOptions.verify_checksums = false;
     readOptions.fill_cache = false;
     std::unique_ptr<rocksdb::Iterator> it(bDB->NewIterator(readOptions, cf));
@@ -219,7 +221,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
         if (!status.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "RocksDB key deletion failed: " << status.ToString();
-          return TRI_ERROR_INTERNAL;
+          return rocksutils::convertStatus(status);
         }
         batch.Clear();
         counter = 0;
@@ -237,23 +239,23 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       if (!status.ok()) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "RocksDB key deletion failed: " << status.ToString();
-        return TRI_ERROR_INTERNAL;
+        return rocksutils::convertStatus(status);
       }
     }
     
-    return TRI_ERROR_NO_ERROR;
+    return {};
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception during RocksDB key prefix deletion: " << ex.what();
-    return ex.code();
+    return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception during RocksDB key prefix deletion: " << ex.what();
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught unknown exception during RocksDB key prefix deletion";
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, "unknown exception during RocksDB key prefix deletion");
   }
 }
 

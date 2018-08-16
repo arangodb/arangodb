@@ -634,6 +634,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   
   if (state->isExclusiveTransactionOnSingleCollection() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDelete() &&
       _numberDocuments >= 32 * 1024) {
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumwent the normal rocksdb::Transaction.
@@ -646,6 +647,9 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     if (!s.ok()) {
       THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
     }
+   
+    // add the assertion again here, so we are sure we can use RangeDeletes   
+    TRI_ASSERT(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDelete());
     
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);

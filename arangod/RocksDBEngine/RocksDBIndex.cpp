@@ -222,13 +222,14 @@ void RocksDBIndex::recalculateEstimates() {
 
 int RocksDBIndex::drop() {
   auto* coll = toRocksDBCollection(_collection);
-  // edge index needs to be dropped with prefix_same_as_start = false
+  // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
-  bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  const bool rangeDelete = coll->numberDocuments() >= 32 * 1024;
+  bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
+  bool const useRangeDelete = (static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDelete() &&
+                               coll->numberDocuments() >= 32 * 1024);
 
   arangodb::Result r = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),
-                                                    prefix_same_as_start, rangeDelete);
+                                                    prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
   if (_cachePresent) {
@@ -245,9 +246,8 @@ int RocksDBIndex::drop() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                             this->getBounds(), prefix_same_as_start);
+                                             this->getBounds(), prefixSameAsStart);
   if (numDocs > 0) {
-
     std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
