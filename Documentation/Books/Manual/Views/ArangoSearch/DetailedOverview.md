@@ -1,7 +1,7 @@
 # Detailed overview of ArangoSearch views
 
-ArangoSearch provides a fulltext search and it is only a subset of its available 
-functionality, supported via the 'text' analyzer and 'tfidf'/'bm25' [scorers](Scorers.md), 
+ArangoSearch is powerful fulltext search component with additional functionality, 
+supported via the 'text' analyzer and 'tfidf'/'bm25' [scorers](Scorers.md), 
 without impact to performance when specifying documents from different collections or 
 filtering on multiple document attributes.
 
@@ -42,7 +42,7 @@ said ArangoSearch view defining the link parameters as per the section
 To simplify query syntax ArangoSearch provides a concept of 
 [named analyzers](Analyzers.md) which are merely aliases for
 type+configuration of IResearch analyzers. Management of named analyzers
-is exposed via both REST, GUI and JavaScript APIs, e.g.
+is exposed via REST, GUI and JavaScript APIs.
 
 ## View definition/modification
 

@@ -3,12 +3,12 @@ ArangoSearch Analyzers
 
 To simplify query syntax ArangoSearch provides a concept of named analyzers which
 are merely aliases for type+configuration of IResearch analyzers. Management of
-named analyzers is exposed via both REST, GUI and JavaScript APIs, e.g.
+named analyzers is exposed via REST, GUI and JavaScript APIs e.g.
 
 `db._globalSettings("iresearch.analyzers")`
 
 A user then merely uses these analyzer names in ArangoSearch view configurations
-and AQL queries, e.g.
+and AQL queries.
 
 ArangoSearch provides a 'text' analyzer to analyze human readable text. A required
 configuration parameter for this type of analyzer is 'locale' used to specify
