@@ -1605,7 +1605,15 @@ class Graph {
       }
     );
 
-    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+    var options = {};
+    if (self.__replicationFactor) {
+      options.replicationFactor = self.__replicationFactor;
+    }
+    if (self.__numberOfShards) {
+      options.numberOfShards = self.__numberOfShards;
+    }
+
+    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition], false, options);
 
     this.__edgeDefinitions.push(edgeDefinition);
     db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
@@ -1762,10 +1770,19 @@ class Graph {
   _addVertexCollection (vertexCollectionName, createCollection) {
     // check edgeCollection
     var ec = db._collection(vertexCollectionName);
+    var self = this;
     var err;
     if (ec === null) {
       if (createCollection !== false) {
-        db._create(vertexCollectionName);
+        // TODO
+        var options = {};
+        if (self.__replicationFactor) {
+          options.replicationFactor = self.__replicationFactor;
+        }
+        if (self.__numberOfShards) {
+          options.numberOfShards = self.__numberOfShards;
+        }
+        db._create(vertexCollectionName, options);
       } else {
         err = new ArangoError();
         err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
