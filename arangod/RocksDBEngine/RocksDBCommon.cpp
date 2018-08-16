@@ -157,7 +157,17 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart,
                         bool useRangeDelete) {
-  
+  TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") { 
+    if (useRangeDelete) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+  TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") { 
+    if (!useRangeDelete) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
   TRI_ASSERT(!useRangeDelete || static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDelete());
   LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range: " << bounds;
   

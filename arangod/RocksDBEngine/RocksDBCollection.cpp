@@ -650,6 +650,10 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
    
     // add the assertion again here, so we are sure we can use RangeDeletes   
     TRI_ASSERT(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDelete());
+  
+    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") { 
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
@@ -685,6 +689,10 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       compact();
     }
     return;
+  } else {
+    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") { 
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
   
   // normal transactional truncate
