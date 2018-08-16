@@ -83,13 +83,13 @@ Flag if there was an error (true) or not (false)
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
-The response code
+The response code.
 
 @RESTREPLYBODY{graph,object,required,graph_representation}
-The information about the newly created graph
+The information about the newly created graph.
 
 @RESTSTRUCT{name,graph_representation,string,required,}
-The name of the graph
+The name of the graph.
 
 @RESTSTRUCT{edgeDefinitions,graph_representation,array,required,post_api_gharial_create_edge_defs}
 An array of definitions for the relations of the graph.
