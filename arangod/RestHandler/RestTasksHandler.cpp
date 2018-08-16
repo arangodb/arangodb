@@ -158,11 +158,11 @@ void RestTasksHandler::registerTask(bool byId) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "registering a task needs db RW permissions");
       return;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
+    }/* else if (!exec->isSuperuser() && ServerState::readOnly()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_ARANGO_READ_ONLY,
                     "server is in read-only mode");
       return;
-    }
+    }*/
   }
 
   // job id
@@ -310,11 +310,11 @@ void RestTasksHandler::deleteTask() {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "unregister task needs db RW permissions");
       return;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
+    }/* else if (!exec->isSuperuser() && ServerState::readOnly()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_ARANGO_READ_ONLY,
                     "server is in read-only mode");
       return;
-    }
+    }*/
   }
 
   int res = Task::unregisterTask(suffixes[0], true);

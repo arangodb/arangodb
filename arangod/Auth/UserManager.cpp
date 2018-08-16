@@ -655,13 +655,11 @@ bool auth::UserManager::checkPassword(std::string const& username,
 
   // using local users might be forbidden
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (it != _userCache.end() && (it->second.source() == auth::Source::Local) &&
-      af != nullptr && !af->localAuthentication()) {
-    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
-    return false;
-  }
-
-  if (it != _userCache.end() && it->second.source() == auth::Source::Local) {
+  if (it != _userCache.end() && (it->second.source() == auth::Source::Local)) {
+    if (af != nullptr && !af->localAuthentication()) {
+      LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
+      return false;
+    }
     auth::User const& user = it->second;
     if (user.isActive()) {
       return user.checkPassword(password);
