@@ -214,14 +214,14 @@ class TransactionState {
    * @param lockedShards The list of locked shards.
    */
   void setLockedShards(std::unordered_set<std::string> const& lockedShards);
+  
+  /// @brief whether or not a transaction is an exclusive transaction on a single collection
+  bool isExclusiveTransactionOnSingleCollection() const;
 
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid,
                                         size_t& position) const;
-
-  /// @brief whether or not a transaction is an exclusive transaction on a single collection
-  bool isExclusiveTransactionOnSingleCollection() const;
 
   /// @brief check if current user can access this collection
   int checkCollectionPermission(TRI_voc_cid_t cid,

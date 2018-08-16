@@ -34,7 +34,6 @@
 #include <iomanip>
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -46,7 +45,9 @@ static const int BACKGROUND_WHITE =
 static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
 #ifdef _WIN32
       _codePage(-1),
@@ -518,3 +519,5 @@ void ConsoleFeature::stopPager() {
   }
 #endif
 }
+
+} // arangodb

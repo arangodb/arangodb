@@ -177,6 +177,10 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
+  void afterTruncate() override {
+    _edgesFrom.clear();
+    _edgesTo.clear();
+  }
 
   void toVelocyPack(
       VPackBuilder& builder,
@@ -946,9 +950,11 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 std::function<void()> StorageEngineMock::before = []()->void {};
 bool StorageEngineMock::inRecoveryResult = false;
 
-StorageEngineMock::StorageEngineMock()
+StorageEngineMock::StorageEngineMock(
+    arangodb::application_features::ApplicationServer& server
+)
   : StorageEngine(
-      nullptr,
+      server,
       "Mock",
       "",
       std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())
@@ -959,11 +965,6 @@ StorageEngineMock::StorageEngineMock()
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   TRI_ASSERT(false);
   return nullptr;
-}
-
-void StorageEngineMock::addAqlFunctions() {
-  before();
-  // NOOP
 }
 
 void StorageEngineMock::addOptimizerRules() {

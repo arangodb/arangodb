@@ -22,10 +22,10 @@
 
 #include "ClusterPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer* server)
+ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "ClusterPhase") {
   setOptional(false);
   startsAfter("DatabasePhase");
@@ -33,3 +33,6 @@ ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer* server)
   startsAfter("Cluster");
   startsAfter("ReplicationTimeout");
 }
+
+} // application_features
+} // arangodb

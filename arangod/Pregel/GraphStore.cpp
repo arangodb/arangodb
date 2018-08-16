@@ -204,7 +204,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         scheduler->post([this, i, vertexShard, edgeLookups, vertexOffset] {
           TRI_DEFER(_runningThreads--);// exception safe
           _loadVertices(i, vertexShard, edgeLookups, vertexOffset);
-        });
+        }, false);
         // update to next offset
         vertexOffset += shardSizes[vertexShard];
       }
@@ -213,8 +213,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         std::this_thread::sleep_for(std::chrono::microseconds(5000));
       }
     }
-    scheduler->post(callback);
-  });
+    scheduler->post(callback, false);
+  }, false);
 }
 
 template <typename V, typename E>
@@ -609,7 +609,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
                                         << (TRI_microtime() - now) << "s";
         callback();
       }
-    });
+    }, false);
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest

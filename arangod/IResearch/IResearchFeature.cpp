@@ -149,7 +149,6 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     "__ARANGOSEARCH_SCORE_DEBUG",  // name
     ".",    // value to convert
     true,   // deterministic
-    false,  // can't throw
     true,   // can be run on server
     [](arangodb::aql::Query*,
        arangodb::transaction::Methods*,
@@ -166,7 +165,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "EXISTS",      // name
     ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -175,7 +173,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "STARTS_WITH", // name
     ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -184,7 +181,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "PHRASE",      // name
     ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -193,7 +189,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "MIN_MATCH",   // name
     ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -202,7 +197,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "BOOST",       // name
     ".,.",         // positional arguments (filter expression, boost)
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -211,7 +205,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "ANALYZER",    // name
     ".,.",         // positional arguments (filter expression, analyzer)
     true,          // deterministic
-    true,          // can throw
     true,          // can be run on server
     &filter        // function implementation (use function name as placeholder)
   });
@@ -281,7 +274,6 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
       true,   // deterministic
-      false,  // can't throw
       true,   // can be run on server
       &scorer // function implementation (use function name as placeholder)
     });
@@ -427,10 +419,10 @@ class IResearchFeature::Async {
     mutable bool _wasNotified; // a notification was raised from another thread
 
     Thread(std::string const& name)
-      : arangodb::Thread(name), _terminate(nullptr), _wasNotified(false) {
+      : arangodb::Thread(name), _next(nullptr), _terminate(nullptr), _wasNotified(false) {
     }
     Thread(Thread&& other) // used in constructor before tasks are started
-      : arangodb::Thread(other.name()), _terminate(nullptr), _wasNotified(false) {
+      : arangodb::Thread(other.name()), _next(nullptr), _terminate(nullptr), _wasNotified(false) {
     }
     virtual bool isSystem() override { return true; } // or start(...) will fail
     virtual void run() override;
@@ -640,10 +632,14 @@ void IResearchFeature::Async::start() {
     << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 
-IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
+IResearchFeature::IResearchFeature(
+    arangodb::application_features::ApplicationServer& server
+)
   : ApplicationFeature(server, IResearchFeature::name()),
     _async(std::make_unique<Async>()),
-    _running(false) {
+    _running(false),
+    _threads(0),
+    _threadsLimit(0) {
   setOptional(true);
   startsAfter("V8Phase");
 
@@ -670,8 +666,22 @@ void IResearchFeature::beginShutdown() {
 void IResearchFeature::collectOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options
 ) {
+  auto section = FEATURE_NAME;
+
   _running = false;
+  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
   ApplicationFeature::collectOptions(options);
+  options->addSection(section, std::string("Configure the ") + FEATURE_NAME + " feature");
+  options->addOption(
+    std::string("--") + section + ".threads",
+    "the exact number of threads to use for asynchronous tasks (0 == autodetect)",
+    new arangodb::options::UInt64Parameter(&_threads)
+  );
+  options->addOption(
+    std::string("--") + section + ".threads-limit",
+    "upper limit to the autodetected number of threads to use for asynchronous tasks (0 == use default)",
+    new arangodb::options::UInt64Parameter(&_threadsLimit)
+  );
 }
 
 /*static*/ std::string const& IResearchFeature::name() {

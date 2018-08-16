@@ -27,22 +27,24 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 namespace options {
+
 class ProgramOptions;
+
 }
 
 class MMFilesWalRecoveryFeature final : public application_features::ApplicationFeature {
-
   MMFilesWalRecoveryFeature(MMFilesWalRecoveryFeature const&) = delete;
   MMFilesWalRecoveryFeature& operator=(MMFilesWalRecoveryFeature const&) = delete;
 
  public:
-  explicit MMFilesWalRecoveryFeature(application_features::ApplicationServer* server);
+  explicit MMFilesWalRecoveryFeature(
+    application_features::ApplicationServer& server
+  );
   ~MMFilesWalRecoveryFeature() {}
 
- public:
   void start() override final;
-
 };
 
 }

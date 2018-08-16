@@ -107,7 +107,7 @@ const log = function (a) {
   appender(internal.stopCaptureMode());
 };
 
-var logCurlRequestRaw = internal.appendCurlRequest(shellAppender,jsonAppender, rawAppender);
+var logCurlRequestRaw = internal.appendCurlRequest(shellAppender, jsonAppender, rawAppender);
 var logCurlRequest = function () {
   if ((arguments.length > 1) &&
       (arguments[1] !== undefined) &&
@@ -172,28 +172,25 @@ var runTestLine = function(line, testName, sourceFN, sourceLine, lineCount, show
 /* jshint ignore:start */
     if (!showCmd || isLoop) {
       eval(line);
-    }
-    else {
+    } else {
       eval("XXX = " + line);
     }
 /* jshint ignore:end */
     if (expectError !== undefined) {
-       throw new Error("expected to throw with " + expectError + " but didn't!");
+      throw new Error("expected to throw with " + expectError + " but didn't!");
     }
   }
   catch (err) {
     if (expectError !== undefined) {
       if (err.errorNum === errors[expectError].code) {
         print(err);
-      }
-      else {
+      } else {
         print(err);
         createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught unexpected exception!");
       }
-    }
-    else {
-        createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught an exception!\n");
-        print(err);
+    } else {
+      createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught an exception!\n");
+      print(err);
     }
   }
   if (showCmd && XXX !== undefined) {
@@ -258,12 +255,12 @@ var addIgnoreCollection = function(collectionName) {
 
 var removeIgnoreCollection = function(collectionName) {
   // print("from now on checking again whether this collection dropped: " + collectionName);
-  for (j=0; j < collectionAlreadyThere.length; j++) {
+  for (j = 0; j < collectionAlreadyThere.length; j++) {
     if (collectionAlreadyThere[j] === collectionName) {
       collectionAlreadyThere[j] = undefined;
     }
   }
-  for (j=0; j < ignoreCollectionAlreadyThere.length; j++) {
+  for (j = 0; j < ignoreCollectionAlreadyThere.length; j++) {
     if (ignoreCollectionAlreadyThere[j] === collectionName) {
       ignoreCollectionAlreadyThere[j] = undefined;
     }

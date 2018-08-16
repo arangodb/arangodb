@@ -38,7 +38,7 @@ struct Function {
   /// @brief create the function
   Function(std::string const& name,
            char const* arguments, bool isDeterministic,
-           bool canThrow, bool canRunOnDBServer,
+           bool canRunOnDBServer,
            FunctionImplementation const& implementation = nullptr);
 
   /// @brief checks if the function produces a result that can
@@ -73,9 +73,6 @@ struct Function {
   /// @brief whether or not the function is deterministic (i.e. its results are
   /// identical when called repeatedly with the same input values)
   bool const isDeterministic;
-
-  /// @brief whether or not the function may throw a runtime exception
-  bool const canThrow;
 
   /// @brief whether or not the function may be executed on DB servers
   bool const canRunOnDBServer;

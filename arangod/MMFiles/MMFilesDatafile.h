@@ -186,6 +186,9 @@ typedef uint32_t MMFilesDatafileVersionType;
 
 /// @brief datafile
 struct MMFilesDatafile {
+  MMFilesDatafile(MMFilesDatafile const&) = delete;
+  MMFilesDatafile& operator=(MMFilesDatafile const&) = delete;
+
   MMFilesDatafile(std::string const& filename, int fd, void* mmHandle, uint32_t maximalSize,
                  uint32_t currentsize, TRI_voc_fid_t fid, char* data);
   ~MMFilesDatafile();
@@ -228,7 +231,7 @@ struct MMFilesDatafile {
   static bool tryRepair(std::string const& path);
 
   /// @brief opens a datafile
-  static MMFilesDatafile* open(std::string const& filename, bool ignoreErrors);
+  static MMFilesDatafile* open(std::string const& filename, bool ignoreErrors, bool autoSeal);
 
   /// @brief writes a marker to the datafile
   /// this function will write the marker as-is, without any CRC or tick updates
@@ -285,7 +288,7 @@ struct MMFilesDatafile {
   int truncateAndSeal(uint32_t position);
 
   /// @brief checks a datafile
-  bool check(bool ignoreFailures);
+  bool check(bool ignoreFailures, bool autoSeal);
 
   /// @brief fixes a corrupted datafile
   bool fix(uint32_t currentSize);

@@ -35,13 +35,22 @@
 #define SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y) x##y
 #define SCOPE_GUARD_TOKEN_PASTE(x, y) SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y)
 
-// helper macros for creating a ScopeGuard using a user-defined lambda or functor
-#define TRI_DEFER_FUNC_INTERNAL(func, objname) auto objname = arangodb::scopeGuard(func);
-#define TRI_DEFER_FUNC(func) TRI_DEFER_FUNC_INTERNAL(func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
+// helper macros for creating a ScopeGuard using a user-defined lambda or
+// functor
+#define TRI_DEFER_FUNC_INTERNAL(func, objname) \
+  auto objname = arangodb::scopeGuard(func);
+
+#define TRI_DEFER_FUNC(func) \
+  TRI_DEFER_FUNC_INTERNAL(   \
+      func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
 
 // helper macros for creating a capture-all ScopeGuard
-#define TRI_DEFER_BLOCK_INTERNAL(func, objname) auto objname = arangodb::scopeGuard([&] { func; });
-#define TRI_DEFER_BLOCK(func) TRI_DEFER_BLOCK_INTERNAL(func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
+#define TRI_DEFER_BLOCK_INTERNAL(func, objname) \
+  auto objname = arangodb::scopeGuard([&] { func; });
+
+#define TRI_DEFER_BLOCK(func) \
+  TRI_DEFER_BLOCK_INTERNAL(   \
+      func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
 
 // TRI_DEFER currently just maps to TRI_DEFER_BLOCK
 // we will fix this later
@@ -49,23 +58,21 @@
 
 namespace arangodb {
 
-template<class T>
-class ScopeGuard { 
+template <class T>
+class ScopeGuard {
  public:
   // prevent empty construction
   ScopeGuard() = delete;
- 
+
   // prevent copying
   ScopeGuard(ScopeGuard const&) = delete;
   ScopeGuard& operator=(ScopeGuard const&) = delete;
 
-  ScopeGuard(T&& func) noexcept
-    : _func(std::move(func)), 
-      _active(true) {}
+  ScopeGuard(T&& func) noexcept : _func(std::move(func)), _active(true) {}
 
-  ScopeGuard(ScopeGuard&& other) noexcept(std::is_nothrow_move_constructible<T>::value) 
-    : _func(std::move_if_noexcept(other._func)), 
-      _active(other._active) {
+  ScopeGuard(ScopeGuard&& other) noexcept(
+      std::is_nothrow_move_constructible<T>::value)
+      : _func(std::move_if_noexcept(other._func)), _active(other._active) {
     other.cancel();
   }
 
@@ -84,6 +91,20 @@ class ScopeGuard {
   // make the guard not trigger the function at scope exit
   void cancel() noexcept { _active = false; }
 
+  // make the guard fire now and deactivate
+  void fire() noexcept {
+    if (active()) {
+      _active = false;
+
+      try {
+        // call the scope exit function
+        _func();
+      } catch (...) {
+        // we must not throw in destructors
+      }
+    }
+  }
+
   // whether or not the guard will trigger the function at scope exit
   bool active() const noexcept { return _active; }
 
@@ -95,10 +116,11 @@ class ScopeGuard {
   bool _active;
 };
 
-template<class T> ScopeGuard<T> scopeGuard(T&& f) {
+template <class T>
+ScopeGuard<T> scopeGuard(T&& f) {
   return ScopeGuard<T>(std::move(f));
 }
 
-} // namespace
+}  // namespace arangodb
 
 #endif

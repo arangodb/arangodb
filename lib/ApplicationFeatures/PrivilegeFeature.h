@@ -26,28 +26,26 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class PrivilegeFeature final : public application_features::ApplicationFeature {
  public:
-  explicit PrivilegeFeature(application_features::ApplicationServer* server);
+  explicit PrivilegeFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
- public:
   std::string _uid;
   std::string _gid;
 
- public:
   void dropPrivilegesPermanently();
 
  private:
   void extractPrivileges();
 
- private:
   TRI_uid_t _numericUid;
   TRI_gid_t _numericGid;
 };
+
 }
 
 #endif
