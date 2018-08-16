@@ -321,8 +321,13 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // //////////////////////////////////////////////////////////////////////////////
 
 var sortEdgeDefinitionInplace = function (edgeDefinition) {
-  edgeDefinition.from.sort();
-  edgeDefinition.to.sort();
+  if (edgeDefinition && edgeDefinition.from && Array.isArray(edgeDefinition.from)) {
+    edgeDefinition.from.sort();
+  }
+  if (edgeDefinition && edgeDefinition.to && Array.isArray(edgeDefinition.to)) {
+    edgeDefinition.to.sort();
+  }
+  console.error(edgeDefinition);
   return edgeDefinition;
 };
 
