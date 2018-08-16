@@ -509,7 +509,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
   }
   assert(millis.count() > 0);
   // use a weak-ptr to break cycles
-  auto self = weak_from_this();
+  auto self = this->weak_from_this();
   _timeout.expires_after(millis);
   _timeout.async_wait([this, self] (asio_ns::error_code const& e) {
     if (!e) {  // expired

@@ -613,7 +613,7 @@ void VstConnection<ST>::setTimeout() {
   }
   
   _timeout.expires_at(expires);
-  auto self = weak_from_this();
+  auto self = this->weak_from_this();
   _timeout.async_wait([this, self](asio_ns::error_code const& ec) {
     if (ec) {  // was canceled
       return;
