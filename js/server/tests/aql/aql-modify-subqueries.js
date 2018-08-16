@@ -774,10 +774,11 @@ function ahuacatlModifySuite () {
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
-        expected = { writesExecuted: 100, writesIgnored: 400 };
+        expected = { writesExecuted: 100, writesIgnored: 0 };
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+        assertTrue(-1 !== plan.rules.indexOf("restrict-to-single-shard"));
       } else {
         expected = { writesExecuted: 100, writesIgnored: 0 };
       }

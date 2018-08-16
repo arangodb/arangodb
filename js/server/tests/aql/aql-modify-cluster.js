@@ -164,7 +164,7 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
-      
+
       let rules = AQL_EXPLAIN(query).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
@@ -180,7 +180,7 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
-      
+
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
@@ -242,15 +242,15 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveIgnore1 : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 100 };
+      var expected = { writesExecuted: 0, writesIgnored: 17 };
       let query = "FOR d IN @@cn REMOVE 'foo' IN @@cn OPTIONS { ignoreErrors: true }";
       var actual = getModifyQueryResults(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
-      
+
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
-      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
+      assertTrue(-1 !== rules.indexOf("restrict-to-single-shard"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -537,7 +537,7 @@ function ahuacatlInsertSuite () {
       c3 = db._createEdgeCollection(cn3);
 
       const query = `WITH @@usersCollection, @@emailsCollection, @@userToEmailEdges
-                     LET user = FIRST(INSERT @user IN @@usersCollection RETURN NEW) 
+                     LET user = FIRST(INSERT @user IN @@usersCollection RETURN NEW)
                      INSERT @email IN @@emailsCollection
                      INSERT @edge IN @@userToEmailEdges
                      RETURN user`;
@@ -1565,7 +1565,7 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("value3"));
         assertEqual(12, doc.value4);
       }
-      
+
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
@@ -1588,7 +1588,7 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("value3"));
         assertEqual(13, doc.value4);
       }
-      
+
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
@@ -1611,7 +1611,7 @@ function ahuacatlUpdateSuite () {
         assertEqual(i + 5, doc.value1);
         assertFalse(doc.hasOwnProperty("value2"));
       }
-      
+
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
@@ -1641,7 +1641,7 @@ function ahuacatlUpdateSuite () {
         assertEqual("test" + i, doc.value2);
         assertFalse(doc.hasOwnProperty("value3"));
       }
-      
+
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
@@ -1671,7 +1671,7 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("value2"));
         assertEqual(i + 5, doc.value3);
       }
-      
+
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
@@ -1694,7 +1694,7 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("value"));
         assertFalse(doc.hasOwnProperty("wantToFind"));
       }
-      
+
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     }
@@ -1712,4 +1712,3 @@ jsunity.run(ahuacatlInsertSuite);
 jsunity.run(ahuacatlUpdateSuite);
 
 return jsunity.done();
-
