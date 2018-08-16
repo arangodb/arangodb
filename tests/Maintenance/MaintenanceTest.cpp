@@ -132,17 +132,47 @@ VPackBuilder createDatabase(std::string const& dbname) {
 }
 
 void createPlanDatabase(std::string const& dbname, Node& plan) {
-  std::string dbpath = PLAN_DB_PATH + dbname;
-  plan(dbpath) = createDatabase(dbname).slice();
+  plan(PLAN_DB_PATH + dbname) = createDatabase(dbname).slice();
 }
 
-void createPlanCollection(
-  std::string const& dbname, std::string const& colname, 
-  size_t numberOfShards, size_t replicationFactor, Node& plan) {
+VPackBuilder createIndex(
+  std::string const& type, std::vector<std::string> const& fields,
+  bool unique, bool sparse, bool deduplicate) {
+
+  VPackBuilder index;
+  { VPackObjectBuilder o(&index);
+    { index.add("deduplicate", VPackValue(deduplicate));
+      index.add(VPackValue("fields"));
+      { VPackArrayBuilder a(&index);
+        for (auto const& field : fields) {
+          index.add(VPackValue(field));
+        }}
+      index.add("id", VPackValue(std::to_string(localId++)));
+      index.add("sparse", VPackValue(sparse));
+      index.add("type", VPackValue(type));
+      index.add("unique", VPackValue(unique));
+    }}
+  
+  return index;
+  
+}
+
+void createPlanIndex(
+  std::string const& dbname, std::string const& colname,
+  std::string const& type, std::vector<std::string> const& fields,
+  bool unique, bool sparse, bool deduplicate, Node& plan) {
+
+  VPackBuilder val;
+  { VPackObjectBuilder o(&val); 
+    val.add("new", createIndex(type, fields, unique, sparse, deduplicate).slice()); }
+  plan(PLAN_COL_PATH + dbname + "/" + colname + "/indexes").handle<PUSH>(val.slice());
+  
+}
+
+VPackBuilder createCollection(
+  std::string const& colname, size_t numberOfShards, size_t replicationFactor) {
 
   std::string prefix("s");
-  std::string colpath = PLAN_COL_PATH + dbname + "/" + colname;
-  
   auto servers = shortNames;
   std::shuffle(servers.begin(), servers.end(), g);
   auto cid = localId++; 
@@ -159,31 +189,21 @@ void createPlanCollection(
             shards.add(VPackValue(dbsIds[server]));
           }
         }}}}
-
+  
   VPackBuilder keyOptions;
   { VPackObjectBuilder o(&keyOptions);
     keyOptions.add("lastValue", VPackValue(0));
     keyOptions.add("type", VPackValue("traditional"));
     keyOptions.add("allowUserKeys", VPackValue(true)); }
-
+  
   VPackBuilder shardKeys;
   { VPackArrayBuilder a(&shardKeys);
     shardKeys.add(VPackValue("_key")); }
   
-  VPackBuilder fields;
-  { VPackArrayBuilder a(&fields);
-    fields.add(VPackValue("_key")); }
-
   VPackBuilder indexes;
   { VPackArrayBuilder a(&indexes);
-    { VPackObjectBuilder o(&indexes);
-      { indexes.add("fields", fields.slice());
-        indexes.add("id", VPackValue("0"));
-        indexes.add("sparse", VPackValue(false));
-        indexes.add("type", VPackValue("primary"));
-        indexes.add("unique", VPackValue(true));
-      }}}
-
+    indexes.add(createIndex("primary", {"_key"}, true, false, false).slice()); }
+  
   VPackBuilder col;
   { VPackObjectBuilder o(&col);
     col.add("status", VPackValue(3));
@@ -202,16 +222,37 @@ void createPlanCollection(
     col.add("statusString", VPackValue("loaded"));
     col.add("replicationFactor", VPackValue(2));
     col.add("shardKeys", shardKeys.slice()); }
-  
-  plan(colpath) = col.slice();
+
+  return col;
   
 }
 
-void createPlanIndex(
-  std::string const& dbname, std::string const& colname,
-  std::string const& type, std::vector<std::string> const& fields) {
+void createPlanCollection(
+  std::string const& dbname, std::string const& colname, 
+  size_t numberOfShards, size_t replicationFactor, Node& plan) {
+
+  VPackBuilder tmp =
+    createCollection(colname, numberOfShards, replicationFactor);
+  Slice col = tmp.slice();
+  auto id = col.get("id").copyString();
+  plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
   
 }
+
+std::map<std::string, std::string> collectionMap(Node const& plan) {
+  std::map<std::string, std::string> ret;
+  auto const pb = plan("Collections").toBuilder();
+  auto const ps = pb.slice();
+  for (auto const& db : VPackObjectIterator(ps)) {
+    for (auto const& col : VPackObjectIterator(db.value)) {
+      ret.emplace(
+        db.key.copyString()+"/"+col.value.get("name").copyString(),
+        col.key.copyString());
+    }
+  }
+  return ret;
+}
+
 
 namespace arangodb {
 class LogicalCollection;
@@ -359,7 +400,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         node.first, actions);
 
       if (actions.size() != 0) {
-        std::cout << actions << std::endl;
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
       REQUIRE(actions.size() == 0);
     }
@@ -378,7 +419,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       localNodes.begin()->first, actions);
 
     if (actions.size() != 1) {
-      std::cout << actions << std::endl;
+      std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
     }
     REQUIRE(actions.size() == 1);
     REQUIRE(actions.front().name() == "DropDatabase");
@@ -405,10 +446,11 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
 
   SECTION(
-    "Add one more collection to db3 in plan with shards for all db servers") {
+    "Add one collection to db3 in plan with shards for all db servers") {
 
     std::string dbname("db3"), colname("x");
 
+    plan = createNode(planStr);
     createPlanDatabase(dbname, plan);
     createPlanCollection(dbname, colname, 1, 3, plan);
     
@@ -423,7 +465,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         node.first, actions);
 
       if (actions.size() != 1) {
-        std::cout << actions << std::endl;
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
@@ -436,10 +478,12 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
   SECTION("Add two more collection to db3 in plan with shards for all db servers") {
 
-    std::string dbname("db3"), colname("y");
+    std::string dbname("db3"), colname1("x"), colname2("y");
 
+    plan = createNode(planStr);
     createPlanDatabase(dbname, plan);
-    createPlanCollection(dbname, colname, 1, 3, plan);
+    createPlanCollection(dbname, colname1, 1, 3, plan);
+    createPlanCollection(dbname, colname2, 1, 3, plan);
     
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
@@ -452,11 +496,47 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         node.first, actions);
 
       if (actions.size() != 2) {
-        std::cout << actions << std::endl;
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
       REQUIRE(actions.size() == 2);
       for (auto const& action : actions) {
         REQUIRE(action.name() == "CreateCollection");
+      }
+    }
+
+  }
+
+  SECTION("Add an index to _queues") {
+
+    plan = createNode(planStr);
+    auto cid = collectionMap(plan).at("_system/_queues");
+    auto shards = plan({"Collections","_system",cid,"shards"}).children();
+    
+
+    createPlanIndex(
+      "_system", cid, "hash", {"someField"}, false, false, false, plan);
+    
+    for (auto node : localNodes) {
+      std::vector<ActionDescription> actions;
+
+      auto local = node.second;
+      
+      arangodb::maintenance::diffPlanLocal(
+        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, actions);
+
+      size_t n = 0;
+      for (auto const& shard : shards) {
+        if (local.has({"_system", shard.first})) {
+          ++n;
+        }
+      }
+        
+      if (actions.size() != n) {
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
+      }
+      REQUIRE(actions.size() == n);
+      for (auto const& action : actions) {
+        REQUIRE(action.name() == "EnsureIndex");
       }
     }
 
@@ -477,7 +557,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         node.first, actions);
       
       if (actions.size() != 1) {
-        std::cout << actions << std::endl;
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
@@ -515,7 +595,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         node.first, actions);
 
       if (actions.size() != 1) {
-        std::cout << actions << std::endl;
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
@@ -546,7 +626,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
 
-      std::cout << actions << std::endl;
+      std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
@@ -613,7 +693,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
           plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
           actions);
 
-        std::cout << actions << std::endl;
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
         REQUIRE(actions.size() == 2);
         for (auto const action : actions) {
           REQUIRE(actions.front().name() == "DropIndex");
