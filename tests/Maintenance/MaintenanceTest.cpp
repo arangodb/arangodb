@@ -34,6 +34,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
+#include <random>
 #include <typeinfo>
 
 using namespace arangodb;
@@ -49,15 +50,25 @@ char const* currentStr =
 char const* supervisionStr =
 #include "Supervision.json"
 ;
-char const* dbs1Str =
+char const* dbs0Str =
 #include "DBServer0001.json"
 ;
-char const* dbs2Str =
+char const* dbs1Str =
 #include "DBServer0002.json"
 ;
-char const* dbs3Str =
+char const* dbs2Str =
 #include "DBServer0003.json"
 ;
+
+std::map<std::string,std::string> matchShortLongIds(Node const& supervision) {
+  std::map<std::string,std::string> ret;
+  for (auto const& dbs : supervision("Health").children()) {
+    if (dbs.first.front() == 'P') {
+      ret.emplace((*dbs.second)("ShortName").getString(),dbs.first);
+    }
+  }
+  return ret;
+}
 
 Node createNodeFromBuilder(Builder const& builder) {
 
@@ -88,11 +99,19 @@ Node createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
+// Random stuff
+std::random_device rd;
+std::mt19937 g(rd());
+
+// Relevant agency
 auto plan = createNode(planStr);
 auto supervision = createNode(supervisionStr);
 auto current = createNode(currentStr);
 
-std::map<std::string,std::string> dbsIds;
+std::vector<std::string> shortNames {"DBServer0001","DBServer0002","DBServer0003"};
+
+// map <shortId, UUID>
+auto dbsIds = matchShortLongIds(supervision);
 
 std::string PLAN_COL_PATH = "/Collections/";
 std::string PLAN_DB_PATH = "/Databases/";
@@ -111,9 +130,76 @@ void createPlanDatabase(std::string const& dbname, Node& plan) {
   plan(dbpath) = builder.slice();
 }
 
+size_t localId =  1016002;
+
 void createPlanCollection(
-  std::string const& colname, std::string const& dbname,
-  size_t replicationFactor, size_t numberOfShards, Node& plan) {
+  std::string const& dbname, std::string const& colname, 
+  size_t numberOfShards, size_t replicationFactor, Node& plan) {
+
+  std::string prefix("s");
+  std::string colpath = PLAN_COL_PATH + dbname + "/" + colname;
+  
+  auto servers = shortNames;
+  std::shuffle(servers.begin(), servers.end(), g);
+  auto cid = localId++; 
+
+  // shards map
+  VPackBuilder shards;
+  { VPackObjectBuilder s(&shards);
+    for (size_t i = 0; i < numberOfShards; ++i) {
+      shards.add(VPackValue(prefix + std::to_string(localId++)));
+      { VPackArrayBuilder a(&shards);
+        size_t j = 0;
+        for (auto const& server : servers) {
+          if (j++ < replicationFactor) {
+            shards.add(VPackValue(dbsIds[server]));
+          }
+        }}}}
+
+  VPackBuilder keyOptions;
+  { VPackObjectBuilder o(&keyOptions);
+    keyOptions.add("lastValue", VPackValue(0));
+    keyOptions.add("type", VPackValue("traditional"));
+    keyOptions.add("allowUserKeys", VPackValue(true)); }
+
+  VPackBuilder shardKeys;
+  { VPackArrayBuilder a(&shardKeys);
+    shardKeys.add(VPackValue("_key")); }
+  
+  VPackBuilder fields;
+  { VPackArrayBuilder a(&fields);
+    fields.add(VPackValue("_key")); }
+
+  VPackBuilder indexes;
+  { VPackArrayBuilder a(&indexes);
+    { VPackObjectBuilder o(&indexes);
+      { indexes.add("fields", fields.slice());
+        indexes.add("id", VPackValue("0"));
+        indexes.add("sparse", VPackValue(false));
+        indexes.add("type", VPackValue("primary"));
+        indexes.add("unique", VPackValue(true));
+      }}}
+
+  VPackBuilder col;
+  { VPackObjectBuilder o(&col);
+    col.add("status", VPackValue(3));
+    col.add("shards", shards.slice());
+    col.add("keyOptions", keyOptions.slice());
+    col.add("cacheEnabled", VPackValue(false));
+    col.add("waitForSync", VPackValue(false));
+    col.add("id", VPackValue(std::to_string(cid)));
+    col.add("isSmart", VPackValue(false));
+    col.add("type", VPackValue(2));
+    col.add("numberOfShards", VPackValue(1));
+    col.add("deleted", VPackValue(false));
+    col.add("isSystem", VPackValue(true));
+    col.add("name", VPackValue(colname));
+    col.add("shardingStrategy", VPackValue("hash"));
+    col.add("statusString", VPackValue("loaded"));
+    col.add("replicationFactor", VPackValue(2));
+    col.add("shardKeys", shardKeys.slice()); }
+  
+  plan(colpath) = col.slice();
   
 }
 
@@ -248,15 +334,10 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 
 TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
-for (auto const& dbs : supervision("Health").children()) {
-  if (dbs.first.front() == 'P') {
-    dbsIds.emplace((*dbs.second)("ShortName").getString(),dbs.first);
-  }
-}
   std::map<std::string, Node> localNodes {
-    {dbsIds["DBServer0001"], createNode(dbs1Str)},
-    {dbsIds["DBServer0002"], createNode(dbs2Str)},
-    {dbsIds["DBServer0003"], createNode(dbs3Str)}};
+    {dbsIds[shortNames[0]], createNode(dbs0Str)},
+    {dbsIds[shortNames[1]], createNode(dbs1Str)},
+    {dbsIds[shortNames[2]], createNode(dbs2Str)}};
 
   SECTION("In sync should have 0 effects") {
 
@@ -278,6 +359,7 @@ for (auto const& dbs : supervision("Health").children()) {
   SECTION("Local databases one more empty database should be dropped") {
 
     std::vector<ActionDescription> actions;
+    
     localNodes.begin()->second("db3") =
       arangodb::velocypack::Slice::emptyObjectSlice();
 
@@ -312,42 +394,14 @@ for (auto const& dbs : supervision("Health").children()) {
   }
 
 
-  SECTION("Local databases one more empty database should be dropped") {
-
-    std::vector<ActionDescription> actions;
-    localNodes.begin()->second("db3") =
-      arangodb::velocypack::Slice::emptyObjectSlice();
-
-    arangodb::maintenance::diffPlanLocal(
-      plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
-      localNodes.begin()->first, actions);
-
-    REQUIRE(actions.size() == 1);
-    REQUIRE(actions.front().name() == "DropDatabase");
-    REQUIRE(actions.front().get("database") == "db3");
-
-  }
-
-
   SECTION(
     "Add one more collection to db3 in plan with shards for all db servers") {
 
-    VPackBuilder shards;
-    { VPackObjectBuilder s(&shards);
-      shards.add(VPackValue("s1016002"));
-      { VPackArrayBuilder a(&shards);
-        for (auto const& id : dbsIds) {
-          shards.add(VPackValue(id.second));
-        }}}
+    std::string dbname("db3"), colname("x");
 
-    std::string colpath = PLAN_COL_PATH + "db3/1016001";
-
-    plan(colpath) =
-      *(plan(PLAN_COL_PATH  + "_system").children().begin()->second);
-    plan(PLAN_COL_PATH  + "db3/1016001/shards") = shards.slice();
-
-    createPlanDatabase("db3", plan);
-
+    createPlanDatabase(dbname, plan);
+    createPlanCollection(dbname, colname, 1, 3, plan);
+    
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
       
@@ -369,36 +423,28 @@ for (auto const& dbs : supervision("Health").children()) {
 
   }
 
-  // Plan also now has db3 =====================================================
-  SECTION("Add one more collection to db3 in plan") {
 
-    VPackBuilder shards;
-    { VPackObjectBuilder s(&shards);
-      shards.add(VPackValue("s1016002"));
-      { VPackArrayBuilder a(&shards);
-        for (auto const& id : dbsIds) {
-          shards.add(VPackValue(id.second));
-        }}}
+  SECTION("Add two more collection to db3 in plan with shards for all db servers") {
 
-    plan(PLAN_COL_PATH + "db3/1016001") =
-      *(plan(PLAN_COL_PATH + "_system").children().begin()->second);
-    plan(PLAN_COL_PATH + "db3/1016001/shards") = shards.slice();
+    std::string dbname("db3"), colname("y");
 
-    createPlanDatabase("db3", plan);
-
+    createPlanDatabase(dbname, plan);
+    createPlanCollection(dbname, colname, 1, 3, plan);
+    
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
 
       node.second("db3") =
         arangodb::velocypack::Slice::emptyObjectSlice();
+
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
 
-      if (actions.size() != 1) {
+      if (actions.size() != 2) {
         std::cout << actions << std::endl;
       }
-      REQUIRE(actions.size() == 1);
+      REQUIRE(actions.size() == 2);
       for (auto const& action : actions) {
         REQUIRE(action.name() == "CreateCollection");
       }
@@ -406,18 +452,16 @@ for (auto const& dbs : supervision("Health").children()) {
 
   }
 
-  // Plan also now has db3 =====================================================
+/*
   SECTION("Add one collection to local") {
 
+    createPlanDatabase("db3", plan);
+    
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
       node.second("db3/1111111") =
         arangodb::velocypack::Slice::emptyObjectSlice();
-      plan(PLAN_COL_PATH + "db3") =
-        arangodb::velocypack::Slice::emptyObjectSlice();
       
-      createPlanDatabase("db3", plan);
-    
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
@@ -425,12 +469,12 @@ for (auto const& dbs : supervision("Health").children()) {
       if (actions.size() != 1) {
         std::cout << actions << std::endl;
       }
-      /*REQUIRE(actions.size() == 1);
-        for (auto const& action : actions) {
+      REQUIRE(actions.size() == 1);
+      for (auto const& action : actions) {
         REQUIRE(action.name() == "DropCollection");
         REQUIRE(action.get("database") == "db3");
         REQUIRE(action.get("collection") == "1111111");
-        }*/
+      }
     }
 
   }
@@ -451,7 +495,7 @@ for (auto const& dbs : supervision("Health").children()) {
       auto collection = cb.slice();
       auto colname = collection.get(NAME).copyString();
 
-// colname is shard_name (and gets added to plan as side effect)
+      // colname is shard_name (and gets added to plan as side effect)
       //  ^^^ plan(PLAN_COL_PATH + dbname + "/" + colname + "/" + "journalSize");
       (*node.second(dbname).children().begin()->second)(prop) =
         v.slice();
@@ -492,9 +536,9 @@ for (auto const& dbs : supervision("Health").children()) {
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
 
-
-      std::cout << node.first << " " << actions.size() << std::endl;
-      //REQUIRE(actions.size() == 1);
+      std::cout << actions << std::endl;
+      
+      REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
         //REQUIRE(action.name() == "UpdateCollection");
       }
@@ -587,6 +631,6 @@ for (auto const& dbs : supervision("Health").children()) {
     }
 
   }
-
+*/
 
 }
