@@ -1977,12 +1977,8 @@ FilterNode::collectionVariables() const {
 
   Variable const* inputVariable = nullptr;
   std::vector<Variable const*> v = getVariablesUsedHere();
-  if (v.size() > 1) {
-    // If there is a key variable:
-    inputVariable = v[1];
-  } else {
-    inputVariable = v[0];
-  }
+  TRI_ASSERT(v.size() == 1);
+  inputVariable = v[0];
   auto setter = _plan->getVarSetBy(inputVariable->id);
 
   if (setter->getType() == ExecutionNode::INDEX ||

@@ -4109,7 +4109,7 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
   }
 
   std::string getShard(aql::Collection const* collection) const {
-    auto it = _shardsUsed.find(collection);
+    auto const& it = _shardsUsed.find(collection);
     if (it == _shardsUsed.end()) {
       return "";
     }
