@@ -909,6 +909,8 @@ Result RestReplicationHandler::processRestoreCollection(
 
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
+        trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+        trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
         res = trx.begin();
 
         if (!res.ok()) {

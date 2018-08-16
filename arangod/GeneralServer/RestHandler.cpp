@@ -419,7 +419,8 @@ void RestHandler::executeEngine(bool isContinue) {
         << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
+    bool const isParseError = (ex.errorCode() == arangodb::velocypack::Exception::ParseError);
+    Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
                   __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {

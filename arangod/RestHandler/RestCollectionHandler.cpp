@@ -368,6 +368,7 @@ void RestCollectionHandler::handleCommandPut() {
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::EXCLUSIVE);
         trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+        trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
         res = trx.begin();
 
         if (res.ok()) {
