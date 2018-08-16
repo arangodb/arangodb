@@ -991,7 +991,7 @@ ArangoDatabase.prototype._parse = function (query) {
   if (typeof query === 'object' && typeof query.toAQL === 'function') {
     query = { query: query.toAQL() };
   } else {
-    query = { query: query };
+    query = { query };
   }
 
   const requestResult = this._connection.POST('/_api/query', query);
