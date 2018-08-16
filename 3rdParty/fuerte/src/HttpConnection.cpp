@@ -592,6 +592,8 @@ std::unique_ptr<Response> HttpConnection<ST>::sendRequestSync(std::unique_ptr<Re
       shutdownConnection(ErrorCondition::ProtocolError);  // will cleanup _inFlight
       throw ErrorCondition::ProtocolError;
     }
+
+    // item.message_complete may have been set by the call to http_parser_execute!
     if (item.message_complete) {
       //_timeout.cancel(); // got response in time
       // Remove consumed data from receive buffer.
