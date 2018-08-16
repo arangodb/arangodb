@@ -302,7 +302,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    testRestrictOnPrimaryAndNonIndexedShardKey : function () {
+    testRestrictOnPrimaryAndShardKeyNoIndex : function () {
       dropIndexes(collectionByKey);
       let sample = [];
       for (let i = 0; i < 10; ++i) {
@@ -323,7 +323,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    testRestrictOnPrimaryAndNonIndexedShardKeyJoined : function () {
+    testRestrictOnPrimaryAndShardKeyJoinNoIndex : function () {
       dropIndexes(collectionByKey);
       let sample = [];
       for (let i = 0; i < 10; ++i) {
@@ -349,7 +349,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    /* Not yet implemented
     testRestrictOnShardKeyNoIndex : function () {
       dropIndexes(collectionByKey);
 
@@ -379,7 +378,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               FILTER joined.joinValue == doc.joinValue
             RETURN [doc, joined]
         `;
-        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
         let res = db._query(query).toArray();
         // we find 4 in first Loop, and 4 joins each
@@ -390,7 +388,65 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(doc.joinValue, joined.joinValue);
         }
       }
-    },*/
+    },
+
+    testRestrictMultipleShardsStringKeysNoIndex : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == "key${i}"
+            FOR joined IN ${cnKey}
+              FILTER joined.${shardKey} == "key${i}"
+              FILTER joined.joinValue == doc.joinValue
+            RETURN [doc, joined]
+        `;
+
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+      }
+    },
+
+    testMultipleShardsOr : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i} || doc.${shardKey} == ${i+1}
+            RETURN doc
+        `;
+        // No restriction yet
+        //validatePlan(query, "IndexNode", collectionByKey);
+
+        let res = db._query(query).toArray();
+        assertEqual(8, res.length);
+        for (let doc of res) {
+          assertTrue(i === doc.value || i + 1 === doc.value);
+        }
+      }
+    },
+
+    testMultipleShardsOrNoIndex : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i} || doc.${shardKey} == ${i+1}
+            RETURN doc
+        `;
+        // No restriction yet
+        //validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let res = db._query(query).toArray();
+        assertEqual(8, res.length);
+        for (let doc of res) {
+          assertTrue(i === doc.value || i + 1 === doc.value);
+        }
+      }
+    },
 
   };
 };

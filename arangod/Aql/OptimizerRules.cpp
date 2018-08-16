@@ -649,7 +649,8 @@ void arangodb::aql::removeRedundantSortsRule(
         } else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
         } else if (current->getType() == EN::CALCULATION) {
-          // ok: a calculation does not depend on sort order only if it is deterministic
+          // ok: a calculation does not depend on sort order only if it is
+          // deterministic
           if (!current->isDeterministic()) {
             ++nodesRelyingOnSort;
           }
@@ -1918,7 +1919,9 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
       // it's a temporary variable that we can fuse with the other
       // calculation easily
 
-      if (!ExecutionNode::castTo<CalculationNode*>(n)->expression()->isDeterministic()) {
+      if (!ExecutionNode::castTo<CalculationNode*>(n)
+               ->expression()
+               ->isDeterministic()) {
         continue;
       }
 
@@ -4159,13 +4162,18 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         auto collectionVariables =
             ExecutionNode::castTo<FilterNode const*>(en)->collectionVariables();
         for (auto pair : collectionVariables) {
+          aql::Collection const* collection = pair.second;
+          aql::Variable const* collectionVariable = pair.first;
           std::string shardId =
-              getSingleShardId(_plan, en, pair.second, pair.first);
-          if (shardId.empty()) {
-            _shardsUsed[pair.second].clear();
-            _shardsUsed[pair.second].emplace("all");
-          } else {
-            _shardsUsed[pair.second].emplace(shardId);
+              getSingleShardId(_plan, en, collection, collectionVariable);
+          if (shardId.empty() && _shardsUsed[collection].empty()) {
+            _shardsUsed[collection].emplace("all");
+          } else if (!shardId.empty()) {
+            if (1 == _shardsUsed[collection].size() &&
+                "all" == *_shardsUsed[collection].begin()) {
+              _shardsUsed[collection].clear();
+            }
+            _shardsUsed[collection].emplace(shardId);
           }
         }
         break;
@@ -4193,8 +4201,9 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         auto collection =
             ExecutionNode::castTo<EnumerateCollectionNode const*>(en)
                 ->collection();
-        _shardsUsed[collection].clear();
-        _shardsUsed[collection].emplace("all");
+        if (_shardsUsed[collection].empty()) {
+          _shardsUsed[collection].emplace("all");
+        }
         break;
       }
 
@@ -4327,14 +4336,17 @@ void arangodb::aql::restrictToSingleShardRule(
           }
         }
         break;
-      } else if (currentType == ExecutionNode::INDEX) {
+      } else if (currentType == ExecutionNode::INDEX ||
+                 currentType == ExecutionNode::ENUMERATE_COLLECTION) {
         auto collection =
-            ExecutionNode::castTo<IndexNode const*>(current)->collection();
+            ExecutionNode::castTo<CollectionAccessingNode const*>(current)
+                ->collection();
         std::string shardId = finder.getShard(collection);
 
         if (finder.isSafeForOptimization(collection) && !shardId.empty()) {
           wasModified = true;
-          ExecutionNode::castTo<IndexNode*>(current)->restrictToShard(shardId);
+          ExecutionNode::castTo<CollectionAccessingNode*>(current)
+              ->restrictToShard(shardId);
         }
         break;
       } else if (currentType == ExecutionNode::UPSERT ||
@@ -6187,27 +6199,30 @@ static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn,
 
   std::vector<AstNodeType> parents;  // parents and current node
   size_t orsInBranch = 0;
-  Ast::traverseReadOnly(expr->node(),
-                        [&](AstNode const* node) { // pre
-                          parents.push_back(node->type);
-                          if (Ast::IsOrOperatorType(node->type)) {
-                            orsInBranch++;
-                            return false;
-                          }
-                          return true;
-                        }, [&](AstNode const* node) { // post
-                          size_t pl = parents.size();
-                          if (orsInBranch == 0 && (pl == 1 || Ast::IsAndOperatorType(parents[pl - 2]))) {
-                            // do not visit below OR or into <=, <, >, >= expressions
-                            if (checkGeoFilterExpression(plan, node, info)) {
-                              info.exesToModify.emplace(fn, expr);
-                            }
-                          }
-                          parents.pop_back();
-                          if (Ast::IsOrOperatorType(node->type)) {
-                            orsInBranch--;
-                          }
-                        });
+  Ast::traverseReadOnly(
+      expr->node(),
+      [&](AstNode const* node) {  // pre
+        parents.push_back(node->type);
+        if (Ast::IsOrOperatorType(node->type)) {
+          orsInBranch++;
+          return false;
+        }
+        return true;
+      },
+      [&](AstNode const* node) {  // post
+        size_t pl = parents.size();
+        if (orsInBranch == 0 &&
+            (pl == 1 || Ast::IsAndOperatorType(parents[pl - 2]))) {
+          // do not visit below OR or into <=, <, >, >= expressions
+          if (checkGeoFilterExpression(plan, node, info)) {
+            info.exesToModify.emplace(fn, expr);
+          }
+        }
+        parents.pop_back();
+        if (Ast::IsOrOperatorType(node->type)) {
+          orsInBranch--;
+        }
+      });
 }
 
 // modify plan
