@@ -54,11 +54,17 @@ using VelocyPackHelper = basics::VelocyPackHelper;
 #ifndef USE_ENTERPRISE
 // Factory methods
 std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t& vocbase) {
+  if (document.isExternal()) {
+    document = document.resolveExternal();
+  }
   std::unique_ptr<Graph> result{new Graph{document}};
   return result;
 }
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document, VPackSlice options) {
+  if (document.isExternal()) {
+    document = document.resolveExternal();
+  }
   std::unique_ptr<Graph> result{new Graph{std::move(name), document, options}};
   return result;
 }
@@ -66,7 +72,6 @@ std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice docum
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name, VPackSlice document, VPackSlice options) {
   return Graph::fromUserInput(std::string{name}, document, options);
-
 }
 
 // From persistence
