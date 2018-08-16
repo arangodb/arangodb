@@ -108,7 +108,8 @@ auto plan = createNode(planStr);
 auto supervision = createNode(supervisionStr);
 auto current = createNode(currentStr);
 
-std::vector<std::string> shortNames {"DBServer0001","DBServer0002","DBServer0003"};
+std::vector<std::string> shortNames {
+  "DBServer0001","DBServer0002","DBServer0003"};
 
 // map <shortId, UUID>
 auto dbsIds = matchShortLongIds(supervision);
@@ -116,21 +117,24 @@ auto dbsIds = matchShortLongIds(supervision);
 std::string PLAN_COL_PATH = "/Collections/";
 std::string PLAN_DB_PATH = "/Databases/";
 
-void createPlanDatabase(std::string const& dbname, Node& plan) {
-  std::string dbpath = PLAN_DB_PATH + dbname;
-  size_t id = 2010463;
+size_t localId =  1016002;
+
+VPackBuilder createDatabase(std::string const& dbname) {
   Builder builder;
   { VPackObjectBuilder o(&builder);
-    builder.add("id", VPackValue(std::to_string(id)));
+    builder.add("id", VPackValue(std::to_string(localId++)));
     builder.add(
       "coordinator", VPackValue("CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8"));
     builder.add(VPackValue("options"));
     { VPackObjectBuilder oo(&builder); }
     builder.add("name", VPackValue(dbname)); }
-  plan(dbpath) = builder.slice();
+  return builder;
 }
 
-size_t localId =  1016002;
+void createPlanDatabase(std::string const& dbname, Node& plan) {
+  std::string dbpath = PLAN_DB_PATH + dbname;
+  plan(dbpath) = createDatabase(dbname).slice();
+}
 
 void createPlanCollection(
   std::string const& dbname, std::string const& colname, 
@@ -200,6 +204,12 @@ void createPlanCollection(
     col.add("shardKeys", shardKeys.slice()); }
   
   plan(colpath) = col.slice();
+  
+}
+
+void createPlanIndex(
+  std::string const& dbname, std::string const& colname,
+  std::string const& type, std::vector<std::string> const& fields) {
   
 }
 
