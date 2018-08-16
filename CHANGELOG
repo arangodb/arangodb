@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #6128: ArangoDb Cluster: Task moved from DBS to Coordinator
+
 * fixed some web ui action events related to Running Queries view and Slow
   Queries History view
 
