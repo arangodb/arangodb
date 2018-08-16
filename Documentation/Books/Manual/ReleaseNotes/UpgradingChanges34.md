@@ -175,8 +175,16 @@ HTTP REST API
 The following incompatible changes were made in context of ArangoDB's HTTP REST
 APIs:
 
+- The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
+
+  - `GET /_admin/test`
+  - `GET /_admin/clusterCheckPort`
+  - `GET /_admin/cluster-test` 
+  - `GET /_admin/statistics/short`
+  - `GET /_admin/statistics/long`
+
 - `GET /_api/index` will now return type `geo` for geo indexes, not type `geo1`
-  or `geo2`.
+  or `geo2` as previous versions did.
 
   For geo indexes, the index API will not return the attributes `constraint` and
   `ignoreNull` anymore. These attributes were initially deprecated in ArangoDB 2.5
@@ -202,12 +210,6 @@ APIs:
   In previous versions, this REST API returned only the list of available
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
-
-- `GET /_admin/status` now returns the attribute `operationMode` in addition to
-  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
-  attribute `readOnly`, which is has an inverted value compared to the original
-  attribute. In future releases the old attributes will be deprecated in favor
-  of the new ones.
 
 - if authentication is turned on, requests to databases by users with insufficient 
   access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
@@ -246,6 +248,44 @@ The following APIs have been added or augmented:
   }
   ```
 
+- `GET /_admin/status` now returns the attribute `operationMode` in addition to
+  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
+  attribute `readOnly`, which is has an inverted value compared to the original
+  attribute. In future releases the old attributes will be deprecated in favor
+  of the new ones.
+
+- `POST /_api/collection` now will process the optional `shardingStrategy` 
+  attribute in the response body in cluster mode. 
+
+  This attribute specifies the name of the sharding strategy to use for the 
+  collection. Since ArangoDB 3.4 there are different sharding strategies to 
+  select from when creating a new collection. The selected *shardingStrategy* 
+  value will remain fixed for the collection and cannot be changed afterwards. 
+  This is important to make the collection keep its sharding settings and 
+  always find documents already distributed to shards using the same initial 
+  sharding algorithm.
+
+  The available sharding strategies are:
+  - `community-compat`: default sharding used by ArangoDB community
+    versions before ArangoDB 3.4
+  - `enterprise-compat`: default sharding used by ArangoDB enterprise
+    versions before ArangoDB 3.4
+  - `enterprise-smart-edge-compat`: default sharding used by smart edge
+    collections in ArangoDB enterprise versions before ArangoDB 3.4
+  - `hash`: default sharding used by ArangoDB 3.4 for new collections
+    (excluding smart edge collections)
+  - `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
+    for new smart edge collections
+
+  If no sharding strategy is specified, the default will be `hash` for
+  all collections, and `enterprise-hash-smart-edge` for all smart edge
+  collections (requires the *Enterprise Edition* of ArangoDB). 
+  Manually overriding the sharding strategy does not yet provide a 
+  benefit, but it may later in case other sharding strategies are added.
+
+  In single-server mode, the *shardingStrategy* attribute is meaningless and
+  will be ignored.
+
 - APIs for view management have been added at endpoint `/_api/view`.
 
 - The REST APIs for modifying graphs at endpoint `/_api/gharial` now support returning
@@ -261,14 +301,6 @@ The following APIs have been added or augmented:
 
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible.
-
-The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
-
-- `GET /_admin/test`
-- `GET /_admin/clusterCheckPort`
-- `GET /_admin/cluster-test` 
-- `GET /_admin/statistics/short`
-- `GET /_admin/statistics/long`
 
 
 AQL

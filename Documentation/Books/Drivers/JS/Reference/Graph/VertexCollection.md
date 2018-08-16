@@ -12,7 +12,7 @@ Deletes the vertex with the given _documentHandle_ from the collection.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the vertex to retrieve. This can be either the `_id` or the
   `_key` of a vertex in the collection, or a vertex (i.e. an object with an
@@ -33,15 +33,15 @@ await collection.remove('vertices/some-key')
 // document 'vertices/some-key' no longer exists
 ```
 
-## graphVertexCollection.vertex
+## graphVertexCollection.documentExists
 
-`async graphVertexCollection.vertex(documentHandle): Object`
+`async graphVertexCollection.documentExists(documentHandle): boolean`
 
-Retrieves the vertex with the given _documentHandle_ from the collection.
+Checks whether the vertex with the given _documentHandle_ exists.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the vertex to retrieve. This can be either the `_id` or the
   `_key` of a vertex in the collection, or a vertex (i.e. an object with an
@@ -53,17 +53,57 @@ Retrieves the vertex with the given _documentHandle_ from the collection.
 const graph = db.graph('some-graph');
 const collection = graph.vertexCollection('vertices');
 
-const doc = await collection.vertex('some-key');
+const exists = await collection.documentExists('some-key');
+if (exists === false) {
+  // the vertex does not exist
+}
+```
+
+## graphVertexCollection.document
+
+`async graphVertexCollection.document(documentHandle, [graceful]): Object`
+
+Alias: `graphVertexCollection.vertex`.
+
+Retrieves the vertex with the given _documentHandle_ from the collection.
+
+**Arguments**
+
+- **documentHandle**: `string`
+
+  The handle of the vertex to retrieve. This can be either the `_id` or the
+  `_key` of a vertex in the collection, or a vertex (i.e. an object with an
+  `_id` or `_key` property).
+
+- **graceful**: `boolean` (Default: `false`)
+
+  If set to `true`, the method will return `null` instead of throwing an error
+  if the vertex does not exist.
+
+**Examples**
+
+```js
+const graph = db.graph('some-graph');
+const collection = graph.vertexCollection('vertices');
+
+const doc = await collection.document('some-key');
 // the vertex exists
 assert.equal(doc._key, 'some-key');
 assert.equal(doc._id, 'vertices/some-key');
 
 // -- or --
 
-const doc = await collection.vertex('vertices/some-key');
+const doc = await collection.document('vertices/some-key');
 // the vertex exists
 assert.equal(doc._key, 'some-key');
 assert.equal(doc._id, 'vertices/some-key');
+
+// -- or --
+
+const doc = await collection.vertex('some-key', true);
+if (doc === null) {
+  // the vertex does not exist
+}
 ```
 
 ## graphVertexCollection.save
@@ -74,7 +114,7 @@ Creates a new vertex with the given _data_.
 
 **Arguments**
 
-* **data**: `Object`
+- **data**: `Object`
 
   The data of the vertex.
 
