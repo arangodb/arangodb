@@ -169,27 +169,9 @@ void createPlanIndex(
   
 }
 
-VPackBuilder createCollection(
-  std::string const& colname, size_t numberOfShards, size_t replicationFactor) {
+void createCollection(
+  std::string const& colname, VPackBuilder& col) {
 
-  std::string prefix("s");
-  auto servers = shortNames;
-  std::shuffle(servers.begin(), servers.end(), g);
-  auto cid = localId++; 
-
-  // shards map
-  VPackBuilder shards;
-  { VPackObjectBuilder s(&shards);
-    for (size_t i = 0; i < numberOfShards; ++i) {
-      shards.add(VPackValue(prefix + std::to_string(localId++)));
-      { VPackArrayBuilder a(&shards);
-        size_t j = 0;
-        for (auto const& server : servers) {
-          if (j++ < replicationFactor) {
-            shards.add(VPackValue(dbsIds[server]));
-          }
-        }}}}
-  
   VPackBuilder keyOptions;
   { VPackObjectBuilder o(&keyOptions);
     keyOptions.add("lastValue", VPackValue(0));
@@ -204,39 +186,76 @@ VPackBuilder createCollection(
   { VPackArrayBuilder a(&indexes);
     indexes.add(createIndex("primary", {"_key"}, true, false, false).slice()); }
   
-  VPackBuilder col;
-  { VPackObjectBuilder o(&col);
-    col.add("status", VPackValue(3));
-    col.add("shards", shards.slice());
-    col.add("keyOptions", keyOptions.slice());
-    col.add("cacheEnabled", VPackValue(false));
-    col.add("waitForSync", VPackValue(false));
-    col.add("id", VPackValue(std::to_string(cid)));
-    col.add("isSmart", VPackValue(false));
-    col.add("type", VPackValue(2));
-    col.add("numberOfShards", VPackValue(1));
-    col.add("deleted", VPackValue(false));
-    col.add("isSystem", VPackValue(true));
-    col.add("name", VPackValue(colname));
-    col.add("shardingStrategy", VPackValue("hash"));
-    col.add("statusString", VPackValue("loaded"));
-    col.add("replicationFactor", VPackValue(2));
-    col.add("shardKeys", shardKeys.slice()); }
+  col.add("id", VPackValue(std::to_string(localId++)));
+  col.add("status", VPackValue(3));
+  col.add("keyOptions", keyOptions.slice());
+  col.add("cacheEnabled", VPackValue(false));
+  col.add("waitForSync", VPackValue(false));
+  col.add("type", VPackValue(2));
+  col.add("isSystem", VPackValue(true));
+  col.add("name", VPackValue(colname));
+  col.add("shardingStrategy", VPackValue("hash"));
+  col.add("statusString", VPackValue("loaded"));
+  col.add("shardKeys", shardKeys.slice());
 
-  return col;
+}
+
+std::string S("s");
+std::string C("c");
+
+void createShards (
+  size_t numberOfShards, size_t replicationFactor, VPackBuilder& col) {
   
+  auto servers = shortNames;
+  std::shuffle(servers.begin(), servers.end(), g);
+  auto cid = localId++;
+
+  col.add("numberOfShards", VPackValue(1));
+  col.add("replicationFactor", VPackValue(2));
+  col.add(VPackValue("shards"));
+  { VPackObjectBuilder s(&col);
+    for (size_t i = 0; i < numberOfShards; ++i) {
+      col.add(VPackValue(S + std::to_string(localId++)));
+      { VPackArrayBuilder a(&col);
+        size_t j = 0;
+        for (auto const& server : servers) {
+          if (j++ < replicationFactor) {
+            col.add(VPackValue(dbsIds[server]));
+          }
+        }}}}
 }
 
 void createPlanCollection(
   std::string const& dbname, std::string const& colname, 
   size_t numberOfShards, size_t replicationFactor, Node& plan) {
 
-  VPackBuilder tmp =
-    createCollection(colname, numberOfShards, replicationFactor);
+  VPackBuilder tmp;
+  { VPackObjectBuilder o(&tmp);
+    tmp.add("isSmart", VPackValue(false));
+    tmp.add("deleted", VPackValue(false));
+    createCollection(colname, tmp);
+    createShards(numberOfShards, replicationFactor, tmp);}
+  
   Slice col = tmp.slice();
   auto id = col.get("id").copyString();
   plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
   
+}
+
+void createLocalCollection(
+  std::string const& dbname, std::string const& colname, Node& node) {
+
+  size_t planId = std::stoull(colname);
+  VPackBuilder tmp;
+  { VPackObjectBuilder o(&tmp);
+    createCollection(colname, tmp); 
+    tmp.add("planId", VPackValue(colname));
+    tmp.add("theLeader", VPackValue(""));
+    tmp.add("globallyUniqueId",
+            VPackValue(C + colname + "/" + S + std::to_string(planId+1)));
+    tmp.add("objectId", VPackValue("9031415")); }
+  node(dbname + "/" + S + std::to_string(planId+1)) = tmp.slice();
+
 }
 
 std::map<std::string, std::string> collectionMap(Node const& plan) {
@@ -252,6 +271,7 @@ std::map<std::string, std::string> collectionMap(Node const& plan) {
   }
   return ret;
 }
+
 
 
 namespace arangodb {
@@ -390,6 +410,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     {dbsIds[shortNames[1]], createNode(dbs1Str)},
     {dbsIds[shortNames[2]], createNode(dbs2Str)}};
 
+  
   SECTION("In sync should have 0 effects") {
 
     std::vector<ActionDescription> actions;
@@ -407,6 +428,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
   }
 
+  
   SECTION("Local databases one more empty database should be dropped") {
 
     std::vector<ActionDescription> actions;
@@ -449,7 +471,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     "Add one collection to db3 in plan with shards for all db servers") {
 
     std::string dbname("db3"), colname("x");
-
+    
     plan = createNode(planStr);
     createPlanDatabase(dbname, plan);
     createPlanCollection(dbname, colname, 1, 3, plan);
@@ -506,13 +528,13 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
   }
 
+  
   SECTION("Add an index to _queues") {
 
     plan = createNode(planStr);
     auto cid = collectionMap(plan).at("_system/_queues");
     auto shards = plan({"Collections","_system",cid,"shards"}).children();
     
-
     createPlanIndex(
       "_system", cid, "hash", {"someField"}, false, false, false, plan);
     
@@ -542,15 +564,55 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
   }
 
-/*
-  SECTION("Add one collection to local") {
 
-    createPlanDatabase("db3", plan);
+  SECTION("Remove an index from plan") {
+
+    std::string dbname("_system");
+    std::string indexes("indexes");
+
+    plan = createNode(planStr);
+    auto cid = collectionMap(plan).at("_system/bar");
+    auto shards = plan({"Collections",dbname,cid,"shards"}).children();
     
+    plan({"Collections", dbname, cid, indexes}).handle<POP>(
+      arangodb::velocypack::Slice::emptyObjectSlice());
+
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
-      node.second("db3/1111111") =
-        arangodb::velocypack::Slice::emptyObjectSlice();
+      
+      auto local = node.second;
+      
+      arangodb::maintenance::diffPlanLocal(
+        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, actions);
+      
+      size_t n = 0;
+      for (auto const& shard : shards) {
+        if (local.has({"_system", shard.first})) {
+          ++n;
+        }
+      }
+      
+      if (actions.size() != n) {
+        std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
+      }
+      REQUIRE(actions.size() == n);
+      for (auto const& action : actions) {
+        REQUIRE(action.name() == "DropIndex");
+      }
+    }
+
+  }
+
+
+  SECTION("Add one collection to local") {
+
+    plan = createNode(planStr);
+    //createPlanDatabase("db3", plan);
+    
+    for (auto node : localNodes) {
+
+      std::vector<ActionDescription> actions;
+      createLocalCollection("_system", "1111111", node.second);
       
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
@@ -562,13 +624,14 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
         REQUIRE(action.name() == "DropCollection");
-        REQUIRE(action.get("database") == "db3");
-        REQUIRE(action.get("collection") == "1111111");
+        REQUIRE(action.get("database") == "_system");
+        REQUIRE(action.get("collection") == "s1111112");
       }
     }
 
   }
 
+  /*
   // Plan also now has db3 =====================================================
   SECTION("Modify journalSize in plan should update the according collection") {
 
