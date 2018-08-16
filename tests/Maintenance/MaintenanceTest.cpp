@@ -59,9 +59,6 @@ char const* dbs3Str =
 #include "DBServer0003.json"
 ;
 
-std::string PLAN_COL_PATH = "/Collections/";
-std::string PLAN_DB_PATH = "/Databases/";
-
 Node createNodeFromBuilder(Builder const& builder) {
 
   Builder opBuilder;
@@ -89,6 +86,35 @@ Builder createBuilder(char const* c) {
 
 Node createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
+}
+
+auto plan = createNode(planStr);
+auto supervision = createNode(supervisionStr);
+auto current = createNode(currentStr);
+
+std::map<std::string,std::string> dbsIds;
+
+std::string PLAN_COL_PATH = "/Collections/";
+std::string PLAN_DB_PATH = "/Databases/";
+
+void createPlanDatabase(std::string const& dbname, Node& plan) {
+  std::string dbpath = PLAN_DB_PATH + dbname;
+  size_t id = 2010463;
+  Builder builder;
+  { VPackObjectBuilder o(&builder);
+    builder.add("id", VPackValue(std::to_string(id)));
+    builder.add(
+      "coordinator", VPackValue("CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8"));
+    builder.add(VPackValue("options"));
+    { VPackObjectBuilder oo(&builder); }
+    builder.add("name", VPackValue(dbname)); }
+  plan(dbpath) = builder.slice();
+}
+
+void createPlanCollection(
+  std::string const& colname, std::string const& dbname,
+  size_t replicationFactor, size_t numberOfShards, Node& plan) {
+  
 }
 
 namespace arangodb {
@@ -222,17 +248,11 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 
 TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
-  auto plan = createNode(planStr);
-  auto supervision = createNode(supervisionStr);
-  auto current = createNode(currentStr);
-
-  std::map<std::string,std::string> dbsIds;
-  for (auto const& dbs : supervision("Health").children()) {
-    if (dbs.first.front() == 'P') {
-      dbsIds.emplace((*dbs.second)("ShortName").getString(),dbs.first);
-    }
+for (auto const& dbs : supervision("Health").children()) {
+  if (dbs.first.front() == 'P') {
+    dbsIds.emplace((*dbs.second)("ShortName").getString(),dbs.first);
   }
-
+}
   std::map<std::string, Node> localNodes {
     {dbsIds["DBServer0001"], createNode(dbs1Str)},
     {dbsIds["DBServer0002"], createNode(dbs2Str)},
@@ -317,7 +337,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       shards.add(VPackValue("s1016002"));
       { VPackArrayBuilder a(&shards);
         for (auto const& id : dbsIds) {
-          shards.add(VPackValue(id.first));
+          shards.add(VPackValue(id.second));
         }}}
 
     std::string colpath = PLAN_COL_PATH + "db3/1016001";
@@ -326,22 +346,14 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       *(plan(PLAN_COL_PATH  + "_system").children().begin()->second);
     plan(PLAN_COL_PATH  + "db3/1016001/shards") = shards.slice();
 
-    std::string dbpath = PLAN_DB_PATH + "db3";
-    Builder builder;
-    { VPackObjectBuilder o(&builder);
-      builder.add("id", VPackValue("2010463"));
-      builder.add(
-        "coordinator", VPackValue("CRDN-6cac2a33-d34b-47e3-8c8b-77705d6a0ca2"));
-      builder.add(VPackValue("options"));
-      { VPackObjectBuilder oo(&builder); }
-      builder.add("name", VPackValue("db3")); }
-    plan(dbpath) = builder.slice();
+    createPlanDatabase("db3", plan);
 
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
-
+      
       node.second("db3") =
         arangodb::velocypack::Slice::emptyObjectSlice();
+
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
@@ -365,23 +377,14 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       shards.add(VPackValue("s1016002"));
       { VPackArrayBuilder a(&shards);
         for (auto const& id : dbsIds) {
-          shards.add(VPackValue(id.first));
+          shards.add(VPackValue(id.second));
         }}}
 
     plan(PLAN_COL_PATH + "db3/1016001") =
       *(plan(PLAN_COL_PATH + "_system").children().begin()->second);
     plan(PLAN_COL_PATH + "db3/1016001/shards") = shards.slice();
 
-    std::string dbpath = PLAN_DB_PATH + "db3";
-    Builder builder;
-    { VPackObjectBuilder o(&builder);
-      builder.add("id", VPackValue("2010463"));
-      builder.add(
-        "coordinator", VPackValue("CRDN-6cac2a33-d34b-47e3-8c8b-77705d6a0ca2"));
-      builder.add(VPackValue("options"));
-      { VPackObjectBuilder oo(&builder); }
-      builder.add("name", VPackValue("db3")); }
-    plan(dbpath) = builder.slice();
+    createPlanDatabase("db3", plan);
 
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
@@ -412,16 +415,18 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         arangodb::velocypack::Slice::emptyObjectSlice();
       plan(PLAN_COL_PATH + "db3") =
         arangodb::velocypack::Slice::emptyObjectSlice();
-
+      
+      createPlanDatabase("db3", plan);
+    
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
-
+      
       if (actions.size() != 1) {
         std::cout << actions << std::endl;
       }
       /*REQUIRE(actions.size() == 1);
-      for (auto const& action : actions) {
+        for (auto const& action : actions) {
         REQUIRE(action.name() == "DropCollection");
         REQUIRE(action.get("database") == "db3");
         REQUIRE(action.get("collection") == "1111111");
@@ -504,16 +509,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     plan(PLAN_COL_PATH + "db3") =
       arangodb::velocypack::Slice::emptyObjectSlice();
 
-    std::string dbpath = PLAN_DB_PATH + "db3";
-    Builder builder;
-    { VPackObjectBuilder o(&builder);
-      builder.add("id", VPackValue("2010463"));
-      builder.add(
-        "coordinator", VPackValue("CRDN-6cac2a33-d34b-47e3-8c8b-77705d6a0ca2"));
-      builder.add(VPackValue("options"));
-      { VPackObjectBuilder oo(&builder); }
-      builder.add("name", VPackValue("db3")); }
-    plan(dbpath) = builder.slice();
+    createPlanDatabase("db3", plan);
 
     for (auto& node : localNodes) {
 

@@ -1,6 +1,2020 @@
 R"=(
 {
-  "_system": null,
-  "foo": null
+  "_system": {
+    "s2010002": {
+      "id": "4",
+      "name": "s2010002",
+      "type": 2,
+      "status": 3,
+      "planId": "2010001",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010001/s2010002",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9030915",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010002/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010004": {
+      "id": "5",
+      "name": "s2010004",
+      "type": 2,
+      "status": 3,
+      "planId": "2010003",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010003/s2010004",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 2010030
+      },
+      "objectId": "9030942",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010004/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "user"
+          ],
+          "id": "s2010004/2010005",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "hash",
+          "unique": true
+        }
+      ]
+    },
+    "s2010007": {
+      "id": "6",
+      "name": "s2010007",
+      "type": 2,
+      "status": 3,
+      "planId": "2010006",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010006/s2010007",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9030999",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010007/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010009": {
+      "id": "7",
+      "name": "s2010009",
+      "type": 2,
+      "status": 3,
+      "planId": "2010008",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010008/s2010009",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9031050",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010009/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010011": {
+      "id": "8",
+      "name": "s2010011",
+      "type": 2,
+      "status": 3,
+      "planId": "2010010",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010010/s2010011",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 2010014
+      },
+      "objectId": "9031117",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010011/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010016": {
+      "id": "9",
+      "name": "s2010016",
+      "type": 2,
+      "status": 3,
+      "planId": "2010015",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010015/s2010016",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9031207",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010016/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010018": {
+      "id": "10",
+      "name": "s2010018",
+      "type": 2,
+      "status": 3,
+      "planId": "2010017",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010017/s2010018",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 2010137
+      },
+      "objectId": "9031303",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010018/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010020": {
+      "id": "11",
+      "name": "s2010020",
+      "type": 2,
+      "status": 3,
+      "planId": "2010019",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010019/s2010020",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9031415",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010020/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010022": {
+      "id": "12",
+      "name": "s2010022",
+      "type": 2,
+      "status": 3,
+      "planId": "2010021",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010021/s2010022",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9031541",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010022/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "queue",
+            "status",
+            "delayUntil"
+          ],
+          "id": "s2010022/2010023",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "skiplist",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "status",
+            "queue",
+            "delayUntil"
+          ],
+          "id": "s2010022/2010024",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "skiplist",
+          "unique": true
+        }
+      ]
+    },
+    "s2010026": {
+      "id": "13",
+      "name": "s2010026",
+      "type": 2,
+      "status": 3,
+      "planId": "2010025",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010025/s2010026",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 7010004
+      },
+      "objectId": "9031842",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010026/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "mount"
+          ],
+          "id": "s2010026/2010027",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "hash",
+          "unique": true
+        }
+      ]
+    },
+    "s2010029": {
+      "id": "14",
+      "name": "s2010029",
+      "type": 2,
+      "status": 3,
+      "planId": "2010028",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010028/s2010029",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9032087",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010029/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010032": {
+      "id": "15",
+      "name": "s2010032",
+      "type": 2,
+      "status": 3,
+      "planId": "2010031",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010031/s2010032",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 17040012
+      },
+      "objectId": "9032277",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010032/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "time"
+          ],
+          "id": "s2010032/2010033",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010035": {
+      "id": "16",
+      "name": "s2010035",
+      "type": 2,
+      "status": 3,
+      "planId": "2010034",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010034/s2010035",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 17040013
+      },
+      "objectId": "9032486",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010035/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "time"
+          ],
+          "id": "s2010035/2010036",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010038": {
+      "id": "17",
+      "name": "s2010038",
+      "type": 2,
+      "status": 3,
+      "planId": "2010037",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010037/s2010038",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 17040011
+      },
+      "objectId": "9032716",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010038/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "time"
+          ],
+          "id": "s2010038/2010039",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010046": {
+      "id": "18",
+      "name": "s2010046",
+      "type": 2,
+      "status": 3,
+      "planId": "2010045",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010045/s2010046",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9033458",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010046/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010051": {
+      "id": "20",
+      "name": "s2010051",
+      "type": 3,
+      "status": 3,
+      "planId": "2010049",
+      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010049/s2010051",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034002",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010051/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010051/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gi"
+          ],
+          "geoJson": false,
+          "id": "s2010051/2010116",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gij"
+          ],
+          "geoJson": true,
+          "id": "s2010051/2010122",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "id": "s2010051/2010126",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": true
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "pi"
+          ],
+          "id": "s2010051/2010130",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "persistent",
+          "unique": false
+        },
+        {
+          "fields": [
+            "fi"
+          ],
+          "id": "s2010051/2010132",
+          "minLength": 3,
+          "sparse": true,
+          "type": "fulltext",
+          "unique": false
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "sli"
+          ],
+          "id": "s2010051/2010136",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010052": {
+      "id": "22",
+      "name": "s2010052",
+      "type": 3,
+      "status": 3,
+      "planId": "2010049",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010049/s2010052",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034012",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010052/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010052/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gi"
+          ],
+          "geoJson": false,
+          "id": "s2010052/2010116",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gij"
+          ],
+          "geoJson": true,
+          "id": "s2010052/2010122",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "id": "s2010052/2010126",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": true
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "pi"
+          ],
+          "id": "s2010052/2010130",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "persistent",
+          "unique": false
+        },
+        {
+          "fields": [
+            "fi"
+          ],
+          "id": "s2010052/2010132",
+          "minLength": 3,
+          "sparse": true,
+          "type": "fulltext",
+          "unique": false
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "sli"
+          ],
+          "id": "s2010052/2010136",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010054": {
+      "id": "23",
+      "name": "s2010054",
+      "type": 3,
+      "status": 3,
+      "planId": "2010049",
+      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010049/s2010054",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034017",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010054/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010054/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gi"
+          ],
+          "geoJson": false,
+          "id": "s2010054/2010116",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gij"
+          ],
+          "geoJson": true,
+          "id": "s2010054/2010122",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "id": "s2010054/2010126",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": true
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "pi"
+          ],
+          "id": "s2010054/2010130",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "persistent",
+          "unique": false
+        },
+        {
+          "fields": [
+            "fi"
+          ],
+          "id": "s2010054/2010132",
+          "minLength": 3,
+          "sparse": true,
+          "type": "fulltext",
+          "unique": false
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "sli"
+          ],
+          "id": "s2010054/2010136",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010055": {
+      "id": "19",
+      "name": "s2010055",
+      "type": 3,
+      "status": 3,
+      "planId": "2010049",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010049/s2010055",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9033997",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010055/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010055/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gi"
+          ],
+          "geoJson": false,
+          "id": "s2010055/2010116",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gij"
+          ],
+          "geoJson": true,
+          "id": "s2010055/2010122",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "id": "s2010055/2010126",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": true
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "pi"
+          ],
+          "id": "s2010055/2010130",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "persistent",
+          "unique": false
+        },
+        {
+          "fields": [
+            "fi"
+          ],
+          "id": "s2010055/2010132",
+          "minLength": 3,
+          "sparse": true,
+          "type": "fulltext",
+          "unique": false
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "sli"
+          ],
+          "id": "s2010055/2010136",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010057": {
+      "id": "21",
+      "name": "s2010057",
+      "type": 3,
+      "status": 3,
+      "planId": "2010049",
+      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010049/s2010057",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034007",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010057/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010057/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gi"
+          ],
+          "geoJson": false,
+          "id": "s2010057/2010116",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gij"
+          ],
+          "geoJson": true,
+          "id": "s2010057/2010122",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "id": "s2010057/2010126",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": true
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "pi"
+          ],
+          "id": "s2010057/2010130",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "persistent",
+          "unique": false
+        },
+        {
+          "fields": [
+            "fi"
+          ],
+          "id": "s2010057/2010132",
+          "minLength": 3,
+          "sparse": true,
+          "type": "fulltext",
+          "unique": false
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "sli"
+          ],
+          "id": "s2010057/2010136",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010058": {
+      "id": "24",
+      "name": "s2010058",
+      "type": 3,
+      "status": 3,
+      "planId": "2010049",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010049/s2010058",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034022",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010058/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010058/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gi"
+          ],
+          "geoJson": false,
+          "id": "s2010058/2010116",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "bestIndexedLevel": 17,
+          "fields": [
+            "gij"
+          ],
+          "geoJson": true,
+          "id": "s2010058/2010122",
+          "maxNumCoverCells": 8,
+          "sparse": true,
+          "type": "geo",
+          "unique": false,
+          "worstIndexedLevel": 4
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "id": "s2010058/2010126",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": true
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "pi"
+          ],
+          "id": "s2010058/2010130",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "persistent",
+          "unique": false
+        },
+        {
+          "fields": [
+            "fi"
+          ],
+          "id": "s2010058/2010132",
+          "minLength": 3,
+          "sparse": true,
+          "type": "fulltext",
+          "unique": false
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "sli"
+          ],
+          "id": "s2010058/2010136",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s2010062": {
+      "id": "26",
+      "name": "s2010062",
+      "type": 2,
+      "status": 3,
+      "planId": "2010061",
+      "theLeader": "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010061/s2010062",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034512",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010062/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010063": {
+      "id": "25",
+      "name": "s2010063",
+      "type": 2,
+      "status": 3,
+      "planId": "2010061",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010061/s2010063",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034509",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010063/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010064": {
+      "id": "28",
+      "name": "s2010064",
+      "type": 2,
+      "status": 3,
+      "planId": "2010061",
+      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010061/s2010064",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034518",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010064/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010065": {
+      "id": "27",
+      "name": "s2010065",
+      "type": 2,
+      "status": 3,
+      "planId": "2010061",
+      "theLeader": "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010061/s2010065",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9034515",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010065/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    }
+  },
+  "foo": {
+    "s2010070": {
+      "id": "29",
+      "name": "s2010070",
+      "type": 2,
+      "status": 3,
+      "planId": "2010069",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010069/s2010070",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9035277",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010070/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010072": {
+      "id": "30",
+      "name": "s2010072",
+      "type": 2,
+      "status": 3,
+      "planId": "2010071",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010071/s2010072",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9035661",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010072/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010074": {
+      "id": "31",
+      "name": "s2010074",
+      "type": 2,
+      "status": 3,
+      "planId": "2010073",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010073/s2010074",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 2010077
+      },
+      "objectId": "9036060",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010074/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010079": {
+      "id": "32",
+      "name": "s2010079",
+      "type": 2,
+      "status": 3,
+      "planId": "2010078",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010078/s2010079",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9036482",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010079/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010081": {
+      "id": "33",
+      "name": "s2010081",
+      "type": 2,
+      "status": 3,
+      "planId": "2010080",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010080/s2010081",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9036911",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010081/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010083": {
+      "id": "34",
+      "name": "s2010083",
+      "type": 2,
+      "status": 3,
+      "planId": "2010082",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010082/s2010083",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9037355",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010083/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010085": {
+      "id": "35",
+      "name": "s2010085",
+      "type": 2,
+      "status": 3,
+      "planId": "2010084",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010084/s2010085",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9037819",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010085/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "queue",
+            "status",
+            "delayUntil"
+          ],
+          "id": "s2010085/2010086",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "skiplist",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "status",
+            "queue",
+            "delayUntil"
+          ],
+          "id": "s2010085/2010087",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "skiplist",
+          "unique": true
+        }
+      ]
+    },
+    "s2010089": {
+      "id": "36",
+      "name": "s2010089",
+      "type": 2,
+      "status": 3,
+      "planId": "2010088",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010088/s2010089",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 7010002
+      },
+      "objectId": "9038804",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010089/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "mount"
+          ],
+          "id": "s2010089/2010090",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "hash",
+          "unique": true
+        }
+      ]
+    },
+    "s2010092": {
+      "id": "37",
+      "name": "s2010092",
+      "type": 2,
+      "status": 3,
+      "planId": "2010091",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010091/s2010092",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9039560",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010092/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010098": {
+      "id": "41",
+      "name": "s2010098",
+      "type": 3,
+      "status": 3,
+      "planId": "2010097",
+      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010097/s2010098",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9040583",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010098/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010098/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        }
+      ]
+    },
+    "s2010099": {
+      "id": "38",
+      "name": "s2010099",
+      "type": 3,
+      "status": 3,
+      "planId": "2010097",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010097/s2010099",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9040568",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010099/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010099/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        }
+      ]
+    },
+    "s2010100": {
+      "id": "39",
+      "name": "s2010100",
+      "type": 3,
+      "status": 3,
+      "planId": "2010097",
+      "theLeader": "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010097/s2010100",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9040573",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010100/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010100/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        }
+      ]
+    },
+    "s2010101": {
+      "id": "40",
+      "name": "s2010101",
+      "type": 3,
+      "status": 3,
+      "planId": "2010097",
+      "theLeader": "PRMR-57aa3986-2e78-4810-8000-7fd2f0693291",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010097/s2010101",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9040578",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010101/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s2010101/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        }
+      ]
+    },
+    "s2010103": {
+      "id": "46",
+      "name": "s2010103",
+      "type": 2,
+      "status": 3,
+      "planId": "2010102",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010102/s2010103",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9041430",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010103/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010105": {
+      "id": "47",
+      "name": "s2010105",
+      "type": 2,
+      "status": 3,
+      "planId": "2010102",
+      "theLeader": "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010102/s2010105",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9041433",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010105/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010106": {
+      "id": "42",
+      "name": "s2010106",
+      "type": 2,
+      "status": 3,
+      "planId": "2010102",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010102/s2010106",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9041418",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010106/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010108": {
+      "id": "44",
+      "name": "s2010108",
+      "type": 2,
+      "status": 3,
+      "planId": "2010102",
+      "theLeader": "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010102/s2010108",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9041424",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010108/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010109": {
+      "id": "43",
+      "name": "s2010109",
+      "type": 2,
+      "status": 3,
+      "planId": "2010102",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010102/s2010109",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9041421",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010109/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s2010111": {
+      "id": "45",
+      "name": "s2010111",
+      "type": 2,
+      "status": 3,
+      "planId": "2010102",
+      "theLeader": "PRMR-e786c6cb-92fc-45cc-85dd-71abafcdaa83",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c2010102/s2010111",
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "9041427",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s2010111/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    }
+  }
 }
 )="
