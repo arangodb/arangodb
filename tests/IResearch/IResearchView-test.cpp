@@ -962,6 +962,142 @@ SECTION("test_drop_cid") {
     }
   }
 }
+  
+SECTION("test_truncate_cid") {
+  static std::vector<std::string> const EMPTY;
+  
+  // cid not in list of collections for snapshot (view definition not updated, not persisted)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+    
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      CHECK((trx.begin().ok()));
+      view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+    
+    // query
+    {
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      auto* snapshot = view->snapshot(trx, true);
+      CHECK(1 == snapshot->live_docs_count());
+    }
+    
+    // truncate cid 42
+    {
+      bool persisted = false;
+      auto before = StorageEngineMock::before;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
+      StorageEngineMock::before = [&persisted]()->void { persisted = true; };
+      
+      CHECK((TRI_ERROR_NO_ERROR == view->truncate(42)));
+      CHECK((!persisted)); // truncate() does not modify view meta
+      view->sync();
+    }
+    
+    // query
+    {
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      auto* snapshot = view->snapshot(trx, true);
+      CHECK(0 == snapshot->live_docs_count());
+    }
+  }
+  
+  // cid in list of collections for snapshot (view definition not updated+persisted)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+    
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      CHECK((trx.begin().ok()));
+      view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+    
+    // query
+    {
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      auto* snapshot = view->snapshot(trx, true);
+      CHECK(1 == snapshot->live_docs_count());
+    }
+    
+    // truncate cid 42
+    {
+      bool persisted = false;
+      auto before = StorageEngineMock::before;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
+      StorageEngineMock::before = [&persisted]()->void { persisted = true; };
+      
+      CHECK((TRI_ERROR_NO_ERROR == view->truncate(42)));
+      CHECK((!persisted)); // truncate() does not modify view meta
+      view->sync();
+    }
+    
+    // query
+    {
+      arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
+      );
+      auto* snapshot = view->snapshot(trx, true);
+      CHECK(0 == snapshot->live_docs_count());
+    }
+  }
+}
 
 SECTION("test_emplace_cid") {
   // emplace (already in list)

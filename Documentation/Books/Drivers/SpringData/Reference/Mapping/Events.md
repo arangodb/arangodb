@@ -1,7 +1,7 @@
 <!-- don't edit here, its from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
 # Events
 
-Srping Data ArangoDB includes several `ApplicationEvent` events that your application can respond to by registering subclasses of `AbstractArangoEventListener` in the ApplicationContext.
+Spring Data ArangoDB includes several `ApplicationEvent` events that your application can respond to by registering subclasses of `AbstractArangoEventListener` in the ApplicationContext.
 
 The following callback methods are present in `AbstractArangoEventListener`:
 

@@ -45,6 +45,7 @@ struct IResearchViewMetaSetup {
   }
 
   ~IResearchViewMetaSetup() {
+    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };

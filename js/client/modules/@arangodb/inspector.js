@@ -340,7 +340,7 @@ function range(start, end) {
 
 function loadAgency(conn, seen) {
 
-  var agencyDump = conn.POST("/_api/agency/read", '[["/"]]');
+  var agencyDump = conn.POST_RAW("/_api/agency/read", '[["/"]]');
   seen[conn.getEndpoint()] = true;
 
   if (agencyDump.code === 404) {
