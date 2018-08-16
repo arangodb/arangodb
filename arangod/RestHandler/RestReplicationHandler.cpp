@@ -1322,9 +1322,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af->userManager() != nullptr);
   if (af->userManager() != nullptr) {
-    af->userManager()->outdate();
+    af->userManager()->triggerReload();
   }
-  af->tokenCache()->invalidateBasicCache();
 
   return Result{queryResult.code};
 }

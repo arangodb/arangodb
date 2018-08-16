@@ -647,7 +647,7 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         if (config._jwt.empty()) {
-          config._jwt = af->tokenCache()->jwtToken();
+          config._jwt = af->tokenCache().jwtToken();
         }
         config._endpoint = endpoint;
         config._autoResync = true;
@@ -712,8 +712,6 @@ void HeartbeatThread::runCoordinator() {
   AuthenticationFeature* af = application_features::ApplicationServer::getFeature<
             AuthenticationFeature>("Authentication");
   TRI_ASSERT(af != nullptr);
-
-  uint64_t oldUserVersion = 0;
 
   // invalidate coordinators every 2nd call
   bool invalidateCoordinators = true;
@@ -842,11 +840,9 @@ void HeartbeatThread::runCoordinator() {
           } catch (...) {
           }
 
-          if (userVersion > 0 && userVersion != oldUserVersion) {
-            oldUserVersion = userVersion;
+          if (userVersion > 0) {
             if (af->isActive() && af->userManager() != nullptr) {
-              af->userManager()->outdate();
-              af->tokenCache()->invalidateBasicCache();
+              af->userManager()->setGlobalVersion(userVersion);
             }
           }
         }

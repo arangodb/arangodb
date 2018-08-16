@@ -51,7 +51,7 @@ ExecContext* ExecContext::create(std::string const& user,
   if (af->isActive()) {
     auth::UserManager* um = af->userManager();
     TRI_ASSERT(um != nullptr);
-    dbLvl = um->databaseAuthLevel(user, dbname);
+    dbLvl = sysLvl = um->databaseAuthLevel(user, dbname);
     if (dbname != TRI_VOC_SYSTEM_DATABASE) {
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }

@@ -744,16 +744,11 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
-  if (!_auth->isActive()) {
-    request->setAuthenticated(true);
-    return rest::ResponseCode::OK;
-  }
-
+ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) const {
   bool found;
-  std::string const& authStr = request->header(StaticStrings::Authorization, found);
+  std::string const& authStr = req->header(StaticStrings::Authorization, found);
   if (!found) {
-    events::CredentialsMissing(request);
+    events::CredentialsMissing(req);
     return rest::ResponseCode::UNAUTHORIZED;
   }
 
@@ -777,17 +772,16 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       }
 
       if (authMethod != AuthenticationMethod::NONE) {
-        request->setAuthenticationMethod(authMethod);
-        TRI_ASSERT(_auth->isActive());
-        auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
-        request->setAuthenticated(entry.authenticated());
-        request->setUser(std::move(entry._username));
+        req->setAuthenticationMethod(authMethod);
+        auto entry = _auth->tokenCache().checkAuthentication(authMethod, auth);
+        req->setAuthenticated(entry.authenticated());
+        req->setUser(std::move(entry._username));
 
-        if (request->authenticated()) {
-          events::Authenticated(request, authMethod);
+        if (req->authenticated()) {
+          events::Authenticated(req, authMethod);
           return rest::ResponseCode::OK;
         }
-        events::CredentialsBad(request, authMethod);
+        events::CredentialsBad(req, authMethod);
         return rest::ResponseCode::UNAUTHORIZED;
       }
 
@@ -803,6 +797,6 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
     }
   }
 
-  events::UnknownAuthenticationMethod(request);
+  events::UnknownAuthenticationMethod(req);
   return rest::ResponseCode::UNAUTHORIZED;
 }
