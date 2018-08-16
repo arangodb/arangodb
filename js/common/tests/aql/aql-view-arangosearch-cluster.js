@@ -56,16 +56,17 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = { properties: {
+      var meta = {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
+            storeValues: "id",
             fields: {
               text: { analyzers: [ "text_en" ] }
             }
           }
         }
-      } };
+      };
       v.properties(meta);
 
       ac.save({ a: "foo", id : 0 });
@@ -90,7 +91,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     tearDown : function () {
-      var meta = { properties: { links : { "UnitTestsCollection": null } } };
+      var meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();
       db._drop("UnitTestsCollection");
@@ -492,16 +493,12 @@ jsunity.run(function IResearchAqlTestSuite_s4_r1() {
   return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 });
 });
 
-/*
-
 jsunity.run(function IResearchAqlTestSuite_s1_r2() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 })
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 });
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 })
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 });
 });
-
-*/
 
 return jsunity.done();

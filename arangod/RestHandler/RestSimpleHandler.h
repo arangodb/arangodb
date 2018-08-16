@@ -40,7 +40,6 @@ class RestSimpleHandler : public RestCursorHandler {
 
  public:
   RestStatus execute() override final;
-  RestStatus continueExecute() override final;
   char const* name() const override final { return "RestSimpleHandler"; }
 
  private:
@@ -50,7 +49,7 @@ class RestSimpleHandler : public RestCursorHandler {
   ///        to not be interrupted and is guaranteed to get a complete queryResult.
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleQueryResult() override final;
+  RestStatus handleQueryResult() override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle result of a remove-by-keys query

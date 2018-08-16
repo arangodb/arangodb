@@ -181,7 +181,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
 
 static MMFilesDatafile* CreateAnonymousDatafile(TRI_voc_fid_t fid,
-                                               uint32_t maximalSize) {
+                                                uint32_t maximalSize) {
 #ifdef TRI_MMAP_ANONYMOUS
   // fd -1 is required for "real" anonymous regions
   int fd = -1;
@@ -421,8 +421,6 @@ char const* TRI_NameMarkerDatafile(MMFilesMarkerType type) {
       return "create view";
     case TRI_DF_MARKER_VPACK_DROP_VIEW:
       return "drop view";
-    case TRI_DF_MARKER_VPACK_RENAME_VIEW:
-      return "rename view";
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
       return "change view";
 
@@ -954,7 +952,7 @@ static std::string DiagnoseMarker(MMFilesMarker const* marker,
 }
 
 MMFilesDatafile::MMFilesDatafile(std::string const& filename, int fd, void* mmHandle, uint32_t maximalSize,
-                               uint32_t currentSize, TRI_voc_fid_t fid, char* data)
+                                 uint32_t currentSize, TRI_voc_fid_t fid, char* data)
         : _filename(filename),
           _fid(fid),
           _state(TRI_DF_STATE_READ),
@@ -1235,10 +1233,10 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
 }
 
 /// @brief checks a datafile
-bool MMFilesDatafile::check(bool ignoreFailures) {
+bool MMFilesDatafile::check(bool ignoreFailures, bool autoSeal) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(isPhysical());
-  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "checking markers in datafile '" << getName() << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "checking markers in datafile '" << getName() << "', autoSeal: " << autoSeal;
 
   char const* ptr = _data;
   char const* end = ptr + _currentSize;
@@ -1264,10 +1262,14 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
 
     if (canRead) {
       if (size == 0) {
-        LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES) << "reached end of datafile '" << getName() << "' data, current size " << currentSize;
+        LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES) << "reached end of datafile '" << getName() << "' data, current size " << currentSize << ", autoSeal: " << autoSeal;
 
         _currentSize = currentSize;
         _next = _data + _currentSize;
+
+        if (autoSeal) {
+          _isSealed = true;
+        }
 
         return true;
       }
@@ -1774,7 +1776,7 @@ bool MMFilesDatafile::tryRepair() {
 
 /// @brief opens an existing datafile
 /// The datafile will be opened read-only if a footer is found
-MMFilesDatafile* MMFilesDatafile::open(std::string const& filename, bool ignoreFailures) {
+MMFilesDatafile* MMFilesDatafile::open(std::string const& filename, bool ignoreFailures, bool autoSeal) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(!filename.empty());
 
@@ -1785,7 +1787,7 @@ MMFilesDatafile* MMFilesDatafile::open(std::string const& filename, bool ignoreF
   }
 
   // check the datafile by scanning markers
-  bool ok = datafile->check(ignoreFailures);
+  bool ok = datafile->check(ignoreFailures, autoSeal);
 
   if (!ok) {
     TRI_UNMMFile(const_cast<char*>(datafile->data()), datafile->initSize(), datafile->fd(), &datafile->_mmHandle);

@@ -24,11 +24,13 @@
 
 #include "Logger/Logger.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-ApplicationFeaturePhase::ApplicationFeaturePhase(ApplicationServer* server,
-                                                 std::string const& name)
+ApplicationFeaturePhase::ApplicationFeaturePhase(
+    ApplicationServer& server,
+    std::string const& name
+)
     : ApplicationFeature(server, name) {}
 
 void ApplicationFeaturePhase::validateOptions(
@@ -61,3 +63,6 @@ void ApplicationFeaturePhase::unprepare() {
   LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
       << "Unprepare for phase " << name() << " started";
 }
+
+} // application_features
+} // arangodb

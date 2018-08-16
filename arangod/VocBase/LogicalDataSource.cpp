@@ -23,6 +23,8 @@
 
 #include <mutex>
 
+#include "LogicalDataSource.h"
+
 #include "Basics/conversions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
@@ -33,7 +35,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-#include "LogicalDataSource.h"
+//
+#include "Logger/Logger.h"
 
 namespace {
 
@@ -50,25 +53,26 @@ std::string ensureGuid(
 
   guid.reserve(64);
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {
+  // view GUIDs are added to the ClusterInfo. To avoid conflicts
+  // with collection names we always put in a '/' which is an illegal
+  // character for collection names. Stringified collection or view
+  // id numbers can also not conflict, first character is always 'h'
+  if (arangodb::ServerState::instance()->isCoordinator() ||
+      arangodb::ServerState::instance()->isDBServer()) {
     TRI_ASSERT(planId);
     guid.append("c");
-    guid.append(std::to_string(planId));
-  } else if (arangodb::ServerState::instance()->isDBServer()) {
-    TRI_ASSERT(planId);
-    guid.append("c");
-    // we add the shard name to the collection. If we ever
-    // replicate shards, we can identify them cluster-wide
     guid.append(std::to_string(planId));
     guid.push_back('/');
-    guid.append(name);
+    if (arangodb::ServerState::instance()->isDBServer()) {
+      // we add the shard name to the collection. If we ever
+      // replicate shards, we can identify them cluster-wide
+      guid.append(name);
+    }
   } else if (isSystem) {
     guid.append(name);
   } else {
     char buf[sizeof(TRI_server_id_t) * 2 + 1];
-    auto len =
-      TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
-
+    auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
     TRI_ASSERT(id);
     guid.append("h");
     guid.append(buf, len);

@@ -141,6 +141,7 @@ struct BatchInfo {
 
 struct MasterInfo {
   std::string endpoint;
+  std::string engine; // storage engine (optional)
   TRI_server_id_t serverId{0};
   int majorVersion{0};
   int minorVersion{0};
@@ -161,7 +162,7 @@ struct MasterInfo {
 #endif
 };
 
-/// @brief generates basic source headers for cluster comm requests
+/// @brief generates basic source headers for ClusterComm requests
 std::unordered_map<std::string, std::string> createHeaders();
 
 /// @brief whether or not the HTTP result is valid or not

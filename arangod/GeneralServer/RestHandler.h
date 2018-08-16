@@ -34,7 +34,7 @@ namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
 
-enum class RestStatus { DONE, WAITING, FAIL};
+enum class RestStatus { DONE, WAITING, FAIL };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
@@ -51,6 +51,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual ~RestHandler();
 
  public:
+  void assignHandlerId();
   uint64_t handlerId() const { return _handlerId; }
   uint64_t messageId() const;
 
@@ -139,8 +140,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void shutdownEngine();
 
  protected:
-  uint64_t const _handlerId;
-
   std::atomic<bool> _canceled;
 
   std::unique_ptr<GeneralRequest> _request;
@@ -149,6 +148,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::atomic<RequestStatistics*> _statistics;
 
  private:
+  uint64_t _handlerId;
+
   HandlerState _state;
   std::function<void(rest::RestHandler*)> _callback;
 

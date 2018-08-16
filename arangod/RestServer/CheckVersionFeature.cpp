@@ -34,14 +34,17 @@
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 CheckVersionFeature::CheckVersionFeature(
-    ApplicationServer* server, int* result,
-    std::vector<std::string> const& nonServerFeatures)
+    application_features::ApplicationServer& server,
+    int* result,
+    std::vector<std::string> const& nonServerFeatures
+)
     : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
       _result(result),
@@ -170,7 +173,7 @@ void CheckVersionFeature::checkVersion() {
       *_result = 3;
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
-          << "': upgrade needed";
+          << "': downgrade needed";
     } else if (res.status == methods::VersionResult::UPGRADE_NEEDED &&
                *_result == 1) {
       // this is safe to do even if further databases will be checked
@@ -178,7 +181,7 @@ void CheckVersionFeature::checkVersion() {
       *_result = 2;
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
-          << "': downgrade needed";
+          << "': upgrade needed";
     }
   }
 
@@ -188,12 +191,12 @@ void CheckVersionFeature::checkVersion() {
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
   } else if (*_result > 1) {
-    if (*_result == 2) {
+    if (*_result == 3) {
       // downgrade needed
       LOG_TOPIC(FATAL, Logger::FIXME)
           << "Database version check failed: downgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_DOWNGRADE_REQUIRED);
-    } else if (*_result == 3) {
+    } else if (*_result == 2) {
       LOG_TOPIC(FATAL, Logger::FIXME)
           << "Database version check failed: upgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_UPGRADE_REQUIRED);
@@ -204,3 +207,5 @@ void CheckVersionFeature::checkVersion() {
     FATAL_ERROR_EXIT_CODE(*_result);
   }
 }
+
+} // arangodb

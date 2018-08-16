@@ -444,8 +444,8 @@ OperationID ClusterComm::asyncRequest(
             << "' at endpoint '" << result->endpoint << "'";
         }
       }
-      bool ret = ((*callback.get())(result.get()));
-      TRI_ASSERT(ret == true);
+      /*bool ret =*/ ((*callback.get())(result.get()));
+      // TRI_ASSERT(ret == true);
     };
     callbacks._onSuccess = [callback, result, this](std::unique_ptr<GeneralResponse> response) {
       {
@@ -454,8 +454,8 @@ OperationID ClusterComm::asyncRequest(
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
-      bool ret = ((*callback.get())(result.get()));
-      TRI_ASSERT(ret == true);
+      /*bool ret =*/ ((*callback.get())(result.get()));
+      //TRI_ASSERT(ret == true);
     };
   } else {
     callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {

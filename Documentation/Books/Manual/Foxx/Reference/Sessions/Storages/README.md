@@ -1,7 +1,9 @@
 Session Storages
 ================
 
-Session storages are used by the sessions middleware to persist sessions across requests. Session storages must implement the `fromClient` and `forClient` methods and can optionally implement the `new` method.
+Session storages are used by the sessions middleware to persist sessions across
+requests. Session storages must implement the `fromClient` and `forClient`
+methods and can optionally implement the `new` method.
 
 The built-in session storages generally provide the following attributes:
 
@@ -22,7 +24,11 @@ new
 
 `storage.new(): Session`
 
-Generates a new session object representing an empty session. The empty session object should not be persisted unless necessary. The return value will be exposed by the middleware as the `session` property of the request object if no session identifier was returned by the session transports and auto-creation is not explicitly disabled in the session middleware.
+Generates a new session object representing an empty session.
+The empty session object should not be persisted unless necessary.
+The return value will be exposed by the middleware as the `session` property
+of the request object if no session identifier was returned by the session
+transports and auto-creation is not explicitly disabled in the session middleware.
 
 **Examples**
 
@@ -49,7 +55,11 @@ Resolves or deserializes a session identifier to a session object.
 
   Session identifier to resolve or deserialize.
 
-Returns a session object representing the session with the given session identifier that will be exposed by the middleware as the `session` property of the request object. This method will only be called if any of the session transports returned a session identifier. If the session identifier is invalid or expired, the method should return a `null` value to indicate no matching session.
+Returns a session object representing the session with the given session
+identifier that will be exposed by the middleware as the `session` property of
+the request object. This method will only be called if any of the session transports
+returned a session identifier. If the session identifier is invalid or expired,
+the method should return a `null` value to indicate no matching session.
 
 **Examples**
 
@@ -72,7 +82,9 @@ Derives a session identifier from the given session object.
 
   Session to derive a session identifier from.
 
-Returns a session identifier for the session represented by the given session object. This method will be called with the `session` property of the request object unless that property is empty (e.g. `null`).
+Returns a session identifier for the session represented by the given
+session object. This method will be called with the `session` property
+of the request object unless that property is empty (e.g. `null`).
 
 **Examples**
 

@@ -42,11 +42,11 @@ function runSetup () {
   var v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
 
   // setup link
-  var meta = { properties: { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } } };
+  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   v.properties(meta);
 
   // remove link
-  v.properties({ properties: { links: { 'UnitTestsRecoveryDummy': null } } });
+  v.properties({ links: { 'UnitTestsRecoveryDummy': null } });
 
   c.save({ name: 'crashme' }, true);
 
@@ -71,7 +71,7 @@ function recoverySuite () {
 
     testIResearchLinkDrop: function () {
       var v1 = db._view('UnitTestsRecovery1');
-      assertEqual(v1.properties().properties.links, {});
+      assertEqual(v1.properties().links, {});
     }
 
   };

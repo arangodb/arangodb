@@ -28,6 +28,7 @@
 #include "VocBase/Methods/Collections.h"
 
 namespace arangodb {
+
 class LogicalCollection;
 
 class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
@@ -48,14 +49,21 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool detailedCount);
 
-  void collectionRepresentation(VPackBuilder& builder, LogicalCollection* coll,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool detailedCount);
+  void collectionRepresentation(
+    arangodb::velocypack::Builder& builder,
+    LogicalCollection& coll,
+    bool showProperties,
+    bool showFigures,
+    bool showCount,
+    bool detailedCount
+  );
+
   void collectionRepresentation(VPackBuilder& builder,
                                 methods::Collections::Context& ctxt,
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool detailedCount);
 };
+
 }
 
 #endif

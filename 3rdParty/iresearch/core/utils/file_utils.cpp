@@ -146,14 +146,16 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, path.c_str());
     return true; // locked
   }
 
   // check pid
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, path.c_str());
     return true; // locked
   }
 
@@ -339,7 +341,7 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, file);
     return true; // locked
   }
 
@@ -351,7 +353,7 @@ bool verify_lock_file(const file_path_t file) {
   // check pid
   const char* pid = buf+len+1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, file);
     return true; // locked
   }
 
@@ -739,6 +741,11 @@ bool mkdir(const file_path_t path) NOEXCEPT {
     // workaround for path MAX_PATH
     auto dirname = path_prefix + path;
 
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &dirname[0], &dirname[0] + dirname.size(), L'/', file_path_delimiter
+    );
+
     return 0 != ::CreateDirectoryW(dirname.c_str(), nullptr);
   #else
     return 0 == ::mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO);
@@ -941,6 +948,11 @@ bool remove(const file_path_t path) NOEXCEPT {
     // workaround for path MAX_PATH
     auto fullpath = path_prefix + path;
 
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
+    );
+
     bool result;
     auto res = exists_directory(result, path) && result
              ? ::RemoveDirectoryW(fullpath.c_str())
@@ -968,6 +980,11 @@ bool set_cwd(const file_path_t path) NOEXCEPT {
 
     // workaround for path MAX_PATH
     auto fullpath = path_prefix + path;
+
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
+    );
 
     return 0 != SetCurrentDirectory(fullpath.c_str());
   #else

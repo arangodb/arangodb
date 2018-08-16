@@ -137,4 +137,4 @@ The QUnit interface to Mocha has been removed. This affects the behaviour of the
 
 This should not cause any problems with existing tests but may result in failures in test cases that previously passed for the wrong reasons. Specifically the execution order of the `before`, `after`, etc functions now follows the intended order and is no longer arbitrary.
 
-For details on the expected behaviour of these functions see the [testing chapter](../Foxx/Reference/Testing.md) in the Foxx documentation.
+For details on the expected behaviour of these functions see the [testing chapter](../Foxx/Guides/Testing.md) in the Foxx documentation.

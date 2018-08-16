@@ -863,11 +863,12 @@
         this.waitForInit(this.queryManagement.bind(this));
         return;
       }
-      if (!this.queryManagementView) {
-        this.queryManagementView = new window.QueryManagementView({
-          collection: undefined
-        });
+      if (this.queryManagementView) {
+        this.queryManagementView.remove();
       }
+      this.queryManagementView = new window.QueryManagementView({
+        collection: undefined
+      });
       this.queryManagementView.render();
     },
 

@@ -97,6 +97,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
   applierConfiguration.endpoint = masterEndpoint;
   applierConfiguration.username = "root";
   applierConfiguration.password = "";
+  applierConfiguration.force32mode = false;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
@@ -402,6 +403,66 @@ function BaseTestConfig() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test truncating a small collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateCollectionSmall: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn);
+          for (let i = 0; i < 1000; i++) {
+            c.insert({value:i});
+          }
+        },
+
+        function(state) {
+          db._collection(cn).truncate();
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertEqual(db._collection(cn).count(), 0);
+          assertEqual(db._collection(cn).all().toArray().length, 0);
+        }
+      );
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test truncating a bigger collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateCollectionBigger: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn);
+          for (let i = 0; i < (32 * 1024 + 1); i++) {
+            c.insert({value:i});
+          }
+        },
+
+        function(state) {
+          db._collection(cn).truncate(); // should hit range-delete in rocksdb
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertEqual(db._collection(cn).count(), 0);
+          assertEqual(db._collection(cn).all().toArray().length, 0);
+        }
+      );
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test long transaction, blocking
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -632,6 +693,124 @@ function BaseTestConfig() {
           assertEqual(state.count, collectionCount(cn));
         }
       );
+    },
+
+    testViewBasic: function() {
+      connectToMaster();
+
+      compare(
+        function() {},
+        function(state) {
+          try {
+            db._create(cn);
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            let links = {};
+            links[cn] =  { 
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
+            };
+            view.properties({"links": links});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function() {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        {}
+      );
+    },
+
+    testViewRename: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          try {
+            db._create(cn);
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            let links = {};
+            links[cn] =  { 
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
+            };
+            view.properties({"links": links});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          // rename view on master
+          let view = db._view("UnitTestsSyncView");
+          view.rename("UnitTestsSyncViewRenamed");
+          view = db._view("UnitTestsSyncViewRenamed");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        function(state) {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncViewRenamed");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        {}
+      );
+    },
+
+    testViewDrop: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          try {
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          // rename view on master
+          let view = db._view("UnitTestsSyncView");
+          view.drop();
+        },
+        function(state) {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view === null);
+        },
+        {}
+      );
     }
 
   };
@@ -672,6 +851,8 @@ function ReplicationSuite() {
   suite.tearDown = function() {
     connectToMaster();
 
+    db._dropView("UnitTestsSyncView");
+    db._dropView("UnitTestsSyncViewRenamed");
     db._drop(cn);
     db._drop(cn2);
 
@@ -679,6 +860,8 @@ function ReplicationSuite() {
     replication.applier.stop();
     replication.applier.forget();
 
+    db._dropView("UnitTestsSyncView");
+    db._dropView("UnitTestsSyncViewRenamed");
     db._drop(cn);
     db._drop(cn2);
     db._drop(cn + "Renamed");

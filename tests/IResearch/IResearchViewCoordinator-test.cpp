@@ -41,16 +41,19 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
 #include "Agency/Store.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/Methods/Indexes.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Agency/AgencyFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
@@ -74,6 +77,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -103,7 +107,7 @@ struct IResearchViewCoordinatorSetup {
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
-  IResearchViewCoordinatorSetup(): server(nullptr, nullptr) {
+  IResearchViewCoordinatorSetup(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     // Do not activate callbacks
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
@@ -135,37 +139,38 @@ struct IResearchViewCoordinatorSetup {
       features.emplace(name, std::make_pair(ftr, start));
     };
 
-    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
 
     // setup required application features
-    buildFeatureEntry(new arangodb::V8DealerFeature(&server), false);
-    buildFeatureEntry(new arangodb::ViewTypesFeature(&server), true);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false);
-    buildFeatureEntry(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
-    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), false);
-    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false);
-    buildFeatureEntry(new arangodb::DatabasePathFeature(&server), false);
-    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    buildFeatureEntry(new arangodb::AqlFeature(&server), true);
-    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(&server), true);
+    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
+    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
+    buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
+    buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
+    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
+    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
+    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    buildFeatureEntry(new arangodb::AqlFeature(server), true);
+    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
  
     // We need this feature to be added now in order to create the system database
     arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
 
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
-    buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
-    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(server), true);
+    buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false);
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
 
     #if USE_ENTERPRISE
-      buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      buildFeatureEntry(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -255,7 +260,7 @@ SECTION("test_type") {
 
 SECTION("test_rename") {
   auto json = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"properties\": { \"collections\": [1,2,3] } }");
+    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"collections\": [1,2,3] }");
 
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
 
@@ -335,7 +340,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK(8 == slice.length());
+    CHECK((9U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
@@ -343,9 +348,6 @@ SECTION("test_defaults") {
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.hasKey("planId"));
     CHECK(false == slice.get("deleted").getBool());
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((2U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
@@ -361,15 +363,12 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK(4 == slice.length());
+    CHECK((6U == slice.length()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(!slice.hasKey("planId"));
     CHECK(!slice.hasKey("deleted"));
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((3U == slice.length()));
     CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
@@ -633,7 +632,7 @@ SECTION("test_update_properties") {
 
       arangodb::iresearch::IResearchViewMeta meta;
       error.clear(); // clear error
-      CHECK(meta.init(builder.slice().get("properties"), error));
+      CHECK(meta.init(builder.slice(), error));
       CHECK(error.empty());
       CHECK(meta == arangodb::iresearch::IResearchViewMeta::DEFAULT());
     }
@@ -642,7 +641,7 @@ SECTION("test_update_properties") {
 
     // update properties - full update
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"commit\": { \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 } } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 } }");
       CHECK(view->updateProperties(props->slice(), false, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -671,7 +670,7 @@ SECTION("test_update_properties") {
         expected._commit._cleanupIntervalStep = 42;
         expected._commit._commitIntervalMsec = 50;
         error.clear(); // clear error
-        CHECK(meta.init(builder.slice().get("properties"), error));
+        CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
         CHECK(expected == meta);
       }
@@ -685,7 +684,7 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         error.clear(); // clear error
-        CHECK(meta.init(builder.slice().get("properties"), error));
+        CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
         CHECK(meta == arangodb::iresearch::IResearchViewMeta::DEFAULT());
       }
@@ -693,7 +692,7 @@ SECTION("test_update_properties") {
 
     // partially update properties
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"commit\": { \"commitIntervalMsec\": 42 } } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42 } }");
       CHECK(fullyUpdatedView->updateProperties(props->slice(), true, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -722,7 +721,7 @@ SECTION("test_update_properties") {
         expected._commit._cleanupIntervalStep = 42;
         expected._commit._commitIntervalMsec = 42;
         error.clear(); // clear error
-        CHECK(meta.init(builder.slice().get("properties"), error));
+        CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
         CHECK(expected == meta);
       }
@@ -847,11 +846,11 @@ SECTION("test_update_links_partial_remove") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"links\" : {"
+    "{ \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
-    "} } }"
+    "} }"
   );
   CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // add links
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -889,7 +888,7 @@ SECTION("test_update_links_partial_remove") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -977,8 +976,8 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1023,8 +1022,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1067,8 +1067,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1087,9 +1088,9 @@ SECTION("test_update_links_partial_remove") {
   }
 
   auto const updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"links\" : {"
+    "{ \"links\": {"
     "  \"2\" : null "
-    "} } }"
+    "} }"
   );
   CHECK(view->updateProperties(updateJson->slice(), true, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -1126,7 +1127,7 @@ SECTION("test_update_links_partial_remove") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -1200,8 +1201,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1245,8 +1247,9 @@ SECTION("test_update_links_partial_remove") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1403,10 +1406,10 @@ SECTION("test_update_links_partial_add") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"links\" : {"
+    "{ \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
-    "} } }"
+    "} }"
   );
   CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // add links
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -1443,7 +1446,7 @@ SECTION("test_update_links_partial_add") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -1517,8 +1520,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1561,8 +1565,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1581,9 +1586,9 @@ SECTION("test_update_links_partial_add") {
   }
 
   auto const updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"links\" : {"
+    "{ \"links\": {"
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
-    "} } }"
+    "} }"
   );
   CHECK(view->updateProperties(updateJson->slice(), true, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -1621,7 +1626,7 @@ SECTION("test_update_links_partial_add") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -1709,8 +1714,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1755,8 +1761,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1800,8 +1807,9 @@ SECTION("test_update_links_partial_add") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -1811,7 +1819,7 @@ SECTION("test_update_links_partial_add") {
 
   // partial update - empty delta
   {
-    auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": {} }");
+    auto const updateJson = arangodb::velocypack::Parser::fromJson("{ }");
     CHECK(view->updateProperties(updateJson->slice(), true, true).ok()); // empty properties -> should not affect plan version
     CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
   }
@@ -1860,6 +1868,40 @@ SECTION("test_update_links_partial_add") {
     REQUIRE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
     CHECK(!link);
+  }
+
+  // add link (collection not authorized)
+  {
+    auto const collectionId = "1";
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection1));
+    auto logicalView = vocbase->createView(viewJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::removeAllUsers()
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(linksJson->slice(), true, false).errorNumber()));
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection1));
+    logicalView = ci->getView(vocbase->name(), viewId); // get new version of the view
+    REQUIRE((false == !logicalView));
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
 
@@ -1969,10 +2011,10 @@ SECTION("test_update_links_replace") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"links\" : {"
+    "{ \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
-    "} } }"
+    "} }"
   );
   CHECK(view->updateProperties(linksJson->slice(), false, true).ok()); // add link
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -2009,7 +2051,7 @@ SECTION("test_update_links_replace") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -2083,8 +2125,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2127,8 +2170,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2158,9 +2202,9 @@ SECTION("test_update_links_replace") {
   }
 
   auto updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"links\" : {"
+    "{ \"links\": {"
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
-    "} } }"
+    "} }"
   );
   CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -2196,7 +2240,7 @@ SECTION("test_update_links_replace") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -2257,8 +2301,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2278,10 +2323,10 @@ SECTION("test_update_links_replace") {
   }
 
   updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"links\" : {"
+    "{ \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : null "
-    "} } }"
+    "} }"
   );
   CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -2317,7 +2362,7 @@ SECTION("test_update_links_replace") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -2378,8 +2423,9 @@ SECTION("test_update_links_replace") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2536,11 +2582,11 @@ SECTION("test_update_links_clear") {
 
   // explicitly specify id for the sake of tests
   auto linksJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"properties\": { \"locale\": \"en\", \"links\" : {"
+    "{ \"locale\": \"en\", \"links\": {"
     "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
     "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
     "  \"testCollection3\" : { \"id\": \"3\" } "
-    "} } }"
+    "} }"
   );
   CHECK(view->updateProperties(linksJson->slice(), false, true).ok()); // add link
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
@@ -2578,7 +2624,7 @@ SECTION("test_update_links_clear") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
     auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK(linksSlice.isObject());
@@ -2666,8 +2712,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2712,8 +2759,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2756,8 +2804,9 @@ SECTION("test_update_links_clear") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(view->id() == 42);
+    CHECK(view->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -2786,7 +2835,7 @@ SECTION("test_update_links_clear") {
     CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
   }
 
-  auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\": {} } }");
+  auto const updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": {} }");
   CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
   CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -2817,7 +2866,7 @@ SECTION("test_update_links_clear") {
     view->toVelocyPack(info, true, false);
     info.close();
 
-    auto const properties = info.slice().get("properties");
+    auto const properties = info.slice();
     CHECK((properties.hasKey(arangodb::iresearch::StaticStrings::LinksField)));
     auto links = properties.get(arangodb::iresearch::StaticStrings::LinksField);
     CHECK((links.isObject()));
@@ -2924,7 +2973,7 @@ SECTION("test_drop_link") {
       CHECK(arangodb::AgencyComm().setValue(currentCollectionPath, value->slice(), 0.0).successful());
     }
 
-    auto linksJson = arangodb::velocypack::Parser::fromJson("{ \"properties\": { \"links\" : { \"testCollection\" : { \"includeAllFields\" : true } } } }");
+    auto linksJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\" : { \"includeAllFields\" : true } } }");
     CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // add link
     CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -2958,7 +3007,7 @@ SECTION("test_drop_link") {
       view->toVelocyPack(info, true, false);
       info.close();
 
-      auto const properties = info.slice().get("properties");
+      auto const properties = info.slice();
       CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
       auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
       CHECK(linksSlice.isObject());
@@ -3022,8 +3071,9 @@ SECTION("test_drop_link") {
       CHECK(expectedMeta == actualMeta);
       auto const slice = builder->slice();
       CHECK(slice.hasKey("view"));
-      CHECK(slice.get("view").isNumber());
-      CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+      CHECK(slice.get("view").isString());
+      CHECK(view->id() == 42);
+      CHECK(view->guid() == slice.get("view").copyString());
       CHECK(slice.hasKey("figures"));
       CHECK(slice.get("figures").isObject());
       CHECK(slice.get("figures").hasKey("memory"));
@@ -3069,7 +3119,7 @@ SECTION("test_drop_link") {
       view->toVelocyPack(info, true, false);
       info.close();
 
-      auto const properties = info.slice().get("properties");
+      auto const properties = info.slice();
       CHECK((properties.hasKey(arangodb::iresearch::StaticStrings::LinksField)));
       auto links = properties.get(arangodb::iresearch::StaticStrings::LinksField);
       CHECK((links.isObject()));
@@ -3091,6 +3141,43 @@ SECTION("test_drop_link") {
 
     // there is no more view
     CHECK(nullptr == ci->getView(vocbase->name(), view->name()));
+  }
+
+  // add link (collection not authorized)
+  {
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\" : { \"includeAllFields\" : true } } }");
+    auto const collectionId = "1";
+    auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection1));
+    auto logicalView = vocbase->createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+    auto const viewId = std::to_string(logicalView->planId());
+
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::removeAllUsers()
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection1));
+    logicalView = ci->getView(vocbase->name(), viewId); // get new version of the view
+    REQUIRE((false == !logicalView));
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
 

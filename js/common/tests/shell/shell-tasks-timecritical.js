@@ -53,7 +53,7 @@ function TaskSuite () {
       }
     });
   };
-      
+
   var getTasks = function () {
     var sorter = function (l, r) {
       if (l.id !== r.id) {
@@ -65,7 +65,7 @@ function TaskSuite () {
     return tasks.get().filter(function (task) {
       return task.name.match(/^UnitTest/);
     }).sort(sorter);
-  };  
+  };
 
   return {
 
@@ -243,8 +243,8 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetTask : function () {
-      var task = tasks.register({ 
-        name: "UnitTests1", 
+      var task = tasks.register({
+        name: "UnitTests1",
         command: "1+1;",
         period: 1
       });
@@ -263,9 +263,9 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetTaskById : function () {
-      var task = tasks.register({ 
-        id: "UnitTests" + Date.now(), 
-        name: "UnitTests1", 
+      var task = tasks.register({
+        id: "UnitTests" + Date.now(),
+        name: "UnitTests1",
         command: "1+1;",
         period: 1
       });
@@ -284,20 +284,20 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetTasks : function () {
-      var task1 = tasks.register({ 
-        name: "UnitTests1", 
+      var task1 = tasks.register({
+        name: "UnitTests1",
         command: "1+1;",
         period: 1
       });
 
-      var task2 = tasks.register({ 
-        name: "UnitTests2", 
+      var task2 = tasks.register({
+        name: "UnitTests2",
         command: "2+2;",
         period: 2
       });
-      
-      var task3 = tasks.register({ 
-        name: "UnitTests3", 
+
+      var task3 = tasks.register({
+        name: "UnitTests3",
         command: "3+3;",
         offset: 30
       });
@@ -322,7 +322,7 @@ function TaskSuite () {
       assertEqual(2, t[1].period);
       assertEqual(task2.database, t[1].database);
       assertEqual("_system", t[1].database);
-      
+
       assertEqual(task3.id, t[2].id);
       assertEqual(task3.name, t[2].name);
       assertEqual(task3.type, t[2].type);
@@ -337,9 +337,9 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetTasksPrePost : function () {
-      var task1 = tasks.register({ 
+      var task1 = tasks.register({
         id: "UnitTests" + Date.now() + "1",
-        name: "UnitTests1", 
+        name: "UnitTests1",
         command: "1+1;",
         period: 1
       });
@@ -353,9 +353,9 @@ function TaskSuite () {
       assertEqual(task1.period, t[0].period);
       assertEqual(task1.database, t[0].database);
 
-      var task2 = tasks.register({ 
+      var task2 = tasks.register({
         id: "UnitTests" + Date.now() + "2",
-        name: "UnitTests2", 
+        name: "UnitTests2",
         command: "2+2;",
         period: 2
       });
@@ -375,7 +375,7 @@ function TaskSuite () {
       assertEqual(task2.database, t[1].database);
 
       tasks.unregister(task1);
-      
+
       t = getTasks();
 
       assertEqual(1, t.length);
@@ -386,7 +386,7 @@ function TaskSuite () {
       assertEqual(task2.database, t[0].database);
 
       tasks.unregister(task2);
-      
+
       t = getTasks();
 
       assertEqual(0, t.length);
@@ -404,18 +404,18 @@ function TaskSuite () {
 
       var command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({ 
-        name: "UnitTests1", 
-        command: command, 
+      var task = tasks.register({
+        name: "UnitTests1",
+        command: command,
         offset: 10,
-        params: 42 
+        params: 42
       });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("timed", task.type);
       assertEqual(10, task.offset);
       assertEqual("_system", task.database);
-      
+
       var t = getTasks();
       assertEqual(1, t.length);
 
@@ -438,18 +438,18 @@ function TaskSuite () {
 
       var command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({ 
-        name: "UnitTests1", 
-        command: command, 
+      var task = tasks.register({
+        name: "UnitTests1",
+        command: command,
         offset: 2,
-        params: 42 
+        params: 42
       });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("timed", task.type);
       assertEqual(2, task.offset);
       assertEqual("_system", task.database);
-      
+
       var t = getTasks();
       assertEqual(1, t.length);
 
@@ -477,18 +477,18 @@ function TaskSuite () {
 
       var command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({ 
-        name: "UnitTests1", 
-        command: command, 
+      var task = tasks.register({
+        name: "UnitTests1",
+        command: command,
         offset: 0,
-        params: 42 
+        params: 42
       });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("timed", task.type);
       assertEqual(0, Math.round(task.offset, 3));
       assertEqual("_system", task.database);
-      
+
       var tries = 0;
       while (tries++ < 10) {
         if (db[cn].count() === 1) {
@@ -513,18 +513,18 @@ function TaskSuite () {
 
       var command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({ 
-        name: "UnitTests1", 
-        command: command, 
+      var task = tasks.register({
+        name: "UnitTests1",
+        command: command,
         offset: 5,
-        params: 23 
+        params: 23
       });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("timed", task.type);
       assertEqual(5, task.offset);
       assertEqual("_system", task.database);
-    
+
       var tries = 0;
       while (tries++ < 20) {
         if (db[cn].count() === 1) {
@@ -550,11 +550,11 @@ function TaskSuite () {
 
       var command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({ 
-        name: "UnitTests1", 
-        command: command, 
+      var task = tasks.register({
+        name: "UnitTests1",
+        command: command,
         offset: 10,
-        params: 23 
+        params: 23
       });
 
       assertEqual("UnitTests1", task.name);
@@ -585,12 +585,12 @@ function TaskSuite () {
 
       var command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({ 
-        name: "UnitTests1", 
-        command: command, 
+      var task = tasks.register({
+        name: "UnitTests1",
+        command: command,
         period: 1,
         offset: 0,
-        params: 17 
+        params: 17
       });
 
       assertEqual("UnitTests1", task.name);
@@ -625,14 +625,14 @@ function TaskSuite () {
         require('internal').db[params.cn].save({ value: params.val });
       };
 
-      var task = tasks.register({ 
-        name: "UnitTests1", 
-        command: command, 
+      var task = tasks.register({
+        name: "UnitTests1",
+        command: command,
         period: 1,
         offset: 0,
-        params: { cn: cn, val: 42 } 
+        params: { cn: cn, val: 42 }
       });
-      
+
       assertEqual("UnitTests1", task.name);
       assertEqual("periodic", task.type);
       assertEqual(1, task.period);
@@ -657,9 +657,9 @@ function TaskSuite () {
 
     testBrokenCommand : function () {
       try {
-        tasks.register({ 
-          name: "UnitTests1", 
-          command: "for (i", 
+        tasks.register({
+          name: "UnitTests1",
+          command: "for (i",
           offset: 0
         });
         fail();
@@ -680,5 +680,3 @@ function TaskSuite () {
 jsunity.run(TaskSuite);
 
 return jsunity.done();
-
-

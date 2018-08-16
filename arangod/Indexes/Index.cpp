@@ -137,9 +137,12 @@ void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode cons
 // logical collection because it could be gone!
 
 Index::Index(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    bool unique, bool sparse)
+    bool unique,
+    bool sparse
+)
     : _iid(iid),
       _collection(collection),
       _fields(fields),
@@ -149,8 +152,11 @@ Index::Index(
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
-Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-             VPackSlice const& slice)
+Index::Index(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    VPackSlice const& slice
+)
     : _iid(iid),
       _collection(collection),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
@@ -453,12 +459,11 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 
 /// @brief return a contextual string for logging
 std::string Index::context() const {
-  TRI_ASSERT(_collection);
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << oldtypeName()
-         << ", collection: " << _collection->vocbase().name() << "/"
-         << _collection->name() << ", unique: " << (_unique ? "true" : "false")
+         << ", collection: " << _collection.vocbase().name() << "/"
+         << _collection.name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
 
@@ -636,11 +641,6 @@ void Index::batchInsert(
 /// @brief default implementation for drop
 int Index::drop() {
   // do nothing
-  return TRI_ERROR_NO_ERROR;
-}
-
-// called after the collection was truncated
-int Index::afterTruncate() {
   return TRI_ERROR_NO_ERROR;
 }
 

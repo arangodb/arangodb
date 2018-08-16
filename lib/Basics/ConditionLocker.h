@@ -37,7 +37,7 @@
 
 #else
 
-#define CONDITION_LOCKER(a, b) arangodb::basics::ConditionLocker a(&b)
+#define CONDITION_LOCKER(a, b) ::arangodb::basics::ConditionLocker a(&b)
 
 #endif
 

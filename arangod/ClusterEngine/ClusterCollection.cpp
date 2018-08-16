@@ -301,10 +301,10 @@ void ClusterCollection::prepareIndexes(
   std::vector<std::shared_ptr<Index>> indexes;
 
   if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine->indexFactory().fillSystemIndexes(&_logicalCollection, indexes);
+    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
   } else {
     engine->indexFactory().prepareIndexes(
-      &_logicalCollection, indexesSlice, indexes
+      _logicalCollection, indexesSlice, indexes
     );
   }
 
@@ -397,7 +397,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   // Create it
 
   idx = engine->indexFactory().prepareIndexFromSlice(
-    info, true, &_logicalCollection, false
+    info, true, _logicalCollection, false
   );
   TRI_ASSERT(idx != nullptr);
 

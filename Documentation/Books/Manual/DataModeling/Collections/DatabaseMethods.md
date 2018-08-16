@@ -158,18 +158,46 @@ to the [naming conventions](../NamingConventions/README.md).
   servers holding copies take over, usually without an error being
   reported.
 
-  When using the *Enterprise* version of ArangoDB the replicationFactor
+  When using the *Enterprise Edition* of ArangoDB the replicationFactor
   may be set to "satellite" making the collection locally joinable
   on every database server. This reduces the number of network hops
   dramatically when using joins in AQL at the costs of reduced write
   performance on these collections.
 
 - *distributeShardsLike* distribute the shards of this collection
-  cloning the shard distribution of another. If this value is set
-  it will copy *replicationFactor* and *numberOfShards* from the
-  other collection, the attributes in this collection will be 
-  ignored and can be ommited.
+  cloning the shard distribution of another. If this value is set,
+  it will copy the attributes *replicationFactor*, *numberOfShards* and 
+  *shardingStrategy* from the other collection. 
 
+- *shardingStrategy* (optional): specifies the name of the sharding
+  strategy to use for the collection. Since ArangoDB 3.4 there are
+  different sharding strategies to select from when creating a new 
+  collection. The selected *shardingStrategy* value will remain
+  fixed for the collection and cannot be changed afterwards. This is
+  important to make the collection keep its sharding settings and
+  always find documents already distributed to shards using the same
+  initial sharding algorithm.
+
+  The available sharding strategies are:
+  - `community-compat`: default sharding used by ArangoDB community
+    versions before ArangoDB 3.4
+  - `enterprise-compat`: default sharding used by ArangoDB enterprise
+    versions before ArangoDB 3.4
+  - `enterprise-smart-edge-compat`: default sharding used by smart edge
+    collections in ArangoDB enterprise versions before ArangoDB 3.4
+  - `hash`: default sharding used by ArangoDB 3.4 for new collections
+    (excluding smart edge collections)
+  - `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
+    for new smart edge collections
+
+  If no sharding strategy is specified, the default will be `hash` for
+  all collections, and `enterprise-hash-smart-edge` for all smart edge
+  collections (requires the *Enterprise Edition* of ArangoDB). 
+  Manually overriding the sharding strategy does not yet provide a 
+  benefit, but it may later in case other sharding strategies are added.
+  
+  In single-server mode, the *shardingStrategy* attribute is meaningless 
+  and will be ignored.
 
 `db._create(collection-name, properties, type)`
 

@@ -6,6 +6,41 @@ upgrading to ArangoDB 3.4, and adjust any client programs if necessary.
 
 The following incompatible changes have been made in ArangoDB 3.4:
 
+
+Supported platforms
+-------------------
+
+The minimum supported architecture for the official release packages of ArangoDB is
+now the Nehalem architecture.
+
+All release packages are built with compiler optimizations that require at least
+this architecture. The following CPU features are required for running an official
+release package (note: these are all included in the Nehalem architecture and upwards):
+
+* SSE2
+* SSE3
+* SSE4.1
+* SSE4.2
+
+In case the target platform does not conform to these requirements, ArangoDB may
+not work correctly.
+
+The compiled-in architecture optimizations can be retrieved on most platforms by 
+invoking the *arangod* binary with the `--version` option. The optimization switches
+will then show up in the output in the line starting with `optimization-flags`, e.g.
+
+```
+$ arangod --version
+...
+optimization-flags: -march=nehalem -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mno-sse4a -mno-avx -mno-fma -mno-bmi2 -mno-avx2 -mno-xop -mno-fma4 -mno-avx512f -mno-avx512vl -mno-avx512pf -mno-avx512er -mno-avx512cd -mno-avx512dq -mno-avx512bw -mno-avx512ifma -mno-avx512vbmi
+platform: linux
+```
+
+Note that to get even more target-specific optimizations, it is possible for end
+users to compile ArangoDB on their own with compiler optimizations tailored to the
+target environment.
+
+
 Storage engine
 --------------
 
@@ -29,13 +64,21 @@ explicitly selected:
 
 * `--server.storage-engine mmfiles`
 
+
+To make users aware of that the RocksDB storage engine was chosen automatically
+due to an explicit other storage engine selection, 3.4 will come up with the following
+startup warning:
+
+    using default storage engine 'rocksdb', as no storage engine was explicitly selected via the `--server.storage-engine` option.
+    please note that default storage engine has changed from 'mmfiles' to 'rocksdb' in ArangoDB 3.4
+
+
 On upgrade, any existing ArangoDB installation will keep its previously selected
-storage engine. The change of the default storage engine is thus only relevant
+storage engine. The change of the default storage engine in 3.4 is thus only relevant
 for new ArangoDB installations and/or existing cluster setups for which new server 
 nodes get added later. All server nodes in a cluster setup should use the same
 storage engine to work reliably. Using different storage engines in a cluster is
 unsupported.
-
 
 To validate that the different nodes in a cluster deployment use the same storage
 engine throughout the entire cluster, there is now a startup check performed by
@@ -55,7 +98,7 @@ Geo indexes
   indexes using the new on-disk format.
 
   The on-disk format for geo indexes is incompatible with the on-disk format used
-  in 3.3 and 3.2, so downgrading from 3.4 to 3.3 is not supported.
+  in 3.3 and 3.2, so an in-place downgrade from 3.4 to 3.3 is not supported.
 
 - Geo indexes will now be reported no longer as _geo1_ or _geo2_ but as type `geo`. 
   The two previously known geo index types (`geo1`and `geo2`) are **deprecated**. 
@@ -67,13 +110,19 @@ RocksDB engine data storage format
 ----------------------------------
 
 Installations that start using ArangoDB 3.4 will use an optimized on-disk format
-for storing documents using the RocksDB storage engine. This format cannot be used
-ArangoDB 3.3 or before, meaning it is not possible to downgrade from a fresh 3.4
-install to 3.3 or earlier when using the RocksDB engine.
+for storing documents using the RocksDB storage engine. The RocksDB engine will also
+a new table format version that was added in a recent version of the RocksDB library
+and that is not available in ArangoDB versions before 3.4.
+  
+This format cannot be used with ArangoDB 3.3 or before, meaning it is not possible to 
+perform an in-place downgrade from a fresh 3.4 install to 3.3 or earlier when using the 
+RocksDB engine. For more information on how to downgrade, please refer to the 
+[Downgrading](../Downgrading/README.md) chapter.
 
 Installations that were originally set up with older versions of ArangoDB (e.g. 3.2
 or 3.3) will continue to use the existing on-disk format for the RocksDB engine
-even with ArangoDB 3.4.
+even with ArangoDB 3.4 (unless you install a fresh 3.4 package and restore a backup
+of your data on this fresh installation).
 
 In order to use the new binary format with existing data, it is required to 
 create a logical dump of the database data, shut down the server, erase the 
@@ -81,6 +130,16 @@ database directory and restore the data from the logical dump. To minimize
 downtime you can alternatively run a second arangod instance in your system,
 that replicates the original data; once the replication has reached completion, 
 you can switch the instances.
+
+
+RocksDB intermediate commits
+-----------------------------
+
+Intermediate commits in the rocksdb engine are now only enabled in standalone AQL queries 
+(not within a JS transaction), standalone truncate as well as for the "import" API.
+
+The options `intermediateCommitCount` and `intermediateCommitSize` will have no affect
+anymore on transactions started via `/_api/transaction`, or `db._executeTransaction()`.
 
 
 Threading and request handling
@@ -116,8 +175,16 @@ HTTP REST API
 The following incompatible changes were made in context of ArangoDB's HTTP REST
 APIs:
 
+- The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
+
+  - `GET /_admin/test`
+  - `GET /_admin/clusterCheckPort`
+  - `GET /_admin/cluster-test` 
+  - `GET /_admin/statistics/short`
+  - `GET /_admin/statistics/long`
+
 - `GET /_api/index` will now return type `geo` for geo indexes, not type `geo1`
-  or `geo2`.
+  or `geo2` as previous versions did.
 
   For geo indexes, the index API will not return the attributes `constraint` and
   `ignoreNull` anymore. These attributes were initially deprecated in ArangoDB 2.5
@@ -144,6 +211,21 @@ APIs:
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
 
+- if authentication is turned on, requests to databases by users with insufficient 
+  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
+
+
+The following APIs have been added or augmented:
+
+- `POST /_api/document/{collection}` now supports repsert (replace-insert). 
+  
+  This can be achieved by using the URL parameter `overwrite=true`. When set to 
+  `true`, insertion will not fail in case of a primary key conflict, but turn 
+  into a replace operation.
+
+  When an insert turns into a replace, the previous version of the document can
+  be retrieved by passing the URL parameter `returnOld=true`
+
 - `POST /_api/aqlfunction` now includes an "isNewlyCreated" attribute that indicates
   if a new function was created or if an existing one was replaced (in addition to the
   "code" attribute, which remains 200 for replacement and 201 for creation):
@@ -166,24 +248,43 @@ APIs:
   }
   ```
 
-- `GET /_admin/status` now returns the attribute `operationMode` instead of `mode`.
-  The previously existing attribute `writeOpsEnabled` is no longer returned and was
-  replaced with an attribute `readOnly` with the inverted meaning.
+- `GET /_admin/status` now returns the attribute `operationMode` in addition to
+  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
+  attribute `readOnly`, which is has an inverted value compared to the original
+  attribute. In future releases the old attributes will be deprecated in favor
+  of the new ones.
 
-- if authentication is turned on, requests to databases by users with insufficient 
-  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
+- `POST /_api/collection` now will process the optional `shardingStrategy` 
+  attribute in the response body in cluster mode. 
 
+  This attribute specifies the name of the sharding strategy to use for the 
+  collection. Since ArangoDB 3.4 there are different sharding strategies to 
+  select from when creating a new collection. The selected *shardingStrategy* 
+  value will remain fixed for the collection and cannot be changed afterwards. 
+  This is important to make the collection keep its sharding settings and 
+  always find documents already distributed to shards using the same initial 
+  sharding algorithm.
 
-The following APIs have been added or augmented:
+  The available sharding strategies are:
+  - `community-compat`: default sharding used by ArangoDB community
+    versions before ArangoDB 3.4
+  - `enterprise-compat`: default sharding used by ArangoDB enterprise
+    versions before ArangoDB 3.4
+  - `enterprise-smart-edge-compat`: default sharding used by smart edge
+    collections in ArangoDB enterprise versions before ArangoDB 3.4
+  - `hash`: default sharding used by ArangoDB 3.4 for new collections
+    (excluding smart edge collections)
+  - `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
+    for new smart edge collections
 
-- `POST /_api/document/{collection}` now supports repsert (replace-insert). 
-  
-  This can be achieved by using the URL parameter `overwrite=true`. When set to 
-  `true`, insertion will not fail in case of a primary key conflict, but turn 
-  into a replace operation.
+  If no sharding strategy is specified, the default will be `hash` for
+  all collections, and `enterprise-hash-smart-edge` for all smart edge
+  collections (requires the *Enterprise Edition* of ArangoDB). 
+  Manually overriding the sharding strategy does not yet provide a 
+  benefit, but it may later in case other sharding strategies are added.
 
-  When an insert turns into a replace, the previous version of the document can
-  be retrieved by passing the URL parameter `returnOld=true`
+  In single-server mode, the *shardingStrategy* attribute is meaningless and
+  will be ignored.
 
 - APIs for view management have been added at endpoint `/_api/view`.
 
@@ -201,14 +302,6 @@ The following APIs have been added or augmented:
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible.
 
-The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
-
-- `GET /_admin/test`
-- `GET /_admin/clusterCheckPort`
-- `GET /_admin/cluster-test` 
-- `GET /_admin/statistics/short`
-- `GET /_admin/statistics/long`
-
 
 AQL
 ---
@@ -216,9 +309,6 @@ AQL
 - the AQL functions `CALL` and `APPLY` may now throw the errors 1540
 (`ERROR_QUERY_FUNCTION_NAME_UNKNOWN`) and 1541 (`ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH`)
 instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
-
-- the `NEAR` AQL function now does not default to a limit of 100 documents 
-  any more, but will return all documents if no limit is specified.
 
 - the existing "fulltext-index-optimizer" optimizer rule has been removed 
   because its duty is now handled by the new "replace-function-with-index" rule.
@@ -277,6 +367,20 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
 
   Using any of these functions from inside AQL will now produce an error.
 
+- in previous versions, the AQL optimizer used two different ways of converting 
+  strings into numbers. The two different ways have been unified into a single
+  way that behaves like the `TO_NUMBER` AQL function, which is also the documented
+  behavior.
+
+  The change affects arithmetic operations with strings that contain numbers and
+  other trailing characters, e.g.
+
+      expression         3.3 result          3.4 result       TO_NUMBER()
+      0 + "1a"           0 + 1 = 1           0 + 0 = 0        TO_NUMBER("1a") = 0
+      0 + "1 "           0 + 1 = 1           0 + 1 = 1        TO_NUMBER("1 ") = 1
+      0 + " 1"           0 + 1 = 1           0 + 1 = 1        TO_NUMBER(" 1") = 1
+      0 + "a1"           0 + 0 = 0           0 + 0 = 0        TO_NUMBER("a1") = 0
+
 
 Usage of V8
 -----------
@@ -297,7 +401,7 @@ numbers of V8 contexts to start. In terms of configuration options, these
 are:
 
 - `--javascript.v8-contexts`: the maximum number of V8 contexts to create
-- `--javascript.v8-contexts-minimim`: the minimum number of V8 contexts to 
+- `--javascript.v8-contexts-minimum`: the minimum number of V8 contexts to 
   create at server start and to keep around
 
 The default values for these startup options have not been changed in ArangoDB
@@ -346,6 +450,14 @@ For arangod, the following startup options have changed:
 
   Using the old option name will still work in ArangoDB 3.4, but support for the old 
   option name will be removed in future versions of ArangoDB.
+
+- the option `--rocksdb.block-align-data-blocks` has been added
+
+  If set to true, data blocks stored by the RocksDB engine are aligned on lesser of page 
+  size and block size, which may waste some memory but may reduce the number of cross-page 
+  I/Os operations.
+
+  The default value for this option is *false*.
 
 
 Permissions
@@ -415,3 +527,67 @@ to "MMFilesCompactor".
 
 This change will be visible only on systems which allow assigning names to
 threads.
+
+
+Deprecated features
+===================
+
+The following features and APIs are deprecated in ArangoDB 3.4, and will be 
+removed in future versions of ArangoDB:
+
+* the JavaScript-based traversal REST API at `/_api/traversal`:
+
+  This API has several limitations (including low result set sizes) and has 
+  effectively been unmaintained since the introduction of AQL's general 
+  *TRAVERSAL* clause.
+
+  It is recommended to migrate client applications that use the REST API at
+  `/_api/traversal` to use AQL-based traversal queries instead.
+
+* the REST API for simple queries at `/_api/simple`:
+
+  The simple queries provided by the `/_api/simple` endpoint are limited in
+  functionality and will internally resort to AQL queries anyway. It is advised
+  that client applications also use the equivalent AQL queries instead of 
+  using the simple query API, because that is more flexible and allows greater 
+  control of how the queries are executed.
+
+* the REST API for querying endpoints at `/_api/endpoints`:
+
+  The API `/_api/endpoint` is deprecated since ArangoDB version 3.1. 
+  For cluster mode there is `/_api/cluster/endpoints` to find all current 
+  coordinator endpoints.
+
+* the REST API for WAL tailing at `/_api/replication/logger-follow`:
+
+  The `logger-follow` WAL tailing API has several limitations. A better API
+  was introduced at endpoint `/_api/wal/tail` in ArangoDB 3.3.
+
+  Client applications using the old tailing API at `/_api/replication/logger-follow`
+  should switch to the new API eventually.
+
+* the AQL geo functions `NEAR`, `WITHIN`, `WITHIN_RECTANGLE` and `IS_IN_POLYGON`:
+
+  The special purpose `NEAR` AQL function can be substituted with the
+  following AQL (provided there is a geo index present on the `doc.latitude`
+  and `doc.longitude` attributes) since ArangoDB 3.2:
+
+      FOR doc in geoSort
+        SORT DISTANCE(doc.latitude, doc.longitude, 0, 0)
+        LIMIT 5
+        RETURN doc
+
+  `WITHIN` can be substituted with the following AQL since ArangoDB 3.2:
+
+      FOR doc in geoFilter
+        FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000
+        RETURN doc
+
+  Compared to using the special purpose AQL functions this approach has the
+  advantage that it is more composable, and will also honor any `LIMIT` values
+  used in the AQL query.
+
+  In ArangoDB 3.4, `NEAR`, `WITHIN`, `WITHIN_RECTANGLE` and `IS_IN_POLYGON` 
+  will still work and automatically be rewritten by the AQL query optimizer 
+  to the above forms. However, AQL queries using the deprecated AQL functions
+  should eventually be adjusted.

@@ -36,6 +36,9 @@ class Slice;
 }
 
 class KeyGenerator {
+  KeyGenerator(KeyGenerator const&) = delete;
+  KeyGenerator& operator=(KeyGenerator const&) = delete;
+
  protected:
   /// @brief create the generator
   explicit KeyGenerator(bool allowUserKeys);
@@ -44,12 +47,8 @@ class KeyGenerator {
   /// @brief destroy the generator
   virtual ~KeyGenerator() = default;
 
-  /// @brief check if the specified key generator in the VelocyPack
-  /// can be used in this setup (cluster / single-server)
-  static bool canUseType(arangodb::velocypack::Slice const&);
-
   /// @brief create a key generator based on the options specified
-  static KeyGenerator* factory(arangodb::velocypack::Slice const&);
+  static KeyGenerator* factory(arangodb::velocypack::Slice);
 
   /// @brief generate a key
   virtual std::string generate() = 0;
@@ -61,10 +60,13 @@ class KeyGenerator {
   virtual void track(char const* p, size_t length) = 0;
 
   /// @brief build a VelocyPack representation of the generator in the builder
-  virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   /// @brief validate a key
   static bool validateKey(char const* key, size_t len);
+
+  /// @brief validate a document id (collection name + / + document key)
+  static bool validateId(char const* key, size_t len, size_t* split = nullptr);
  
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
@@ -75,12 +77,9 @@ class KeyGenerator {
   
  protected:
   /// @brief whether or not the users can specify their own keys
-  bool _allowUserKeys;
+  bool const _allowUserKeys;
 };
 
 }
-
-/// @brief validate a document id (collection name + / + document key)
-bool TRI_ValidateDocumentIdKeyGenerator(char const*, size_t, size_t*);
 
 #endif

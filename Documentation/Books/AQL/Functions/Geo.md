@@ -306,7 +306,8 @@ contain the distance value in an attribute of that name.
 - **latitude** (number): the latitude portion of the search coordinate
 - **longitude** (number): the longitude portion of the search coordinate
 - **limit** (number, *optional*): cap the result to at most this number of
-  documents.
+  documents. The default is 100. If more documents than *limit* are found,
+  it is undefined which ones will be returned.
 - **distanceName** (string, *optional*): include the distance to the search
   coordinate in each document in the result (in meters), using the attribute
   name *distanceName*

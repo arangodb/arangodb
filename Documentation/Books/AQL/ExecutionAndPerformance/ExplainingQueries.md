@@ -10,7 +10,7 @@ return the execution plan and some information about what optimizations could be
 the query. The query will not be executed.
 
 Explaining a query can be achieved by calling the [HTTP REST API](../../HTTP/AqlQuery/index.html)
-or via the arangosh.
+or via _arangosh_.
 A query can also be explained from the ArangoShell using the `ArangoDatabase`'s `explain` method
 or in detail via `ArangoStatement`'s `explain` method.
 
@@ -33,20 +33,20 @@ The plan will show you the estimated number of items (results) for each query st
 query stage roughly equates to a line in your original query, which you can see under _Comment_.
 
 
-#### Executing an instrumented query
+### Profiling queries 
 
-Sometimes when you have a complex query it can become very unclear where time is spend during the execution, 
-even for intermediate ArangoDB users! For this reason we allow you to execute a query with special instrumentation
-code enabled. The resulting query result will contain a copy of the query plan as well as detailed execution statistics.
-To use this in an interactive fashion on the shell you can use the `_profileQuery` method
-on the `ArangoDatabase` object. This will display all the usual information contained in the explain,
-but additionally you get all the statistics, the query profile and per node stats. 
+Sometimes when you have a complex query it can be unclear on what time is spent
+during the execution, even for intermediate ArangoDB users.
 
-The execution plan contains three additional columns `Calls` (number of times this query stage was executed), 
-`Items` (number of temporary results at this stage) and `Runtime` (the total time spend in this stage). Below the 
-execution plan there are additional sections for the overall [runtime statistics](QueryStatistics.md) and the query
-profile.
+By profiling a query it gets executed with special instrumentation code enabled.
+It gives you all the usual information like when explaining a query, but
+additionally you get the query profile, [runtime statistics](QueryStatistics.md)
+and per-node statistics.
 
+To use this in an interactive fashion on the shell you can use the
+`_profileQuery()` method on the `ArangoDatabase` object or use the web interface.
+
+For more information see [Profiling Queries](QueryProfiler.md).
 
     @startDocuBlockInline 01_workWithAQL_databaseProfileQuery
     @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_databaseProfileQuery}

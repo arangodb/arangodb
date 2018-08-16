@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
@@ -51,8 +52,67 @@ class Slice;
 class Endpoint;
 class LogicalCollection;
 
-class Syncer {
+class Syncer : public std::enable_shared_from_this<Syncer> {
  public:
+
+  /// @brief a helper object used for synchronization between the
+  /// dump apply thread and some helper job posted into the scheduler
+  /// for async fetching of the next dump results
+  class JobSynchronizer : public std::enable_shared_from_this<JobSynchronizer> {
+   public:
+    JobSynchronizer(JobSynchronizer const&) = delete;
+    JobSynchronizer& operator=(JobSynchronizer const&) = delete;
+
+    explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer); 
+    ~JobSynchronizer();
+
+    /// @brief will be called whenever a response for the job comes in
+    void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept;
+    
+    /// @brief will be called whenever an error occurred
+    /// expects "res" to be an error!
+    void gotResponse(arangodb::Result&& res) noexcept; 
+    
+    /// @brief the calling Syncer will call and block inside this function until
+    /// there is a response or the syncer/server is shut down
+    arangodb::Result waitForResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response);
+
+    /// @brief post an async request to the scheduler
+    /// this will increase the number of inflight jobs, and count it down
+    /// when the posted request has finished
+    void request(std::function<void()> const& cb);
+
+    /// @brief notifies that a job was posted
+    void jobPosted();
+
+    /// @brief notifies that a job was done
+    void jobDone();
+
+    /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
+    bool hasJobInFlight() const noexcept;
+
+   private:
+    /// @brief the shared syncer we use to check if sychronization was
+    /// externally aborted
+    std::shared_ptr<Syncer const> _syncer;
+
+    /// @brief condition variable used for synchronization
+    arangodb::basics::ConditionVariable mutable _condition;
+
+    /// @brief true if a response was received
+    bool _gotResponse;
+
+    /// @brief the processing response of the job (indicates failure if no response
+    /// was received or if something went wrong)
+    arangodb::Result _res;
+
+    /// @brief the response received by the job (nullptr if no response received)
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> _response;
+
+    /// @brief number of posted jobs in flight
+    uint64_t _jobsInFlight;
+  };
+
   struct SyncerState {
     /// @brief configuration
     ReplicationApplierConfiguration applier;
@@ -143,6 +203,14 @@ class Syncer {
 
   /// @brief drops an index, based on the VelocyPack provided
   Result dropIndex(arangodb::velocypack::Slice const&);
+  
+  /// @brief creates a view, based on the VelocyPack provided
+  Result createView(TRI_vocbase_t& vocbase,
+                    arangodb::velocypack::Slice const& slice);
+  
+  /// @brief drops a view, based on the VelocyPack provided
+  Result dropView(arangodb::velocypack::Slice const&, bool reportError);
+
 
   // TODO worker safety
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);

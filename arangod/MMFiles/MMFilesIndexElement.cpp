@@ -47,6 +47,7 @@ MMFilesHashIndexElement* MMFilesHashIndexElement::initialize(MMFilesHashIndexEle
 /// the datafile or WAL file. If offset is 0, then data contains the actual data
 /// in place.
 arangodb::velocypack::Slice MMFilesHashIndexElement::slice(IndexLookupContext* context, size_t position) const {
+  TRI_ASSERT(context->result() != nullptr);
   MMFilesIndexElementValue const* sub = subObject(position);
   
   if (sub->isInline()) {
@@ -55,7 +56,7 @@ arangodb::velocypack::Slice MMFilesHashIndexElement::slice(IndexLookupContext* c
   
   uint32_t offset = sub->value.offset;
   if (offset == 0) {
-    return basics::VelocyPackHelper::NullValue();
+    return arangodb::velocypack::Slice::nullSlice();
   } 
   uint8_t const* vpack = context->lookup(LocalDocumentId{_localDocumentId.id()});
   if (vpack == nullptr) {
@@ -124,6 +125,7 @@ MMFilesSkiplistIndexElement* MMFilesSkiplistIndexElement::initialize(MMFilesSkip
 /// the datafile or WAL file. If offset is 0, then data contains the actual data
 /// in place.
 arangodb::velocypack::Slice MMFilesSkiplistIndexElement::slice(IndexLookupContext* context, size_t position) const {
+  TRI_ASSERT(context->result() != nullptr);
   MMFilesIndexElementValue const* sub = subObject(position);
   
   if (sub->isInline()) {
@@ -132,7 +134,7 @@ arangodb::velocypack::Slice MMFilesSkiplistIndexElement::slice(IndexLookupContex
   
   uint32_t offset = sub->value.offset;
   if (offset == 0) {
-    return basics::VelocyPackHelper::NullValue();
+    return arangodb::velocypack::Slice::nullSlice();
   } 
   uint8_t const* vpack = context->lookup(LocalDocumentId{_localDocumentId.id()});
   if (vpack == nullptr) {
@@ -151,6 +153,7 @@ uint64_t MMFilesSimpleIndexElement::hash(arangodb::velocypack::Slice const& valu
 }
 
 VPackSlice MMFilesSimpleIndexElement::slice(IndexLookupContext* context) const {
+  TRI_ASSERT(context->result() != nullptr);
   uint8_t const* vpack = context->lookup(_localDocumentId);
   if (vpack == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
