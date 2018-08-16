@@ -327,7 +327,6 @@ var sortEdgeDefinitionInplace = function (edgeDefinition) {
   if (edgeDefinition && edgeDefinition.to && Array.isArray(edgeDefinition.to)) {
     edgeDefinition.to.sort();
   }
-  console.error(edgeDefinition);
   return edgeDefinition;
 };
 
