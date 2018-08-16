@@ -22,13 +22,16 @@
 
 #include "AgencyPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-AgencyFeaturePhase::AgencyFeaturePhase(ApplicationServer* server)
+AgencyFeaturePhase::AgencyFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "AgencyPhase") {
   setOptional(false);
   startsAfter("FoxxPhase");
 
   startsAfter("Agency");
 }
+
+} // application_features
+} // arangodb

@@ -316,7 +316,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
   
   // Update the collection count
   int64_t const adjustment = _numInserts - _numRemoves;
-  if (commitSeq != 0) {
+  if (commitSeq != 0) { // is '0' for filling new indexes
     if (_numInserts != 0 || _numRemoves != 0 || _revision != 0) {
       RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
       coll->adjustNumberDocuments(adjustment);

@@ -68,13 +68,38 @@ function DocumentShardingSuite() {
     },
 
     testCreateWithEnterpriseSharding : function () {
-      if (!isEnterprise) {
-        try {
-          db._create(name1, { shardingStrategy: enterpriseCompat, numberOfShards: 5 });
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-        }
+      let c = db._create(name1, { shardingStrategy: enterpriseCompat, numberOfShards: 5 });
+      assertEqual(enterpriseCompat, c.properties()["shardingStrategy"]);
+      assertEqual(5, c.properties()["numberOfShards"]);
+      assertEqual(["_key"], c.properties()["shardKeys"]);
+
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ _key: "test" + i, value: i });
       }
+
+      assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
+
+      for (let i = 0; i < 1000; ++i) {
+        assertEqual(i, c.document("test" + i).value);
+      }
+    },
+    
+    testCreateWithEnterpriseShardingNonDefaultKeysNumericValues : function () {
+      let c = db._create(name1, { shardingStrategy: enterpriseCompat, shardKeys: ["value"], numberOfShards: 5 });
+      assertEqual(enterpriseCompat, c.properties()["shardingStrategy"]);
+      assertEqual(5, c.properties()["numberOfShards"]);
+      assertEqual(["value"], c.properties()["shardKeys"]);
+
+      let keys = [];
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(c.insert({ value: i })._key);
+      }
+
+      assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
+
+      keys.forEach(function(k, i) {
+        assertEqual(i, c.document(k).value);
+      });
     },
 
     testCreateWithCommunitySharding : function () {

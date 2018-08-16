@@ -70,7 +70,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // create the storage engine
   StorageEngine(
-      application_features::ApplicationServer* server,
+      application_features::ApplicationServer& server,
       std::string const& engineName,
       std::string const& featureName,
       std::unique_ptr<IndexFactory>&& indexFactory

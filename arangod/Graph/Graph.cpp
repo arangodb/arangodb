@@ -54,11 +54,17 @@ using VelocyPackHelper = basics::VelocyPackHelper;
 #ifndef USE_ENTERPRISE
 // Factory methods
 std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t& vocbase) {
+  if (document.isExternal()) {
+    document = document.resolveExternal();
+  }
   std::unique_ptr<Graph> result{new Graph{document}};
   return result;
 }
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document, VPackSlice options) {
+  if (document.isExternal()) {
+    document = document.resolveExternal();
+  }
   std::unique_ptr<Graph> result{new Graph{std::move(name), document, options}};
   return result;
 }
@@ -66,7 +72,6 @@ std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice docum
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name, VPackSlice document, VPackSlice options) {
   return Graph::fromUserInput(std::string{name}, document, options);
-
 }
 
 // From persistence
@@ -193,8 +198,6 @@ Result Graph::addOrphanCollection(std::string&& name) {
   _orphanColls.emplace(std::move(name));
   return TRI_ERROR_NO_ERROR;
 }
-
-void Graph::setSmartState(bool state) { _isSmart = state; }
 
 void Graph::setNumberOfShards(uint64_t numberOfShards) {
   _numberOfShards = numberOfShards;

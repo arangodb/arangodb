@@ -1380,7 +1380,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     if (req->header.contentType() == fuerte::ContentType::Unset) {
       req->header.contentType(fuerte::ContentType::Json);
     }
-  } else if (!body->IsUndefined() && !body->IsNull()) {
+  } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer, &_vpackOptions);
     int res = TRI_V8ToVPack(isolate, builder, body, false);
@@ -1390,6 +1390,11 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     }
     req->addVPack(std::move(buffer));
     req->header.contentType(fuerte::ContentType::VPack);
+  } else {
+    // body is null or undefined
+    if (req->header.contentType() == fuerte::ContentType::Unset) {
+      req->header.contentType(fuerte::ContentType::Json);
+    }
   }
   if (req->header.acceptType() == fuerte::ContentType::Unset) {
     req->header.acceptType(fuerte::ContentType::VPack);
@@ -1427,7 +1432,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     if (req->header.contentType() == fuerte::ContentType::Unset) {
       req->header.contentType(fuerte::ContentType::Json);
     }
-  } else if (!body->IsUndefined() && !body->IsNull()) {
+  } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
     int res = TRI_V8ToVPack(isolate, builder, body, false);
@@ -1437,6 +1442,11 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     }
     req->addVPack(std::move(buffer));
     req->header.contentType(fuerte::ContentType::VPack);
+  } else {
+    // body is null or undefined
+    if (req->header.contentType() == fuerte::ContentType::Unset) {
+      req->header.contentType(fuerte::ContentType::Json);
+    }
   }
   if (req->header.acceptType() == fuerte::ContentType::Unset) {
     req->header.acceptType(fuerte::ContentType::VPack);

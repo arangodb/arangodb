@@ -141,7 +141,7 @@ static void JS_RecalculateCounts(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto physical = toRocksDBCollection(collection);
+  auto physical = toRocksDBCollection(*collection);
 
   v8::Handle<v8::Value> result = v8::Number::New(
       isolate, static_cast<double>(physical->recalculateCounts()));
@@ -163,7 +163,7 @@ static void JS_CompactCollection(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  RocksDBCollection* physical = toRocksDBCollection(collection);
+  RocksDBCollection* physical = toRocksDBCollection(*collection);
   physical->compact();
 
   TRI_V8_RETURN_UNDEFINED();
@@ -183,7 +183,7 @@ static void JS_EstimateCollectionSize(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  RocksDBCollection* physical = toRocksDBCollection(collection);
+  RocksDBCollection* physical = toRocksDBCollection(*collection);
   VPackBuilder builder;
   physical->estimateSize(builder);
 

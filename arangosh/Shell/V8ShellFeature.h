@@ -32,15 +32,17 @@
 #include "Shell/ShellFeature.h"
 
 namespace arangodb {
+
 class ConsoleFeature;
 class V8ClientConnection;
 
 class V8ShellFeature final : public application_features::ApplicationFeature {
  public:
-  V8ShellFeature(application_features::ApplicationServer* server,
-                 std::string const&);
+  V8ShellFeature(
+    application_features::ApplicationServer& server,
+    std::string const& name
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
@@ -50,7 +52,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   std::string const& startupDirectory() {
     return _startupDirectory;
   }
-  
+
  private:
   std::string _startupDirectory;
   std::string _clientModule;
@@ -78,12 +80,12 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
                                             std::vector<std::string> const&,
                                             bool* promptError = nullptr);
 
- private:
   std::string _name;
   v8::Isolate* _isolate;
   v8::Persistent<v8::Context> _context;
   ConsoleFeature* _console;
 };
+
 }
 
 #endif

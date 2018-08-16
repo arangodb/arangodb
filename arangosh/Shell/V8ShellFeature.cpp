@@ -49,15 +49,18 @@ extern "C" {
 #include <linenoise.h>
 }
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
 static std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
-V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
-                               std::string const& name)
+namespace arangodb {
+
+V8ShellFeature::V8ShellFeature(
+    application_features::ApplicationServer& server,
+    std::string const& name
+)
     : ApplicationFeature(server, "V8Shell"),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
@@ -1051,3 +1054,5 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
     }
   }
 }
+
+} // arangodb

@@ -27,10 +27,12 @@
 
 namespace arangodb {
 namespace application_features {
+
 class V8FeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit V8FeaturePhase(ApplicationServer* server);
+  explicit V8FeaturePhase(ApplicationServer& server);
 };
+
 }  // namespace application_features
 }  // namespace arangodb
 
