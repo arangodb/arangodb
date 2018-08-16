@@ -613,18 +613,12 @@ void VstConnection<ST>::setTimeout() {
   }
   
   _timeout.expires_at(expires);
-  auto self = weak_from_this();
+  auto self = shared_from_this();
   _timeout.async_wait([this, self](asio_ns::error_code const& ec) {
     if (ec) {  // was canceled
       return;
     }
       
-    // check if connection object is still alive
-    auto s = self.lock();
-    if (!s) {
-      return;
-    }
-
     // cancel expired requests
     auto now = std::chrono::steady_clock::now();
     size_t waiting =

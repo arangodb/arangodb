@@ -504,17 +504,17 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
     return; // do
   }
   assert(millis.count() > 0);
-  // use a weak-ptr to break cycles
-  auto self = weak_from_this();
   _timeout.expires_after(millis);
+  auto self = shared_from_this();
   _timeout.async_wait([this, self] (asio_ns::error_code const& e) {
+    if (e == asio_ns::error::operation_aborted) {
+      // timer was canceled
+      return;
+    }
+    
     if (!e) {  // expired
       FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-      auto s = self.lock();
-      if (s) {
-        // connection object still alive
-        restartConnection(ErrorCondition::Timeout);
-      }
+      restartConnection(ErrorCondition::Timeout);
     }
   });
 }
