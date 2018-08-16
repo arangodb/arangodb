@@ -144,16 +144,16 @@ typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
   arangodb::SmallVector<arangodb::aql::AqlValue> const&
 );
 
-size_t computeThreadPoolSize(size_t threads, uint32_t threadsLimit) {
-  static const unsigned int MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
-  static const unsigned int MIN_THREADS = 1; // at least one thread is required
+size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
+  static const size_t MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
+  static const size_t MIN_THREADS = 1; // at least one thread is required
   auto maxThreads = threadsLimit ? threadsLimit : MAX_THREADS;
 
   return threads
     ? threads
     : std::max(
         MIN_THREADS,
-        std::min(maxThreads, std::thread::hardware_concurrency() / 4)
+        std::min(maxThreads, size_t(std::thread::hardware_concurrency()) / 4)
       )
     ;
 }
