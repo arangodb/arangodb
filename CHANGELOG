@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed some web ui action events related to Running Queries view and Slow
+  Queries History view
+
 * fixed internal issue #2566: corrected web UI alignment of the nodes table
 
 * fixed issue #5736: Foxx HTTP API responds with 500 error when request body
