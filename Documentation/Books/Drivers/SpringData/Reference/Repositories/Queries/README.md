@@ -24,14 +24,13 @@ and [derived queries](DerivedQueries.md). Keep in mind that some options, like
 time-to-live, are only effective if the method return type is`ArangoCursor<T>`
 or `Iterable<T>`.
 
-
 **Examples**
 
 ```java
 public interface MyRepository extends Repository<Customer, String> {
 
 
-  @Query("FOR c IN customers FILTER c.name == @0 RETURN c")
+  @Query("FOR c IN #collection FILTER c.name == @0 RETURN c")
   Iterable<Customer> query(String name, AqlQueryOptions options);
 
 
@@ -42,7 +41,7 @@ public interface MyRepository extends Repository<Customer, String> {
   ArangoCursor<Customer> findByAddressZipCode(ZipCode zipCode);
 
 
-  @Query("FOR c IN customers FILTER c[@field] == @value RETURN c")
+  @Query("FOR c IN #collection FILTER c[@field] == @value RETURN c")
   @QueryOptions(cache = true, ttl = 128)
   ArangoCursor<Customer> query(Map<String, Object> bindVars, AqlQueryOptions options);
 
@@ -75,10 +74,10 @@ just.`some`.`attributes.that`.`form\``.a path\`.\  is converted to
 ```java
 public interface CustomerRepository extends ArangoRepository<Customer> {
 
-  @Query("FOR c IN customer FILTER c.name == @1 #pageable RETURN c")
+  @Query("FOR c IN #collection FILTER c.name == @1 #pageable RETURN c")
   Page<Customer> findByNameNative(Pageable pageable, String name);
 
-  @Query("FOR c IN customer FILTER c.name == @1 #sort RETURN c")
+  @Query("FOR c IN #collection FILTER c.name == @1 #sort RETURN c")
   List<Customer> findByNameNative(Sort sort, String name);
 }
 

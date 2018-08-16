@@ -1160,13 +1160,49 @@ void arangodb::aql::moveCalculationsDownRule(
       if (currentType == EN::FILTER || currentType == EN::SORT ||
           currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
         // we found something interesting that justifies moving our node down
-        shouldMove = true;
+        if (currentType == EN::LIMIT && arangodb::ServerState::instance()->isCoordinator()) {
+          // in a cluster, we do not want to move the calculations as far down as possible,
+          // because this will mean we may need to transfer a lot more data between DB servers
+          // and the coordinator
+
+          // assume we want to move the node past the limit
+          shouldMove = true;
+
+          // however, if our calculation uses any data from a collection/index/view,
+          // it probably makes sense to move it anyway, because the result set may be
+          // huge
+          std::unordered_set<Variable const*> vars;
+          Ast::getReferencedVariables(nn->expression()->node(), vars);
+          for (auto const& it : vars) {
+            auto setter = plan->getVarSetBy(it->id);
+            if (setter == nullptr) {
+              continue;
+            }
+            if (setter->getType() == EN::INDEX ||
+                setter->getType() == EN::ENUMERATE_COLLECTION ||
+#ifdef USE_IRESEARCH
+                setter->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
+#endif
+                setter->getType() == EN::SUBQUERY ||
+                setter->getType() == EN::TRAVERSAL ||
+                setter->getType() == EN::SHORTEST_PATH) {
+              shouldMove = false;
+              break;
+            }
+          }
+        } else {
+          shouldMove = true;
+        }
       } else if (currentType == EN::INDEX ||
                  currentType == EN::ENUMERATE_COLLECTION ||
+#ifdef USE_IRESEARCH
+                 currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
+#endif
                  currentType == EN::ENUMERATE_LIST ||
                  currentType == EN::TRAVERSAL ||
                  currentType == EN::SHORTEST_PATH ||
-                 currentType == EN::COLLECT || currentType == EN::NORESULTS) {
+                 currentType == EN::COLLECT || 
+                 currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         shouldMove = false;
         break;
