@@ -28,17 +28,17 @@ The first step is to install the new ArangoDB package.
 
 **Note:** you do not have to stop the _Starter_ processes before upgrading it.
 
-For example, if you want to upgrade to `3.3.12-1` on Debian or Ubuntu, either call
+For example, if you want to upgrade to `3.3.14-1` on Debian or Ubuntu, either call
 
 ```bash
-apt install arangodb=3.3.12
+apt install arangodb=3.3.14
 ```
 
 (`apt-get` on older versions) if you have added the ArangoDB repository. Or
 install a specific package using
 
 ```bash
-dpkg -i arangodb3-3.3.12-1_amd64.deb
+dpkg -i arangodb3-3.3.14-1_amd64.deb
 ```
 
 after you have downloaded the corresponding file from https://download.arangodb.com/.
