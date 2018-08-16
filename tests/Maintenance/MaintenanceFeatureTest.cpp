@@ -59,7 +59,7 @@ class TestProgressHandler : public arangodb::application_features::ProgressHandl
 public:
   TestProgressHandler() {
     _serverReady=false;
-    
+
     using std::placeholders::_1;
     _state = std::bind(& TestProgressHandler::StateChange, this, _1);
 
@@ -134,7 +134,7 @@ public:
     bool executeNow=false) {
     return MaintenanceFeature::addAction(description, executeNow);
   }
-  
+
 
   bool verifyRegistryState(ExpectedVec_t & expected) {
     bool good(true);
@@ -214,7 +214,7 @@ public:
 
     std::string value, iterate_count;
     auto gres = description.get("iterate_count", iterate_count);
-    
+
     if (gres.ok()) {
       _iteration = std::atol(iterate_count.c_str());
       // safety check
@@ -222,7 +222,7 @@ public:
         _iteration = 1;
       } // if
     } // if
-    
+
     if (description.get("result_code", value).ok()) {
       _resultCode = std::atol(value.c_str());
     } // if
@@ -236,7 +236,7 @@ public:
       _preAction = std::make_shared<ActionDescription>(pred);
     } // if
 
-    
+
     if (description.get("postaction_result_code", value).ok()) {
       std::map<std::string, std::string> postd {
         {"name","TestActionBasic"}, {"result_code",value}};
@@ -316,12 +316,15 @@ public:
 //
 TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
 
+  std::chrono::system_clock::time_point baseTime(std::chrono::system_clock::now());
+  std::chrono::system_clock::time_point noTime;
+
   SECTION("Iterate Action 0 times - ok") {
     std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
         "test", std::string(), std::string(), "path");
     arangodb::application_features::ApplicationServer as(po, nullptr);
-    
+
     TestMaintenanceFeature tf(as);
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -332,13 +335,21 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
             {"name","TestActionBasic"},{"iterate_count","0"}})));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
-    
+
     REQUIRE(result.ok());
     REQUIRE(tf._recentAction->result().ok());
     REQUIRE(0==tf._recentAction->getProgress());
     REQUIRE(tf._recentAction->getState() == COMPLETE);
     REQUIRE(tf._recentAction->done());
     REQUIRE(1==tf._recentAction->id());
+
+    REQUIRE(baseTime <= tf._recentAction->getCreateTime());
+    REQUIRE(baseTime <= tf._recentAction->getStartTime());
+    REQUIRE(baseTime <= tf._recentAction->getDoneTime());
+    REQUIRE(noTime == tf._recentAction->getLastStatTime());
+    REQUIRE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
+    REQUIRE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
+
   }
 
   SECTION("Iterate Action 0 times - fail") {
@@ -364,7 +375,14 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     REQUIRE(tf._recentAction->getState() == FAILED);
     REQUIRE(tf._recentAction->done());
     REQUIRE(1==tf._recentAction->id());
-  }
+
+    REQUIRE(baseTime <= tf._recentAction->getCreateTime());
+    REQUIRE(baseTime <= tf._recentAction->getStartTime());
+    REQUIRE(baseTime <= tf._recentAction->getDoneTime());
+    REQUIRE(noTime == tf._recentAction->getLastStatTime());
+    REQUIRE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
+    REQUIRE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
+}
 
   SECTION("Iterate Action 1 time - ok") {
     std::shared_ptr<arangodb::options::ProgramOptions> po =
@@ -388,7 +406,14 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     REQUIRE(tf._recentAction->getState() == COMPLETE);
     REQUIRE(tf._recentAction->done());
     REQUIRE(1==tf._recentAction->id());
-  }
+
+    REQUIRE(baseTime <= tf._recentAction->getCreateTime());
+    REQUIRE(baseTime <= tf._recentAction->getStartTime());
+    REQUIRE(baseTime <= tf._recentAction->getDoneTime());
+    REQUIRE(baseTime <= tf._recentAction->getLastStatTime());
+    REQUIRE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
+    REQUIRE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
+}
 
   SECTION("Iterate Action 1 time - fail") {
     std::shared_ptr<arangodb::options::ProgramOptions> po =
@@ -406,13 +431,21 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
           })));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
-    
+
     REQUIRE(!result.ok());
     REQUIRE(!tf._recentAction->result().ok());
     REQUIRE(1==tf._recentAction->getProgress());
     REQUIRE(tf._recentAction->getState() == FAILED);
     REQUIRE(tf._recentAction->done());
     REQUIRE(1==tf._recentAction->id());
+
+    REQUIRE(baseTime <= tf._recentAction->getCreateTime());
+    REQUIRE(baseTime <= tf._recentAction->getStartTime());
+    REQUIRE(baseTime <= tf._recentAction->getDoneTime());
+    REQUIRE(baseTime <= tf._recentAction->getLastStatTime());
+    REQUIRE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
+    REQUIRE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
+    REQUIRE(tf._recentAction->getLastStatTime() <= tf._recentAction->getDoneTime());
   }
 
   SECTION("Iterate Action 2 times - ok") {
@@ -438,6 +471,14 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     REQUIRE(tf._recentAction->getState() == COMPLETE);
     REQUIRE(tf._recentAction->done());
     REQUIRE(1==tf._recentAction->id());
+
+    REQUIRE(baseTime <= tf._recentAction->getCreateTime());
+    REQUIRE(baseTime <= tf._recentAction->getStartTime());
+    REQUIRE(baseTime <= tf._recentAction->getDoneTime());
+    REQUIRE(baseTime <= tf._recentAction->getLastStatTime());
+    REQUIRE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
+    REQUIRE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
+    REQUIRE(tf._recentAction->getLastStatTime() <= tf._recentAction->getDoneTime());
   }
 
   SECTION("Iterate Action 100 times - ok") {
@@ -462,6 +503,14 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     REQUIRE(tf._recentAction->getState() == COMPLETE);
     REQUIRE(tf._recentAction->done());
     REQUIRE(1==tf._recentAction->id());
+
+    REQUIRE(baseTime <= tf._recentAction->getCreateTime());
+    REQUIRE(baseTime <= tf._recentAction->getStartTime());
+    REQUIRE(baseTime <= tf._recentAction->getDoneTime());
+    REQUIRE(baseTime <= tf._recentAction->getLastStatTime());
+    REQUIRE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
+    REQUIRE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
+    REQUIRE(tf._recentAction->getLastStatTime() <= tf._recentAction->getDoneTime());
   }
 
   SECTION("Iterate Action 100 times - fail") {
@@ -487,6 +536,14 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     REQUIRE(tf._recentAction->getState() == FAILED);
     REQUIRE(tf._recentAction->done());
     REQUIRE(1==tf._recentAction->id());
+
+    REQUIRE(baseTime <= tf._recentAction->getCreateTime());
+    REQUIRE(baseTime <= tf._recentAction->getStartTime());
+    REQUIRE(baseTime <= tf._recentAction->getDoneTime());
+    REQUIRE(baseTime <= tf._recentAction->getLastStatTime());
+    REQUIRE(tf._recentAction->getCreateTime() <= tf._recentAction->getStartTime());
+    REQUIRE(tf._recentAction->getStartTime() <= tf._recentAction->getDoneTime());
+    REQUIRE(tf._recentAction->getLastStatTime() <= tf._recentAction->getDoneTime());
   }
 } // MaintenanceFeatureUnthreaded
 
@@ -562,7 +619,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     //
     // 5. verify completed actions
     REQUIRE(tf->verifyRegistryState(post_thread));
-    
+
 #if 0   // for debugging
     std::cout << tf->toVelocyPack().toJson() << std::endl;
 #endif
@@ -572,7 +629,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     as.beginShutdown();
 
     th.join();
-    
+
   }
 
 
