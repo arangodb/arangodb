@@ -225,8 +225,7 @@ int RocksDBIndex::drop() {
   // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
   bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  bool const useRangeDelete = (static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDelete() &&
-                               coll->numberDocuments() >= 32 * 1024);
+  bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
 
   arangodb::Result r = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),
                                                     prefixSameAsStart, useRangeDelete);

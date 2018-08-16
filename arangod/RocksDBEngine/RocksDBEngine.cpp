@@ -1197,7 +1197,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 ) {
   auto* coll = toRocksDBCollection(collection);
   bool const prefixSameAsStart = true;
-  bool const useRangeDelete = (canUseRangeDelete() && coll->numberDocuments() >= 32 * 1024);
+  bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
   
   rocksdb::WriteOptions wo;
 
@@ -1707,7 +1707,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
     auto const cnt = _settingsManager->loadCounter(objectId);
     uint64_t const numberDocuments = cnt.added() - cnt.removed();
-    bool const useRangeDelete = (canUseRangeDelete() && numberDocuments >= 32 * 1024);
+    bool const useRangeDelete = numberDocuments >= 32 * 1024;
 
     // remove indexes
     VPackSlice indexes = value.slice().get("indexes");
@@ -1726,8 +1726,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
         bool const prefixSameAsStart = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
-        res = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart,
-                                           useRangeDelete);
+        res = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
         if (res.fail()) {
           return;
         }
@@ -2202,7 +2201,7 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   }
 }
 
-bool RocksDBEngine::canUseRangeDelete() const {
+bool RocksDBEngine::canUseRangeDeleteInWal() const {
   return ServerState::instance()->isSingleServer();
 }
 

@@ -379,7 +379,7 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const EngineName;
   static std::string const FeatureName;
 
-  bool canUseRangeDelete() const;
+  bool canUseRangeDeleteInWal() const;
 
   rocksdb::Options const& rocksDBOptions() const {
     return _options;
