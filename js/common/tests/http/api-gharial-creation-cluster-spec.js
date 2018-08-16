@@ -156,8 +156,8 @@ describe('General graph creation', function () {
 
       before(function() {
         let body = {
-          to: vn2,
-          from: vn2,
+          to: [vn2],
+          from: [vn2],
           collection: en2
         };
         let res = request.post(`/_api/gharial/${gn}/edge`, extend(endpoint, {
@@ -229,8 +229,8 @@ describe('General graph creation', function () {
         // We modify the first relation by adding a new vertex collection
 
         let body = {
-          from: vn,
-          to: vn3,
+          from: [vn],
+          to: [vn3],
           collection: en
         };
 
@@ -361,8 +361,8 @@ describe('General graph creation', function () {
 
       before(function() {
         let body = {
-          to: vn2,
-          from: vn2,
+          to: [vn2],
+          from: [vn2],
           collection: en2
         };
         let res = request.post(`/_api/gharial/${gn}/edge`, extend(endpoint, {
@@ -435,8 +435,8 @@ describe('General graph creation', function () {
         // We modify the first relation by adding a new vertex collection
 
         let body = {
-          from: vn,
-          to: vn3,
+          from: [vn],
+          to: [vn3],
           collection: en
         };
 
