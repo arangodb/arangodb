@@ -22,20 +22,46 @@ dropped if they are not used in other graphs.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-Is returned if the graph could be created and waitForSync is enabled
+Is returned if the graph could be dropped and waitForSync is enabled
 for the `_graphs` collection, or given in the request.
 
 @RESTRETURNCODE{202}
-Is returned if the graph could be created and waitForSync is disabled
+Is returned if the graph could be dropped and waitForSync is disabled
 for the `_graphs` collection and not given in the request.
-
-@RESTRETURNCODE{404}
-Returned if no graph with this name could be found.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
 In order to drop a graph you at least need to have the following privileges:
   1. `Administrate` access on the Database.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false)
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false)
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
 
 @EXAMPLES
 
