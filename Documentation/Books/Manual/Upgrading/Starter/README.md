@@ -11,7 +11,7 @@ Please refer to the [Upgrade Paths](../GeneralInfo/README.md#upgrade-paths) for 
 information.
 
 **Important:** rolling upgrades of Cluster setups from 3.2 to 3.3 are only supported
-from versions 3.2.16 and 3.3.12.
+from versions 3.2.15 and 3.3.9.
 
 ## Upgrade Procedure
 
