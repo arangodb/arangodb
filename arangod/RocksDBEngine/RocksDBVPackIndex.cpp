@@ -1189,7 +1189,8 @@ rocksdb::SequenceNumber RocksDBVPackIndex::serializeEstimate(
 }
 
 bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
-  if (_unique || ServerState::instance()->isCoordinator()) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_unique) {
     return true;
   }
   // We simply drop the current estimator and steal the one from recovery
@@ -1209,9 +1210,7 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
 }
 
 void RocksDBVPackIndex::recalculateEstimates() {
-  if (ServerState::instance()->isCoordinator()) {
-    return;
-  }
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (unique()) {
     return;
   }
@@ -1225,6 +1224,12 @@ void RocksDBVPackIndex::recalculateEstimates() {
                                   RocksDBVPackIndex::HashForKey(it->key());
                               _estimator->insert(hash);
                             });
+}
+
+void RocksDBVPackIndex::afterTruncate() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
+  RocksDBIndex::afterTruncate();
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {

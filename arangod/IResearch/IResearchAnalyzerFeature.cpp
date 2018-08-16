@@ -399,10 +399,10 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
 
 std::string const& IResearchAnalyzerFeature::AnalyzerPool::name() const noexcept {
   return _name;
-};
+}
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
-    arangodb::application_features::ApplicationServer* server
+    arangodb::application_features::ApplicationServer& server
 ): ApplicationFeature(server, IResearchAnalyzerFeature::name()),
   _analyzers(getStaticAnalyzers()), // load static analyzers
   _started(false) {

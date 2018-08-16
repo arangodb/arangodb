@@ -44,7 +44,8 @@ using namespace arangodb::options;
 static std::string const boostrapKey = "Bootstrap";
 
 BootstrapFeature::BootstrapFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
   startsAfter("ServerPhase");
 

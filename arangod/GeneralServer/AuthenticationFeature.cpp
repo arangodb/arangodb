@@ -36,13 +36,15 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-using namespace arangodb;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
 AuthenticationFeature::AuthenticationFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Authentication"),
       _userManager(nullptr),
       _authCache(nullptr),
@@ -188,3 +190,5 @@ void AuthenticationFeature::start() {
 }
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
+
+} // arangodb
