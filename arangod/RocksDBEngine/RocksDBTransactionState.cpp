@@ -437,6 +437,9 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
     TRI_ASSERT(_rocksTransaction->GetNumPuts() == 0 &&
                _rocksTransaction->GetNumDeletes() == 0);
     switch (operationType) {
+      case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+        break;
+        
       case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
@@ -461,9 +464,8 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
         TRI_ASSERT(_numLogdata == 0);
         _numLogdata++;
 #endif
-      } break;
-      case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
-        break;
+         break;
+      }
     }
   } else {
     if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {

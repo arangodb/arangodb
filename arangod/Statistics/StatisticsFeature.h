@@ -69,9 +69,8 @@ class StatisticsFeature final
   static StatisticsFeature* STATISTICS;
 
  public:
-  explicit StatisticsFeature(application_features::ApplicationServer* server);
+  explicit StatisticsFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -84,7 +83,7 @@ class StatisticsFeature final
     }
     return nullptr;
   }
-      
+
  private:
   bool _statistics;
 
@@ -92,6 +91,7 @@ class StatisticsFeature final
   std::unique_ptr<StatisticsThread> _statisticsThread;
   std::unique_ptr<StatisticsWorker> _statisticsWorker;
 };
+
 }
 
 #endif

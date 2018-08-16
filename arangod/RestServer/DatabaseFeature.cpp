@@ -220,7 +220,9 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(ApplicationServer* server)
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Database"),
       _maximalJournalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _defaultWaitForSync(false),

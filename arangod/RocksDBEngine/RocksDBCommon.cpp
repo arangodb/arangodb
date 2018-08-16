@@ -155,7 +155,8 @@ std::size_t countKeyRange(rocksdb::DB* db,
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds,
-                        bool prefix_same_as_start) {
+                        bool prefix_same_as_start,
+                        bool useRangeDelete) {
   LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range: " << bounds;
   
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
@@ -167,15 +168,28 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     rocksdb::Slice lower(bounds.start());
     rocksdb::Slice upper(bounds.end());
     {
-      rocksdb::Status status =
-          rocksdb::DeleteFilesInRange(bDB, cf, &lower, &upper);
-      if (!status.ok()) {
+      rocksdb::Status s = rocksdb::DeleteFilesInRange(bDB, cf, &lower, &upper);
+      if (!s.ok()) {
         // if file deletion failed, we will still iterate over the remaining
         // keys, so we don't need to abort and raise an error here
-        arangodb::Result r = rocksutils::convertStatus(status);
+        arangodb::Result r = rocksutils::convertStatus(s);
         LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB)
             << "RocksDB file deletion failed: " << r.errorMessage();
       }
+    }
+    
+    // go on and delete the remaining keys (delete files in range does not
+    // necessarily find them all, just complete files)
+    rocksdb::WriteOptions wo;
+    
+    if (useRangeDelete) {
+      rocksdb::Status s = bDB->DeleteRange(wo, cf, lower, upper);
+      if (!s.ok()) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "RocksDB key deletion failed: " << s.ToString();
+        return rocksutils::convertStatus(s);
+      }
+      return {};
     }
     
     // go on and delete the remaining keys (delete files in range does not
@@ -189,7 +203,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     readOptions.verify_checksums = false;
     readOptions.fill_cache = false;
     std::unique_ptr<rocksdb::Iterator> it(bDB->NewIterator(readOptions, cf));
-
+    
     size_t total = 0;
     size_t counter = 0;
     for (it->Seek(lower); it->Valid(); it->Next()) {
@@ -201,31 +215,32 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       if (counter >= 1000) {
         LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
         // Persist deletes all 1000 documents
-        rocksdb::Status status = bDB->Write(rocksdb::WriteOptions(), &batch);
+        rocksdb::Status status = bDB->Write(wo, &batch);
         if (!status.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-              << "RocksDB key deletion failed: " << status.ToString();
+          << "RocksDB key deletion failed: " << status.ToString();
           return TRI_ERROR_INTERNAL;
         }
         batch.Clear();
         counter = 0;
       }
     }
-  
+    
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range, deleted in total: " << total;
-
+    
     if (counter > 0) {
       LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
       // We still have sth to write
       // now apply deletion batch
       rocksdb::Status status = bDB->Write(rocksdb::WriteOptions(), &batch);
-
+      
       if (!status.ok()) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-            << "RocksDB key deletion failed: " << status.ToString();
+        << "RocksDB key deletion failed: " << status.ToString();
         return TRI_ERROR_INTERNAL;
       }
     }
+    
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)

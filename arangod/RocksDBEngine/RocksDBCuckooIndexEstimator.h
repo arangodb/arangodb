@@ -305,7 +305,7 @@ class RocksDBCuckooIndexEstimator {
       }
 
       bool havePendingUpdates = !_blockers.empty() || !_insertBuffers.empty() ||
-                                !_removalBuffers.empty();
+                                !_removalBuffers.empty() || !_truncateBuffer.empty();
       _needToPersist.store(havePendingUpdates);
     }
 
@@ -336,6 +336,15 @@ class RocksDBCuckooIndexEstimator {
     }
 
     _needToPersist.store(true);
+  }
+  
+  Result bufferTruncate(rocksdb::SequenceNumber seq) {
+    Result res = basics::catchVoidToResult([&]() -> void {
+      WRITE_LOCKER(locker, _lock);
+      _truncateBuffer.emplace(seq);
+      _needToPersist.store(true);
+    });
+    return res;
   }
 
   double computeEstimate() {
@@ -571,37 +580,58 @@ class RocksDBCuckooIndexEstimator {
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
+      bool foundTruncate = false;
       while (true) {
         // find out if we have buffers to apply
         {
           WRITE_LOCKER(locker, _lock);
 
+          rocksdb::SequenceNumber ignoreSeq = 0;
+          // check for a truncate marker
+          if (!_truncateBuffer.empty()) {
+            auto it = _truncateBuffer.begin(); // sorted ASC
+            while (*it <= commitSeq && *it >= ignoreSeq) {
+              ignoreSeq = *it;
+              foundTruncate = true;
+              it = _truncateBuffer.erase(it);
+            }
+          }
+          
           // check for inserts
           if (!_insertBuffers.empty()) {
-            auto it = _insertBuffers.begin();
+            auto it = _insertBuffers.begin(); // sorted ASC
             if (it->first <= commitSeq) {
-              inserts = std::move(it->second);
-              TRI_ASSERT(!inserts.empty());
+              if (!foundTruncate || it->first > ignoreSeq) {
+                inserts = std::move(it->second);
+                TRI_ASSERT(!inserts.empty());
+              }
               _insertBuffers.erase(it);
             }
           }
 
           // check for removals
           if (!_removalBuffers.empty()) {
-            auto it = _removalBuffers.begin();
+            auto it = _removalBuffers.begin(); // sorted ASC
             if (it->first <= commitSeq) {
-              removals = std::move(it->second);
-              TRI_ASSERT(!removals.empty());
+              if (!foundTruncate || it->first > ignoreSeq) {
+                removals = std::move(it->second);
+                TRI_ASSERT(!removals.empty());
+              }
               _removalBuffers.erase(it);
             }
           }
+        }
+        
+        if (foundTruncate) {
+          clear(); // clear estimates
+          foundTruncate = false;
         }
 
         // no inserts or removals left to apply, drop out of loop
         if (inserts.empty() && removals.empty()) {
           break;
         }
-
+        
         if (!inserts.empty()) {
           // apply inserts
           for (auto const& key : inserts) {
@@ -617,7 +647,7 @@ class RocksDBCuckooIndexEstimator {
           }
           removals.clear();
         }
-      }
+      } // </while(true)>
     });
     return res;
   }
@@ -973,6 +1003,7 @@ class RocksDBCuckooIndexEstimator {
   std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
   std::map<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
   std::map<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
+  std::set<rocksdb::SequenceNumber> _truncateBuffer;
 
   HashKey _hasherKey;        // Instance to compute the first hash function
   Fingerprint _fingerprint;  // Instance to compute a fingerprint of a key

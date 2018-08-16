@@ -28,13 +28,14 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-actions.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 ActionFeature* ActionFeature::ACTION = nullptr;
 
-ActionFeature::ActionFeature(application_features::ApplicationServer* server)
+ActionFeature::ActionFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Action"),
       _allowUseDatabase(false) {
   setOptional(true);
@@ -69,3 +70,5 @@ void ActionFeature::unprepare() {
 
   ACTION = nullptr;
 }
+
+} // arangodb
