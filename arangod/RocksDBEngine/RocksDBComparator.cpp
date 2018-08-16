@@ -24,7 +24,6 @@
 
 #include "RocksDBComparator.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTypes.h"
