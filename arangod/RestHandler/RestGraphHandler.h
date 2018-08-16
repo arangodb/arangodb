@@ -52,9 +52,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestGraphHandler(GeneralRequest* request, GeneralResponse* response);
 
-  ~RestGraphHandler() override = default;
+  ~RestGraphHandler() = default;
 
-  char const* name() const final { return "RestGraphHandler"; }
+  char const* name() const override final { return "RestGraphHandler"; }
 
   RestStatus execute() override;
 

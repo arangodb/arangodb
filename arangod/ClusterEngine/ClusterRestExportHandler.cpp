@@ -23,18 +23,6 @@
 
 #include "ClusterRestExportHandler.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/VelocyPackHelper.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "Utils/Cursor.h"
-#include "Utils/CursorRepository.h"
-#include "VocBase/ticks.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;

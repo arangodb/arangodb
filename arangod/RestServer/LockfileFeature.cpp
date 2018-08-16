@@ -28,11 +28,13 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabasePathFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace arangodb {
+
 LockfileFeature::LockfileFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Lockfile") {
   setOptional(false);
   startsAfter("BasicsPhase");
@@ -90,3 +92,5 @@ void LockfileFeature::start() {
 void LockfileFeature::unprepare() {
   TRI_DestroyLockFile(_lockFilename.c_str());
 }
+
+} // arangodb

@@ -65,7 +65,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 // create the storage engine
-ClusterEngine::ClusterEngine(application_features::ApplicationServer* server)
+ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
   : StorageEngine(
       server,
       "Cluster",
@@ -388,10 +388,6 @@ void ClusterEngine::signalCleanup(TRI_vocbase_t&) {
 
 int ClusterEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
   return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief Add engine-specific AQL functions.
-void ClusterEngine::addAqlFunctions() {
 }
 
 /// @brief Add engine-specific optimizer rules

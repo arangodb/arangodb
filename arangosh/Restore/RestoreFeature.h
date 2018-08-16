@@ -32,17 +32,22 @@
 #include "Utils/ManagedDirectory.h"
 
 namespace arangodb {
+
 namespace httpclient {
+
 class SimpleHttpResult;
+
 }
+
 class ManagedDirectory;
 
 class RestoreFeature final : public application_features::ApplicationFeature {
  public:
-  RestoreFeature(application_features::ApplicationServer* server,
-                 int& exitCode);
+  RestoreFeature(
+    application_features::ApplicationServer& server,
+    int& exitCode
+  );
 
- public:
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
@@ -50,7 +55,6 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   void prepare() override;
   void start() override;
 
- public:
   /**
    * @brief Returns the feature name (for registration with `ApplicationServer`)
    * @return The name of the feature
@@ -69,7 +73,6 @@ class RestoreFeature final : public application_features::ApplicationFeature {
    */
   Result getFirstError() const;
 
- public:
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
@@ -121,6 +124,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   Mutex mutable _workerErrorLock;
   std::queue<Result> _workerErrors;
 };
+
 }  // namespace arangodb
 
 #endif

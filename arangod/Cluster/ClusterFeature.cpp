@@ -41,12 +41,13 @@
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Cluster"),
       _unregisterOnShutdown(false),
       _enableCluster(false),
@@ -558,3 +559,5 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
     std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 }
+
+} // arangodb

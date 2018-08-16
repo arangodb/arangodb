@@ -135,7 +135,7 @@ struct IResearchIndexSetup {
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchIndexSetup(): server(nullptr, nullptr) {
+  IResearchIndexSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
@@ -148,21 +148,21 @@ struct IResearchIndexSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::AqlFeature(&server), true); // required for arangodb::aql::Query(...)
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false); // requires for IResearchView::open()
+    features.emplace_back(new arangodb::AqlFeature(server), true); // required for arangodb::aql::Query(...)
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false); // requires for IResearchView::open()
     auto d = static_cast<arangodb::DatabasePathFeature*>(features.back().first);
     d->setDirectory(TRI_GetTempPath());
-    features.emplace_back(new arangodb::ShardingFeature(&server), false);
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true); // required by TRI_vocbase_t::createView(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required by TRI_vocbase_t(...)
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true); // required by TRI_vocbase_t::createView(...)
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required by TRI_vocbase_t(...)
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // QueryRegistryFeature required to be present before calling TRI_vocbase_t(...)
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // required for AQLFeature
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true); // required for arangodb::aql::Query::execute(...)
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true); // required for use of iresearch analyzers
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true); // required for creating views of type 'iresearch'
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // required for AQLFeature
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true); // required for arangodb::aql::Query::execute(...)
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true); // required for use of iresearch analyzers
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true); // required for creating views of type 'iresearch'
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);

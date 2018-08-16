@@ -114,7 +114,8 @@ static void HUPHandler(int) {
 }
 
 SupervisorFeature::SupervisorFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
   setOptional(true);
   startsAfter("GreetingsPhase");

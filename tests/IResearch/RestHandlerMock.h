@@ -40,7 +40,7 @@ struct GeneralRequestMock: public arangodb::GeneralRequest {
 
   GeneralRequestMock(TRI_vocbase_t& vocbase);
   virtual size_t contentLength() const override;
-  virtual arangodb::StringRef rawPayload() const;
+  virtual arangodb::StringRef rawPayload() const override;
   virtual arangodb::velocypack::Slice payload(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
 };

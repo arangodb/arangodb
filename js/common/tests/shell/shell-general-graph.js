@@ -83,7 +83,7 @@ function GeneralGraphCreationSuite() {
       collection: edgeDefinition.collection,
       from: edgeDefinition.from.slice().sort(),
       to: edgeDefinition.to.slice().sort()
-    }
+    };
   };
 
   return {
@@ -1130,7 +1130,7 @@ function EdgesAndVerticesSuite() {
         );
         fail();
       } catch (e) {
-        assertEqual(e.errorNum, arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code)
+        assertEqual(e.errorNum, arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code);
       }
       assertFalse(graph._exists(myGraphName));
       assertTrue(db._collection(myVD1) === null);

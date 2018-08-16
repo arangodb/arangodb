@@ -42,16 +42,18 @@
 #include <chrono>
 #include <thread>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
   startsAfter("GreetingsPhase");
@@ -68,11 +70,11 @@ void SchedulerFeature::collectOptions(
   // max / min number of threads
   options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
                      new UInt64Parameter(&_nrMaximalThreads));
-  
+
   options->addHiddenOption("--server.minimal-threads",
                            "minimum number of request handling threads to run",
                            new UInt64Parameter(&_nrMinimalThreads));
-  
+
   options->addOption("--server.maximal-queue-size", "size of the priority 2 fifo",
                      new UInt64Parameter(&_fifo2Size));
 
@@ -381,3 +383,5 @@ void SchedulerFeature::buildHangupHandler() {
   _hangupSignals->async_wait(_hangupHandler);
 #endif
 }
+
+} // arangodb

@@ -27,13 +27,16 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class EngineEqualityCheckFeature final : public application_features::ApplicationFeature {
  public:
-  explicit EngineEqualityCheckFeature(application_features::ApplicationServer* server);
+  explicit EngineEqualityCheckFeature(
+    application_features::ApplicationServer& server
+  );
 
- public:
   void start() override final;
 };
+
 }
 
 #endif

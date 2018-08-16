@@ -346,14 +346,14 @@ void RestGraphHandler::generateRemoved(bool removed, bool wasSynchronous,
 /// @brief generate response object: { error, code, removed, old? }
 /// "old" is omitted if old is a NoneSlice.
 void RestGraphHandler::generateGraphRemoved(bool removed, bool wasSynchronous,
-                                       VPackOptions const& options) {
-  ResponseCode code;
+                                            VPackOptions const& options) {
+  ResponseCode code = rest::ResponseCode::ACCEPTED;
+#if 0
+  // TODO fix this in a major release upgrade
   if (wasSynchronous) {
-    code = rest::ResponseCode::ACCEPTED;
-  } else {
-    code = rest::ResponseCode::ACCEPTED;
-    // code = rest::ResponseCode::CREATED; // TODO fix this in a major release upgrade
+    code = rest::ResponseCode::CREATED; 
   }
+#endif
   resetResponse(code);
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));
@@ -369,7 +369,7 @@ void RestGraphHandler::generateGraphConfig(VPackSlice slice,
 }
 
 void RestGraphHandler::generateCreatedGraphConfig(bool wasSynchronous, VPackSlice slice,
-                                           VPackOptions const& options) {
+                                                  VPackOptions const& options) {
   ResponseCode code;
   if (wasSynchronous) {
     code = rest::ResponseCode::CREATED;
@@ -382,13 +382,14 @@ void RestGraphHandler::generateCreatedGraphConfig(bool wasSynchronous, VPackSlic
 }
 
 void RestGraphHandler::generateCreatedEdgeDefinition(bool wasSynchronous, VPackSlice slice,
-                                           VPackOptions const& options) {
-  ResponseCode code;
+                                                     VPackOptions const& options) {
+  ResponseCode code = rest::ResponseCode::ACCEPTED; 
+#if 0
+  // TODO: fix this in a major upgrade release
   if (wasSynchronous) {
-    code = rest::ResponseCode::ACCEPTED; // TODO: fix this in a major upgrade release
-  } else {
-    code = rest::ResponseCode::ACCEPTED;
+    code = rest::ResponseCode::CREATED;
   }
+#endif
   resetResponse(code);
   addEtagHeader(slice.get("graph").get(StaticStrings::RevString));
   generateResultMergedWithObject(slice, options);
