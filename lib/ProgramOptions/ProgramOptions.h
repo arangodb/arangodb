@@ -163,6 +163,12 @@ class ProgramOptions {
                  Parameter* parameter) {
     addOption(Option(name, description, parameter, false, false));
   }
+  
+  // adds an enterprise-only option to the program options
+  void addEnterpriseOption(std::string const& name, std::string const& description,
+                           Parameter* parameter) {
+    addOption(EnterpriseOption(name, description, parameter, false, false));
+  }
 
   // adds a hidden option to the program options
   void addHiddenOption(std::string const& name, std::string const& description,
