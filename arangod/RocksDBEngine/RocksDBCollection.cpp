@@ -634,17 +634,26 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   
   if (state->isExclusiveTransactionOnSingleCollection() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal() &&
       _numberDocuments >= 32 * 1024) {
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
 
     rocksdb::WriteBatch batch;
+    
+    // add the assertion again here, so we are sure we can use RangeDeletes   
+    TRI_ASSERT(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal());
+  
     auto log = RocksDBLogValue::CollectionTruncate(trx->vocbase().id(),
                                                    _logicalCollection.id(), _objectId);
     rocksdb::Status s = batch.PutLogData(log.slice());
     if (!s.ok()) {
       THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+    }
+   
+    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") { 
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     
     // delete documents
@@ -681,6 +690,10 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       compact();
     }
     return;
+  } else {
+    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") { 
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
   
   // normal transactional truncate
