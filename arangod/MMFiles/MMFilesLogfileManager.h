@@ -285,7 +285,9 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // finalize and seal the currently open logfile
   /// this is useful to ensure that any open writes up to this point have made
   /// it into a logfile
-  int flush(bool waitForSync, bool waitForCollector, bool writeShutdownFile, double maxWaitTime = -1.0);
+  int flush(bool waitForSync, bool waitForCollector, 
+            bool writeShutdownFile, double maxWaitTime = -1.0, 
+            bool abortWaitOnShutdown = false);
 
   /// wait until all changes to the current logfile are synced
   bool waitForSync(double);
@@ -413,7 +415,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   void removeLogfile(MMFilesWalLogfile*);
 
   // wait for the collector thread to collect a specific logfile
-  int waitForCollector(MMFilesWalLogfile::IdType, double);
+  int waitForCollector(MMFilesWalLogfile::IdType, double maxWaitTime, bool abortWaitOnShutdown);
 
   // closes all logfiles
   void closeLogfiles();
