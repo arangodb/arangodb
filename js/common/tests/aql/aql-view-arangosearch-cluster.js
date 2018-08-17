@@ -493,16 +493,12 @@ jsunity.run(function IResearchAqlTestSuite_s4_r1() {
   return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 });
 });
 
-
-
 jsunity.run(function IResearchAqlTestSuite_s1_r2() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 })
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 });
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 })
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 });
 });
-
-
 
 return jsunity.done();

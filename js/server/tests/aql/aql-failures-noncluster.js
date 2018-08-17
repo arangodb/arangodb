@@ -53,8 +53,7 @@ function ahuacatlFailureSuite () {
     try {
       AQL_EXECUTE(query, null, { optimizer: { rules: rulesToExclude } });
       fail();
-    }
-    catch (err) {
+    } catch (err) {
       assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, query);
     }
   };
@@ -426,7 +425,7 @@ function ahuacatlFailureSuite () {
     testIndexBlock1 : function () {
       c.ensureHashIndex("value");
       internal.debugSetFailAt("IndexBlock::initialize");
-      assertFailingQuery("LET f = PASSTHRU(1) FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value == f RETURN i");
+      assertFailingQuery("LET f = NOOPT(1) FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value == f RETURN i");
       assertFailingQuery("FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j RETURN i");
     },
 
@@ -437,7 +436,7 @@ function ahuacatlFailureSuite () {
     testIndexBlock2 : function () {
       c.ensureHashIndex("value");
       internal.debugSetFailAt("IndexBlock::initializeExpressions");
-      assertFailingQuery("LET f = PASSTHRU(1) FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value == f RETURN i");
+      assertFailingQuery("LET f = NOOPT(1) FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value == f RETURN i");
     },
 
     testIndexBlock3 : function () {
@@ -472,7 +471,7 @@ function ahuacatlFailureSuite () {
       c.ensureHashIndex("value");
       internal.debugSetFailAt("IndexBlock::executeExpression");
       // CONCAT  is an arbitrary non v8 function and can be replaced
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(PASSTHRU(CONCAT('1','2'))) RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(CONCAT('1','2')) RETURN i");
     },
 
     testConditionFinder1 : function () {

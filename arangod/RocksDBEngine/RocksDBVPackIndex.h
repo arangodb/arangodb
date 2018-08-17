@@ -203,8 +203,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
       std::string& output, rocksdb::SequenceNumber seq) const override;
 
   bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
-
+  
   void recalculateEstimates() override;
+  
+  void afterTruncate() override;
 
  protected:
   Result insertInternal(transaction::Methods*, RocksDBMethods*,

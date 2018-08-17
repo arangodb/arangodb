@@ -82,6 +82,7 @@ int main(int argc, char* argv[]) {
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   arangodb::ShellColorsFeature sc(server);
 
+  arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
   sc.prepare();
 
   arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
