@@ -816,6 +816,30 @@ function ahuacatlModifySuite () {
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+        assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+      }
+
+      assertEqual(99, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+    
+    testRemoveMainLevelCustomShardKeyWithIdFixedSingleWithFilter : function () {
+      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+      c.ensureIndex({ type: "hash", fields: ["id"] });
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ id: i });
+      }
+
+      let expected = { writesExecuted: 1, writesIgnored: 0 };
+      let query = "FOR d IN " + cn + " FILTER d.id == 42 REMOVE { _key: d._key, id: 42 } IN " + cn;
+      let actual = getModifyQueryResultsRaw(query);
+      if (isCluster) {
+        let plan = AQL_EXPLAIN(query).plan;
+        assertFalse(hasDistributeNode(plan.nodes));
+        assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+        assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
       assertEqual(99, c.count());

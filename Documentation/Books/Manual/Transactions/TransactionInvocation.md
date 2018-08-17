@@ -60,14 +60,6 @@ Additionally, *object* can have the following optional attributes:
 - *params*: optional arguments passed to the function specified in
   *action*.
 
-The following attributes can be used for transactions in the RocksDB storage engine:
-
-- *maxTransactionSize*: transaction size limit in bytes
-- *intermediateCommitSize*: maximum total size of operations after which an intermediate
-  commit is performed automatically
-- *intermediateCommitCount*: maximum number of operations after which an intermediate
-  commit is performed automatically
-
 
 ### Declaration of collections
 

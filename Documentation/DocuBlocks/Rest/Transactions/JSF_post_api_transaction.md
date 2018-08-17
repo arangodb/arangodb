@@ -39,14 +39,6 @@ optional arguments passed to *action*.
 @RESTBODYPARAM{maxTransactionSize,integer,optional,int64}
 Transaction size limit in bytes. Honored by the RocksDB storage engine only.
 
-@RESTBODYPARAM{intermediateCommitSize,integer,optional,int64}
-Maximum total size of operations after which an intermediate commit is performed 
-automatically. Honored by the RocksDB storage engine only.
-
-@RESTBODYPARAM{intermediateCommitCount,integer,optional,int64}
-Maximum number of operations after which an intermediate commit is performed 
-automatically. Honored by the RocksDB storage engine only.
-
 @RESTDESCRIPTION
 The transaction description must be passed in the body of the POST request.
 

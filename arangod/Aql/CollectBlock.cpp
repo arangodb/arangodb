@@ -973,6 +973,9 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       if (!skipping) {
         size_t i = 0;
         for (auto& it : _groupRegisters) {
+          if (skipped > 0) {
+            res->copyValuesFromFirstRow(skipped, static_cast<RegisterId>(cur->getNrRegs()));
+          }
           res->setValue(skipped, it.first, groupValues[i].clone());
           ++i;
         }

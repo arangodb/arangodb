@@ -231,6 +231,13 @@ void GeneralCommTask::executeRequest(
     return;
   }
 
+  // forward to correct server if necessary
+  bool forwarded = handler->forwardRequest();
+  if (forwarded) {
+    addResponse(*handler->response(), handler->stealStatistics());
+    return;
+  }
+
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
     RequestStatistics::SET_ASYNC(statistics(messageId));
